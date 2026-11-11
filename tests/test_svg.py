@@ -1,4 +1,4 @@
-import xml.etree.ElementTree as ET
+from xml.etree import ElementTree as ET
 
 from gost_schematic.rendering.svg import render_symbol_svg
 

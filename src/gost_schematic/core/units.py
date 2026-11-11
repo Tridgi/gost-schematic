@@ -2,10 +2,10 @@
 from decimal import Decimal, InvalidOperation
 
 
-def mm(value: str | int | float | Decimal) -> int:
+def mm(value: str | float | Decimal) -> int:
     """Convert millimetres to an EXACT integral number of micrometres."""
     if isinstance(value, bool):
-        raise ValueError("A boolean is not a length")
+        raise TypeError("A boolean is not a length")
     try:
         millimetres = Decimal(str(value))
     except InvalidOperation as error:

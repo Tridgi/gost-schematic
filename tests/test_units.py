@@ -9,7 +9,12 @@ def test_unit_conversion_is_exact():
     assert format_mm(2501) == "2.501"
 
 
-@pytest.mark.parametrize("invalid", [True, "nan", "infinity", "0.0001", "oops"])
+@pytest.mark.parametrize("invalid", ["nan", "infinity", "0.0001", "oops"])
 def test_unit_conversion_rejects_ambiguous_values(invalid):
     with pytest.raises(ValueError):
         mm(invalid)
+
+
+def test_unit_conversion_rejects_boolean():
+    with pytest.raises(TypeError):
+        mm(True)

@@ -10,7 +10,7 @@ from gost_schematic.model.symbol import SymbolDefinition
 class ComponentInstance:
     reference: str
     part_id: str
-    origin: Point = Point(0, 0)
+    origin: Point = field(default_factory=lambda: Point(0, 0))
     transform: Transform = field(default_factory=Transform)
 
     def __post_init__(self) -> None:

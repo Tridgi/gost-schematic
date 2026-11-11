@@ -1,7 +1,7 @@
 """Discrete orthogonal transforms; rotation is clockwise on SVG-like y-down axes."""
 from dataclasses import dataclass
 
-from gost_schematic.core.geometry import Box, Point, SIDE_VECTORS, Side
+from gost_schematic.core.geometry import SIDE_VECTORS, Box, Point, Side
 
 
 @dataclass(frozen=True, slots=True)
