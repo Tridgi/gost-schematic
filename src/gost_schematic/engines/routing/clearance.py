@@ -3,7 +3,6 @@
 from collections.abc import Iterable
 
 from gost_schematic.core.diagnostics import Diagnostic, Severity
-from gost_schematic.core.geometry import Box
 from gost_schematic.engines.annotation.collision import (
     BoxObstacle,
     WireObstacle,
