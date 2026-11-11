@@ -7,11 +7,11 @@ from gost_schematic.engines.annotation.layout import (
     requests_for_component,
 )
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
+from gost_schematic.engines.ports import PinEscapeCorridor, pin_corridors_for_component
 from gost_schematic.engines.routing.clearance import (
     validate_port_reservations,
     validate_wire_clearance,
 )
-from gost_schematic.engines.ports import PinEscapeCorridor, pin_corridors_for_component
 from gost_schematic.model.annotations import TextStyle
 from gost_schematic.rendering.annotation_svg import render_annotation_svg
 from gost_schematic.rendering.svg import render_symbol_svg
