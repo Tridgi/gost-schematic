@@ -4,7 +4,6 @@ from dataclasses import replace
 
 import pytest
 
-from gost_schematic.catalog.loader import load_symbol
 from gost_schematic.core.geometry import Box, Line, Point
 from gost_schematic.core.transforms import Transform
 from gost_schematic.engines.annotation.collision import (
