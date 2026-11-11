@@ -5,24 +5,23 @@ from pathlib import Path
 
 from gost_schematic.catalog.loader import load_symbol
 from gost_schematic.core.diagnostics import Severity
-from gost_schematic.core.geometry import Line, Point, SIDE_VECTORS
+from gost_schematic.core.geometry import SIDE_VECTORS, Line, Point
 from gost_schematic.core.units import mm
+from gost_schematic.engines.annotation.collision import WireObstacle
 from gost_schematic.engines.annotation.layout import (
     obstacles_for_component,
     place_annotations,
     requests_for_component,
 )
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
-from gost_schematic.engines.annotation.collision import WireObstacle
 from gost_schematic.engines.routing.clearance import validate_wire_clearance
 from gost_schematic.engines.routing.ports import pin_corridors_for_component
 from gost_schematic.model.annotations import TextStyle
 from gost_schematic.model.circuit import ComponentInstance
-from gost_schematic.validation.annotation_checks import annotation_obstacles
 from gost_schematic.rendering.annotation_svg import render_annotation_svg
 from gost_schematic.rendering.svg import render_symbol_svg
+from gost_schematic.validation.annotation_checks import annotation_obstacles
 from gost_schematic.validation.symbol_checks import validate_symbol
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="gost-schematic")
