@@ -40,6 +40,11 @@ jobs:
             --ref R1 --value '10 kΩ' --font-file "$FONT_PATH" \
             --font-family 'DejaVu Sans' \
             --output output/resistor-annotations-clean.svg
+          python -m gost_schematic.cli render-annotated-symbol \\
+            src/gost_schematic/catalog/symbols/resistors/fixed.json \\
+            --ref R1 --value '10 kΩ' --font-file "$FONT_PATH" \\
+            --font-family 'DejaVu Sans' --show-pin-connections --review-overlay \\
+            --output output/resistor-annotations-pin-escape.svg
       - name: Upload annotated UGO preview
         if: matrix.python-version == '3.12'
         uses: actions/upload-artifact@v4
