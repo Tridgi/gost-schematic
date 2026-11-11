@@ -12,7 +12,6 @@ from gost_schematic.model.obstacles import (
 )
 
 
-
 def _pin_to_net(circuit: Circuit) -> dict[PinRef, set[str]]:
     membership: dict[PinRef, set[str]] = {}
     for net in circuit.nets:
