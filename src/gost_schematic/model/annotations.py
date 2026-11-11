@@ -1,6 +1,6 @@
 """Immutable annotation intent, positioning anchors and resolved text collision bounds."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 from gost_schematic.core.geometry import Box, Point
@@ -76,8 +76,8 @@ class AnnotationRequest:
     slot: AnnotationSlot
     text: str
     style: TextStyle
-    origin: Point = Point(0, 0)
-    transform: Transform = Transform()
+    origin: Point = field(default_factory=lambda: Point(0, 0))
+    transform: Transform = field(default_factory=Transform)
     locked: bool = False
     visible: bool = True
 
