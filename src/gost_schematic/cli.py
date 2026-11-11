@@ -23,6 +23,7 @@ from gost_schematic.rendering.svg import render_symbol_svg
 from gost_schematic.validation.annotation_checks import annotation_obstacles
 from gost_schematic.validation.symbol_checks import validate_symbol
 
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="gost-schematic")
     commands = parser.add_subparsers(dest="command", required=True)
