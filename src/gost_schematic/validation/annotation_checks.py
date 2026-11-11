@@ -2,7 +2,7 @@
 
 from gost_schematic.core.diagnostics import Diagnostic, Severity
 from gost_schematic.core.geometry import Box
-from gost_schematic.engines.annotation.collision import (
+from gost_schematic.model.obstacles import (
     BoxObstacle,
     WireObstacle,
     wire_intersects_box,
