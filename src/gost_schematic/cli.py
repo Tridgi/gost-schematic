@@ -5,6 +5,7 @@ from pathlib import Path
 
 from gost_schematic.catalog.loader import load_symbol
 from gost_schematic.core.diagnostics import Severity
+from gost_schematic.core.geometry import Line, Point, SIDE_VECTORS
 from gost_schematic.core.units import mm
 from gost_schematic.engines.annotation.layout import (
     obstacles_for_component,
@@ -12,8 +13,12 @@ from gost_schematic.engines.annotation.layout import (
     requests_for_component,
 )
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
+from gost_schematic.engines.annotation.collision import WireObstacle
+from gost_schematic.engines.routing.clearance import validate_wire_clearance
+from gost_schematic.engines.routing.ports import pin_corridors_for_component
 from gost_schematic.model.annotations import TextStyle
 from gost_schematic.model.circuit import ComponentInstance
+from gost_schematic.validation.annotation_checks import annotation_obstacles
 from gost_schematic.rendering.annotation_svg import render_annotation_svg
 from gost_schematic.rendering.svg import render_symbol_svg
 from gost_schematic.validation.symbol_checks import validate_symbol
@@ -39,6 +44,7 @@ def main(argv: list[str] | None = None) -> int:
     annotated.add_argument("--size-mm", default="3.5")
     annotated.add_argument("--clearance-mm", default="0.5")
     annotated.add_argument("--review-overlay", action="store_true")
+    annotated.add_argument("--show-pin-connections", action="store_true")
 
     check = commands.add_parser("check-symbol", help="Validate a symbol model")
     check.add_argument("symbol", type=Path)
@@ -78,8 +84,31 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{issue.severity.value}: {issue.code}: {issue.message}")
         if not result.valid:
             return 1
+        wires: tuple[WireObstacle, ...] = ()
+        if args.show_pin_connections:
+            corridors = pin_corridors_for_component(symbol, instance)
+            connections = []
+            for port in corridors:
+                direction = SIDE_VECTORS[port.side]
+                end = port.contact + Point(direction.x * mm(4), direction.y * mm(4))
+                connections.append(WireObstacle(
+                    f"{port.identifier}.demo",
+                    Line(port.contact, end),
+                    attached_pin=port.pin,
+                ))
+            wires = tuple(connections)
+            body = obstacles_for_component(symbol, instance)[:1]
+            obstacles = body + annotation_obstacles(result.placements)
+            problems = validate_wire_clearance(
+                wires, blocked=obstacles, corridors=corridors,
+            )
+            if problems:
+                for problem in problems:
+                    print(f"{problem.severity.value}: {problem.code}: {problem.message}")
+                return 1
         svg = render_annotation_svg(
             symbol, instance, result.placements,
+            wires=wires,
             review_overlay=args.review_overlay,
         )
 
