@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from gost_schematic.core.diagnostics import Diagnostic, Severity
 from gost_schematic.core.geometry import Box, Point
+from gost_schematic.engines.routing.ports import pin_corridors_for_component
 from gost_schematic.model.annotations import (
     Anchor,
     AnnotationPlacement,
@@ -14,7 +15,6 @@ from gost_schematic.model.annotations import (
     TextStyle,
     VerticalAlign,
 )
-from gost_schematic.engines.routing.ports import pin_corridors_for_component
 from gost_schematic.model.circuit import ComponentInstance
 from gost_schematic.model.symbol import SymbolDefinition
 
