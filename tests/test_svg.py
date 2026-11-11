@@ -2,7 +2,6 @@ from xml.etree import ElementTree as ET
 
 from gost_schematic.rendering.svg import render_symbol_svg
 
-
 NAMESPACE = "{http://www.w3.org/2000/svg}"
 
 
