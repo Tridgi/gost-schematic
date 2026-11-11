@@ -5,6 +5,12 @@
 - Symbol SVG inspection, explicit diagnostic codes, CI tests and architecture ADRs.
 - Review architecture with the user before declaring stage 0 approved.
 
+## Stage 0.5 — annotation collision subsystem (experimental)
+- Separate text ink, collision and reserved rectangles, exact font measuring.
+- Collision tests versus symbols, wire segments and protected pin corridors.
+- Reference/name/value slots with candidate placement and debug SVG overlays.
+- User visual review and real ГОСТ font verification still pending.
+
 ## Stage 1 — approved standard UGO
 - Resistor family, capacitor family, precise stroke/lettering constraints.
 - Reference comparisons from KOMPAS and normative verification.
