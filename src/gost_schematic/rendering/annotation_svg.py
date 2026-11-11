@@ -12,7 +12,7 @@ from gost_schematic.core.geometry import (
     primitive_bounds,
 )
 from gost_schematic.core.units import format_mm, mm
-from gost_schematic.engines.annotation.collision import WireObstacle
+from gost_schematic.model.obstacles import WireObstacle
 from gost_schematic.engines.annotation.layout import obstacles_for_component
 from gost_schematic.model.annotations import AnnotationPlacement
 from gost_schematic.model.circuit import ComponentInstance
