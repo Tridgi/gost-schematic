@@ -1,6 +1,6 @@
 # ADR-0003: Text layout and collision-safe annotations
 
-Status: proposed — awaiting user approval (2026-11-12).
+Status: implemented experimentally — **awaiting user visual approval** (2026-11-12).
 
 ## Decision
 
@@ -66,5 +66,8 @@ orientation according to the active document/standards profile.
 5. Unroutable pin escape and unresolved label overlaps produce explicit errors.
 6. Tests cover text-text, text-UGO, text-wire and reserved-region overlaps.
 
-This ADR is a requirement specification, **not** a claim that the module already
-exists or that any font or symbol has received GOST approval.
+Initial implementation: semantic slots, user-provided font measuring, deterministic
+candidate placement, text/symbol/pin-escape/wire collision checks, router-facing
+obstacles, clean SVG and review-overlay SVG. Whole-sheet incremental layout,
+licensed GOST font embedding, verified ГОСТ rules and end-to-end autorouting
+remain separate future stages. No font or symbol has received GOST approval.

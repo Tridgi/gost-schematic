@@ -13,8 +13,14 @@ A deterministic, standards-aware foundation for generating electrical schematic 
 - Independent validation and diagnostics.
 - Versioned, human-reviewable JSON symbol catalog.
 - Deterministic reference SVG output for symbol inspection.
+- Collision-aware annotations with separate glyph ink, text hitbox and reserved zones.
+- Exact font measurement from an explicitly supplied TTF/OTF resource using FreeType.
+- Candidate placement, obstacle and wire collision validation, pin-escape protection.
+- Clean and annotated SVG inspection with independent diagnostic overlays.
+- Typed pin-escape corridors with physical pin ownership and outward-only
+  conductor access, independently checked from text obstacles.
 
-**Not implemented yet:** automated placement and routing, full electrical rule checking (ERC), true GOST typography, PDF export, a verified ГОСТ symbol collection, BOM and document composition. These are planned stages, not current features.
+**Not implemented yet:** sheet-wide automatic placement and routing, complete ERC, verified ГОСТ typography, PDF export, an approved ГОСТ symbol collection, BOM and document composition. These are planned stages, not current features.
 
 ## Development
 
@@ -27,7 +33,21 @@ ruff check .
 python -m gost_schematic.cli render-symbol src/gost_schematic/catalog/symbols/resistors/fixed.json --output resistor.svg
 ```
 
-See [Architecture](docs/architecture/README.md), [Review process](docs/symbol_approval/README.md), and [Roadmap](docs/roadmap.md).
+The annotation subsystem requires a font file that YOU provide; the repository
+does not include proprietary ГОСТ fonts. For a technical preview in Codespaces,
+find an installed font with `fc-match` and use:
+
+```bash
+FONT_PATH="$(fc-match -f '%{file}' 'DejaVu Sans')"
+gost-schematic render-annotated-symbol \
+  src/gost_schematic/catalog/symbols/resistors/fixed.json \
+  --ref R1 --value "10 kΩ" \
+  --font-file "$FONT_PATH" --font-family "DejaVu Sans" \
+  --review-overlay --show-pin-connections --output output/resistor-annotations-review.svg
+```
+
+See [Annotation layout](docs/architecture/annotations.md),
+[Architecture](docs/architecture/README.md), [Review process](docs/symbol_approval/README.md), and [Roadmap](docs/roadmap.md).
 
 ## Design commitments
 

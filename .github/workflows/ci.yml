@@ -21,3 +21,34 @@ jobs:
         run: ruff check .
       - name: Test
         run: pytest -q
+      - name: Generate collision-overlay sample (technical font only)
+        if: matrix.python-version == '3.12'
+        shell: bash
+        run: |
+          FONT_PATH="$(fc-match -f '%{file}' 'DejaVu Sans')"
+          if [ ! -f "$FONT_PATH" ]; then
+            echo "::warning::No example TTF available; SVG review sample omitted."
+            exit 0
+          fi
+          python -m gost_schematic.cli render-annotated-symbol \
+            src/gost_schematic/catalog/symbols/resistors/fixed.json \
+            --ref R1 --value '10 kΩ' --font-file "$FONT_PATH" \
+            --font-family 'DejaVu Sans' --review-overlay \
+            --output output/resistor-annotations-review.svg
+          python -m gost_schematic.cli render-annotated-symbol \
+            src/gost_schematic/catalog/symbols/resistors/fixed.json \
+            --ref R1 --value '10 kΩ' --font-file "$FONT_PATH" \
+            --font-family 'DejaVu Sans' \
+            --output output/resistor-annotations-clean.svg
+          python -m gost_schematic.cli render-annotated-symbol \
+            src/gost_schematic/catalog/symbols/resistors/fixed.json \
+            --ref R1 --value '10 kΩ' --font-file "$FONT_PATH" \
+            --font-family 'DejaVu Sans' --show-pin-connections --review-overlay \
+            --output output/resistor-annotations-pin-escape.svg
+      - name: Upload annotated UGO preview
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-resistor-annotation-review
+          path: output/resistor-annotations-*.svg
+          if-no-files-found: warn

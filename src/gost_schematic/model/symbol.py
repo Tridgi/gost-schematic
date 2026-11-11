@@ -8,6 +8,7 @@ from gost_schematic.core.geometry import (
     enclosing_box,
     primitive_bounds,
 )
+from gost_schematic.model.annotations import AnnotationSlot
 from gost_schematic.model.pins import GraphicPin
 
 
@@ -27,6 +28,7 @@ class SymbolDefinition:
     line_width_um: int
     status: SymbolStatus = SymbolStatus.DRAFT
     standard_refs: tuple[str, ...] = ()
+    annotation_slots: tuple[AnnotationSlot, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.identifier.strip() or type(self.revision) is not int or self.revision < 1:
@@ -35,6 +37,9 @@ class SymbolDefinition:
             raise ValueError("Symbol requires both graphical primitives and pins")
         if type(self.line_width_um) is not int or self.line_width_um <= 0:
             raise ValueError("Line width must be positive micrometres")
+        keys = [slot.key for slot in self.annotation_slots]
+        if len(keys) != len(set(keys)):
+            raise ValueError("Duplicate annotation slot key")
         numbers = [pin.number for pin in self.pins]
         positions = [pin.at for pin in self.pins]
         if len(numbers) != len(set(numbers)) or len(positions) != len(set(positions)):
