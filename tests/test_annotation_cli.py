@@ -28,3 +28,25 @@ def test_annotated_cli_creates_review_svg(resistor_path, tmp_path, monkeypatch):
     assert "R99" in svg
     assert "100 kΩ" in svg
     assert 'data-layer="geometry-review"' in svg
+
+
+
+def test_cli_pin_connection_preview_uses_authorized_escape(resistor_path, tmp_path, monkeypatch):
+    monkeypatch.setattr("gost_schematic.cli.PillowTextMeasurer", Metrics)
+    output = tmp_path / "pin_connections.svg"
+    result = main([
+        "render-annotated-symbol",
+        str(resistor_path),
+        "--ref", "R1",
+        "--value", "10 k",
+        "--font-file", "/fake/font.ttf",
+        "--font-family", "Demo Font",
+        "--output", str(output),
+        "--review-overlay",
+        "--show-pin-connections",
+    ])
+    assert result == 0
+    svg = output.read_text(encoding="utf-8")
+    assert svg.count("<line ") == 4
+    assert 'data-layer="geometry-review"' in svg
+    assert "R1" in svg
