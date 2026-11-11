@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gost-schematic"
+version = "0.0.1"
+description = "Experimental standards-aware electrical schematic engineering core"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+authors = [{name = "GOST Schematic contributors"}]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "ruff>=0.9,<1"]
+
+[project.scripts]
+gost-schematic = "gost_schematic.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+gost_schematic = ["catalog/symbols/**/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
