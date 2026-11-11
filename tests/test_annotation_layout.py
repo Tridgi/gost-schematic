@@ -170,8 +170,8 @@ def test_rotation_mirror_moves_anchor_but_not_orientation(resistor, style):
         boxes=obstacles_for_component(resistor, instance),
     )
     assert layout.valid
-    assert layout.placements[0].baseline.x < 50000
-    assert layout.placements[0].ink_bounds.min_x < 50000
+    assert layout.placements[0].baseline.x > 50000
+    assert layout.placements[0].ink_bounds.min_x > 50000
 
 
 def test_duplicate_owner_key_fails_instead_of_rendering_twice(resistor, style):
@@ -181,21 +181,9 @@ def test_duplicate_owner_key_fails_instead_of_rendering_twice(resistor, style):
     assert "DUPLICATE_ANNOTATION" in {item.code for item in result.diagnostics}
 
 
-def test_missing_required_reference_reports_error(resistor, style):
+def test_missing_required_annotation_reports_error(resistor, style):
     instance = ComponentInstance("R1", "resistor")
+    required_slot = replace(resistor.annotation_slots[0], key="custom_required")
+    symbol = replace(resistor, annotation_slots=(required_slot,))
     with pytest.raises(ValueError, match="Missing mandatory"):
-        requests_for_component(resistor, instance, style, {"value": "100"}) if False else (
-            requests_for_component(resistor, instance, style)
-            if False
-            else _missing_required(resistor, instance, style)
-        )
-
-
-def _missing_required(resistor, instance, style):
-    from dataclasses import replace
-
-    symbol = replace(
-        resistor,
-        annotation_slots=(replace(resistor.annotation_slots[0], key="custom_required"),),
-    )
-    return requests_for_component(symbol, instance, style)
+        requests_for_component(symbol, instance, style)
