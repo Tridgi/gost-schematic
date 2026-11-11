@@ -13,8 +13,8 @@ from gost_schematic.engines.annotation.layout import (
     requests_for_component,
 )
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
-from gost_schematic.engines.routing.clearance import validate_wire_clearance
 from gost_schematic.engines.ports import pin_corridors_for_component
+from gost_schematic.engines.routing.clearance import validate_wire_clearance
 from gost_schematic.model.annotations import TextStyle
 from gost_schematic.model.circuit import ComponentInstance
 from gost_schematic.model.obstacles import WireObstacle
