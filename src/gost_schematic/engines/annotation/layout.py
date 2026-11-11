@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 from gost_schematic.core.diagnostics import Diagnostic, Severity
-from gost_schematic.core.geometry import Box, Point, Side
+from gost_schematic.core.geometry import Box, Point
 from gost_schematic.model.annotations import (
     Anchor,
     AnnotationPlacement,
@@ -14,6 +14,7 @@ from gost_schematic.model.annotations import (
     TextStyle,
     VerticalAlign,
 )
+from gost_schematic.engines.routing.ports import pin_corridors_for_component
 from gost_schematic.model.circuit import ComponentInstance
 from gost_schematic.model.symbol import SymbolDefinition
 
@@ -168,27 +169,20 @@ def obstacles_for_component(
     pin_corridor_length_um: int = 1800,
     pin_corridor_width_um: int = 800,
 ) -> tuple[BoxObstacle, ...]:
-    """Body keepout and reserved pin-escape regions in global coordinates."""
-    if pin_corridor_length_um <= 0 or pin_corridor_width_um <= 0:
-        raise ValueError("Pin corridor dimensions must be positive")
+    """Adapt strongly owned pin corridors to text-placement obstacles.
+
+    Text cannot cover *any* connector's reserved area, including its owner's.
+    Routing has different permission semantics; use routing.clearance instead.
+    """
     keepout = component.transform.box(symbol.body_keepout).translated(component.origin)
-    obstacles = [BoxObstacle(
-        f"{component.reference}.body", keepout, "symbol", component.reference,
-    )]
-    half = (pin_corridor_width_um + 1) // 2
-    for pin in symbol.pins:
-        at = component.transform.apply(pin.at) + component.origin
-        side = component.transform.side(pin.side)
-        if side == Side.LEFT:
-            bounds = Box(at.x - pin_corridor_length_um, at.y - half, at.x, at.y + half)
-        elif side == Side.RIGHT:
-            bounds = Box(at.x, at.y - half, at.x + pin_corridor_length_um, at.y + half)
-        elif side == Side.TOP:
-            bounds = Box(at.x - half, at.y - pin_corridor_length_um, at.x + half, at.y)
-        else:
-            bounds = Box(at.x - half, at.y, at.x + half, at.y + pin_corridor_length_um)
+    obstacles = [
+        BoxObstacle(f"{component.reference}.body", keepout, "symbol", component.reference),
+    ]
+    for corridor in pin_corridors_for_component(
+        symbol, component,
+        length_um=pin_corridor_length_um, width_um=pin_corridor_width_um,
+    ):
         obstacles.append(BoxObstacle(
-            f"{component.reference}.pin.{pin.number}", bounds, "pin_escape",
-            component.reference,
+            corridor.identifier, corridor.box, "pin_escape", component.reference,
         ))
     return tuple(obstacles)
