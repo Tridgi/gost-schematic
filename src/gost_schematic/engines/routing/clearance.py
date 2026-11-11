@@ -3,14 +3,14 @@
 from collections.abc import Iterable
 
 from gost_schematic.core.diagnostics import Diagnostic, Severity
-from gost_schematic.engines.annotation.collision import (
+from gost_schematic.engines.ports import PinEscapeCorridor
+from gost_schematic.model.obstacles import (
     BoxObstacle,
     WireObstacle,
     wire_intersects_box,
 )
 from gost_schematic.model.circuit import Circuit, PinRef
 
-from .ports import PinEscapeCorridor
 
 
 def _pin_to_net(circuit: Circuit) -> dict[PinRef, set[str]]:
