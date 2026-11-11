@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from gost_schematic.core.diagnostics import Diagnostic, Severity
 from gost_schematic.core.geometry import Box, Point
-from gost_schematic.engines.routing.ports import pin_corridors_for_component
+from gost_schematic.engines.ports import pin_corridors_for_component
 from gost_schematic.model.annotations import (
     Anchor,
     AnnotationPlacement,
@@ -16,9 +16,9 @@ from gost_schematic.model.annotations import (
     VerticalAlign,
 )
 from gost_schematic.model.circuit import ComponentInstance
+from gost_schematic.model.obstacles import BoxObstacle, WireObstacle, wire_intersects_box
 from gost_schematic.model.symbol import SymbolDefinition
 
-from .collision import BoxObstacle, WireObstacle, wire_intersects_box
 from .metrics import TextMeasurer
 
 
