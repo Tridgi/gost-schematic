@@ -38,6 +38,6 @@ __all__ = [
     "requests_for_component",
     "validate_annotation_scene",
     "validate_port_reservations",
-    "validate_wire_clearance",
     "validate_symbol",
+    "validate_wire_clearance",
 ]
