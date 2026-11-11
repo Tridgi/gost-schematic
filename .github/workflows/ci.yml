@@ -21,3 +21,10 @@ jobs:
         run: ruff check .
       - name: Test
         run: pytest -q
+      - name: Render draft resistor for manual approval
+        run: python -m gost_schematic.cli render-symbol src/gost_schematic/catalog/symbols/resistors/fixed.json --output output/resistor-review.svg --review-overlay
+      - name: Publish UGO review artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: resistor-review-${{ matrix.python-version }}
+          path: output/resistor-review.svg
