@@ -7,7 +7,6 @@ from gost_schematic.catalog.loader import load_symbol
 from gost_schematic.core.diagnostics import Severity
 from gost_schematic.core.geometry import SIDE_VECTORS, Line, Point
 from gost_schematic.core.units import mm
-from gost_schematic.engines.annotation.collision import WireObstacle
 from gost_schematic.engines.annotation.layout import (
     obstacles_for_component,
     place_annotations,
@@ -15,9 +14,10 @@ from gost_schematic.engines.annotation.layout import (
 )
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.engines.routing.clearance import validate_wire_clearance
-from gost_schematic.engines.routing.ports import pin_corridors_for_component
+from gost_schematic.engines.ports import pin_corridors_for_component
 from gost_schematic.model.annotations import TextStyle
 from gost_schematic.model.circuit import ComponentInstance
+from gost_schematic.model.obstacles import WireObstacle
 from gost_schematic.rendering.annotation_svg import render_annotation_svg
 from gost_schematic.rendering.svg import render_symbol_svg
 from gost_schematic.validation.annotation_checks import annotation_obstacles
