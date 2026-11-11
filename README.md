@@ -17,6 +17,8 @@ A deterministic, standards-aware foundation for generating electrical schematic 
 - Exact font measurement from an explicitly supplied TTF/OTF resource using FreeType.
 - Candidate placement, obstacle and wire collision validation, pin-escape protection.
 - Clean and annotated SVG inspection with independent diagnostic overlays.
+- Typed pin-escape corridors with physical pin ownership and outward-only
+  conductor access, independently checked from text obstacles.
 
 **Not implemented yet:** sheet-wide automatic placement and routing, complete ERC, verified ГОСТ typography, PDF export, an approved ГОСТ symbol collection, BOM and document composition. These are planned stages, not current features.
 
@@ -41,7 +43,7 @@ gost-schematic render-annotated-symbol \
   src/gost_schematic/catalog/symbols/resistors/fixed.json \
   --ref R1 --value "10 kΩ" \
   --font-file "$FONT_PATH" --font-family "DejaVu Sans" \
-  --review-overlay --output output/resistor-annotations-review.svg
+  --review-overlay --show-pin-connections --output output/resistor-annotations-review.svg
 ```
 
 See [Annotation layout](docs/architecture/annotations.md),
