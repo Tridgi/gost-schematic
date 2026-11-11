@@ -12,6 +12,10 @@ Status: experimental implementation, requires user acceptance and a licensed fon
   against obstacles and strokes on drawn segments (including diagonals).
 - `engines/annotation/layout.py`: candidate solver, explicit collision reports,
   body keepout and pin escape corridors.
+- `engines/routing/ports.py`: connector-owned pin corridors with exact physical pin
+  identities, transformed contact positions and outward directions.
+- `engines/routing/clearance.py`: separate permission model for wire routes;
+  own outward segment is allowed, foreign/off-axis conductors are rejected.
 - `rendering/annotation_svg.py`: clean SVG and diagnostic overlay with separate
   colors for symbol/pin corridors, ink and text collision rectangles.
 
@@ -29,8 +33,11 @@ Fixed/locked annotations use only their first anchor and never move silently.
 All four orthogonal rotations and mirrored instances transform the *anchors and
 protected symbol regions*, while annotations remain upright and readable.
 
-Pin escape corridors are considered independent hard obstacles. They are not
-part of the symbol's text hitbox.
+Pin escape corridors are considered independent hard obstacles **for labels**.
+For wires, the rule is more precise: only the correctly attached conductor
+leaving a physical contact along its outward normal may occupy the corridor.
+Simply sharing a net or symbol owner is not enough. These are not hitboxes
+of the pin itself; they are reserved lead-out spaces.
 
 When no acceptable candidate exists, the layout returns
 `ANNOTATION_UNPLACEABLE` (ERROR) with identifiers of blocking objects.
@@ -78,7 +85,8 @@ python -m gost_schematic.cli render-annotated-symbol \
   src/gost_schematic/catalog/symbols/resistors/fixed.json \
   --ref R1 --value '10 kΩ' \
   --font-file /path/to/font.ttf --font-family 'DejaVu Sans' \
-  --review-overlay --output output/resistor-annotations-review.svg
+  --review-overlay --show-pin-connections \\
+  --output output/resistor-annotations-review.svg
 ```
 
 Review overlay colors are intentionally NOT part of the actual electrical
@@ -94,6 +102,8 @@ schematic. For a clean output, omit `--review-overlay`.
 - Reserved regions are separate from ink and collision bounds.
 - Rotations and mirrors move anchors but retain upright text.
 - Clean output excludes all diagnostic overlays.
+- Physical pin ID, exact contact and outward orientation gate access to escape zones.
+- Netlist mismatch is reported when a circuit is provided.
 
 ## Known limits
 
