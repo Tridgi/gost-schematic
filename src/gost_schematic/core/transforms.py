@@ -1,7 +1,18 @@
 """Discrete orthogonal transforms; rotation is clockwise on SVG-like y-down axes."""
 from dataclasses import dataclass
 
-from gost_schematic.core.geometry import SIDE_VECTORS, Box, Point, Side
+from gost_schematic.core.geometry import (
+    SIDE_VECTORS,
+    Box,
+    Circle,
+    Line,
+    Point,
+    Primitive,
+    Rectangle,
+    Semicircle,
+    Side,
+    StyledLine,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,3 +46,28 @@ class Transform:
         points = tuple(self.apply(p) for p in corners)
         return Box(min(p.x for p in points), min(p.y for p in points),
                    max(p.x for p in points), max(p.y for p in points))
+
+
+    def primitive(self, primitive: Primitive, origin: Point | None = None) -> Primitive:
+        """Transform graphic primitives centrally, including arc bulge direction."""
+        origin = origin if origin is not None else Point(0, 0)
+
+        def at(point: Point) -> Point:
+            return self.apply(point) + origin
+
+        if isinstance(primitive, Line):
+            return Line(at(primitive.start), at(primitive.end))
+        if isinstance(primitive, StyledLine):
+            return StyledLine(
+                at(primitive.start), at(primitive.end),
+                primitive.stroke_width_um, primitive.dash_pattern_um,
+            )
+        if isinstance(primitive, Rectangle):
+            return Rectangle(self.box(primitive.box).translated(origin))
+        if isinstance(primitive, Circle):
+            return Circle(at(primitive.center), primitive.radius)
+        if isinstance(primitive, Semicircle):
+            return Semicircle(
+                at(primitive.center), primitive.radius, self.side(primitive.bulge)
+            )
+        raise TypeError(f"Unsupported geometry primitive: {type(primitive)!r}")
