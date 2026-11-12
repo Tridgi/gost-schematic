@@ -51,31 +51,68 @@ class DimensionalAssessment:
 def _check_fixed_resistor(
     symbol: SymbolDefinition, width: int, height: int,
 ) -> bool:
-    return any(
-        isinstance(item, Rectangle)
-        and item.box.max_x - item.box.min_x == width
-        and item.box.max_y - item.box.min_y == height
-        for item in symbol.graphics
+    """The sole fixed-resistor body must match its declared keepout."""
+    rectangles = [
+        item for item in symbol.graphics if isinstance(item, Rectangle)
+    ]
+    return (
+        len(rectangles) == 1
+        and rectangles[0].box == symbol.body_keepout
+        and rectangles[0].box.max_x - rectangles[0].box.min_x == width
+        and rectangles[0].box.max_y - rectangles[0].box.min_y == height
     )
 
 
 def _check_plate_pair(
     symbol: SymbolDefinition, length: int, separation: int,
 ) -> bool:
-    vertical: set[int] = set()
-    horizontal: set[int] = set()
-    for item in symbol.graphics:
-        if not isinstance(item, Line):
-            continue
-        if item.start.x == item.end.x and abs(item.start.y - item.end.y) == length:
-            vertical.add(item.start.x)
-        if item.start.y == item.end.y and abs(item.start.x - item.end.x) == length:
-            horizontal.add(item.start.y)
-    return (
-        len(vertical) == 2 and abs(max(vertical) - min(vertical)) == separation
-    ) or (
-        len(horizontal) == 2 and abs(max(horizontal) - min(horizontal)) == separation
-    )
+    """Validate a facing, aligned pair WITH leads at plate midpoints.
+
+    Just finding any two lines of the correct length and gap can produce
+    false positives: staggered plates or unconnected decorations are not
+    the fixed capacitor UGO under review. This checks its canonical
+    geometry only, not every GOST-permitted alternative.
+    """
+    strokes = [item for item in symbol.graphics if isinstance(item, Line)]
+    for i, left in enumerate(strokes):
+        for j, right in enumerate(strokes[i + 1:], i + 1):
+            if left.start.x == left.end.x and right.start.x == right.end.x:
+                y1 = sorted((left.start.y, left.end.y))
+                y2 = sorted((right.start.y, right.end.y))
+                if (
+                    y1 == y2
+                    and y1[1] - y1[0] == length
+                    and abs(left.start.x - right.start.x) == separation
+                ):
+                    midpoint_left = (left.start.x, (y1[0] + y1[1]) // 2)
+                    midpoint_right = (right.start.x, (y2[0] + y2[1]) // 2)
+                else:
+                    continue
+            elif left.start.y == left.end.y and right.start.y == right.end.y:
+                x1 = sorted((left.start.x, left.end.x))
+                x2 = sorted((right.start.x, right.end.x))
+                if (
+                    x1 == x2
+                    and x1[1] - x1[0] == length
+                    and abs(left.start.y - right.start.y) == separation
+                ):
+                    midpoint_left = ((x1[0] + x1[1]) // 2, left.start.y)
+                    midpoint_right = ((x2[0] + x2[1]) // 2, right.start.y)
+                else:
+                    continue
+            else:
+                continue
+            other_strokes = (
+                item for index, item in enumerate(strokes) if index not in (i, j)
+            )
+            endpoints = {
+                (point.x, point.y)
+                for item in other_strokes
+                for point in (item.start, item.end)
+            }
+            if midpoint_left in endpoints and midpoint_right in endpoints:
+                return True
+    return False
 
 
 def check_verified_dimensions(
