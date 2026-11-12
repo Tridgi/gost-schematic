@@ -4,6 +4,37 @@ The library remains an experimental, non-certified collection of draft symbols.
 This changelog records technical increments, **not** approval to use a symbol
 as a conforming ГОСТ/ЕСКД drawing.
 
+## Unreleased — Stage 0.12 (2026-11-12)
+
+- Added [ESKD standards registry](docs/standards/registry.md) with source links,
+  applicability, version dates and a per-UGO review matrix.
+- Added machine-readable `eskd-ru-2026-11` standard rules and explicit
+  selection of early/future-effective editions per document date.
+- Added exact graphic conductor topology separate from external electrical
+  nets: authored strokes/junctions, winding taps, unconnected crossings,
+  distinct capacitor plates and resistor terminals.
+- Added negative regression cases for broken arcs, missed junctions,
+  false plate bridges, rotations and mirrored symbols.
+- Added limited GOST dimensional validation (10×4 mm resistor and
+  8 mm/1.5 mm capacitor plates) and explicit unknown state for 15 coils.
+- Added conservative independent wire validation for GOST 2.701-2008:
+  0.2–1.0 mm strokes and ≥3 mm edge gap between parallel wires.
+- Fixed false positive geometry approval for staggered capacitor plates,
+  incomplete mid-plate leads, and multiple resistor bodies.
+- Fixed collinear overlapping-wire diagnosis: same-net fragments generate
+  a consolidation warning, conflicting/unknown-net overlays are errors.
+- Replaced recursive graph lookup with iterative path compression for long
+  UGO conductor chains (regression covers 1800 nodes).
+- Run Ruff, pytest, full catalog audit, and actual wheel-payload validation
+  on **both** supported Python runtimes; verified 364/364 tests per runtime,
+  18/18 draft UGO and 0 structural errors in
+  [Actions #43289319096](https://github.com/Tridgi/gost-schematic/actions/runs/43289319096).
+- Explicit [known-limitations and signoff matrix](docs/standards/known-limitations.md)
+  documents machine-checked vs experimental vs unimplemented functionality.
+- All 18 UGO remain DRAFT. Comprehensive schematic ERC and true external
+  netlist↔routing verification not claimed.
+- See [PR #9](https://github.com/Tridgi/gost-schematic/pull/9).
+
 ## Unreleased — Stage 0.11 (2026-11-12)
 
 - Added linear-time checks for missing and outward-facing graphical connector

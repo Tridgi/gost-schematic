@@ -7,6 +7,7 @@ electrical circuit is separate: touching drawings do not establish a net.
 from gost_schematic.core.diagnostics import Diagnostic, Severity
 from gost_schematic.core.geometry import SIDE_VECTORS, Line, Point, Side, StyledLine
 from gost_schematic.model.symbol import SymbolDefinition, SymbolStatus
+from gost_schematic.validation.conductor_checks import inspect_conductor_topology
 
 
 def _lead_endpoints(symbol: SymbolDefinition) -> dict[Point, tuple[Point, ...]]:
@@ -55,6 +56,8 @@ def validate_symbol(symbol: SymbolDefinition) -> tuple[Diagnostic, ...]:
                 f"Pin {pin.number} has lead geometry but none points into the symbol",
                 symbol.identifier,
             ))
+    if symbol.conductor_topology is not None:
+        issues.extend(inspect_conductor_topology(symbol).diagnostics)
     if symbol.status != SymbolStatus.APPROVED:
         issues.append(Diagnostic(
             "UNAPPROVED_SYMBOL", Severity.WARNING,

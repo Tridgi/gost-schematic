@@ -94,6 +94,25 @@ specified in [Nominal display](docs/architecture/nominal-display.md).
 See [Annotation layout](docs/architecture/annotations.md),
 [Architecture](docs/architecture/README.md), [Review process](docs/symbol_approval/README.md), and [Roadmap](docs/roadmap.md).
 
+## ESKD standard evidence and conductor-topology audit
+
+Normative references and source-linked interpretations are retained in the
+[standards registry](docs/standards/registry.md) and
+[per-symbol review matrix](docs/standards/ugo-review-matrix.md). The
+[conductor-topology model](docs/standards/topology.md) checks explicitly
+declared UGO conducting arcs/lines and pin islands without inferring
+electrical nets from crossing paths.
+
+`standards/requirements_2026_ru.json` stores machine-readable source
+references, verified individual dimensions and GOST 2.701-2008 conductor
+width/parallel-clearance limits. The separate
+`resolve_standard_selection(document_date, early_adopt=())` function
+keeps future-dated standards out of old documents unless explicitly
+opted into permitted early application.
+
+These are **partial checks**: no GOST certification of whole symbols,
+font glyphs, completed wire routing or full schematic ERC.
+
 ## Project log and integrity audit
 
 Progress and checked results are recorded in

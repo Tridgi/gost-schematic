@@ -22,10 +22,13 @@ jobs:
       - name: Test
         run: pytest -q
       - name: Audit entire symbol catalog integrity
-        if: matrix.python-version == '3.12'
         run: |
           python scripts/audit_symbol_catalog.py \
             --output output/catalog-integrity-audit.json
+      - name: Verify standalone wheel carries ESKD rules and all 18 UGO
+        run: |
+          python -m pip wheel . --no-deps --wheel-dir dist
+          python scripts/verify_wheel_payload.py dist
       - name: Upload catalog integrity report
         if: matrix.python-version == '3.12'
         uses: actions/upload-artifact@v4

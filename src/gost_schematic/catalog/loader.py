@@ -21,6 +21,7 @@ from gost_schematic.model.annotations import (
     HorizontalAlign,
     VerticalAlign,
 )
+from gost_schematic.model.conductor_topology import ConductorTopology
 from gost_schematic.model.pins import GraphicPin
 from gost_schematic.model.symbol import SymbolDefinition, SymbolStatus
 
@@ -99,6 +100,20 @@ def parse_symbol(data: dict[str, Any]) -> SymbolDefinition:
             )
             for item in data.get("annotations", [])
         )
+        raw_topology = data.get("conductor_topology")
+        topology = (
+            ConductorTopology(
+                conductor_indices=tuple(raw_topology["indices"]),
+                junctions=tuple(
+                    _point(point) for point in raw_topology.get("junctions_mm", [])
+                ),
+                pin_groups=tuple(
+                    tuple(str(number) for number in group)
+                    for group in raw_topology["pin_groups"]
+                ),
+            )
+            if raw_topology is not None else None
+        )
         return SymbolDefinition(
             identifier=str(data["id"]),
             revision=data["revision"],
@@ -113,6 +128,7 @@ def parse_symbol(data: dict[str, Any]) -> SymbolDefinition:
                 (str(key), str(value))
                 for key, value in data.get("constant_annotations", {}).items()
             ),
+            conductor_topology=topology,
         )
     except (KeyError, TypeError, ValueError, IndexError) as error:
         raise CatalogError(f"Invalid symbol {data.get('id', '<unknown>')}: {error}") from error
