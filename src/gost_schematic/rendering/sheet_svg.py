@@ -143,6 +143,7 @@ def render_sheet_svg(
             "y": format_mm(label.baseline.y),
             "font-size": format_mm(label.style.em_height_um),
             "font-family": label.style.font_family,
+            "font-style": label.style.font_style,
             "fill": "#000000",
             "stroke": "none",
         })
