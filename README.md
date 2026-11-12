@@ -20,10 +20,15 @@ A deterministic, standards-aware foundation for generating electrical schematic 
 - Clean and annotated SVG inspection with independent diagnostic overlays.
 - Optional ГОСТ 2.702-2011 §5.3.20 compact labels (`2,3к`, `0,1мк`),
   full SI units and per-component visibility overrides.
+- ГОСТ 2.304-81 type A upper-case-height calibration (upright or separately supplied real
+  italic face), font-file SHA-256 protection and font-audited SVG metadata.
+- Independent DRAFT fixed and polarized capacitor symbols (8 mm plates, 1.5 mm gap),
+  normalized capacitance values and collision-safe annotations.
+- Type A + capacitor clean and diagnostic SVG specimens from real OpenGOST in CI.
 - Typed pin-escape corridors with physical pin ownership and outward-only
   conductor access, independently checked from text obstacles.
 
-**Not implemented yet:** sheet-wide automatic placement and routing, complete ERC, verified ГОСТ typography, PDF export, an approved ГОСТ symbol collection, BOM and document composition. These are planned stages, not current features.
+**Not implemented yet:** automatic component placement and wiring routes, complete ERC, formal glyph-by-glyph ГОСТ font certification, PDF export, an approved ГОСТ symbol collection, BOM and document composition. These are planned stages, not current features.
 
 ## Development
 
@@ -56,6 +61,23 @@ automatic electrical routing. Run `python examples/review_sheet_annotations.py
 --font-file "$FONT_PATH" --output-dir output/sheet-review` after
 choosing a local TTF/OTF font to generate six multi-component SVG previews.
 See [Sheet labels](docs/architecture/sheet-annotations.md).
+
+For a real **ГОСТ type A** specimen (requires a permitted external font file,
+not provided by this repository):
+
+```bash
+python scripts/install_opengost_type_a.py
+fc-cache -f
+FONT_FILE="$(find "$HOME/.local/share/fonts" -type f -iname '*TypeA*.ttf' | head -1)"
+python examples/review_type_a_capacitors.py \
+  --font-file "$FONT_FILE" --font-family "OpenGost Type A" \
+  --output-dir output/type-a-capacitors
+```
+
+The public font uses its own SIL OFL-1.1 license and is **not committed**.
+Actual glyph outline approval and slanted font sources need separate review.
+See [Type A typography](docs/architecture/type-a-font.md) and
+[Capacitor template rules](docs/architecture/capacitors.md).
 
 Nominal display (including strict fallbacks for undefined ГОСТ ranges) is
 specified in [Nominal display](docs/architecture/nominal-display.md).
