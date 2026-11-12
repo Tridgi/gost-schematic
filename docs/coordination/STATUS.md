@@ -34,3 +34,12 @@ Base for this cycle: `9e9d056e410c8a54dc3c9fc9d5cc56b74e6f225b`.
 - Issues #10/#17/#18/#19 closed as **technical** tasks. This does not constitute visual normative acceptance of any UGO; **0 APPROVED**. `main` remains unchanged.
 
 Next-cycle Issues: [#24 copper-core correction](https://github.com/Tridgi/gost-schematic/issues/24), [#25 SVG on catalog changes](https://github.com/Tridgi/gost-schematic/issues/25), [#26 end-to-end wired diagram](https://github.com/Tridgi/gost-schematic/issues/26), [#27 next-source-backed UGO family](https://github.com/Tridgi/gost-schematic/issues/27).
+
+## 2026-11-12 / 13 — Third parallel batch integrated
+
+- **PR #30 / Issue #27**: next-family normative shortlist; 12 source-backed DRAFT/BLOCKED candidates, not implemented. Merge `a5b459bf1ad9b6a6da8a50ac1d45c4861e990fcf`. Official status of GOST 2.730-73 and 2.755-87 independently checked; universal unshielded NPN source still requires stronger normative basis. No model/catalog change.
+- **PR #31 / Issue #24**: correct `NONMAGNETIC_COPPER` continuous nonconductive core and honest provenance for double-tap/single slider. Merge `56e120464e552db6042d8f1ab0320472709f100a`. Remaining manual 1:1 inductor geometry BLOCKED.
+- **PR #29 / Issue #26**: reproducible end-to-end 6 actual parts, 5 nets, 18 authored conductor segments, 3 explicit junctions, clean/diagnostic SVG and tests/JSON cases; does not autoroute or certify ГОСТ. Merge `442fa611fd7b9aba033476ed87141dde42896662`.
+- **PR #28 / Issue #25**: dynamic catalog-triggered SVG/PNG visual regression workflow, with 7 SVG/7 PNG and source-font provenance, actual 19-UGO clean/review sheets. Merge `6f359e3324338bad73b8443cc69857571fbaffd0`. Important follow-up: test `test_real_19_catalog_entries_and_unique_C_references` contains exact 19-count assertions, and must be adapted before adding a 20th symbol.
+- **Combined CI HEAD** `6f359e3324338bad73b8443cc69857571fbaffd0`: [run #43309918713](https://github.com/Tridgi/gost-schematic/actions/runs/43309918713) **SUCCESS** on Python 3.12/3.13, 623/623 tests each, Ruff pass, catalog audit 19 DRAFT / 0 hard errors, wheel verified. Separate [rendering #43309918718](https://github.com/Tridgi/gost-schematic/actions/runs/43309918718) successful, artifact `draft-rendering-sheet-review` id 13985526602.
+- All above merged **only** into experimental `integration/stage0-12`, not `main`. Review of code and generated artifact structure does not equal manual normative acceptance or KOMPAS comparison; **0 APPROVED**.
