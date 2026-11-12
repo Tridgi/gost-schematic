@@ -26,7 +26,12 @@ from gost_schematic.model.annotations import (
     VerticalAlign,
 )
 from gost_schematic.model.part import PartDefinition
-from gost_schematic.model.pins import ElectricalType, GraphicPin, PhysicalPin
+from gost_schematic.model.pins import (
+    ElectricalType,
+    GraphicPin,
+    PhysicalPin,
+    TerminalFunction,
+)
 from gost_schematic.model.quantities import QuantityKind
 from gost_schematic.model.symbol import SymbolDefinition, SymbolStatus
 
@@ -191,8 +196,8 @@ def build_inductor(spec: InductorSpec) -> InductorDefinition:
         GraphicPin("2", Point(lead_end, 0), Side.RIGHT),
     ]
     physical = [
-        PhysicalPin("1", "START", ElectricalType.PASSIVE),
-        PhysicalPin("2", "END", ElectricalType.PASSIVE),
+        PhysicalPin("1", "START", ElectricalType.PASSIVE, function=TerminalFunction.WINDING_START),
+        PhysicalPin("2", "END", ElectricalType.PASSIVE, function=TerminalFunction.WINDING_END),
     ]
     core_y = -r - mm("1.6")
     core_left, core_right = first - r // 2, last + r // 2
@@ -231,7 +236,7 @@ def build_inductor(spec: InductorSpec) -> InductorDefinition:
         pos = Point(x, -r - mm("7"))
         graphics.append(Line(Point(x, -r), pos))
         pins.append(GraphicPin(number, pos, Side.TOP))
-        physical.append(PhysicalPin(number, f"TAP{offset + 1}", ElectricalType.PASSIVE))
+        physical.append(PhysicalPin(number, f"TAP{offset + 1}", ElectricalType.PASSIVE, function=TerminalFunction.WINDING_TAP))
 
     for offset, index in enumerate(spec.slider_turns):
         x = first + (2 * index + 1) * r
@@ -241,7 +246,7 @@ def build_inductor(spec: InductorSpec) -> InductorDefinition:
         graphics.append(Line(pos, Point(x, tip.y - mm("1.2"))))
         graphics.extend(_arrowhead(tip, direction="down", unit=mm("1")))
         pins.append(GraphicPin(number, pos, Side.TOP))
-        physical.append(PhysicalPin(number, f"SLIDER{offset + 1}", ElectricalType.PASSIVE))
+        physical.append(PhysicalPin(number, f"SLIDER{offset + 1}", ElectricalType.PASSIVE, function=TerminalFunction.WINDING_SLIDER))
 
     top_y = min(core_y - mm("1"), -r - mm("1"))
     if spec.tap_turns or spec.slider_turns:
