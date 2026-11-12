@@ -5,12 +5,52 @@ on:
     branches:
       - integration/stage0-12
     paths:
-      - "src/gost_schematic/rendering/review_sheet.py"
+      - "src/gost_schematic/catalog/symbols/**/*.json"
+      - "src/gost_schematic/catalog/parts/**/*.json"
+      - "src/gost_schematic/catalog/inductors/*.json"
+      - "src/gost_schematic/catalog/inductors.py"
+      - "src/gost_schematic/catalog/loader.py"
+      - "src/gost_schematic/catalog/part_loader.py"
+      - "src/gost_schematic/rendering/**"
+      - "src/gost_schematic/engines/annotation/**"
+      - "src/gost_schematic/engines/sheet_layout.py"
+      - "src/gost_schematic/standards/type_a_font.py"
       - "examples/review_full_sheet.py"
+      - "examples/verify_rendering_review.py"
       - "tests/test_rendering_review_sheet.py"
       - "tests/test_rendering_dynamic_gallery.py"
+      - "tests/test_rendering_electrolytic_gallery.py"
       - "docs/architecture/rendering-review.md"
       - ".github/workflows/rendering-review.yml"
+  push:
+    branches:
+      - integration/stage0-12
+    paths:
+      - "src/gost_schematic/catalog/symbols/**/*.json"
+      - "src/gost_schematic/catalog/parts/**/*.json"
+      - "src/gost_schematic/catalog/inductors/*.json"
+      - "src/gost_schematic/catalog/inductors.py"
+      - "src/gost_schematic/catalog/loader.py"
+      - "src/gost_schematic/catalog/part_loader.py"
+      - "src/gost_schematic/rendering/**"
+      - "src/gost_schematic/engines/annotation/**"
+      - "src/gost_schematic/engines/sheet_layout.py"
+      - "src/gost_schematic/standards/type_a_font.py"
+      - "examples/review_full_sheet.py"
+      - "examples/verify_rendering_review.py"
+      - "tests/test_rendering_review_sheet.py"
+      - "tests/test_rendering_dynamic_gallery.py"
+      - "tests/test_rendering_electrolytic_gallery.py"
+      - "docs/architecture/rendering-review.md"
+      - ".github/workflows/rendering-review.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rendering-review-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   vector-review:
@@ -24,21 +64,30 @@ jobs:
         run: python -m pip install -e ".[dev]"
       - name: Check rendering regressions
         run: |
-          ruff check src/gost_schematic/rendering/review_sheet.py examples/review_full_sheet.py tests/test_rendering_review_sheet.py tests/test_rendering_dynamic_gallery.py
-          pytest -q tests/test_rendering_review_sheet.py tests/test_rendering_dynamic_gallery.py
-      - name: Install external open-license OpenGost Type A
+          ruff check src/gost_schematic/rendering examples/review_full_sheet.py examples/verify_rendering_review.py tests/test_rendering_review_sheet.py tests/test_rendering_dynamic_gallery.py tests/test_rendering_electrolytic_gallery.py
+          pytest -q tests/test_rendering_review_sheet.py tests/test_rendering_dynamic_gallery.py tests/test_rendering_electrolytic_gallery.py
+      - name: Install and verify externally licensed OpenGost Type A
+        shell: bash
         run: |
           python scripts/install_opengost_type_a.py --directory "$HOME/.local/share/fonts"
           fc-cache -f
-      - name: Produce real-vector SVG specimens and deterministic manifest
-        shell: bash
-        run: |
           FONT_FILE="$(find "$HOME/.local/share/fonts" -type f \( -iname '*TypeA*.ttf' -o -iname '*TypeA*.otf' \) | head -1)"
-          test -n "$FONT_FILE"
+          test -n "$FONT_FILE" && test -f "$FONT_FILE"
+          VIEWER_FONT="$(fc-match -f '%{file}' 'OpenGost Type A')"
+          test -f "$VIEWER_FONT"
+          if [ "$(realpath "$FONT_FILE")" != "$(realpath "$VIEWER_FONT")" ]; then
+            echo "::error::Fontconfig will substitute a different font from the measured OpenGost face"
+            exit 1
+          fi
+          echo "REVIEW_FONT=$FONT_FILE" >> "$GITHUB_ENV"
+          sha256sum "$FONT_FILE"
+          echo "Fontconfig preview face matches the metrics source"
+      - name: Generate full catalog, capacitor close-ups and audit manifest
+        run: |
           python examples/review_full_sheet.py \
-            --font-file "$FONT_FILE" --font-family "OpenGost Type A" \
+            --font-file "$REVIEW_FONT" --font-family "OpenGost Type A" \
             --type-a --output-dir output/rendering-review
-      - name: Convert preview PNG from original SVG vectors
+      - name: Rasterize clean and diagnostic vectors
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq librsvg2-bin
@@ -47,7 +96,20 @@ jobs:
               --output "output/rendering-review/$NAME.png" \
               "output/rendering-review/$NAME.svg"
           done
-      - name: Upload DRAFT sheet review SVG, PNG and manifest
+          for VARIANT in electrolytic polarized; do
+            for VIEW in clean diagnostic; do
+              NAME="capacitor-$VARIANT-$VIEW"
+              rsvg-convert --background-color white --width 1400 \
+                --output "output/rendering-review/$NAME.png" \
+                "output/rendering-review/$NAME.svg"
+            done
+          done
+      - name: Validate exported SVG, PNG, real part IDs and font provenance
+        run: |
+          python examples/verify_rendering_review.py \
+            --output-dir output/rendering-review \
+            --font-file "$REVIEW_FONT" --min-symbols 19
+      - name: Upload DRAFT sheet and capacitor comparison artifacts
         uses: actions/upload-artifact@v4
         with:
           name: draft-rendering-sheet-review

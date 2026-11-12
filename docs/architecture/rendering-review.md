@@ -1,7 +1,8 @@
 # Rendering workstream — reproducible DRAFT sheet review
 
-**Issues:** [#13](https://github.com/Tridgi/gost-schematic/issues/13) and
-[#17](https://github.com/Tridgi/gost-schematic/issues/17).
+**Issues:** [#13](https://github.com/Tridgi/gost-schematic/issues/13),
+[#17](https://github.com/Tridgi/gost-schematic/issues/17), and
+[#25](https://github.com/Tridgi/gost-schematic/issues/25).
 **Follow-up baseline:** `9e9d056e410c8a54dc3c9fc9d5cc56b74e6f225b`, from
 `integration/stage0-12`. This review is **not** a GOST/ESKD approval.
 
@@ -31,15 +32,20 @@ sample's *requested* 3.5 mm capital height; it does not approve glyph outlines.
 | catalog-clean.svg | All currently versioned DRAFT UGO, typed *example* nominals where supported, upright text, no overlays |
 | catalog-diagnostic.svg | Same geometry plus source keepouts, pin exits, ink/hitboxes, and red AABB intersections |
 | overlap-diagnostic.svg | Deliberately invalid two-resistor overlap; red collision region and original layout errors |
-| review-manifest.json | Catalog symbol ID/status, exact pin coordinates in µm, physical SI nominals, label hitboxes, diagnostic codes, SHA-256 font provenance |
+| review-manifest.json | Actual catalog ID/revision/source, reference/pins in µm, demonstration SI nominals, text extents, SHA-256 font provenance, and focused-capacitor IDs |
+| capacitor-electrolytic-clean.svg / capacitor-electrolytic-diagnostic.svg | Real `capacitor.electrolytic` vector UGO (no font/text), unchanged source drawing with/without keepout and physical contact markers |
+| capacitor-polarized-clean.svg / capacitor-polarized-diagnostic.svg | Real general `capacitor.polarized` source-vector comparison (not a substitute for electrolytic) |
+| visual-gate.json | Executed SVG/PNG post-export checks for expected count, actual catalog primitives, pin mapping, unique refdes, no unexpected collisions and font-source SHA-256 |
 
 The review dynamically scans **every** `catalog/symbols/**/*.json` and
 `catalog/inductors/*.json` file, matching the structural catalog audit's
 inventory scope. Static symbols require a corresponding physical passport
 under `catalog/parts/` at the same relative path. The winding factory
-already supplies its own physical passport. The future
-`capacitor.electrolytic` is discovered automatically when both versioned
-JSON files are added to the catalog; rendering does not assume a fixed count.
+already supplies its own physical passport. As of Issue #25, **19 actual
+DRAFT symbols** are installed, including `capacitor.electrolytic` with its
+independent `capacitor.electrolytic` physical part. The library also retains
+`capacitor.polarized` as a separate general polarized UGO. The rendering
+inventory remains dynamic and does not assume exactly 19 entries in future.
 
 Entries are sorted by symbol ID, revision, physical part ID and relative
 source path. Component identifiers use the **real** physical passport
@@ -95,9 +101,34 @@ that a broken scene raises layout errors instead of silently looking correct.
 - No wire routing, page border/title block, certified ESKD lettering,
   manually approved source-standard comparison, or exact stroked-path
   polygon intersections are implemented. All discovered symbols remain DRAFT.
-- Samples from CI are built and uploaded as a separate workflow artifact,
-  including PNG previews rasterized from **vector** SVG with the installed
-  OpenGost font; images are inspection aids, never substitute symbol definitions.
+- GitHub Actions automatically regenerates on pull requests targeting
+  `integration/stage0-12` and changing actual JSON symbols/parts, inductor
+  profiles/factory, or rendering-related sources. A merge changing the same
+  paths triggers a separate `push` run on **integration only**. Regular
+  feature-branch pushes do not create duplicate image workflows.
+  `workflow_dispatch` also supports an explicit manual regeneration.
+- Each run outputs three sheet SVGs and four focused UGO SVGs, with seven
+  corresponding PNG previews, JSON manifest and `visual-gate.json`.
+  The focused pair uses `render_symbol_svg` to draw the **original catalog
+  primitives** only. It never reconstructs electrolytic plates by painting
+  a bitmap. In particular, the current DRAFT implementation has 12
+  original line elements for the electrolytic and 6 for the general
+  polarized symbol; a deliberate change requires a new visual review.
+- The workflow installs the external OpenGost Type A face and checks that
+  Fontconfig resolves the **same file** as the geometry text measurer.
+  A source font SHA-256 is recorded in the manifest and on each sheet
+  SVG text element; the artifact verifier requires these to agree. The
+  font binary is **not embedded**, however. Inkscape, browsers, operating
+  systems and PDF converters may silently substitute a different face,
+  metric or slant. A local viewer must install and verify the identical
+  font SHA and visually compare the result; exported SVG acceptance by CI
+  cannot guarantee any arbitrary external viewer's pixel output.
+- The post-export gate checks that every vector primitive is identical to
+  the current transformed catalog source, all expected physical pins and
+  nominal examples are preserved, all valid-scene AABB collisions are zero,
+  and PNG headers and dimensions are valid. PNGs remain inspection aids;
+  this is **not** a pixel-by-pixel normative approval or a certificate
+  of compliance with ГОСТ 2.728-74.
 
 ## Regression gates
 
@@ -111,6 +142,22 @@ the catalog into a temporary directory, adds one legitimate-structure DRAFT
 verifies all elements appear; once real electrolytic is integrated, the same
 test introduces an independently named extra variant and remains valid.
 Negative tests exercise missing/mismatched part records and oversized text.
+Issue #25 adds regression checks on **19 real sources** (no simulated
+electrolytic substitution), separate electrolytic/general-polarized geometry,
+strict source-primitive to SVG comparison, refdes/pin mapping, image-in-SVG
+injection, omission of one vector stroke and invalid font-family provenance.
+
+To reproduce the exported artifact gate after generating SVG and PNG:
+
+~~~bash
+python examples/verify_rendering_review.py \
+  --output-dir output/rendering-review \
+  --font-file "$FONT_FILE" --min-symbols 19
+~~~
+
+The verifier emits `output/rendering-review/visual-gate.json` on success.
+When the installed catalog legitimately grows to 20+, the same workflow
+continues to discover all UGO (19 is only the minimum supported inventory).
 
 This work introduces an internal rendering adapter and an example. It **does
 not change** shared model/*, core/*, catalog/* contracts, numerical

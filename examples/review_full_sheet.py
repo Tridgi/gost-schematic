@@ -10,17 +10,21 @@ import argparse
 import json
 from pathlib import Path
 from runpy import run_path
+from xml.etree import ElementTree as ET
 
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer, font_sha256
 from gost_schematic.model.annotations import TextStyle
+from gost_schematic.model.symbol import SymbolStatus
 from gost_schematic.rendering.review_sheet import (
     build_catalog_review_scene,
     build_overlap_review_scene,
+    discover_catalog_entries,
     layout_review_scene,
     render_review_svg,
     review_collisions,
     review_manifest,
 )
+from gost_schematic.rendering.svg import render_symbol_svg
 from gost_schematic.standards.type_a_font import inspect_type_a_font
 
 
@@ -110,8 +114,61 @@ def generate(output_dir: Path, font_file: Path, family: str, *, type_a: bool) ->
         "diagnostic_codes": [item.code for item in bad_layout.diagnostics],
     }
     manifest["artifacts"] = [
-        "catalog-clean.svg", "catalog-diagnostic.svg", "overlap-diagnostic.svg"
+        "catalog-clean.svg", "catalog-diagnostic.svg", "overlap-diagnostic.svg",
     ]
+    # Full inventory remains dynamic. These two independent close-ups are an
+    # additional, explicit review pair for issue #25, not replacement artwork.
+    entries_by_id = {
+        item.symbol.identifier: item for item in discover_catalog_entries()
+    }
+    focus_ids = ("capacitor.electrolytic", "capacitor.polarized")
+    manifest["focus_symbols"] = []
+    for identifier in focus_ids:
+        if identifier not in entries_by_id:
+            raise RuntimeError(f"Required review UGO missing: {identifier}")
+        entry = entries_by_id[identifier]
+        if entry.symbol.status != SymbolStatus.DRAFT:
+            raise RuntimeError(f"{identifier} has unexpected status")
+        actual = next(
+            row for row in manifest["components"] if row["symbol_id"] == identifier
+        )
+        name = identifier.split(".", maxsplit=1)[1]
+        focused_files = []
+        for view in ("clean", "diagnostic"):
+            filename = f"capacitor-{name}-{view}.svg"
+            image = ET.fromstring(render_symbol_svg(
+                entry.symbol, review_overlay=view == "diagnostic",
+            ))
+            image.set("data-symbol-id", identifier)
+            image.set("data-symbol-revision", str(entry.symbol.revision))
+            image.set("data-catalog-source", entry.source)
+            image.set("data-approval-status", "DRAFT")
+            image.set("data-view", view)
+            ET.SubElement(image, "{http://www.w3.org/2000/svg}desc").text = (
+                "Unapproved DRAFT source-vector close-up for comparison only. "
+                "Plate and lead dimensions may contain editorial assumptions."
+            )
+            (output_dir / filename).write_text(
+                ET.tostring(image, encoding="unicode") + "\n",
+                encoding="utf-8",
+            )
+            focused_files.append(filename)
+        manifest["artifacts"].extend(focused_files)
+        manifest["focus_symbols"].append({
+            "symbol_id": identifier,
+            "revision": entry.symbol.revision,
+            "catalog_source": entry.source,
+            "reference": actual["reference"],
+            "pin_numbers": [pin.number for pin in entry.part.pins],
+            "graphics_primitives": len(entry.symbol.graphics),
+            "files": focused_files,
+            "approval": "DRAFT",
+        })
+    if (
+        entries_by_id["capacitor.electrolytic"].symbol.graphics
+        == entries_by_id["capacitor.polarized"].symbol.graphics
+    ):
+        raise RuntimeError("Electrolytic and general polarized UGO became identical")
     (output_dir / "review-manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
