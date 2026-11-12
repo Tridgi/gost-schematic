@@ -66,6 +66,25 @@ jobs:
             --nominal 2300 --unit ohm --hide-nominal \
             --font-file "$FONT_PATH" --font-family 'DejaVu Sans' \
             --review-overlay --output output/nominal-hidden.svg
+      - name: Generate multi-resistor sheet samples
+        if: matrix.python-version == '3.12'
+        shell: bash
+        run: |
+          FONT_PATH="$(fc-match -f '%{file}' 'DejaVu Sans')"
+          if [ ! -f "$FONT_PATH" ]; then
+            echo "::warning::No sample font; sheet preview omitted."
+            exit 0
+          fi
+          python examples/review_sheet_annotations.py \
+            --font-file "$FONT_PATH" --font-family 'DejaVu Sans' \
+            --output-dir output/sheet-review
+      - name: Upload sheet label review samples
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sheet-label-geometry-review
+          path: output/sheet-review/*.svg
+          if-no-files-found: warn
       - name: Upload nominal display samples
         if: matrix.python-version == '3.12'
         uses: actions/upload-artifact@v4
