@@ -26,6 +26,17 @@
 - Diagnose overlapping symbols, duplicated references and blocked escape corridors.
 - Provide clean/review multi-element SVG regression fixtures and manual review gate.
 
+## Stage 0.8 — external Type A and capacitor drafts (experimental)
+- Read ГОСТ 2.304-81 type A standard metrics, calibrate true capital letter h.
+- Store SHA-256 of loaded font, detect changes and document renderer fallback risk.
+- Support upright + true italic input faces without synthetically skewing fonts.
+- Install actual SIL OFL licensed OpenGOST font for CI preview, without vendoring binary.
+- Draft fixed and polarized capacitor UGO with exact plate size/gap, unique pins,
+  independent bodies, label zones and rotation/collision tests.
+- Rasterize font-accurate clean/diagnostic SVG samples for user approval.
+- Block annotation collisions with **all drawn UGO strokes**, including terminal leads.
+- Still pending: user approval and formal glyph/width/slant validation.
+
 ## Stage 1 — approved standard UGO
 - Resistor family, capacitor family, precise stroke/lettering constraints.
 - Reference comparisons from KOMPAS and normative verification.
