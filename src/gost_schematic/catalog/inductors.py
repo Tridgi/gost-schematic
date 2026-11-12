@@ -46,6 +46,14 @@ class AdjustmentKind(str, Enum):
     VARIABLE = "variable"
 
 
+class NormativeRelation(str, Enum):
+    """Relationship to the original GOST drawings, not an approval certificate."""
+
+    TABLE_2_EXAMPLE = "table_2_example"
+    TABLE_1_COMPOSITION = "table_1_composition"
+    EDITORIAL_ADAPTATION = "editorial_adaptation"
+
+
 @dataclass(frozen=True, slots=True)
 class InductorSpec:
     identifier: str
@@ -58,6 +66,8 @@ class InductorSpec:
     lead_um: int = 4000
     line_width_um: int = 300
     revision: int = 1
+    normative_relation: NormativeRelation = NormativeRelation.EDITORIAL_ADAPTATION
+    normative_basis: str = "User-defined, unverified geometry"
 
     def __post_init__(self) -> None:
         if not isinstance(self.identifier, str) or not self.identifier.startswith(
@@ -79,6 +89,10 @@ class InductorSpec:
                 raise ValueError(f"{name} must be positive integer µm")
         if type(self.revision) is not int or self.revision < 1:
             raise ValueError("Revision must be positive")
+        if not isinstance(self.normative_relation, NormativeRelation):
+            raise TypeError("normative_relation must be a NormativeRelation")
+        if not isinstance(self.normative_basis, str) or not self.normative_basis.strip():
+            raise ValueError("Normative basis must be a documented non-empty source")
         if self.radius_um < 1500 or self.radius_um > 4000:
             raise ValueError("Draft radius must remain within 1.5–4 mm")
         for selections in (self.tap_turns, self.slider_turns):
@@ -122,6 +136,12 @@ def parse_inductor_spec(payload: dict[str, object]) -> InductorSpec:
             lead_um=mm(payload.get("lead_mm", "4")),
             line_width_um=mm(payload.get("line_width_mm", "0.3")),
             revision=payload.get("revision", 1),
+            normative_relation=NormativeRelation(
+                payload.get("normative_relation", "editorial_adaptation")
+            ),
+            normative_basis=payload.get(
+                "normative_basis", "User-defined, unverified geometry"
+            ),
         )
     except (TypeError, ValueError, KeyError) as error:
         raise CatalogError(f"Invalid inductor spec: {error}") from error
@@ -260,7 +280,8 @@ def build_inductor(spec: InductorSpec) -> InductorDefinition:
         status=SymbolStatus.DRAFT,
         standard_refs=(
             "ГОСТ 2.723-68, таблица 1 (обмотка, магнитопровод)",
-            "ГОСТ 2.723-68, таблица 2 (пример исполнения; геометрия требует утверждения)",
+            spec.normative_basis,
+            f"review_relation={spec.normative_relation.value}; approval=draft",
         ),
         annotation_slots=tuple(labels), constant_annotations=constants,
     )
