@@ -3,7 +3,16 @@ import json
 from pathlib import Path
 from typing import Any
 
-from gost_schematic.core.geometry import Box, Circle, Line, Point, Rectangle, Side
+from gost_schematic.core.geometry import (
+    Box,
+    Circle,
+    Line,
+    Point,
+    Rectangle,
+    Semicircle,
+    Side,
+    StyledLine,
+)
 from gost_schematic.core.units import mm
 from gost_schematic.model.annotations import (
     Anchor,
@@ -45,6 +54,20 @@ def parse_symbol(data: dict[str, Any]) -> SymbolDefinition:
                     for line in shapes.get("lines", []))
             + tuple(Circle(_point(circle["center_mm"]), mm(circle["radius_mm"]))
                     for circle in shapes.get("circles", []))
+            + tuple(
+                Semicircle(
+                    _point(item["center_mm"]), mm(item["radius_mm"]), Side(item["bulge"])
+                )
+                for item in shapes.get("semicircles", [])
+            )
+            + tuple(
+                StyledLine(
+                    _point(item["start_mm"]), _point(item["end_mm"]),
+                    mm(item["stroke_width_mm"]),
+                    tuple(mm(value) for value in item.get("dash_pattern_mm", [])),
+                )
+                for item in shapes.get("styled_lines", [])
+            )
         )
         pins = tuple(
             GraphicPin(
@@ -86,6 +109,10 @@ def parse_symbol(data: dict[str, Any]) -> SymbolDefinition:
             status=SymbolStatus(data.get("status", "draft")),
             standard_refs=tuple(data.get("standard_refs", [])),
             annotation_slots=slots,
+            constant_annotations=tuple(
+                (str(key), str(value))
+                for key, value in data.get("constant_annotations", {}).items()
+            ),
         )
     except (KeyError, TypeError, ValueError, IndexError) as error:
         raise CatalogError(f"Invalid symbol {data.get('id', '<unknown>')}: {error}") from error
