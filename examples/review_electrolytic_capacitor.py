@@ -11,8 +11,8 @@ from importlib.resources import files
 from pathlib import Path
 
 from gost_schematic.catalog.loader import load_symbol
-from gost_schematic.validation.conductor_checks import inspect_conductor_topology
 from gost_schematic.rendering.svg import render_symbol_svg
+from gost_schematic.validation.conductor_checks import inspect_conductor_topology
 
 
 def generate(output_dir: Path) -> dict[str, object]:
