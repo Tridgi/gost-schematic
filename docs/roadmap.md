@@ -58,6 +58,19 @@
 - Still draft: exact KOMPAS/ГОСТ symbol approval, transformer coupling,
   multi-phase reactors, variometers, goniometers and coaxial choke topology.
 
+## Stage 0.11 — structural geometry integrity audit (draft PR #8)
+- Enforce actual inward-facing lead at every external graphical pin.
+- Fix sliding-contact indicator to join its true winding contact apex.
+- Carry real per-primitive SVG stroke widths into bounding boxes,
+  cross-symbol collision checks and annotation placement.
+- Supply previously missing physical resistor part metadata.
+- Audit all 18 current symbols and physical mappings into deterministic JSON
+  with source SHA-256, UGO status and geometry checks.
+- CI tests on Python 3.12/3.13 and publishes catalog audit artefact.
+- Commit and update a dated GitHub project log with accepted results.
+- Still pending: user approval of geometry, exact normative comparison,
+  internal graphic topology, automatic wire routing, complete ERC.
+
 ## Stage 1 — approved standard UGO
 - Resistor family, capacitor family, precise stroke/lettering constraints.
 - Reference comparisons from KOMPAS and normative verification.
