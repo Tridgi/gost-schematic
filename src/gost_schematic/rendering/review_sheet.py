@@ -10,16 +10,18 @@ from xml.etree import ElementTree as ET
 
 from gost_schematic.catalog.inductors import load_inductor
 from gost_schematic.catalog.loader import load_symbol
-from gost_schematic.core.geometry import Box, Point, primitive_stroked_bounds
+from gost_schematic.catalog.part_loader import load_part
+from gost_schematic.core.geometry import Box, Point, enclosing_box, primitive_stroked_bounds
 from gost_schematic.core.transforms import Transform
-from gost_schematic.core.units import format_mm
+from gost_schematic.core.units import format_mm, mm
 from gost_schematic.engines.annotation.layout import obstacles_for_component
 from gost_schematic.engines.ports import pin_corridors_for_component
 from gost_schematic.engines.sheet_layout import SheetLayout, layout_sheet
 from gost_schematic.model.annotations import TextStyle
 from gost_schematic.model.circuit import Circuit, ComponentInstance
 from gost_schematic.model.obstacles import WireObstacle, wire_intersects_box
-from gost_schematic.model.quantities import Quantity, Unit
+from gost_schematic.model.part import PartDefinition
+from gost_schematic.model.quantities import Quantity, QuantityKind, Unit
 from gost_schematic.model.symbol import SymbolDefinition, SymbolStatus
 from gost_schematic.rendering.sheet_svg import render_sheet_svg
 
@@ -31,6 +33,7 @@ ET.register_namespace("", "http://www.w3.org/2000/svg")
 class ReviewScene:
     circuit: Circuit
     symbols_by_part: dict[str, SymbolDefinition]
+    source_paths: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,48 +52,191 @@ def _overlap(first: Box, second: Box) -> Box | None:
     return Box(min_x, min_y, max_x, max_y)
 
 
-def build_catalog_review_scene() -> ReviewScene:
-    """Load all currently checked-in catalog variants, never synthesize UGO paint."""
-    root = files("gost_schematic").joinpath("catalog")
-    symbols = {
-        "resistor": load_symbol(Path(str(root.joinpath("symbols/resistors/fixed.json")))),
-        "capacitor": load_symbol(Path(str(root.joinpath("symbols/capacitors/fixed.json")))),
-        "polarized": load_symbol(Path(str(root.joinpath("symbols/capacitors/polarized.json")))),
-    }
-    entries: list[tuple[str, str, Quantity]] = [
-        ("R1", "resistor", Quantity.from_unit("2,3", Unit.KOHM)),
-        ("C1", "capacitor", Quantity.from_unit("100", Unit.NANOFARAD)),
-        ("C2", "polarized", Quantity.from_unit("470", Unit.MICROFARAD)),
+class CatalogReviewError(ValueError):
+    """Fail visibly when a catalog source cannot be shown without corrupting identity."""
+
+
+@dataclass(frozen=True, slots=True)
+class ReviewCatalogEntry:
+    source: str
+    symbol: SymbolDefinition
+    part: PartDefinition
+
+
+_SAMPLE_NOMINALS: dict[QuantityKind, tuple[str, Unit]] = {
+    QuantityKind.RESISTANCE: ("2,3", Unit.KOHM),
+    QuantityKind.CAPACITANCE: ("100", Unit.NANOFARAD),
+    QuantityKind.INDUCTANCE: ("33", Unit.MICROHENRY),
+}
+_CELL_PADDING_UM = mm(25)
+
+
+def discover_catalog_entries(
+    catalog_root: Path | None = None,
+) -> tuple[ReviewCatalogEntry, ...]:
+    """Scan every versioned symbol and winding profile, matching audit source scope.
+
+    Static symbols require a *real* matching physical passport at the
+    corresponding path under parts/. Neither numeric values nor pin roles
+    are inferred from painted symbols.
+    """
+    root = (
+        Path(catalog_root) if catalog_root is not None
+        else Path(str(files("gost_schematic").joinpath("catalog")))
+    )
+    paths = [
+        (item, False) for item in sorted((root / "symbols").rglob("*.json"))
+    ] + [
+        (item, True) for item in sorted((root / "inductors").glob("*.json"))
     ]
-    paths = sorted(
-        (item for item in root.joinpath("inductors").iterdir()
-         if item.name.endswith(".json")),
-        key=lambda item: item.name,
-    )
-    for index, path in enumerate(paths, start=1):
-        variant = load_inductor(Path(str(path)))
-        key = variant.part.identifier
-        if key in symbols:
-            raise ValueError(f"Duplicate part id in review catalog: {key}")
-        symbols[key] = variant.symbol
-        entries.append((
-            f"L{index}", key,
-            Quantity.from_unit(str(33 + index), Unit.MICROHENRY),
-        ))
-    if len(entries) != 18 or len(symbols) != 18:
-        raise ValueError(f"Expected 18 current draft catalog entries, got {len(entries)}")
-    if any(symbol.status != SymbolStatus.DRAFT for symbol in symbols.values()):
-        raise ValueError("This specimen is restricted to DRAFT symbols")
-    components = tuple(
-        ComponentInstance(
-            reference, part_id,
-            Point(40000 + (index % 4) * 70000, 25000 + (index // 4) * 52000),
-            Transform(rotation=(index % 4) * 90, mirror_x=index % 5 == 4),
-            nominal=nominal,
+    if not paths:
+        raise CatalogReviewError(f"No versioned UGO sources in {root}")
+
+    entries: list[ReviewCatalogEntry] = []
+    seen_parts: dict[str, str] = {}
+    seen_symbols: dict[tuple[str, int], str] = {}
+    for path, is_winding in paths:
+        source = "catalog/" + path.relative_to(root).as_posix()
+        try:
+            if is_winding:
+                variant = load_inductor(path)
+                symbol, part = variant.symbol, variant.part
+            else:
+                symbol = load_symbol(path)
+                part_path = root / "parts" / path.relative_to(root / "symbols")
+                part = load_part(part_path)
+        except (OSError, ValueError) as error:
+            raise CatalogReviewError(f"{source}: missing or invalid UGO/part: {error}") from error
+        if symbol.status != SymbolStatus.DRAFT:
+            raise CatalogReviewError(
+                f"{source}: expected DRAFT UGO, got {symbol.status.value}"
+            )
+        if part.symbol_id != symbol.identifier:
+            raise CatalogReviewError(
+                f"{source}: part {part.identifier!r} points to "
+                f"{part.symbol_id!r}, not {symbol.identifier!r}"
+            )
+        if {pin.number for pin in part.pins} != {pin.number for pin in symbol.pins}:
+            raise CatalogReviewError(
+                f"{source}: physical and graphic terminal numbers disagree"
+            )
+        if not part.reference_prefix.strip() or (
+            part.reference_prefix != part.reference_prefix.strip()
+        ):
+            raise CatalogReviewError(f"{source}: invalid reference prefix")
+        if part.identifier in seen_parts:
+            raise CatalogReviewError(
+                f"{source}: duplicate physical part ID {part.identifier!r}; "
+                f"already in {seen_parts[part.identifier]}"
+            )
+        symbol_key = (symbol.identifier, symbol.revision)
+        if symbol_key in seen_symbols:
+            raise CatalogReviewError(
+                f"{source}: duplicate UGO {symbol_key!r}; "
+                f"already in {seen_symbols[symbol_key]}"
+            )
+        seen_parts[part.identifier] = source
+        seen_symbols[symbol_key] = source
+        entries.append(ReviewCatalogEntry(source, symbol, part))
+
+    # Avoid ordering based on OS directory enumeration or incidental filenames.
+    return tuple(sorted(
+        entries, key=lambda item: (
+            item.symbol.identifier, item.symbol.revision, item.part.identifier, item.source
+        ),
+    ))
+
+
+def _example_nominal(part: PartDefinition) -> Quantity | None:
+    if part.nominal_kind is None:
+        return None  # Unknown is not a license to invent a physical characteristic.
+    try:
+        value, unit = _SAMPLE_NOMINALS[part.nominal_kind]
+    except KeyError as error:
+        raise CatalogReviewError(
+            f"{part.identifier}: unsupported nominal kind {part.nominal_kind}"
+        ) from error
+    return Quantity.from_unit(value, unit)
+
+
+def build_catalog_review_scene(
+    catalog_root: Path | None = None,
+    *,
+    columns: int = 4,
+) -> ReviewScene:
+    """Fit all discovered DRAFT UGO in content-sized cells, no fixed catalog count.
+
+    The width and height of each column/row are determined by real transformed
+    strokes, body keepouts and terminal-escape corridors. Padding reserves
+    space for labels, but any unplaceable text remains a diagnostic failure.
+    """
+    if type(columns) is not int or columns < 1:
+        raise ValueError("columns must be a positive integer")
+    entries = discover_catalog_entries(catalog_root)
+    symbols = {entry.part.identifier: entry.symbol for entry in entries}
+
+    references: set[str] = set()
+    counters: dict[str, int] = {}
+    frames: list[tuple[str, ReviewCatalogEntry, Transform, Box]] = []
+    for index, entry in enumerate(entries):
+        prefix = entry.part.reference_prefix
+        number = counters.get(prefix, 0)
+        while True:
+            number += 1
+            reference = f"{prefix}{number}"
+            if reference not in references:
+                break
+        counters[prefix] = number
+        references.add(reference)
+        transform = Transform(rotation=(index % 4) * 90, mirror_x=index % 5 == 4)
+        originless = ComponentInstance(
+            reference, entry.part.identifier, Point(0, 0), transform,
         )
-        for index, (reference, part_id, nominal) in enumerate(entries)
+        bounds = enclosing_box((
+            transform.box(entry.symbol.stroked_bounds),
+            transform.box(entry.symbol.body_keepout),
+            *(port.box for port in pin_corridors_for_component(
+                entry.symbol, originless,
+            )),
+        ))
+        frames.append((reference, entry, transform, bounds))
+
+    row_count = (len(frames) + columns - 1) // columns
+    col_widths = [0] * columns
+    row_heights = [0] * row_count
+    for index, (_, _, _, bounds) in enumerate(frames):
+        col = index % columns
+        row = index // columns
+        col_widths[col] = max(
+            col_widths[col], bounds.max_x - bounds.min_x + 2 * _CELL_PADDING_UM,
+        )
+        row_heights[row] = max(
+            row_heights[row], bounds.max_y - bounds.min_y + 2 * _CELL_PADDING_UM,
+        )
+    col_starts = [0] * columns
+    row_starts = [0] * row_count
+    for i in range(1, columns):
+        col_starts[i] = col_starts[i - 1] + col_widths[i - 1]
+    for i in range(1, row_count):
+        row_starts[i] = row_starts[i - 1] + row_heights[i - 1]
+
+    components: list[ComponentInstance] = []
+    for index, (reference, entry, transform, bounds) in enumerate(frames):
+        col, row = index % columns, index // columns
+        origin = Point(
+            col_starts[col] + (col_widths[col] - (bounds.max_x - bounds.min_x)) // 2
+            - bounds.min_x,
+            row_starts[row] + (row_heights[row] - (bounds.max_y - bounds.min_y)) // 2
+            - bounds.min_y,
+        )
+        components.append(ComponentInstance(
+            reference, entry.part.identifier, origin, transform,
+            nominal=_example_nominal(entry.part),
+        ))
+    return ReviewScene(
+        Circuit(tuple(components), ()), symbols,
+        tuple(entry.source for entry in entries),
     )
-    return ReviewScene(Circuit(components, ()), symbols)
 
 
 def build_overlap_review_scene() -> ReviewScene:
@@ -238,8 +384,14 @@ def review_manifest(scene: ReviewScene, layout: SheetLayout) -> dict[str, object
         "approval": "DRAFT",
         "not_gost_certified": True,
         "source": "current versioned catalog",
+        "catalog_size": len(scene.circuit.components),
+        "example_nominals_only": True,
         "components": [
             {
+                "catalog_source": (
+                    scene.source_paths[index] if index < len(scene.source_paths) else None
+                ),
+                "symbol_revision": scene.symbols_by_part[item.part_id].revision,
                 "reference": item.reference,
                 "part_id": item.part_id,
                 "symbol_id": scene.symbols_by_part[item.part_id].identifier,
@@ -255,7 +407,7 @@ def review_manifest(scene: ReviewScene, layout: SheetLayout) -> dict[str, object
                     ).items()
                 ],
             }
-            for item in scene.circuit.components
+            for index, item in enumerate(scene.circuit.components)
         ],
         "labels": [
             {

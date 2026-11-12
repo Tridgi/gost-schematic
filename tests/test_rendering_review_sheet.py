@@ -9,6 +9,7 @@ from gost_schematic.model.annotations import MeasuredText, TextStyle
 from gost_schematic.rendering.review_sheet import (
     build_catalog_review_scene,
     build_overlap_review_scene,
+    discover_catalog_entries,
     layout_review_scene,
     render_review_svg,
     review_collisions,
@@ -29,10 +30,11 @@ def catalog():
     return scene, layout_review_scene(scene, STYLE, DeterministicMetrics())
 
 
-def test_all_18_original_draft_catalog_symbols_have_safe_sheet_labels():
+def test_all_discovered_draft_catalog_symbols_have_safe_sheet_labels():
     scene, layout = catalog()
-    assert len(scene.circuit.components) == 18
-    assert len(scene.symbols_by_part) == 18
+    assert len(scene.circuit.components) == len(discover_catalog_entries())
+    assert len(scene.symbols_by_part) == len(scene.circuit.components)
+    assert len(scene.source_paths) == len(scene.circuit.components)
     assert layout.valid, [(d.code, d.message) for d in layout.diagnostics]
     assert not review_collisions(scene, layout)
     assert {item.transform.rotation for item in scene.circuit.components} == {
@@ -79,11 +81,14 @@ def test_svg_coordinates_use_physical_millimetres_not_pixels():
     scene, layout = catalog()
     root = ET.fromstring(render_review_svg(scene, layout, diagnostic=False))
     x, y, width, height = map(float, root.attrib["viewBox"].split())
-    assert width > 200 and height > 150
+    assert 200 < width < 1000
+    assert 150 < height < 1000
     assert x >= -10 and y >= -10
-    assert root.get("width") == f"{width:g}mm"
-    assert root.get("height") == f"{height:g}mm"
-    assert len(root.findall(f".//{SVG}g[@data-layer='symbols']")) == 18
+    assert float(root.get("width").removesuffix("mm")) == width
+    assert float(root.get("height").removesuffix("mm")) == height
+    assert len(root.findall(f".//{SVG}g[@data-layer='symbols']")) == len(
+        scene.circuit.components
+    )
 
 
 def test_manifest_preserves_exact_pins_and_si_nominals_after_transform():
@@ -94,7 +99,7 @@ def test_manifest_preserves_exact_pins_and_si_nominals_after_transform():
     assert manifest["approval"] == "DRAFT"
     assert manifest["layout_valid"]
     assert manifest["aabb_collisions"] == []
-    assert len(manifest["components"]) == 18
+    assert len(manifest["components"]) == len(scene.circuit.components)
     assert all(item["symbol_status"] == "draft" for item in manifest["components"])
     for item, row in zip(scene.circuit.components, manifest["components"], strict=True):
         assert row["nominal_si"] == item.nominal.to_record()

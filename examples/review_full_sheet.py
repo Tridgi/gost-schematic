@@ -9,6 +9,7 @@ Font binaries are never embedded or committed. SVG viewers MUST use that face.
 import argparse
 import json
 from pathlib import Path
+from runpy import run_path
 
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer, font_sha256
 from gost_schematic.model.annotations import TextStyle
@@ -33,6 +34,36 @@ def generate(output_dir: Path, font_file: Path, family: str, *, type_a: bool) ->
         )
     measurer = PillowTextMeasurer()
     scene = build_catalog_review_scene()
+    # The example also runs as "python examples/review_full_sheet.py": repo-root
+    # scripts/ is not importable as a package in that invocation.
+    audit_namespace = run_path(
+        str(Path(__file__).resolve().parents[1] / "scripts" / "audit_symbol_catalog.py")
+    )
+    audit = audit_namespace["audit_catalog"]()
+    reported = sorted(
+        (row["id"], row["revision"], row["source"]) for row in audit["entries"]
+    )
+    discovered = sorted(
+        (scene.symbols_by_part[component.part_id].identifier,
+         scene.symbols_by_part[component.part_id].revision, source)
+        for component, source in zip(
+            scene.circuit.components, scene.source_paths, strict=True,
+        )
+    )
+    if (
+        audit["hard_errors"] != 0
+        or audit["draft_count"] != audit["total_symbols"]
+        or audit["without_physical_part"]
+        or len(scene.circuit.components) != audit["total_symbols"]
+        or discovered != reported
+    ):
+        raise RuntimeError(
+            "SVG gallery does not match the approved-scope structural catalog audit: "
+            f"gallery={len(scene.circuit.components)}, "
+            f"audit={audit['total_symbols']}, "
+            f"draft={audit['draft_count']}, errors={audit['hard_errors']}, "
+            f"missing={audit['without_physical_part']}"
+        )
     layout = layout_review_scene(scene, style, measurer)
     if not layout.valid or review_collisions(scene, layout):
         details = [f"{issue.code}: {issue.message}" for issue in layout.diagnostics]
@@ -61,6 +92,12 @@ def generate(output_dir: Path, font_file: Path, family: str, *, type_a: bool) ->
             encoding="utf-8",
         )
     manifest = review_manifest(scene, layout)
+    manifest["catalog_audit"] = {
+        "total_symbols": audit["total_symbols"],
+        "draft_count": audit["draft_count"],
+        "hard_errors": audit["hard_errors"],
+        "source_match": True,
+    }
     manifest["font"] = {
         "family": family,
         "sha256": style.font_sha256,

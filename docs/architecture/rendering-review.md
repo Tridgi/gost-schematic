@@ -1,8 +1,9 @@
 # Rendering workstream — reproducible DRAFT sheet review
 
-**Issue:** https://github.com/Tridgi/gost-schematic/issues/13
-**Baseline:** 67c66da9950fe36d5955b86a6c1ce93217ca4edc, from
-integration/stage0-12. This review is **not** a GOST/ESKD approval.
+**Issues:** [#13](https://github.com/Tridgi/gost-schematic/issues/13) and
+[#17](https://github.com/Tridgi/gost-schematic/issues/17).
+**Follow-up baseline:** `9e9d056e410c8a54dc3c9fc9d5cc56b74e6f225b`, from
+`integration/stage0-12`. This review is **not** a GOST/ESKD approval.
 
 ## Run
 
@@ -27,17 +28,39 @@ sample's *requested* 3.5 mm capital height; it does not approve glyph outlines.
 
 | File | Contents |
 |---|---|
-| catalog-clean.svg | 18 live catalog UGO, typed nominal values, upright text, no overlays |
+| catalog-clean.svg | All currently versioned DRAFT UGO, typed *example* nominals where supported, upright text, no overlays |
 | catalog-diagnostic.svg | Same geometry plus source keepouts, pin exits, ink/hitboxes, and red AABB intersections |
 | overlap-diagnostic.svg | Deliberately invalid two-resistor overlap; red collision region and original layout errors |
 | review-manifest.json | Catalog symbol ID/status, exact pin coordinates in µm, physical SI nominals, label hitboxes, diagnostic codes, SHA-256 font provenance |
 
-The current complete catalog contains one resistor, two capacitors and fifteen
-parametric inductors/chokes. It is loaded from the **existing JSON/factory**
-rather than being redrawn. For each instance, its original physical pin
-numbers survive clockwise 0/90/180/270-degree transforms and selected mirrors.
-The positions form a fixed editorial review grid, not an automatic placer
-and not prescribed sheet dimensions.
+The review dynamically scans **every** `catalog/symbols/**/*.json` and
+`catalog/inductors/*.json` file, matching the structural catalog audit's
+inventory scope. Static symbols require a corresponding physical passport
+under `catalog/parts/` at the same relative path. The winding factory
+already supplies its own physical passport. The future
+`capacitor.electrolytic` is discovered automatically when both versioned
+JSON files are added to the catalog; rendering does not assume a fixed count.
+
+Entries are sorted by symbol ID, revision, physical part ID and relative
+source path. Component identifiers use the **real** physical passport
+`reference_prefix` and independent numbering within each prefix; duplicate
+references are skipped rather than reused. If the catalog contains two
+symbols with the same physical part ID or duplicate symbol ID+revision, the
+renderer refuses to proceed instead of overwriting a dictionary entry.
+A genuinely unsupported multiple-graphics-per-part model still needs a
+separate agreed interface; it must not be faked with synthetic part IDs.
+
+The cell grid expands by the actual transformed `stroked_bounds`, body
+keepouts and pin escape zones. Column widths and row heights grow with the
+UGO count and dimensions; example padding is **editorial**, not normative.
+Real physical pin numbers survive clockwise 0/90/180/270-degree transforms
+and selected mirrors. The placed UGO graphics are immutable catalog
+primitives, not redrawn artwork.
+
+The visualization's resistor/capacitor/inductor example values are **sample
+nominals only**, stored on local `ComponentInstance` for the preview. They
+do not modify catalog physical data or any electrical network. Unknown
+`nominal_kind` yields no nominal label, never a fabricated quantity.
 
 The diagnostic SVG reuses render_sheet_svg and only adds an independent
 red overlay (data-layer=collision-markers); data-kind, data-first,
@@ -51,9 +74,18 @@ that a broken scene raises layout errors instead of silently looking correct.
   winding arcs and empty interiors, intersecting boxes may yield false
   positives: a red rectangle is **not** pixel-accurate proof of collision.
   Primitive-specific stroke width and transformed coordinates are respected.
-- SheetLayout may omit unplaceable text while reporting
-  ANNOTATION_UNPLACEABLE. The diagnostic metadata keeps these codes visible;
-  no arbitrary emergency placement is performed.
+- `SheetLayout` may omit unplaceable text while reporting
+  `ANNOTATION_UNPLACEABLE`. The example runner fails rather than shipping a
+  misleading partial gallery. Collision review checks labels, strokes,
+  other component bounding boxes and pin exits; diagnostic metadata preserves
+  the original codes.
+- Missing/mismatched physical passport, duplicate mapping or an unexpected
+  `approved` symbol fails explicitly as `CatalogReviewError`; there is no
+  silent omission of an unknown UGO.
+- The example compares each discovered `(symbol_id, revision, source)`
+  triple with live `audit_catalog()` output, requiring equal counts,
+  all DRAFT and zero hard errors. The manifest records this audit and
+  all source paths, not a hardcoded count.
 - Connector corridors are routing reservations, **not** drawn wires or proof
   of net connectivity. Circuit.nets is never inferred or modified.
 - The actual font file is not committed or embedded. The viewer must use
@@ -62,7 +94,7 @@ that a broken scene raises layout errors instead of silently looking correct.
   font SHA-256 to aid reproducibility.
 - No wire routing, page border/title block, certified ESKD lettering,
   manually approved source-standard comparison, or exact stroked-path
-  polygon intersections are implemented. All 18 symbols remain DRAFT.
+  polygon intersections are implemented. All discovered symbols remain DRAFT.
 - Samples from CI are built and uploaded as a separate workflow artifact,
   including PNG previews rasterized from **vector** SVG with the installed
   OpenGost font; images are inspection aids, never substitute symbol definitions.
@@ -71,9 +103,14 @@ that a broken scene raises layout errors instead of silently looking correct.
 
 Run ruff check ., pytest -q, and
 python scripts/audit_symbol_catalog.py --output output/catalog-integrity-audit.json.
-Tests check determinism, 18 DRAFT specimens, upright labels, 90°/180°/270°
-transforms and mirrors, exact pin coordinates, nominal immutability,
-non-overlapping valid labels, and the intentionally invalid scene.
+Tests check deterministic full-catalog discovery, upright labels, 90°/180°/270°
+transforms/mirrors, exact pin coordinates, nominal immutability, no unexpected
+collisions, and the deliberately invalid scene. The expansion fixture copies
+the catalog into a temporary directory, adds one legitimate-structure DRAFT
+`capacitor.electrolytic`+part **without modifying the repository**, and
+verifies all elements appear; once real electrolytic is integrated, the same
+test introduces an independently named extra variant and remains valid.
+Negative tests exercise missing/mismatched part records and oversized text.
 
 This work introduces an internal rendering adapter and an example. It **does
 not change** shared model/*, core/*, catalog/* contracts, numerical
