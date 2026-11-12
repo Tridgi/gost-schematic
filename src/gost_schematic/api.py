@@ -23,15 +23,15 @@ from gost_schematic.engines.sheet_layout import (
 )
 from gost_schematic.model.annotations import TextStyle
 from gost_schematic.model.document import SchematicDocument
-from gost_schematic.model.part import PartDefinition, VoltageOrientationRule
-from gost_schematic.model.pins import PhysicalPin, TerminalPolarity
-from gost_schematic.model.potentials import NetPotential, PotentialScenario
 from gost_schematic.model.nominal_display import (
     ComponentNominalOverride,
     NominalDisplayConfiguration,
     NominalDisplayMode,
     NominalDisplaySettings,
 )
+from gost_schematic.model.part import PartDefinition, VoltageOrientationRule
+from gost_schematic.model.pins import PhysicalPin, TerminalPolarity
+from gost_schematic.model.potentials import NetPotential, PotentialScenario
 from gost_schematic.model.quantities import Quantity, QuantityKind, Unit
 from gost_schematic.rendering.annotation_svg import render_annotation_svg
 from gost_schematic.rendering.sheet_svg import render_sheet_svg
