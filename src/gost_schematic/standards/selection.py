@@ -10,7 +10,6 @@ from datetime import date
 
 from gost_schematic.validation.dimensional_checks import load_requirements
 
-
 _PREDECESSORS = {
     "ГОСТ Р 2.301-2026": "ГОСТ 2.301-68",
     "ГОСТ Р 2.303-2026": "ГОСТ 2.303-68",
