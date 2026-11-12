@@ -29,6 +29,13 @@ from a valid licensed source and should be verified against the standard's
 75-degree figure. The recommended OpenGOST v0.7 release currently exercises
 the upright face; it is not presented as a slanted specimen.
 
+The inspected `TextStyle` also stores the font file's SHA-256. The
+measurement engine compares this fingerprint before measuring any label,
+and SVG text nodes record it as `data-font-sha256`. This prevents silently
+reusing a stale hitbox after a font file is replaced. It does not eliminate
+the separate requirement that SVG viewers resolve the identical installed
+font family.
+
 The measurement checks capital height scale, **not** all glyph shapes,
 weight `d`, spacing `a`, slope or the full published glyph grids.
 A complete ГОСТ typography approval requires comparing the actual font
