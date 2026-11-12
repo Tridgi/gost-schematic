@@ -36,7 +36,8 @@ def validate_sheet_wire_rules(
     """Validate source-backed width and strict parallel clearance constraints.
 
     Does not check symbol gaps, dot/junction usage, precise diagonal
-    distances, or netlist identity. Those require separate topology checks.
+    distances, or full netlist identity. Coincident collinear fragments
+    require explicit matching net names and are only warned as redundant.
     """
     rules = (requirements if requirements is not None else load_requirements())["layout_rules"]
     wires = tuple(wires)
@@ -71,6 +72,28 @@ def validate_sheet_wire_rules(
                 continue
             axis_a = left.line.start.y if direction == "horizontal" else left.line.start.x
             axis_b = right.line.start.y if direction == "horizontal" else right.line.start.x
+            if axis_a == axis_b:
+                # Two authored fragments on the same centerline make ONE
+                # printed wire when explicitly assigned to the same net.
+                # This must not be mistaken for two adjacent parallel wires.
+                if (
+                    left.net_name is not None
+                    and left.net_name == right.net_name
+                ):
+                    issues.append(Diagnostic(
+                        "ESKD_COLLINEAR_WIRE_REDUNDANT", Severity.WARNING,
+                        f"{left.identifier} and {right.identifier}: overlapping "
+                        "fragments of the same net should be normalized into one route",
+                        left.identifier,
+                    ))
+                else:
+                    issues.append(Diagnostic(
+                        "ESKD_COLLINEAR_WIRE_AMBIGUOUS", Severity.ERROR,
+                        f"{left.identifier} and {right.identifier}: coincident "
+                        "strokes with different or unknown net ownership",
+                        left.identifier,
+                    ))
+                continue
             # 2 × centerline gap < 2 × required clear gap + widths.
             # Equality is compliant; integer arithmetic avoids rounding.
             if 2 * abs(axis_a - axis_b) < (
