@@ -10,6 +10,7 @@ from gost_schematic.core.geometry import (
     primitive_stroked_bounds,
 )
 from gost_schematic.model.annotations import AnnotationSlot
+from gost_schematic.model.conductor_topology import ConductorTopology
 from gost_schematic.model.pins import GraphicPin
 
 
@@ -31,6 +32,7 @@ class SymbolDefinition:
     standard_refs: tuple[str, ...] = ()
     annotation_slots: tuple[AnnotationSlot, ...] = ()
     constant_annotations: tuple[tuple[str, str], ...] = ()
+    conductor_topology: ConductorTopology | None = None
 
     def __post_init__(self) -> None:
         if not self.identifier.strip() or type(self.revision) is not int or self.revision < 1:
@@ -47,6 +49,10 @@ class SymbolDefinition:
             raise ValueError("Constant annotation needs a unique, declared slot key")
         if any(not text for _, text in self.constant_annotations):
             raise ValueError("Constant annotation text must not be empty")
+        if self.conductor_topology is not None and not isinstance(
+            self.conductor_topology, ConductorTopology
+        ):
+            raise TypeError("conductor_topology must be a ConductorTopology or None")
         numbers = [pin.number for pin in self.pins]
         positions = [pin.at for pin in self.pins]
         if len(numbers) != len(set(numbers)) or len(positions) != len(set(positions)):
