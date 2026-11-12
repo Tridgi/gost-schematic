@@ -5,5 +5,7 @@
   "turns": 4,
   "radius_mm": "2",
   "lead_mm": "4",
-  "line_width_mm": "0.3"
+  "line_width_mm": "0.3",
+  "normative_relation": "table_2_example",
+  "normative_basis": "ГОСТ 2.723-68, табл. 2, п. 1 — катушка без магнитопровода"
 }
