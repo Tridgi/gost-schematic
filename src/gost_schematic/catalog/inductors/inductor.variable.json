@@ -6,5 +6,7 @@
   "radius_mm": "2",
   "lead_mm": "4",
   "line_width_mm": "0.3",
-  "adjustment": "variable"
+  "adjustment": "variable",
+  "normative_relation": "editorial_adaptation",
+  "normative_basis": "Редакционное сочетание обмотки с указателем переменной индуктивности; отдельный УГО не утверждён"
 }
