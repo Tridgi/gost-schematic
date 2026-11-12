@@ -57,6 +57,8 @@ def build_review(output: Path, font_file: Path, family: str) -> dict[str, object
                 for pin in part.pins
             ],
             "source_standard": "ГОСТ 2.723-68",
+            "normative_relation": item.spec.normative_relation.value,
+            "normative_basis": item.spec.normative_basis,
             "approval": "draft",
         })
     circuit = Circuit(tuple(components), ())
