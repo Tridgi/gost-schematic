@@ -68,7 +68,7 @@ _SAMPLE_NOMINALS: dict[QuantityKind, tuple[str, Unit]] = {
     QuantityKind.CAPACITANCE: ("100", Unit.NANOFARAD),
     QuantityKind.INDUCTANCE: ("33", Unit.MICROHENRY),
 }
-_CELL_PADDING_UM = mm(25000)
+_CELL_PADDING_UM = mm(25)
 
 
 def discover_catalog_entries(
