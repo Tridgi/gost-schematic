@@ -4,6 +4,9 @@ from fractions import Fraction
 
 import pytest
 
+from gost_schematic.core.geometry import Box
+from gost_schematic.engines.annotation import metrics
+from gost_schematic.model.annotations import TextStyle
 from gost_schematic.standards import type_a_font
 from gost_schematic.standards.type_a_font import (
     TYPE_A_HEIGHTS_UM,
@@ -114,3 +117,31 @@ def test_regular_face_never_silently_becomes_75_degree_type_a(monkeypatch, tmp_p
     path.write_bytes(b"dummy")
     with pytest.raises(ValueError, match="actual italic"):
         inspect_type_a_font(path, angle=TypeAAngle.INCLINED_75)
+
+
+
+def test_font_fingerprint_prevents_stale_hitbox_after_file_changes(monkeypatch, tmp_path):
+    class FakeFace:
+        def getbbox(self, text, anchor):
+            return (0, -100, 300, 0)
+
+        def getlength(self, text):
+            return 300
+
+    monkeypatch.setattr(metrics, "_load_font", lambda path: FakeFace())
+    path = tmp_path / "type-a.ttf"
+    path.write_bytes(b"same-face-version-one")
+    digest = metrics.font_sha256(str(path))
+    style = TextStyle(
+        str(path), "OpenGost Type A", font_sha256=digest,
+    )
+    measured = metrics.PillowTextMeasurer().measure("C1", style)
+    assert measured.ink_box == Box(0, -684, 2051, 0)
+    path.write_bytes(b"new-face-version-two-and-longer")
+    with pytest.raises(ValueError, match="font file changed"):
+        metrics.PillowTextMeasurer().measure("C1", style)
+
+
+def test_invalid_font_fingerprint_rejected():
+    with pytest.raises(ValueError, match="font_sha256"):
+        TextStyle("dummy.ttf", "Demo", font_sha256="not-a-hash")
