@@ -22,6 +22,13 @@ capital height, so our `inspect_type_a_font` measures the loaded face's
 Cyrillic capital **Н** and derives the correct `TextStyle.em_height_um` for
 both FreeType hitbox calculation and SVG `font-size`.
 
+The `TypeAAngle` enum covers `upright` and `inclined_75`. The latter
+requires the actual **italic** font file; it deliberately refuses an upright
+face rather than applying a synthetic SVG skew. The italic file must come
+from a valid licensed source and should be verified against the standard's
+75-degree figure. The recommended OpenGOST v0.7 release currently exercises
+the upright face; it is not presented as a slanted specimen.
+
 The measurement checks capital height scale, **not** all glyph shapes,
 weight `d`, spacing `a`, slope or the full published glyph grids.
 A complete ГОСТ typography approval requires comparing the actual font
