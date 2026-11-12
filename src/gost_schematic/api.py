@@ -9,15 +9,15 @@ from gost_schematic.engines.annotation.layout import (
 )
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.engines.ports import PinEscapeCorridor, pin_corridors_for_component
+from gost_schematic.engines.routing.clearance import (
+    validate_port_reservations,
+    validate_wire_clearance,
+)
 from gost_schematic.engines.sheet_layout import (
     SheetLabelProfile,
     SheetLayout,
     layout_sheet,
     sheet_label_requests,
-)
-from gost_schematic.engines.routing.clearance import (
-    validate_port_reservations,
-    validate_wire_clearance,
 )
 from gost_schematic.model.annotations import TextStyle
 from gost_schematic.model.document import SchematicDocument
