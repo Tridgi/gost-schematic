@@ -93,10 +93,13 @@ class Quantity:
 
     def to_record(self) -> dict[str, str | int]:
         """Persistence uses strings to avoid JSON floating-point rounding."""
+        literal = format(self.si_value, "f")
+        if "." in literal:
+            literal = literal.rstrip("0").rstrip(".")
         return {
             "schema_version": 1,
             "kind": self.kind.value,
-            "si_value": str(self.si_value),
+            "si_value": literal,
         }
 
     @classmethod
