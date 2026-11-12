@@ -126,6 +126,29 @@ jobs:
           name: polarized-capacitor-erc-review
           path: output/polarity-erc-review.json
           if-no-files-found: error
+      - name: Generate GOST 2.723 inductor family review
+        if: matrix.python-version == '3.12'
+        shell: bash
+        run: |
+          FONT_FILE="$(find "$HOME/.local/share/fonts" -type f \
+            \( -iname '*TypeA*.ttf' -o -iname '*TypeA*.otf' \) | head -1)"
+          test -n "$FONT_FILE"
+          python examples/review_inductors.py \
+            --font-file "$FONT_FILE" --font-family "OpenGost Type A" \
+            --output-dir output/inductors
+          rsvg-convert --background-color white --width 1900 \
+            -o output/inductors/inductor-family-clean.png \
+            output/inductors/inductor-family-clean.svg
+          rsvg-convert --background-color white --width 1900 \
+            -o output/inductors/inductor-family-review.png \
+            output/inductors/inductor-family-review.svg
+      - name: Upload parametric inductor family review
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-gost2723-inductor-family
+          path: output/inductors/*
+          if-no-files-found: error
       - name: Upload Type A and capacitor SVG
         if: matrix.python-version == '3.12'
         uses: actions/upload-artifact@v4
