@@ -40,10 +40,10 @@ def real_parts():
     return source
 
 
-def _place(reference, part, symbol, contact, transform=Transform()):
+def _place(reference, part, symbol, contact, transform: Transform | None = None):
+    tx = transform if transform is not None else Transform()
     pin = next(item for item in symbol.pins if item.number == "1")
-    return ComponentInstance(reference, part.identifier, contact - transform.apply(pin.at),
-                             transform)
+    return ComponentInstance(reference, part.identifier, contact - tx.apply(pin.at), tx)
 
 
 def _run(circuit, segments, parts, symbols, junctions=()):
