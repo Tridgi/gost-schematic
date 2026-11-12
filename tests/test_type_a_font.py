@@ -1,7 +1,6 @@
 """ГОСТ 2.304-81 type A dimensional profile and actual face calibration."""
 
 from fractions import Fraction
-from pathlib import Path
 
 import pytest
 
