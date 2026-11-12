@@ -49,6 +49,14 @@ gost-schematic render-annotated-symbol \
   --review-overlay --show-pin-connections --output output/resistor-annotations-review.svg
 ```
 
+For the next experimental milestone, **sheet layout** places reference labels
+above or to the right of symbols and visible nominals below them. It checks
+text and connector corridors against neighboring elements without claiming
+automatic electrical routing. Run `python examples/review_sheet_annotations.py
+--font-file "$FONT_PATH" --output-dir output/sheet-review` after
+choosing a local TTF/OTF font to generate six multi-component SVG previews.
+See [Sheet labels](docs/architecture/sheet-annotations.md).
+
 Nominal display (including strict fallbacks for undefined ГОСТ ranges) is
 specified in [Nominal display](docs/architecture/nominal-display.md).
 
