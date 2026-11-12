@@ -114,6 +114,18 @@ jobs:
           rsvg-convert --background-color white --width 1700 \
             -o output/type-a-capacitors/type-a-capacitors-full_units-clean.png \
             output/type-a-capacitors/type-a-capacitors-full_units-clean.svg
+      - name: Generate physical polarity ERC review
+        if: matrix.python-version == '3.12'
+        run: |
+          python examples/review_polarity_erc.py \
+            --output output/polarity-erc-review.json
+      - name: Upload polarity report for user review
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: polarized-capacitor-erc-review
+          path: output/polarity-erc-review.json
+          if-no-files-found: error
       - name: Upload Type A and capacitor SVG
         if: matrix.python-version == '3.12'
         uses: actions/upload-artifact@v4
