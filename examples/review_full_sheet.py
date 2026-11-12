@@ -9,6 +9,7 @@ Font binaries are never embedded or committed. SVG viewers MUST use that face.
 import argparse
 import json
 from pathlib import Path
+from runpy import run_path
 
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer, font_sha256
 from gost_schematic.model.annotations import TextStyle
@@ -21,7 +22,6 @@ from gost_schematic.rendering.review_sheet import (
     review_manifest,
 )
 from gost_schematic.standards.type_a_font import inspect_type_a_font
-from scripts.audit_symbol_catalog import audit_catalog
 
 
 def generate(output_dir: Path, font_file: Path, family: str, *, type_a: bool) -> dict:
@@ -34,7 +34,12 @@ def generate(output_dir: Path, font_file: Path, family: str, *, type_a: bool) ->
         )
     measurer = PillowTextMeasurer()
     scene = build_catalog_review_scene()
-    audit = audit_catalog()
+    # The example also runs as "python examples/review_full_sheet.py": repo-root
+    # scripts/ is not importable as a package in that invocation.
+    audit_namespace = run_path(
+        str(Path(__file__).resolve().parents[1] / "scripts" / "audit_symbol_catalog.py")
+    )
+    audit = audit_namespace["audit_catalog"]()
     reported = sorted(
         (row["id"], row["revision"], row["source"]) for row in audit["entries"]
     )
