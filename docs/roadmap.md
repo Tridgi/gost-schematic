@@ -48,6 +48,16 @@
 - Not implemented: circuit simulation, multi-scenario transient proof,
   capacitor voltage rating checks, or wiring autorouting.
 
+## Stage 0.10 — parametric inductors/chokes (experimental)
+- 15 separately versioned JSON family profiles based on ГОСТ 2.723-68.
+- Real semicircle and per-core styled line primitives across all renderers.
+- Air / ferro / ferrite / gapped / magnetodielectric, Cu, trims,
+  taps, sliders, variable modifiers and related choke profiles.
+- Physical contacts START, END and actual TAP/SLIDER pins in same factory.
+- Font-audited type A SVG clean/review gallery and JSON manifest.
+- Still draft: exact KOMPAS/ГОСТ symbol approval, transformer coupling,
+  multi-phase reactors, variometers, goniometers and coaxial choke topology.
+
 ## Stage 1 — approved standard UGO
 - Resistor family, capacitor family, precise stroke/lettering constraints.
 - Reference comparisons from KOMPAS and normative verification.
