@@ -50,7 +50,7 @@ UNIT_DEFINITIONS: dict[Unit, tuple[QuantityKind, Decimal]] = {
 
 def parse_decimal(value: str | int | Decimal) -> Decimal:
     """Accept decimal strings (also Russian comma); reject binary floats."""
-    if isinstance(value, bool) or isinstance(value, float):
+    if isinstance(value, (bool, float)):
         raise TypeError("Use a string, integer or Decimal, not a binary float/boolean")
     if not isinstance(value, (str, int, Decimal)):
         raise TypeError("Unsupported quantity value type")
