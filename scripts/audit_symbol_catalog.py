@@ -13,7 +13,7 @@ from pathlib import Path
 from gost_schematic.catalog.inductors import load_inductor
 from gost_schematic.catalog.loader import load_symbol
 from gost_schematic.catalog.part_loader import load_part
-from gost_schematic.core.diagnostics import Severity
+from gost_schematic.core.diagnostics import Diagnostic, Severity
 from gost_schematic.core.units import format_mm
 from gost_schematic.model.part import PartDefinition
 from gost_schematic.model.symbol import SymbolDefinition
@@ -33,9 +33,15 @@ def _entry(
 ) -> dict[str, object]:
     checks = list(validate_symbol(symbol))
     graphic = {pin.number for pin in symbol.pins}
-    if part is not None and graphic != {pin.number for pin in part.pins}:
-        checks.append(_DiagnosticStub(
-            "PIN_MAPPING_MISMATCH", "error", symbol.identifier
+    if part is not None and (
+        part.symbol_id != symbol.identifier
+        or part.identifier != symbol.identifier
+        or graphic != {pin.number for pin in part.pins}
+    ):
+        checks.append(Diagnostic(
+            "PIN_MAPPING_MISMATCH", Severity.ERROR,
+            f"Physical part and graphic pin map disagree for {symbol.identifier}",
+            symbol.identifier,
         ))
     source_hash = sha256(source.read_bytes()).hexdigest()
     roles = {pin.number: pin for pin in part.pins} if part is not None else {}
@@ -76,15 +82,6 @@ def _entry(
     }
 
 
-class _DiagnosticStub:
-    """Audit-only failure, separate from validated model diagnostics."""
-
-    def __init__(self, code: str, severity: str, subject: str):
-        self.code = code
-        self.severity = Severity(severity)
-        self.subject = subject
-
-
 def audit_catalog() -> dict[str, object]:
     root = Path(str(files("gost_schematic").joinpath("catalog")))
     source_symbols = sorted((root / "symbols").rglob("*.json"))
@@ -94,9 +91,10 @@ def audit_catalog() -> dict[str, object]:
     for source in source_symbols:
         symbol = load_symbol(source)
         part = None
-        if symbol.identifier.startswith("capacitor."):
-            filename = symbol.identifier.removeprefix("capacitor.") + ".json"
-            part = load_part(root / "parts" / "capacitors" / filename)
+        if symbol.identifier.startswith(("capacitor.", "resistor.")):
+            group, filename = symbol.identifier.split(".", maxsplit=1)
+            directory = "capacitors" if group == "capacitor" else "resistors"
+            part = load_part(root / "parts" / directory / f"{filename}.json")
         path = "catalog/" + source.relative_to(root).as_posix()
         entries.append(_entry(symbol, source, path, part))
 
