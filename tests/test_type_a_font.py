@@ -8,6 +8,7 @@ from gost_schematic.standards import type_a_font
 from gost_schematic.standards.type_a_font import (
     TYPE_A_HEIGHTS_UM,
     TypeAParameters,
+    TypeAAngle,
     inspect_type_a_font,
 )
 
@@ -80,3 +81,36 @@ def test_invalid_cyrillic_cap_glyph_is_rejected(monkeypatch, tmp_path):
     path.write_bytes(b"dummy")
     with pytest.raises(ValueError, match="valid Cyrillic"):
         inspect_type_a_font(path)
+
+
+
+def test_inclined_profile_requires_real_italic_face(monkeypatch, tmp_path):
+    class Face:
+        def getname(self):
+            return ("OpenGost Type A", "Italic")
+
+        def getbbox(self, text, anchor):
+            return (0, -360, 400, 0)
+
+    monkeypatch.setattr(type_a_font, "_load_font", lambda path: Face())
+    path = tmp_path / "type-a-italic.ttf"
+    path.write_bytes(b"dummy")
+    inspection = inspect_type_a_font(path, angle=TypeAAngle.INCLINED_75)
+    assert inspection.style.font_style == "italic"
+    with pytest.raises(ValueError, match="actual normal"):
+        inspect_type_a_font(path, angle=TypeAAngle.UPRIGHT)
+
+
+def test_regular_face_never_silently_becomes_75_degree_type_a(monkeypatch, tmp_path):
+    class Face:
+        def getname(self):
+            return ("OpenGost Type A", "Regular")
+
+        def getbbox(self, text, anchor):
+            return (0, -360, 400, 0)
+
+    monkeypatch.setattr(type_a_font, "_load_font", lambda path: Face())
+    path = tmp_path / "regular.ttf"
+    path.write_bytes(b"dummy")
+    with pytest.raises(ValueError, match="actual italic"):
+        inspect_type_a_font(path, angle=TypeAAngle.INCLINED_75)
