@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "profile_id": "eskd-ru-2026-11",
+  "jurisdiction": "RU",
+  "verified_on": "2026-11-12",
+  "status": "active_rules_with_draft_ugo",
+  "active_standards": [
+    "ГОСТ 2.701-2008",
+    "ГОСТ 2.702-2011",
+    "ГОСТ 2.709-89",
+    "ГОСТ 2.710-81",
+    "ГОСТ 2.721-74",
+    "ГОСТ 2.723-68",
+    "ГОСТ 2.728-74",
+    "ГОСТ 2.747-68",
+    "ГОСТ 2.301-68",
+    "ГОСТ 2.303-68",
+    "ГОСТ 2.304-81",
+    "ГОСТ Р 2.104-2023"
+  ],
+  "pending_standards": [
+    {
+      "designation": "ГОСТ Р 2.301-2026",
+      "effective_on": "2027-10-01",
+      "early_application_permitted": true,
+      "source": "https://protect.gost.ru/gost/details/ca4c6e2d-fcde-4d46-b851-b0cbd10a7e53"
+    },
+    {
+      "designation": "ГОСТ Р 2.303-2026",
+      "effective_on": "2027-10-01",
+      "early_application_permitted": true,
+      "source": "https://protect.gost.ru/gost/details/74a6410b-9422-4c9c-b9ee-2798a92f2d6a"
+    },
+    {
+      "designation": "ГОСТ Р 2.304-2026",
+      "effective_on": "2027-10-01",
+      "early_application_permitted": true,
+      "source": "https://protect.gost.ru/gost/details/f744cc7d-56c7-4930-98c0-afeedd135827"
+    },
+    {
+      "designation": "ГОСТ Р 2.105-2026",
+      "effective_on": "2027-10-01",
+      "early_application_permitted": true,
+      "source": "https://protect.gost.ru/gost/details/1f90ca43-d11e-41c8-9906-82f390632b4a"
+    }
+  ],
+  "dimensional_rules": [
+    {
+      "id": "ESKD-2728-R-FIXED-10x4",
+      "document": "ГОСТ 2.728-74",
+      "reference": "п.7, таблица 6, позиция 1",
+      "source": "https://helpeng.ru/public/normdoc/eskd/gost_2.728-74.pdf",
+      "targets": [
+        "resistor.fixed"
+      ],
+      "kind": "rectangular_body",
+      "width_um": 10000,
+      "height_um": 4000,
+      "verification": "checked_against_table_illustration"
+    },
+    {
+      "id": "ESKD-2728-C-PLATES-8-1.5",
+      "document": "ГОСТ 2.728-74",
+      "reference": "п.7, таблица 6, позиция 9",
+      "source": "https://helpeng.ru/public/normdoc/eskd/gost_2.728-74.pdf",
+      "targets": [
+        "capacitor.fixed",
+        "capacitor.polarized"
+      ],
+      "kind": "parallel_plate_body",
+      "plate_length_um": 8000,
+      "plate_spacing_um": 1500,
+      "verification": "checked_against_table_illustration",
+      "caveat": "Generic polarized plates only; not the electrolytic-specific plate variation in position 10."
+    }
+  ],
+  "informational_rules": [
+    {
+      "id": "ESKD-2723-WINDING-COUNT",
+      "document": "ГОСТ 2.723-68",
+      "reference": "таблица 1, примечание 1",
+      "source": "https://helpeng.ru/public/normdoc/eskd/gost_2.723-68.pdf",
+      "meaning": "No single required semicircle count or direction of outer winding leads."
+    },
+    {
+      "id": "ESKD-2702-PIN-SOURCE",
+      "document": "ГОСТ 2.702-2011",
+      "reference": "5.3.21",
+      "source": "https://www.elec.ru/files/2019/03/25/gost_2.702-2011.pdf",
+      "meaning": "Preserve official physical terminal designations; document any conditional assignment."
+    },
+    {
+      "id": "ESKD-2702-REFDES",
+      "document": "ГОСТ 2.702-2011",
+      "reference": "5.3.11",
+      "source": "https://www.elec.ru/files/2019/03/25/gost_2.702-2011.pdf",
+      "meaning": "Reference designators belong above or right of the UGO, with specified exceptions."
+    },
+    {
+      "id": "ESKD-2702-ELEMENT-LIST",
+      "document": "ГОСТ 2.702-2011",
+      "reference": "5.3.18",
+      "source": "https://www.elec.ru/files/2019/03/25/gost_2.702-2011.pdf",
+      "meaning": "Element list and graphical elements are linked through position designators."
+    },
+    {
+      "id": "ESKD-2728-STROKE-THICKNESS",
+      "document": "ГОСТ 2.728-74",
+      "reference": "7",
+      "source": "https://helpeng.ru/public/normdoc/eskd/gost_2.728-74.pdf",
+      "meaning": "Resistor and capacitor UGO stroke thickness follows electrical wire line thickness."
+    }
+  ]
+}
