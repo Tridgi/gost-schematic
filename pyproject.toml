@@ -23,7 +23,7 @@ gost-schematic = "gost_schematic.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-gost_schematic = ["catalog/symbols/**/*.json", "catalog/parts/**/*.json"]
+gost_schematic = ["catalog/symbols/**/*.json", "catalog/parts/**/*.json", "catalog/inductors/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
