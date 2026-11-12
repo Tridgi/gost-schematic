@@ -92,3 +92,35 @@ def test_catalog_audit_does_not_mark_all_coils_dimension_certified():
         e for e in result["entries"]
         if e["dimension_status"] == "not_yet_verifiable"
     ]) == 15
+
+
+
+def test_two_correct_length_capacitor_plates_do_not_pass_when_staggered():
+    symbol = _symbol("capacitors/fixed.json")
+    shapes = list(symbol.graphics)
+    shapes[3] = Line(Point(750, -3000), Point(750, 5000))
+    result = check_verified_dimensions(replace(symbol, graphics=tuple(shapes)))
+    assert "NORMATIVE_DIMENSION_MISMATCH" in {
+        issue.code for issue in result.diagnostics
+    }
+
+
+def test_correct_plate_dimensions_do_not_hide_missing_center_lead():
+    symbol = _symbol("capacitors/fixed.json")
+    shapes = list(symbol.graphics)
+    shapes[1] = Line(Point(750, 1000), Point(8000, 1000))
+    assert "NORMATIVE_DIMENSION_MISMATCH" in {
+        issue.code for issue in check_verified_dimensions(
+            replace(symbol, graphics=tuple(shapes))
+        ).diagnostics
+    }
+
+
+def test_fixed_resistor_cannot_hide_an_oversize_second_body():
+    symbol = _symbol("resistors/fixed.json")
+    big = Rectangle(Box(-6000, -3000, 6000, 3000))
+    assert "NORMATIVE_DIMENSION_MISMATCH" in {
+        issue.code for issue in check_verified_dimensions(
+            replace(symbol, graphics=(big, *symbol.graphics))
+        ).diagnostics
+    }
