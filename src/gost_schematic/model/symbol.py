@@ -29,6 +29,7 @@ class SymbolDefinition:
     status: SymbolStatus = SymbolStatus.DRAFT
     standard_refs: tuple[str, ...] = ()
     annotation_slots: tuple[AnnotationSlot, ...] = ()
+    constant_annotations: tuple[tuple[str, str], ...] = ()
 
     def __post_init__(self) -> None:
         if not self.identifier.strip() or type(self.revision) is not int or self.revision < 1:
@@ -40,6 +41,11 @@ class SymbolDefinition:
         keys = [slot.key for slot in self.annotation_slots]
         if len(keys) != len(set(keys)):
             raise ValueError("Duplicate annotation slot key")
+        literals = [key for key, _ in self.constant_annotations]
+        if len(literals) != len(set(literals)) or any(key not in keys for key in literals):
+            raise ValueError("Constant annotation needs a unique, declared slot key")
+        if any(not text for _, text in self.constant_annotations):
+            raise ValueError("Constant annotation text must not be empty")
         numbers = [pin.number for pin in self.pins]
         positions = [pin.at for pin in self.pins]
         if len(numbers) != len(set(numbers)) or len(positions) != len(set(positions)):
