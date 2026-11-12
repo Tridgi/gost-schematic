@@ -13,7 +13,7 @@ from enum import Enum
 from fractions import Fraction
 from pathlib import Path
 
-from gost_schematic.engines.annotation.metrics import _PIXELS_PER_EM, _load_font
+from gost_schematic.engines.annotation.metrics import _PIXELS_PER_EM, _load_font, font_sha256
 from gost_schematic.model.annotations import TextStyle
 
 TYPE_A_HEIGHTS_UM = frozenset((2500, 3500, 5000, 7000, 10000, 14000, 20000))
@@ -120,6 +120,7 @@ def inspect_type_a_font(
         str(source), family, em_height_um=calibrated_em_um,
         clearance_um=clearance_um,
         font_style=face_style,
+        font_sha256=font_sha256(str(source)),
     )
     return TypeAFontInspection(
         style=style,
