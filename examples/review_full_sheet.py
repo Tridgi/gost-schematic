@@ -10,8 +10,6 @@ import argparse
 import json
 from pathlib import Path
 
-from scripts.audit_symbol_catalog import audit_catalog
-
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer, font_sha256
 from gost_schematic.model.annotations import TextStyle
 from gost_schematic.rendering.review_sheet import (
@@ -23,6 +21,7 @@ from gost_schematic.rendering.review_sheet import (
     review_manifest,
 )
 from gost_schematic.standards.type_a_font import inspect_type_a_font
+from scripts.audit_symbol_catalog import audit_catalog
 
 
 def generate(output_dir: Path, font_file: Path, family: str, *, type_a: bool) -> dict:
