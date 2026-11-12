@@ -10,8 +10,7 @@ from gost_schematic.core.diagnostics import Diagnostic, Severity
 from gost_schematic.core.geometry import (
     Box,
     Point,
-    primitive_bounds,
-    primitive_stroke_width,
+    primitive_stroked_bounds,
 )
 from gost_schematic.core.transforms import Transform
 from gost_schematic.engines.annotation.layout import (
@@ -72,7 +71,7 @@ def _global_box(symbol: SymbolDefinition, instance: ComponentInstance) -> Box:
 
 
 def _graphic_box(symbol: SymbolDefinition, instance: ComponentInstance) -> Box:
-    return instance.transform.box(symbol.bounds).translated(instance.origin)
+    return instance.transform.box(symbol.stroked_bounds).translated(instance.origin)
 
 
 
@@ -91,9 +90,9 @@ def component_graphic_obstacles(
     return tuple(
         BoxObstacle(
             f"{instance.reference}.graphic.{index}",
-            instance.transform.box(primitive_bounds(primitive))
-            .translated(instance.origin)
-            .expanded((primitive_stroke_width(primitive, symbol.line_width_um) + 1) // 2),
+            instance.transform.box(
+                primitive_stroked_bounds(primitive, symbol.line_width_um)
+            ).translated(instance.origin),
             "graphic",
             instance.reference,
         )
@@ -200,9 +199,7 @@ def layout_sheet(
             ))
             continue
         geometry = _graphic_box(symbol, component)
-        graphics.append((component.reference, geometry.expanded(
-            (symbol.line_width_um + 1) // 2
-        )))
+        graphics.append((component.reference, geometry))
         blocked.extend(obstacles_for_component(symbol, component))
         blocked.extend(component_graphic_obstacles(symbol, component))
         corridors.extend(pin_corridors_for_component(symbol, component))
