@@ -25,6 +25,9 @@ connection lines; a future document style enforces this consistency.
 
 - Pins have stable physical numbers, directions and transformed coordinates.
 - Dedicated component body keepouts and port escape corridors remain independent.
+- Every rendered graphic primitive, including the complete connector lead from
+  plate to pin contact, is a text obstacle with stroke-width clearance.
+  This prevents vertical C3 labels crossing their own leads (regression test).
 - Refdes/nominal annotation slots are separate; sheet-wide placement policy
   automatically avoids protected leads and text hitboxes.
 - In `eskd_compact` mode: 100 nF → `0,1мк`, 470 µF → `470мк`.
