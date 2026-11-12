@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "id": "capacitor.fixed",
+  "revision": 1,
+  "status": "draft",
+  "standard_refs": [
+    "ГОСТ 2.728-74, таблица 4 и таблица 6 — размеры пластин требуют визуального утверждения"
+  ],
+  "line_width_mm": 0.3,
+  "body_keepout_mm": [
+    -1.2,
+    -4,
+    1.2,
+    4
+  ],
+  "geometry": {
+    "rectangles": [],
+    "lines": [
+      [
+        [
+          -8,
+          0
+        ],
+        [
+          -0.75,
+          0
+        ]
+      ],
+      [
+        [
+          0.75,
+          0
+        ],
+        [
+          8,
+          0
+        ]
+      ],
+      [
+        [
+          -0.75,
+          -4
+        ],
+        [
+          -0.75,
+          4
+        ]
+      ],
+      [
+        [
+          0.75,
+          -4
+        ],
+        [
+          0.75,
+          4
+        ]
+      ]
+    ],
+    "circles": []
+  },
+  "pins": [
+    {
+      "number": "1",
+      "at_mm": [
+        -8,
+        0
+      ],
+      "side": "left",
+      "label": ""
+    },
+    {
+      "number": "2",
+      "at_mm": [
+        8,
+        0
+      ],
+      "side": "right",
+      "label": ""
+    }
+  ],
+  "annotations": [
+    {
+      "key": "refdes",
+      "role": "refdes",
+      "required": true,
+      "candidates": [
+        {
+          "at_mm": [
+            0,
+            -7
+          ],
+          "horizontal": "center",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            11,
+            -7
+          ],
+          "horizontal": "left",
+          "vertical": "bottom"
+        }
+      ]
+    },
+    {
+      "key": "value",
+      "role": "value",
+      "required": false,
+      "candidates": [
+        {
+          "at_mm": [
+            0,
+            7
+          ],
+          "horizontal": "center",
+          "vertical": "top"
+        },
+        {
+          "at_mm": [
+            11,
+            7
+          ],
+          "horizontal": "left",
+          "vertical": "top"
+        }
+      ]
+    }
+  ]
+}
