@@ -4,8 +4,8 @@ These checks catch missing traceability, source-mixups and silently dropped
 profiles; they do not assert that the SVG geometry complies with GOST.
 """
 
-from pathlib import Path
 import re
+from pathlib import Path
 
 import pytest
 
