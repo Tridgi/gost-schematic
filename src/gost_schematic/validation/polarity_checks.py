@@ -6,10 +6,10 @@ ONE declared operating point. For alternating, transient or unspecified
 conditions, the result is NOT a lifetime safety guarantee.
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import Enum
-from collections.abc import Mapping
 
 from gost_schematic.core.diagnostics import Diagnostic, Severity
 from gost_schematic.model.circuit import Circuit, PinRef
