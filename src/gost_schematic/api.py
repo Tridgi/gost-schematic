@@ -39,7 +39,7 @@ from gost_schematic.model.nominal_display import (
     NominalDisplaySettings,
 )
 from gost_schematic.model.part import PartDefinition, VoltageOrientationRule
-from gost_schematic.model.pins import PhysicalPin, TerminalPolarity
+from gost_schematic.model.pins import PhysicalPin, TerminalFunction, TerminalPolarity
 from gost_schematic.model.potentials import NetPotential, PotentialScenario
 from gost_schematic.model.quantities import Quantity, QuantityKind, Unit
 from gost_schematic.rendering.annotation_svg import render_annotation_svg
@@ -89,6 +89,7 @@ __all__ = [
     "SchematicDocument",
     "SheetLabelProfile",
     "SheetLayout",
+    "TerminalFunction",
     "TerminalPolarity",
     "TextStyle",
     "TypeAAngle",
