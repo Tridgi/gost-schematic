@@ -193,7 +193,11 @@ def bind_component_annotations(
     policy = (configuration or NominalDisplayConfiguration()).for_reference(
         component.reference
     )
-    bindings = dict(literal_values or {})
+    bindings = dict(symbol.constant_annotations)
+    incoming = literal_values or {}
+    if set(bindings).intersection(incoming):
+        raise ValueError("Cannot overwrite a constant schematic annotation")
+    bindings.update(incoming)
     diagnostics: tuple[Diagnostic, ...] = ()
     if component.nominal is not None:
         if "value" in bindings:
