@@ -109,7 +109,15 @@ def sheet_label_requests(
 
         output.append(replace(
             request,
-            slot=replace(request.slot, candidates=candidates, reserved_region=None),
+            slot=replace(
+                request.slot,
+                candidates=candidates,
+                reserved_region=(
+                    request.transform.box(request.slot.reserved_region).translated(request.origin)
+                    if request.slot.reserved_region is not None
+                    else None
+                ),
+            ),
             origin=Point(0, 0),
             transform=Transform(),
         ))
