@@ -80,3 +80,38 @@ def test_duplicate_wire_ids_do_not_hide_spatial_checks():
     first = _wire("W1", 0, 0, 10000, 0)
     second = _wire("W1", 0, 1000, 10000, 1000)
     assert "ESKD_PARALLEL_WIRE_CLEARANCE" in _codes((first, second))
+
+
+def test_exact_same_net_collinear_fragments_are_one_printed_trace():
+    from dataclasses import replace
+
+    a = replace(_wire("a", 0, 0, 10000, 0), net_name="SIGNAL")
+    b = replace(_wire("b", 2000, 0, 8000, 0), net_name="SIGNAL")
+    issues = validate_sheet_wire_rules((a, b))
+    assert {item.code for item in issues} == {"ESKD_COLLINEAR_WIRE_REDUNDANT"}
+    assert issues[0].severity == Severity.WARNING
+
+
+def test_overlapping_collinear_wires_of_different_nets_are_hard_error():
+    from dataclasses import replace
+
+    a = replace(_wire("a", 0, 0, 10000, 0), net_name="VCC")
+    b = replace(_wire("b", 2000, 0, 8000, 0), net_name="GND")
+    issues = validate_sheet_wire_rules((a, b))
+    assert {item.code for item in issues} == {"ESKD_COLLINEAR_WIRE_AMBIGUOUS"}
+    assert issues[0].severity == Severity.ERROR
+
+
+def test_identical_unattributed_segments_cannot_be_claimed_as_compliant():
+    a = _wire("a", 0, 0, 10000, 0)
+    b = _wire("b", 0, 0, 10000, 0)
+    issues = validate_sheet_wire_rules((a, b))
+    assert {item.code for item in issues} == {"ESKD_COLLINEAR_WIRE_AMBIGUOUS"}
+
+
+def test_nearby_distinct_strokes_remain_clearance_error_even_if_same_net():
+    from dataclasses import replace
+
+    a = replace(_wire("a", 0, 0, 10000, 0), net_name="SIGNAL")
+    b = replace(_wire("b", 0, 3000, 10000, 3000), net_name="SIGNAL")
+    assert "ESKD_PARALLEL_WIRE_CLEARANCE" in _codes((a, b))
