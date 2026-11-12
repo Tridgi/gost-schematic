@@ -41,28 +41,28 @@ def _full(quantity: Quantity, settings: NominalDisplaySettings) -> str:
             (Decimal("1e9"), "ГОм"),
             (Decimal("1e6"), "МОм"),
             (Decimal("1e3"), "кОм"),
-            (Decimal("0"), "Ом"),
+            (Decimal(0), "Ом"),
         )
     elif quantity.kind == QuantityKind.CAPACITANCE:
         ranges = (
-            (Decimal("1"), "Ф"),
+            (Decimal(1), "Ф"),
             (Decimal("1e-3"), "мФ"),
             (Decimal("1e-6"), "мкФ"),
             (Decimal("1e-9"), "нФ"),
-            (Decimal("0"), "пФ"),
+            (Decimal(0), "пФ"),
         )
     else:
         ranges = (
-            (Decimal("1"), "Гн"),
+            (Decimal(1), "Гн"),
             (Decimal("1e-3"), "мГн"),
             (Decimal("1e-6"), "мкГн"),
-            (Decimal("0"), "нГн"),
+            (Decimal(0), "нГн"),
         )
     factors = {
         "ГОм": Decimal("1e9"), "МОм": Decimal("1e6"), "кОм": Decimal("1e3"),
-        "Ом": Decimal("1"), "Ф": Decimal("1"), "мФ": Decimal("1e-3"),
+        "Ом": Decimal(1), "Ф": Decimal(1), "мФ": Decimal("1e-3"),
         "мкФ": Decimal("1e-6"), "нФ": Decimal("1e-9"), "пФ": Decimal("1e-12"),
-        "Гн": Decimal("1"), "мГн": Decimal("1e-3"),
+        "Гн": Decimal(1), "мГн": Decimal("1e-3"),
         "мкГн": Decimal("1e-6"), "нГн": Decimal("1e-9"),
     }
     for threshold, symbol in ranges:
@@ -75,7 +75,7 @@ def _compact(quantity: Quantity, settings: NominalDisplaySettings) -> str | None
     value = quantity.si_value
     separator = settings.decimal_separator
     if quantity.kind == QuantityKind.RESISTANCE:
-        if value <= Decimal("999"):
+        if value <= Decimal(999):
             return _decimal(value, separator)
         if Decimal("1e3") <= value <= Decimal("999e3"):
             return f"{_decimal(value / Decimal('1e3'), separator)}к"
