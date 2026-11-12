@@ -7,6 +7,7 @@ from gost_schematic.core.geometry import (
     Primitive,
     enclosing_box,
     primitive_bounds,
+    primitive_stroked_bounds,
 )
 from gost_schematic.model.annotations import AnnotationSlot
 from gost_schematic.model.pins import GraphicPin
@@ -56,6 +57,23 @@ class SymbolDefinition:
     @property
     def bounds(self) -> Box:
         boxes = tuple(primitive_bounds(shape) for shape in self.graphics)
+        boxes += (self.body_keepout,)
+        for pin in self.pins:
+            p = pin.at
+            boxes += (Box(p.x, p.y, p.x + 1, p.y + 1),)
+        return enclosing_box(boxes)
+
+    @property
+    def stroked_bounds(self) -> Box:
+        """Complete visual extent, including thick ferrite or custom strokes.
+
+        Legacy `bounds` remains the un-stroked layout geometry for backward
+        compatibility; consumers checking visual collisions use this property.
+        """
+        boxes = tuple(
+            primitive_stroked_bounds(item, self.line_width_um)
+            for item in self.graphics
+        )
         boxes += (self.body_keepout,)
         for pin in self.pins:
             p = pin.at
