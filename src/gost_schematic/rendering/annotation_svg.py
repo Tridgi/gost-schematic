@@ -116,6 +116,7 @@ def render_annotation_svg(
             "x": format_mm(placement.baseline.x),
             "y": format_mm(placement.baseline.y),
             "font-family": placement.style.font_family,
+            "font-style": placement.style.font_style,
             "font-size": format_mm(placement.style.em_height_um),
             "fill": "#000000",
             "stroke": "none",
