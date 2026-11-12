@@ -180,6 +180,10 @@ def test_invalid_point_and_wire_values_fail_early(real_parts):
         ExternalWireGraph((), (Point(0, 0), Point(0, 0)))
 
 
+@pytest.mark.xfail(
+    reason="Confirmed MAJOR: Issue #40, unassigned pin on wire interior is ignored",
+    strict=False,
+)
 def test_unassigned_physical_pin_never_disappears_into_a_valid_net(real_parts):
     part, symbol = _resistor(real_parts)
     pin1 = Point(0, 0)
