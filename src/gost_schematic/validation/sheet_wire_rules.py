@@ -41,7 +41,6 @@ def validate_sheet_wire_rules(
     rules = (requirements if requirements is not None else load_requirements())["layout_rules"]
     wires = tuple(wires)
     issues: list[Diagnostic] = []
-    orientations = {wire.identifier: _orientation(wire.line) for wire in wires}
 
     for wire in wires:
         if not (rules["connection_stroke_min_um"]
@@ -51,7 +50,7 @@ def validate_sheet_wire_rules(
                 f"{wire.identifier}: stroke must be 0.2–1.0 mm (ГОСТ 2.701-2008 §5.5.1)",
                 wire.identifier,
             ))
-        if orientations[wire.identifier] == "diagonal":
+        if _orientation(wire.line) == "diagonal":
             issues.append(Diagnostic(
                 "ESKD_WIRE_DIAGONAL_REVIEW", Severity.WARNING,
                 f"{wire.identifier}: diagonal requires justification under §5.5.2",
