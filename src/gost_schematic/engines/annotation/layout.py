@@ -10,14 +10,17 @@ from gost_schematic.model.annotations import (
     Anchor,
     AnnotationPlacement,
     AnnotationRequest,
+    AnnotationRole,
     HorizontalAlign,
     MeasuredText,
     TextStyle,
     VerticalAlign,
 )
 from gost_schematic.model.circuit import ComponentInstance
+from gost_schematic.model.nominal_display import NominalDisplayConfiguration
 from gost_schematic.model.obstacles import BoxObstacle, WireObstacle, wire_intersects_box
 from gost_schematic.model.symbol import SymbolDefinition
+from gost_schematic.standards.nominals import format_nominal
 
 from .metrics import TextMeasurer
 
@@ -146,11 +149,15 @@ def requests_for_component(
     component: ComponentInstance,
     style: TextStyle,
     values: Mapping[str, str] | None = None,
+    *,
+    hidden_roles: frozenset[AnnotationRole] = frozenset(),
 ) -> tuple[AnnotationRequest, ...]:
     """Bind symbol-level slots to instance-specific text without mutating definitions."""
     bindings = values or {}
     requests: list[AnnotationRequest] = []
     for slot in symbol.annotation_slots:
+        if slot.role in hidden_roles:
+            continue
         value = component.reference if slot.key == "refdes" else bindings.get(slot.key, "")
         if value:
             requests.append(AnnotationRequest(
@@ -160,6 +167,53 @@ def requests_for_component(
         elif slot.required:
             raise ValueError(f"Missing mandatory annotation {component.reference}.{slot.key}")
     return tuple(requests)
+
+
+
+@dataclass(frozen=True, slots=True)
+class BoundComponentAnnotations:
+    """Fresh requests after presentation policy, with normative diagnostics."""
+
+    requests: tuple[AnnotationRequest, ...]
+    diagnostics: tuple[Diagnostic, ...] = ()
+
+
+def bind_component_annotations(
+    symbol: SymbolDefinition,
+    component: ComponentInstance,
+    style: TextStyle,
+    configuration: NominalDisplayConfiguration | None = None,
+    literal_values: Mapping[str, str] | None = None,
+) -> BoundComponentAnnotations:
+    """Bind instance nominal to its label and rebuild requests when settings change.
+
+    Legacy literal strings may be supplied for unknown values; they bypass GOST
+    formatting and therefore must not be mistaken for validated quantities.
+    """
+    policy = (configuration or NominalDisplayConfiguration()).for_reference(
+        component.reference
+    )
+    bindings = dict(literal_values or {})
+    diagnostics: tuple[Diagnostic, ...] = ()
+    if component.nominal is not None:
+        if "value" in bindings:
+            raise ValueError(
+                "Cannot supply both a typed nominal and a literal value label"
+            )
+        nominal = format_nominal(component.nominal, policy)
+        diagnostics = nominal.diagnostics
+        if nominal.text is not None:
+            bindings["value"] = nominal.text
+    hidden = (
+        frozenset({AnnotationRole.VALUE})
+        if not policy.show_nominal else frozenset()
+    )
+    return BoundComponentAnnotations(
+        requests_for_component(
+            symbol, component, style, bindings, hidden_roles=hidden,
+        ),
+        diagnostics,
+    )
 
 
 def obstacles_for_component(
