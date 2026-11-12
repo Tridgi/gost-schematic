@@ -88,7 +88,9 @@ one coil covers all cases.
 - `SymbolDefinition`: distinct keepout, graphics, pin identity and font-measured
   literal label slots (for metal marking `Cu`).
 - `PartDefinition`: physical START, END, TAP1/TAP2 or SLIDER1/SLIDER2
-  contacts; all passive, nonpolar, with SI inductance values.
+  contacts with an explicit, typed `TerminalFunction` independent of
+  `ElectricalType.PASSIVE`, polarity and the drawn string label; all
+  nonpolar with SI inductance values.
 - `validation/circuit_checks.py`: checks mapping to actual netlist pins.
 - `engines/sheet_layout.py`: protects arc bounds AND individually styled
   core strokes; respects text clearances and pin escape corridors.
