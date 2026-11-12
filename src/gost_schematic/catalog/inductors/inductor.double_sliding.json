@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "id": "inductor.double_sliding",
+  "revision": 1,
+  "turns": 4,
+  "radius_mm": "2",
+  "lead_mm": "4",
+  "line_width_mm": "0.3",
+  "slider_turns": [
+    0,
+    3
+  ]
+}
