@@ -56,8 +56,9 @@ then `place_annotations(...)`, and after each mode/value change regenerate
 `annotation_obstacles(new_placements)`. Never reuse the old hitbox.
 
 The legacy `requests_for_component` string API is preserved for other
-annotations. Supplying both a typed nominal and the raw `value` string is
-rejected because it would break data provenance.
+annotations. Raw value labels produce `NOMINAL_LITERAL_UNVERIFIED` warnings;
+strict compact mode rejects them. Supplying both a typed nominal and the raw
+`value` string is rejected because it would break data provenance.
 
 ## CLI preview (Codespaces)
 
