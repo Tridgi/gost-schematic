@@ -30,8 +30,10 @@ A deterministic, standards-aware foundation for generating electrical schematic 
 - Typed pin-escape corridors with physical pin ownership and outward-only
   conductor access, independently checked from text obstacles.
 
-**Not implemented yet:** dynamic voltage simulation / capacitor rating verification,
- full automatic circuit analysis, automatic component placement and wiring routes, complete ERC, formal glyph-by-glyph ГОСТ font certification, PDF export, an approved ГОСТ symbol collection, BOM and document composition. These are planned stages, not current features.
+**Not implemented yet:** dynamic voltage simulation, capacitor voltage-rating checks,
+automatic component placement and wire routing, comprehensive ERC, formally certified
+ГОСТ font outlines, PDF export, an approved ГОСТ symbol catalog, BOM and document
+composition. These are planned stages, not current features.
 
 ## Development
 
@@ -97,11 +99,6 @@ See [Annotation layout](docs/architecture/annotations.md),
 5. A symbol may be marked approved only by a separate, explicit review process, accompanied by normative references and regression fixtures.
 6. The engine must fail visibly when a constraint cannot be satisfied; never silently distort UGO geometry.
 
-## License
-
-MIT. The repository does not redistribute proprietary CAD libraries, standards texts, or fonts.
-
-
 ## Physical polarity ERC (experimental)
 
 The separate physical part catalog assigns the positive and negative
@@ -120,3 +117,7 @@ Net names such as `GND` or `+12V` are never guessed to be voltages.
 
 See [Polarity ERC](docs/architecture/polarity-erc.md) and
 [ADR-0007](docs/decisions/0007-physical-pin-polarity.md).
+
+## License
+
+MIT. The repository does not redistribute proprietary CAD libraries, standards texts, or fonts.
