@@ -9,6 +9,8 @@ A deterministic, standards-aware foundation for generating electrical schematic 
 - Immutable schematic domain models (part definitions, graphic symbol definitions, instances, nets).
 - Exact integer micrometre geometry, mm only at data/API boundaries.
 - Typed graphical pins with stable physical pin numbers.
+- Physical terminal polarity stored on part pins (not graphical +/- labels),
+  with conservative scenario-based polarity ERC and explicit unknown results.
 - Exact SI Decimal nominals, independent of label formatting and BOM source values.
 - Symbol geometry transformations (right-angle rotation and mirroring).
 - Independent validation and diagnostics.
@@ -28,7 +30,8 @@ A deterministic, standards-aware foundation for generating electrical schematic 
 - Typed pin-escape corridors with physical pin ownership and outward-only
   conductor access, independently checked from text obstacles.
 
-**Not implemented yet:** automatic component placement and wiring routes, complete ERC, formal glyph-by-glyph ГОСТ font certification, PDF export, an approved ГОСТ symbol collection, BOM and document composition. These are planned stages, not current features.
+**Not implemented yet:** dynamic voltage simulation / capacitor rating verification,
+ full automatic circuit analysis, automatic component placement and wiring routes, complete ERC, formal glyph-by-glyph ГОСТ font certification, PDF export, an approved ГОСТ symbol collection, BOM and document composition. These are planned stages, not current features.
 
 ## Development
 
@@ -97,3 +100,23 @@ See [Annotation layout](docs/architecture/annotations.md),
 ## License
 
 MIT. The repository does not redistribute proprietary CAD libraries, standards texts, or fonts.
+
+
+## Physical polarity ERC (experimental)
+
+The separate physical part catalog assigns the positive and negative
+terminals of `capacitor.polarized` to **physical pins 1 and 2**.
+These identities remain constant when the UGO is rotated or mirrored.
+
+Explicit, same-reference net voltages may be checked at one operating point:
+
+```bash
+python examples/review_polarity_erc.py --output output/polarity-erc-review.json
+```
+
+Output distinguishes forward differential voltage, reversed polarity
+(ERROR), equal-terminal voltage (INFO), and missing evidence (WARNING).
+Net names such as `GND` or `+12V` are never guessed to be voltages.
+
+See [Polarity ERC](docs/architecture/polarity-erc.md) and
+[ADR-0007](docs/decisions/0007-physical-pin-polarity.md).
