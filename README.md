@@ -9,6 +9,7 @@ A deterministic, standards-aware foundation for generating electrical schematic 
 - Immutable schematic domain models (part definitions, graphic symbol definitions, instances, nets).
 - Exact integer micrometre geometry, mm only at data/API boundaries.
 - Typed graphical pins with stable physical pin numbers.
+- Exact SI Decimal nominals, independent of label formatting and BOM source values.
 - Symbol geometry transformations (right-angle rotation and mirroring).
 - Independent validation and diagnostics.
 - Versioned, human-reviewable JSON symbol catalog.
@@ -17,6 +18,8 @@ A deterministic, standards-aware foundation for generating electrical schematic 
 - Exact font measurement from an explicitly supplied TTF/OTF resource using FreeType.
 - Candidate placement, obstacle and wire collision validation, pin-escape protection.
 - Clean and annotated SVG inspection with independent diagnostic overlays.
+- Optional ГОСТ 2.702-2011 §5.3.20 compact labels (`2,3к`, `0,1мк`),
+  full SI units and per-component visibility overrides.
 - Typed pin-escape corridors with physical pin ownership and outward-only
   conductor access, independently checked from text obstacles.
 
@@ -41,10 +44,13 @@ find an installed font with `fc-match` and use:
 FONT_PATH="$(fc-match -f '%{file}' 'DejaVu Sans')"
 gost-schematic render-annotated-symbol \
   src/gost_schematic/catalog/symbols/resistors/fixed.json \
-  --ref R1 --value "10 kΩ" \
+  --ref R1 --nominal 2300 --unit ohm --nominal-mode eskd_compact \
   --font-file "$FONT_PATH" --font-family "DejaVu Sans" \
   --review-overlay --show-pin-connections --output output/resistor-annotations-review.svg
 ```
+
+Nominal display (including strict fallbacks for undefined ГОСТ ranges) is
+specified in [Nominal display](docs/architecture/nominal-display.md).
 
 See [Annotation layout](docs/architecture/annotations.md),
 [Architecture](docs/architecture/README.md), [Review process](docs/symbol_approval/README.md), and [Roadmap](docs/roadmap.md).

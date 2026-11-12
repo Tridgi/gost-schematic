@@ -33,6 +33,17 @@ def validate_circuit(
                 "UNKNOWN_SYMBOL", Severity.ERROR,
                 f"Unknown symbol {part.symbol_id}", instance.reference))
             continue
+        if (
+            instance.nominal is not None
+            and part.nominal_kind is not None
+            and instance.nominal.kind != part.nominal_kind
+        ):
+            issues.append(Diagnostic(
+                "NOMINAL_KIND_MISMATCH", Severity.ERROR,
+                f"{instance.reference} has {instance.nominal.kind.value}, "
+                f"but part {part.identifier} requires {part.nominal_kind.value}",
+                instance.reference,
+            ))
         physical_numbers = {pin.number for pin in part.pins}
         graphic_numbers = {pin.number for pin in symbol.pins}
         if physical_numbers != graphic_numbers:

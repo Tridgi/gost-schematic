@@ -8,16 +8,22 @@ from gost_schematic.core.diagnostics import Severity
 from gost_schematic.core.geometry import SIDE_VECTORS, Line, Point
 from gost_schematic.core.units import mm
 from gost_schematic.engines.annotation.layout import (
+    bind_component_annotations,
     obstacles_for_component,
     place_annotations,
-    requests_for_component,
 )
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.engines.ports import pin_corridors_for_component
 from gost_schematic.engines.routing.clearance import validate_wire_clearance
 from gost_schematic.model.annotations import TextStyle
 from gost_schematic.model.circuit import ComponentInstance
+from gost_schematic.model.nominal_display import (
+    NominalDisplayConfiguration,
+    NominalDisplayMode,
+    NominalDisplaySettings,
+)
 from gost_schematic.model.obstacles import WireObstacle
+from gost_schematic.model.quantities import Quantity, Unit
 from gost_schematic.rendering.annotation_svg import render_annotation_svg
 from gost_schematic.rendering.svg import render_symbol_svg
 from gost_schematic.validation.annotation_checks import annotation_obstacles
@@ -38,7 +44,16 @@ def main(argv: list[str] | None = None) -> int:
     annotated.add_argument("symbol", type=Path)
     annotated.add_argument("--output", type=Path, required=True)
     annotated.add_argument("--ref", default="R1")
-    annotated.add_argument("--value", default="10 kΩ")
+    annotated.add_argument("--value", default=None, help="Legacy literal text, not normalized")
+    annotated.add_argument("--nominal", default=None, help="Physical quantity, exact decimal")
+    annotated.add_argument("--unit", choices=[unit.value for unit in Unit])
+    annotated.add_argument(
+        "--nominal-mode",
+        choices=[mode.value for mode in NominalDisplayMode],
+        default=NominalDisplayMode.ESKD_COMPACT.value,
+    )
+    annotated.add_argument("--hide-nominal", action="store_true")
+    annotated.add_argument("--strict-compact", action="store_true")
     annotated.add_argument("--font-file", type=Path, required=True)
     annotated.add_argument("--font-family", default="DejaVu Sans")
     annotated.add_argument("--size-mm", default="3.5")
@@ -69,12 +84,28 @@ def main(argv: list[str] | None = None) -> int:
                 em_height_um=mm(args.size_mm),
                 clearance_um=mm(args.clearance_mm),
             )
-            instance = ComponentInstance(args.ref, "draft.part")
-            requests = requests_for_component(
-                symbol, instance, style, {"value": args.value},
+            if args.value is not None and args.nominal is not None:
+                raise ValueError("--value and --nominal cannot be used together")
+            if args.nominal is not None and args.unit is None:
+                raise ValueError("--nominal requires --unit")
+            nominal = (
+                Quantity.from_unit(args.nominal, args.unit)
+                if args.nominal is not None else None
             )
+            instance = ComponentInstance(args.ref, "draft.part", nominal=nominal)
+            config = NominalDisplayConfiguration(default=NominalDisplaySettings(
+                mode=NominalDisplayMode(args.nominal_mode),
+                show_nominal=not args.hide_nominal,
+                strict_compact=args.strict_compact,
+            ))
+            bound = bind_component_annotations(
+                symbol, instance, style, config,
+                {"value": args.value} if args.value is not None else None,
+            )
+            for issue in bound.diagnostics:
+                print(f"{issue.severity.value}: {issue.code}: {issue.message}")
             result = place_annotations(
-                requests, PillowTextMeasurer(),
+                bound.requests, PillowTextMeasurer(),
                 boxes=obstacles_for_component(symbol, instance),
             )
         except (OSError, ValueError, RuntimeError) as error:
