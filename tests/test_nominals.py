@@ -106,7 +106,7 @@ def test_hidden_nominal_not_rendered_or_warned():
 def test_quantity_is_exact_and_serializes_without_binary_float():
     quantity = Quantity.from_unit("2,3", Unit.KOHM)
     assert quantity.kind == QuantityKind.RESISTANCE
-    assert quantity.si_value == Decimal("2300")
+    assert quantity.si_value == Decimal(2300)
     assert Quantity.from_record(quantity.to_record()) == quantity
     assert quantity.to_record()["si_value"] == "2300"
     nano = Quantity.from_unit("0.1", Unit.NANOFARAD)
