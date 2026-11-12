@@ -109,3 +109,38 @@ def test_part_catalog_rejects_unsupported_polarity_value():
                  "polarity": "anode"}
             ],
         })
+
+
+
+def test_optional_typed_winding_function_is_separate_from_polarity():
+    from gost_schematic.model.pins import TerminalFunction
+
+    part = parse_part({
+        "schema_version": 1,
+        "id": "inductor.fixture",
+        "symbol_id": "inductor.fixture",
+        "reference_prefix": "L",
+        "pins": [
+            {
+                "number": "1", "name": "START",
+                "electrical_type": "passive", "function": "winding_start",
+            },
+            {
+                "number": "2", "name": "END",
+                "electrical_type": "passive", "function": "winding_end",
+            },
+        ],
+    })
+    assert part.pins[0].function == TerminalFunction.WINDING_START
+    assert part.pins[1].function == TerminalFunction.WINDING_END
+    assert all(pin.polarity == TerminalPolarity.NONE for pin in part.pins)
+
+    with pytest.raises(CatalogError, match="Invalid physical part"):
+        parse_part({
+            "schema_version": 1, "id": "bad", "symbol_id": "bad",
+            "reference_prefix": "L",
+            "pins": [{
+                "number": "1", "name": "TAP", "electrical_type": "passive",
+                "function": "unknown_function",
+            }],
+        })
