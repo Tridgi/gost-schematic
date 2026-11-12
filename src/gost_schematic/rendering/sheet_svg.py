@@ -148,6 +148,8 @@ def render_sheet_svg(
             "stroke": "none",
         })
         text.text = label.text
+        if label.style.font_sha256 is not None:
+            text.set("data-font-sha256", label.style.font_sha256)
 
     if review_overlay:
         debug = ET.SubElement(root, "g", {
