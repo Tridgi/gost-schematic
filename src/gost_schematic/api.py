@@ -1,5 +1,14 @@
 """Small public facade for the experimental model and annotation subsystem."""
 
+from gost_schematic.catalog.inductors import (
+    AdjustmentKind,
+    CoreKind,
+    InductorDefinition,
+    InductorSpec,
+    build_inductor,
+    load_inductor,
+    parse_inductor_spec,
+)
 from gost_schematic.catalog.loader import load_symbol
 from gost_schematic.catalog.part_loader import load_part, parse_part
 from gost_schematic.engines.annotation.layout import (
@@ -57,8 +66,12 @@ from gost_schematic.validation.polarity_checks import (
 from gost_schematic.validation.symbol_checks import validate_symbol
 
 __all__ = [
+    "AdjustmentKind",
     "ComponentNominalOverride",
+    "CoreKind",
     "FormattedNominal",
+    "InductorDefinition",
+    "InductorSpec",
     "NetPotential",
     "NominalDisplayConfiguration",
     "NominalDisplayMode",
@@ -86,13 +99,16 @@ __all__ = [
     "annotation_obstacles",
     "assess_polarity",
     "bind_component_annotations",
+    "build_inductor",
     "component_graphic_obstacles",
     "format_nominal",
     "inspect_type_a_font",
     "layout_sheet",
+    "load_inductor",
     "load_part",
     "load_symbol",
     "obstacles_for_component",
+    "parse_inductor_spec",
     "parse_part",
     "pin_corridors_for_component",
     "place_annotations",
