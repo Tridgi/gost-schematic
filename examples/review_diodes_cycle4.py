@@ -59,7 +59,7 @@ def _tag_svg(svg: str, *, identifier: str, view: str) -> str:
 
 def generate(output_dir: Path) -> dict[str, object]:
     output_dir.mkdir(parents=True, exist_ok=True)
-    entries = dict((identifier, _entry(identifier)) for identifier in TYPES)
+    entries = {identifier: _entry(identifier) for identifier in TYPES}
     manifest: dict[str, object] = {
         "schema_version": 1,
         "issue": 32,
