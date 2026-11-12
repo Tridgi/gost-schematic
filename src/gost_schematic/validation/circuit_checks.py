@@ -3,8 +3,11 @@ from collections.abc import Mapping
 
 from gost_schematic.core.diagnostics import Diagnostic, Severity
 from gost_schematic.model.circuit import Circuit, PinRef
-from gost_schematic.model.part import PartDefinition
+from gost_schematic.model.part import PartDefinition, VoltageOrientationRule
+from gost_schematic.model.pins import TerminalPolarity
+from gost_schematic.model.potentials import PotentialScenario
 from gost_schematic.model.symbol import SymbolDefinition
+from gost_schematic.validation.polarity_checks import assess_polarity, polarity_diagnostics
 from gost_schematic.validation.symbol_checks import validate_symbol
 
 
@@ -12,6 +15,8 @@ def validate_circuit(
     circuit: Circuit,
     parts: Mapping[str, PartDefinition],
     symbols: Mapping[str, SymbolDefinition],
+    *,
+    scenario: PotentialScenario | None = None,
 ) -> tuple[Diagnostic, ...]:
     issues: list[Diagnostic] = []
     instances = {}
@@ -51,6 +56,24 @@ def validate_circuit(
                 "PIN_MAPPING_MISMATCH", Severity.ERROR,
                 f"Graphic pins differ from physical pins of {instance.part_id}",
                 instance.reference))
+        if part.voltage_orientation_rule != VoltageOrientationRule.NONE:
+            graphic_by_number = {pin.number: pin for pin in symbol.pins}
+            for physical_pin in part.pins:
+                symbol_pin = graphic_by_number.get(physical_pin.number)
+                if symbol_pin is None or symbol_pin.label not in ("+", "-"):
+                    continue
+                expected = (
+                    "+" if physical_pin.polarity == TerminalPolarity.POSITIVE else "-"
+                    if physical_pin.polarity == TerminalPolarity.NEGATIVE else None
+                )
+                if symbol_pin.label != expected:
+                    issues.append(Diagnostic(
+                        "GRAPHIC_POLARITY_MISMATCH", Severity.ERROR,
+                        f"{instance.reference}.{physical_pin.number}: graphic marker "
+                        f"{symbol_pin.label!r} contradicts physical polarity "
+                        f"{physical_pin.polarity.value}",
+                        instance.reference,
+                    ))
         issues.extend(validate_symbol(symbol))
 
     connected: dict[PinRef, str] = {}
@@ -85,4 +108,5 @@ def validate_circuit(
                     "MULTIPLE_NET_OWNERSHIP", Severity.ERROR,
                     f"{ref.reference}.{ref.number} belongs to multiple nets", net.name))
             connected[ref] = net.name
+    issues.extend(polarity_diagnostics(assess_polarity(circuit, parts, scenario=scenario)))
     return tuple(issues)

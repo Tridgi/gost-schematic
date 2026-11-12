@@ -37,6 +37,17 @@
 - Block annotation collisions with **all drawn UGO strokes**, including terminal leads.
 - Still pending: user approval and formal glyph/width/slant validation.
 
+## Stage 0.9 — physical terminal polarity and conservative ERC
+- Immutable, typed physical terminal polarity, separate from graphic labels.
+- Versioned part JSON for fixed and polarized capacitors.
+- Opt-in voltage orientation rule, not applied to diodes implicitly.
+- Static operating-point checks with signed Decimal voltages and explicit
+  common references; reversed=error, unknown=warning, zero=informational.
+- Test rotation/mirror invariance and mismatched +/- labels.
+- CI publishes a reviewable JSON with forward/reversed/unknown examples.
+- Not implemented: circuit simulation, multi-scenario transient proof,
+  capacitor voltage rating checks, or wiring autorouting.
+
 ## Stage 1 — approved standard UGO
 - Resistor family, capacitor family, precise stroke/lettering constraints.
 - Reference comparisons from KOMPAS and normative verification.

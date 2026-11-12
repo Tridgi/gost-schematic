@@ -16,15 +16,30 @@ class ElectricalType(str, Enum):
     UNSPECIFIED = "unspecified"
 
 
+class TerminalPolarity(str, Enum):
+    """Physical terminal meaning, separate from the schematic pin's visual label."""
+
+    NONE = "none"
+    POSITIVE = "positive"
+    NEGATIVE = "negative"
+
+
 @dataclass(frozen=True, slots=True)
 class PhysicalPin:
     number: str
     name: str
     electrical_type: ElectricalType
+    polarity: TerminalPolarity = TerminalPolarity.NONE
 
     def __post_init__(self) -> None:
-        if not self.number.strip():
+        if not isinstance(self.number, str) or not self.number.strip():
             raise ValueError("Physical pin number must be non-empty")
+        if not isinstance(self.name, str) or not self.name.strip():
+            raise ValueError("Physical pin name must be non-empty")
+        if not isinstance(self.electrical_type, ElectricalType):
+            raise TypeError("electrical_type must be an ElectricalType")
+        if not isinstance(self.polarity, TerminalPolarity):
+            raise TypeError("polarity must be a TerminalPolarity")
 
 
 @dataclass(frozen=True, slots=True)
