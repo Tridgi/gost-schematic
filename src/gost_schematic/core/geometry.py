@@ -135,6 +135,19 @@ class StyledLine:
 Primitive = Line | Rectangle | Circle | Semicircle | StyledLine
 
 
+def primitive_stroked_bounds(primitive: Primitive, default_um: int) -> Box:
+    """Conservative view/collision rectangle including actual SVG stroke.
+
+    Ceil half-width avoids losing a fraction of a micrometre for odd integer
+    stroke widths. This is a safe axis-aligned overestimate for curved lines,
+    not an exact geometric intersection test.
+    """
+    width = primitive_stroke_width(primitive, default_um)
+    if type(width) is not int or width <= 0:
+        raise ValueError("Stroke width must be positive integer micrometres")
+    return primitive_bounds(primitive).expanded((width + 1) // 2)
+
+
 def primitive_stroke_width(primitive: Primitive, default_um: int) -> int:
     """Physical stroke width for collision margins and SVG rendering."""
     return primitive.stroke_width_um if isinstance(primitive, StyledLine) else default_um
