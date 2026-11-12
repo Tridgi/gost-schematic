@@ -25,13 +25,13 @@ def _get(url: str) -> bytes:
             "User-Agent": "gost-schematic-font-setup",
         },
     )
-    with urllib.request.urlopen(request, timeout=30) as reply:  # noqa: S310
+    with urllib.request.urlopen(request, timeout=30) as reply:
         return reply.read()
 
 
 def _looks_like_type_a(filename: str) -> bool:
     normalized = filename.lower().replace("-", "").replace("_", "").replace(" ", "")
-    return "typea" in normalized and (normalized.endswith(".ttf") or normalized.endswith(".otf"))
+    return "typea" in normalized and normalized.endswith((".ttf", ".otf"))
 
 
 def select_font_asset(
@@ -55,7 +55,7 @@ def select_font_asset(
                 and not item.startswith("__MACOSX/")
             ]
             if members:
-                match = sorted(members, key=len)[0]
+                match = min(members, key=len)
                 return Path(match).name, bundle.read(match)
     raise ValueError("No OpenGOST Type A TTF/OTF face found in the pinned release")
 
