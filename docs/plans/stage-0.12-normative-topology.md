@@ -36,3 +36,20 @@ Reference originals for visual verification:
 - https://www.elec.ru/files/2019/03/25/gost_2.702-2011.pdf
 
 Canonical document status: https://protect.gost.ru/gost/
+
+## Completion record — 2026-11-12
+
+**Technical scope: complete, human GOST approval: NOT COMPLETE.**
+
+| Acceptance criterion | Result |
+|---|---|
+| All 18 UGO have explicit conductor graph | PASS, 18/18 draft |
+| Topology catches false joining / disconnected arcs / missing tap nodes | PASS, positive/negative and rotated/mirrored tests |
+| Machine-readable normative evidence with source URLs | PASS, `standards/requirements_2026_ru.json` + registry |
+| Source-backed dimensional checks | PARTIAL BY DESIGN: 3 UGO have narrow verified dimension rules; 15 coils still need normative graphics signoff |
+| Source-backed wire checks | PARTIAL BY DESIGN: width and exact parallel spacing; no whole-sheet proof |
+| Python 3.12/3.13 pytest, Ruff, audit and wheel package | PASS: 364/364 per runtime, no errors in 18-symbol audit |
+| All symbols DRAFT, no merge into main | PASS: PR #9 remains a draft, stacked over #8 |
+| Logs and explicit limitations | PASS: project log, changelog, `standards/known-limitations.md` |
+
+Full test run: [GitHub Actions #43289319096](https://github.com/Tridgi/gost-schematic/actions/runs/43289319096). The separate final documentation-only commit is subject to one additional CI check before freezing. **No next-stage development starts here.**
