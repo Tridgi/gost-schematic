@@ -45,6 +45,34 @@ jobs:
             --ref R1 --value '10 kΩ' --font-file "$FONT_PATH" \
             --font-family 'DejaVu Sans' --show-pin-connections --review-overlay \
             --output output/resistor-annotations-pin-escape.svg
+      - name: Generate ESKD/full/hidden nominal previews
+        if: matrix.python-version == '3.12'
+        shell: bash
+        run: |
+          FONT_PATH="$(fc-match -f '%{file}' 'DejaVu Sans')"
+          if [ ! -f "$FONT_PATH" ]; then
+            echo "::warning::No sample font; nominal previews skipped."
+            exit 0
+          fi
+          for MODE in eskd_compact full_units; do
+            python -m gost_schematic.cli render-annotated-symbol \
+              src/gost_schematic/catalog/symbols/resistors/fixed.json \
+              --nominal 2300 --unit ohm --nominal-mode "$MODE" \
+              --font-file "$FONT_PATH" --font-family 'DejaVu Sans' \
+              --review-overlay --output "output/nominal-$MODE.svg"
+          done
+          python -m gost_schematic.cli render-annotated-symbol \
+            src/gost_schematic/catalog/symbols/resistors/fixed.json \
+            --nominal 2300 --unit ohm --hide-nominal \
+            --font-file "$FONT_PATH" --font-family 'DejaVu Sans' \
+            --review-overlay --output output/nominal-hidden.svg
+      - name: Upload nominal display samples
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-eskd-nominal-display
+          path: output/nominal-*.svg
+          if-no-files-found: warn
       - name: Upload annotated UGO preview
         if: matrix.python-version == '3.12'
         uses: actions/upload-artifact@v4
