@@ -81,7 +81,8 @@ def test_svg_coordinates_use_physical_millimetres_not_pixels():
     scene, layout = catalog()
     root = ET.fromstring(render_review_svg(scene, layout, diagnostic=False))
     x, y, width, height = map(float, root.attrib["viewBox"].split())
-    assert width > 200 and height > 150
+    assert 200 < width < 1000
+    assert 150 < height < 1000
     assert x >= -10 and y >= -10
     assert float(root.get("width").removesuffix("mm")) == width
     assert float(root.get("height").removesuffix("mm")) == height
