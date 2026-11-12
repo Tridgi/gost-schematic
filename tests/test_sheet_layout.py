@@ -7,9 +7,8 @@ from gost_schematic.core.transforms import Transform
 from gost_schematic.engines.sheet_layout import (
     SheetLabelProfile,
     layout_sheet,
-    sheet_label_requests,
 )
-from gost_schematic.model.annotations import AnnotationRole, MeasuredText, TextStyle
+from gost_schematic.model.annotations import MeasuredText, TextStyle
 from gost_schematic.model.circuit import Circuit, ComponentInstance
 from gost_schematic.model.nominal_display import (
     NominalDisplayConfiguration,
@@ -27,9 +26,6 @@ class TextMetrics:
 
 
 STYLE = TextStyle("/some/test-font.ttf", "Test", 3200, 500)
-SYMBOLS = None
-
-
 def resistor(reference="R1", x=0, y=0, rotation=0):
     return ComponentInstance(
         reference, "resistor", Point(x, y), Transform(rotation=rotation),
