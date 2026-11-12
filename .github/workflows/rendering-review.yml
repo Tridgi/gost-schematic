@@ -1,0 +1,54 @@
+name: Rendering review specimens
+
+on:
+  pull_request:
+    branches:
+      - integration/stage0-12
+    paths:
+      - "src/gost_schematic/rendering/review_sheet.py"
+      - "examples/review_full_sheet.py"
+      - "tests/test_rendering_review_sheet.py"
+      - "docs/architecture/rendering-review.md"
+      - ".github/workflows/rendering-review.yml"
+
+jobs:
+  vector-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install library and checks
+        run: python -m pip install -e ".[dev]"
+      - name: Check rendering regressions
+        run: |
+          ruff check src/gost_schematic/rendering/review_sheet.py examples/review_full_sheet.py tests/test_rendering_review_sheet.py
+          pytest -q tests/test_rendering_review_sheet.py
+      - name: Install external open-license OpenGost Type A
+        run: |
+          python scripts/install_opengost_type_a.py --directory "$HOME/.local/share/fonts"
+          fc-cache -f
+      - name: Produce real-vector SVG specimens and deterministic manifest
+        shell: bash
+        run: |
+          FONT_FILE="$(find "$HOME/.local/share/fonts" -type f \( -iname '*TypeA*.ttf' -o -iname '*TypeA*.otf' \) | head -1)"
+          test -n "$FONT_FILE"
+          python examples/review_full_sheet.py \
+            --font-file "$FONT_FILE" --font-family "OpenGost Type A" \
+            --type-a --output-dir output/rendering-review
+      - name: Convert preview PNG from original SVG vectors
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+          for NAME in catalog-clean catalog-diagnostic overlap-diagnostic; do
+            rsvg-convert --background-color white --width 2400 \
+              --output "output/rendering-review/$NAME.png" \
+              "output/rendering-review/$NAME.svg"
+          done
+      - name: Upload DRAFT sheet review SVG, PNG and manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-rendering-sheet-review
+          path: output/rendering-review/*
+          if-no-files-found: error
