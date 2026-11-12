@@ -203,3 +203,18 @@ def test_reversed_graphic_labels_do_not_change_electrical_semantics(part, symbol
     )
     assert "GRAPHIC_POLARITY_MISMATCH" in {issue.code for issue in issues}
     assert "POLARITY_REVERSED" not in {issue.code for issue in issues}
+
+
+
+def test_duplicate_net_names_do_not_produce_false_forward_approval(part):
+    schematic = Circuit(
+        (ComponentInstance("C1", part.identifier),),
+        (
+            Net("A", (PinRef("C1", "1"),)),
+            Net("A", (PinRef("C1", "1"),)),
+            Net("B", (PinRef("C1", "2"),)),
+        ),
+    )
+    assessment = evaluate(part, schematic, scenario())
+    assert assessment.status == PolarityStatus.UNKNOWN
+    assert "duplicated" in assessment.explanation
