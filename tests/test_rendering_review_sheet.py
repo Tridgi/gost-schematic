@@ -83,8 +83,8 @@ def test_svg_coordinates_use_physical_millimetres_not_pixels():
     x, y, width, height = map(float, root.attrib["viewBox"].split())
     assert width > 200 and height > 150
     assert x >= -10 and y >= -10
-    assert root.get("width") == f"{width:g}mm"
-    assert root.get("height") == f"{height:g}mm"
+    assert float(root.get("width").removesuffix("mm")) == width
+    assert float(root.get("height").removesuffix("mm")) == height
     assert len(root.findall(f".//{SVG}g[@data-layer='symbols']")) == len(
         scene.circuit.components
     )
