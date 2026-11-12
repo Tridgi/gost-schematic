@@ -101,7 +101,7 @@ def test_outlined_electrolytic_plates_have_dedicated_geometry():
         (750, -4000, 2250, 4000),
     )
     # These numbers are a REVIEW FIXTURE, NOT GOST certification.
-    assert _graphic_plate_boxes(symbol) != _graphic_plate_boxes(_symbol("fixed"))
+    assert symbol.graphics[2:10] != _symbol("fixed").graphics[2:10]
     assert symbol.body_keepout.includes(Point(-3500, -4500))
     # First/last leads attach to each plate's outward boundary at y=0.
     assert symbol.graphics[0] == Line(Point(-9000, 0), Point(-2250, 0))
