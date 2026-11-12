@@ -7,8 +7,8 @@ import pytest
 from gost_schematic.standards import type_a_font
 from gost_schematic.standards.type_a_font import (
     TYPE_A_HEIGHTS_UM,
-    TypeAParameters,
     TypeAAngle,
+    TypeAParameters,
     inspect_type_a_font,
 )
 
