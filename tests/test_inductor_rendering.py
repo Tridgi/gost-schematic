@@ -92,9 +92,9 @@ def test_rotated_inductor_svg_keeps_four_arcs_and_valid_terminal_identity(
     ))
     assert len(root.findall(f".//{SVG}path")) == 4
     assert len(root.findall(f".//{SVG}g[@data-reference='L9']")) == 1
-    assert [pin.number for pin in pin_corridors_for_component(
+    assert [corridor.pin.number for corridor in pin_corridors_for_component(
         built.symbol, component
-    ) for _ in (0,)] == ["1", "2", "3", "4"]
+    )] == ["1", "2", "3", "4"]
     assert result.placements or result.diagnostics
 
 
