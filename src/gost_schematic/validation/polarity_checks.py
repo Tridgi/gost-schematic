@@ -6,6 +6,7 @@ ONE declared operating point. For alternating, transient or unspecified
 conditions, the result is NOT a lifetime safety guarantee.
 """
 
+from collections import Counter
 from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import Decimal
@@ -59,6 +60,8 @@ def assess_polarity(
     because they expose two poles or anodes/cathodes.
     """
     membership = _pin_net_membership(circuit)
+    net_counts = Counter(net.name for net in circuit.nets)
+    duplicated_names = {name for name, count in net_counts.items() if count > 1}
     potentials = scenario.by_net() if scenario is not None else {}
     outcomes: list[PolarityAssessment] = []
 
@@ -84,6 +87,8 @@ def assess_polarity(
 
         if plus_net is None or minus_net is None:
             explanation = "One or both physical terminals have no unambiguous net"
+        elif plus_net in duplicated_names or minus_net in duplicated_names:
+            explanation = "One or both net names are duplicated in the netlist"
         elif scenario is None:
             explanation = "Both terminals are connected, but no potentials were supplied"
         elif plus_net not in potentials or minus_net not in potentials:
