@@ -221,10 +221,19 @@ def build_inductor(spec: InductorSpec) -> InductorDefinition:
         graphics.append(StyledLine(
             Point(core_left, core_y), Point(core_right, core_y), width * 2,
         ))
-    elif spec.core in (CoreKind.MAGNETODIELECTRIC, CoreKind.NONMAGNETIC_COPPER):
+    elif spec.core == CoreKind.MAGNETODIELECTRIC:
+        # ГОСТ 2.723-68 table 1 item 2в: interrupted magnetodielectric.
+        # Actual dash/gap lengths are a DRAFT project drawing profile.
         graphics.append(StyledLine(
             Point(core_left, core_y), Point(core_right, core_y),
             width, (mm("2"), mm("1.1")),
+        ))
+    elif spec.core == CoreKind.NONMAGNETIC_COPPER:
+        # ГОСТ 2.723-68 table 1 item 2а note 1, table 2 item 7:
+        # nonmagnetic Cu core is SOLID. Chemical symbol is a separate
+        # required annotation; neither core nor trim mark is conductive ink.
+        graphics.append(StyledLine(
+            Point(core_left, core_y), Point(core_right, core_y), width,
         ))
 
     if spec.adjustment != AdjustmentKind.FIXED:
