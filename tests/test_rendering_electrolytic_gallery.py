@@ -28,6 +28,7 @@ from gost_schematic.rendering.review_sheet import (
     review_manifest,
 )
 from gost_schematic.rendering.svg import render_symbol_svg
+import scripts.audit_symbol_catalog as audit_module
 from scripts.audit_symbol_catalog import audit_catalog
 
 # Frozen minimum accepted inventory, not a maximum or dynamic gallery roster.
@@ -152,7 +153,7 @@ def test_removed_baseline_id_is_reported_with_reviewable_diff():
 
 @pytest.mark.parametrize("growth", (1, 2))
 def test_catalog_growth_20_21_preserves_full_svg_manifest_and_pin_map(
-    tmp_path, growth,
+    tmp_path, monkeypatch, growth,
 ):
     root = Path(str(files("gost_schematic").joinpath("catalog")))
     sandbox = tmp_path / "catalog"
@@ -188,6 +189,16 @@ def test_catalog_growth_20_21_preserves_full_svg_manifest_and_pin_map(
     assert layout.valid, [(d.code, d.message) for d in layout.diagnostics]
     assert not review_collisions(scene, layout)
     assert manifest["aabb_collisions"] == []
+    # The SAME structural audit must also accept 20/21 without changing any
+    # literal, while the production on-disk catalog remains untouched.
+    with monkeypatch.context() as patch:
+        patch.setattr(audit_module, "files", lambda _package: sandbox.parent)
+        simulated_audit = audit_catalog()
+    assert simulated_audit["total_symbols"] == len(entries)
+    assert simulated_audit["draft_count"] == len(entries)
+    assert simulated_audit["hard_errors"] == 0
+    assert simulated_audit["without_physical_part"] == []
+    assert {item["id"] for item in simulated_audit["entries"]} == ids
     for item, row in zip(scene.circuit.components, manifest["components"], strict=True):
         original = scene.symbols_by_part[item.part_id]
         assert row["symbol_id"] == original.identifier
