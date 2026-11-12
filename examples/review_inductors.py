@@ -53,7 +53,7 @@ def build_review(output: Path, font_file: Path, family: str) -> dict[str, object
             "core": item.spec.core.value,
             "adjustment": item.spec.adjustment.value,
             "pins": [
-                {"number": pin.number, "name": pin.name}
+                {"number": pin.number, "name": pin.name, "function": pin.function.value}
                 for pin in part.pins
             ],
             "source_standard": "ГОСТ 2.723-68",
