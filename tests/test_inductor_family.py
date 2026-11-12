@@ -18,6 +18,7 @@ from gost_schematic.catalog.loader import CatalogError
 from gost_schematic.core.geometry import Semicircle, Side, StyledLine
 from gost_schematic.core.transforms import Transform
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
+from gost_schematic.model.pins import TerminalFunction
 from gost_schematic.model.quantities import QuantityKind
 from gost_schematic.model.symbol import SymbolStatus
 from gost_schematic.validation.circuit_checks import validate_circuit
@@ -110,6 +111,16 @@ def test_gapped_core_has_visible_airgap_and_zero_unspecified_contacts():
 def test_extra_contacts_are_really_in_physical_part_and_netlist(name, names):
     built = variant(name)
     assert [p.name for p in built.part.pins] == names
+    assert [p.function for p in built.part.pins[:2]] == [
+        TerminalFunction.WINDING_START, TerminalFunction.WINDING_END,
+    ]
+    assert all(
+        pin.function == (
+            TerminalFunction.WINDING_TAP if name.startswith("TAP")
+            else TerminalFunction.WINDING_SLIDER
+        )
+        for pin, name in zip(built.part.pins[2:], names[2:], strict=True)
+    )
     members = tuple(PinRef("L1", str(index + 1)) for index in range(len(names)))
     circuit = Circuit((ComponentInstance("L1", built.part.identifier),),
                       (Net("COMMON", members),))
