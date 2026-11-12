@@ -64,10 +64,16 @@ class _DisjointSets:
         self._parent.setdefault(point, point)
 
     def find(self, point: Point) -> Point:
-        parent = self._parent[point]
-        if parent != point:
-            self._parent[point] = self.find(parent)
-        return self._parent[point]
+        # Iterative path compression: long user-authored chains must not
+        # overflow Python's recursion limit before topology can be checked.
+        root = point
+        while self._parent[root] != root:
+            root = self._parent[root]
+        while self._parent[point] != root:
+            previous = self._parent[point]
+            self._parent[point] = root
+            point = previous
+        return root
 
     def union(self, a: Point, b: Point) -> None:
         self.add(a)
