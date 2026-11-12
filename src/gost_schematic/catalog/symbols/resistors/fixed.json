@@ -111,5 +111,20 @@
         }
       ]
     }
-  ]
+  ],
+  "conductor_topology": {
+    "indices": [
+      1,
+      2
+    ],
+    "junctions_mm": [],
+    "pin_groups": [
+      [
+        "1"
+      ],
+      [
+        "2"
+      ]
+    ]
+  }
 }
