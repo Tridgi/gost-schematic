@@ -8,8 +8,8 @@ from gost_schematic.core.diagnostics import Severity
 from gost_schematic.core.geometry import SIDE_VECTORS, Line, Point
 from gost_schematic.core.units import mm
 from gost_schematic.engines.annotation.layout import (
-    obstacles_for_component,
     bind_component_annotations,
+    obstacles_for_component,
     place_annotations,
 )
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
@@ -22,8 +22,8 @@ from gost_schematic.model.nominal_display import (
     NominalDisplayMode,
     NominalDisplaySettings,
 )
-from gost_schematic.model.quantities import Quantity, Unit
 from gost_schematic.model.obstacles import WireObstacle
+from gost_schematic.model.quantities import Quantity, Unit
 from gost_schematic.rendering.annotation_svg import render_annotation_svg
 from gost_schematic.rendering.svg import render_symbol_svg
 from gost_schematic.validation.annotation_checks import annotation_obstacles
