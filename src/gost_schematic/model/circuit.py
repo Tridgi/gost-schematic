@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 
 from gost_schematic.core.geometry import Point
 from gost_schematic.core.transforms import Transform
+from gost_schematic.model.quantities import Quantity
 from gost_schematic.model.symbol import SymbolDefinition
 
 
@@ -12,6 +13,7 @@ class ComponentInstance:
     part_id: str
     origin: Point = field(default_factory=lambda: Point(0, 0))
     transform: Transform = field(default_factory=Transform)
+    nominal: Quantity | None = None
 
     def __post_init__(self) -> None:
         if not self.reference or not self.part_id:
