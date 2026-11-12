@@ -32,16 +32,16 @@ class Unit(str, Enum):
 
 
 UNIT_DEFINITIONS: dict[Unit, tuple[QuantityKind, Decimal]] = {
-    Unit.OHM: (QuantityKind.RESISTANCE, Decimal("1")),
-    Unit.KOHM: (QuantityKind.RESISTANCE, Decimal("1000")),
-    Unit.MOHM: (QuantityKind.RESISTANCE, Decimal("1000000")),
-    Unit.GOHM: (QuantityKind.RESISTANCE, Decimal("1000000000")),
-    Unit.FARAD: (QuantityKind.CAPACITANCE, Decimal("1")),
+    Unit.OHM: (QuantityKind.RESISTANCE, Decimal(1)),
+    Unit.KOHM: (QuantityKind.RESISTANCE, Decimal(1000)),
+    Unit.MOHM: (QuantityKind.RESISTANCE, Decimal(1000000)),
+    Unit.GOHM: (QuantityKind.RESISTANCE, Decimal(1000000000)),
+    Unit.FARAD: (QuantityKind.CAPACITANCE, Decimal(1)),
     Unit.MILLIFARAD: (QuantityKind.CAPACITANCE, Decimal("1e-3")),
     Unit.MICROFARAD: (QuantityKind.CAPACITANCE, Decimal("1e-6")),
     Unit.NANOFARAD: (QuantityKind.CAPACITANCE, Decimal("1e-9")),
     Unit.PICOFARAD: (QuantityKind.CAPACITANCE, Decimal("1e-12")),
-    Unit.HENRY: (QuantityKind.INDUCTANCE, Decimal("1")),
+    Unit.HENRY: (QuantityKind.INDUCTANCE, Decimal(1)),
     Unit.MILLIHENRY: (QuantityKind.INDUCTANCE, Decimal("1e-3")),
     Unit.MICROHENRY: (QuantityKind.INDUCTANCE, Decimal("1e-6")),
     Unit.NANOHENRY: (QuantityKind.INDUCTANCE, Decimal("1e-9")),
