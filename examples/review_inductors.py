@@ -16,6 +16,7 @@ from gost_schematic.engines.sheet_layout import layout_sheet
 from gost_schematic.model.circuit import Circuit, ComponentInstance
 from gost_schematic.model.quantities import Quantity, Unit
 from gost_schematic.rendering.sheet_svg import render_sheet_svg
+from gost_schematic.rendering.svg import render_symbol_svg
 from gost_schematic.standards.type_a_font import inspect_type_a_font
 
 VARIANTS = (
@@ -65,6 +66,16 @@ def build_review(output: Path, font_file: Path, family: str) -> dict[str, object
                   if d.severity.value == "error"]
         raise RuntimeError("Cannot render collision-free sheet: " + "; ".join(issues))
     output.mkdir(parents=True, exist_ok=True)
+    individual = output / "variants"
+    individual.mkdir(parents=True, exist_ok=True)
+    for item in variants:
+        # One separate, reviewable UGO per profile; no nominal in raw symbol SVG.
+        for debug in (False, True):
+            suffix = "-review" if debug else "-clean"
+            (individual / f"{item.spec.identifier}{suffix}.svg").write_text(
+                render_symbol_svg(item.symbol, review_overlay=debug),
+                encoding="utf-8",
+            )
     for debug in (False, True):
         name = "inductor-family-review.svg" if debug else "inductor-family-clean.svg"
         (output / name).write_text(
