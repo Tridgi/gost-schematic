@@ -238,3 +238,27 @@ def test_no_unapproved_diode_can_be_marked_approved_without_manual_signoff(ident
         verify_draft_diode(
             replace(symbol, status=SymbolStatus.APPROVED), part,
         )
+
+
+
+def test_catalog_audit_reports_21_independent_draft_ugo_and_both_real_diode_parts():
+    from scripts.audit_symbol_catalog import audit_catalog
+
+    report = audit_catalog()
+    assert report["total_symbols"] == report["draft_count"] == 21
+    assert report["hard_errors"] == 0
+    assert not report["without_physical_part"]
+    assert report["topologies_verified"] == 21
+    assert report["symbols_with_checked_dimensions"] == 3
+    diode_entries = {
+        row["id"]: row for row in report["entries"]
+        if row["id"].startswith("diode.")
+    }
+    assert set(diode_entries) == set(IDS)
+    for entry in diode_entries.values():
+        assert entry["approval"] == "draft"
+        assert entry["physical_part_mapped"] is True
+        assert entry["dimension_status"] == "not_yet_verifiable"
+        assert entry["conductor_topology"]["pin_islands"] == [["1"], ["2"]]
+        assert [pin["number"] for pin in entry["pins"]] == ["1", "2"]
+        assert [pin["name"] for pin in entry["pins"]] == ["A", "K"]
