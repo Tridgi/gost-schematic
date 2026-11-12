@@ -11,6 +11,13 @@
 - Reference/name/value slots with candidate placement and debug SVG overlays.
 - User visual review and real ГОСТ font verification still pending.
 
+## Stage 0.6 — typed nominal formatting (experimental)
+- SI Decimal values, GOST 2.702-2011 §5.3.20 compact resistor/capacitor notation.
+- Full-unit mode and visibility setting with document/per-component overrides.
+- Explicit warnings for unsupported ranges and unverified literal text.
+- Rebinding labels, hitboxes and routing obstacles when text display changes.
+- JSON persistence and CLI/CI sample SVGs; review and licensed GOST font pending.
+
 ## Stage 1 — approved standard UGO
 - Resistor family, capacitor family, precise stroke/lettering constraints.
 - Reference comparisons from KOMPAS and normative verification.
