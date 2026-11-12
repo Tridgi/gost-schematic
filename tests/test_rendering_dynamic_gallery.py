@@ -247,7 +247,7 @@ def test_disallowed_columns_and_unplaceable_annotation_remain_explicit():
 
     class OversizedMetrics:
         def measure(self, text, style):
-            return MeasuredText(Box(0, -2000, 10_000_000, 1), 10_000_000)
+            return MeasuredText(Box(0, -10_000_000, 10_000_000, 1), 10_000_000)
 
     result = layout_review_scene(scene, STYLE, OversizedMetrics())
     assert not result.valid
