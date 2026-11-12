@@ -33,6 +33,10 @@ drawings and user-provided KOMPAS sources.
 ## Implemented variations
 
 Each variation has a separate JSON definition in `catalog/inductors/`.
+Each passport has a `normative_basis` text and a `normative_relation`
+(`table_2_example`, `table_1_composition`, or `editorial_adaptation`).
+This provenance identifies whether a symbol corresponds to an illustrated
+example or to a reviewed composition; it is NEVER a certificate of conformity.
 All are generated from the SAME semantic winding construction function,
 which avoids modifying duplicate drawing code.
 
@@ -118,4 +122,5 @@ python examples/review_inductors.py \
 ```
 
 CI publishes `draft-gost2723-inductor-family` with clean/review SVG,
-font-rasterized PNG and versioned JSON manifest identifying each UGO.
+font-rasterized PNG, a versioned JSON manifest identifying each UGO,
+and **30 individual SVGs** (clean/overlay for each of 15 variants).
