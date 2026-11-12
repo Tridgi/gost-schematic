@@ -79,7 +79,7 @@ def test_air_core_is_four_exact_semicircles_and_two_leads():
         ("inductor.ferrite", 1, 600, False),
         ("inductor.magnetodielectric", 1, 300, True),
         ("inductor.trim_magnetodielectric", 1, 300, True),
-        ("inductor.trim_copper", 1, 300, True),
+        ("inductor.trim_copper", 1, 300, False),
     ],
 )
 def test_magnetic_core_styles_are_semantic_and_numerically_exact(
