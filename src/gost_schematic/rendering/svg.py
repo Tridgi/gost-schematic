@@ -7,7 +7,7 @@ from gost_schematic.rendering.primitives import draw_primitive
 
 
 def render_symbol_svg(symbol: SymbolDefinition, *, review_overlay: bool = False) -> str:
-    bounds = symbol.bounds.expanded(mm(3))
+    bounds = symbol.stroked_bounds.expanded(mm(3))
     width = bounds.max_x - bounds.min_x
     height = bounds.max_y - bounds.min_y
     svg = ET.Element("svg", {

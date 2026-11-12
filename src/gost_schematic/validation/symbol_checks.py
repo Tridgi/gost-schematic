@@ -1,12 +1,28 @@
-"""Structural symbol checks; standard conformity must be separately certified."""
+"""Structural symbol checks; normative conformity must be separately certified.
+
+A graphic connector must terminate on a drawn inward-facing lead. The
+electrical circuit is separate: touching drawings do not establish a net.
+"""
+
 from gost_schematic.core.diagnostics import Diagnostic, Severity
-from gost_schematic.core.geometry import Side
+from gost_schematic.core.geometry import SIDE_VECTORS, Line, Point, Side, StyledLine
 from gost_schematic.model.symbol import SymbolDefinition, SymbolStatus
+
+
+def _lead_endpoints(symbol: SymbolDefinition) -> dict[Point, tuple[Point, ...]]:
+    """Index line terminal endpoints once: O(primitives + pins), not O(P × G)."""
+    contacts: dict[Point, list[Point]] = {}
+    for item in symbol.graphics:
+        if isinstance(item, (Line, StyledLine)):
+            contacts.setdefault(item.start, []).append(item.end)
+            contacts.setdefault(item.end, []).append(item.start)
+    return {point: tuple(targets) for point, targets in contacts.items()}
 
 
 def validate_symbol(symbol: SymbolDefinition) -> tuple[Diagnostic, ...]:
     issues: list[Diagnostic] = []
     bounds = symbol.body_keepout
+    terminals = _lead_endpoints(symbol)
     for pin in symbol.pins:
         wrong_side = {
             Side.LEFT: pin.at.x >= bounds.min_x,
@@ -18,6 +34,25 @@ def validate_symbol(symbol: SymbolDefinition) -> tuple[Diagnostic, ...]:
             issues.append(Diagnostic(
                 "PIN_NOT_EXPOSED", Severity.ERROR,
                 f"Pin {pin.number} is not outside its declared {pin.side.value} side",
+                symbol.identifier,
+            ))
+        neighbors = terminals.get(pin.at, ())
+        if not neighbors:
+            issues.append(Diagnostic(
+                "PIN_GRAPHIC_DISCONNECTED", Severity.ERROR,
+                f"Pin {pin.number} at {pin.at} has no drawn lead endpoint",
+                symbol.identifier,
+            ))
+            continue
+        outward = SIDE_VECTORS[pin.side]
+        if not any(
+            (target.x - pin.at.x) * outward.x +
+            (target.y - pin.at.y) * outward.y < 0
+            for target in neighbors
+        ):
+            issues.append(Diagnostic(
+                "PIN_LEAD_NOT_INWARD", Severity.ERROR,
+                f"Pin {pin.number} has lead geometry but none points into the symbol",
                 symbol.identifier,
             ))
     if symbol.status != SymbolStatus.APPROVED:

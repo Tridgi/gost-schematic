@@ -21,6 +21,18 @@ jobs:
         run: ruff check .
       - name: Test
         run: pytest -q
+      - name: Audit entire symbol catalog integrity
+        if: matrix.python-version == '3.12'
+        run: |
+          python scripts/audit_symbol_catalog.py \
+            --output output/catalog-integrity-audit.json
+      - name: Upload catalog integrity report
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-catalog-integrity-audit
+          path: output/catalog-integrity-audit.json
+          if-no-files-found: error
       - name: Generate collision-overlay sample (technical font only)
         if: matrix.python-version == '3.12'
         shell: bash

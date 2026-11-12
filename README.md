@@ -94,6 +94,27 @@ specified in [Nominal display](docs/architecture/nominal-display.md).
 See [Annotation layout](docs/architecture/annotations.md),
 [Architecture](docs/architecture/README.md), [Review process](docs/symbol_approval/README.md), and [Roadmap](docs/roadmap.md).
 
+## Project log and integrity audit
+
+Progress and checked results are recorded in
+[Project log](docs/project-log.md).
+Each milestone begins with a [documented plan](docs/plans/stage-0.11-quality-audit.md)
+and proceeds through separate draft PRs.
+[Quality gates](docs/quality-gates.md) distinguish structural validation
+from formal ГОСТ compliance.
+
+To audit current versioned symbol catalog and physical pin mappings:
+
+```bash
+python scripts/audit_symbol_catalog.py \
+  --output output/catalog-integrity-audit.json
+```
+
+This outputs stable JSON with per-symbol source hashes, diagnostic codes,
+contact types and conservative ink extents. It is a structural check only.
+The symbols remain DRAFT until explicitly reviewed against original drawings.
+See [ADR-0009](docs/decisions/0009-pin-attachment-and-stroked-extents.md).
+
 ## Design commitments
 
 1. Electrical connectivity and geometric wiring are distinct.

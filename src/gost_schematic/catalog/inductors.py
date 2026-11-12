@@ -243,7 +243,7 @@ def build_inductor(spec: InductorSpec) -> InductorDefinition:
         number = str(3 + len(spec.tap_turns) + offset)
         pos = Point(x, -r - mm("7"))
         tip = Point(x, -r)
-        graphics.append(Line(pos, Point(x, tip.y - mm("1.2"))))
+        graphics.append(Line(pos, tip))
         graphics.extend(_arrowhead(tip, direction="down", unit=mm("1")))
         pins.append(GraphicPin(number, pos, Side.TOP))
         physical.append(PhysicalPin(number, f"SLIDER{offset + 1}", ElectricalType.PASSIVE, function=TerminalFunction.WINDING_SLIDER))
