@@ -97,7 +97,48 @@ class Circle:
             raise ValueError("Circle radius must be positive micrometres")
 
 
-Primitive = Line | Rectangle | Circle
+@dataclass(frozen=True, slots=True)
+class Semicircle:
+    """True 180-degree arc; bulge determines the visible half of the circle."""
+
+    center: Point
+    radius: int
+    bulge: Side
+
+    def __post_init__(self) -> None:
+        if type(self.radius) is not int or self.radius <= 0:
+            raise ValueError("Semicircle radius must be positive integer micrometres")
+        if not isinstance(self.bulge, Side):
+            raise TypeError("Arc bulge must be a Side")
+
+
+@dataclass(frozen=True, slots=True)
+class StyledLine:
+    """Core material strokes can differ in width or dash pattern from winding."""
+
+    start: Point
+    end: Point
+    stroke_width_um: int
+    dash_pattern_um: tuple[int, ...] = ()
+
+    def __post_init__(self) -> None:
+        if self.start == self.end:
+            raise ValueError("Zero-length styled line")
+        if type(self.stroke_width_um) is not int or self.stroke_width_um <= 0:
+            raise ValueError("Styled line width must be positive")
+        if any(type(item) is not int or item <= 0 for item in self.dash_pattern_um):
+            raise ValueError("Dash pattern must be positive integer micrometres")
+        if len(self.dash_pattern_um) % 2 != 0:
+            raise ValueError("Dash pattern must have even number of entries")
+
+
+Primitive = Line | Rectangle | Circle | Semicircle | StyledLine
+
+
+def primitive_stroke_width(primitive: Primitive, default_um: int) -> int:
+    """Physical stroke width for collision margins and SVG rendering."""
+    return primitive.stroke_width_um if isinstance(primitive, StyledLine) else default_um
+
 
 
 def primitive_bounds(primitive: Primitive) -> Box:
@@ -106,6 +147,17 @@ def primitive_bounds(primitive: Primitive) -> Box:
     if isinstance(primitive, Circle):
         x, y, radius = primitive.center.x, primitive.center.y, primitive.radius
         return Box(x - radius, y - radius, x + radius, y + radius)
+    if isinstance(primitive, Semicircle):
+        x, y, r = primitive.center.x, primitive.center.y, primitive.radius
+        if primitive.bulge == Side.TOP:
+            return Box(x - r, y - r, x + r, y + 1)
+        if primitive.bulge == Side.BOTTOM:
+            return Box(x - r, y, x + r, y + r)
+        if primitive.bulge == Side.LEFT:
+            return Box(x - r, y - r, x + 1, y + r)
+        return Box(x, y - r, x + r, y + r)
+    if isinstance(primitive, StyledLine):
+        return primitive_bounds(Line(primitive.start, primitive.end))
     if isinstance(primitive, Line):
         a, b = primitive.start, primitive.end
         # A degenerate dimension is legal for a line, unlike a Box.

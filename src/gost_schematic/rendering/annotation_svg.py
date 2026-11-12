@@ -4,12 +4,10 @@ from xml.etree import ElementTree as ET
 
 from gost_schematic.core.geometry import (
     Box,
-    Circle,
-    Line,
     Point,
-    Rectangle,
     enclosing_box,
     primitive_bounds,
+    primitive_stroke_width,
 )
 from gost_schematic.core.units import format_mm, mm
 from gost_schematic.engines.annotation.layout import obstacles_for_component
@@ -17,6 +15,7 @@ from gost_schematic.model.annotations import AnnotationPlacement
 from gost_schematic.model.circuit import ComponentInstance
 from gost_schematic.model.obstacles import WireObstacle
 from gost_schematic.model.symbol import SymbolDefinition
+from gost_schematic.rendering.primitives import draw_primitive
 
 
 def _rect(parent: ET.Element, box: Box, **style: str) -> None:
@@ -46,22 +45,17 @@ def render_annotation_svg(
     Rendered text requires the SAME font face as the layout engine to be
     installed in the SVG viewer. No proprietary font is embedded by default.
     """
-    transformed = []
-    for primitive in symbol.graphics:
-        if isinstance(primitive, Line):
-            transformed.append(Line(
-                _point(instance, primitive.start), _point(instance, primitive.end),
-            ))
-        elif isinstance(primitive, Rectangle):
-            transformed.append(Rectangle(
-                instance.transform.box(primitive.box).translated(instance.origin),
-            ))
-        elif isinstance(primitive, Circle):
-            transformed.append(Circle(_point(instance, primitive.center), primitive.radius))
-        else:
-            raise TypeError(f"Unsupported primitive: {type(primitive)!r}")
+    transformed = tuple(
+        instance.transform.primitive(primitive, instance.origin)
+        for primitive in symbol.graphics
+    )
 
-    boxes = [primitive_bounds(item) for item in transformed]
+    boxes = [
+        primitive_bounds(item).expanded(
+            (primitive_stroke_width(item, symbol.line_width_um) + 1) // 2
+        )
+        for item in transformed
+    ]
     boxes += [item.collision_bounds for item in placements]
     boxes += [
         item.reservation_bounds for item in placements
@@ -91,19 +85,7 @@ def render_annotation_svg(
         "stroke-linejoin": "miter", "stroke-linecap": "butt",
     })
     for primitive in transformed:
-        if isinstance(primitive, Line):
-            ET.SubElement(drawing, "line", {
-                "x1": format_mm(primitive.start.x), "y1": format_mm(primitive.start.y),
-                "x2": format_mm(primitive.end.x), "y2": format_mm(primitive.end.y),
-            })
-        elif isinstance(primitive, Rectangle):
-            _rect(drawing, primitive.box)
-        elif isinstance(primitive, Circle):
-            ET.SubElement(drawing, "circle", {
-                "cx": format_mm(primitive.center.x),
-                "cy": format_mm(primitive.center.y),
-                "r": format_mm(primitive.radius),
-            })
+        draw_primitive(drawing, primitive)
     for wire in wires:
         ET.SubElement(root, "line", {
             "x1": format_mm(wire.line.start.x), "y1": format_mm(wire.line.start.y),

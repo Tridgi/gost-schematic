@@ -7,7 +7,12 @@ the reusable symbol catalog. Placed components are never modified by layout.
 from dataclasses import dataclass, replace
 
 from gost_schematic.core.diagnostics import Diagnostic, Severity
-from gost_schematic.core.geometry import Box, Point, primitive_bounds
+from gost_schematic.core.geometry import (
+    Box,
+    Point,
+    primitive_bounds,
+    primitive_stroke_width,
+)
 from gost_schematic.core.transforms import Transform
 from gost_schematic.engines.annotation.layout import (
     bind_component_annotations,
@@ -83,12 +88,12 @@ def component_graphic_obstacles(
     future exact stroke geometry may reduce false positives but must NEVER
     let text cross an actual drawn line.
     """
-    margin = (symbol.line_width_um + 1) // 2
     return tuple(
         BoxObstacle(
             f"{instance.reference}.graphic.{index}",
             instance.transform.box(primitive_bounds(primitive))
-            .translated(instance.origin).expanded(margin),
+            .translated(instance.origin)
+            .expanded((primitive_stroke_width(primitive, symbol.line_width_um) + 1) // 2),
             "graphic",
             instance.reference,
         )

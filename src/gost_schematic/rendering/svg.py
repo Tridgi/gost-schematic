@@ -1,9 +1,9 @@
 """Standalone inspection SVG for individual symbols (not a finished schematic)."""
 import xml.etree.ElementTree as ET
 
-from gost_schematic.core.geometry import Circle, Line, Rectangle
 from gost_schematic.core.units import format_mm, mm
 from gost_schematic.model.symbol import SymbolDefinition
+from gost_schematic.rendering.primitives import draw_primitive
 
 
 def render_symbol_svg(symbol: SymbolDefinition, *, review_overlay: bool = False) -> str:
@@ -26,26 +26,7 @@ def render_symbol_svg(symbol: SymbolDefinition, *, review_overlay: bool = False)
         "stroke-linecap": "butt",
     })
     for item in symbol.graphics:
-        if isinstance(item, Line):
-            ET.SubElement(graph, "line", {
-                "x1": format_mm(item.start.x), "y1": format_mm(item.start.y),
-                "x2": format_mm(item.end.x), "y2": format_mm(item.end.y),
-            })
-        elif isinstance(item, Rectangle):
-            box = item.box
-            ET.SubElement(graph, "rect", {
-                "x": format_mm(box.min_x), "y": format_mm(box.min_y),
-                "width": format_mm(box.max_x - box.min_x),
-                "height": format_mm(box.max_y - box.min_y),
-            })
-        elif isinstance(item, Circle):
-            ET.SubElement(graph, "circle", {
-                "cx": format_mm(item.center.x),
-                "cy": format_mm(item.center.y),
-                "r": format_mm(item.radius),
-            })
-        else:
-            raise TypeError(f"Unsupported primitive: {type(item)!r}")
+        draw_primitive(graph, item)
     if review_overlay:
         box = symbol.body_keepout
         ET.SubElement(svg, "rect", {

@@ -6,7 +6,12 @@ from typing import Any
 
 from gost_schematic.catalog.loader import CatalogError
 from gost_schematic.model.part import PartDefinition, VoltageOrientationRule
-from gost_schematic.model.pins import ElectricalType, PhysicalPin, TerminalPolarity
+from gost_schematic.model.pins import (
+    ElectricalType,
+    PhysicalPin,
+    TerminalFunction,
+    TerminalPolarity,
+)
 from gost_schematic.model.quantities import QuantityKind
 
 
@@ -27,6 +32,7 @@ def parse_part(data: dict[str, Any]) -> PartDefinition:
                     name=pin["name"],
                     electrical_type=ElectricalType(pin["electrical_type"]),
                     polarity=TerminalPolarity(pin.get("polarity", "none")),
+                    function=TerminalFunction(pin.get("function", "general")),
                 )
                 for pin in data["pins"]
             ),

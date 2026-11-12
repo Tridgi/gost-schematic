@@ -8,12 +8,10 @@ from xml.etree import ElementTree as ET
 
 from gost_schematic.core.geometry import (
     Box,
-    Circle,
-    Line,
-    Point,
-    Rectangle,
+    Primitive,
     enclosing_box,
     primitive_bounds,
+    primitive_stroke_width,
 )
 from gost_schematic.core.units import format_mm, mm
 from gost_schematic.engines.annotation.layout import obstacles_for_component
@@ -21,6 +19,7 @@ from gost_schematic.engines.sheet_layout import SheetLayout
 from gost_schematic.model.circuit import Circuit, ComponentInstance
 from gost_schematic.model.obstacles import WireObstacle
 from gost_schematic.model.symbol import SymbolDefinition
+from gost_schematic.rendering.primitives import draw_primitive
 
 
 def _rect(parent: ET.Element, bounds: Box, **attributes: str) -> None:
@@ -35,23 +34,11 @@ def _rect(parent: ET.Element, bounds: Box, **attributes: str) -> None:
 
 def _instance_primitives(
     symbol: SymbolDefinition, instance: ComponentInstance,
-) -> tuple[Line | Rectangle | Circle, ...]:
-    def point(local: Point) -> Point:
-        return instance.transform.apply(local) + instance.origin
-
-    result: list[Line | Rectangle | Circle] = []
-    for primitive in symbol.graphics:
-        if isinstance(primitive, Rectangle):
-            result.append(Rectangle(
-                instance.transform.box(primitive.box).translated(instance.origin)
-            ))
-        elif isinstance(primitive, Line):
-            result.append(Line(point(primitive.start), point(primitive.end)))
-        elif isinstance(primitive, Circle):
-            result.append(Circle(point(primitive.center), primitive.radius))
-        else:
-            raise TypeError(f"Unsupported graphic primitive {type(primitive)!r}")
-    return tuple(result)
+) -> tuple[Primitive, ...]:
+    return tuple(
+        instance.transform.primitive(item, instance.origin)
+        for item in symbol.graphics
+    )
 
 
 def render_sheet_svg(
@@ -63,8 +50,7 @@ def render_sheet_svg(
     review_overlay: bool = False,
 ) -> str:
     """Render sheet primitives + resolved annotation positions, no routing inference."""
-    shapes: list[tuple[ComponentInstance, SymbolDefinition,
-                       tuple[Line | Rectangle | Circle, ...]]] = []
+    shapes: list[tuple[ComponentInstance, SymbolDefinition, tuple[Primitive, ...]]] = []
     extents: list[Box] = [label.collision_bounds for label in layout.placements]
     for component in circuit.components:
         symbol = symbols_by_part.get(component.part_id)
@@ -72,9 +58,12 @@ def render_sheet_svg(
             raise ValueError(f"Unknown symbol for {component.reference}")
         primitives = _instance_primitives(symbol, component)
         shapes.append((component, symbol, primitives))
-        extents.extend(primitive_bounds(item).expanded(
-            (symbol.line_width_um + 1) // 2
-        ) for item in primitives)
+        extents.extend(
+            primitive_bounds(item).expanded(
+                (primitive_stroke_width(item, symbol.line_width_um) + 1) // 2
+            )
+            for item in primitives
+        )
         if review_overlay:
             extents.extend(item.box for item in obstacles_for_component(symbol, component))
             extents.extend(
@@ -107,21 +96,7 @@ def render_sheet_svg(
             "fill": "none",
         })
         for primitive in primitives:
-            if isinstance(primitive, Rectangle):
-                _rect(group, primitive.box)
-            elif isinstance(primitive, Line):
-                ET.SubElement(group, "line", {
-                    "x1": format_mm(primitive.start.x),
-                    "y1": format_mm(primitive.start.y),
-                    "x2": format_mm(primitive.end.x),
-                    "y2": format_mm(primitive.end.y),
-                })
-            elif isinstance(primitive, Circle):
-                ET.SubElement(group, "circle", {
-                    "cx": format_mm(primitive.center.x),
-                    "cy": format_mm(primitive.center.y),
-                    "r": format_mm(primitive.radius),
-                })
+            draw_primitive(group, primitive)
 
     for wire in wires:
         ET.SubElement(root, "line", {
