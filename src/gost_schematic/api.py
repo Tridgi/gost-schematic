@@ -16,6 +16,7 @@ from gost_schematic.engines.routing.clearance import (
 from gost_schematic.engines.sheet_layout import (
     SheetLabelProfile,
     SheetLayout,
+    component_graphic_obstacles,
     layout_sheet,
     sheet_label_requests,
 )
@@ -65,6 +66,7 @@ __all__ = [
     "Unit",
     "annotation_obstacles",
     "bind_component_annotations",
+    "component_graphic_obstacles",
     "format_nominal",
     "inspect_type_a_font",
     "layout_sheet",
