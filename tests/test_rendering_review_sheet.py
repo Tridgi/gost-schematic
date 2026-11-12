@@ -3,8 +3,8 @@ from dataclasses import replace
 from xml.etree import ElementTree as ET
 
 from gost_schematic.core.geometry import Box, Point
-from gost_schematic.engines.sheet_layout import SheetLayout, component_graphic_obstacles
 from gost_schematic.engines.annotation.layout import obstacles_for_component
+from gost_schematic.engines.sheet_layout import SheetLayout, component_graphic_obstacles
 from gost_schematic.model.annotations import MeasuredText, TextStyle
 from gost_schematic.rendering.review_sheet import (
     build_catalog_review_scene,
@@ -143,6 +143,6 @@ def test_rendering_overlay_marks_true_stroke_width_and_pin_exit_reservations():
     pin_rects = review.findall(f".//{SVG}rect[@data-kind='pin_escape']")
     assert len(pin_rects) >= 36
     assert review.findall(f".//{SVG}rect[@data-kind='text-hitbox']")
-    assert review.findall(f".//{SVG}rect[@data-kind='text-reservation']") is not None
+    assert isinstance(review.findall(f".//{SVG}rect[@data-kind='text-reservation']"), list)
     # Source outlines are still independently present; overlay does not replace them.
     assert review.findall(f".//{SVG}g[@data-layer='symbols']/{SVG}line")
