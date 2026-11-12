@@ -23,7 +23,6 @@ from gost_schematic.model.symbol import SymbolStatus
 from gost_schematic.validation.circuit_checks import validate_circuit
 from gost_schematic.validation.symbol_checks import validate_symbol
 
-
 SPEC_ROOT = files("gost_schematic").joinpath("catalog/inductors")
 VARIANTS = (
     "inductor.air_core", "inductor.ferromagnetic", "inductor.gapped_core",
