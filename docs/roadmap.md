@@ -18,6 +18,14 @@
 - Rebinding labels, hitboxes and routing obstacles when text display changes.
 - JSON persistence and CLI/CI sample SVGs; review and licensed GOST font pending.
 
+## Stage 0.7 — sheet-level annotation placement (experimental)
+- Refdes above UGO or, if obstructed, to its right (ГОСТ 2.702-2011 §5.3.11).
+- Visible nominal below by configurable drafting preference; text remains upright
+  under orthogonal symbol rotation and mirror transforms.
+- Avoid labels overlapping foreign component keepouts, pin exits or existing wires.
+- Diagnose overlapping symbols, duplicated references and blocked escape corridors.
+- Provide clean/review multi-element SVG regression fixtures and manual review gate.
+
 ## Stage 1 — approved standard UGO
 - Resistor family, capacitor family, precise stroke/lettering constraints.
 - Reference comparisons from KOMPAS and normative verification.
