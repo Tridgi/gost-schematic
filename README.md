@@ -24,6 +24,9 @@ A deterministic, standards-aware foundation for generating electrical schematic 
   full SI units and per-component visibility overrides.
 - ГОСТ 2.304-81 type A upper-case-height calibration (upright or separately supplied real
   italic face), font-file SHA-256 protection and font-audited SVG metadata.
+- Parametric GOST 2.723-68 draft coils/chokes (15 source JSON profiles):
+  air/ferro/ferrite/gapped/magnetodielectric, trimmed/variable, taps/sliders;
+  true semicircle SVG paths, core stroke patterns and stable physical contacts.
 - Independent DRAFT fixed and polarized capacitor symbols (8 mm plates, 1.5 mm gap),
   normalized capacitance values and collision-safe annotations.
 - Type A + capacitor clean and diagnostic SVG specimens from real OpenGOST in CI.
@@ -81,7 +84,8 @@ python examples/review_type_a_capacitors.py \
 
 The public font uses its own SIL OFL-1.1 license and is **not committed**.
 Actual glyph outline approval and slanted font sources need separate review.
-See [Type A typography](docs/architecture/type-a-font.md) and
+See [Inductor/choke family](docs/architecture/inductors.md),
+[Type A typography](docs/architecture/type-a-font.md) and
 [Capacitor template rules](docs/architecture/capacitors.md).
 
 Nominal display (including strict fallbacks for undefined ГОСТ ranges) is
