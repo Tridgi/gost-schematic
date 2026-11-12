@@ -1,0 +1,788 @@
+{
+  "authored_wires": [
+    {
+      "end_um": [
+        52000,
+        20000
+      ],
+      "net": "TOP",
+      "start_um": [
+        28000,
+        20000
+      ]
+    },
+    {
+      "end_um": [
+        40000,
+        40000
+      ],
+      "net": "TOP",
+      "start_um": [
+        40000,
+        20000
+      ]
+    },
+    {
+      "end_um": [
+        88000,
+        40000
+      ],
+      "net": "TOP",
+      "start_um": [
+        40000,
+        40000
+      ]
+    },
+    {
+      "end_um": [
+        12000,
+        60000
+      ],
+      "net": "LEFT",
+      "start_um": [
+        12000,
+        20000
+      ]
+    },
+    {
+      "end_um": [
+        52000,
+        60000
+      ],
+      "net": "BOTTOM",
+      "start_um": [
+        28000,
+        60000
+      ]
+    },
+    {
+      "end_um": [
+        98000,
+        20000
+      ],
+      "net": "TAP",
+      "start_um": [
+        68000,
+        20000
+      ]
+    },
+    {
+      "end_um": [
+        98000,
+        31000
+      ],
+      "net": "TAP",
+      "start_um": [
+        98000,
+        20000
+      ]
+    },
+    {
+      "end_um": [
+        70000,
+        60000
+      ],
+      "net": "RIGHT",
+      "start_um": [
+        68000,
+        60000
+      ]
+    },
+    {
+      "end_um": [
+        70000,
+        27000
+      ],
+      "net": "RIGHT",
+      "start_um": [
+        70000,
+        60000
+      ]
+    },
+    {
+      "end_um": [
+        120000,
+        27000
+      ],
+      "net": "RIGHT",
+      "start_um": [
+        70000,
+        27000
+      ]
+    },
+    {
+      "end_um": [
+        120000,
+        40000
+      ],
+      "net": "RIGHT",
+      "start_um": [
+        120000,
+        27000
+      ]
+    },
+    {
+      "end_um": [
+        112000,
+        40000
+      ],
+      "net": "RIGHT",
+      "start_um": [
+        120000,
+        40000
+      ]
+    },
+    {
+      "end_um": [
+        40000,
+        80000
+      ],
+      "net": "TOP",
+      "start_um": [
+        40000,
+        40000
+      ]
+    },
+    {
+      "end_um": [
+        84000,
+        80000
+      ],
+      "net": "TOP",
+      "start_um": [
+        40000,
+        80000
+      ]
+    },
+    {
+      "end_um": [
+        84000,
+        75000
+      ],
+      "net": "TOP",
+      "start_um": [
+        84000,
+        80000
+      ]
+    },
+    {
+      "end_um": [
+        91000,
+        75000
+      ],
+      "net": "TOP",
+      "start_um": [
+        84000,
+        75000
+      ]
+    },
+    {
+      "end_um": [
+        120000,
+        75000
+      ],
+      "net": "RIGHT",
+      "start_um": [
+        120000,
+        40000
+      ]
+    },
+    {
+      "end_um": [
+        109000,
+        75000
+      ],
+      "net": "RIGHT",
+      "start_um": [
+        120000,
+        75000
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "erc_diagnostics": [
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol capacitor.electrolytic is draft, not approved",
+          "severity": "warning",
+          "subject": "capacitor.electrolytic"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol capacitor.fixed is draft, not approved",
+          "severity": "warning",
+          "subject": "capacitor.fixed"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol capacitor.polarized is draft, not approved",
+          "severity": "warning",
+          "subject": "capacitor.polarized"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol inductor.tapped is draft, not approved",
+          "severity": "warning",
+          "subject": "inductor.tapped"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol resistor.fixed is draft, not approved",
+          "severity": "warning",
+          "subject": "resistor.fixed"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol resistor.fixed is draft, not approved",
+          "severity": "warning",
+          "subject": "resistor.fixed"
+        }
+      ],
+      "expected_erc_error_codes": [],
+      "expected_wire_codes": [],
+      "id": "valid",
+      "junctions_um": [
+        [
+          40000,
+          20000
+        ],
+        [
+          40000,
+          40000
+        ],
+        [
+          120000,
+          40000
+        ]
+      ],
+      "net_count": 5,
+      "scenario": "nominal-static",
+      "wire_count": 18,
+      "wire_diagnostics": []
+    },
+    {
+      "erc_diagnostics": [
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol capacitor.electrolytic is draft, not approved",
+          "severity": "warning",
+          "subject": "capacitor.electrolytic"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol capacitor.fixed is draft, not approved",
+          "severity": "warning",
+          "subject": "capacitor.fixed"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol capacitor.polarized is draft, not approved",
+          "severity": "warning",
+          "subject": "capacitor.polarized"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol inductor.tapped is draft, not approved",
+          "severity": "warning",
+          "subject": "inductor.tapped"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol resistor.fixed is draft, not approved",
+          "severity": "warning",
+          "subject": "resistor.fixed"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol resistor.fixed is draft, not approved",
+          "severity": "warning",
+          "subject": "resistor.fixed"
+        }
+      ],
+      "expected_erc_error_codes": [],
+      "expected_wire_codes": [
+        "WIRE_DANGLING_END",
+        "WIRE_NET_DISCONNECTED",
+        "WIRE_PIN_UNWIRED"
+      ],
+      "id": "electrolytic_pin_unwired",
+      "junctions_um": [
+        [
+          40000,
+          20000
+        ],
+        [
+          40000,
+          40000
+        ],
+        [
+          120000,
+          40000
+        ]
+      ],
+      "net_count": 5,
+      "scenario": "nominal-static",
+      "wire_count": 17,
+      "wire_diagnostics": [
+        {
+          "code": "WIRE_DANGLING_END",
+          "message": "Wire 16 has an unconnected endpoint at 120000,75000",
+          "severity": "error",
+          "subject": "16"
+        },
+        {
+          "code": "WIRE_NET_DISCONNECTED",
+          "message": "Net RIGHT does not form one physical wire island",
+          "severity": "error",
+          "subject": "RIGHT"
+        },
+        {
+          "code": "WIRE_PIN_UNWIRED",
+          "message": "C3.2 of RIGHT has no conductor",
+          "severity": "error",
+          "subject": "C3"
+        }
+      ]
+    },
+    {
+      "erc_diagnostics": [
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol capacitor.electrolytic is draft, not approved",
+          "severity": "warning",
+          "subject": "capacitor.electrolytic"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol capacitor.fixed is draft, not approved",
+          "severity": "warning",
+          "subject": "capacitor.fixed"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol capacitor.polarized is draft, not approved",
+          "severity": "warning",
+          "subject": "capacitor.polarized"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol inductor.tapped is draft, not approved",
+          "severity": "warning",
+          "subject": "inductor.tapped"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol resistor.fixed is draft, not approved",
+          "severity": "warning",
+          "subject": "resistor.fixed"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol resistor.fixed is draft, not approved",
+          "severity": "warning",
+          "subject": "resistor.fixed"
+        }
+      ],
+      "expected_erc_error_codes": [],
+      "expected_wire_codes": [
+        "WIRE_NET_SHORT"
+      ],
+      "id": "short_at_unmarked_crossing",
+      "junctions_um": [
+        [
+          40000,
+          20000
+        ],
+        [
+          40000,
+          40000
+        ],
+        [
+          120000,
+          40000
+        ],
+        [
+          40000,
+          60000
+        ]
+      ],
+      "net_count": 5,
+      "scenario": "nominal-static",
+      "wire_count": 18,
+      "wire_diagnostics": [
+        {
+          "code": "WIRE_NET_SHORT",
+          "message": "Conductors join distinct nets: BOTTOM, TOP",
+          "severity": "error",
+          "subject": "0"
+        }
+      ]
+    },
+    {
+      "erc_diagnostics": [
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol capacitor.electrolytic is draft, not approved",
+          "severity": "warning",
+          "subject": "capacitor.electrolytic"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol capacitor.fixed is draft, not approved",
+          "severity": "warning",
+          "subject": "capacitor.fixed"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol capacitor.polarized is draft, not approved",
+          "severity": "warning",
+          "subject": "capacitor.polarized"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol inductor.tapped is draft, not approved",
+          "severity": "warning",
+          "subject": "inductor.tapped"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol resistor.fixed is draft, not approved",
+          "severity": "warning",
+          "subject": "resistor.fixed"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol resistor.fixed is draft, not approved",
+          "severity": "warning",
+          "subject": "resistor.fixed"
+        }
+      ],
+      "expected_erc_error_codes": [],
+      "expected_wire_codes": [
+        "WIRE_DANGLING_END",
+        "WIRE_NET_DISCONNECTED"
+      ],
+      "id": "one_micrometre_gap",
+      "junctions_um": [
+        [
+          40000,
+          20000
+        ],
+        [
+          40000,
+          40000
+        ],
+        [
+          120000,
+          40000
+        ]
+      ],
+      "net_count": 5,
+      "scenario": "nominal-static",
+      "wire_count": 18,
+      "wire_diagnostics": [
+        {
+          "code": "WIRE_DANGLING_END",
+          "message": "Wire 12 has an unconnected endpoint at 40000,80000",
+          "severity": "error",
+          "subject": "12"
+        },
+        {
+          "code": "WIRE_DANGLING_END",
+          "message": "Wire 13 has an unconnected endpoint at 40001,80000",
+          "severity": "error",
+          "subject": "13"
+        },
+        {
+          "code": "WIRE_NET_DISCONNECTED",
+          "message": "Net TOP does not form one physical wire island",
+          "severity": "error",
+          "subject": "TOP"
+        }
+      ]
+    },
+    {
+      "erc_diagnostics": [
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol capacitor.electrolytic is draft, not approved",
+          "severity": "warning",
+          "subject": "capacitor.electrolytic"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol capacitor.fixed is draft, not approved",
+          "severity": "warning",
+          "subject": "capacitor.fixed"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol capacitor.polarized is draft, not approved",
+          "severity": "warning",
+          "subject": "capacitor.polarized"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol inductor.tapped is draft, not approved",
+          "severity": "warning",
+          "subject": "inductor.tapped"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol resistor.fixed is draft, not approved",
+          "severity": "warning",
+          "subject": "resistor.fixed"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol resistor.fixed is draft, not approved",
+          "severity": "warning",
+          "subject": "resistor.fixed"
+        }
+      ],
+      "expected_erc_error_codes": [],
+      "expected_wire_codes": [
+        "WIRE_DANGLING_END",
+        "WIRE_NET_DISCONNECTED"
+      ],
+      "id": "missing_t_junction",
+      "junctions_um": [
+        [
+          40000,
+          40000
+        ],
+        [
+          120000,
+          40000
+        ]
+      ],
+      "net_count": 5,
+      "scenario": "nominal-static",
+      "wire_count": 18,
+      "wire_diagnostics": [
+        {
+          "code": "WIRE_DANGLING_END",
+          "message": "Wire 1 has an unconnected endpoint at 40000,20000",
+          "severity": "error",
+          "subject": "1"
+        },
+        {
+          "code": "WIRE_NET_DISCONNECTED",
+          "message": "Net TOP does not form one physical wire island",
+          "severity": "error",
+          "subject": "TOP"
+        }
+      ]
+    },
+    {
+      "erc_diagnostics": [
+        {
+          "code": "POLARITY_REVERSED",
+          "message": "C3 (1:+ on TOP, 2:- on RIGHT): Positive terminal has lower potential than negative terminal",
+          "severity": "error",
+          "subject": "C3"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol capacitor.electrolytic is draft, not approved",
+          "severity": "warning",
+          "subject": "capacitor.electrolytic"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol capacitor.fixed is draft, not approved",
+          "severity": "warning",
+          "subject": "capacitor.fixed"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol capacitor.polarized is draft, not approved",
+          "severity": "warning",
+          "subject": "capacitor.polarized"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol inductor.tapped is draft, not approved",
+          "severity": "warning",
+          "subject": "inductor.tapped"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol resistor.fixed is draft, not approved",
+          "severity": "warning",
+          "subject": "resistor.fixed"
+        },
+        {
+          "code": "UNAPPROVED_SYMBOL",
+          "message": "Symbol resistor.fixed is draft, not approved",
+          "severity": "warning",
+          "subject": "resistor.fixed"
+        }
+      ],
+      "expected_erc_error_codes": [
+        "POLARITY_REVERSED"
+      ],
+      "expected_wire_codes": [],
+      "id": "reverse_electrolytic_bias",
+      "junctions_um": [
+        [
+          40000,
+          20000
+        ],
+        [
+          40000,
+          40000
+        ],
+        [
+          120000,
+          40000
+        ]
+      ],
+      "net_count": 5,
+      "scenario": "reverse-C3",
+      "wire_count": 18,
+      "wire_diagnostics": []
+    }
+  ],
+  "catalog_ids": [
+    "capacitor.electrolytic",
+    "capacitor.fixed",
+    "capacitor.polarized",
+    "inductor.tapped",
+    "resistor.fixed"
+  ],
+  "components": [
+    {
+      "part_id": "resistor.fixed",
+      "physical_pins_um": {
+        "1": [
+          12000,
+          20000
+        ],
+        "2": [
+          28000,
+          20000
+        ]
+      },
+      "reference": "R1"
+    },
+    {
+      "part_id": "resistor.fixed",
+      "physical_pins_um": {
+        "1": [
+          12000,
+          60000
+        ],
+        "2": [
+          28000,
+          60000
+        ]
+      },
+      "reference": "R2"
+    },
+    {
+      "part_id": "capacitor.fixed",
+      "physical_pins_um": {
+        "1": [
+          52000,
+          20000
+        ],
+        "2": [
+          68000,
+          20000
+        ]
+      },
+      "reference": "C1"
+    },
+    {
+      "part_id": "capacitor.polarized",
+      "physical_pins_um": {
+        "1": [
+          52000,
+          60000
+        ],
+        "2": [
+          68000,
+          60000
+        ]
+      },
+      "reference": "C2"
+    },
+    {
+      "part_id": "inductor.tapped",
+      "physical_pins_um": {
+        "1": [
+          88000,
+          40000
+        ],
+        "2": [
+          112000,
+          40000
+        ],
+        "3": [
+          98000,
+          31000
+        ]
+      },
+      "reference": "L1"
+    },
+    {
+      "part_id": "capacitor.electrolytic",
+      "physical_pins_um": {
+        "1": [
+          91000,
+          75000
+        ],
+        "2": [
+          109000,
+          75000
+        ]
+      },
+      "reference": "C3"
+    }
+  ],
+  "kind": "electrical_end_to_end_specimen",
+  "nets": [
+    {
+      "name": "TOP",
+      "pins": [
+        "R1.2",
+        "C1.1",
+        "L1.1",
+        "C3.1"
+      ]
+    },
+    {
+      "name": "LEFT",
+      "pins": [
+        "R1.1",
+        "R2.1"
+      ]
+    },
+    {
+      "name": "BOTTOM",
+      "pins": [
+        "R2.2",
+        "C2.1"
+      ]
+    },
+    {
+      "name": "TAP",
+      "pins": [
+        "C1.2",
+        "L1.3"
+      ]
+    },
+    {
+      "name": "RIGHT",
+      "pins": [
+        "C2.2",
+        "L1.2",
+        "C3.2"
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "status": "experimental_not_eskd_approved"
+}
