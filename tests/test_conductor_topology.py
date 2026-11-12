@@ -201,3 +201,14 @@ def test_invalid_topology_definition_fails_before_validation(kwargs):
     }
     with pytest.raises(ValueError):
         ConductorTopology(**(defaults | kwargs))
+
+
+def test_conductor_graph_remains_safe_for_long_reverse_connected_chains():
+    from gost_schematic.validation.conductor_checks import _DisjointSets
+
+    graph = _DisjointSets()
+    # Deliberately build a worst-case parent chain in descending order.
+    for position in range(1800, 0, -1):
+        graph.union(Point(position - 1, 0), Point(position, 0))
+    assert graph.find(Point(1800, 0)) == Point(0, 0)
+    assert all(graph.find(Point(i, 0)) == Point(0, 0) for i in (1, 500, 1799))
