@@ -14,7 +14,6 @@ from gost_schematic.core.geometry import (
     StyledLine,
 )
 from gost_schematic.core.units import mm
-from gost_schematic.model.conductor_topology import ConductorTopology
 from gost_schematic.model.annotations import (
     Anchor,
     AnnotationRole,
@@ -22,6 +21,7 @@ from gost_schematic.model.annotations import (
     HorizontalAlign,
     VerticalAlign,
 )
+from gost_schematic.model.conductor_topology import ConductorTopology
 from gost_schematic.model.pins import GraphicPin
 from gost_schematic.model.symbol import SymbolDefinition, SymbolStatus
 
