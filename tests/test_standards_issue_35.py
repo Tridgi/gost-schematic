@@ -203,8 +203,8 @@ def test_negative_crossing_and_bad_width_would_be_rejected_by_review_rules():
     assert not injected_dot.isdisjoint(forbidden)  # expect failure in future validator
     good_width = data["specimen"]["stroke_mm"]
     assert 0.2 <= good_width <= 1.0
-    assert not (0.2 <= 0.15 <= 1.0)
-    assert not (0.2 <= 1.2 <= 1.0)
+    bad_widths = (0.15, 1.2)
+    assert all(not (0.2 <= value <= 1.0) for value in bad_widths)
 
 
 def test_paper_and_digital_title_exemptions_and_all_evidence_links_survive():
