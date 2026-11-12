@@ -20,11 +20,11 @@ from gost_schematic.model.symbol import SymbolDefinition
 from gost_schematic.validation.symbol_checks import validate_symbol
 
 
-def _box_mm(box) -> tuple[str, str, str, str]:
-    return tuple(
+def _box_mm(box) -> list[str]:
+    return [
         format_mm(value)
         for value in (box.min_x, box.min_y, box.max_x, box.max_y)
-    )
+    ]
 
 
 def _entry(
