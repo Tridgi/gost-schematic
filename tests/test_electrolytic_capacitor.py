@@ -23,7 +23,8 @@ from gost_schematic.engines.annotation.layout import (
 )
 from gost_schematic.engines.ports import pin_corridors_for_component
 from gost_schematic.model.annotations import MeasuredText, TextStyle
-from gost_schematic.model.circuit import Circuit, ComponentInstance, PinRef
+from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
+from gost_schematic.model.potentials import NetPotential, PotentialScenario
 from gost_schematic.model.part import VoltageOrientationRule
 from gost_schematic.model.pins import ElectricalType, TerminalPolarity
 from gost_schematic.model.quantities import Quantity, QuantityKind, Unit
@@ -32,6 +33,7 @@ from gost_schematic.rendering.svg import render_symbol_svg
 from gost_schematic.validation.circuit_checks import validate_circuit
 from gost_schematic.validation.conductor_checks import inspect_conductor_topology
 from gost_schematic.validation.dimensional_checks import check_verified_dimensions
+from gost_schematic.validation.polarity_checks import PolarityStatus, assess_polarity
 from gost_schematic.validation.symbol_checks import validate_symbol
 
 
@@ -294,3 +296,56 @@ def test_svg_is_vector_and_keeps_both_separate_electrodes():
     assert len(lines) == len(symbol.graphics)
     assert len(lines) == 12
     assert not xml.findall(f".//{svg}image")
+
+
+
+def test_voltage_scenario_detects_real_reverse_polarity_without_geometry_guessing():
+    part = _part()
+    schematic = Circuit(
+        (ComponentInstance("C19", part.identifier),),
+        (
+            Net("A", (PinRef("C19", "1"),)),
+            Net("B", (PinRef("C19", "2"),)),
+        ),
+    )
+    def scenario(plus, minus):
+        return PotentialScenario("electrolytic review", (
+            NetPotential.from_volts("A", plus, reference_id="common"),
+            NetPotential.from_volts("B", minus, reference_id="common"),
+        ))
+
+    forward = assess_polarity(
+        schematic, {part.identifier: part}, scenario=scenario("12", "0")
+    )[0]
+    reverse = assess_polarity(
+        schematic, {part.identifier: part}, scenario=scenario("0", "12")
+    )[0]
+    assert forward.status == PolarityStatus.FORWARD
+    assert reverse.status == PolarityStatus.REVERSED
+    assert "POLARITY_REVERSED" in {
+        diagnostic.code for diagnostic in validate_circuit(
+            schematic, {part.identifier: part},
+            {part.symbol_id: _symbol()}, scenario=scenario("0", "12"),
+        )
+    }
+
+
+def test_preview_generator_emits_four_independent_real_renderer_svgs(tmp_path):
+    from examples.review_electrolytic_capacitor import generate
+
+    generated = generate(tmp_path)
+    assert generated["approval"] == "DRAFT"
+    assert generated["normative_certified"] is False
+    assert len(generated["specimens"]) == 4
+    assert len(list(tmp_path.glob("*.svg"))) == 4
+    for item in generated["specimens"]:
+        content = (tmp_path / item["path"]).read_text(encoding="utf-8")
+        xml = ET.fromstring(content)
+        assert xml.tag == "{http://www.w3.org/2000/svg}svg"
+        assert item["approval"] == "draft"
+        assert item["pin_islands"] == [["1"], ["2"]]
+    manifest = (tmp_path / "manifest.json").read_bytes()
+    first = sorted((f.name, f.read_bytes()) for f in tmp_path.glob("*.svg"))
+    assert generate(tmp_path) == generated
+    assert (tmp_path / "manifest.json").read_bytes() == manifest
+    assert sorted((f.name, f.read_bytes()) for f in tmp_path.glob("*.svg")) == first
