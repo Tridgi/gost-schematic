@@ -8,13 +8,21 @@ from xml.etree import ElementTree as ET
 from gost_schematic.catalog.inductors import load_inductor
 from gost_schematic.catalog.loader import load_symbol
 from gost_schematic.catalog.part_loader import load_part
-from gost_schematic.core.geometry import Circle, Line, Point, Rectangle, Semicircle, Side, StyledLine
+from gost_schematic.core.geometry import (
+    Box,
+    Circle,
+    Line,
+    Point,
+    Rectangle,
+    Semicircle,
+    Side,
+    StyledLine,
+)
 from gost_schematic.core.transforms import Transform
 from gost_schematic.core.units import format_mm, mm
 from gost_schematic.engines.sheet_layout import SheetLayout
 from gost_schematic.model.annotations import AnnotationPlacement, AnnotationRole, TextStyle
 from gost_schematic.model.circuit import Circuit, ComponentInstance
-from gost_schematic.core.geometry import Box
 from gost_schematic.rendering.sheet_svg import render_sheet_svg
 from gost_schematic.rendering.svg import render_symbol_svg
 
@@ -73,7 +81,7 @@ def _expect_attrs(shape, node):
             f"{format_mm(last.x)} {format_mm(last.y)}"
         )
     else:
-        raise AssertionError(f"Unsupported primitive {type(shape)}")
+        raise TypeError(f"Unsupported primitive {type(shape)}")
 
 
 def test_all_catalog_ugo_svg_shapes_preserve_integer_source_coordinates():
