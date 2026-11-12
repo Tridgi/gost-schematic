@@ -47,6 +47,10 @@ def test_every_variant_has_separate_draft_part_and_one_source_of_truth(name):
     assert built.part.nominal_kind == QuantityKind.INDUCTANCE
     assert built.symbol.status == SymbolStatus.DRAFT
     assert built.symbol.standard_refs[0].startswith("ГОСТ 2.723-68")
+    assert built.spec.normative_basis == built.symbol.standard_refs[1]
+    assert built.spec.normative_relation.value in (
+        "table_2_example", "table_1_composition", "editorial_adaptation"
+    )
     assert len(built.symbol.graphics) >= 6
     assert len([g for g in built.symbol.graphics if isinstance(g, Semicircle)]) == 4
     assert {p.number for p in built.part.pins} == {p.number for p in built.symbol.pins}
