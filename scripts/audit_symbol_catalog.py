@@ -18,6 +18,7 @@ from gost_schematic.core.units import format_mm
 from gost_schematic.model.part import PartDefinition
 from gost_schematic.model.symbol import SymbolDefinition
 from gost_schematic.validation.conductor_checks import inspect_conductor_topology
+from gost_schematic.validation.dimensional_checks import check_verified_dimensions
 from gost_schematic.validation.symbol_checks import validate_symbol
 
 
@@ -34,6 +35,8 @@ def _entry(
 ) -> dict[str, object]:
     checks = list(validate_symbol(symbol))
     traced = inspect_conductor_topology(symbol)
+    normative = check_verified_dimensions(symbol)
+    checks.extend(normative.diagnostics)
     if symbol.conductor_topology is None:
         checks.append(Diagnostic(
             "TOPOLOGY_REQUIRED_IN_CATALOG", Severity.ERROR,
@@ -97,6 +100,13 @@ def _entry(
         "un-stroked_bounds_mm": _box_mm(symbol.bounds),
         "stroked_bounds_mm": _box_mm(symbol.stroked_bounds),
         "normative_references": list(symbol.standard_refs),
+        "verified_dimension_rules": list(normative.passed_rules),
+        "applicable_dimension_rules": list(normative.applicable_rules),
+        "dimension_status": (
+            "verified_selected_dimensions" if normative.applicable_rules and normative.valid
+            else "dimension_mismatch" if normative.applicable_rules
+            else "not_yet_verifiable"
+        ),
         "diagnostics": problems,
     }
 
@@ -138,6 +148,9 @@ def audit_catalog() -> dict[str, object]:
         "draft_count": sum(item["approval"] == "draft" for item in entries),
         "topologies_verified": sum(
             bool(item["conductor_topology"]["valid"]) for item in entries
+        ),
+        "symbols_with_checked_dimensions": sum(
+            bool(item["applicable_dimension_rules"]) for item in entries
         ),
         "without_physical_part": [
             item["id"] for item in entries if not item["physical_part_mapped"]
