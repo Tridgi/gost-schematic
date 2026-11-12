@@ -24,9 +24,9 @@ from gost_schematic.engines.annotation.layout import (
 from gost_schematic.engines.ports import pin_corridors_for_component
 from gost_schematic.model.annotations import MeasuredText, TextStyle
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
-from gost_schematic.model.potentials import NetPotential, PotentialScenario
 from gost_schematic.model.part import VoltageOrientationRule
 from gost_schematic.model.pins import ElectricalType, TerminalPolarity
+from gost_schematic.model.potentials import NetPotential, PotentialScenario
 from gost_schematic.model.quantities import Quantity, QuantityKind, Unit
 from gost_schematic.model.symbol import SymbolStatus
 from gost_schematic.rendering.svg import render_symbol_svg
