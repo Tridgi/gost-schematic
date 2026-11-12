@@ -84,14 +84,14 @@ def test_coils_have_no_invented_fixed_dimensions():
 
 def test_catalog_audit_does_not_mark_all_coils_dimension_certified():
     result = audit_catalog()
-    assert result["total_symbols"] == 18
-    assert result["topologies_verified"] == 18
+    assert result["total_symbols"] == 19
+    assert result["topologies_verified"] == 19
     assert result["symbols_with_checked_dimensions"] == 3
     assert result["hard_errors"] == 0
     assert len([
         e for e in result["entries"]
         if e["dimension_status"] == "not_yet_verifiable"
-    ]) == 15
+    ]) == 16
 
 
 

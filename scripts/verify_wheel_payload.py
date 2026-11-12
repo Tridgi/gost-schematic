@@ -14,11 +14,13 @@ _SYMBOLS = {
     "catalog/symbols/resistors/fixed.json",
     "catalog/symbols/capacitors/fixed.json",
     "catalog/symbols/capacitors/polarized.json",
+    "catalog/symbols/capacitors/electrolytic.json",
 }
 _PARTS = {
     "catalog/parts/resistors/fixed.json",
     "catalog/parts/capacitors/fixed.json",
     "catalog/parts/capacitors/polarized.json",
+    "catalog/parts/capacitors/electrolytic.json",
 }
 _REQUIREMENTS = "standards/requirements_2026_ru.json"
 

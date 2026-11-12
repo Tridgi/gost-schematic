@@ -13,8 +13,8 @@ from scripts.audit_symbol_catalog import audit_catalog, main
 def test_all_current_catalog_symbols_pass_structural_integrity_audit():
     result = audit_catalog()
     assert result["schema_version"] == 1
-    assert result["total_symbols"] == 18  # 15 inductors + resistor + 2 capacitors
-    assert result["draft_count"] == 18
+    assert result["total_symbols"] == 19  # 15 inductors + resistor + 3 capacitors
+    assert result["draft_count"] == 19
     assert result["hard_errors"] == 0
     assert result["error_details"] == []
     assert result["without_physical_part"] == []
