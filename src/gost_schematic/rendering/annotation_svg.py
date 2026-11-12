@@ -125,6 +125,8 @@ def render_annotation_svg(
             "data-key": placement.key,
         })
         label.text = placement.text
+        if placement.style.font_sha256 is not None:
+            label.set("data-font-sha256", placement.style.font_sha256)
 
     if review_overlay:
         overlay = ET.SubElement(root, "g", {"data-layer": "geometry-review"})
