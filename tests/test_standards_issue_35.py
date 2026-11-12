@@ -217,6 +217,6 @@ def test_paper_and_digital_title_exemptions_and_all_evidence_links_survive():
     for phrase in (
         "ГОСТ Р 2.104-2023", "таблица 6в", "185×55", "20 мм",
         "5 мм", "1,0 мм", "2,0 мм", "3,0 мм", "BLOCKED",
-        "КОМПАС", "0 APPROVED", "S35-09",
+        "КОМПАС", "0 `APPROVED`", "S35-09",
     ):
         assert phrase in report
