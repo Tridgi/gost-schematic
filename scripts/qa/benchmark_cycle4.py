@@ -13,6 +13,7 @@ import statistics
 import sys
 import time
 import tracemalloc
+from functools import partial
 from importlib.resources import files
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -111,11 +112,8 @@ def benchmark(sizes=(10, 50, 200, 500), repeat=3):
         parts = {part.identifier: part}
         symbols = {symbol.identifier: symbol}
 
-        def check_wire():
-            return validate_external_wires(wire_circuit, graph, parts, symbols)
-
-        def check_svg():
-            return render_sheet_svg(sheet_circuit, symbols, sheet_layout)
+        check_wire = partial(validate_external_wires, wire_circuit, graph, parts, symbols)
+        check_svg = partial(render_sheet_svg, sheet_circuit, symbols, sheet_layout)
 
         diagnostics, wire_stats = _sample(check_wire, repeat)
         if diagnostics:
