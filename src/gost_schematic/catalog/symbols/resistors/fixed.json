@@ -80,11 +80,11 @@
         },
         {
           "at_mm": [
-            0,
-            4
+            11,
+            -4
           ],
-          "horizontal": "center",
-          "vertical": "top"
+          "horizontal": "left",
+          "vertical": "bottom"
         }
       ]
     },
