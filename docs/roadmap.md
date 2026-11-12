@@ -71,6 +71,24 @@
 - Still pending: user approval of geometry, exact normative comparison,
   internal graphic topology, automatic wire routing, complete ERC.
 
+## Stage 0.12 — normative traceability and authored conductor graph (PR #9)
+- Read applicable Russian ESKD source standards, create date-scoped document
+  editions, clause/URL-linked rule cards and a per-UGO normative review matrix.
+- Machine-check validated resistor 10×4 mm, fixed/polarized capacitor
+  plate length 8 mm and spacing 1.5 mm; no invented normative coil dimensions.
+- Explicit conductive layers distinguish UGO paint, physical terminals and
+  external circuit netlists; exact-line/semicircle junction model and
+  deliberately unconnected crossings.
+- Check winding taps/slider continuity, accidental capacitor plate bridges,
+  missing junctions, arc breaks and rotation/mirror invariants.
+- Conservative, independent draft-sheet wire check: 0.2–1.0 mm line
+  thickness, 3 mm minimum between parallel printed wire edges; warn for
+  diagonals requiring engineering justification.
+- Still pending: human verification of 15 winding glyphs, individual
+  electrolytic capacitor symbol, full 1 mm / 2 mm precise UGO clearances,
+  external wire graph to netlist equivalence, proper GOST line/font compliance,
+  approved symbols, full reference documents and automatic routing.
+
 ## Stage 1 — approved standard UGO
 - Resistor family, capacitor family, precise stroke/lettering constraints.
 - Reference comparisons from KOMPAS and normative verification.
