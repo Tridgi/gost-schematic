@@ -36,6 +36,7 @@ class TextStyle:
     font_family: str
     em_height_um: int = 3500
     clearance_um: int = 500
+    font_style: str = "normal"
 
     def __post_init__(self) -> None:
         if not self.font_path or not self.font_family:
@@ -44,6 +45,8 @@ class TextStyle:
             raise ValueError("The font em height must be positive integer micrometres")
         if type(self.clearance_um) is not int or self.clearance_um < 0:
             raise ValueError("Clearance must be non-negative integer micrometres")
+        if self.font_style not in ("normal", "italic"):
+            raise ValueError("font_style must be normal or italic")
 
 
 @dataclass(frozen=True, slots=True)
