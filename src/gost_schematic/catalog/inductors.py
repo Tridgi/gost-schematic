@@ -25,6 +25,7 @@ from gost_schematic.model.annotations import (
     HorizontalAlign,
     VerticalAlign,
 )
+from gost_schematic.model.conductor_topology import ConductorTopology
 from gost_schematic.model.part import PartDefinition
 from gost_schematic.model.pins import (
     ElectricalType,
@@ -190,6 +191,8 @@ def build_inductor(spec: InductorSpec) -> InductorDefinition:
     for index in range(spec.turns):
         graphics.append(Semicircle(Point(first + (2 * index + 1) * r, 0), r, Side.TOP))
     graphics.append(Line(Point(last, 0), Point(lead_end, 0)))
+    conducting_indices = list(range(len(graphics)))
+    explicit_junctions: list[Point] = []
 
     pins = [
         GraphicPin("1", Point(lead_start, 0), Side.LEFT),
@@ -234,6 +237,8 @@ def build_inductor(spec: InductorSpec) -> InductorDefinition:
         x = first + (2 * index + 1) * r
         number = str(3 + offset)
         pos = Point(x, -r - mm("7"))
+        explicit_junctions.append(Point(x, -r))
+        conducting_indices.append(len(graphics))
         graphics.append(Line(Point(x, -r), pos))
         pins.append(GraphicPin(number, pos, Side.TOP))
         physical.append(PhysicalPin(number, f"TAP{offset + 1}", ElectricalType.PASSIVE, function=TerminalFunction.WINDING_TAP))
@@ -243,6 +248,8 @@ def build_inductor(spec: InductorSpec) -> InductorDefinition:
         number = str(3 + len(spec.tap_turns) + offset)
         pos = Point(x, -r - mm("7"))
         tip = Point(x, -r)
+        explicit_junctions.append(tip)
+        conducting_indices.append(len(graphics))
         graphics.append(Line(pos, tip))
         graphics.extend(_arrowhead(tip, direction="down", unit=mm("1")))
         pins.append(GraphicPin(number, pos, Side.TOP))
@@ -289,6 +296,11 @@ def build_inductor(spec: InductorSpec) -> InductorDefinition:
             f"review_relation={spec.normative_relation.value}; approval=draft",
         ),
         annotation_slots=tuple(labels), constant_annotations=constants,
+        conductor_topology=ConductorTopology(
+            conductor_indices=tuple(conducting_indices),
+            junctions=tuple(explicit_junctions),
+            pin_groups=(tuple(pin.number for pin in pins),),
+        ),
     )
     part = PartDefinition(
         identifier=spec.identifier, reference_prefix="L", symbol_id=symbol.identifier,
