@@ -204,6 +204,16 @@ def bind_component_annotations(
         diagnostics = nominal.diagnostics
         if nominal.text is not None:
             bindings["value"] = nominal.text
+    elif "value" in bindings and policy.show_nominal:
+        if policy.strict_compact:
+            raise ValueError(
+                "A literal value label cannot be validated in strict ESKD compact mode"
+            )
+        diagnostics = (Diagnostic(
+            "NOMINAL_LITERAL_UNVERIFIED", Severity.WARNING,
+            f"{component.reference}.value is raw text, not an SI-valued nominal",
+            component.reference,
+        ),)
     hidden = (
         frozenset({AnnotationRole.VALUE})
         if not policy.show_nominal else frozenset()
