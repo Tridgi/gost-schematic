@@ -9,6 +9,7 @@ No font data is copied or shipped by this module.
 """
 
 from dataclasses import dataclass
+from enum import Enum
 from fractions import Fraction
 from pathlib import Path
 
@@ -16,6 +17,17 @@ from gost_schematic.engines.annotation.metrics import _PIXELS_PER_EM, _load_font
 from gost_schematic.model.annotations import TextStyle
 
 TYPE_A_HEIGHTS_UM = frozenset((2500, 3500, 5000, 7000, 10000, 14000, 20000))
+
+
+class TypeAAngle(str, Enum):
+    UPRIGHT = "upright"
+    INCLINED_75 = "inclined_75"
+
+
+def _face_style(face: tuple[str, str]) -> str:
+    return "italic" if any(
+        label in face[1].casefold() for label in ("italic", "oblique", "slanted")
+    ) else "normal"
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,6 +80,7 @@ def inspect_type_a_font(
     family: str = "OpenGost Type A",
     clearance_um: int = 500,
     require_family_match: bool = True,
+    angle: TypeAAngle = TypeAAngle.UPRIGHT,
 ) -> TypeAFontInspection:
     """Fail closed if missing, wrong-family or lacking a measurable Cyrillic capital.
 
@@ -84,6 +97,15 @@ def inspect_type_a_font(
         raise ValueError(
             f"Selected font is {face[0]!r}, not declared type A family {family!r}"
         )
+    if not isinstance(angle, TypeAAngle):
+        raise TypeError("angle must be a TypeAAngle")
+    face_style = _face_style(face)
+    expected_style = "italic" if angle == TypeAAngle.INCLINED_75 else "normal"
+    if face_style != expected_style:
+        raise ValueError(
+            f"Angle {angle.value} needs an actual {expected_style} font face, "
+            f"but {face[1]!r} was loaded"
+        )
     # The glyph Н has a flat cap, unlike rounded characters with overshoot.
     left, top, right, bottom = font.getbbox("Н", anchor="ls")
     if left >= right or top >= bottom or top >= 0:
@@ -97,6 +119,7 @@ def inspect_type_a_font(
     style = TextStyle(
         str(source), family, em_height_um=calibrated_em_um,
         clearance_um=clearance_um,
+        font_style=face_style,
     )
     return TypeAFontInspection(
         style=style,
