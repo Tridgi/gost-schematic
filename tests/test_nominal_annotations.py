@@ -120,3 +120,20 @@ def test_document_rejects_override_for_unknown_reference():
             )),
         )
     assert SchematicDocument(circuit).nominal_display.default.show_nominal
+
+
+
+def test_raw_legacy_nominal_is_warning_not_false_eskd_validation(resistor, face):
+    component = ComponentInstance("R9", "part.resistor")
+    bound = bind_component_annotations(
+        resistor, component, face, literal_values={"value": "2,3к"},
+    )
+    assert bound.requests[-1].text == "2,3к"
+    assert bound.diagnostics[0].code == "NOMINAL_LITERAL_UNVERIFIED"
+    strict = NominalDisplayConfiguration(
+        default=NominalDisplaySettings(strict_compact=True),
+    )
+    with pytest.raises(ValueError, match="literal value label"):
+        bind_component_annotations(
+            resistor, component, face, strict, {"value": "2,3к"},
+        )
