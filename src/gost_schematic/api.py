@@ -16,6 +16,7 @@ from gost_schematic.engines.routing.clearance import (
 from gost_schematic.engines.sheet_layout import (
     SheetLabelProfile,
     SheetLayout,
+    component_graphic_obstacles,
     layout_sheet,
     sheet_label_requests,
 )
@@ -32,6 +33,12 @@ from gost_schematic.rendering.annotation_svg import render_annotation_svg
 from gost_schematic.rendering.sheet_svg import render_sheet_svg
 from gost_schematic.rendering.svg import render_symbol_svg
 from gost_schematic.standards.nominals import FormattedNominal, NominalRangeError, format_nominal
+from gost_schematic.standards.type_a_font import (
+    TypeAAngle,
+    TypeAFontInspection,
+    TypeAParameters,
+    inspect_type_a_font,
+)
 from gost_schematic.validation.annotation_checks import (
     annotation_obstacles,
     validate_annotation_scene,
@@ -53,10 +60,15 @@ __all__ = [
     "SheetLabelProfile",
     "SheetLayout",
     "TextStyle",
+    "TypeAAngle",
+    "TypeAFontInspection",
+    "TypeAParameters",
     "Unit",
     "annotation_obstacles",
     "bind_component_annotations",
+    "component_graphic_obstacles",
     "format_nominal",
+    "inspect_type_a_font",
     "layout_sheet",
     "load_symbol",
     "obstacles_for_component",

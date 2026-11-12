@@ -143,10 +143,13 @@ def render_sheet_svg(
             "y": format_mm(label.baseline.y),
             "font-size": format_mm(label.style.em_height_um),
             "font-family": label.style.font_family,
+            "font-style": label.style.font_style,
             "fill": "#000000",
             "stroke": "none",
         })
         text.text = label.text
+        if label.style.font_sha256 is not None:
+            text.set("data-font-sha256", label.style.font_sha256)
 
     if review_overlay:
         debug = ET.SubElement(root, "g", {

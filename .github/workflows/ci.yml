@@ -85,6 +85,44 @@ jobs:
           name: sheet-label-geometry-review
           path: output/sheet-review/*.svg
           if-no-files-found: warn
+      - name: Install open-license OpenGOST Type A for sample render
+        if: matrix.python-version == '3.12'
+        run: |
+          python scripts/install_opengost_type_a.py \
+            --directory "$HOME/.local/share/fonts"
+          fc-cache -f
+      - name: Generate GOST Type A capacitor review
+        if: matrix.python-version == '3.12'
+        run: |
+          FONT_FILE="$(find "$HOME/.local/share/fonts" -type f \
+            -iname '*TypeA*.ttf' -o -iname '*TypeA*.otf' | head -1)"
+          test -n "$FONT_FILE"
+          python examples/review_type_a_capacitors.py \
+            --font-file "$FONT_FILE" --font-family "OpenGost Type A" \
+            --output-dir output/type-a-capacitors
+      - name: Rasterize reviewed OpenGOST SVG with the exact installed font
+        if: matrix.python-version == '3.12'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+          rsvg-convert --background-color white --width 1700 \
+            -o output/type-a-capacitors/type-a-capacitors-eskd_compact-clean.png \
+            output/type-a-capacitors/type-a-capacitors-eskd_compact-clean.svg
+          rsvg-convert --background-color white --width 1700 \
+            -o output/type-a-capacitors/type-a-capacitors-eskd_compact-review.png \
+            output/type-a-capacitors/type-a-capacitors-eskd_compact-review.svg
+          rsvg-convert --background-color white --width 1700 \
+            -o output/type-a-capacitors/type-a-capacitors-full_units-clean.png \
+            output/type-a-capacitors/type-a-capacitors-full_units-clean.svg
+      - name: Upload Type A and capacitor SVG
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-type-a-capacitors
+          path: |
+            output/type-a-capacitors/*.svg
+            output/type-a-capacitors/*.png
+          if-no-files-found: error
       - name: Upload nominal display samples
         if: matrix.python-version == '3.12'
         uses: actions/upload-artifact@v4
