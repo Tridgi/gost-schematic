@@ -1,4 +1,7 @@
-"""Real 19-UGO visual contracts; not a normative ГОСТ approval of the new capacitor."""
+"""Live-catalog visual contracts; allow new UGO while guarding baseline identities."""
+import json
+import shutil
+from difflib import unified_diff
 from importlib.resources import files
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -27,6 +30,45 @@ from gost_schematic.rendering.review_sheet import (
 from gost_schematic.rendering.svg import render_symbol_svg
 from scripts.audit_symbol_catalog import audit_catalog
 
+# Frozen minimum accepted inventory, not a maximum or dynamic gallery roster.
+# Future YGO additions must NOT require updating this set or any exact count.
+MINIMUM_BASELINE = 19
+REQUIRED_BASELINE_IDS = frozenset((
+    "capacitor.electrolytic",
+    "capacitor.fixed",
+    "capacitor.polarized",
+    "choke.air_core",
+    "choke.ferrite",
+    "choke.ferromagnetic",
+    "inductor.air_core",
+    "inductor.double_sliding",
+    "inductor.double_tapped",
+    "inductor.ferrite",
+    "inductor.ferromagnetic",
+    "inductor.gapped_core",
+    "inductor.magnetodielectric",
+    "inductor.sliding_contact",
+    "inductor.tapped",
+    "inductor.trim_copper",
+    "inductor.trim_magnetodielectric",
+    "inductor.variable",
+    "resistor.fixed",
+))
+
+
+def assert_baseline_ids_present(ids: set[str]) -> None:
+    """Accepted 19 IDs are a required SUBSET; additional catalog IDs are fine."""
+    missing = REQUIRED_BASELINE_IDS - ids
+    if missing:
+        comparison = "\n".join(unified_diff(
+            sorted(REQUIRED_BASELINE_IDS), sorted(ids),
+            fromfile="accepted-baseline-ugo", tofile="live-catalog-ugo",
+            lineterm="",
+        ))
+        raise AssertionError(
+            f"Missing previously accepted UGO IDs: {sorted(missing)}\n{comparison}"
+        )
+
 SVG = "{http://www.w3.org/2000/svg}"
 STYLE = TextStyle("test-only.ttf", "MeasuredFake", 3500, 500, font_sha256="a" * 64)
 
@@ -36,8 +78,8 @@ class FixedInk:
         return MeasuredText(Box(0, -2000, len(text) * 580, 1), len(text) * 580)
 
 
-def _scene_and_manifest():
-    scene = build_catalog_review_scene()
+def _scene_and_manifest(catalog_root=None):
+    scene = build_catalog_review_scene(catalog_root)
     layout = layout_review_scene(scene, STYLE, FixedInk())
     manifest = review_manifest(scene, layout)
     manifest["font"] = {"family": STYLE.font_family, "sha256": STYLE.font_sha256}
@@ -62,30 +104,102 @@ def _add_focus_provenance(symbol, source, *, diagnostic):
     return ET.tostring(root, encoding="unicode")
 
 
-def test_real_19_catalog_entries_and_unique_C_references():
+def test_live_catalog_audit_parity_and_unique_C_references():
     audit = audit_catalog()
     scene, layout, manifest = _scene_and_manifest()
     entries = discover_catalog_entries()
-    assert audit["total_symbols"] == 19  # Baseline 2026-11-12 visual acceptance gate
-    assert audit["draft_count"] == 19
+    ids = {entry.symbol.identifier for entry in entries}
+    audited = {record["id"] for record in audit["entries"]}
+    assert_baseline_ids_present(ids)
+    assert ids == audited, (
+        f"Audit vs SVG discovery mismatch: audit-only={sorted(audited - ids)}; "
+        f"renderer-only={sorted(ids - audited)}"
+    )
+    count = audit["total_symbols"]
+    assert count >= MINIMUM_BASELINE
+    assert len(audited) == count  # Repeated ID is never silently accepted.
+    assert audit["draft_count"] == count
     assert audit["hard_errors"] == 0
-    assert len(scene.circuit.components) == len(entries) == 19
+    assert len(scene.circuit.components) == len(entries) == count
     assert layout.valid, [(item.code, item.message) for item in layout.diagnostics]
     assert not review_collisions(scene, layout)
     assert not manifest["aabb_collisions"]
-    assert manifest["catalog_size"] == 19
+    assert manifest["catalog_size"] == count
     assert all(component["symbol_status"] == "draft" for component in manifest["components"])
-    assert len({component.reference for component in scene.circuit.components}) == 19
+    assert len({component.reference for component in scene.circuit.components}) == count
     assert scene.circuit.nets == ()
-    ids = {item.symbol.identifier for item in entries}
     assert {"capacitor.electrolytic", "capacitor.polarized"} <= ids
-    refs = {
-        row["symbol_id"]: row["reference"] for row in manifest["components"]
-    }
+    refs = {row["symbol_id"]: row["reference"] for row in manifest["components"]}
     assert refs["capacitor.electrolytic"] != refs["capacitor.polarized"]
     assert refs["capacitor.electrolytic"].startswith("C")
     assert refs["capacitor.polarized"].startswith("C")
     assert [entry.symbol.identifier for entry in entries] == sorted(ids)
+
+
+def test_removed_baseline_id_is_reported_with_reviewable_diff():
+    missing_id = "inductor.variable"
+    expanded = (REQUIRED_BASELINE_IDS - {missing_id}) | {
+        "capacitor.future_A", "capacitor.future_B",
+    }
+    with pytest.raises(AssertionError) as error:
+        assert_baseline_ids_present(expanded)
+    message = str(error.value)
+    assert missing_id in message
+    assert "--- accepted-baseline-ugo" in message
+    assert "+++ live-catalog-ugo" in message
+    assert f"-{missing_id}" in message
+
+
+@pytest.mark.parametrize("growth", (1, 2))
+def test_catalog_growth_20_21_preserves_full_svg_manifest_and_pin_map(
+    tmp_path, growth,
+):
+    root = Path(str(files("gost_schematic").joinpath("catalog")))
+    sandbox = tmp_path / "catalog"
+    shutil.copytree(root, sandbox)
+    start = discover_catalog_entries(sandbox)
+    assert_baseline_ids_present({item.symbol.identifier for item in start})
+
+    reference_symbol = json.loads(
+        (sandbox / "symbols/capacitors/polarized.json").read_text(encoding="utf-8")
+    )
+    reference_part = json.loads(
+        (sandbox / "parts/capacitors/polarized.json").read_text(encoding="utf-8")
+    )
+    for index in range(growth):
+        identity = f"capacitor.cycle4_fixture_{index}"
+        path = sandbox / "symbols/capacitors" / f"cycle4_fixture_{index}.json"
+        physical = sandbox / "parts/capacitors" / f"cycle4_fixture_{index}.json"
+        graphic_data = {**reference_symbol, "id": identity}
+        physical_data = {**reference_part, "id": identity, "symbol_id": identity}
+        path.write_text(json.dumps(graphic_data), encoding="utf-8")
+        physical.write_text(json.dumps(physical_data), encoding="utf-8")
+
+    entries = discover_catalog_entries(sandbox)
+    scene, layout, manifest = _scene_and_manifest(sandbox)
+    ids = {row.symbol.identifier for row in entries}
+    assert_baseline_ids_present(ids)
+    assert len(entries) == len(start) + growth
+    assert len(entries) >= MINIMUM_BASELINE + growth
+    assert len(scene.circuit.components) == len(entries)
+    assert manifest["catalog_size"] == len(entries)
+    assert len(manifest["components"]) == len(entries)
+    assert len({item.reference for item in scene.circuit.components}) == len(entries)
+    assert layout.valid, [(d.code, d.message) for d in layout.diagnostics]
+    assert not review_collisions(scene, layout)
+    assert manifest["aabb_collisions"] == []
+    for item, row in zip(scene.circuit.components, manifest["components"], strict=True):
+        original = scene.symbols_by_part[item.part_id]
+        assert row["symbol_id"] == original.identifier
+        assert row["reference"] == item.reference
+        assert row["pins"] == [
+            {"number": number, "x_um": point.x, "y_um": point.y}
+            for number, point in item.pin_positions(original).items()
+        ]
+    for diagnostic in (False, True):
+        visual = render_review_svg(scene, layout, diagnostic=diagnostic)
+        validate_sheet_svg(visual, scene, manifest, diagnostic=diagnostic)
+        assert visual == render_review_svg(scene, layout, diagnostic=diagnostic)
 
 
 def test_real_electrolytic_source_vectors_are_distinct_from_general_polarized():
@@ -110,7 +224,7 @@ def test_real_electrolytic_source_vectors_are_distinct_from_general_polarized():
     assert "EDITORIAL_ASSUMPTION" in " ".join(electro.standard_refs)
 
 
-def test_all_19_drawn_vector_groups_equal_actual_transformed_catalog_primitives():
+def test_all_current_drawn_vector_groups_equal_transformed_catalog_primitives():
     scene, layout, manifest = _scene_and_manifest()
     clean = render_review_svg(scene, layout, diagnostic=False)
     diagnostic = render_review_svg(scene, layout, diagnostic=True)
