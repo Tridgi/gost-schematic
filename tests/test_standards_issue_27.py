@@ -115,7 +115,7 @@ def test_physical_pin_roles_are_explicit_and_not_guessed_numbers(symbol, roles):
 def test_npn_screen_and_printing_regime_not_misrepresented():
     c = _by_id()["transistor.bjt_npn"]
     assert c["source_relation"] == "conditional_composition"
-    assert "экран" in c["graphic_evidence"]
+    assert "экрана" in c["graphic_evidence"].casefold()
     assert "табл.13" in c["clause_and_figure"]
     assert "7/1б" in REPORT_PATH.read_text(encoding="utf-8")
 
