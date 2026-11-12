@@ -8,6 +8,7 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
+import scripts.audit_symbol_catalog as audit_module
 from examples.verify_rendering_review import (
     _validate_png,
     validate_focus_svg,
@@ -28,7 +29,6 @@ from gost_schematic.rendering.review_sheet import (
     review_manifest,
 )
 from gost_schematic.rendering.svg import render_symbol_svg
-import scripts.audit_symbol_catalog as audit_module
 from scripts.audit_symbol_catalog import audit_catalog
 
 # Frozen minimum accepted inventory, not a maximum or dynamic gallery roster.
