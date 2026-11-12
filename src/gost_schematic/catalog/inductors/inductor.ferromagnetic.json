@@ -6,5 +6,7 @@
   "radius_mm": "2",
   "lead_mm": "4",
   "line_width_mm": "0.3",
-  "core": "ferromagnetic"
+  "core": "ferromagnetic",
+  "normative_relation": "table_1_composition",
+  "normative_basis": "ГОСТ 2.723-68, табл. 1, пп. 1 и 2а — обмотка + ферромагнитный магнитопровод"
 }
