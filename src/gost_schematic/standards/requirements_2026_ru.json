@@ -109,6 +109,39 @@
       "reference": "7",
       "source": "https://helpeng.ru/public/normdoc/eskd/gost_2.728-74.pdf",
       "meaning": "Resistor and capacitor UGO stroke thickness follows electrical wire line thickness."
+    },
+    {
+      "id": "ESKD-2721-CROSSING",
+      "document": "ГОСТ 2.721-74",
+      "reference": "таблица 6, позиции 5-6",
+      "source": "https://mail.bmstu.ru/~glotovan/ElMp/gost2_721-74.pdf",
+      "meaning": "Unconnected electrical crossings shown at 90 degrees; authored junction convention for branches. Crossings do not infer netlist connectivity."
     }
-  ]
+  ],
+  "layout_rules": {
+    "source_document": "ГОСТ 2.701-2008",
+    "source_url": "https://base.garant.ru/6180373/",
+    "scope": "draft schematic documents in RU; conductors and symbol placement",
+    "min_clearance_adjacent_ugo_strokes_um": 1000,
+    "min_clearance_separate_symbols_um": 2000,
+    "min_clearance_parallel_connection_lines_um": 3000,
+    "connection_stroke_min_um": 200,
+    "connection_stroke_max_um": 1000,
+    "connection_stroke_recommended_min_um": 300,
+    "connection_stroke_recommended_max_um": 400,
+    "clauses": {
+      "min_clearance_adjacent_ugo_strokes_um": "5.3.4",
+      "min_clearance_separate_symbols_um": "5.3.4",
+      "min_clearance_parallel_connection_lines_um": "5.3.4",
+      "connection_stroke_min_um": "5.5.1",
+      "connection_stroke_max_um": "5.5.1",
+      "connection_stroke_recommended_min_um": "5.5.1",
+      "connection_stroke_recommended_max_um": "5.5.1",
+      "preferred_orthogonal_segments": "5.5.2",
+      "rotated_ugo": "5.4.4",
+      "same_symbol_strokes_as_wires": "5.4.3"
+    },
+    "wire_segment_policy": "horizontal_vertical_preferred_diagonal_exception_allowed",
+    "calculation_caveat": "Three-millimeter gap measured between printed stroke edges, not centerlines; do not auto-certify schematic from AABB."
+  }
 }
