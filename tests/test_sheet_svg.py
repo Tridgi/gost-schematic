@@ -9,7 +9,6 @@ from gost_schematic.model.circuit import Circuit, ComponentInstance
 from gost_schematic.model.quantities import Quantity, Unit
 from gost_schematic.rendering.sheet_svg import render_sheet_svg
 
-
 SVG = "{http://www.w3.org/2000/svg}"
 
 
