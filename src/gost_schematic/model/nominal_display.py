@@ -69,3 +69,52 @@ class NominalDisplayConfiguration:
                     ),
                 )
         return result
+
+
+    def to_record(self) -> dict[str, object]:
+        """Versioned JSON-compatible preferences (no implicit editor defaults)."""
+        return {
+            "schema_version": 1,
+            "default": {
+                "mode": self.default.mode.value,
+                "show_nominal": self.default.show_nominal,
+                "decimal_separator": self.default.decimal_separator,
+                "strict_compact": self.default.strict_compact,
+            },
+            "overrides": [
+                {
+                    "reference": item.reference,
+                    "mode": item.mode.value if item.mode is not None else None,
+                    "show_nominal": item.show_nominal,
+                    "strict_compact": item.strict_compact,
+                }
+                for item in self.overrides
+            ],
+        }
+
+    @classmethod
+    def from_record(cls, record: dict[str, object]) -> "NominalDisplayConfiguration":
+        if type(record.get("schema_version")) is not int or record["schema_version"] != 1:
+            raise ValueError("Unsupported nominal display settings version")
+        settings = record.get("default")
+        overrides = record.get("overrides")
+        if not isinstance(settings, dict) or not isinstance(overrides, list):
+            raise ValueError("Nominal display record requires default and overrides")
+        resolved = NominalDisplaySettings(
+            mode=NominalDisplayMode(settings["mode"]),
+            show_nominal=settings["show_nominal"],
+            decimal_separator=settings["decimal_separator"],
+            strict_compact=settings["strict_compact"],
+        )
+        entries = []
+        for item in overrides:
+            if not isinstance(item, dict):
+                raise ValueError("Each override must be an object")
+            mode = item.get("mode")
+            entries.append(ComponentNominalOverride(
+                reference=item["reference"],
+                mode=NominalDisplayMode(mode) if mode is not None else None,
+                show_nominal=item.get("show_nominal"),
+                strict_compact=item.get("strict_compact"),
+            ))
+        return cls(default=resolved, overrides=tuple(entries))
