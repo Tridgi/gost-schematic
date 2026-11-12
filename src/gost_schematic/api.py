@@ -33,6 +33,7 @@ from gost_schematic.rendering.sheet_svg import render_sheet_svg
 from gost_schematic.rendering.svg import render_symbol_svg
 from gost_schematic.standards.nominals import FormattedNominal, NominalRangeError, format_nominal
 from gost_schematic.standards.type_a_font import (
+    TypeAAngle,
     TypeAFontInspection,
     TypeAParameters,
     inspect_type_a_font,
@@ -58,6 +59,7 @@ __all__ = [
     "SheetLabelProfile",
     "SheetLayout",
     "TextStyle",
+    "TypeAAngle",
     "TypeAFontInspection",
     "TypeAParameters",
     "Unit",
