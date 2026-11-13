@@ -251,8 +251,8 @@ def test_mutating_role_or_geometry_is_not_indistinguishable_from_true_catalog_ma
     ))
     assert tuple(p.name for p in fake_part.pins) != _roles(identifier)
     assert tuple(p.name for p in part.pins) == _roles(identifier)
-    wrong_symbol = replace(symbol, pins=(
-        replace(symbol.pins[0], at=symbol.pins[1].at),
-        *symbol.pins[1:],
-    ))
-    assert wrong_symbol is not symbol
+    with pytest.raises(ValueError, match="Duplicate graphic pin"):
+        replace(symbol, pins=(
+            replace(symbol.pins[0], at=symbol.pins[1].at),
+            *symbol.pins[1:],
+        ))
