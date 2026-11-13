@@ -9,6 +9,7 @@ Never import this fixture as the active production renderer.
 import json
 import shutil
 import subprocess
+import warnings
 from hashlib import sha1
 from importlib.machinery import SourceFileLoader
 from importlib.util import module_from_spec, spec_from_loader
@@ -157,6 +158,14 @@ def test_pr59_real_freetype_role_ink_is_centered_not_shared_left_x(
     assert all(
         entry.ink.max_y - entry.ink.min_y > 2200
         for entry in roles.values()
+    )
+    warnings.warn(
+        "Issue72 PR59 pinned role left ink insets in mm, DejaVu 2.5mm cap: "
+        + json.dumps({
+            key: round((value.ink.min_x - value.cell.min_x) / 1000, 3)
+            for key, value in roles.items()
+        }, ensure_ascii=False, sort_keys=True),
+        stacklevel=1,
     )
     # The approved future behavior is common left ink-x with measured inset;
     # this pinned PR59 SHA is independently FAIL for that acceptance criterion.
