@@ -153,6 +153,81 @@ def execute(directory: Path, font: Path):
                 outputs[file.name] = {
                     "sha256": sha256(raw).hexdigest(), "bytes": len(raw)
                 }
+        # Independent eight-pose D4 audit using the NEW typed PR78 renderer,
+        # real resolved PR80 PortRefs, and the exact external Type A font.
+        from gost_schematic.core.geometry import Point, Side
+
+        rot_block = model.FunctionalBlock(
+            "ROT", "БЛОК", Point(10000, 10000), 40000, 40000
+        )
+        rot_ports = (
+            model.BlockPort(
+                "ROT", "IN", Side.LEFT, model.PortDirection.INPUT
+            ),
+            model.BlockPort(
+                "ROT", "OUT", Side.RIGHT, model.PortDirection.OUTPUT
+            ),
+        )
+        single = model.StructuralDiagram((rot_block,), rot_ports, ())
+        declared = model.resolve_port_positions(single)
+        poses = []
+        for rotation in (0, 90, 180, 270):
+            for mirrored in (False, True):
+                view = {
+                    "ROT": typed.BlockView(
+                        ("БЛОК",), rotation=rotation, mirror_x=mirrored
+                    )
+                }
+                svg, page = typed.render_structural_model(
+                    single, font, views=view, diagnostic=True
+                )
+                dots = ET.fromstring(svg).findall(
+                    f".//{SVG}circle[@data-role='declared-functional-port']"
+                )
+                assert len(dots) == 2
+                actual_dots = {
+                    tuple(dot.attrib["data-portref"].split(":")): [
+                        Fraction(dot.attrib["cx"]) * 1000,
+                        Fraction(dot.attrib["cy"]) * 1000,
+                    ]
+                    for dot in dots
+                }
+                assert {
+                    (p["ref"]["block_id"], p["ref"]["port_id"]):
+                        p["svg_um"] for p in page["ports"]
+                } == actual_dots
+                assert {
+                    p["ref"]["port_id"]: p["model_um"]
+                    for p in page["ports"]
+                } == {
+                    ref.port_id: [point.x, point.y]
+                    for ref, point in declared.items()
+                }
+                assert len(set(map(tuple, actual_dots.values()))) == 2
+                poses.append({
+                    "rotation": rotation,
+                    "mirror_x": mirrored,
+                    "ports_um": {
+                        key[1]: [int(coord) for coord in coords]
+                        for key, coords in actual_dots.items()
+                    },
+                })
+                if rotation == 90 and mirrored:
+                    name = "current-pr78-typed-pose-90-mirror"
+                    sv = directory / (name + ".svg")
+                    pn = directory / (name + ".png")
+                    sv.write_text(svg, encoding="utf-8")
+                    cairosvg.svg2png(
+                        bytestring=svg.encode("utf-8"),
+                        write_to=str(pn), dpi=300,
+                    )
+                    for file in (sv, pn):
+                        raw = file.read_bytes()
+                        outputs[file.name] = {
+                            "sha256": sha256(raw).hexdigest(),
+                            "bytes": len(raw),
+                        }
+
         seven_visual = legacy.render_svg(legacy_seed, diagnostic=True)
         target = directory / "current-pr78-seven-legacy-diagnostic.svg"
         target.write_text(seven_visual, encoding="utf-8")
@@ -174,6 +249,8 @@ def execute(directory: Path, font: Path):
             "legacy_projection_marker": "PASS current PR78 E1 discriminator",
             "font_sha256": manifest["font"]["sha256"],
             "font_measured_cap_height_um": manifest["font"]["measured_cap_height_um"],
+            "real_typed_d4_pose_count": len(poses),
+            "real_typed_d4_pose_geometry": poses,
             "svg_and_png": outputs,
             "standard_approval": "BLOCKED full GOST document/print approval; DRAFT",
         }
