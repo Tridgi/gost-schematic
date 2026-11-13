@@ -11,6 +11,18 @@
 
 Use `scripts/qa_final_pr39_loader.py::load_frozen_pr39()`. No `git fetch` or outside network needed during pytest. This **cannot be used to certify a later PR39 SHA** without deliberate update. No production changes; no merges into other branches.
 
+## POST-MERGE INDEPENDENT QA — authoritative update (2026-11-13)
+
+**Current integration HEAD** `c8a6eae741d6fcdc341ff78c0f226014c1bf5c0e`, synchronized into `parallel/qa-final-pr39-1a137562`. Owner PR #39 and validator PR #60 were merged by the **coordinator**, not QA. The catalogue is now **21 DRAFT**, including `diode.general` and `diode.zener`; the installed validator file Git blob is `c0e42d4537db224f3a9367a78f40764e2945437b`. The two installed router files have **the same exact Git blob hashes** as the frozen PR39 HEAD `1a1375623c0f098cac14f7843c44d75982a4d749`.
+
+The follow-up runs the #50–#52/typed-route regressions against **BOTH** the actual installed modules and frozen SHA-verified sources in separate namespaces. The previously strict-xfailed #58 is now an ordinary **mandatory passing test**: real R1.1 already attached to A, foreign B wire interior at the same physical contact without junction, resulting in **ERROR `WIRE_PIN_CONTACT_UNDECLARED`** and no inferred `WIRE_NET_SHORT`. Independent tests also require `ROUTE_PORT_BLOCKED` when the typed adapter receives unsafe pre-existing foreign ink. No stale #58 xfail remains in this QA PR.
+
+New integration-specific tests discover all **21 actual physical part/UGO definitions**, verify physical pin identity across **8 rotations/reflections**, and exercise safe routing around every family. The actual six-component source example now has **C3 at (100000,80000) µm**, with pins at **(91000,80000)** and **(109000,80000)**; its TOP/RIGHT wires must remain electrically valid, total length 142mm, with two rather than four bends. No fictional rescaling or moving C3 from the integrated example is done in QA.
+
+The sections below were originally written **before** PR #39 and #60 integration. Historic CI figures and prior-base findings are preserved as historical evidence, not the current authoritative result. No production files or PR #39/#42/#53/#60 were edited; no merge of PR #61.
+
+---
+
 ## 1. Independent acceptance matrix
 
 *PASS* = independently executed assertions passed on exact reviewed SHA. *FAIL* = a required behavior still reproducibly incorrect. *BLOCKED* = current documented capability or external dependency does not permit the full intended acceptance; does not necessarily mean a new defect.
@@ -24,7 +36,7 @@ Use `scripts/qa_final_pr39_loader.py::load_frozen_pr39()`. No `git fetch` or out
 | Blocked terminal / impossible fixed window | **PASS** | Body or foreign ink on selected endpoint → `ROUTE_PORT_BLOCKED`, empty route; blocked wall across bounded window → `ROUTE_NO_PATH`; invalid net member/owner → `ROUTE_NET_INVALID`; no partial `ExternalWireGraph`. |
 | Single-net postroute electrical validation | **PASS** | For every accepted route, `validate_external_wires(circuit, route.external_graph("LINK"), real_parts, real_symbols) == ()`, netlist/circuit unchanged, junctions empty. No invented join/short in the supported two-pin net. |
 | **#58 compatibility**: pre-existing foreign wire across attached physical pin | **PASS, fail-closed** | Typed adapter refuses to draw a fresh route into a source/target already covered by a foreign-net ink obstacle with `ROUTE_PORT_BLOCKED` before relying on the validator. It does **not** synthesize a junction or mutate net membership. |
-| **#58 existing validator correctness** on already-attached pin | **FAIL (known external issue #58, not a PR39 regression)** | Current integrated validator still accepts the authored A-endpoint + B-interior foreign crossing silently; separate strict xfail expects `WIRE_PIN_CONTACT_UNDECLARED`. Fix belongs to electrical-validator owner. Do not mistake green QA for validator certification. |
+| **#58 existing validator correctness** on already-attached pin | **PASS after owner PR #60** | The integrated electrical validator now emits exact ERROR `WIRE_PIN_CONTACT_UNDECLARED` for real A-endpoint + B-interior crossing. The test is a mandatory ordinary PASS, never a stale `xfail`; no inferred short. Earlier failure is retained in historical QA PR #42/#53. |
 | Multi-net sheet **completeness** | **BLOCKED / known scope limit** | Adapter's final ERC checks **only the generated LINK graph** against a Circuit with all declared nets. A second, separately authored and safely positioned net has no segments in that graph, causing `ROUTE_ELECTRICAL_REJECTED` even when its `foreign_wires` contains an already drawn wire. This is a **safe refusal**, but is not an end-to-end multi-net sheet verifier. Owner explicitly states this experimental prototype supports a single two-member net. An overall multi-net claim needs a combined graph and resolved #58 before approval. |
 | Repeatability & bounded resources | **PASS for measured cases, no SLA** | 8 repeated hazard-permutation calls produce identical paths; deterministic frozen source. Checked a small explicit `max_cells` refusal, legitimate wall, adaptive detour and 3 repeated timing samples per case. Timing numbers below; no worst-case proof. |
 | **#44** objective layout metrics | **PASS (measurement reference)** | Exact integer wire length, Manhattan excess and backtrack, orthogonal bends, direction reversals, sub-8mm legs, proper X-crossings and ink-AABB collisions defined in test-only helper. Real six-part C3 specimen: moving C3 5mm down preserves **142mm** total conductor, improves bends **4→2** and backtrack on TOP **5→0mm**. |
@@ -83,9 +95,9 @@ for a,b in zip(route.points, route.points[1:]):
 
 Same result is verified for odd stroke widths; widthless `existing_wires` are rejected rather than guessed.
 
-### #58 — compatibility with **known** validator defect
+### #58 — confirmed owner fix, ordinary non-xfail regression
 
-A valid A conductor ends exactly on real R1.1=(0,0); B foreign conductor intersects R1.1 by its interior with no junction. The existing validator fails to emit `WIRE_PIN_CONTACT_UNDECLARED` — separate Issue #58. If a caller tries to route A while supplying B as actual-width `foreign_wires`, **the new adapter returns `ROUTE_PORT_BLOCKED`**. This proves the new adapter does not have to rely on the faulty validator for that obstacle. It **does not prove** pre-existing B was valid or that all multi-net wiring is safe.
+A valid A conductor ends exactly on real R1.1=(0,0); B foreign conductor intersects R1.1 by its interior with no junction. The **pre-PR60** validator was silent. With PR #60 merged, this exact physical foreign-net intersection **does** yield `WIRE_PIN_CONTACT_UNDECLARED` without inferencing a short or changing the graph; it is a mandatory passing test. The typed adapter independently refuses to route into B ink with `ROUTE_PORT_BLOCKED`. This does **not** certify arbitrary multi-net graphs.
 
 ## 3. Runtime evidence: 3 samples per scenario, GitHub Actions
 
@@ -114,6 +126,6 @@ python -m pip wheel . --no-deps --wheel-dir dist
 python scripts/verify_wheel_payload.py dist
 ```
 
-**Last completed pre-document source run:** [#43467423282](https://github.com/Tridgi/gost-schematic/actions/runs/43467423282), Python 3.12 + 3.13 both **SUCCESS**, Ruff PASS, **1081 passed / 1 non-gating performance warning**, 19 DRAFT symbols / 0 hard catalog errors, wheel payload PASS. The single *new* strict xfail for the known **#58** issue was added after this run and will be reported from final SHA CI, not misrepresented as success for the new router.
+**Last completed pre-document source run:** [#43467423282](https://github.com/Tridgi/gost-schematic/actions/runs/43467423282), Python 3.12 + 3.13 both **SUCCESS**, Ruff PASS, **1081 passed / 1 non-gating performance warning**, 19 DRAFT symbols / 0 hard catalog errors, wheel payload PASS. This is **historical pre-merge CI**. The strict #58 xfail introduced after that run has now been removed after PR #60 integration. Post-merge source and installed-module CI must be reported separately.
 
-**Evidence boundaries:** No changes to PR #39, #42, #53 or production files; no repair of #58. No independent finding of a NEW production defect in the specifically tested #50–52 reproduction cases; do not close their issues or approve a merge without coordinator review. PR39 is single-net experimental and all 19 UGO remain DRAFT. A full functional safety / ГОСТ / ESKD or performance certification is beyond this audit.
+**Evidence boundaries:** QA did not edit PR #39, #42, #53, #60 or production files. Owner PR #60 supplied the now integrated #58 correction. PR39 remains a single-net experimental router; **21 UGO are DRAFT**. Full multi-net safety, production latency and ГОСТ/ЕСКД certification remain outside this audit. No merge of PR #61 was done.
