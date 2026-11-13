@@ -18,13 +18,13 @@ from xml.etree import ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tests"))
 
-from qa_e1_integration_support import (  # noqa: E402
+from qa_e1_integration_support import (
     PINNED_BLOBS,
     SOURCE_COMMITS,
     graphic_source,
     real_sources,
 )
-from qa_e1_integration_test import _crossing_view, _graphic_block, _two_port_diagram  # noqa: E402
+from qa_e1_integration_test import _crossing_view, _graphic_block, _two_port_diagram
 
 SVG = "{http://www.w3.org/2000/svg}"
 
