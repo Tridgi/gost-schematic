@@ -19,31 +19,98 @@ from gost_schematic.model.circuit import PinRef
 
 
 @dataclass(frozen=True, slots=True)
+class IcPinSideReflow:
+    """Auditable local UGO side change; never changes physical pin identity."""
+
+    unit_id: str
+    pin_ref: PinRef
+    old_side: Side
+    new_side: Side
+
+
+@dataclass(frozen=True, slots=True)
 class IcPaintBinding:
     """An explicit revised electrical record and matching PAINT view objects."""
 
     record: IcLibraryRecord
     views: tuple[object, ...]
     unit_ids: tuple[str, ...]
+    side_reflows: tuple[IcPinSideReflow, ...] = ()
 
     def verify_endpoints(self) -> None:
-        """No tolerance: resolved model points equal all PAINT world endpoints."""
+        """Exact *semantic and geometric* world contract, never just equality.
+
+        A caller may not swap a pin label, electrical role, displayed row,
+        unit view, drawing side, transform, or visible function while keeping
+        the same external Point and still pass this release gate.
+        """
         positions = resolve_ic_pin_positions(
             self.record.device, self.record.specs, self.record.placements,
         )
-        view_refs = set()
-        if len(self.views) != len(self.record.placements) or len(self.unit_ids) != len(self.views):
+        expected_units = tuple(s.unit_id for s in self.record.specs)
+        if (
+            self.unit_ids != expected_units
+            or len(self.views) != len(self.record.placements)
+            or len(self.views) != len(self.unit_ids)
+        ):
             raise ValueError("IC_PAINT_UNIT_COUNT_MISMATCH")
         placement_map = {p.unit_id: p for p in self.record.placements}
-        for unit_id, view in zip(self.unit_ids, self.views, strict=True):
-            placement = placement_map[unit_id]
-            for pin in view.pins:
-                ref = PinRef(placement.component_ref, pin.number)
-                if ref in view_refs or positions.get(ref) != pin.anchor:
+        unit_number = {
+            u.id: i for i, u in enumerate(self.record.device.units, start=1)
+        }
+        seen_refs: set[PinRef] = set()
+        for spec, view in zip(self.record.specs, self.views, strict=True):
+            placement = placement_map[spec.unit_id]
+            suffix = (
+                f".{unit_number[spec.unit_id]}"
+                if len(self.record.device.units) > 1 else ""
+            )
+            expected_reference = placement.component_ref + suffix
+            if (
+                view.reference != expected_reference
+                or view.body != spec.body
+                or view.origin != placement.origin
+                or view.transform != placement.transform
+                or view.content != _content(spec, self.record.device)
+            ):
+                raise ValueError(f"IC_PAINT_VIEW_SEMANTIC_MISMATCH: {spec.unit_id}")
+            if len(view.pins) != len(spec.rows):
+                raise ValueError(f"IC_PAINT_PIN_COVERAGE_MISMATCH: {spec.unit_id}")
+            for row, pin in zip(spec.rows, view.pins, strict=True):
+                ref = PinRef(placement.component_ref, row.number)
+                world = positions[ref]
+                if (
+                    ref in seen_refs
+                    or pin.number != row.number
+                    or pin.pin_id != f"{placement.component_ref}.P{row.number}"
+                    or pin.side != row.side
+                    or pin.row != row.visual_row
+                    or pin.row_key != row.row_key
+                    or pin.label != row.label
+                    or pin.role != _role(
+                        self.record.device.pin_map[row.number].electrical_type,
+                    )
+                ):
+                    raise ValueError(f"IC_PAINT_PIN_SEMANTIC_MISMATCH: {ref}")
+                if pin.anchor != world:
                     raise ValueError(f"IC_PIN_ANCHOR_MISMATCH: {ref}")
-                view_refs.add(ref)
-        if view_refs != set(positions):
+                seen_refs.add(ref)
+        if seen_refs != set(positions):
             raise ValueError("IC_PAINT_PIN_COVERAGE_MISMATCH")
+        if len({
+            (reflow.unit_id, reflow.pin_ref)
+            for reflow in self.side_reflows
+        }) != len(self.side_reflows):
+            raise ValueError("IC_PAINT_DUPLICATE_SIDE_REFLOW")
+        for reflow in self.side_reflows:
+            if (
+                reflow.unit_id not in placement_map
+                or reflow.pin_ref.reference
+                != placement_map[reflow.unit_id].component_ref
+                or reflow.pin_ref not in positions
+                or reflow.old_side == reflow.new_side
+            ):
+                raise ValueError("IC_PAINT_INVALID_SIDE_REFLOW")
 
 
 def _role(role: IcPinType) -> str:
@@ -127,6 +194,7 @@ def propose_ic_paint_binding(
     placements = {place.unit_id: place for place in record.placements}
     new_specs = []
     views = []
+    side_reflows = []
     for spec in record.specs:
         placement = placements[spec.unit_id]
         if any(row.side not in (Side.LEFT, Side.RIGHT) for row in spec.rows):
@@ -140,6 +208,12 @@ def propose_ic_paint_binding(
                 record.device.pin_map[row.number].electrical_type, row.side,
             ),
         ) for row in spec.rows)
+        for old, revised_row in zip(spec.rows, layout_rows, strict=True):
+            if old.side != revised_row.side:
+                side_reflows.append(IcPinSideReflow(
+                    spec.unit_id, PinRef(placement.component_ref, old.number),
+                    old.side, revised_row.side,
+                ))
         if any(
             (row.field is IcField.AUX_LEFT and row.side is not Side.LEFT)
             or (row.field is IcField.AUX_RIGHT and row.side is not Side.RIGHT)
@@ -160,10 +234,26 @@ def propose_ic_paint_binding(
         dimensions = propose_ic_dimensions(content, prelim, style, measurer, policy)
         # PAINT returns the minimum measured geometry. The original rectangle
         # is not silently edited. Instead produce a freshly versioned record.
+        # Never silently shrink an author's existing declared rectangle;
+        # preserving its origin avoids hidden layout changes in other units.
+        # A height increase is snapped to PAINT's measured row pitch.
+        def ceil_multiple(value: int, quantum: int) -> int:
+            return ((value + quantum - 1) // quantum) * quantum
+
+        if spec.body.min_x % policy.module_um or spec.body.min_y % policy.module_um:
+            raise ValueError("IC_GRID_MISMATCH: source body origin off module")
+        width_um = ceil_multiple(
+            max(spec.body.max_x - spec.body.min_x, dimensions.width_um),
+            policy.module_um,
+        )
+        height_um = ceil_multiple(
+            max(spec.body.max_y - spec.body.min_y, dimensions.height_um),
+            dimensions.row_pitch_um,
+        )
         body = Box(
             spec.body.min_x, spec.body.min_y,
-            spec.body.min_x + dimensions.width_um,
-            spec.body.min_y + dimensions.height_um,
+            spec.body.min_x + width_um,
+            spec.body.min_y + height_um,
         )
         new_rows = []
         for row in layout_rows:
@@ -199,7 +289,10 @@ def propose_ic_paint_binding(
             transform=placement.transform,
         ))
     updated = IcLibraryRecord(record.device, tuple(new_specs), record.placements)
-    binding = IcPaintBinding(updated, tuple(views), tuple(s.unit_id for s in record.specs))
+    binding = IcPaintBinding(
+        updated, tuple(views), tuple(s.unit_id for s in record.specs),
+        tuple(side_reflows),
+    )
     binding.verify_endpoints()
     if tuple(p.number for p in record.device.pins) != tuple(
         p.number for p in binding.record.device.pins
