@@ -140,7 +140,7 @@ def test_text_real_glyph_ink_bounds_stay_inside_real_block_frames():
     assert "".join(example_views(diagram)["ADAPT"].title_lines) == "Согласование"
 
 
-def test_pr80_20000_um_two_auto_ports_rejects_no_rounding_in_both_layers():
+def test_pr80_20000_um_two_auto_ports_round_only_once_in_model_and_svg():
     block = FunctionalBlock("ONE", "ONE", Point(0, 0), 28000, 20000)
     diagram = StructuralDiagram(
         (block,),
@@ -148,14 +148,52 @@ def test_pr80_20000_um_two_auto_ports_rejects_no_rounding_in_both_layers():
          BlockPort("ONE", "B", Side.RIGHT, PortDirection.OUTPUT)),
         (),
     )
-    diagnostic_codes = {d.code for d in validate_structural_diagram(diagram)}
-    assert "E1_PORT_OFF_GRID" in diagnostic_codes
-    with pytest.raises(ValueError, match="E1_PORT_OFF_GRID"):
-        resolve_port_positions(diagram)
-    with pytest.raises(E1GraphicError, match="E1_PORT_OFF_GRID"):
-        render_structural_model(
-            diagram, font(), views={"ONE": BlockView(("ONE",))},
+    assert not validate_structural_diagram(diagram)
+    anchors = resolve_port_positions(diagram)
+    assert anchors[PortRef("ONE", "A")] == Point(28000, 6667)
+    assert anchors[PortRef("ONE", "B")] == Point(28000, 13333)
+    root, _svg, result = _xml(
+        diagram, views={"ONE": BlockView(("ONE",))}, diagnostic=True,
+    )
+    assert all(item["model_um"] == item["svg_um"] for item in result["ports"])
+    assert len(root.findall(
+        f".//{SVG_NS}circle[@data-role='declared-functional-port']"
+    )) == 2
+
+
+def test_signed_absolute_half_ties_use_away_from_zero_not_local_rounding():
+    def anchor_at(y):
+        diagram = StructuralDiagram(
+            (FunctionalBlock("ONE", "ONE", Point(0, y), 28000, 12000),),
+            (BlockPort("ONE", "A", Side.RIGHT, PortDirection.OUTPUT,
+                       Fraction(1, 24000)),),
+            (),
         )
+        return resolve_port_positions(diagram)[PortRef("ONE", "A")].y
+
+    # Fractional side offset is +0.5 µm; origin must be summed BEFORE rounding.
+    assert anchor_at(10001) == 10002
+    assert anchor_at(-10001) == -10001
+
+
+def test_model_rejects_ports_that_collide_only_after_signed_rounding():
+    diagram = StructuralDiagram(
+        (FunctionalBlock("ONE", "ONE", Point(0, 0), 28000, 12000),),
+        (BlockPort("ONE", "A", Side.RIGHT, PortDirection.OUTPUT,
+                   Fraction(1, 24000)),
+         BlockPort("ONE", "B", Side.RIGHT, PortDirection.OUTPUT,
+                   Fraction(1, 48000))),
+        (),
+    )
+    # +0.5µm rounds to 1, +0.25µm rounds to 0 -> distinct; change B to
+    # +0.4µm so both land at the same rounded coordinate 0.
+    first = replace(diagram.ports[0], position=Fraction(1, 48000))
+    second = replace(diagram.ports[1], position=Fraction(1, 60000))
+    collision = replace(diagram, ports=(first, second))
+    diagnostics = {d.code for d in validate_structural_diagram(collision)}
+    assert "E1_PORT_COLLISION" in diagnostics
+    with pytest.raises(ValueError, match="E1_PORT_COLLISION"):
+        resolve_port_positions(collision)
 
 
 def test_pr80_exact_positions_with_12000_um_two_ports_equal_visual_points():
