@@ -32,7 +32,7 @@ TEXT_LINE_STEP_UM = 4000  # EDITORIAL for multiline E1 boxes.
 TEXT_INSET_UM = 1200  # EDITORIAL internal text-to-frame clearance.
 TEXT_CLEARANCE_UM = 250  # EDITORIAL ink collision reserve.
 PORT_CORNER_UM = 2000  # EDITORIAL single-port corner distance.
-PORT_PITCH_UM = 3000  # EDITORIAL minimum separation for multiple ports.
+PORT_PITCH_UM = 3350  # EDITORIAL: 3mm clear between 0.35mm parallel lines.
 STROKE_UM = 350  # 0.35 mm, within the ГОСТ 2.701-2008 line-width range.
 ARROW_LENGTH_UM = 2200  # EDITORIAL, not a specified ГОСТ arrow size.
 ARROW_HALF_WIDTH_UM = 950  # EDITORIAL, not a specified ГОСТ arrow size.
@@ -432,7 +432,7 @@ def render_structural_model(
         "schema_version": 1,
         "diagram_type": "E1",
         "status": "DRAFT",
-        "model_anchor_policy": "Fraction exact; reject E1_PORT_OFF_GRID; NEVER SVG rounding",
+        "model_anchor_policy": "Exact Fraction; ELEKTRIK rounds final absolute Point once half-away-from-zero; SVG never rounds",
         "font": {
             "family": style.font_family, "sha256": style.font_sha256,
             "measured_cap_height_um": style_inspection.measured_cap_height_um,
