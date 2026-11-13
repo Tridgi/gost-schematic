@@ -35,12 +35,13 @@ def specimen(
     count: int,
     *,
     long_name: bool = False,
-    transform: Transform = Transform(),
+    transform: Transform | None = None,
     function: str = "AND",
     extra_rows: tuple[str, ...] = (),
     labels: bool = True,
     columns: tuple[str, ...] = (),
 ):
+    transform = transform or Transform()
     if count % 2:
         raise ValueError("Only symmetrical *synthetic fixtures*")
     pins = []
@@ -98,7 +99,7 @@ def test_five_stress_counts_satisfy_grid_and_keep_all_authoritative_pins(count):
 
 
 def test_long_cyrillic_grows_fields_not_font_or_truncation():
-    small, dim_short = specimen(14)
+    _, dim_short = specimen(14)
     long, dim_long = specimen(14, long_name=True)
     assert dim_long.width_um > dim_short.width_um
     render = render_resolved_ic(long, STYLE, FixedInk())
