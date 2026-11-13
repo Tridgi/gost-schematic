@@ -10,6 +10,12 @@ from xml.etree import ElementTree as ET
 
 from gost_schematic.core.geometry import Box
 from gost_schematic.core.units import format_mm, mm
+from gost_schematic.engines.annotation.metrics import TextMeasurer
+from gost_schematic.model.annotations import TextStyle
+from gost_schematic.rendering.form_one import (
+    draw_form_one_geometry,
+    write_form_one_fields,
+)
 from gost_schematic.rendering.external_wire_sheet import ExternalWireSheet
 
 _URI = "http://www.w3.org/2000/svg"
@@ -115,105 +121,6 @@ def _rect(parent: ET.Element, box: Box, **attrs: str) -> ET.Element:
         "height": format_mm(box.max_y - box.min_y),
         **attrs,
     })
-
-
-def _line(parent: ET.Element, x1: int, y1: int, x2: int, y2: int,
-          *, group: str) -> None:
-    ET.SubElement(parent, _SVG + "line", {
-        "x1": format_mm(x1), "y1": format_mm(y1),
-        "x2": format_mm(x2), "y2": format_mm(y2),
-        "data-grid-section": group,
-    })
-
-
-def _text(parent: ET.Element, x: int, y: int, value: str,
-          *, field: str = "", font_size_mm: str = "2.2") -> None:
-    node = ET.SubElement(parent, _SVG + "text", {
-        "x": format_mm(x), "y": format_mm(y),
-        "font-size": font_size_mm,
-        "font-family": "OpenGost Type A",
-        "stroke": "none",
-        "fill": "#000000",
-        "data-graph": field,
-    })
-    node.text = value
-
-
-def _form_one(parent: ET.Element, bounds: Box) -> None:
-    """Render a non-certified vector transcription of the B.1 form-1 grid.
-
-    The principal 7|10|23|15|10|110|10 horizontal partition and major
-    5/10/15-mm bands are derived from the annex B drawing. Supplementary
-    left/top inventory graphs and legally meaningful requisites are not
-    fabricated: they require review and the organization document policy.
-    """
-    x, y = bounds.min_x, bounds.min_y
-    grid = ET.SubElement(parent, _SVG + "g", {
-        "data-layer": "title-block-grid",
-        "data-form": "1", "data-standard": "GOST-R-2.104-2023-B.1",
-        "fill": "none", "stroke": "#000000",
-        "stroke-width": "0.25",
-    })
-    _rect(grid, bounds, **{"stroke-width": "0.7", "data-kind": "form-one-outline"})
-    # Split revision table (65 mm) from main document, then its column widths.
-    for distance in (7000, 17000, 40000, 55000, 65000):
-        _line(grid, x + distance, y, x + distance, y + 55000,
-              group="revision-columns")
-    # Revision rows: last five 5-mm role fields and top 30-mm change table.
-    for height in (10000, 15000, 20000, 25000, 30000, 35000, 40000, 45000, 50000):
-        _line(grid, x, y + height, x + 65000, y + height,
-              group="revision-rows")
-    # Main B.1 named fields: (2) designation, (1) drawing name,
-    # (3) material/auxiliary, (4)-(9) supplementary and sheet details.
-    for height, start, end in (
-        (15000, 65000, 185000),
-        (20000, 135000, 185000),
-        (30000, 135000, 185000),
-        (35000, 135000, 185000),
-        (40000, 65000, 185000),
-        (50000, 65000, 185000),
-    ):
-        _line(grid, x + start, y + height, x + end, y + height,
-              group="title-rows")
-    for distance, top, bottom in (
-        (135000, 15000, 40000),
-        (145000, 15000, 40000),
-        (165000, 15000, 40000),
-        (175000, 0, 15000),
-        (145000, 50000, 55000),
-    ):
-        _line(grid, x + distance, y + top, x + distance, y + bottom,
-              group="title-columns")
-
-    # Descriptive headings only; no invented names, designation, approvals,
-    # dates, signatures, document status, or certification marks.
-    labels = ET.SubElement(parent, _SVG + "g", {
-        "data-layer": "title-block-headings",
-        "data-requisites": "unfilled-DRAFT",
-    })
-    for at_x, at_y, label, field in (
-        (18000, 8500, "Изм.", "14"),
-        (41000, 8500, "Подп.", "17"),
-        (55000, 8500, "Дата", "18"),
-        (69000, 12500, "Обозначение (2)", "2"),
-        (69000, 25000, "Наименование (1)", "1"),
-        (136000, 19000, "Лит.", "4"),
-        (146000, 19000, "Масса", "5"),
-        (166000, 19000, "Масштаб", "6"),
-        (136000, 33500, "Лист", "7"),
-        (146000, 33500, "Листов", "8"),
-        (69000, 48500, "Материал (3)", "3"),
-        (69000, 54000, "Копировал", "31"),
-        (146000, 54000, "Формат", "32"),
-    ):
-        _text(labels, x + at_x, y + at_y, label, field=field)
-    for index, caption in enumerate(
-        ("Разраб.", "Пров.", "Т. контр.", "Н. контр.", "Утв.")
-    ):
-        # These names live in the narrow 7-mm author column: never let
-        # `Т. контр.` or `Н. контр.` run through the neighbouring rule.
-        _text(labels, x + 500, y + 33000 + index * 5000, caption,
-              field="10" if index == 3 else "", font_size_mm="1.6")
 
 
 def _parse_source(source: ExternalWireSheet) -> tuple[ET.Element, Box]:
@@ -332,8 +239,18 @@ def compose_formatted_sheet(
     *,
     diagnostic: bool = False,
     offset_um: tuple[int, int] | None = None,
+    title_values: dict[str, str] | None = None,
+    title_text_style: TextStyle | None = None,
+    title_measurer: TextMeasurer | None = None,
+    title_cap_height_um: int = 2500,
+    title_captions: bool = False,
 ) -> FormattedSheet:
     """Place source 1:1 on a page; error rather than crop/scale/overlap."""
+    if title_values is not None or title_captions:
+        if profile.title_um is None:
+            raise ValueError("Title values require an explicit title-enabled profile")
+        if title_text_style is None or title_measurer is None:
+            raise ValueError("Title values require calibrated font style and measurer")
     if not source.layout.valid:
         raise ValueError("Cannot compose an invalid input annotation layout")
     root_source, viewport = _parse_source(source)
@@ -400,9 +317,17 @@ def compose_formatted_sheet(
     if profile.title_um is not None:
         title = ET.SubElement(root, _SVG + "g", {
             "data-layer": "title-block",
-            "data-form": "1", "data-requisites": "NOT_FILLED",
+            "data-form": "1", "data-requisites": (
+                "EXPLICIT_ONLY" if title_values else "NOT_FILLED"
+            ),
         })
-        _form_one(title, profile.title_um)
+        draw_form_one_geometry(title, profile.title_um)
+        if title_values is not None or title_captions:
+            write_form_one_fields(
+                title, profile.title_um, title_values or {},
+                title_text_style, title_measurer,
+                cap_height_um=title_cap_height_um, captions=title_captions,
+            )
     if diagnostic:
         debug = ET.SubElement(root, _SVG + "g", {
             "data-layer": "page-diagnostics", "fill": "none",
