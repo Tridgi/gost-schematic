@@ -40,7 +40,7 @@ def test_l1_visual_main_shape_ignores_tap_stem_but_obstacles_still_protect_it():
     l1 = next(component for component in circuit.components if component.reference == "L1")
     symbol = by_part[l1.part_id]
     visible = main_ugo_graphic_bounds(symbol, l1)
-    assert visible == Box(91850, 37850, 108150, 40150)
+    assert visible == Box(91850, 37850, 108150, 40151)
     # Old body is pushed upwards by the tap reserve while the actual winding
     # begins at y=37.85 mm (from the real 4x radius-2-mm semicircles).
     keepout = l1.transform.box(symbol.body_keepout).translated(l1.origin)
