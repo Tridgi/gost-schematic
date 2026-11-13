@@ -8,8 +8,6 @@ never treating absence of a feature as an invented passing implementation.
 from copy import deepcopy
 
 import pytest
-
-from gost_schematic.core.geometry import Point, Side
 from qa_e1_integration_support import (
     DISPLAY_ONLY,
     graphic_source,
@@ -17,6 +15,8 @@ from qa_e1_integration_support import (
     real_sources,
 )
 from qa_e1_integration_test import _crossing_view
+
+from gost_schematic.core.geometry import Point, Side
 
 
 @pytest.fixture(scope="module")
