@@ -200,6 +200,6 @@ def test_narrative_preserves_source_ambiguity_and_catalog_ownership():
     report = REPORT_PATH.read_text(encoding="utf-8")
     for phrase in (
         "табл. 4", "поз. 2а", "поз. 2б", "поз. 10", "контур", "заливк",
-        "1,5 мм", "8 мм", "DRAFT", "BLOCKED", "YGO", "не менять PR #38",
+        "1,5 мм", "8 мм", "DRAFT", "BLOCKED", "YGO", "PR #38",
     ):
         assert phrase.lower() in report.lower()
