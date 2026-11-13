@@ -56,7 +56,7 @@ The JSON files in this PR are **standalone design fixtures**, not a locked produ
 | `links[*].source/target/arrow_at/via_um` | typed `FunctionalLink(id,source,target)`, view-only `arrow_at/via_um` | Source→target remains semantic direction; route waypoints and arrow markers are not part of the model |
 | `diagram_type=E1` | `StructuralDiagram` | Typed separate structural domain; never `Circuit` |
 
-Issue #70 RFC E1-001: https://github.com/Tridgi/gost-schematic/issues/70#issuecomment-6862724943 ; coordinator conditional **GO for isolated prototype only**, not a public schema or merge: https://github.com/Tridgi/gost-schematic/issues/70#issuecomment-6862999265 . The `semantic_projection()` adapter exports experimental `{schema_version,blocks,ports,links}` with separate typed ports and `[numerator,denominator]` rational positions. **BLOCKED for stable/public schema and renderer integration** pending subsequent ELEKTRIK/ESKD review.
+Issue #70 RFC E1-001: https://github.com/Tridgi/gost-schematic/issues/70#issuecomment-6862724943 ; coordinator conditional **GO for isolated prototype only**, not a public schema or merge: https://github.com/Tridgi/gost-schematic/issues/70#issuecomment-6862999265 . The `semantic_projection()` adapter exports experimental `{schema_version,blocks,ports,links}` with separate typed ports and `[numerator,denominator]` rational positions. Because the current proposed ELEKTRIK graph contains no pose transform, projection **fails closed** on rotated, mirrored or scaled views rather than quietly misplacing typed side ports. Pose/view translation needs a future approved RFC. **BLOCKED for stable/public schema and renderer integration** pending subsequent ELEKTRIK/ESKD review.
 
 ## Reference preview and evidence
 
