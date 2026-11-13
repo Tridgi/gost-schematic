@@ -10,6 +10,7 @@ Two independent phases:
 Never use E1 FunctionalBlock, physical footprint or electrical net inference.
 """
 from dataclasses import dataclass, field
+from math import ceil, floor
 from xml.etree import ElementTree as ET
 
 from gost_schematic.core.geometry import (
@@ -61,7 +62,7 @@ class IcRenderingPolicy:
 
     module_um: int = 2500
     pitch_modules: int = 2
-    ink_padding_um: int = 500
+    ink_padding_um: int = 1000
     line_width_um: int = 300
     lead_length_um: int = 8000
     main_min_width_um: int = 15000
@@ -90,6 +91,7 @@ class ResolvedIcPin:
     row: int
     anchor: Point  # AUTHORITATIVE WORLD external end of physical lead
     role: str = "passive"
+    row_key: str | None = None  # shared logical group; not a graphic row index
 
     def __post_init__(self) -> None:
         if not self.pin_id or not self.number.strip():
@@ -181,6 +183,44 @@ class IcRendered:
     ink: tuple[IcInkBox, ...]
     font_sha256: str | None
     pin_anchors: tuple[tuple[str, Point], ...]  # exact external ends
+    glyph_ink: tuple["IcGlyphBox", ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class IcGlyphBox:
+    owner: str
+    index: int
+    char: str
+    ink: Box
+
+
+def _true_glyph_boxes(
+    owner: str, text: str, baseline: Point, style: TextStyle,
+) -> tuple[IcGlyphBox, ...]:
+    """Kerning-aware FreeType individual visible glyph bounds in micrometres.
+
+    Full rendered text-run ink remains authoritative for collision handling;
+    per-codepoint boxes are conservative diagnostic evidence (glyph shaping
+    may combine clusters in other fonts, so never use their sum as width).
+    """
+    from gost_schematic.engines.annotation.metrics import _PIXELS_PER_EM, _load_font
+
+    font = _load_font(style.font_path)
+    scale = style.em_height_um / _PIXELS_PER_EM
+    result = []
+    for index, char in enumerate(text):
+        left, top, right, bottom = font.getbbox(char, anchor="ls")
+        if left >= right or top >= bottom:
+            continue
+        kerned_x = font.getlength(text[:index]) * scale
+        region = Box(
+            baseline.x + floor(kerned_x + left * scale),
+            baseline.y + floor(top * scale),
+            baseline.x + ceil(kerned_x + right * scale),
+            baseline.y + ceil(bottom * scale),
+        )
+        result.append(IcGlyphBox(owner, index, char, region))
+    return tuple(result)
 
 
 def _measure(text: str, style: TextStyle, measure: TextMeasurer) -> Box:
@@ -297,6 +337,7 @@ def render_resolved_ic(
     page_bounds: Box | None = None,
     other_obstacles: tuple[Box, ...] = (),
     review_overlay: bool = False,
+    glyph_detail: bool = False,
 ) -> IcRendered:
     """Fail closed if authoritative pin positions differ from the geometry.
 
@@ -476,6 +517,18 @@ def render_resolved_ic(
                 raise ValueError(
                     f"IC_INK_COLLISION: {label_region.owner} vs {later.owner}"
                 )
+    glyphs = tuple(
+        glyph for parent, baseline in texts
+        for glyph in _true_glyph_boxes(
+            parent.owner, parent.text, baseline, style,
+        )
+    ) if glyph_detail else ()
+    for glyph in glyphs:
+        for protected in strokes:
+            if _ink_intersects(glyph.ink, protected.box, policy.ink_padding_um):
+                raise ValueError(
+                    f"IC_GLYPH_INK_COLLISION: {glyph.owner}[{glyph.index}]"
+                )
     all_visible = (frame, *strokes, *ink)
     complete = enclosing_box(tuple(x.box for x in all_visible))
     if page_bounds is not None and not (
@@ -589,9 +642,25 @@ def render_resolved_ic(
                 "width": format_mm(_width(b)), "height": format_mm(_height(b)),
                 "data-owner": region.owner, "data-kind": region.kind,
             })
+        if glyphs:
+            glyph_layer = ET.SubElement(debug, S + "g", {
+                "data-layer": "measured-individual-glyph-ink",
+                "stroke": "#1358bc",
+                "stroke-width": "0.08",
+            })
+            for glyph in glyphs:
+                b = glyph.ink
+                ET.SubElement(glyph_layer, S + "rect", {
+                    "x": format_mm(b.min_x), "y": format_mm(b.min_y),
+                    "width": format_mm(_width(b)),
+                    "height": format_mm(_height(b)),
+                    "data-owner": glyph.owner,
+                    "data-index": str(glyph.index),
+                })
     return IcRendered(
         ET.tostring(svg, encoding="unicode") + "\n",
         proposed, actual_body, (*strokes, *ink),
         style.font_sha256,
         tuple((pin.pin_id, pin.anchor) for pin in unit.pins),
+        glyphs,
     )
