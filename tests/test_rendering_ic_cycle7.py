@@ -296,3 +296,27 @@ def test_three_digit_number_is_outside_box_without_crossing_pin_lead():
         box = next(x.box for x in render.ink
                    if x.kind=="pin-number" and x.owner==pins[-1].pin_id)
         assert box.min_x >= render.body_world.max_x
+
+
+
+def test_sixty_four_pin_actual_stroke_footprint_requires_larger_than_a4_zone():
+    unit, _ = specimen(64)
+    with pytest.raises(ValueError, match="IC_PAGE_OVERFLOW"):
+        render_resolved_ic(
+            unit, STYLE, FixedInk(),
+            page_bounds=Box(20000, 5000, 205000, 237000),
+        )
+    permitted = render_resolved_ic(
+        unit, STYLE, FixedInk(),
+        page_bounds=Box(20000, 5000, 292000, 415000),
+    )
+    assert len(permitted.pin_anchors) == 64
+    assert permitted.proposed.height_um > 200000
+
+
+def test_function_and_side_fields_preserve_all_stress_special_unicode():
+    sample, _ = specimen(14, long_name=True, function="RG/≤64×16")
+    out = render_resolved_ic(sample, STYLE, FixedInk())
+    assert "RG/≤64×16" in out.svg
+    assert "ДЛИННОЕ_ИМЯ_" in out.svg
+    assert not any("ellipsis" in x or "textLength=" in x for x in (out.svg,))
