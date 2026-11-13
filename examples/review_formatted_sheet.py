@@ -171,6 +171,14 @@ def generate(
             filename = f"{name}-explicit-fields.svg"
             (output_dir / filename).write_text(filled.svg, encoding="utf-8")
             files.append(filename)
+            if name == "a4-portrait":
+                # The companion close-up contains only explicitly passed
+                # example values and remains separate from the blank page.
+                detail = "form-one-explicit-fields-closeup.svg"
+                (output_dir / detail).write_text(
+                    _closeup_title(filled.svg), encoding="utf-8",
+                )
+                files.append(detail)
 
     if compare_c3:
         generate_c3_comparison(output_dir, style)
@@ -211,6 +219,11 @@ def generate(
         "wires": len(graph.segments),
         "junctions": [[point.x, point.y] for point in graph.junctions],
         "sheets": sheets,
+        "title_content_mode": (
+            "explicit_fields" if title_values else
+            "structural_captions" if title_headings else "blank"
+        ),
+        "explicit_title_keys": sorted(title_values or {}),
         "artifacts": files,
         "restrictions": (
             "No rendered sheet is a certified document. Form-1 fields remain "
