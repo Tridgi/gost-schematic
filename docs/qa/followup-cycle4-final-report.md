@@ -2,13 +2,28 @@
 
 **Reviewed router:** [Draft PR #39](https://github.com/Tridgi/gost-schematic/pull/39), exact head `4e86e2e0e10d05c591ed004c4d6096de21520007`; source blob `50b9102191fbe7f5876b14bd9ef10dcbbb1fe600` (`src/gost_schematic/engines/routing/two_pin_orthogonal.py`). **Follow-up baseline:** `integration/stage0-12` SHA `73bc6f88a814d7b92267326fc1dab8f127e92e77`, and initially identical `parallel/qa-followup-cycle4`. The baseline did **not** include PR #39 or preceding QA PR #42. No cross-branch merge or production changes were performed.
 
+## 2026-11-13 coordinator follow-up — current findings, not historical #40
+
+**Current integrated validator:** `integration/stage0-12` @ `2052e9d3a903edea860c100e00609ceee3c9062b` includes fixed [#40](https://github.com/Tridgi/gost-schematic/issues/40) from merged PR #48. The original PR39 router SHA `4e86e2e0e10d05c591ed004c4d6096de21520007` is still only a Draft. We independently split the concerns:
+
+- **Resolved #40:** `test_fixed_validator_reports_router_generated_unassigned_pin_contact` now **passes**, expecting ERROR `WIRE_PIN_CONTACT_UNDECLARED` for the actual produced R3.1 route. Historical claims in the original audit that this validator is silent apply ONLY to before PR #48.
+- **Active #50:** the PR39 router **still outputs** a line that crosses unassigned R3.1; `test_pinned_router_passes_through_real_unassigned_pin_outside_all_body_keepouts` remains a **strict xfail for router geometry only**. Fixing a post-validation warning does not solve the upstream routing defect.
+- **Active #51/#52:** their independent strict xfail checks are unchanged.
+- **Active #58 from investigation #54:** current validator can silently accept B wire interior across real R1.1 already attached to A; that exact defect belongs to **PR #42** D4 × reverse × 1µm test matrix, not duplicated here. The free-pin fix does not cover occupied pins.
+- **Offline reproducibility:** no `git fetch`, `git show`, shell or external network in tests. `scripts/qa_followup_pr39.py` imports installed `gost_schematic.engines.routing.two_pin_orthogonal` if present; otherwise it imports a local exact source fixture `tests/fixtures/qa_router_pr39_snapshot.py` **after verifying Git blob hash `50b9102191fbe7f5876b14bd9ef10dcbbb1fe600`**. A test against the snapshot is evidence about PR39's old SHA, not an automatic certification of a later revision.
+- **Post-integration CI:** [push #43458470145](https://github.com/Tridgi/gost-schematic/actions/runs/43458470145) and [pull_request #43458482272](https://github.com/Tridgi/gost-schematic/actions/runs/43458482272) both **SUCCESS** on Python 3.12/3.13: Ruff PASS; **1040 passed / 3 xfailed**, 19 DRAFT / 0 catalog errors and wheel PASS per version. All three remaining xfails concern the uncorrected *router* (#50, #51, #52), **none concern #40**.
+
+No production code edited; only QA branch history synchronized with integration. The remaining sections are **historical observations**, and their unqualified statements about #40 being open or silent are superseded by this update.
+
+---
+
 ## Executive finding
 
 **Recommendation: keep PR #39 in DRAFT until the coordinator accepts a pin/ink-aware preflight contract and resolves the new issues.** The bounded Dijkstra itself preserves exact on-grid endpoints and avoids rectangles it is actually given. However, building keepouts exclusively from UGO bodies, as the PR's own real-catalog demonstration does, does not suffice to protect exposed conductive terminals. In addition, mixed-width existing wire ink metadata is lost in `WireSegment`. A third defect causes remote objects to waste the entire grid search cap. These are **observed reproducible behavior**, not merely imagined missing features.
 
 | Severity | Finding | Issue | Evidence |
 |---|---|---|---|
-| **MAJOR — integration safety** | Wire is routed through a genuine **unassigned resistor terminal** when all real body keepouts are supplied. Existing validator returns zero diagnostics. | [#50](https://github.com/Tridgi/gost-schematic/issues/50), related [#40](https://github.com/Tridgi/gost-schematic/issues/40) | CI [43450510595](https://github.com/Tridgi/gost-schematic/actions/runs/43450510595) / `test_pinned_router_passes_through_real_unassigned_pin_outside_all_body_keepouts` |
+| **MAJOR — integration safety** | Wire is routed through a genuine **unassigned resistor terminal** when all real body keepouts are supplied. **Historical before #48:** validator returned no diagnostic; **current post-fix:** emits WIRE_PIN_CONTACT_UNDECLARED. Router still returns invalid geometry. | [#50](https://github.com/Tridgi/gost-schematic/issues/50), related [#40](https://github.com/Tridgi/gost-schematic/issues/40) | CI [43450510595](https://github.com/Tridgi/gost-schematic/actions/runs/43450510595) / `test_pinned_router_passes_through_real_unassigned_pin_outside_all_body_keepouts` |
 | **MAJOR — clearance contract** | Foreign wire 1.0mm stroke + new 0.3mm stroke can violate requested 0.4mm printed separation; router assumes foreign/new strokes equal. | [#52](https://github.com/Tridgi/gost-schematic/issues/52) | CI [43451967831](https://github.com/Tridgi/gost-schematic/actions/runs/43451967831) / `test_mixed_existing_wire_stroke_must_respect_actual_printed_clearance` |
 | **MODERATE — false failure / resource consumption** | Irrelevant keepout near (1e9,1e9) enlarges default grid to **1,000,020,000,100** cells; 1mm direct path refused with `ROUTE_CELL_LIMIT`, explicit local bounds succeeds. | [#51](https://github.com/Tridgi/gost-schematic/issues/51) | CI [43450510595](https://github.com/Tridgi/gost-schematic/actions/runs/43450510595) / `test_remote_irrelevant_obstacle_does_not_exhaust_cell_budget_for_clear_direct_path` |
 
@@ -16,9 +31,9 @@
 
 ## How the PR39 code was independently executed without modifying it
 
-Because PR #39 is still unmerged, `scripts/qa_followup_pr39.py` retrieves the exact source file through `git show <SHA>:<path>`; on shallow CI checkouts it first fetches that one immutable Git commit. The loader verifies the Git object blob hash **before** execution. It fails hard rather than skipping the test if the SHA cannot be fetched. No router copy, source edit or production API change appears in the QA PR. Execution is an explicit test-only, reviewed-source exception to lint's dynamic-code rule; inputs are verified commit/blob identifiers.
+Because PR #39 is still unmerged, the checked-in, test-only `tests/fixtures/qa_router_pr39_snapshot.py` contains an **exact Git-blob-verified source snapshot**. `scripts/qa_followup_pr39.py` loads this fixture **without Git or a network dependency**, unless an integrated production router module is installed, in which case that module takes priority. This deliberately duplicates the original PR39 implementation **only inside QA fixtures**, not in `src/`; do not mistake the fixture for a production patch.
 
-Future integration must deliberately repoint tests to the accepted PR39 commit/merged code; passing tests against a pinned old SHA does **not** certify later changed heads.
+Future integrated production code automatically takes precedence over the historical snapshot. If an owner changes PR39 before it is merged, the coordinator must explicitly test that changed SHA too; this snapshot alone does **not** certify any later head.
 
 ## Test coverage (independent of PR #42 and author-owned PR #39 tests)
 
@@ -28,7 +43,7 @@ Future integration must deliberately repoint tests to the accepted PR39 commit/m
 - **Failure-on-contact:** existing live wire at target/source → `ROUTE_PORT_BLOCKED` and zero partial lines, conversion to graph raises. Second real component body covering selected source pin also blocks without retargeting.
 - **Bounded no-path vs possible path:** real resistor body spans a narrow allowed window, causing `ROUTE_NO_PATH` and empty output; widening the window permits a valid detour with no body collision.
 - **Exact 1µm endpoint offset** on a real transformed component → `ROUTE_OFF_GRID`, no silent snapping.
-- **Unassigned terminal negative:** real center component's graphical pin lies outside its body keepout; returned wire passes directly over R3.1; existing validator #40 is falsely silent. Positive control: adding the missing pin exclusion box forces a safe route.
+- **Unassigned terminal negative:** real center component's graphical pin lies outside its body keepout; returned wire passes directly over R3.1; historical validator was falsely silent, while **current validator now flags it as ERROR**; router remains unsafe. Positive control: adding the missing pin exclusion box forces a safe route.
 - **Mixed-width negative:** new conductor width0.3mm, existing1.0mm, requested clearance0.4mm, grid0.1mm; an independently calculated printed-ink expanded AABB is illegally intersected. Positive control: explicitly pre-inflated foreign ink keepout succeeds.
 - **Remote irrelevant hazard negative:** prevents a trivial route only because the auto-window includes the far-away AABB. Explicit finite local window succeeds.
 
@@ -52,7 +67,7 @@ This proves optimizing only total wire length cannot remove the user's C3 dogleg
 
 ## Legacy defects and independence
 
-- **#40:** remains open. Current validator ignores a wire interior contact with an unassigned physical pin. #50 extends this from hand-authored to **router-generated** wire. It is not fixed by a passing net-validation result.
+- **#40 CLOSED:** PR #48 now correctly reports WIRE_PIN_CONTACT_UNDECLARED for real unassigned-pin interior contacts; #50 still generates the unsafe geometry. Independent newly confirmed **#58** concerns an already-attached foreign-net physical contact.
 - **#41:** remains open. Wrong nested catalog geometry type can escape as `AttributeError` rather than `CatalogError`. This is independent of PR39; retain PR #42's existing test, **do not duplicate it** in this follow-up.
 - **#42:** untouched, separate QA PR still in Draft at audit start.
 - **PR #39:** read-only, no edits to source, tests or target branch.
@@ -64,7 +79,7 @@ This proves optimizing only total wire length cannot remove the user's C3 dogleg
 
 **Newer two-real-net integration test push** SHA `bba8390705931f835306302c56088d5323e60a80`: [run #43452854139](https://github.com/Tridgi/gost-schematic/actions/runs/43452854139). Ruff and `pytest` passed for both versions: **661 passed / 3 xfailed**, 19 DRAFT catalog, wheel content PASS. Python 3.13 overall job SUCCESS. Python 3.12 overall job FAILED **only in pre-existing external OpenGOST font download**, which returned `HTTP Error 403: rate limit exceeded`. It did **not** fail a QA test; this rate-limited optional visual artifact installation is not caused by router code. If this persists, do not claim a complete green workflow; retry after rate-limit recovery, do not change someone else's workflow in QA.
 
-Local reproduction (requires Git to fetch pinned PR39 SHA once, already verified in GitHub CI):
+Local reproduction (**no Git fetch or network required**; local QA snapshot is hash-verified):
 
 ```bash
 python -m pip install -e ".[dev]"
@@ -78,7 +93,7 @@ python scripts/audit_symbol_catalog.py --output output/catalog-integrity-audit.j
 
 ## Coordinator disposition
 
-1. Hold PR #39 as a narrowly scoped experiment until #50 and #52 have either enforced typed preflight adapters or explicit fail-closed input contracts, and #40 is resolved at the independent validator.
+1. Hold PR #39 as a narrowly scoped experiment until #50 and #52 have either enforced typed preflight adapters or explicit fail-closed input contracts. **#40 is already resolved** by merged PR #48. Track separate validator #58.
 2. Review #51's remote obstacle search-window policy; keep finite cell caps while avoiding arbitrary unrelated-object failures.
 3. Approve Issue #44's hard-gated route/placement score criteria before attempting general auto placement.
 4. Re-run QA against an **explicit new accepted SHA** after fixes; check strict xfails and replace with passing assertions only after the expected invariant is met. A fixed design must never begin inferring a net from an unmarked X crossing.
