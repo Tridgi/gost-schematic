@@ -176,6 +176,7 @@ jobs:
           python -m examples.review_formatted_sheet \
             --font-file "$REVIEW_FONT" --mode a4 \
             --title-field "designation=CI-TEST-ONLY" \
+            --title-field "developed_surname=TEST" \
             --output-dir output/explicit-form-ci-only
           python - <<'PY'
           from pathlib import Path
@@ -190,8 +191,13 @@ jobs:
           fields = explicitly.findall(
               f".//{ns}g[@data-layer='title-block-fields']/{ns}text"
           )
-          assert len(fields) == 1 and fields[0].text == "CI-TEST-ONLY"
-          assert fields[0].get("data-cap-height-mm") == "2.5"
+          marked = {f.get("data-graph"): f for f in fields}
+          assert marked["designation"].text == "CI-TEST-ONLY"
+          assert marked["developed_surname"].text == "TEST"
+          assert marked["developed_surname"].get("data-graph-number") == "11"
+          assert marked["role_developed"].text == "Разраб."
+          assert marked["role_developed"].get("data-graph-number") == "10"
+          assert all(f.get("data-cap-height-mm") == "2.5" for f in fields)
           print("Explicit-only title value verified; temporary fixture NOT uploaded")
           PY
       - name: Rasterize clean and diagnostic A4/A3 at common pixel width
@@ -209,9 +215,32 @@ jobs:
               --output "output/formatted-sheet-review/$NAME.png" \
               "output/formatted-sheet-review/$NAME.svg"
           done
-          rsvg-convert --background-color white --width 2700 \
-            --output output/formatted-sheet-review/form-one-title-closeup.png \
-            output/formatted-sheet-review/form-one-title-closeup.svg
+          # 1:1 check with real OpenGost, dimensioned at genuine 300 DPI:
+          # A4 210x297 mm => 2480x3508 px; zoom 189x64 mm => 2232x756 px.
+          for NAME in a4-portrait-clean a4-portrait-captioned form-one-title-closeup; do
+            rsvg-convert --background-color white --dpi-x 300 --dpi-y 300 \
+              --output "output/formatted-sheet-review/$NAME-300dpi.png" \
+              "output/formatted-sheet-review/$NAME.svg"
+          done
+          cp output/formatted-sheet-review/form-one-title-closeup-300dpi.png \
+             output/formatted-sheet-review/form-one-title-closeup.png
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          folder = Path("output/formatted-sheet-review")
+          expected = {
+              "a4-portrait-clean": (2480, 3508),
+              "a4-portrait-captioned": (2480, 3508),
+              "form-one-title-closeup": (2232, 756),
+          }
+          for name, dims in expected.items():
+              with Image.open(folder / f"{name}-300dpi.png") as picture:
+                  actual = picture.size
+                  assert all(abs(a-b) <= 1 for a, b in zip(actual, dims)), (
+                      name, actual, dims,
+                  )
+          print("Real SVG physical-mm rasterization at 300dpi verified")
+          PY
           for CASE in archived-issue35 current; do
             for VIEW in clean diagnostic; do
               NAME="c3-$CASE-$VIEW"
