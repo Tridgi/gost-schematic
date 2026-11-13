@@ -15,13 +15,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SNAPSHOTS = Path(__file__).resolve().parent / "fixtures"
 OWNER_SHA = {
-    "paint_commit": "1b09e5995703dee8dd1f6759595084cb94573fd6",
+    "paint_commit": "f8f9dc4c1fd8266b807dea9d6f268d971bec8d7a",
     "ygo_commit": "ddb7881c52055fe44120a36015a469a847c70c16",
     "base_integration": "578e018f2b0be37b37fa4c8e52692cc1c5f941c5",
 }
 BLOBS = {
     "qa_cycle7_ic_owner88/ic_rectangular.txt":
-        "0aeaf02e038c0b7becbee0e8f0f6b073a203ca99",
+        "a2077cd21bcd5f497ac3304bf7f9d0d76d6b32bd",
     "qa_cycle7_ygo89/symbols/variable.json":
         "3f0d4c2f2a8ff0a85cf33f80e25862cf168d43db",
     "qa_cycle7_ygo89/parts/variable.json":
