@@ -21,7 +21,9 @@ CELLS = {
     "designation": Box(65000, 0, 175000, 15000),  # (2)
     "name": Box(65000, 15000, 135000, 40000),  # (1)
     "material": Box(65000, 40000, 135000, 50000),  # (3)
-    "letter": Box(135000, 20000, 150000, 35000),  # (4)
+    "letter": Box(135000, 20000, 140000, 35000),  # (4) first 5mm cell
+    "letter_b": Box(140000, 20000, 145000, 35000),
+    "letter_c": Box(145000, 20000, 150000, 35000),
     "mass": Box(150000, 20000, 167000, 35000),  # (5)
     "scale": Box(167000, 20000, 185000, 35000),  # (6)
     "sheet": Box(135000, 40000, 155000, 50000),  # (7)
@@ -120,6 +122,9 @@ def draw_form_one_geometry(parent: ET.Element, bounds: Box) -> None:
         y0, y1 = (15000, 55000) if x == 135000 else (15000, 35000)
         _line(group, x, y0, x, y1, "title-columns", bounds)
     _line(group, 135000, 20000, 185000, 20000, "title-rows", bounds)
+    # B.1 lettering (4) is three 5-mm cells, not a single merged 15-mm cell.
+    _line(group, 140000, 20000, 140000, 35000, "title-columns", bounds)
+    _line(group, 145000, 20000, 145000, 35000, "title-columns", bounds)
     _line(group, 135000, 35000, 185000, 35000, "title-rows", bounds)
     _line(group, 155000, 35000, 155000, 50000, "title-columns", bounds)
     _line(group, 65000, 40000, 185000, 40000, "title-rows", bounds)
@@ -155,6 +160,15 @@ def write_form_one_fields(
         raise ValueError("Only calibrated Type A 2.5/3.5 mm text is supported")
     if type(padding_um) is not int or padding_um < 0:
         raise ValueError("padding_um must be a nonnegative integer")
+    # The face is accepted only when its *measured* Cyrillic capital height
+    # matches the declared physical value. SVG em-size is not a cap height.
+    cap = measurer.measure("Н", style).ink_box
+    measured_h = -cap.min_y
+    if abs(measured_h - cap_height_um) > max(30, cap_height_um // 100):
+        raise ValueError(
+            f"TITLE_FONT_CAP_HEIGHT_MISMATCH: expected {cap_height_um} um, "
+            f"measured {measured_h} um"
+        )
     if any(not isinstance(k, str) or k not in CELLS for k in fields):
         raise ValueError("Unknown form-1 field identifier")
     if any(not isinstance(v, str) or "\n" in v or "\r" in v for v in fields.values()):
