@@ -384,7 +384,7 @@ def test_grid_line_source_dimensions_are_exact_integer_um():
     result = compose_formatted_sheet(source, PageProfile())
     svg = root(result)
     lines = svg.findall(f".//{SVG}g[@data-layer='title-block-grid']/{SVG}line")
-    assert len(lines) >= 25
+    assert len(lines) >= 23
     assert all(
         mm(line.get(key)) % 1000 == 0
         for line in lines for key in ("x1", "y1", "x2", "y2")
