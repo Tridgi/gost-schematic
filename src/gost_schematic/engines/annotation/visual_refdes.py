@@ -149,6 +149,7 @@ def place_refdes_near_visible_graphics(
     *,
     wires: tuple[WireObstacle, ...] = (),
     extra_boxes: tuple[BoxObstacle, ...] = (),
+    existing_placements: tuple[AnnotationPlacement, ...] = (),
     profile: VisualRefdesProfile | None = None,
 ) -> tuple[AnnotationPlacement, ...]:
     """Choose nearest collision-free measured ink. Fail closed if impossible."""
@@ -192,7 +193,8 @@ def place_refdes_near_visible_graphics(
                       left + metrics.ink_box.max_x - metrics.ink_box.min_x,
                       top + metrics.ink_box.max_y - metrics.ink_box.min_y)
             hitbox = ink.expanded(style.clearance_um)
-            if _is_obstructed(hitbox, protected, wires, placements):
+            if _is_obstructed(hitbox, protected, wires,
+                              [*existing_placements, *placements]):
                 continue
             score = distance_ink_to_main_ugo_um(ink, main)
             candidates.append((score, rank, kind, ink, hitbox))
@@ -220,3 +222,47 @@ def place_refdes_near_visible_graphics(
             candidate_index=rank,
         ))
     return tuple(placements)
+
+
+def apply_visible_refdes_to_layout(
+    circuit: Circuit,
+    symbols_by_part: dict[str, SymbolDefinition],
+    standard_layout,
+    style: TextStyle,
+    measurer: TextMeasurer,
+    *,
+    wires: tuple[WireObstacle, ...] = (),
+    profile: VisualRefdesProfile | None = None,
+):
+    """Explicit opt-in replacement on a *copy* of ordinary SheetLayout.
+
+    The default layout_sheet()/render_sheet_svg() APIs and archived fixture
+    output remain unchanged. Values, warnings and other annotations survive.
+    Any blocked label fails closed before a new SVG is emitted.
+    """
+    from gost_schematic.engines.sheet_layout import SheetLayout
+
+    if not isinstance(standard_layout, SheetLayout) or not standard_layout.valid:
+        raise ValueError("REFDES_PREVIEW_INVALID_BASE_LAYOUT")
+    non_refdes = tuple(
+        label for label in standard_layout.placements
+        if label.role != AnnotationRole.REFDES
+    )
+    previous = tuple(
+        label for label in standard_layout.placements
+        if label.role == AnnotationRole.REFDES
+    )
+    if {p.owner for p in previous} != {
+        component.reference for component in circuit.components
+    } or len(previous) != len(circuit.components):
+        raise ValueError("REFDES_PREVIEW_MISSING_OR_DUPLICATE_REF")
+    revised = place_refdes_near_visible_graphics(
+        circuit, symbols_by_part, style, measurer,
+        wires=wires, existing_placements=non_refdes, profile=profile,
+    )
+    replacement = {placement.owner: placement for placement in revised}
+    placements = tuple(
+        replacement[item.owner] if item.role == AnnotationRole.REFDES else item
+        for item in standard_layout.placements
+    )
+    return SheetLayout(placements, standard_layout.diagnostics)
