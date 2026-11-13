@@ -95,6 +95,21 @@ def test_paper_dimensions_margins_form_one_and_no_overlap(
     assert not svg.findall(f".//{SVG}image")
 
 
+def test_narrow_form_one_role_headings_use_smaller_unembedded_preview_type():
+    source, *_ = specimen()
+    formatted = root(compose_formatted_sheet(source, PageProfile()))
+    title = PageProfile().title_um
+    roles = formatted.findall(
+        f".//{SVG}g[@data-layer='title-block-headings']/{SVG}text"
+    )
+    named = {element.text: element for element in roles}
+    for label in ("Разраб.", "Пров.", "Т. контр.", "Н. контр.", "Утв."):
+        entry = named[label]
+        assert entry.get("font-size") == "1.6"
+        assert title.min_x < mm(entry.get("x")) < title.min_x + 7000
+        assert entry.get("font-family") == "OpenGost Type A"
+
+
 def test_preserves_exact_authored_wires_nets_physical_pins_and_source_inputs():
     source, circuit, graph, by_part = specimen()
     immutable = (source.svg, circuit, graph, by_part.copy())
