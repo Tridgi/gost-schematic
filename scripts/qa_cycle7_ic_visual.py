@@ -15,12 +15,12 @@ from xml.etree import ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tests"))
-from qa_cycle7_support import BLOBS, OWNER_SHA, owner_renderer  # noqa: E402
+from qa_cycle7_support import BLOBS, OWNER_SHA, owner_renderer
 
-from gost_schematic.core.geometry import Box, Point, Side  # noqa: E402
-from gost_schematic.core.transforms import Transform  # noqa: E402
-from gost_schematic.engines.annotation.metrics import PillowTextMeasurer  # noqa: E402
-from gost_schematic.standards.type_a_font import inspect_type_a_font  # noqa: E402
+from gost_schematic.core.geometry import Box, Point, Side
+from gost_schematic.core.transforms import Transform
+from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
+from gost_schematic.standards.type_a_font import inspect_type_a_font
 
 SVG = "{http://www.w3.org/2000/svg}"
 
