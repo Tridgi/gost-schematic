@@ -138,7 +138,7 @@ def test_form_one_measured_headings_use_full_seventeen_mm_role_column():
 
 
 @pytest.mark.parametrize("title_values", (
-    {"designation": "X" * 200},
+    {"designation": "X" * 300},
     {"approved": "Слишком длинная подпись без автоподгонки"},
 ))
 def test_form_one_rejects_long_text_without_font_shrink(title_values):
