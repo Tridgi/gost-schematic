@@ -1,0 +1,264 @@
+{
+  "blocks": 7,
+  "diagnostics": [],
+  "inspection_chords_um": [
+    {
+      "arrow": "source_to_target",
+      "link_id": "L01",
+      "source": [
+        20000,
+        6000
+      ],
+      "target": [
+        40000,
+        6000
+      ]
+    },
+    {
+      "arrow": "source_to_target",
+      "link_id": "L02",
+      "source": [
+        60000,
+        4000
+      ],
+      "target": [
+        80000,
+        4000
+      ]
+    },
+    {
+      "arrow": "source_to_target",
+      "link_id": "L03",
+      "source": [
+        60000,
+        8000
+      ],
+      "target": [
+        80000,
+        8000
+      ]
+    },
+    {
+      "arrow": "source_to_target",
+      "link_id": "L04",
+      "source": [
+        20000,
+        36000
+      ],
+      "target": [
+        40000,
+        36000
+      ]
+    },
+    {
+      "arrow": "source_to_target",
+      "link_id": "L05",
+      "source": [
+        60000,
+        36000
+      ],
+      "target": [
+        80000,
+        36000
+      ]
+    },
+    {
+      "arrow": "source_to_target",
+      "link_id": "L06",
+      "source": [
+        100000,
+        6000
+      ],
+      "target": [
+        120000,
+        6000
+      ]
+    },
+    {
+      "arrow": "source_to_target",
+      "link_id": "L07",
+      "source": [
+        90000,
+        12000
+      ],
+      "target": [
+        90000,
+        30000
+      ]
+    },
+    {
+      "arrow": "source_to_target",
+      "link_id": "L08",
+      "source": [
+        50000,
+        30000
+      ],
+      "target": [
+        50000,
+        12000
+      ]
+    },
+    {
+      "arrow": "source_to_target",
+      "link_id": "L09",
+      "source": [
+        100000,
+        36000
+      ],
+      "target": [
+        130000,
+        12000
+      ]
+    }
+  ],
+  "links": 9,
+  "port_anchors_um": [
+    {
+      "block_id": "ACT",
+      "point_um": [
+        80000,
+        36000
+      ],
+      "port_id": "command"
+    },
+    {
+      "block_id": "ACT",
+      "point_um": [
+        90000,
+        30000
+      ],
+      "port_id": "control"
+    },
+    {
+      "block_id": "ACT",
+      "point_um": [
+        100000,
+        36000
+      ],
+      "port_id": "state"
+    },
+    {
+      "block_id": "ADAPT",
+      "point_um": [
+        60000,
+        36000
+      ],
+      "port_id": "actuate"
+    },
+    {
+      "block_id": "ADAPT",
+      "point_um": [
+        50000,
+        30000
+      ],
+      "port_id": "feedback"
+    },
+    {
+      "block_id": "ADAPT",
+      "point_um": [
+        40000,
+        36000
+      ],
+      "port_id": "sensor"
+    },
+    {
+      "block_id": "CTRL",
+      "point_um": [
+        90000,
+        12000
+      ],
+      "port_id": "actuate"
+    },
+    {
+      "block_id": "CTRL",
+      "point_um": [
+        80000,
+        4000
+      ],
+      "port_id": "cmd1"
+    },
+    {
+      "block_id": "CTRL",
+      "point_um": [
+        80000,
+        8000
+      ],
+      "port_id": "cmd2"
+    },
+    {
+      "block_id": "CTRL",
+      "point_um": [
+        100000,
+        6000
+      ],
+      "port_id": "display"
+    },
+    {
+      "block_id": "DISPLAY",
+      "point_um": [
+        130000,
+        12000
+      ],
+      "port_id": "alarm"
+    },
+    {
+      "block_id": "DISPLAY",
+      "point_um": [
+        120000,
+        6000
+      ],
+      "port_id": "status"
+    },
+    {
+      "block_id": "ENTRY",
+      "point_um": [
+        60000,
+        4000
+      ],
+      "port_id": "cmd1"
+    },
+    {
+      "block_id": "ENTRY",
+      "point_um": [
+        60000,
+        8000
+      ],
+      "port_id": "cmd2"
+    },
+    {
+      "block_id": "ENTRY",
+      "point_um": [
+        50000,
+        12000
+      ],
+      "port_id": "feedback"
+    },
+    {
+      "block_id": "ENTRY",
+      "point_um": [
+        40000,
+        6000
+      ],
+      "port_id": "supply"
+    },
+    {
+      "block_id": "POWER",
+      "point_um": [
+        20000,
+        6000
+      ],
+      "port_id": "feed"
+    },
+    {
+      "block_id": "SENSOR",
+      "point_um": [
+        20000,
+        36000
+      ],
+      "port_id": "measurement"
+    }
+  ],
+  "ports": 18,
+  "schema_version": 1,
+  "status": "EXPERIMENTAL_E1_SCHEMA_NOT_ESKD_APPROVED"
+}
