@@ -278,7 +278,7 @@ def test_explicit_refdes_adapter_uses_ordinary_layout_and_svg_without_golden_dri
 
 
 def test_non_refdes_annotations_are_reserved_by_opt_in_algorithm():
-    circuit, graph, by_part = _specimen()
+    circuit, _, by_part = _specimen()
     single = Circuit((next(c for c in circuit.components
                       if c.reference == "L1"),), ())
     first = place_refdes_near_visible_graphics(
