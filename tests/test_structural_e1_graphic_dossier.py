@@ -206,8 +206,13 @@ def test_diagram_link_crossing_remains_declared_only_not_a_junction():
     scene = validate_design(data)
     assert len(scene["links"]) == 2
     assert scene["electrical_nets"] is None
-    svg = render_svg(data)
-    assert "junction" not in svg.lower() and "pinref" not in svg.lower()
+    svg = ET.fromstring(render_svg(data))
+    # Metadata may legitimately *say* that PinRef is forbidden; test the
+    # rendered graphics for a junction element, not a prose substring.
+    assert not any(
+        node.get("data-role") in {"electrical-junction", "junction", "pinref"}
+        for node in svg.iter()
+    )
 
 
 def test_two_links_cannot_occupy_same_parallel_sheet_segment():
