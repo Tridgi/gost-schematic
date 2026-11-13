@@ -65,17 +65,18 @@ def test_pr80_canonical_source_is_seven_eighteen_nine_and_unchanged():
                for l in diagram.links)
     assert not hasattr(diagram, "nets")
     anchors = resolve_port_positions(diagram)
-    assert anchors[PortRef("ENTRY", "cmd1")] == Point(60000, 4000)
-    assert anchors[PortRef("ENTRY", "cmd2")] == Point(60000, 8000)
-    assert anchors[PortRef("CTRL", "cmd1")] == Point(80000, 4000)
-    assert anchors[PortRef("CTRL", "cmd2")] == Point(80000, 8000)
+    assert anchors[PortRef("B2", "a")] == Point(198000, 31000)
+    assert anchors[PortRef("B2", "b")] == Point(198000, 40000)
+    assert anchors[PortRef("B2", "c")] == Point(198000, 49000)
+    assert anchors[PortRef("B3", "a")] == Point(252000, 31000)
+    assert anchors[PortRef("B3", "b")] == Point(252000, 40000)
+    assert anchors[PortRef("B3", "c")] == Point(252000, 49000)
 
 
 def test_all_real_functional_links_match_exact_svg_portrefs_and_process_arrows():
     diagram = fixture()
     root, svg, manifest = _xml(
-        diagram, via_by_link={"L09": ((110000, 36000), (110000, 22000),
-                                           (130000, 22000))},
+        diagram, via_by_link={"L9": ((380000, 154000), (70000, 154000))},
     )
     assert (manifest["block_count"], manifest["port_count"],
             manifest["link_count"]) == (7, 18, 9)
@@ -136,8 +137,8 @@ def test_text_real_glyph_ink_bounds_stay_inside_real_block_frames():
         box, region = label["bounds"], boxes[label["block_id"]]
         assert region[0] < box[0] < box[2] < region[2]
         assert region[1] < box[1] < box[3] < region[3]
-    assert "".join(example_views(diagram)["ENTRY"].title_lines) == "Ввод команд"
-    assert "".join(example_views(diagram)["ADAPT"].title_lines) == "Согласование"
+    assert "".join(example_views(diagram)["B2"].title_lines) == "ОБРАБОТКА СИГНАЛА"
+    assert "".join(example_views(diagram)["B6"].title_lines) == "ИСПОЛНИТЕЛЬНЫЙ УЗЕЛ"
 
 
 def test_pr80_20000_um_two_auto_ports_round_only_once_in_model_and_svg():

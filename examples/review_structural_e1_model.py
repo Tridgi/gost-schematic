@@ -75,11 +75,13 @@ class BlockView:
 def example_views(diagram: StructuralDiagram) -> dict[str, BlockView]:
     """Human-authored break positions, while semantic strings stay unchanged."""
     splits = {
-        "ENTRY": ("Ввод ", "команд"),
-        "CTRL": ("Контрол", "лер"),
-        "ADAPT": ("Согласо", "вание"),
-        "ACT": ("Исполни", "тель"),
-        "DISPLAY": ("Индика", "ция"),
+        "B1": ("ДАТЧИК ", "СИГНАЛА"),
+        "B2": ("ОБРАБОТКА ", "СИГНАЛА"),
+        "B3": ("МОДУЛЬ ", "СВЯЗИ"),
+        "B4": ("СИСТЕМА ", "ИНДИКАЦИИ"),
+        "B5": ("УПРАВЛЯЮЩИЙ ", "БЛОК"),
+        "B6": ("ИСПОЛНИТЕЛЬНЫЙ ", "УЗЕЛ"),
+        "B7": ("ОБРАТНАЯ ", "СВЯЗЬ"),
     }
     return {
         block.id: BlockView(splits.get(block.id, (block.name,)))
@@ -352,10 +354,13 @@ def render_structural_model(
                 raise E1GraphicError(f"{link.id}: graphic link intersects block interior")
         final_routes.append((link, points))
 
-    lowx = min(rect[0] for rect in boxes.values()) - 7500
-    lowy = min(rect[1] for rect in boxes.values()) - 7500
-    highx = max(rect[2] for rect in boxes.values()) + 7500
-    highy = max(rect[3] for rect in boxes.values()) + 7500
+    # Include route waypoints and arrow tips: otherwise feedback loops
+    # extending below block rows get clipped in both SVG and raster PNG.
+    routed_points = [point for _link, path in final_routes for point in path]
+    lowx = min([rect[0] for rect in boxes.values()] + [p[0] for p in routed_points]) - 7500
+    lowy = min([rect[1] for rect in boxes.values()] + [p[1] for p in routed_points]) - 7500
+    highx = max([rect[2] for rect in boxes.values()] + [p[0] for p in routed_points]) + 7500
+    highy = max([rect[3] for rect in boxes.values()] + [p[1] for p in routed_points]) + 7500
     root = ET.Element("svg", {
         "xmlns": SVG,
         "viewBox": f"{_mm(lowx)} {_mm(lowy)} {_mm(highx-lowx)} {_mm(highy-lowy)}",
@@ -484,7 +489,13 @@ def main(argv: list[str] | None = None) -> int:
     if structural_to_json(diagram) != raw:
         raise E1GraphicError("Model JSON is not canonical; roundtrip drift")
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    via = {"L09": ((110000, 36000), (110000, 22000), (130000, 22000))}
+    # The real feedback link connects two BOTTOM ports. Run it 16 mm
+    # below the lowest block instead of touching other frame outlines.
+    anchor = resolve_port_positions(diagram)
+    feedback = next(link for link in diagram.links if link.id == "L9")
+    src, dst = anchor[feedback.source], anchor[feedback.target]
+    lower = max(b.origin.y + b.height_um for b in diagram.blocks) + 16000
+    via = {"L9": ((src.x, lower), (dst.x, lower))}
     clean, manifest = render_structural_model(diagram, args.font_file, via_by_link=via)
     diagnostic, diag_manifest = render_structural_model(
         diagram, args.font_file, via_by_link=via, diagnostic=True,
