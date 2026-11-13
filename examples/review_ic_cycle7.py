@@ -51,7 +51,7 @@ def _fixture(count, kind, style, measurer):
         else ("ИСПЫТАНИЕ",) if count == 8 else ()
     )
     content = IcFieldContent(
-        function="AMP" if kind == "analog" else "RAM" if count >= 40 else "AND",
+        function=">" if kind == "analog" else "RAM" if count >= 40 else "RG" if count == 14 else "&",
         main_rows=extras,
         left_zone_after=(3, 11) if count >= 40 else (2,) if count >= 8 else (),
         right_zone_after=(5,) if count >= 14 else (),
