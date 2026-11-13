@@ -197,6 +197,31 @@ jobs:
                 "output/formatted-sheet-review/$NAME.svg"
             done
           done
+      - name: Assemble only a visual before/after C3 comparison
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image, ImageDraw
+          folder = Path("output/formatted-sheet-review")
+          left = Image.open(folder / "c3-as-authored-clean.png").convert("RGB")
+          right = Image.open(folder / "c3-proposal-only-clean.png").convert("RGB")
+          assert left.size == right.size
+          margin, caption = 28, 78
+          output = Image.new(
+              "RGB", (left.width * 2 + margin * 3,
+                      left.height + caption + margin * 2), "white",
+          )
+          output.paste(left, (margin, caption))
+          output.paste(right, (left.width + margin * 2, caption))
+          pencil = ImageDraw.Draw(output)
+          pencil.text((margin, 24), "SOURCE: C3 at 100,75 mm (18 wires)", fill="black")
+          pencil.text(
+              (left.width + margin * 2, 24),
+              "ISSUE #44 PROPOSAL ONLY: C3 at 100,80 mm (16 wires)",
+              fill="black",
+          )
+          output.save(folder / "c3-comparison-side-by-side.png")
+          PY
       - name: Verify physical size, content layers, exact nets and PNG outputs
         run: |
           python - <<'PY'
@@ -262,6 +287,7 @@ jobs:
           comparison = json.loads((directory / "c3-comparison.json").read_text())
           assert comparison["original_wire_count"] == 18
           assert comparison["proposed_wire_count"] == 16
+          assert (directory / "c3-comparison-side-by-side.png").stat().st_size > 1000
           assert comparison["original_junctions_um"] == comparison["proposed_junctions_um"]
           print("Clean default + 3 optional formats + measured title + C3 comparison verified")
           print("A4/A3 SVG, PNG, form-1, 18 authored nets and 3 junctions verified")
