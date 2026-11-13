@@ -5,11 +5,11 @@ altering its branch, or silently skipping pytest checks when it is unavailable.
 We fetch one immutable Git commit once if shallow CI checkout lacks it.
 """
 
+import subprocess
+import sys
 from functools import lru_cache
 from hashlib import sha1
 from pathlib import Path
-import subprocess
-import sys
 from types import ModuleType
 
 ROUTER_COMMIT = "4e86e2e0e10d05c591ed004c4d6096de21520007"
@@ -39,7 +39,7 @@ def load_pr39_router() -> ModuleType:
     if source.returncode:
         raise RuntimeError("Cannot retrieve pinned PR #39 router source")
     raw = source.stdout
-    actual_blob = sha1(b"blob " + str(len(raw)).encode() + b"\\0" + raw).hexdigest()
+    actual_blob = sha1(b"blob " + str(len(raw)).encode() + bytes((0,)) + raw).hexdigest()
     if actual_blob != ROUTER_BLOB:
         raise AssertionError(f"Router blob mismatch {actual_blob} != {ROUTER_BLOB}")
     module_name = "_qa_pr39_router_pinned_4e86e2"
