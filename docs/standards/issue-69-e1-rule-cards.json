@@ -716,7 +716,8 @@
       "MUST",
       "MUST_QUALITATIVE",
       "MUST_WITH_EXCEPTION",
-      "MUST_FOR_UGO"
+      "MUST_FOR_UGO",
+      "MUST_FOR_LETTERING"
     ],
     "recommendations": [
       "RECOMMENDED"
