@@ -240,6 +240,11 @@ def test_proposed_elektrik_semantic_projection_has_exact_rational_ports_and_no_v
 
 def test_proposed_model_export_rejects_unmapped_view_transform():
     data = specimen()
+    # Isolate the view/model seam; unchanged links would correctly fail their
+    # outward-normal check before reaching the projection-specific policy.
+    one = block(data, "B1")
+    data["blocks"] = [one]
+    data["links"] = []
     block(data, "B1")["rotation"] = 180
     with pytest.raises(E1DesignError, match="view transformations"):
         semantic_projection(data)
