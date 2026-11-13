@@ -52,7 +52,7 @@ jobs:
           echo "IC_TYPE_A_FONT_PATH=$FONT_PATH" >> "$GITHUB_ENV"
           fc-cache -f
       - name: Ruff (owner-owned new files and joint tests)
-        run: ruff check src/gost_schematic/electrical/ic_paint_bridge.py tests/test_ic_paint_joint_cycle7.py examples/review_ic_paint_joint_cycle7.py scripts/verify_ic_joint_visual_evidence.py
+        run: ruff check src/gost_schematic/electrical/ic_paint_bridge.py tests/test_ic_paint_joint_cycle7.py examples/review_ic_paint_joint_cycle7.py scripts/verify_ic_joint_visual_evidence.py scripts/stamp_ic_joint_300dpi_metadata.py
       - name: Assert both packages exist and execute true 1um boundary tests
         run: |
           python -c 'import gost_schematic.electrical.ic_paint_bridge, gost_schematic.rendering.ic_rectangular'
@@ -69,6 +69,7 @@ jobs:
           for src in output/ic-paint-joint-cycle7/*.svg; do
             rsvg-convert --dpi-x 300 --dpi-y 300 "$src" -o "${src%.svg}.png"
           done
+          python scripts/stamp_ic_joint_300dpi_metadata.py --output-dir output/ic-paint-joint-cycle7
           python scripts/verify_ic_joint_visual_evidence.py --output-dir output/ic-paint-joint-cycle7
           ( cd output/ic-paint-joint-cycle7 && sha256sum *.svg *.png *.json > SHA256SUMS.txt )
       - name: Upload reproducible joint QA evidence
