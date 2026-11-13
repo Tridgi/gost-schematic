@@ -1,0 +1,563 @@
+{
+  "schema_version": 1,
+  "issue": 89,
+  "parent": 86,
+  "depends_on": "PR #94, existing branch parallel/catalog-electronic-cycle7",
+  "figure_source_pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+  "figure_official": "https://protect.gost.ru/gost/details/8e7d0ff4-ab0d-44b5-8efd-b0fcdb13950b",
+  "disclaimer": "DRAFT physical source-backed family/figure research, not exact normative graphics approval nor manufacturer package pinout",
+  "counts": {
+    "new_semiconductors": 12,
+    "previous_new_draft_ugo": 3,
+    "total_new_since_baseline": 15,
+    "preexisting_baseline_ugo": 21,
+    "full_catalog_after": 36
+  },
+  "statuses": {
+    "SOURCE_FIGURE_INSPECTED": "table/example located and icon features identified; numerical editorial layout unapproved",
+    "EXPERIMENTAL_DERIVED": "three-pin NPN arrow derived using table1, cannot cite shielded table7/1b as generic",
+    "BLOCKED_INDEPENDENT_1TO1_OVERLAY": "no signed original-figure overlay / real manufacturer pin numbering"
+  },
+  "cards": [
+    {
+      "id": "transistor.bjt_pnp",
+      "approval": "DRAFT",
+      "source_rule_status": "SOURCE_FIGURE_INSPECTED",
+      "release_acceptance": "BLOCKED_INDEPENDENT_1TO1_OVERLAY",
+      "physical_part": "YES_SEPARATE",
+      "abstract_pin_roles": {
+        "1": "B",
+        "2": "C",
+        "3": "E"
+      },
+      "manufacturer_pinout": "UNVERIFIED_ABSTRACT_NUMBERING",
+      "normative": {
+        "standard": "ГОСТ 2.730-73, переиздание май 2002, изменения №1–4",
+        "edition": "May 2002 amendments 1–4",
+        "section_figure": "§8 табл.7/1а (PNP); примечание о схематическом корпусе и зеркале",
+        "pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+        "official": "https://protect.gost.ru/gost/details/8e7d0ff4-ab0d-44b5-8efd-b0fcdb13950b",
+        "pdf_page": 5
+      },
+      "graphic_features": [
+        "separate B/C/E terminals",
+        "emitter arrow points towards base",
+        "collector/emitter leads are distinct and cannot become same conductor island"
+      ],
+      "case_variant": "without schematic case; same 3 contacts",
+      "electrical_semantics": "Three distinct conductive-ink lead islands: not an internal net short",
+      "editorial_dimensions": "0.3mm stroke, layout coordinates, leads 11mm, optional circle radius 8mm, arrow wings and keepout are project visual prototype, not normative mm",
+      "blocking_factors": [
+        "full 1:1 original/vector overlay and sheet-level text ink checks absent",
+        "manufacturer pinmap unknown"
+      ],
+      "negative_tests": [
+        "swapping real physical role or moving a pin",
+        "D4 inversion of emitter/channel arrow semantic direction",
+        "marking circle or arrow strokes electrically conductive",
+        "forged net short B-C, G-D, D-S"
+      ],
+      "notes": "PartDefinition pair is an abstract schematic catalog profile; .with_case is a graphic variant materialized as a separate SymbolDefinition+PartDefinition because current API does not support multiple symbols for one physical item. NOT a real separate manufacturer package."
+    },
+    {
+      "id": "transistor.bjt_pnp.with_case",
+      "approval": "DRAFT",
+      "source_rule_status": "SOURCE_FIGURE_INSPECTED",
+      "release_acceptance": "BLOCKED_INDEPENDENT_1TO1_OVERLAY",
+      "physical_part": "YES_SEPARATE",
+      "abstract_pin_roles": {
+        "1": "B",
+        "2": "C",
+        "3": "E"
+      },
+      "manufacturer_pinout": "UNVERIFIED_ABSTRACT_NUMBERING",
+      "normative": {
+        "standard": "ГОСТ 2.730-73, переиздание май 2002, изменения №1–4",
+        "edition": "May 2002 amendments 1–4",
+        "section_figure": "§8 табл.7/1а (PNP); примечание о схематическом корпусе и зеркале",
+        "pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+        "official": "https://protect.gost.ru/gost/details/8e7d0ff4-ab0d-44b5-8efd-b0fcdb13950b",
+        "pdf_page": 5
+      },
+      "graphic_features": [
+        "separate B/C/E terminals",
+        "emitter arrow points towards base",
+        "collector/emitter leads are distinct and cannot become same conductor island"
+      ],
+      "case_variant": "schematic circle explicitly shown; no extra physical pin",
+      "electrical_semantics": "Three distinct conductive-ink lead islands: not an internal net short",
+      "editorial_dimensions": "0.3mm stroke, layout coordinates, leads 11mm, optional circle radius 8mm, arrow wings and keepout are project visual prototype, not normative mm",
+      "blocking_factors": [
+        "full 1:1 original/vector overlay and sheet-level text ink checks absent",
+        "manufacturer pinmap unknown"
+      ],
+      "negative_tests": [
+        "swapping real physical role or moving a pin",
+        "D4 inversion of emitter/channel arrow semantic direction",
+        "marking circle or arrow strokes electrically conductive",
+        "forged net short B-C, G-D, D-S"
+      ],
+      "notes": "PartDefinition pair is an abstract schematic catalog profile; .with_case is a graphic variant materialized as a separate SymbolDefinition+PartDefinition because current API does not support multiple symbols for one physical item. NOT a real separate manufacturer package."
+    },
+    {
+      "id": "transistor.bjt_npn",
+      "approval": "DRAFT",
+      "source_rule_status": "EXPERIMENTAL_DERIVED",
+      "release_acceptance": "BLOCKED_INDEPENDENT_1TO1_OVERLAY",
+      "physical_part": "YES_SEPARATE",
+      "abstract_pin_roles": {
+        "1": "B",
+        "2": "C",
+        "3": "E"
+      },
+      "manufacturer_pinout": "UNVERIFIED_ABSTRACT_NUMBERING",
+      "normative": {
+        "standard": "ГОСТ 2.730-73, переиздание май 2002, изменения №1–4",
+        "edition": "May 2002 amendments 1–4",
+        "section_figure": "таблица 1/2 (N emitter) и §8 табл. 7/1а (PNP, базовая операция обращения стрелки); НЕ табл.7/1б",
+        "pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+        "official": "https://protect.gost.ru/gost/details/8e7d0ff4-ab0d-44b5-8efd-b0fcdb13950b",
+        "pdf_page": 5
+      },
+      "graphic_features": [
+        "separate B/C/E terminals",
+        "emitter arrow points away from base",
+        "collector/emitter leads are distinct and cannot become same conductor island"
+      ],
+      "case_variant": "without schematic case; same 3 contacts",
+      "electrical_semantics": "Three distinct conductive-ink lead islands: not an internal net short",
+      "editorial_dimensions": "0.3mm stroke, layout coordinates, leads 11mm, optional circle radius 8mm, arrow wings and keepout are project visual prototype, not normative mm",
+      "blocking_factors": [
+        "NPN three-terminal type is not Fig7/1б, which contains extra screen contact",
+        "source-based BJT arrow derivation still requires ESKD approval",
+        "manufacturer pin numbering and 1:1 original overlay unknown"
+      ],
+      "negative_tests": [
+        "swapping real physical role or moving a pin",
+        "D4 inversion of emitter/channel arrow semantic direction",
+        "marking circle or arrow strokes electrically conductive",
+        "forged net short B-C, G-D, D-S"
+      ],
+      "notes": "PartDefinition pair is an abstract schematic catalog profile; .with_case is a graphic variant materialized as a separate SymbolDefinition+PartDefinition because current API does not support multiple symbols for one physical item. NOT a real separate manufacturer package."
+    },
+    {
+      "id": "transistor.bjt_npn.with_case",
+      "approval": "DRAFT",
+      "source_rule_status": "EXPERIMENTAL_DERIVED",
+      "release_acceptance": "BLOCKED_INDEPENDENT_1TO1_OVERLAY",
+      "physical_part": "YES_SEPARATE",
+      "abstract_pin_roles": {
+        "1": "B",
+        "2": "C",
+        "3": "E"
+      },
+      "manufacturer_pinout": "UNVERIFIED_ABSTRACT_NUMBERING",
+      "normative": {
+        "standard": "ГОСТ 2.730-73, переиздание май 2002, изменения №1–4",
+        "edition": "May 2002 amendments 1–4",
+        "section_figure": "таблица 1/2 (N emitter) и §8 табл. 7/1а (PNP, базовая операция обращения стрелки); НЕ табл.7/1б",
+        "pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+        "official": "https://protect.gost.ru/gost/details/8e7d0ff4-ab0d-44b5-8efd-b0fcdb13950b",
+        "pdf_page": 5
+      },
+      "graphic_features": [
+        "separate B/C/E terminals",
+        "emitter arrow points away from base",
+        "collector/emitter leads are distinct and cannot become same conductor island"
+      ],
+      "case_variant": "schematic circle explicitly shown; no extra physical pin",
+      "electrical_semantics": "Three distinct conductive-ink lead islands: not an internal net short",
+      "editorial_dimensions": "0.3mm stroke, layout coordinates, leads 11mm, optional circle radius 8mm, arrow wings and keepout are project visual prototype, not normative mm",
+      "blocking_factors": [
+        "NPN three-terminal type is not Fig7/1б, which contains extra screen contact",
+        "source-based BJT arrow derivation still requires ESKD approval",
+        "manufacturer pin numbering and 1:1 original overlay unknown"
+      ],
+      "negative_tests": [
+        "swapping real physical role or moving a pin",
+        "D4 inversion of emitter/channel arrow semantic direction",
+        "marking circle or arrow strokes electrically conductive",
+        "forged net short B-C, G-D, D-S"
+      ],
+      "notes": "PartDefinition pair is an abstract schematic catalog profile; .with_case is a graphic variant materialized as a separate SymbolDefinition+PartDefinition because current API does not support multiple symbols for one physical item. NOT a real separate manufacturer package."
+    },
+    {
+      "id": "transistor.mosfet_n_enh",
+      "approval": "DRAFT",
+      "source_rule_status": "SOURCE_FIGURE_INSPECTED",
+      "release_acceptance": "BLOCKED_INDEPENDENT_1TO1_OVERLAY",
+      "physical_part": "YES_SEPARATE",
+      "abstract_pin_roles": {
+        "1": "G",
+        "2": "D",
+        "3": "S"
+      },
+      "manufacturer_pinout": "UNVERIFIED_ABSTRACT_NUMBERING",
+      "normative": {
+        "standard": "ГОСТ 2.730-73, переиздание май 2002, изменения №1–4",
+        "edition": "May 2002 amendments 1–4",
+        "section_figure": "§9 табл.8/3б (MOS N enrichment), примечание об изображении корпуса",
+        "pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+        "official": "https://protect.gost.ru/gost/details/8e7d0ff4-ab0d-44b5-8efd-b0fcdb13950b",
+        "pdf_page": 6
+      },
+      "graphic_features": [
+        "separate G/D/S physical terminals",
+        "N channel electron arrow direction",
+        "isolated gate and enhancement channel gap; not a JFET PN gate",
+        "no invented substrate contact"
+      ],
+      "case_variant": "without schematic case; same 3 contacts",
+      "electrical_semantics": "Three distinct conductive-ink lead islands: not an internal net short",
+      "editorial_dimensions": "0.3mm stroke, layout coordinates, leads 11mm, optional circle radius 8mm, arrow wings and keepout are project visual prototype, not normative mm",
+      "blocking_factors": [
+        "full 1:1 original/vector overlay and sheet-level text ink checks absent",
+        "manufacturer pinmap unknown"
+      ],
+      "negative_tests": [
+        "swapping real physical role or moving a pin",
+        "D4 inversion of emitter/channel arrow semantic direction",
+        "marking circle or arrow strokes electrically conductive",
+        "forged net short B-C, G-D, D-S"
+      ],
+      "notes": "PartDefinition pair is an abstract schematic catalog profile; .with_case is a graphic variant materialized as a separate SymbolDefinition+PartDefinition because current API does not support multiple symbols for one physical item. NOT a real separate manufacturer package."
+    },
+    {
+      "id": "transistor.mosfet_n_enh.with_case",
+      "approval": "DRAFT",
+      "source_rule_status": "SOURCE_FIGURE_INSPECTED",
+      "release_acceptance": "BLOCKED_INDEPENDENT_1TO1_OVERLAY",
+      "physical_part": "YES_SEPARATE",
+      "abstract_pin_roles": {
+        "1": "G",
+        "2": "D",
+        "3": "S"
+      },
+      "manufacturer_pinout": "UNVERIFIED_ABSTRACT_NUMBERING",
+      "normative": {
+        "standard": "ГОСТ 2.730-73, переиздание май 2002, изменения №1–4",
+        "edition": "May 2002 amendments 1–4",
+        "section_figure": "§9 табл.8/3б (MOS N enrichment), примечание об изображении корпуса",
+        "pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+        "official": "https://protect.gost.ru/gost/details/8e7d0ff4-ab0d-44b5-8efd-b0fcdb13950b",
+        "pdf_page": 6
+      },
+      "graphic_features": [
+        "separate G/D/S physical terminals",
+        "N channel electron arrow direction",
+        "isolated gate and enhancement channel gap; not a JFET PN gate",
+        "no invented substrate contact"
+      ],
+      "case_variant": "schematic circle explicitly shown; no extra physical pin",
+      "electrical_semantics": "Three distinct conductive-ink lead islands: not an internal net short",
+      "editorial_dimensions": "0.3mm stroke, layout coordinates, leads 11mm, optional circle radius 8mm, arrow wings and keepout are project visual prototype, not normative mm",
+      "blocking_factors": [
+        "full 1:1 original/vector overlay and sheet-level text ink checks absent",
+        "manufacturer pinmap unknown"
+      ],
+      "negative_tests": [
+        "swapping real physical role or moving a pin",
+        "D4 inversion of emitter/channel arrow semantic direction",
+        "marking circle or arrow strokes electrically conductive",
+        "forged net short B-C, G-D, D-S"
+      ],
+      "notes": "PartDefinition pair is an abstract schematic catalog profile; .with_case is a graphic variant materialized as a separate SymbolDefinition+PartDefinition because current API does not support multiple symbols for one physical item. NOT a real separate manufacturer package."
+    },
+    {
+      "id": "transistor.mosfet_p_enh",
+      "approval": "DRAFT",
+      "source_rule_status": "SOURCE_FIGURE_INSPECTED",
+      "release_acceptance": "BLOCKED_INDEPENDENT_1TO1_OVERLAY",
+      "physical_part": "YES_SEPARATE",
+      "abstract_pin_roles": {
+        "1": "G",
+        "2": "D",
+        "3": "S"
+      },
+      "manufacturer_pinout": "UNVERIFIED_ABSTRACT_NUMBERING",
+      "normative": {
+        "standard": "ГОСТ 2.730-73, переиздание май 2002, изменения №1–4",
+        "edition": "May 2002 amendments 1–4",
+        "section_figure": "§9 табл.8/3а (MOS P enrichment), примечание об изображении корпуса",
+        "pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+        "official": "https://protect.gost.ru/gost/details/8e7d0ff4-ab0d-44b5-8efd-b0fcdb13950b",
+        "pdf_page": 6
+      },
+      "graphic_features": [
+        "separate G/D/S physical terminals",
+        "P channel electron arrow direction",
+        "isolated gate and enhancement channel gap; not a JFET PN gate",
+        "no invented substrate contact"
+      ],
+      "case_variant": "without schematic case; same 3 contacts",
+      "electrical_semantics": "Three distinct conductive-ink lead islands: not an internal net short",
+      "editorial_dimensions": "0.3mm stroke, layout coordinates, leads 11mm, optional circle radius 8mm, arrow wings and keepout are project visual prototype, not normative mm",
+      "blocking_factors": [
+        "full 1:1 original/vector overlay and sheet-level text ink checks absent",
+        "manufacturer pinmap unknown"
+      ],
+      "negative_tests": [
+        "swapping real physical role or moving a pin",
+        "D4 inversion of emitter/channel arrow semantic direction",
+        "marking circle or arrow strokes electrically conductive",
+        "forged net short B-C, G-D, D-S"
+      ],
+      "notes": "PartDefinition pair is an abstract schematic catalog profile; .with_case is a graphic variant materialized as a separate SymbolDefinition+PartDefinition because current API does not support multiple symbols for one physical item. NOT a real separate manufacturer package."
+    },
+    {
+      "id": "transistor.mosfet_p_enh.with_case",
+      "approval": "DRAFT",
+      "source_rule_status": "SOURCE_FIGURE_INSPECTED",
+      "release_acceptance": "BLOCKED_INDEPENDENT_1TO1_OVERLAY",
+      "physical_part": "YES_SEPARATE",
+      "abstract_pin_roles": {
+        "1": "G",
+        "2": "D",
+        "3": "S"
+      },
+      "manufacturer_pinout": "UNVERIFIED_ABSTRACT_NUMBERING",
+      "normative": {
+        "standard": "ГОСТ 2.730-73, переиздание май 2002, изменения №1–4",
+        "edition": "May 2002 amendments 1–4",
+        "section_figure": "§9 табл.8/3а (MOS P enrichment), примечание об изображении корпуса",
+        "pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+        "official": "https://protect.gost.ru/gost/details/8e7d0ff4-ab0d-44b5-8efd-b0fcdb13950b",
+        "pdf_page": 6
+      },
+      "graphic_features": [
+        "separate G/D/S physical terminals",
+        "P channel electron arrow direction",
+        "isolated gate and enhancement channel gap; not a JFET PN gate",
+        "no invented substrate contact"
+      ],
+      "case_variant": "schematic circle explicitly shown; no extra physical pin",
+      "electrical_semantics": "Three distinct conductive-ink lead islands: not an internal net short",
+      "editorial_dimensions": "0.3mm stroke, layout coordinates, leads 11mm, optional circle radius 8mm, arrow wings and keepout are project visual prototype, not normative mm",
+      "blocking_factors": [
+        "full 1:1 original/vector overlay and sheet-level text ink checks absent",
+        "manufacturer pinmap unknown"
+      ],
+      "negative_tests": [
+        "swapping real physical role or moving a pin",
+        "D4 inversion of emitter/channel arrow semantic direction",
+        "marking circle or arrow strokes electrically conductive",
+        "forged net short B-C, G-D, D-S"
+      ],
+      "notes": "PartDefinition pair is an abstract schematic catalog profile; .with_case is a graphic variant materialized as a separate SymbolDefinition+PartDefinition because current API does not support multiple symbols for one physical item. NOT a real separate manufacturer package."
+    },
+    {
+      "id": "diode.schottky",
+      "approval": "DRAFT",
+      "source_rule_status": "SOURCE_FIGURE_INSPECTED",
+      "release_acceptance": "BLOCKED_INDEPENDENT_1TO1_OVERLAY",
+      "physical_part": "YES_SEPARATE",
+      "abstract_pin_roles": {
+        "1": "A",
+        "2": "K"
+      },
+      "manufacturer_pinout": "UNVERIFIED_ABSTRACT_NUMBERING",
+      "normative": {
+        "standard": "ГОСТ 2.730-73, переиздание май 2002, изменения №1–4",
+        "edition": "May 2002 amendments 1–4",
+        "section_figure": "§6 табл.5/9",
+        "pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+        "official": "https://protect.gost.ru/gost/details/8e7d0ff4-ab0d-44b5-8efd-b0fcdb13950b",
+        "pdf_page": 4
+      },
+      "graphic_features": [
+        "A and K physically separate; no generic internal short",
+        "cathode hook Schottky distinct from Zener"
+      ],
+      "electrical_semantics": "Conductive indices exactly [0,1], NO optical light rays or capacitance/Schottky decorative strokes conductive",
+      "editorial_dimensions": "0.3mm stroke, cathode ornament, optical arrow coordinates, keepout, A/K leads 10mm, all DRAFT mm",
+      "blocking_factors": [
+        "1:1 source overlay not independently signed",
+        "manufacturer package pin numbering unverified"
+      ],
+      "negative_tests": [
+        "A and K shorted by new conductive stroke",
+        "added phantom optical PinRef",
+        "swapped A/K after rotation/mirror",
+        "LED photons inward or photodiode photons outward"
+      ]
+    },
+    {
+      "id": "diode.led",
+      "approval": "DRAFT",
+      "source_rule_status": "SOURCE_FIGURE_INSPECTED",
+      "release_acceptance": "BLOCKED_INDEPENDENT_1TO1_OVERLAY",
+      "physical_part": "YES_SEPARATE",
+      "abstract_pin_roles": {
+        "1": "A",
+        "2": "K"
+      },
+      "manufacturer_pinout": "UNVERIFIED_ABSTRACT_NUMBERING",
+      "normative": {
+        "standard": "ГОСТ 2.730-73, переиздание май 2002, изменения №1–4",
+        "edition": "May 2002 amendments 1–4",
+        "section_figure": "§6 табл.5/10",
+        "pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+        "official": "https://protect.gost.ru/gost/details/8e7d0ff4-ab0d-44b5-8efd-b0fcdb13950b",
+        "pdf_page": 4
+      },
+      "graphic_features": [
+        "A and K physically separate; no generic internal short",
+        "two outward optical emission arrows NONCONDUCTIVE"
+      ],
+      "electrical_semantics": "Conductive indices exactly [0,1], NO optical light rays or capacitance/Schottky decorative strokes conductive",
+      "editorial_dimensions": "0.3mm stroke, cathode ornament, optical arrow coordinates, keepout, A/K leads 10mm, all DRAFT mm",
+      "blocking_factors": [
+        "1:1 source overlay not independently signed",
+        "manufacturer package pin numbering unverified"
+      ],
+      "negative_tests": [
+        "A and K shorted by new conductive stroke",
+        "added phantom optical PinRef",
+        "swapped A/K after rotation/mirror",
+        "LED photons inward or photodiode photons outward"
+      ]
+    },
+    {
+      "id": "diode.photodiode",
+      "approval": "DRAFT",
+      "source_rule_status": "SOURCE_FIGURE_INSPECTED",
+      "release_acceptance": "BLOCKED_INDEPENDENT_1TO1_OVERLAY",
+      "physical_part": "YES_SEPARATE",
+      "abstract_pin_roles": {
+        "1": "A",
+        "2": "K"
+      },
+      "manufacturer_pinout": "UNVERIFIED_ABSTRACT_NUMBERING",
+      "normative": {
+        "standard": "ГОСТ 2.730-73, переиздание май 2002, изменения №1–4",
+        "edition": "May 2002 amendments 1–4",
+        "section_figure": "§10 табл.9/2",
+        "pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+        "official": "https://protect.gost.ru/gost/details/8e7d0ff4-ab0d-44b5-8efd-b0fcdb13950b",
+        "pdf_page": 7
+      },
+      "graphic_features": [
+        "A and K physically separate; no generic internal short",
+        "two inward optical absorption arrows NONCONDUCTIVE"
+      ],
+      "electrical_semantics": "Conductive indices exactly [0,1], NO optical light rays or capacitance/Schottky decorative strokes conductive",
+      "editorial_dimensions": "0.3mm stroke, cathode ornament, optical arrow coordinates, keepout, A/K leads 10mm, all DRAFT mm",
+      "blocking_factors": [
+        "1:1 source overlay not independently signed",
+        "manufacturer package pin numbering unverified"
+      ],
+      "negative_tests": [
+        "A and K shorted by new conductive stroke",
+        "added phantom optical PinRef",
+        "swapped A/K after rotation/mirror",
+        "LED photons inward or photodiode photons outward"
+      ]
+    },
+    {
+      "id": "diode.varicap",
+      "approval": "DRAFT",
+      "source_rule_status": "SOURCE_FIGURE_INSPECTED",
+      "release_acceptance": "BLOCKED_INDEPENDENT_1TO1_OVERLAY",
+      "physical_part": "YES_SEPARATE",
+      "abstract_pin_roles": {
+        "1": "A",
+        "2": "K"
+      },
+      "manufacturer_pinout": "UNVERIFIED_ABSTRACT_NUMBERING",
+      "normative": {
+        "standard": "ГОСТ 2.730-73, переиздание май 2002, изменения №1–4",
+        "edition": "May 2002 amendments 1–4",
+        "section_figure": "§6 табл.5/6",
+        "pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+        "official": "https://protect.gost.ru/gost/details/8e7d0ff4-ab0d-44b5-8efd-b0fcdb13950b",
+        "pdf_page": 4
+      },
+      "graphic_features": [
+        "A and K physically separate; no generic internal short",
+        "second capacitive plate and distinct cathode, gap is NOT copper"
+      ],
+      "electrical_semantics": "Conductive indices exactly [0,1], NO optical light rays or capacitance/Schottky decorative strokes conductive",
+      "editorial_dimensions": "0.3mm stroke, cathode ornament, optical arrow coordinates, keepout, A/K leads 10mm, all DRAFT mm",
+      "blocking_factors": [
+        "1:1 source overlay not independently signed",
+        "manufacturer package pin numbering unverified"
+      ],
+      "negative_tests": [
+        "A and K shorted by new conductive stroke",
+        "added phantom optical PinRef",
+        "swapped A/K after rotation/mirror",
+        "LED photons inward or photodiode photons outward"
+      ]
+    }
+  ],
+  "blocked_backlog": [
+    {
+      "id": "diode.bidirectional_zener",
+      "reason": "Table 5/4б two-opposite-device symbol; assigning one universal A/K across symmetric two-terminal unit is semantically misleading; require separate bidirectional roles"
+    },
+    {
+      "id": "diode.reverse",
+      "reason": "Table 5/3 arrow direction and lead polarity must be checked against original, separate DRAFT"
+    },
+    {
+      "id": "diode.tunnel",
+      "reason": "Table5/2 direct tunnelling effect qualified; distinct from reverse/tunnel-effect table4/1a, separate review"
+    },
+    {
+      "id": "transistor.jfet_n",
+      "reason": "Table 8/1 PN gate and arrow; requires exact channel/geometry review, not simply MOS symbol with solid gate"
+    },
+    {
+      "id": "transistor.jfet_p",
+      "reason": "Table 8/2 PN gate and arrow; requires exact channel/geometry review"
+    },
+    {
+      "id": "transistor.mosfet_n_depletion",
+      "reason": "Table8/3г depleted N-channel full channel differs from enhancement broken; later"
+    },
+    {
+      "id": "transistor.mosfet_p_depletion",
+      "reason": "Table8/3в depleted P-channel full channel differs from enhancement broken; later"
+    },
+    {
+      "id": "transistor.mosfet_separate_body",
+      "reason": "Table8/5, actual distinct B physical contact must be represented exactly, requires four-contact schema evidence"
+    },
+    {
+      "id": "transistor.bjt_npn_shielded",
+      "reason": "Table7/1б source-backed extra shield physical pin must be real, not hidden in ordinary NPN"
+    },
+    {
+      "id": "transistor.darlington",
+      "reason": "Composite device real physical mapping and table figure not yet independently verified"
+    },
+    {
+      "id": "thyristor",
+      "reason": "Table6 types and gate roles require independent separate catalog rollout"
+    },
+    {
+      "id": "triac",
+      "reason": "Table6/8 two conduction terminals and gate; separate physical semantics needed"
+    },
+    {
+      "id": "optocoupler",
+      "reason": "Table10 actual multiple devices/pins and optical, multi-unit graph check needed"
+    },
+    {
+      "id": "connector.plug",
+      "reason": "ГОСТ 2.755-87 tab5/6 real male pin contact: mating state/footprint and physical pin proof needed; no net continuation"
+    },
+    {
+      "id": "connector.socket",
+      "reason": "ГОСТ 2.755-87 tab5/6 real female socket: mating state and actual contact model required"
+    },
+    {
+      "id": "fuse.time_lag",
+      "reason": "ГОСТ 2.727-68 specific type/figure must be source-checked; no arbitrary extra rectangle"
+    },
+    {
+      "id": "fuse.fast",
+      "reason": "ГОСТ 2.727-68 specific type/figure must be source-checked"
+    }
+  ]
+}
