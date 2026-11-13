@@ -17,7 +17,7 @@ import gost_schematic
 ROOT = Path(__file__).resolve().parent / "fixtures"
 SOURCE_COMMITS = {
     "ic": "4e6c1235becc4d351760660180ec31fdedc06e40",
-    "net": "cd004f626450367082a44784cac7f9563dbe9eef",
+    "net": "0738059d8d4c0f5b8854a73018501fb16543434b",
 }
 BLOBS = {
     "qa_cycle7_electric87/electrical/__init__.txt":
@@ -37,7 +37,7 @@ BLOBS = {
     "qa_cycle7_electric90/electrical/netrefs_serde.txt":
         "e2499d98c31480ef0384238ab9c3e0c47283dad4",
     "qa_cycle7_electric90/review_net_continuations.txt":
-        "d4995d22c9095b8b99f195d59252761feff69678",
+        "21e76f0ab779cbc13eeeffdd1e0273fa38869e8f",
     "qa_cycle7_electric90/two-sheet-ctrl.json":
         "b33524fb0477714646544d97acd595374f7da08a",
 }
