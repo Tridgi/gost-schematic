@@ -11,7 +11,6 @@ from xml.etree import ElementTree as ET
 
 from examples.review_end_to_end_circuit import authored_specimen, definitions
 from gost_schematic.core.geometry import Point
-from gost_schematic.core.units import format_mm
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.model.annotations import TextStyle
 from gost_schematic.rendering.external_wire_sheet import render_external_wire_sheet
