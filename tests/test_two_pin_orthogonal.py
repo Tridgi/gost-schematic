@@ -10,6 +10,7 @@ from gost_schematic.core.geometry import Box, Line, Point
 from gost_schematic.core.intersections import segment_intersects_box
 from gost_schematic.core.units import mm
 from gost_schematic.engines.routing.two_pin_orthogonal import route_two_pins
+from gost_schematic.model.obstacles import WireObstacle
 from gost_schematic.validation.external_wire_checks import WireSegment
 
 
@@ -100,7 +101,13 @@ def test_no_path_through_full_height_wall_inside_fixed_window():
     WireSegment(p(4000, -2000), p(4000, 2000), "N"),
 ])
 def test_foreign_wires_never_cross_touch_or_overlap_even_same_net(foreign):
-    route = route_two_pins(p(0, 0), p(10000, 0), existing_wires=(foreign,))
+    route = route_two_pins(
+        p(0, 0), p(10000, 0),
+        foreign_wires=(WireObstacle(
+            "foreign", Line(foreign.start, foreign.end),
+            stroke_um=300, net_name=foreign.net_name,
+        ),),
+    )
     check_route(route, p(0, 0), p(10000, 0))
     keepout = Box(
         min(foreign.start.x, foreign.end.x), min(foreign.start.y, foreign.end.y),
@@ -115,7 +122,11 @@ def test_foreign_wires_never_cross_touch_or_overlap_even_same_net(foreign):
 def test_existing_wire_becomes_uncrossable_wall_in_window():
     wire = WireSegment(p(4000, -10000), p(4000, 10000), "OTHER")
     route = route_two_pins(
-        p(0, 0), p(10000, 0), existing_wires=(wire,),
+        p(0, 0), p(10000, 0),
+        foreign_wires=(WireObstacle(
+            "wall", Line(wire.start, wire.end), stroke_um=300,
+            net_name=wire.net_name,
+        ),),
         bounds=Box(0, -10000, 10000, 10000),
     )
     assert codes(route) == {"ROUTE_NO_PATH"}

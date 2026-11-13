@@ -13,7 +13,8 @@ from examples.review_end_to_end_circuit import definitions
 from gost_schematic.core.geometry import Box, Line, Point
 from gost_schematic.core.units import format_mm
 from gost_schematic.engines.routing.clearance import validate_wire_clearance
-from gost_schematic.engines.routing.two_pin_orthogonal import TwoPinRoute, route_two_pins
+from gost_schematic.engines.routing.two_pin_orthogonal import TwoPinRoute
+from gost_schematic.engines.routing.two_pin_sheet import route_circuit_two_pins
 from gost_schematic.engines.sheet_layout import SheetLayout
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
 from gost_schematic.model.obstacles import BoxObstacle, WireObstacle
@@ -36,11 +37,11 @@ def specimen() -> tuple[Circuit, tuple[Box, ...], TwoPinRoute]:
         .translated(item.origin)
         for item in circuit.components
     )
-    source = circuit.components[0].pin_positions(symbols["resistor.fixed"])["2"]
-    target = circuit.components[2].pin_positions(symbols["capacitor.electrolytic"])["1"]
-    route = route_two_pins(
-        source, target, keepouts=keepouts, grid_um=1000,
-        clearance_um=400, stroke_um=300, max_cells=20000,
+    # The typed adapter protects every physical pin, not only body keepouts.
+    route = route_circuit_two_pins(
+        circuit, parts, symbols, PinRef("R1", "2"), PinRef("C1", "1"),
+        net_name="LINK", grid_um=1000, clearance_um=400,
+        stroke_um=300, max_cells=20000,
     )
     if not route.ok:
         raise AssertionError(f"Unexpected routing failure: {route.diagnostics}")

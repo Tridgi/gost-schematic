@@ -1,5 +1,7 @@
 # Cycle 4 — bounded two-physical-pin orthogonal route prototype (Issue #34)
 
+> **Mandatory safety update — Issue #55:** this document describes the original PR #39 baseline, before QA #50–#52. The authoritative, updated routing contracts, safe physical-pin adapter, mixed foreign stroke policy, local adaptive window and limitations are in [electrical-cycle4-safety55.md](electrical-cycle4-safety55.md). Old statements here assuming an unknown 300µm foreign wire stroke or treating body keepouts alone as sheet-safe are superseded. Use `route_circuit_two_pins` for actual schematics; the original low-level helper is geometry-only.
+
 **Verified parent**: `integration/stage0-12` and `parallel/electrical-cycle4` at `caf7db7ad22d9cd22202664471da5ff3a49a754c` before changes. Scope restricted to `engines/routing/two_pin_orthogonal.py`, a separate example and independent tests. The original core, model, catalog, renderer, validator and public API are unchanged.
 
 ## What the route algorithm actually does
