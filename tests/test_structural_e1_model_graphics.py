@@ -268,6 +268,61 @@ def test_nonexistent_waypoint_link_and_inward_path_rejected():
         render_structural_model(diagram, font(), via_by_link={"L01": ((18000, 6000),)})
 
 
+def test_both_input_and_output_same_side_keep_distinct_roles_and_spacing():
+    diagram = StructuralDiagram(
+        (FunctionalBlock("ONE", "БЛОК", Point(0, 0), 30000, 12000),),
+        (BlockPort("ONE", "input", Side.RIGHT, PortDirection.INPUT),
+         BlockPort("ONE", "output", Side.RIGHT, PortDirection.OUTPUT)),
+        (),
+    )
+    result = resolve_port_positions(diagram)
+    assert result[PortRef("ONE", "input")] == Point(30000, 4000)
+    assert result[PortRef("ONE", "output")] == Point(30000, 8000)
+    _root, _svg, manifest = _xml(diagram, views={"ONE": BlockView(("БЛОК",))})
+    assert all(x["model_um"] == x["svg_um"] for x in manifest["ports"])
+
+
+def test_rotated_block_real_link_ends_at_mapped_portrefs_and_no_false_nodes():
+    diagram = StructuralDiagram(
+        (FunctionalBlock("A", "Источник", Point(0, 0), 30000, 30000),
+         FunctionalBlock("B", "Приёмник", Point(120000, 80000), 30000, 30000)),
+        (BlockPort("A", "out", Side.RIGHT, PortDirection.OUTPUT),
+         BlockPort("B", "in", Side.LEFT, PortDirection.INPUT)),
+        ( _structural.FunctionalLink(
+            "R", PortRef("A", "out"), PortRef("B", "in"),
+        ),),
+    )
+    assert not validate_structural_diagram(diagram)
+    views = {"A": BlockView(("Источник",), rotation=90),
+             "B": BlockView(("Приёмник",))}
+    root, _svg, manifest = _xml(
+        diagram, views=views,
+        via_by_link={"R": ((15000, 45000), (100000, 45000),
+                           (100000, 95000))}, diagnostic=True,
+    )
+    link = manifest["links"][0]
+    assert link["id"] == "R"
+    assert link["points_um"][0] == [15000, 30000]
+    assert link["points_um"][-1] == [120000, 95000]
+    assert (manifest["ports"][0]["ref"]["block_id"],
+            manifest["ports"][0]["ref"]["port_id"]) == ("A", "out")
+    assert len(root.findall(f".//{SVG_NS}path[@data-role='functional-link']")) == 1
+    assert not root.findall(f".//{SVG_NS}circle[@data-role='junction']")
+
+
+def test_arbitrary_odd_rectangle_uses_real_model_anchor_no_center_assumptions():
+    diagram = StructuralDiagram(
+        (FunctionalBlock("ODD", "УЗЕЛ", Point(-1000, -1001), 27001, 17001),),
+        (BlockPort("ODD", "input", Side.LEFT, PortDirection.INPUT),),
+        (),
+    )
+    point = resolve_port_positions(diagram)[PortRef("ODD", "input")]
+    assert point == Point(-1000, 7500)  # absolute -1001 + 8500.5 rounds once
+    _root, _svg, manifest = _xml(diagram, views={"ODD": BlockView(("УЗЕЛ",))})
+    assert manifest["ports"][0]["model_um"] == [-1000, 7500]
+    assert manifest["ports"][0]["svg_um"] == [-1000, 7500]
+
+
 def test_font_and_svg_geometry_stable_on_repeat():
     diagram = fixture()
     a, manifest = render_structural_model(diagram, font())
