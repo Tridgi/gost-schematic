@@ -13,14 +13,13 @@ from importlib.resources import files
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
+from examples.review_electronic_cycle7 import IDS as FIRST_IDS
 from gost_schematic.catalog.loader import load_symbol
 from gost_schematic.catalog.part_loader import load_part
 from gost_schematic.model.symbol import SymbolStatus
 from gost_schematic.rendering.svg import render_symbol_svg
 from gost_schematic.validation.conductor_checks import inspect_conductor_topology
 from gost_schematic.validation.symbol_checks import validate_symbol
-
-from examples.review_electronic_cycle7 import IDS as FIRST_IDS
 
 TRANSISTORS = tuple(
     "transistor." + kind + suffix
