@@ -9,7 +9,7 @@ from xml.etree import ElementTree as ET
 
 from PIL import Image, ImageChops
 
-DPI = Decimal("300")
+DPI = Decimal(300)
 MM_PER_INCH = Decimal("25.4")
 
 
