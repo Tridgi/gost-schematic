@@ -15,7 +15,6 @@ from xml.etree import ElementTree as ET
 
 from gost_schematic.catalog.loader import load_symbol
 from gost_schematic.catalog.part_loader import load_part
-from gost_schematic.core.units import format_mm
 from gost_schematic.model.symbol import SymbolStatus
 from gost_schematic.rendering.svg import render_symbol_svg
 from gost_schematic.validation.conductor_checks import inspect_conductor_topology
@@ -99,6 +98,9 @@ def generate(directory: Path) -> dict:
                 symbol, review_overlay=diagnostic,
             ))
             bbox = symbol.stroked_bounds
+            if (bbox.max_x - bbox.min_x > 44000
+                or bbox.max_y - bbox.min_y > 39000):
+                raise ValueError(f"{identifier}: cannot fit ink safely in 55×60mm review cell")
             midx = (bbox.min_x + bbox.max_x) / 2000
             midy = (bbox.min_y + bbox.max_y) / 2000
             item = ET.SubElement(root, SVG + "g", {
