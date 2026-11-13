@@ -240,7 +240,7 @@ def test_synthetic_ic_svg_each_pin_has_unique_number_above_lead():
                      if x.get("data-pinleft") is not None]
         assert len(pin_paths) == count // 2
         assert physical.count(count) >= 1
-    assert len(root.findall(".//" + SVG_NS + "path")) == (4 + 14 + 40) // 2
+    assert len(root.findall(".//" + SVG_NS + "path")) == (4 + 14 + 40) // 2 + 3
     assert sum(node.get("data-position") == "above-input-lead"
                for node in root.findall(SVG_NS + "text")) == 29
     assert sum(node.get("data-position") == "above-output-lead"
