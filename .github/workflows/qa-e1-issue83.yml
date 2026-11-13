@@ -30,8 +30,7 @@ jobs:
         run: |
           python scripts/install_opengost_type_a.py --directory "$HOME/.local/share/fonts"
           fc-cache -f
-          FONT_FILE="$(find "$HOME/.local/share/fonts" -type f \
-            \\( -iname '*TypeA*.ttf' -o -iname '*TypeA*.otf' \\) | head -1)"
+          FONT_FILE="$(find "$HOME/.local/share/fonts" -type f -iname '*TypeA*.ttf' | head -1)"
           test -n "$FONT_FILE" && test -f "$FONT_FILE"
           VIEWER_FONT="$(fc-match -f '%{file}' 'OpenGost Type A')"
           test "$(realpath "$FONT_FILE")" = "$(realpath "$VIEWER_FONT")"
