@@ -376,6 +376,16 @@ def _ink_intersects(a: Box, b: Box, separation: int) -> bool:
     return a.expanded(separation).overlaps(b)
 
 
+def _svg_orthogonal_matrix(t: Transform, origin: Point) -> str:
+    """Apply the same exact orthogonal transform to text that geometry uses."""
+    u = t.apply(Point(1, 0))
+    v = t.apply(Point(0, 1))
+    return "matrix(" + " ".join((
+        str(u.x), str(u.y), str(v.x), str(v.y),
+        format_mm(origin.x), format_mm(origin.y),
+    )) + ")"
+
+
 def render_resolved_ic(
     unit: IcResolvedUnit,
     style: TextStyle,
@@ -386,11 +396,46 @@ def render_resolved_ic(
     other_obstacles: tuple[Box, ...] = (),
     review_overlay: bool = False,
     glyph_detail: bool = False,
+    _rotate_function: bool = False,
+    _rotate_fields: bool = False,
+    _vertical_internal: bool = False,
+    editor_targets: tuple[object, ...] = (),
+    editor_overlay: bool = False,
 ) -> IcRendered:
     """Fail closed if authoritative pin positions differ from the geometry.
 
     This is a read-only physical E3 SVG adapter. No model or PinRef mutation.
     """
+    if unit.orientation is IcOrientation.TOP_BOTTOM:
+        from gost_schematic.rendering.ic_orientation import (
+            vertical_as_canonical,
+            vertical_proposal,
+        )
+
+        virtual = vertical_as_canonical(unit)
+        canon = propose_ic_dimensions(
+            virtual.content, virtual.pins, style, measurer, policy,
+        )
+        if (
+            _width(unit.body) < canon.height_um
+            or _height(unit.body) < canon.width_um
+        ):
+            raise ValueError(
+                f"IC_TEXT_OVERFLOW: {unit.reference} vertical body "
+                f"{_width(unit.body)}x{_height(unit.body)} um, "
+                f"minimum {canon.height_um}x{canon.width_um} um"
+            )
+        result = render_resolved_ic(
+            virtual, style, measurer,
+            policy=policy, page_bounds=page_bounds,
+            other_obstacles=other_obstacles,
+            review_overlay=review_overlay, glyph_detail=glyph_detail,
+            _rotate_function=bool(unit.function_rotation),
+            _rotate_fields=bool(unit.field_text_rotation),
+            _vertical_internal=True,
+            editor_targets=editor_targets, editor_overlay=editor_overlay,
+        )
+        return replace(result, proposed=vertical_proposal(canon))
     proposed = propose_ic_dimensions(
         unit.content, unit.pins, style, measurer, policy,
     )
@@ -489,16 +534,32 @@ def render_resolved_ic(
             )
         pin_leads.append((pin, frame_point))
         stroke(frame_point, pin.anchor, pin.pin_id, "pin-lead")
-    texts: list[tuple[IcInkBox, Point]] = []
+    # Third field is an optional SVG matrix for ink rotated with the symbol.
+    # External physical numbers and the reference ALWAYS stay upright.
+    texts: list[tuple[IcInkBox, Point, str | None]] = []
+    matrix = _svg_orthogonal_matrix(unit.transform, unit.origin)
+
     def add(text: str, cell: Box, owner: str, kind: str,
             align: str = "center") -> None:
         if not text:
             return
-        a, baseline = _text_placement(
-            owner, text, worldbox(cell), align,
-            style, measurer, policy, kind,
+        follow = (
+            _rotate_function if kind == "function" else _rotate_fields
         )
-        texts.append((a, baseline))
+        if follow:
+            local, local_baseline = _text_placement(
+                owner, text, cell, align, style, measurer, policy, kind,
+            )
+            texts.append((
+                IcInkBox(owner, kind, worldbox(local.box), text),
+                local_baseline, matrix,
+            ))
+        else:
+            a, baseline = _text_placement(
+                owner, text, worldbox(cell), align,
+                style, measurer, policy, kind,
+            )
+            texts.append((a, baseline, None))
     def row_box(fieldbox: Box, index: int) -> Box:
         return Box(fieldbox.min_x, body.min_y + index * pitch,
                    fieldbox.max_x, body.min_y + (index + 1) * pitch)
@@ -539,18 +600,29 @@ def render_resolved_ic(
             box = Box(middle.x - pad - width, middle.y - height // 2,
                       middle.x - pad, middle.y - height // 2 + height)
         baseline = Point(box.min_x - n.min_x, box.min_y - n.min_y)
-        texts.append((IcInkBox(pin.pin_id, "pin-number", box, pin.number), baseline))
+        texts.append((IcInkBox(pin.pin_id, "pin-number", box, pin.number), baseline, None))
     # Refdes is separate from actual IC rectangle; fail on collision rather
     # than silently moving a component or shrinking the font.
     label = _measure(unit.reference, style, measurer)
-    refbox = Box(actual_body.min_x,
-                 actual_body.min_y - policy.refdes_gap_um - _height(label),
-                 actual_body.min_x + _width(label),
-                 actual_body.min_y - policy.refdes_gap_um)
-    texts.append((IcInkBox(unit.reference, "refdes", refbox, unit.reference),
-                  Point(refbox.min_x - label.min_x,
-                        refbox.min_y - label.min_y)))
-    ink = [i for i, _ in texts]
+    if _vertical_internal:
+        refbox = Box(
+            actual_body.min_x - policy.refdes_gap_um - _width(label),
+            actual_body.min_y,
+            actual_body.min_x - policy.refdes_gap_um,
+            actual_body.min_y + _height(label),
+        )
+    else:
+        refbox = Box(
+            actual_body.min_x,
+            actual_body.min_y - policy.refdes_gap_um - _height(label),
+            actual_body.min_x + _width(label),
+            actual_body.min_y - policy.refdes_gap_um,
+        )
+    texts.append((
+        IcInkBox(unit.reference, "refdes", refbox, unit.reference),
+        Point(refbox.min_x - label.min_x, refbox.min_y - label.min_y), None,
+    ))
+    ink = [i for i, _, _ in texts]
     for i, label_region in enumerate(ink):
         for stroke_region in strokes:
             if _ink_intersects(label_region.box, stroke_region.box,
@@ -566,7 +638,9 @@ def render_resolved_ic(
                     f"IC_INK_COLLISION: {label_region.owner} vs {later.owner}"
                 )
     glyphs = tuple(
-        glyph for parent, baseline in texts
+        replace(glyph, ink=worldbox(glyph.ink))
+        if matrix_token is not None else glyph
+        for parent, baseline, matrix_token in texts
         for glyph in _true_glyph_boxes(
             parent.owner, parent.text, baseline, style,
         )
@@ -597,6 +671,7 @@ def render_resolved_ic(
     viewport = complete.expanded(2000)
     w, h = _width(viewport), _height(viewport)
     svg = ET.Element(S + "svg", {
+        "xmlns": _SVG,
         "width": f"{format_mm(w)}mm",
         "height": f"{format_mm(h)}mm",
         "viewBox": " ".join(format_mm(x) for x in (
@@ -607,6 +682,11 @@ def render_resolved_ic(
         "data-font-sha256": style.font_sha256 or "unverified",
         "data-pin-anchor-authority": "external-resolved-only",
         "data-projected-grid-um": str(policy.module_um),
+        "data-orientation": (
+            "top_bottom" if _vertical_internal else "left_right"
+        ),
+        "data-function-text-with-symbol": str(_rotate_function).lower(),
+        "data-field-text-with-symbol": str(_rotate_fields).lower(),
     })
     ET.SubElement(svg, S + "title").text = (
         f"DRAFT physical E3 IC {unit.reference}; no electrical net inference"
@@ -661,8 +741,8 @@ def render_resolved_ic(
             "data-role": pin.role,
             "data-real-anchor": "true",
         })
-    for region, baseline in texts:
-        node = ET.SubElement(svg, S + "text", {
+    for region, baseline, matrix_token in texts:
+        attrs = {
             "data-layer": "ic-text",
             "data-kind": region.kind,
             "data-owner": region.owner,
@@ -675,7 +755,10 @@ def render_resolved_ic(
             "font-size": format_mm(style.em_height_um),
             "font-style": style.font_style,
             "fill": "#000000", "stroke": "none",
-        })
+        }
+        if matrix_token is not None:
+            attrs["transform"] = matrix_token
+        node = ET.SubElement(svg, S + "text", attrs)
         node.text = region.text
     if review_overlay:
         debug = ET.SubElement(svg, S + "g", {
