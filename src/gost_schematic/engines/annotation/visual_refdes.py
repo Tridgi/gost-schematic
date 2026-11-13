@@ -9,13 +9,19 @@ from dataclasses import dataclass
 from math import hypot
 
 from gost_schematic.core.geometry import (
-    Box, Semicircle, Rectangle, enclosing_box, primitive_stroked_bounds,
+    Box,
+    Rectangle,
+    Semicircle,
+    enclosing_box,
+    primitive_stroked_bounds,
 )
 from gost_schematic.engines.annotation.layout import obstacles_for_component
 from gost_schematic.engines.annotation.metrics import TextMeasurer
 from gost_schematic.engines.ports import pin_corridors_for_component
 from gost_schematic.model.annotations import (
-    AnnotationPlacement, AnnotationRole, TextStyle,
+    AnnotationPlacement,
+    AnnotationRole,
+    TextStyle,
 )
 from gost_schematic.model.circuit import Circuit, ComponentInstance
 from gost_schematic.model.obstacles import BoxObstacle, WireObstacle, wire_intersects_box
