@@ -10,11 +10,14 @@ Two independent phases:
 Never use E1 FunctionalBlock, physical footprint or electrical net inference.
 """
 from dataclasses import dataclass, field
-from math import ceil
 from xml.etree import ElementTree as ET
 
 from gost_schematic.core.geometry import (
-    Box, Line, Point, Side, SIDE_VECTORS, enclosing_box,
+    SIDE_VECTORS,
+    Box,
+    Point,
+    Side,
+    enclosing_box,
 )
 from gost_schematic.core.transforms import Transform
 from gost_schematic.core.units import format_mm
@@ -337,7 +340,6 @@ def render_resolved_ic(
     frame = IcInkBox(unit.reference, "outer-frame", actual_body.expanded(
         (policy.line_width_um + 1) // 2,
     ))
-    obstacles: list[IcInkBox] = [frame]
     # Frame is protected in ink validation; its AABB is a coarse envelope,
     # so use stroke-only edge segments for actual interior text checks.
     strokes: list[IcInkBox] = []
@@ -587,7 +589,7 @@ def render_resolved_ic(
             })
     return IcRendered(
         ET.tostring(svg, encoding="unicode") + "\n",
-        proposed, actual_body, tuple((*strokes, *ink)),
+        proposed, actual_body, (*strokes, *ink),
         style.font_sha256,
         tuple((pin.pin_id, pin.anchor) for pin in unit.pins),
     )
