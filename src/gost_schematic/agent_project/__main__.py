@@ -40,15 +40,9 @@ def main() -> None:
                 result = service.validate_project(args.project_id,
                                                    snapshot.project.revision)
             else:
-                view = service.render_project(args.project_id, args.revision,
-                                              reference=args.component)
-                output = (service.repository.root / "artifacts" / args.project_id /
-                          args.revision)
-                output.mkdir(parents=True, exist_ok=True)
-                prefix = "C3" if args.component == "C3" else "overview"
-                (output / (prefix + ".svg")).write_text(view.svg, encoding="utf-8")
-                (output / (prefix + ".png")).write_bytes(view.png)
-                result = {**view.metadata, "artifact_directory": str(output)}
+                result = service.export_project_view(
+                    args.project_id, args.revision, reference=args.component,
+                )
         print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
     except ProjectError as exc:
         parser.exit(2, f"{exc.code}: {exc}\n")
