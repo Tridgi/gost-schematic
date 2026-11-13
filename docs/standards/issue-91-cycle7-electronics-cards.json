@@ -4366,8 +4366,8 @@
       "physical_contacts": {
         "type": "PHYSICAL_PART_PINS",
         "roles": [
-          "1",
-          "2"
+          "ELECTRODE_A",
+          "ELECTRODE_B"
         ],
         "numbering": "NO universal package numbers from ГОСТ; require manufacturer datasheet/revision or explicitly explained conditional IDs",
         "manufacturer_datasheet": null,
@@ -5490,13 +5490,13 @@
         "roles": [
           "END1",
           "END2",
-          "ADJUST"
+          "WIPER"
         ],
         "numbering": "NO universal package numbers from ГОСТ; require manufacturer datasheet/revision or explicitly explained conditional IDs",
         "manufacturer_datasheet": null,
         "if_multiunit": "same physical package and pins; one physical number never exposed twice as independent pin"
       },
-      "graphic_features": "Подстроечная управляющая метка отличается от обычного переменного резистора",
+      "graphic_features": "Подстроечная управляющая метка отличается от обычного переменного резистора Механическая метка подстройки НЕ является отдельной электрической клеммой.",
       "permitted_transforms": [
         "R0",
         "R90",
@@ -5527,7 +5527,8 @@
       "negative_cases": [
         "wiper omitted from actual three-pin part",
         "wiper connected to endpoint without explicit Circuit.Net",
-        "functional 20×4mm falsely applied to generic resistor.variable"
+        "functional 20×4mm falsely applied to generic resistor.variable",
+        "mechanical screwdriver/adjustment graphic mistakenly counted as fourth electrical terminal"
       ],
       "normative_rule_status": "PASS",
       "acceptance": "BLOCKED",
