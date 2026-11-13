@@ -36,3 +36,61 @@ python -m examples.review_ic_paint_joint_cycle7 \
 - Semantic 0/1/2 auxiliary fields and `IcField.MAIN` vs actual visual label placement need final PAINT/ESKD mapping review; real per-device analog and digital functional pictograms, inversion/control arrow glyphs and aliases remain BLOCKED.
 - No verified vendor part/revision/datasheet means **no real IC pinouts** and no APPROVED status. GREEN CAD attachment-zone squares are editor-only Issue #100, not printed УГО.
 - No changes to E1, ordinary E3 public API, main, integration, old symbol catalog, or other owners' PRs.
+
+
+## Source-verified vertical orientation review — 2026-11-14
+
+Source checked against **printed page 6 (PDF page index 6)** of ГОСТ 2.743-91,
+§2.1.4–2.1.6 and *figures 3 and 4*:
+https://prikladmeh.ru/Standart/2.743-91.pdf .
+The actual figure 3 contains **two non-equivalent text-orientation drawings**
+with input lines at the TOP and outputs at the BOTTOM: one has upright
+horizontal function/field text, the other has field inscriptions rotated.
+This permits neither arbitrary rotation of the central function in isolation
+nor universal rotation of every label, auxiliary field and physical number.
+Figure 4 also requires information-flow arrows for reversing nominal input/
+output direction (inputs right/bottom or outputs left/top), with the correct
+corresponding function inscription. The text of ГОСТ 2.759-82 §1.8 independently
+permits TOP analog input and BOTTOM output:
+https://normadocs.ru/gost_2.759-82 .
+
+**Explicit electrical-model readiness:** `IcPinRow.side=TOP/BOTTOM` already
+stores the side and the immutable external local integer-µm `Point` on that
+side's outward normal. The source tests
+`test_explicit_vertical_physical_pinrefs_are_exact_model_only` cover
+DA/DD 8/14/40/64 × all eight D4 transforms, DRAFT physical pitch 5000 µm,
+separate logical units, stable physical PinRef and real `Circuit.Net`. They
+exercise *electrical coordinate preservation only*. These source tests do
+NOT claim correct rotated text or normative UGO.
+
+**Required joint PAINT/ESKD boundary:** a future explicit view-profile ID
+must specify (a) input TOP/output BOTTOM or source-approved opposite with
+information arrows, (b) independent drawing pitch and x-coordinate index
+for each TOP/BOTTOM pin, (c) frame extents/lead length, (d) per-field text
+orientation: FIG3_HORIZONTAL_TEXT vs FIG3_ROTATED_TEXT source profile, not
+global arbitrary text rotate, (e) physical pin numbers beside their own lead
+consistent with §2.3.12, (f) measured real Type A transformed ink/hitboxes,
+(g) separator and optional zone transforms, (h) end-to-end 1µm exact pins,
+including all D4 composed transforms, 300DPI and paper zone bounds.
+
+**Current behavior:** `propose_ic_paint_binding` deliberately raises
+`IC_UNSUPPORTED_VERTICAL_PORT` for TOP/BOTTOM. `render_resolved_ic` in
+independent PAINT PR #93 also raises this code. These are proper BLOCKED
+gates until PAINT and ESKD agree the profile and implement the source
+figures. Nothing in this PR changes the PAINT branch. The editor's green
+connection squares belong to future Issue #100, not printed ESKD SVG.
+
+## Exact joint-binding semantic validation
+
+`IcPaintBinding.verify_endpoints` now rejects stale/misassociated views
+even if their outer `Point` remains identical: wrong source unit ID, refdes,
+content, transform, origin, body, physical number, label, electrical role,
+side, visual row, functional row_key and pin id are all checked against the
+unchanged `IcDeviceDefinition` and explicit new `IcSymbolSpec`. A 1µm
+endpoint deviation is independently rejected. Cross-unit references cannot
+be accidentally swapped. Any input/output side correction used for the
+independent PAINT #93 left/right profile emits an explicit auditable
+`IcPinSideReflow` record (unit ID, physical `PinRef`, old/new side); the old
+serialized source is not mutated. Old valid declared body dimensions are
+never silently reduced; only an explicit revised spec with grid-rounded
+growth can be rendered. All profiles and fixture source pinouts are DRAFT.
