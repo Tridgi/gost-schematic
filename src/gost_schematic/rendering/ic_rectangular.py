@@ -219,6 +219,7 @@ class IcRendered:
     font_sha256: str | None
     pin_anchors: tuple[tuple[str, Point], ...]  # exact external ends
     glyph_ink: tuple["IcGlyphBox", ...] = ()
+    connection_targets: tuple[object, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -410,6 +411,11 @@ def render_resolved_ic(
 
     This is a read-only physical E3 SVG adapter. No model or PinRef mutation.
     """
+    from gost_schematic.rendering.ic_hotspots import verify_ic_connection_targets
+
+    targets = verify_ic_connection_targets(unit.pins, editor_targets)
+    if editor_overlay and not targets:
+        raise ValueError("IC_EDITOR_OVERLAY_REQUIRES_EXPLICIT_TARGET_METADATA")
     if unit.orientation is IcOrientation.TOP_BOTTOM:
         from gost_schematic.rendering.ic_orientation import (
             vertical_as_canonical,
@@ -792,10 +798,34 @@ def render_resolved_ic(
                     "data-owner": glyph.owner,
                     "data-index": str(glyph.index),
                 })
+    if editor_overlay:
+        ui = ET.SubElement(svg, S + "g", {
+            "data-layer": "editor-connection-targets",
+            "data-editor-only": "true",
+            "data-physical-print": "false",
+        })
+        for target in targets:
+            # Pure diagnostic glyph in physical SVG millimetres. The FUTURE
+            # interactive editor must instead hit-test a CSS-pixel radius.
+            at = target.anchor
+            ET.SubElement(ui, S + "rect", {
+                "x": format_mm(at.x - 350), "y": format_mm(at.y - 350),
+                "width": "0.7", "height": "0.7",
+                "fill": "#148645" if target.connectable else "#8b1e27",
+                "stroke": "#000", "stroke-width": "0.07",
+                "data-pin-ref": (
+                    f"{target.pin_ref.reference}.{target.pin_ref.number}"
+                ),
+                "data-pin-id": target.pin_id,
+                "data-net-id": target.net_id or "",
+                "data-connectable": str(target.connectable).lower(),
+                "data-reason": target.reason or "",
+            })
     return IcRendered(
         ET.tostring(svg, encoding="unicode") + "\n",
         proposed, actual_body, (*strokes, *ink),
         style.font_sha256,
         tuple((pin.pin_id, pin.anchor) for pin in unit.pins),
         glyphs,
+        targets,
     )
