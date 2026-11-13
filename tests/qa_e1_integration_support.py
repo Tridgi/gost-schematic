@@ -18,7 +18,6 @@ from pathlib import Path
 
 import gost_schematic
 
-
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 MODEL_ROOT = FIXTURES / "qa_e1_pr80"
