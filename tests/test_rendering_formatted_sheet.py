@@ -115,7 +115,8 @@ def test_paper_dimensions_margins_form_one_and_no_overlap(
     assert svg.findall(f".//{SVG}g[@data-layer='title-block-grid']/{SVG}line")
     assert {el.get("data-grid-section") for el in svg.findall(
         f".//{SVG}g[@data-layer='title-block-grid']/{SVG}line"
-    )} == {"revision-columns", "revision-rows", "title-rows", "title-columns"}
+    )} >= {"revision-columns", "revision-rows", "title-rows",
+            "title-columns", "auxiliary-30", "auxiliary-33", "auxiliary-35"}
     # Default form is a real empty grid, never fabricated named/signature data.
     assert not svg.findall(f".//{SVG}g[@data-layer='title-block-fields']/{SVG}text")
     assert (result.placed_viewport_um.min_x >= profile.content_zone_um.min_x)
@@ -169,9 +170,110 @@ def test_form_one_measured_headings_use_full_seventeen_mm_role_column():
         assert node.get("font-size") == "3.5"  # test style; not a CSS cap-height claim
 
 
+def test_roles_left_ink_aligned_800um_across_all_five_rows():
+    source, *_ = specimen()
+    svg = root(compose_formatted_sheet(
+        source, PageProfile(), title_captions=True,
+        title_text_style=STYLE, title_measurer=FixedTitleInk(),
+    ))
+    labels = {el.get("data-graph"): el for el in svg.findall(
+        f".//{SVG}g[@data-layer='title-block-fields']/{SVG}text"
+    )}
+    roles = ("developed", "checked", "tech_control", "norm_control", "approved")
+    for role in roles:
+        node = labels["role_" + role]
+        ink = tuple(map(int, node.get("data-ink-bounds-um").split(",")))
+        cell = tuple(map(int, node.get("data-cell-bounds-um").split(",")))
+        assert cell[2] - cell[0] == 17000
+        assert ink[0] - cell[0] == 800
+        assert ink[0] == 20800  # A4 form starts at x=20000 um
+        assert node.get("data-ink-align") == "left"
+        assert node.get("data-graph-number") == "10"
+        assert cell[1] + 400 <= ink[1] and ink[3] <= cell[3] - 400
+
+
+def test_personal_graphs_11_12_13_are_separate_from_fixed_role_10():
+    source, *_ = specimen()
+    svg = root(compose_formatted_sheet(
+        source, PageProfile(), title_values={
+            "developed_surname": "Иванов",
+            "developed_signature": "И.",
+            "developed_date": "13.11",
+            "checked_surname": "Петров",
+        }, title_text_style=STYLE, title_measurer=FixedTitleInk(),
+    ))
+    fields = {node.get("data-graph"): node for node in svg.findall(
+        f".//{SVG}g[@data-layer='title-block-fields']/{SVG}text"
+    )}
+    assert fields["role_developed"].text == "Разраб."
+    assert fields["role_checked"].text == "Пров."
+    assert fields["developed_surname"].text == "Иванов"
+    assert fields["developed_signature"].text == "И."
+    assert fields["developed_date"].text == "13.11"
+    assert fields["checked_surname"].text == "Петров"
+    for suffix, graphno, bounds in (
+        ("surname", "11", (37000, 30000, 60000, 35000)),
+        ("signature", "12", (60000, 30000, 75000, 35000)),
+        ("date", "13", (75000, 30000, 85000, 35000)),
+    ):
+        node = fields["developed_" + suffix]
+        assert node.get("data-graph-number") == graphno
+        # Only x positions are required; A4 title local y starts at 237mm.
+        assert tuple(map(int,node.get("data-cell-bounds-um").split(",")))[:1] == bounds[:1]
+    assert "role_approved" in fields  # all five fixed roles present
+    assert not any(
+        item.text == "Иванов" and item.get("data-graph-number") == "10"
+        for item in fields.values()
+    )
+
+
+@pytest.mark.parametrize("key", (
+    "developed", "checked", "tech_control", "norm_control", "approved",
+))
+def test_graph_10_cannot_be_overwritten_by_a_surname(key):
+    source, *_ = specimen()
+    with pytest.raises(ValueError, match="TITLE_ROLE_RESERVED"):
+        compose_formatted_sheet(
+            source, PageProfile(), title_values={key: "Иванов"},
+            title_text_style=STYLE, title_measurer=FixedTitleInk(),
+            title_captions=True,
+        )
+
+
+def test_auxiliary_30_dashed_zone_version_and_lower_footer_captions():
+    source, *_ = specimen()
+    svg = root(compose_formatted_sheet(
+        source, PageProfile(), title_captions=True,
+        title_text_style=STYLE, title_measurer=FixedTitleInk(),
+    ))
+    auxiliaries = svg.findall(f".//{SVG}line[@data-service-graph='30']")
+    assert auxiliaries and all(
+        line.get("stroke-dasharray") == "3 2" for line in auxiliaries
+    )
+    names = {el.text: el for el in svg.findall(
+        f".//{SVG}g[@data-layer='title-block-fields']/{SVG}text"
+    )}
+    for text, key in (
+        ("Зона", "zone_caption"), ("Вер.", "version_caption"),
+        ("Копировал", "copied_caption"), ("Формат", "format_caption"),
+    ):
+        node = names[text]
+        assert node.get("data-graph") == key
+        assert node.get("data-cap-height-mm") == "2.5"
+        cell = tuple(map(int, node.get("data-cell-bounds-um").split(",")))
+        ink = tuple(map(int, node.get("data-ink-bounds-um").split(",")))
+        assert cell[0] + 400 <= ink[0] <= ink[2] <= cell[2] - 400
+        assert cell[1] + 400 <= ink[1] <= ink[3] <= cell[3] - 400
+    for key in ("copied_caption", "format_caption"):
+        cell = tuple(map(int, names[
+            "Копировал" if key == "copied_caption" else "Формат"
+        ].get("data-cell-bounds-um").split(",")))
+        assert cell[1] == 292000 and cell[3] == 297000  # A4 lower margin
+
+
 @pytest.mark.parametrize("title_values", (
     {"designation": "X" * 300},
-    {"approved": "Слишком длинная подпись без автоподгонки"},
+    {"approved_surname": "Слишком длинная фамилия без автоподгонки"},
 ))
 def test_form_one_rejects_long_text_without_font_shrink(title_values):
     source, *_ = specimen()
