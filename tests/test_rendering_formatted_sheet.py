@@ -166,7 +166,7 @@ def test_title_fields_empty_missing_style_and_unknown_keys_fail_closed():
         )
     with pytest.raises(ValueError, match="single-line"):
         compose_formatted_sheet(
-            source, PageProfile(), title_values={"name": "A\\nB"},
+            source, PageProfile(), title_values={"name": "A" + chr(10) + "B"},
             title_text_style=STYLE, title_measurer=FixedInk(),
         )
     with pytest.raises(ValueError, match="Title values require"):
