@@ -24,6 +24,7 @@ class IcPaintBinding:
 
     record: IcLibraryRecord
     views: tuple[object, ...]
+    unit_ids: tuple[str, ...]
 
     def verify_endpoints(self) -> None:
         """No tolerance: resolved model points equal all PAINT world endpoints."""
@@ -31,11 +32,11 @@ class IcPaintBinding:
             self.record.device, self.record.specs, self.record.placements,
         )
         view_refs = set()
-        if len(self.views) != len(self.record.placements):
+        if len(self.views) != len(self.record.placements) or len(self.unit_ids) != len(self.views):
             raise ValueError("IC_PAINT_UNIT_COUNT_MISMATCH")
-        for placement, view in zip(
-            self.record.placements, self.views, strict=True,
-        ):
+        placement_map = {p.unit_id: p for p in self.record.placements}
+        for unit_id, view in zip(self.unit_ids, self.views, strict=True):
+            placement = placement_map[unit_id]
             for pin in view.pins:
                 ref = PinRef(placement.component_ref, pin.number)
                 if ref in view_refs or positions.get(ref) != pin.anchor:
@@ -168,7 +169,7 @@ def propose_ic_paint_binding(
             transform=placement.transform,
         ))
     updated = IcLibraryRecord(record.device, tuple(new_specs), record.placements)
-    binding = IcPaintBinding(updated, tuple(views))
+    binding = IcPaintBinding(updated, tuple(views), tuple(s.unit_id for s in record.specs))
     binding.verify_endpoints()
     if tuple(p.number for p in record.device.pins) != tuple(
         p.number for p in binding.record.device.pins
