@@ -259,7 +259,7 @@ DISPLAY_ONLY = frozenset({
 # PR80 9c7f.. -> 82d400..; PR78 c49b.. -> b7fa..
 CURRENT_SHAS = {
     "model": "82d400d2472a0a546dafcbf18f70d581642ca284",
-    "graphics": "b7fa2138e84d5279ef0b894cb4ca56b32732b11b",
+    "graphics": "0ea11ae8ba608259080fda7341cc81d5b15f5d14",
 }
 CURRENT_BLOBS = {
     "qa_e1_current80/__init__.txt":
@@ -275,7 +275,7 @@ CURRENT_BLOBS = {
     "qa_e1_current78/review_structural_e1_design.txt":
         "a4355f76daa5a586f4058bd9f4df26c4acc6634b",
     "qa_e1_current78/review_structural_e1_model.txt":
-        "a4c8f7d563fd883c7affede1d0dd067ed258d141",
+        "d596ca85bab975367843def6706833ae9412e392",
     "qa_e1_current78/verify_structural_e1_model_render.txt":
         "0802828c688e929dc3ac4f850ff42ab686c85d7e",
 }
