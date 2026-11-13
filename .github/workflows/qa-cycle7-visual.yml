@@ -25,6 +25,7 @@ jobs:
         run: |
           ruff check tests/qa_cycle7_support.py tests/qa_cycle7_discrete_test.py
           ruff check scripts/qa_cycle7_ic_visual.py scripts/qa_cycle7_discrete_gallery.py
+          ruff check tests/qa_cycle7_electrical_sources.py tests/qa_cycle7_real_electrical_test.py scripts/qa_cycle7_electrical_visual.py
       - name: Install outside-repository verified real SIL OFL OpenGost Type A face
         shell: bash
         run: |
@@ -65,6 +66,10 @@ jobs:
       - name: Real YGO2 #89 three DRAFT discrete UGO SVG and 300 DPI PNG
         run: |
           python scripts/qa_cycle7_discrete_gallery.py \
+            --output-dir output/qa-cycle7
+      - name: Execute REAL ELEKTRIK 97/98 physical IC + net continuation and 300DPI SVG/PNG without phantom wires
+        run: |
+          python scripts/qa_cycle7_electrical_visual.py \
             --output-dir output/qa-cycle7
       - name: Upload reproducible verified source and output image manifest
         if: always()
