@@ -59,6 +59,15 @@ def _role(role: IcPinType) -> str:
     }[role]
 
 
+def _drawing_side(role: IcPinType, side: Side) -> Side:
+    """Explicit draft view reflow; physical number and pin type are unchanged."""
+    if role is IcPinType.INPUT:
+        return Side.LEFT
+    if role in (IcPinType.OUTPUT, IcPinType.OPEN_COLLECTOR):
+        return Side.RIGHT
+    return side
+
+
 def _content(spec, device):
     # Exact visual text is explicitly supplied, not reconstructed from pin
     # numbers or guessed from a device name. No fixed character limit.
@@ -122,12 +131,24 @@ def propose_ic_paint_binding(
         placement = placements[spec.unit_id]
         if any(row.side not in (Side.LEFT, Side.RIGHT) for row in spec.rows):
             raise ValueError("IC_UNSUPPORTED_VERTICAL_PORT: ESKD signoff required")
-        if any(row.field is IcField.AUX_LEFT and row.side is not Side.LEFT
-               or row.field is IcField.AUX_RIGHT and row.side is not Side.RIGHT
-               for row in spec.rows):
+        # Functional units may start at an even physical pin. Reflow their
+        # graphical sides explicitly: an OUTPUT on LEFT, or INPUT on RIGHT,
+        # is not an acceptable default PAINT presentation. These are NEW
+        # view specs, not altered physical pins or altered Circuit.Nets.
+        layout_rows = tuple(replace(
+            row, side=_drawing_side(
+                record.device.pin_map[row.number].electrical_type, row.side,
+            ),
+        ) for row in spec.rows)
+        if any(
+            (row.field is IcField.AUX_LEFT and row.side is not Side.LEFT)
+            or (row.field is IcField.AUX_RIGHT and row.side is not Side.RIGHT)
+            for row in layout_rows
+        ):
             raise ValueError("IC_FIELD_SIDE_MISMATCH")
-        prelim = _preliminary_pins(spec, placement, record.device)
-        content = _content(spec, record.device)
+        layout_spec = replace(spec, rows=layout_rows)
+        prelim = _preliminary_pins(layout_spec, placement, record.device)
+        content = _content(layout_spec, record.device)
         dimensions = propose_ic_dimensions(content, prelim, style, measurer, policy)
         # PAINT returns the minimum measured geometry. The original rectangle
         # is not silently edited. Instead produce a freshly versioned record.
@@ -137,7 +158,7 @@ def propose_ic_paint_binding(
             spec.body.min_y + dimensions.height_um,
         )
         new_rows = []
-        for row in spec.rows:
+        for row in layout_spec.rows:
             if row.visual_row >= dimensions.row_count:
                 raise ValueError("IC_PIN_ROW_OVERFLOW")
             boundary = Point(
@@ -152,7 +173,8 @@ def propose_ic_paint_binding(
             )
             new_rows.append(replace(row, anchor=anchor))
         new_spec = replace(
-            spec, body=body, rows=tuple(new_rows), revision=spec.revision + 1,
+            layout_spec, body=body, rows=tuple(new_rows),
+            revision=spec.revision + 1,
         )
         new_specs.append(new_spec)
 
