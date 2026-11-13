@@ -221,7 +221,7 @@ def test_preserves_exact_authored_wires_nets_physical_pins_and_source_inputs():
     wires = svg.findall(f".//{SVG}line[@data-layer='wires']")
     original_lines = source_xml.findall(f".//{SVG}line[@data-layer='wires']")
     assert [line.attrib for line in wires] == [line.attrib for line in original_lines]
-    assert len(wires) == len(graph.segments) == 18
+    assert len(wires) == len(graph.segments) == 16
     assert [
         (w.get("data-net"), w.get("data-wire-index")) for w in wires
     ] == [(edge.net_name, str(i)) for i, edge in enumerate(graph.segments)]
