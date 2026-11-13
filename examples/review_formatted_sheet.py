@@ -146,7 +146,7 @@ def generate(
         generate_c3_comparison(output_dir, style)
         files.extend(
             f"c3-{case}-{view}.svg"
-            for case in ("as-authored", "proposal-only")
+            for case in ("archived-issue35", "current")
             for view in ("clean", "diagnostic")
         )
         files.append("c3-comparison.json")
@@ -169,7 +169,7 @@ def generate(
         },
         "components": [component.reference for component in circuit.components],
         "component_part_ids": [component.part_id for component in circuit.components],
-        "c3_original": {
+        "c3_current": {
             "symbol_id": c3_symbol.identifier, "revision": c3_symbol.revision,
             "status": c3_symbol.status.value,
             "origin_um": [c3.origin.x, c3.origin.y],
@@ -186,7 +186,7 @@ def generate(
             "No rendered sheet is a certified document. Form-1 fields remain "
             "blank by default. Captions use measured OpenGost Type A h=2.5 mm; "
             "manual comparison to B.1 and requisites still required. "
-            "C3 placement proposal is not applied to the authored fixture."
+            "C3 archival Issue35 comparison never alters the current PR62 fixture."
         ),
     }
     (output_dir / "formatted-sheet-manifest.json").write_text(
