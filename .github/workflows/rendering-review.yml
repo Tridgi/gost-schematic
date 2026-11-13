@@ -240,7 +240,7 @@ jobs:
                   "font_sha256": original["font"]["sha256"],
                   "font_cap_height_um": 2500,
                   "not_normative_acceptance": True,
-              }, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8",
+              }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8",
           )
           print("Explicit DEMO exported separately, no fictional signatures/dates")
           PY
