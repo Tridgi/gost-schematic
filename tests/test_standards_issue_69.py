@@ -133,6 +133,7 @@ def test_42_cards_have_distinct_force_and_nonhardened_editor_default():
         assert c["source_clause"]
         assert c["normative_force"] in {
             "MUST", "MUST_QUALITATIVE", "MUST_WITH_EXCEPTION", "MUST_FOR_UGO",
+            "MUST_FOR_LETTERING",
             "RECOMMENDED", "PERMITTED_ALTERNATIVES", "OPTIONAL",
             "CONDITIONAL_MUST", "CONDITIONAL_ALLOWED", "NOT_SPECIFIED",
             "EDITORIAL_DEFAULT", "EDITORIAL_SAFETY", "EDITORIAL_SEMANTICS",
@@ -156,7 +157,7 @@ def test_ports_centre_are_editorial_not_gost_and_no_fixed_port_count():
     assert _card("E1-39")["normative_force"] == "NOT_SPECIFIED"
     src = _json(RULES)["editor_defaults"]
     assert src["single_port"].startswith("midpoint")
-    assert "not ГОСТ" in src["single_port"]
+    assert "not prescribed by GOST" in src["single_port"]
     assert src["avoid_physical_pin_refs"] is True
 
 
