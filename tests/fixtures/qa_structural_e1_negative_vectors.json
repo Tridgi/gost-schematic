@@ -1,0 +1,706 @@
+{
+  "schema_version": 1,
+  "kind": "qa_future_structural_e1_negative_acceptance_vectors",
+  "status": "CONTRACT_ONLY_NOT_EXECUTED_AGAINST_PENDING_MODEL",
+  "owners": {
+    "model": "ELEKTRIK Issue #70",
+    "norms": "ESKD Issue #69",
+    "graphics": "YGO Issue #71",
+    "qa": "Issue #72"
+  },
+  "normativity_note": "Block-side single-port centered by default and multi-port min clearance are editorial defaults, NOT ГОСТ 2.702-2011 §5.1 mandatory center anchors. Avoid physical PinRef, electrical net/short semantics.",
+  "base_diagram": {
+    "schema_version": 1,
+    "id": "E1-basic-two-block",
+    "blocks": [
+      {
+        "id": "B1",
+        "name": "Датчики\\nвходные данные",
+        "x_um": 0,
+        "y_um": 0,
+        "width_um": 30000,
+        "height_um": 18000,
+        "ports": [
+          {
+            "id": "out_a",
+            "side": "RIGHT",
+            "position": 0.333333,
+            "direction": "OUTPUT"
+          },
+          {
+            "id": "out_b",
+            "side": "RIGHT",
+            "position": 0.666667,
+            "direction": "OUTPUT"
+          },
+          {
+            "id": "in_a",
+            "side": "LEFT",
+            "position": 0.5,
+            "direction": "INPUT"
+          }
+        ]
+      },
+      {
+        "id": "B2",
+        "name": "Управление",
+        "x_um": 60000,
+        "y_um": 0,
+        "width_um": 30000,
+        "height_um": 18000,
+        "ports": [
+          {
+            "id": "in_a",
+            "side": "LEFT",
+            "position": 0.333333,
+            "direction": "INPUT"
+          },
+          {
+            "id": "in_b",
+            "side": "LEFT",
+            "position": 0.666667,
+            "direction": "INPUT"
+          },
+          {
+            "id": "out_a",
+            "side": "RIGHT",
+            "position": 0.5,
+            "direction": "OUTPUT"
+          }
+        ]
+      }
+    ],
+    "links": [
+      {
+        "id": "F1",
+        "source": {
+          "block_id": "B1",
+          "port_id": "out_a"
+        },
+        "target": {
+          "block_id": "B2",
+          "port_id": "in_a"
+        },
+        "arrow": "source_to_target"
+      },
+      {
+        "id": "F2",
+        "source": {
+          "block_id": "B1",
+          "port_id": "out_b"
+        },
+        "target": {
+          "block_id": "B2",
+          "port_id": "in_b"
+        },
+        "arrow": "source_to_target"
+      }
+    ],
+    "graphics": [],
+    "physical_parts": [],
+    "electrical_nets": []
+  },
+  "cases": [
+    {
+      "id": "E1-NEG-01",
+      "title": "Invalid diagonal port side",
+      "category": "INVALID_PORT_SIDE",
+      "expected": "REJECT",
+      "requires": "model",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/blocks/0/ports/0/side",
+          "value": "DIAGONAL"
+        }
+      ],
+      "expected_diagnostic_family": "E1_INVALID_PORT_SIDE",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": ""
+    },
+    {
+      "id": "E1-NEG-02",
+      "title": "Relative port position below 0",
+      "category": "PORT_POSITION_RANGE",
+      "expected": "REJECT",
+      "requires": "model",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/blocks/0/ports/0/position",
+          "value": -0.1
+        }
+      ],
+      "expected_diagnostic_family": "E1_PORT_POSITION_RANGE",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": ""
+    },
+    {
+      "id": "E1-NEG-03",
+      "title": "Relative port position above 1",
+      "category": "PORT_POSITION_RANGE",
+      "expected": "REJECT",
+      "requires": "model",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/blocks/0/ports/0/position",
+          "value": 1.01
+        }
+      ],
+      "expected_diagnostic_family": "E1_PORT_POSITION_RANGE",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": ""
+    },
+    {
+      "id": "E1-NEG-04",
+      "title": "Port fraction supplied as string",
+      "category": "PORT_POSITION_TYPE",
+      "expected": "REJECT",
+      "requires": "model",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/blocks/0/ports/0/position",
+          "value": "0.5"
+        }
+      ],
+      "expected_diagnostic_family": "E1_PORT_POSITION_TYPE",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": ""
+    },
+    {
+      "id": "E1-NEG-05",
+      "title": "Duplicate functional-block identity",
+      "category": "DUPLICATE_BLOCK_ID",
+      "expected": "REJECT",
+      "requires": "model",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/blocks/1/id",
+          "value": "B1"
+        }
+      ],
+      "expected_diagnostic_family": "E1_DUPLICATE_BLOCK_ID",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": ""
+    },
+    {
+      "id": "E1-NEG-06",
+      "title": "Duplicate port IDs within one block",
+      "category": "DUPLICATE_PORT_ID",
+      "expected": "REJECT",
+      "requires": "model",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/blocks/0/ports/1/id",
+          "value": "out_a"
+        }
+      ],
+      "expected_diagnostic_family": "E1_DUPLICATE_PORT_ID",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": ""
+    },
+    {
+      "id": "E1-NEG-07",
+      "title": "Link references absent block",
+      "category": "MISSING_SOURCE_BLOCK",
+      "expected": "REJECT",
+      "requires": "model",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/links/0/source/block_id",
+          "value": "MISSING"
+        }
+      ],
+      "expected_diagnostic_family": "E1_MISSING_SOURCE_BLOCK",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": ""
+    },
+    {
+      "id": "E1-NEG-08",
+      "title": "Link references absent target port",
+      "category": "MISSING_TARGET_PORT",
+      "expected": "REJECT",
+      "requires": "model",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/links/0/target/port_id",
+          "value": "unknown"
+        }
+      ],
+      "expected_diagnostic_family": "E1_MISSING_TARGET_PORT",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": ""
+    },
+    {
+      "id": "E1-NEG-09",
+      "title": "Arbitrary source point not registered port",
+      "category": "UNDECLARED_SOURCE_ANCHOR",
+      "expected": "REJECT",
+      "requires": "model",
+      "mutations": [
+        {
+          "op": "add",
+          "path": "/links/0/source/at_um",
+          "value": [
+            30000,
+            8000
+          ]
+        }
+      ],
+      "expected_diagnostic_family": "E1_UNDECLARED_SOURCE_ANCHOR",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": ""
+    },
+    {
+      "id": "E1-NEG-10",
+      "title": "Arbitrary destination point not registered port",
+      "category": "UNDECLARED_TARGET_ANCHOR",
+      "expected": "REJECT",
+      "requires": "model",
+      "mutations": [
+        {
+          "op": "add",
+          "path": "/links/0/target/at_um",
+          "value": [
+            60000,
+            6000
+          ]
+        }
+      ],
+      "expected_diagnostic_family": "E1_UNDECLARED_TARGET_ANCHOR",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": ""
+    },
+    {
+      "id": "E1-NEG-11",
+      "title": "Input port used as source",
+      "category": "PORT_DIRECTION_MISMATCH",
+      "expected": "REJECT",
+      "requires": "model",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/links/0/source/port_id",
+          "value": "in_a"
+        }
+      ],
+      "expected_diagnostic_family": "E1_PORT_DIRECTION_MISMATCH",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": ""
+    },
+    {
+      "id": "E1-NEG-12",
+      "title": "Output port used as target",
+      "category": "PORT_DIRECTION_MISMATCH",
+      "expected": "REJECT",
+      "requires": "model",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/links/0/target/port_id",
+          "value": "out_a"
+        }
+      ],
+      "expected_diagnostic_family": "E1_PORT_DIRECTION_MISMATCH",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": ""
+    },
+    {
+      "id": "E1-NEG-13",
+      "title": "Reverse arrow disagrees with source->target",
+      "category": "ARROW_DIRECTION_MISMATCH",
+      "expected": "REJECT",
+      "requires": "model",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/links/0/arrow",
+          "value": "target_to_source"
+        }
+      ],
+      "expected_diagnostic_family": "E1_ARROW_DIRECTION_MISMATCH",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": ""
+    },
+    {
+      "id": "E1-NEG-14",
+      "title": "Self-link of one declared port",
+      "category": "SELF_LINK",
+      "expected": "REJECT",
+      "requires": "model",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/links/0/target/block_id",
+          "value": "B1"
+        },
+        {
+          "op": "replace",
+          "path": "/links/0/target/port_id",
+          "value": "out_a"
+        }
+      ],
+      "expected_diagnostic_family": "E1_SELF_LINK",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": ""
+    },
+    {
+      "id": "E1-NEG-15",
+      "title": "Duplicate port side coordinate",
+      "category": "PORT_SIDE_OVERLAP",
+      "expected": "REJECT",
+      "requires": "model",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/blocks/0/ports/1/position",
+          "value": 0.333333
+        }
+      ],
+      "expected_diagnostic_family": "E1_PORT_SIDE_OVERLAP",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": ""
+    },
+    {
+      "id": "E1-NEG-16",
+      "title": "Duplicate link ID across independent signals",
+      "category": "DUPLICATE_LINK_ID",
+      "expected": "REJECT",
+      "requires": "model",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/links/1/id",
+          "value": "F1"
+        }
+      ],
+      "expected_diagnostic_family": "E1_DUPLICATE_LINK_ID",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": ""
+    },
+    {
+      "id": "E1-NEG-17",
+      "title": "Zero width block",
+      "category": "INVALID_DIMENSION",
+      "expected": "REJECT",
+      "requires": "model",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/blocks/0/width_um",
+          "value": 0
+        }
+      ],
+      "expected_diagnostic_family": "E1_INVALID_DIMENSION",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": ""
+    },
+    {
+      "id": "E1-NEG-18",
+      "title": "Negative block height",
+      "category": "INVALID_DIMENSION",
+      "expected": "REJECT",
+      "requires": "model",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/blocks/0/height_um",
+          "value": -1000
+        }
+      ],
+      "expected_diagnostic_family": "E1_INVALID_DIMENSION",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": ""
+    },
+    {
+      "id": "E1-NEG-19",
+      "title": "Negative block X permitted, not negative width",
+      "category": "NEGATIVE_ORIGIN_ACCEPTED",
+      "expected": "ACCEPT",
+      "requires": "model",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/blocks/0/x_um",
+          "value": -20000
+        }
+      ],
+      "expected_diagnostic_family": null,
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": "Negative page coordinates are not negative dimensions"
+    },
+    {
+      "id": "E1-NEG-20",
+      "title": "Multi-line text exceeds physical block",
+      "category": "TEXT_INK_OVERFLOW",
+      "expected": "REJECT",
+      "requires": "text_measurer",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/blocks/0/height_um",
+          "value": 1000
+        },
+        {
+          "op": "replace",
+          "path": "/blocks/0/name",
+          "value": "Очень длинное имя\\nвторая строка"
+        }
+      ],
+      "expected_diagnostic_family": "E1_TEXT_INK_OVERFLOW",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": "Needs measured multiline glyph bbox with exact approved font; do not clip or shrink silently"
+    },
+    {
+      "id": "E1-NEG-21",
+      "title": "Second line leaves rectangle near border",
+      "category": "TEXT_OUTSIDE_BLOCK",
+      "expected": "REJECT",
+      "requires": "text_measurer",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/blocks/0/name",
+          "value": "Управление\\nВторая строка\\nТретья строка"
+        },
+        {
+          "op": "replace",
+          "path": "/blocks/0/height_um",
+          "value": 2500
+        }
+      ],
+      "expected_diagnostic_family": "E1_TEXT_OUTSIDE_BLOCK",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": "Must check actual ink and minimum internal padding"
+    },
+    {
+      "id": "E1-NEG-22",
+      "title": "Illegal 45-degree orientation",
+      "category": "INVALID_TRANSFORM",
+      "expected": "REJECT",
+      "requires": "model",
+      "mutations": [
+        {
+          "op": "add",
+          "path": "/blocks/0/rotation",
+          "value": 45
+        }
+      ],
+      "expected_diagnostic_family": "E1_INVALID_TRANSFORM",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": ""
+    },
+    {
+      "id": "E1-NEG-23",
+      "title": "Mixed physical PinRef/Net inside functional block",
+      "category": "ELECTRICAL_MODEL_LEAK",
+      "expected": "REJECT",
+      "requires": "model",
+      "mutations": [
+        {
+          "op": "add",
+          "path": "/blocks/0/physical_pin_ref",
+          "value": "R1.1"
+        }
+      ],
+      "expected_diagnostic_family": "E1_ELECTRICAL_MODEL_LEAK",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": ""
+    },
+    {
+      "id": "E1-NEG-24",
+      "title": "Unknown diagram schema version",
+      "category": "INVALID_VERSION",
+      "expected": "REJECT",
+      "requires": "model",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/schema_version",
+          "value": 999
+        }
+      ],
+      "expected_diagnostic_family": "E1_INVALID_VERSION",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": ""
+    },
+    {
+      "id": "E1-NEG-25",
+      "title": "Two side ports too close on a 3mm side",
+      "category": "PORT_CLEARANCE_BLOCKED",
+      "expected": "BLOCKED",
+      "requires": "port_spacing_policy",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/blocks/0/height_um",
+          "value": 3000
+        }
+      ],
+      "expected_diagnostic_family": null,
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": "Exact min gap TBD: project contract, not a GOST mandated numeric value"
+    },
+    {
+      "id": "E1-NEG-26",
+      "title": "Crossing two unrelated directed links without junction stays independent",
+      "category": "CROSSING_NO_IMPLICIT_JOIN",
+      "expected": "ACCEPT_NO_MERGE",
+      "requires": "crossing_router",
+      "mutations": [
+        {
+          "op": "add",
+          "path": "/graphics",
+          "value": {
+            "kind": "crossing",
+            "links": [
+              "F1",
+              "F2"
+            ],
+            "point_um": [
+              45000,
+              9000
+            ],
+            "junction": false
+          }
+        }
+      ],
+      "expected_diagnostic_family": null,
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": "No conductivity/PinRef/Net and no implicit relationship created by X"
+    },
+    {
+      "id": "E1-NEG-27",
+      "title": "Caller requests automatic electrical junction at graphic X",
+      "category": "CROSSING_FORCED_NET_JOIN",
+      "expected": "REJECT",
+      "requires": "model",
+      "mutations": [
+        {
+          "op": "add",
+          "path": "/graphics",
+          "value": {
+            "kind": "crossing",
+            "links": [
+              "F1",
+              "F2"
+            ],
+            "point_um": [
+              45000,
+              9000
+            ],
+            "junction": true,
+            "join_type": "electrical"
+          }
+        }
+      ],
+      "expected_diagnostic_family": "E1_CROSSING_FORCED_NET_JOIN",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": ""
+    },
+    {
+      "id": "E1-NEG-28",
+      "title": "Several distinct ports on one side should be allowed",
+      "category": "MULTIPORT_SIDE_ORDERED",
+      "expected": "ACCEPT",
+      "requires": "model",
+      "mutations": [],
+      "expected_diagnostic_family": null,
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": "Port fractions 1/3 and 2/3 are intentionally separate; do not require center for multiple ports"
+    },
+    {
+      "id": "E1-NEG-29",
+      "title": "Center-of-side single-port default is editorial",
+      "category": "CENTER_DEFAULT_EDITORIAL",
+      "expected": "ACCEPT",
+      "requires": "model",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/blocks/0/ports/0/position",
+          "value": 0.5
+        }
+      ],
+      "expected_diagnostic_family": null,
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": "One-port default is editorial, NOT an explicit GOST requirement"
+    },
+    {
+      "id": "E1-NEG-30",
+      "title": "Arrowhead placed at source instead of target",
+      "category": "ARROWHEAD_VISUAL_REVERSED",
+      "expected": "REJECT",
+      "requires": "renderer",
+      "mutations": [
+        {
+          "op": "add",
+          "path": "/graphics",
+          "value": {
+            "kind": "arrowhead",
+            "link_id": "F1",
+            "at": "source"
+          }
+        }
+      ],
+      "expected_diagnostic_family": "E1_ARROWHEAD_VISUAL_REVERSED",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": "Check arrow direction vs functional relationship"
+    },
+    {
+      "id": "E1-NEG-31",
+      "title": "Two links attempt identical port contact without fanout rule",
+      "category": "MULTIPLE_LINKS_ON_ONE_PORT",
+      "expected": "BLOCKED",
+      "requires": "fanout_policy",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/links/1/source/port_id",
+          "value": "out_a"
+        }
+      ],
+      "expected_diagnostic_family": null,
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": "If reuse permitted, fanout and junction semantics must be explicit"
+    },
+    {
+      "id": "E1-NEG-32",
+      "title": "Duplicate opposite arrow that semantically contradicts declared direction",
+      "category": "REVERSE_LINK_DIRECTION",
+      "expected": "REJECT",
+      "requires": "model",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/links/1/source/block_id",
+          "value": "B2"
+        },
+        {
+          "op": "replace",
+          "path": "/links/1/source/port_id",
+          "value": "in_b"
+        },
+        {
+          "op": "replace",
+          "path": "/links/1/target/block_id",
+          "value": "B1"
+        },
+        {
+          "op": "replace",
+          "path": "/links/1/target/port_id",
+          "value": "out_b"
+        }
+      ],
+      "expected_diagnostic_family": "E1_REVERSE_LINK_DIRECTION",
+      "normativity": "EDITORIAL_MODEL_CONTRACT_PENDING_ESKD_ISSUE_69",
+      "remark": ""
+    }
+  ]
+}
