@@ -31,7 +31,7 @@
 <path d="M 191 93.5 H 202 M 264 93.5 H 275" data-pinleft="7" data-pinright="14"/>
 </g>
 <text x="202" y="32" font-family="OpenGost Type A, sans-serif" font-size="4.6" fill="#000" >TEST_IC_14 — TEST 14 pins</text>
-<text x="222" y="46.2" font-family="OpenGost Type A, sans-serif" font-size="3.8" fill="#000" data-main-function="&">&amp;</text>
+<text x="222" y="46.2" font-family="OpenGost Type A, sans-serif" font-size="3.8" fill="#000" data-main-function="&amp;">&amp;</text>
 <text x="192.5" y="46.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="1">1</text>
 <text x="266" y="46.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="8">8</text>
 <text x="204.5" y="49.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I0</text>
