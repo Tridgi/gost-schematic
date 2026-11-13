@@ -3,15 +3,22 @@
 All route functions execute frozen SHA-verified source extracted from that head.
 Real part/symbol data and electrical validator come from current integration.
 """
+from hashlib import sha1
+from importlib.resources import files
 from itertools import pairwise
+from pathlib import Path
 from random import Random
 
 import pytest
 
 from examples.review_end_to_end_circuit import definitions
+from gost_schematic.catalog.loader import load_symbol
+from gost_schematic.catalog.part_loader import load_part
 from gost_schematic.core.geometry import Box, Line, Point
 from gost_schematic.core.intersections import segment_intersects_box
 from gost_schematic.core.transforms import Transform
+from gost_schematic.engines.routing import two_pin_orthogonal as integrated_low
+from gost_schematic.engines.routing import two_pin_sheet as integrated_sheet
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
 from gost_schematic.model.obstacles import WireObstacle
 from gost_schematic.validation.external_wire_checks import (
@@ -29,17 +36,31 @@ PART_TYPES = (
     "capacitor.polarized",
     "capacitor.electrolytic",
     "inductor.tapped",
+    "diode.general",
+    "diode.zener",
 )
 
 
-@pytest.fixture(scope="module")
-def engine():
+@pytest.fixture(scope="module", params=("integrated", "frozen"))
+def engine(request):
+    if request.param == "integrated":
+        return integrated_low, integrated_sheet
     return load_frozen_pr39()
 
 
 @pytest.fixture(scope="module")
 def catalog():
-    return definitions()
+    """Real installed catalog, including the merged diode families."""
+    parts, symbols = definitions()
+    root = Path(str(files("gost_schematic").joinpath("catalog")))
+    for family in ("general", "zener"):
+        relative = f"diodes/{family}.json"
+        part = load_part(root / f"parts/{relative}")
+        symbol = load_symbol(root / f"symbols/{relative}")
+        assert part.symbol_id == symbol.identifier
+        parts[part.identifier] = part
+        symbols[symbol.identifier] = symbol
+    return parts, symbols
 
 
 def _codes(result):
@@ -114,12 +135,23 @@ def _foreign(width, net="FOREIGN"):
 
 
 def test_pr39_source_is_distinct_from_previously_audited_pr53(engine):
+    """Verify both installed source files and the immutable QA snapshot."""
     old_blob = "50b9102191fbe7f5876b14bd9ef10dcbbb1fe600"
     assert HEAD == "1a1375623c0f098cac14f7843c44d75982a4d749"
     assert all(blob != old_blob for _name, _path, blob in MODULES)
-    assert engine[0].__file__.endswith("qa_pr39_1a137562_orthogonal.txt")
-    assert engine[1].__file__.endswith("qa_pr39_1a137562_sheet.txt")
-
+    for module, (_name, _path, expected_blob) in zip(engine, MODULES, strict=True):
+        source = Path(module.__file__).read_bytes()
+        blob = sha1(
+            b"blob " + str(len(source)).encode() + bytes((0,)) + source
+        ).hexdigest()
+        assert blob == expected_blob
+    if engine[0] is integrated_low:
+        assert engine[1] is integrated_sheet
+        assert Path(engine[0].__file__).name == "two_pin_orthogonal.py"
+        assert Path(engine[1].__file__).name == "two_pin_sheet.py"
+    else:
+        assert engine[0].__file__.endswith("qa_pr39_1a137562_orthogonal.txt")
+        assert engine[1].__file__.endswith("qa_pr39_1a137562_sheet.txt")
 
 @pytest.mark.parametrize("rotation", [0, 90, 180, 270])
 @pytest.mark.parametrize("mirror", [False, True])
@@ -313,7 +345,7 @@ def test_adapter_checks_physical_identity_net_and_extra_keepouts(engine, catalog
 def test_58_foreign_net_touching_already_assigned_terminal_is_blocked_before_erc(
     engine, catalog,
 ):
-    """Known #58 validator hole should not be reachable via typed safe adapter."""
+    """Fixed #58 diagnosed by ERC; adapter independently rejects unsafe ink."""
     _low, sheet = engine
     a0, a1 = _point(-20000, 0), _point(0, 0)
     b0, b1 = _point(0, -10000), _point(0, 10000)
@@ -332,12 +364,10 @@ def test_58_foreign_net_touching_already_assigned_terminal_is_blocked_before_erc
     graph = ExternalWireGraph((
         WireSegment(a0, a1, "A"), WireSegment(b0, b1, "B"),
     ))
-    # Current #58 may miss the contact. It must not infer a false short.
-    assert "WIRE_NET_SHORT" not in {
-        item.code for item in validate_external_wires(
-            circuit, graph, parts, symbols
-        )
-    }
+    # Both foreign-wire contact detection and no-auto-short now required.
+    diagnostics = validate_external_wires(circuit, graph, parts, symbols)
+    assert {d.code for d in diagnostics} == {"WIRE_PIN_CONTACT_UNDECLARED"}
+    assert all(d.severity.value == "error" for d in diagnostics)
     unsafe_foreign = WireObstacle(
         "bad-B", Line(b0, b1), stroke_um=300, net_name="B",
     )
@@ -399,14 +429,10 @@ def test_stable_output_under_randomized_hazard_order_and_repeat_calls(engine):
         ) == first
 
 
-@pytest.mark.xfail(
-    reason="Issue #58 remains a CURRENT integrated-validator defect, not PR39",
-    strict=True,
-)
 def test_58_independent_existing_validator_rejects_already_wired_pin_hit(
     catalog,
 ):
-    """A legal A endpoint and unmarked B interior meet at physical R1.1."""
+    """Fixed #58: a foreign B interior on A-attached R1.1 must be ERROR."""
     positions = (
         ("R1", _point(0, 0), Transform()),
         ("R2", _point(-20000, 0), Transform(180)),
@@ -430,6 +456,7 @@ def test_58_independent_existing_validator_rejects_already_wired_pin_hit(
     ))
     parts, symbols = _parts(catalog, circuit)
     diagnostics = validate_external_wires(circuit, graph, parts, symbols)
-    assert "WIRE_PIN_CONTACT_UNDECLARED" in {
-        item.code for item in diagnostics
+    assert {item.code for item in diagnostics} == {
+        "WIRE_PIN_CONTACT_UNDECLARED"
     }
+    assert all(item.severity.value == "error" for item in diagnostics)
