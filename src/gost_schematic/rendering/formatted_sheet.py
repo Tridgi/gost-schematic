@@ -276,7 +276,7 @@ def _audit_source_geometry(root: ET.Element, viewport: Box,
                     xs, ys = (mm(node.attrib["x"]),), (mm(node.attrib["y"]),)
             except (KeyError, ValueError, TypeError) as error:
                 raise ValueError(f"Invalid source {local} coordinates") from error
-            shape = Box(min(xs), min(ys), max(xs), max(ys))
+            shape_coords = (min(xs), min(ys), max(xs), max(ys))
         elif local == "path":
             arc = _ALLOWED_PATH_ARC.fullmatch(node.get("d", ""))
             if arc is None:
@@ -284,7 +284,7 @@ def _audit_source_geometry(root: ET.Element, viewport: Box,
             a, b, rx, ry, _, _, _, c, d = arc.groups()
             sx, sy, ex, ey = mm(a), mm(b), mm(c), mm(d)
             rad_x, rad_y = mm(rx), mm(ry)
-            shape = Box(
+            shape_coords = (
                 min(sx, ex) - rad_x, min(sy, ey) - rad_y,
                 max(sx, ex) + rad_x, max(sy, ey) + rad_y,
             )
@@ -292,7 +292,9 @@ def _audit_source_geometry(root: ET.Element, viewport: Box,
             continue
         # A deliberately generous 1 mm paint allowance covers the SVG
         # review stroke widths without silently discarding a real overrun.
-        if not _inside(shape, viewport):
+        x1, y1, x2, y2 = shape_coords
+        if not (viewport.min_x <= x1 <= x2 <= viewport.max_x
+                and viewport.min_y <= y1 <= y2 <= viewport.max_y):
             raise ValueError(f"Source viewport excludes {local} geometry")
     for label in source.layout.placements:
         if not _inside(label.collision_bounds, viewport):
