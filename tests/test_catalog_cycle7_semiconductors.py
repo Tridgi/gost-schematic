@@ -256,3 +256,83 @@ def test_mutating_role_or_geometry_is_not_indistinguishable_from_true_catalog_ma
             replace(symbol.pins[0], at=symbol.pins[1].at),
             *symbol.pins[1:],
         ))
+
+
+def test_single_combined_gallery_exactly_matches_15_real_physical_roles(tmp_path):
+    first = generate(tmp_path)
+    before = {name: (tmp_path / name).read_bytes() for name in first["files"]}
+    assert first["physical_ugo_count"] == len(IDS) == 15
+    assert len(FIRST_IDS) == 3 and len(TRANSISTORS) == 8 and len(DIODES) == 4
+    assert first["approved_count"] == 0
+    assert set(first["symbols"]) == set(IDS)
+    for identifier in IDS:
+        item = first["symbols"][identifier]
+        assert item["status"] == "DRAFT"
+        assert len(item["physical_pin_role"]) == (
+            3 if identifier.startswith(("resistor", "transistor")) else 2
+        )
+        assert set(item["graphic_pin_coordinate_um"]) == set(item["physical_pin_role"])
+        assert len(item["ink_conductor_islands"]) == len(item["physical_pin_role"])
+    for kind in ("clean", "diagnostic"):
+        root = ET.fromstring((tmp_path / f"cycle7-all-15-{kind}.svg").read_bytes())
+        assert root.attrib["width"] == "275mm"
+        assert root.attrib["height"] == "180mm"
+        assert root.attrib["data-approval"] == "DRAFT"
+        groups = root.findall(f".//{SVG}g[@data-symbol-id]")
+        assert [g.attrib["data-symbol-id"] for g in groups] == list(IDS)
+        for g in groups:
+            item = first["symbols"][g.attrib["data-symbol-id"]]
+            assert g.get("data-pin-numbers").split(",") == list(item["physical_pin_role"])
+            assert g.get("data-physical-roles").split(",") == list(
+                item["physical_pin_role"].values()
+            )
+        assert not root.findall(f".//{SVG}image")
+        assert len(root.findall(f".//{SVG}text")) == (30 if kind == "diagnostic" else 15)
+    second = generate(tmp_path)
+    assert first == second
+    assert before == {name: (tmp_path / name).read_bytes() for name in first["files"]}
+    assert json.loads((tmp_path / "cycle7-gallery-manifest.json").read_text()) == first
+
+
+def test_total_catalog_expansion_is_still_all_draft_complete_and_source_carded():
+    report = audit_catalog()
+    assert report["total_symbols"] >= 36
+    assert report["draft_count"] == report["total_symbols"]
+    assert report["topologies_verified"] == report["total_symbols"]
+    assert report["hard_errors"] == 0, report["error_details"]
+    assert not report["without_physical_part"]
+    all_entries = {e["id"]: e for e in report["entries"]}
+    for identifier in IDS:
+        assert identifier in all_entries
+        assert all_entries[identifier]["physical_part_mapped"]
+        assert all_entries[identifier]["conductor_topology"]["valid"]
+    source_cards = json.loads(
+        Path("docs/catalog/electronic-cycle7-second-batch-cards.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert len(source_cards["cards"]) == len(TRANSISTORS + DIODES) == 12
+    assert {entry["id"] for entry in source_cards["cards"]} == set(
+        TRANSISTORS + DIODES
+    )
+    assert len(source_cards["blocked_backlog"]) >= 16
+    assert all(x["approval"] == "DRAFT" for x in source_cards["cards"])
+    assert all(x["release_acceptance"].startswith("BLOCKED") for x in source_cards["cards"])
+    assert all(x["manufacturer_pinout"] == "UNVERIFIED_ABSTRACT_NUMBERING"
+               for x in source_cards["cards"])
+
+
+@pytest.mark.parametrize("identifier", TRANSISTORS + DIODES)
+def test_real_clean_svg_line_count_has_no_bitmap_or_pseudo_pins(identifier):
+    symbol, part = _pair(identifier)
+    clean = ET.fromstring(render_symbol_svg(symbol))
+    diagnostic = ET.fromstring(render_symbol_svg(symbol, review_overlay=True))
+    line_count = sum(isinstance(g, Line) for g in symbol.graphics)
+    assert len(clean.findall(f".//{SVG}line")) == line_count
+    assert len(clean.findall(f".//{SVG}circle")) == (
+        1 if identifier.endswith(".with_case") else 0
+    )
+    assert len(diagnostic.findall(f".//{SVG}circle")) == len(part.pins) + (
+        1 if identifier.endswith(".with_case") else 0
+    )
+    assert not clean.findall(f".//{SVG}image")
