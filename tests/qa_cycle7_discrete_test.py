@@ -239,8 +239,13 @@ def test_baseline_integrated_dynamic_catalog_count_never_assumes_new_ugo_merged(
     assert report["hard_errors"] == 0
     assert not report["without_physical_part"]
     integrated = {e["id"] for e in report["entries"]}
-    # The isolated owner-branch additions cannot be declared merged/approved.
-    assert not (integrated & set(IDS.values()))
+    # Catalog growth is intentional: after owner PRs eventually merge,
+    # do not pin a hard-coded 21 or incorrectly require these IDs absent.
+    for identifier in integrated & set(IDS.values()):
+        row = next(x for x in report["entries"] if x["id"] == identifier)
+        assert row["approval"] == "draft"
+        assert row["physical_part_mapped"]
+        assert row["conductor_topology"]["valid"]
     assert report["total_symbols"] >= 21
 
 
