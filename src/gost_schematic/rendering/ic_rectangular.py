@@ -62,7 +62,7 @@ class IcRenderingPolicy:
 
     module_um: int = 2500
     pitch_modules: int = 2
-    ink_padding_um: int = 500
+    ink_padding_um: int = 1000
     line_width_um: int = 300
     lead_length_um: int = 8000
     main_min_width_um: int = 15000
