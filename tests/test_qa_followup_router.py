@@ -287,6 +287,7 @@ def test_real_component_origin_one_um_off_grid_fails_instead_of_snapping(router,
     assert not route.ok and route.points == ()
 
 
+@pytest.mark.xfail(reason="Confirmed issue #52: foreign stroke width omitted from clearance", strict=True)
 def test_mixed_existing_wire_stroke_must_respect_actual_printed_clearance(router):
     """PR39 WireSegment loses existing stroke width; fixed-width assumption is unsafe."""
     source, target = Point(0, 0), Point(10000, 0)
