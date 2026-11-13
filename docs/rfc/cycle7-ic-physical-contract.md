@@ -15,7 +15,7 @@ Numeric display row coordination: https://github.com/Tridgi/gost-schematic/issue
 - IcPinRow(number,side,anchor,row_key,label,field,visual_row): anchor is LOCAL exact integer micrometre EXTERNAL lead endpoint, strictly outside corresponding box side, not at a corner. row_key groups functional meaning; visual_row is a separate unique positive drawing row per side. Number is never derived from label.
 - IcSymbolSpec(device_id,unit_id,body,main_field,rows,aux_left,aux_right,revision): explicit rectangle and optional auxiliary fields. No text-width estimation by character count.
 - IcUnitPlacement(component_ref,device_id,unit_id,origin,transform): all unit projections refer to ONE physical DA1/DD1. resolve_ic_pin_positions outputs authoritative PinRef→Point, resolve_ic_port_sides outputs transformed side. D4 never changes PinRef identity.
-- validate_ic_circuit checks actual Circuit component, NC rejection, missing pin and membership conflicts; never interprets graphical intersection as a short. Legacy to_legacy_part is inventory-only and maps NC to UNSPECIFIED, never authorizes NC wiring.
+- validate_ic_circuit checks actual Circuit component, NC rejection, missing pin and membership conflicts; never interprets graphical intersection as a short. Legacy to_legacy_part is inventory-only and FAILS CLOSED on any NC or multi-unit package; legacy APIs cannot express that safety information.
 - ContactInventory preserves separate transistor gate/source/drain/substrate, BJT base/collector/emitter, potentiometer wiper/end terminals, fuse and physical connector contacts, even if labels match.
 
 ## PAINT boundary

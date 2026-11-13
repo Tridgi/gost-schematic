@@ -162,14 +162,16 @@ def test_two_pins_same_logical_row_and_same_side_still_have_distinct_anchors():
     assert len(resolve_ic_pin_positions(record.device, (spec,), record.placements)) == 2
 
 
-def test_legacy_physical_pin_adapter_preserves_number_and_unknown_nc():
-    record = synthetic_ic(8)
+def test_legacy_adapter_fails_closed_on_nc_and_multi_unit():
+    for count in (8, 14, 40, 64):
+        with pytest.raises(ValueError, match="IC_UNSAFE_LEGACY_ADAPTER"):
+            synthetic_ic(count).device.to_legacy_part("DRAFT_ONLY")
+    record = synthetic_ic(2)
     part = record.device.to_legacy_part("DRAFT_ONLY")
     assert part.identifier == record.device.identifier
     assert part.reference_prefix == "DD"
-    assert [p.number for p in part.pins] == [str(i) for i in range(1, 9)]
-    assert part.pins[-1].electrical_type.value == "unspecified"
-    assert part.pins[-1].number == "8"
+    assert [p.number for p in part.pins] == ["1", "2"]
+    assert [p.electrical_type.value for p in part.pins] == ["input", "output"]
 
 
 @pytest.mark.parametrize("role", [

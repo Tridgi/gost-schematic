@@ -162,17 +162,23 @@ class IcDeviceDefinition:
     def to_legacy_part(self, symbol_id: str) -> PartDefinition:
         """Typed legacy inventory bridge; does not construct a multi-unit symbol.
 
-        NC is mapped to UNSPECIFIED only for catalogue identity; all wiring
-        MUST pass validate_ic_circuit before a connection is accepted.
+        Existing E3 cannot represent NC or multi-unit symbol views.
+        Reject these cases rather than silently mapping NC to UNSPECIFIED.
         """
         _name(symbol_id, "symbol_id")
+        if len(self.units) != 1 or any(
+            pin.electrical_type is IcPinType.NC for pin in self.pins
+        ):
+            raise ValueError(
+                "IC_UNSAFE_LEGACY_ADAPTER: NC or split units require reviewed mapping"
+            )
         legacy = {
             item.value: item for item in ElectricalType
         }
         pins = tuple(
             PhysicalPin(
                 pin.number, pin.name,
-                legacy.get(pin.electrical_type.value, ElectricalType.UNSPECIFIED),
+                legacy[pin.electrical_type.value],
             ) for pin in self.pins
         )
         return PartDefinition(
