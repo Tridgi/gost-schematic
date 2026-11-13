@@ -10,8 +10,7 @@
       "g2702",
       "g2701",
       "g2304",
-      "g2721",
-      "g2710"
+      "g2721"
     ],
     "secondary_example": "https://habr.com/ru/articles/451158/",
     "secondary_is_normative": false,
@@ -41,11 +40,6 @@
       "official": "https://protect.gost.ru/gost/details/c153a749-14f2-49e8-8544-acc32ab35406",
       "pdf": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf",
       "status": "Действует"
-    },
-    "g2710": {
-      "designation": "ГОСТ 2.710-81",
-      "official": "https://protect.gost.ru/gost/details/ce868f06-c5a9-4bcb-a0d8-344bd17f57e0",
-      "status": "traceability_reference_verify_page"
     }
   },
   "approval": "DRAFT_NOT_FORMALLY_APPROVED",
@@ -763,5 +757,6 @@
       "parallel/catalog-cycle4",
       "parallel/rendering-sheet-cycle5"
     ]
-  }
+  },
+  "cross_reference_note": "ГОСТ 2.702-2011 §4.3 отсылает буквенно-цифровые обозначения к ГОСТ 2.710; подробные правила отдельных ID не включены в карточки без собственной первоисточниковой проверки."
 }
