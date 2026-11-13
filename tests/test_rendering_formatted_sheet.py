@@ -273,7 +273,7 @@ def test_auxiliary_30_dashed_zone_version_and_lower_footer_captions():
 
 @pytest.mark.parametrize("title_values", (
     {"designation": "X" * 300},
-    {"approved_surname": "Слишком длинная фамилия без автоподгонки"},
+    {"approved_surname": "И" * 100},
 ))
 def test_form_one_rejects_long_text_without_font_shrink(title_values):
     source, *_ = specimen()
