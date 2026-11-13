@@ -10,6 +10,7 @@ import argparse
 import hashlib
 import io
 import json
+import os
 import sys
 import urllib.request
 import zipfile
@@ -19,12 +20,16 @@ RELEASE = "https://api.github.com/repos/ingenium-am/open-gost-arm/releases/tags/
 
 
 def _get(url: str) -> bytes:
-    request = urllib.request.Request(
-        url, headers={
-            "Accept": "application/vnd.github+json",
-            "User-Agent": "gost-schematic-font-setup",
-        },
-    )
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "gost-schematic-font-setup",
+    }
+    # Actions API requests are rate-limited to a shared anonymous runner IP.
+    # Use the job-scoped token only for api.github.com, never asset/CDN URLs.
+    token = os.environ.get("GITHUB_TOKEN")
+    if token and urllib.parse.urlparse(url).hostname == "api.github.com":
+        headers["Authorization"] = f"Bearer {token}"
+    request = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(request, timeout=30) as reply:
         return reply.read()
 
