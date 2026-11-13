@@ -56,9 +56,9 @@ def execute(directory: Path, font: Path):
         legacy_scene = legacy.validate_design(legacy_seed)
         assert len(legacy_scene["blocks"]) == 7
         canonical = legacy.semantic_projection(legacy_seed)
-        assert "diagram_type" not in canonical  # separate unresolved legacy API
+        assert canonical["diagram_type"] == "E1"
         semantic = model.structural_from_json(json.dumps(
-            {"diagram_type": "E1", **canonical}, ensure_ascii=False
+            canonical, ensure_ascii=False
         ))
         assert semantic == graph
         anchors = model.resolve_port_positions(graph)
@@ -171,7 +171,7 @@ def execute(directory: Path, font: Path):
             "real_measured_text_overflow_count": 0,
             "model_json_roundtrip": "PASS",
             "no_electrical_junctions": True,
-            "legacy_projection_marker": "FAIL requires one explicit added diagram_type",
+            "legacy_projection_marker": "PASS current PR78 E1 discriminator",
             "font_sha256": manifest["font"]["sha256"],
             "font_measured_cap_height_um": manifest["font"]["measured_cap_height_um"],
             "svg_and_png": outputs,
