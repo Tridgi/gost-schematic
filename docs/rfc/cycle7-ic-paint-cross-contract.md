@@ -15,7 +15,7 @@ Status: **experimental DRAFT; no manufacturer pinout / UGO / ESKD approval**.
 4. `resolve_ic_pin_positions` supplies authoritative world `PinRef(reference, number) → Point` (integer micrometres). `IcPaintBinding.verify_endpoints` compares them **exactly** with the projected `ResolvedIcPin.anchor`, without ±1 µm allowance.
 5. `render_resolved_ic` checks every endpoint against its actual SVG lead geometry and emits the exact coordinates in SVG `line[x2,y2]`. The test parses real SVG and compares every line coordinate against the authoritative model `Point`; 1 µm mutation must raise `IC_PIN_ANCHOR_MISMATCH`.
 6. The measured typographic source is real OpenGost Type A release v0.7, SHA-256 `f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a`, cap height h=3500 µm. Font is downloaded only inside CI, **never committed**.
-7. `examples/review_ic_paint_joint_cycle7.py` produces actual split DD14 and DA8 **synthetic** SVG, strict JSON view records, physical Circuit nets and QA manifest. CI rasterizes SVG to 300 DPI PNG and produces SHA256SUMS. These are **inspection evidence**, not accepted GOST drawings.
+7. `examples/review_ic_paint_joint_cycle7.py` produces actual split DD14/DD40/DD64 and DA8 **synthetic** SVG, strict JSON view records, physical Circuit nets and QA manifest. CI rasterizes SVG to 300 DPI PNG and produces SHA256SUMS. These are **inspection evidence**, not accepted GOST drawings.
 
 ## Execute
 
