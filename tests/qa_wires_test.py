@@ -201,3 +201,92 @@ def test_unassigned_physical_pin_never_disappears_into_a_valid_net(real_parts):
     assert all(item.severity.value == "error" for item in diagnostics)
     # A crossing without an explicit junction must never create a hidden net tie.
     assert "WIRE_NET_SHORT" not in _codes(diagnostics)
+
+
+def _compose_d4(outer: Transform, inner: Transform) -> Transform:
+    """Compose two genuine D4 symbol transforms without changing model APIs."""
+    basis = (Point(1, 0), Point(0, 1))
+    for mirror in (False, True):
+        for angle in (0, 90, 180, 270):
+            candidate = Transform(angle, mirror)
+            if all(
+                candidate.apply(v) == outer.apply(inner.apply(v)) for v in basis
+            ):
+                return candidate
+    raise AssertionError("No D4 composition exists")
+
+
+@pytest.mark.parametrize("rotation", (0, 90, 180, 270))
+@pytest.mark.parametrize("mirror", (False, True))
+@pytest.mark.parametrize("reverse", (False, True))
+@pytest.mark.parametrize(
+    "near_miss_um",
+    [
+        pytest.param(
+            0,
+            marks=pytest.mark.xfail(
+                reason="Issue #54: foreign-net interior contact masked by A attachment",
+                strict=True,
+            ),
+        ),
+        1,
+    ],
+)
+def test_foreign_net_interior_hits_preassigned_real_pin_without_false_short(
+    real_parts, rotation, mirror, reverse, near_miss_um,
+):
+    """Issue #54: A terminates at R1.1 while B crosses its physical coordinate.
+
+    Four actual fixed-resistor passports are arranged so neither net crosses
+    another pin or a stray conductor. Away from all pins, X without junction
+    is non-conductive; at a real pin, there MUST be an explicit error even if
+    that pin is already attached to its legitimate network.
+    """
+    part, symbol = _resistor(real_parts)
+    global_tx = Transform(rotation, mirror)
+    point = global_tx.apply
+    offset = point(Point(near_miss_um, 0))
+    positions = {
+        "R1": point(Point(0, 0)),
+        "R2": point(Point(-20_000, 0)),
+        "R3": point(Point(0, -10_000)) + offset,
+        "R4": point(Point(0, 10_000)) + offset,
+    }
+    txs = {
+        "R1": global_tx,
+        "R2": _compose_d4(global_tx, Transform(180)),
+        "R3": _compose_d4(global_tx, Transform(270)),
+        "R4": _compose_d4(global_tx, Transform(90)),
+    }
+    instances = tuple(
+        _place(ref, part, symbol, positions[ref], txs[ref])
+        for ref in ("R1", "R2", "R3", "R4")
+    )
+    for item in instances:
+        assert item.pin_positions(symbol)["1"] == positions[item.reference]
+    circuit = Circuit(
+        instances,
+        (
+            Net("A", (PinRef("R1", "1"), PinRef("R2", "1"))),
+            Net("B", (PinRef("R3", "1"), PinRef("R4", "1"))),
+        ),
+    )
+    # A's ENDPOINT is the already-net-owned R1.1. B's INTERIOR crosses
+    # that exact point for 0um; at 1um, B becomes an ordinary unmarked X.
+    a = WireSegment(positions["R2"], positions["R1"], "A")
+    b = WireSegment(positions["R3"], positions["R4"], "B")
+    if reverse:
+        a = WireSegment(a.end, a.start, "A")
+        b = WireSegment(b.end, b.start, "B")
+    diagnostics = _run(
+        circuit, (a, b), {part.identifier: part}, {symbol.identifier: symbol},
+    )
+    codes = _codes(diagnostics)
+    assert "WIRE_NET_SHORT" not in codes  # Never silently create a junction.
+    assert "WIRE_PIN_NET_MISMATCH" not in codes
+    if near_miss_um:
+        assert diagnostics == (), diagnostics
+    else:
+        assert codes == {"WIRE_PIN_CONTACT_UNDECLARED"}, diagnostics
+        assert all(d.severity.value == "error" for d in diagnostics)
+        assert any(d.subject == "R1" for d in diagnostics)
