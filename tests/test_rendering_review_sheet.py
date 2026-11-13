@@ -2,6 +2,8 @@
 from dataclasses import replace
 from xml.etree import ElementTree as ET
 
+import pytest
+
 from gost_schematic.core.geometry import Box, Point
 from gost_schematic.engines.annotation.layout import obstacles_for_component
 from gost_schematic.engines.sheet_layout import SheetLayout, component_graphic_obstacles
@@ -28,6 +30,14 @@ class DeterministicMetrics:
 def catalog():
     scene = build_catalog_review_scene()
     return scene, layout_review_scene(scene, STYLE, DeterministicMetrics())
+
+
+def _assert_manifest_nominal_contract(item, row):
+    """Test-only exact contract: absence is None; presence is the original SI record."""
+    expected = item.nominal.to_record() if item.nominal is not None else None
+    assert row["nominal_si"] == expected, (
+        f"{item.reference}: nominal_si differs from the original component"
+    )
 
 
 def test_all_discovered_draft_catalog_symbols_have_safe_sheet_labels():
@@ -102,9 +112,7 @@ def test_manifest_preserves_exact_pins_and_si_nominals_after_transform():
     assert len(manifest["components"]) == len(scene.circuit.components)
     assert all(item["symbol_status"] == "draft" for item in manifest["components"])
     for item, row in zip(scene.circuit.components, manifest["components"], strict=True):
-        assert row["nominal_si"] == (
-            item.nominal.to_record() if item.nominal is not None else None
-        )
+        _assert_manifest_nominal_contract(item, row)
         points = item.pin_positions(scene.symbols_by_part[item.part_id])
         assert len(row["pins"]) == len(points)
         for pin in row["pins"]:
@@ -143,6 +151,7 @@ def test_manifest_null_nominal_is_valid_and_preserves_immutable_component():
         row for row in manifest["components"]
         if row["reference"] == without_nominal.reference
     )
+    _assert_manifest_nominal_contract(without_nominal, record)
     assert record["nominal_si"] is None
     assert record["part_id"] == original.part_id
     assert record["origin_um"] == [original.origin.x, original.origin.y]
@@ -172,9 +181,34 @@ def test_manifest_keeps_existing_non_null_si_nominal_unchanged():
         row for row in manifest["components"]
         if row["reference"] == original.reference
     )
+    _assert_manifest_nominal_contract(original, record)
     assert record["nominal_si"] == original.nominal.to_record()
     assert record["nominal_si"] is not None
     assert tuple(item.nominal for item in scene.circuit.components) == before
+
+
+def test_nominal_contract_rejects_fabricated_value_when_component_has_none():
+    scene, layout = catalog()
+    original = next(item for item in scene.circuit.components
+                    if item.nominal is not None)
+    row = next(item for item in review_manifest(scene, layout)["components"]
+               if item["reference"] == original.reference)
+    without_nominal = replace(original, nominal=None)
+    # A stale or fabricated SI nominal must NOT be accepted for a missing value.
+    with pytest.raises(AssertionError, match="nominal_si differs"):
+        _assert_manifest_nominal_contract(without_nominal, row)
+
+
+def test_nominal_contract_rejects_missing_value_when_component_has_nominal():
+    scene, layout = catalog()
+    original = next(item for item in scene.circuit.components
+                    if item.nominal is not None)
+    row = next(item for item in review_manifest(scene, layout)["components"]
+               if item["reference"] == original.reference)
+    corrupted = {**row, "nominal_si": None}
+    # Losing a valid nominal must be detected as strongly as fabricating one.
+    with pytest.raises(AssertionError, match="nominal_si differs"):
+        _assert_manifest_nominal_contract(original, corrupted)
 
 
 def test_deliberate_overlap_is_rejected_and_red_markers_name_affected_parts():
