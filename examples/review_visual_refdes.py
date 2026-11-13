@@ -64,6 +64,22 @@ def _svg(circuit, by_part, wires, placements, graph, *, review, name):
     return ET.tostring(root, encoding="unicode") + "\n"
 
 
+def _l1_closeup(svg: str, kind: str, diagnostic: bool) -> str:
+    """Explicit 40x23mm crop around accepted L1; never a sheet/route edit."""
+    root = ET.fromstring(svg)
+    root.set("width", "40mm")
+    root.set("height", "23mm")
+    root.set("viewBox", "85 24 40 23")
+    root.set("data-closeup", "L1")
+    root.set("data-crop-only", "true")
+    root.set("data-variant", kind)
+    ET.SubElement(root, SVG + "title").text = (
+        f"L1 {kind} ({'diagnostic' if diagnostic else 'clean'}), "
+        "unapproved refdes comparison"
+    )
+    return ET.tostring(root, encoding="unicode") + "\n"
+
+
 def _c3_and_l1(circuit, by_part, before, after):
     summary = {}
     for component in circuit.components:
@@ -139,10 +155,12 @@ def generate(output_dir: Path, font_file: Path) -> dict:
     for key, placed in (("before", before), ("after", after)):
         for diagnostic in (False, True):
             name = f"refdes-{key}-{'diagnostic' if diagnostic else 'clean'}.svg"
-            (output_dir / name).write_text(
-                _svg(circuit, by_part, wires, placed, graph,
-                     review=diagnostic, name=key),
-                encoding="utf-8",
+            svg = _svg(circuit, by_part, wires, placed, graph,
+                       review=diagnostic, name=key)
+            (output_dir / name).write_text(svg, encoding="utf-8")
+            closeup = f"refdes-{key}-l1-{'diagnostic' if diagnostic else 'clean'}.svg"
+            (output_dir / closeup).write_text(
+                _l1_closeup(svg, key, diagnostic), encoding="utf-8",
             )
     (output_dir / "refdes-distance-report.json").write_text(
         json.dumps(report, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
