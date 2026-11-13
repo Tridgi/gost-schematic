@@ -56,8 +56,20 @@ def _decimal(value: object, context: str) -> Decimal:
 
 
 def _round_um(number: Decimal) -> int:
-    # Deterministic sub-micrometre tie rule, independent of binary floats.
+    # Presentation-only font/arrow rounding; NEVER derive PortRef anchors here.
     return int(number.to_integral_value(rounding=ROUND_HALF_UP))
+
+
+def _absolute_half_away_um(number: Fraction) -> int:
+    """Reference-only mirror of ELEKTRIK's planned *absolute* Point rule.
+
+    The production model adapter below NEVER calls this: it consumes the
+    final Point from resolve_port_positions() instead.
+    """
+    sign = -1 if number < 0 else 1
+    magnitude = abs(number.numerator)
+    denominator = number.denominator
+    return sign * ((2 * magnitude + denominator) // (2 * denominator))
 
 
 def _transform(x: Decimal, y: Decimal, rotation: int, mirror_x: bool) -> tuple[Decimal, Decimal]:
@@ -190,11 +202,9 @@ def _block(entry: dict) -> dict:
         )
         x, y = _transform(lx, ly, rotation, mirror)
         world_x, world_y = Fraction(cx) + x, Fraction(cy) + y
-        if world_x.denominator != 1 or world_y.denominator != 1:
-            raise E1DesignError(
-                f"{identifier}.{port_id}: E1_PORT_OFF_GRID; never round side-port anchors"
-            )
-        point = (world_x.numerator, world_y.numerator)
+        # Standalone historical fixture: exactly one signed half-away rounding
+        # on each *absolute* coordinate, never early on a local offset.
+        point = (_absolute_half_away_um(world_x), _absolute_half_away_um(world_y))
         p = {"id": port_id, "side": side, "direction": direction,
              "relative_position": str(t), "point_um": point,
              "normal": _normal(side, rotation, mirror)}
@@ -205,11 +215,14 @@ def _block(entry: dict) -> dict:
             continue
         side_length = height if side in ("LEFT", "RIGHT") else width
         ordered = sorted(group, key=lambda item: item[0])
-        slot_offsets = [Fraction(side_length) * Fraction(t) for t, _ in ordered]
-        if any(value.denominator != 1 for value in slot_offsets):
-            raise E1DesignError(f"{identifier}.{side}: E1_PORT_OFF_GRID")
-        offsets = [value.numerator for value in slot_offsets]
-        if offsets[0] < MIN_CORNER_UM or int(side_length) - offsets[-1] < MIN_CORNER_UM:
+        # Check the final *quantized* points rather than rounding local offsets.
+        first_port = ordered[0][1]
+        axis = 0 if first_port["normal"][1] else 1
+        offsets = sorted(port["point_um"][axis] for _, port in ordered)
+        if (
+            offsets[0] - box[axis] < MIN_CORNER_UM
+            or box[axis + 2] - offsets[-1] < MIN_CORNER_UM
+        ):
             raise E1DesignError(f"{identifier}.{side}: port too close to rectangle corner")
         if any(b - a < MIN_PORT_PITCH_UM for a, b in pairwise(offsets)):
             raise E1DesignError(f"{identifier}.{side}: adjacent ports closer than editorial pitch")
