@@ -20,6 +20,18 @@ _SYMBOLS = {
     "catalog/symbols/resistors/variable.json",
     "catalog/symbols/resistors/trimmer.json",
     "catalog/symbols/fuses/general.json",
+    "catalog/symbols/transistors/bjt_npn.json",
+    "catalog/symbols/transistors/bjt_npn_with_case.json",
+    "catalog/symbols/transistors/bjt_pnp.json",
+    "catalog/symbols/transistors/bjt_pnp_with_case.json",
+    "catalog/symbols/transistors/mosfet_n_enh.json",
+    "catalog/symbols/transistors/mosfet_n_enh_with_case.json",
+    "catalog/symbols/transistors/mosfet_p_enh.json",
+    "catalog/symbols/transistors/mosfet_p_enh_with_case.json",
+    "catalog/symbols/diodes/schottky.json",
+    "catalog/symbols/diodes/led.json",
+    "catalog/symbols/diodes/photodiode.json",
+    "catalog/symbols/diodes/varicap.json",
 }
 _PARTS = {
     "catalog/parts/resistors/fixed.json",
@@ -31,6 +43,18 @@ _PARTS = {
     "catalog/parts/resistors/variable.json",
     "catalog/parts/resistors/trimmer.json",
     "catalog/parts/fuses/general.json",
+    "catalog/parts/transistors/bjt_npn.json",
+    "catalog/parts/transistors/bjt_npn_with_case.json",
+    "catalog/parts/transistors/bjt_pnp.json",
+    "catalog/parts/transistors/bjt_pnp_with_case.json",
+    "catalog/parts/transistors/mosfet_n_enh.json",
+    "catalog/parts/transistors/mosfet_n_enh_with_case.json",
+    "catalog/parts/transistors/mosfet_p_enh.json",
+    "catalog/parts/transistors/mosfet_p_enh_with_case.json",
+    "catalog/parts/diodes/schottky.json",
+    "catalog/parts/diodes/led.json",
+    "catalog/parts/diodes/photodiode.json",
+    "catalog/parts/diodes/varicap.json",
 }
 _REQUIREMENTS = "standards/requirements_2026_ru.json"
 
