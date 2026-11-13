@@ -238,6 +238,17 @@ def test_proposed_elektrik_semantic_projection_has_exact_rational_ports_and_no_v
     assert json.loads(json.dumps(graph, ensure_ascii=False)) == graph
 
 
+def test_proposed_model_export_rejects_unmapped_view_transform():
+    data = specimen()
+    block(data, "B1")["rotation"] = 180
+    with pytest.raises(E1DesignError, match="view transformations"):
+        semantic_projection(data)
+    block(data, "B1")["rotation"] = 0
+    block(data, "B1")["scale"] = "2"
+    with pytest.raises(E1DesignError, match="view transformations"):
+        semantic_projection(data)
+
+
 def test_two_links_cannot_occupy_same_parallel_sheet_segment():
     data = specimen()
     new_link = deepcopy(data["links"][0])
