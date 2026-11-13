@@ -5,6 +5,7 @@ validation are mandatory gates BEFORE any aesthetic score comparison.
 """
 
 from dataclasses import dataclass
+from itertools import pairwise
 
 from gost_schematic.core.geometry import Point
 
@@ -39,7 +40,7 @@ def measure_route(points: tuple[Point, ...], *, short_leg_um: int = 8000) -> Rou
     redundant = 0
     previous_axis = None
     signs: dict[str, list[int]] = {"x": [], "y": []}
-    for a, b in zip(points, points[1:], strict=False):
+    for a, b in pairwise(points):
         dx, dy = b.x - a.x, b.y - a.y
         if (dx == 0) == (dy == 0):
             raise ValueError("Every route edge must be nonzero and orthogonal")
@@ -60,7 +61,7 @@ def measure_route(points: tuple[Point, ...], *, short_leg_um: int = 8000) -> Rou
     reversals = sum(
         left != right
         for values in signs.values()
-        for left, right in zip(values, values[1:], strict=False)
+        for left, right in pairwise(values)
     )
     return RouteQuality(
         length_um=length,
