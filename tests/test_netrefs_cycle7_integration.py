@@ -43,14 +43,21 @@ def test_real_svg_modules_in_one_process_cannot_duplicate_xmlns(namespace_alias)
         "gost_schematic.rendering.external_wire_sheet",
     ):
         importlib.import_module(module)
-    ET.register_namespace(namespace_alias, SVG_NS)
-    for sheet in specimen().sheets:
-        actual = sheet_svg(specimen(), sheet.id)
-        assert actual.count('xmlns="http://www.w3.org/2000/svg"') == 1
-        assert actual == (FIXTURES / f"sheet-{sheet.number}.svg").read_text("utf-8")
-        root = ET.fromstring(actual)
-        assert root.tag == f"{{{SVG_NS}}}svg"
-        assert len(root.findall(f"{{{SVG_NS}}}title")) == 1
+    # Restore process-global namespace registry so this test cannot drift
+    # later SVG goldens or cause exactly the import-order defect it checks.
+    original = ET._namespace_map.copy()
+    try:
+        ET.register_namespace(namespace_alias, SVG_NS)
+        for sheet in specimen().sheets:
+            actual = sheet_svg(specimen(), sheet.id)
+            assert actual.count('xmlns="http://www.w3.org/2000/svg"') == 1
+            assert actual == (FIXTURES / f"sheet-{sheet.number}.svg").read_text("utf-8")
+            root = ET.fromstring(actual)
+            assert root.tag == f"{{{SVG_NS}}}svg"
+            assert len(root.findall(f"{{{SVG_NS}}}title")) == 1
+    finally:
+        ET._namespace_map.clear()
+        ET._namespace_map.update(original)
 
 
 @pytest.mark.parametrize("order", tuple(itertools.permutations((
@@ -222,8 +229,13 @@ def test_long_cyrillic_ink_overflow_and_nearby_marker_collision_fail_closed():
 def test_explicit_xml_measured_is_import_order_independent_when_font_available():
     font = _font()
     importlib.import_module("gost_schematic.rendering.sheet_svg")
-    ET.register_namespace("netrefs_external", SVG_NS)
-    a = sheet_svg(specimen(), "S1", font_path=font)
-    assert ET.fromstring(a).tag == f"{{{SVG_NS}}}svg"
-    ET.register_namespace("", SVG_NS)
-    assert sheet_svg(specimen(), "S1", font_path=font) == a
+    original = ET._namespace_map.copy()
+    try:
+        ET.register_namespace("netrefs_external", SVG_NS)
+        a = sheet_svg(specimen(), "S1", font_path=font)
+        assert ET.fromstring(a).tag == f"{{{SVG_NS}}}svg"
+        ET.register_namespace("", SVG_NS)
+        assert sheet_svg(specimen(), "S1", font_path=font) == a
+    finally:
+        ET._namespace_map.clear()
+        ET._namespace_map.update(original)
