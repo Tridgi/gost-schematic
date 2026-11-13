@@ -44,20 +44,6 @@ def root(sheet):
     return ET.fromstring(sheet.svg)
 
 
-@pytest.mark.parametrize(("profile", "dimensions", "frame", "title"), (
-    (
-        PageProfile("A4", "portrait"), (210, 297),
-        (20, 5, 205, 292), (20, 237, 205, 292),
-    ),
-    (
-        PageProfile("A3", "landscape"), (420, 297),
-        (20, 5, 415, 292), (230, 237, 415, 292),
-    ),
-    (
-        PageProfile("A3", "portrait"), (297, 420),
-        (20, 5, 292, 415), (107, 360, 292, 415),
-    ),
-))
 def test_explicit_title_cli_parser_keeps_values_and_rejects_duplicate_inputs():
     assert parse_title_fields([]) == {}
     assert parse_title_fields(["designation=A-123", "name=Схема электрическая"]) == {
@@ -83,6 +69,20 @@ def test_default_form_is_blank_and_explicit_title_mode_checks_access():
         )
 
 
+@pytest.mark.parametrize(("profile", "dimensions", "frame", "title"), (
+    (
+        PageProfile("A4", "portrait"), (210, 297),
+        (20, 5, 205, 292), (20, 237, 205, 292),
+    ),
+    (
+        PageProfile("A3", "landscape"), (420, 297),
+        (20, 5, 415, 292), (230, 237, 415, 292),
+    ),
+    (
+        PageProfile("A3", "portrait"), (297, 420),
+        (20, 5, 292, 415), (107, 360, 292, 415),
+    ),
+))
 def test_paper_dimensions_margins_form_one_and_no_overlap(
     profile, dimensions, frame, title,
 ):
