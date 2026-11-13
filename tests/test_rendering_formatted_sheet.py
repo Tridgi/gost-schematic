@@ -180,7 +180,7 @@ def test_three_independent_5mm_letter_cells_match_original_b1():
     assert all(cell[2] - cell[0] == 5000 for cell in cells.values())
     xs = [cells[key][0] for key in ("letter", "letter_b", "letter_c")]
     assert xs == [155000, 160000, 165000]  # A4 form left 20 mm + 135/140/145
-    grid_lines = result.findall(f".//{SVG}g[@data-grid-section='title-columns']")
+    grid_lines = result.findall(f".//{SVG}line[@data-grid-section='title-columns']")
     assert any(line.get("x1") == "160" for line in grid_lines)
     assert any(line.get("x1") == "165" for line in grid_lines)
 
