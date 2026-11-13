@@ -36,7 +36,7 @@ def _specimen():
 
 
 def test_l1_visual_main_shape_ignores_tap_stem_but_obstacles_still_protect_it():
-    circuit, graph, by_part = _specimen()
+    circuit, _, by_part = _specimen()
     l1 = next(component for component in circuit.components if component.reference == "L1")
     symbol = by_part[l1.part_id]
     visible = main_ugo_graphic_bounds(symbol, l1)
@@ -74,8 +74,8 @@ def test_all_six_labels_are_outside_graphics_wire_and_pin_keepouts():
     candidate = place_refdes_near_visible_graphics(
         circuit, by_part, STYLE, UnitInk(), wires=renderer_wires(graph),
     )
-    from gost_schematic.engines.annotation.layout import obstacles_for_component
     from gost_schematic.core.geometry import primitive_stroked_bounds
+    from gost_schematic.engines.annotation.layout import obstacles_for_component
 
     for label in candidate:
         assert all(
