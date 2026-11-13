@@ -5,7 +5,6 @@ OpenGost Type A file supplied by the dedicated workflow (never a fake font).
 """
 import importlib
 import itertools
-import json
 import os
 import subprocess
 import sys
