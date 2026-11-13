@@ -6,14 +6,15 @@ package search path is installed temporarily for PR80's real source, while
 PR78's real standalone file is loaded independently. No Git/network in pytest.
 """
 
+import json
+import sys
+import tempfile
 from contextlib import contextmanager
 from copy import deepcopy
 from fractions import Fraction
 from hashlib import sha1
 from importlib import import_module, util
-import json
 from pathlib import Path
-import sys
 
 import gost_schematic
 
@@ -28,19 +29,19 @@ SOURCE_COMMITS = {
     "base": "e79a12003144a1981bdec829573784215ecaf6d7",
 }
 PINNED_BLOBS = {
-    "qa_e1_pr80/gost_schematic/structural/__init__.py":
+    "qa_e1_pr80/gost_schematic/structural/__init__.txt":
         "733a2eb2c36ae9eab3f11fa3ee0cb539845f9a3e",
-    "qa_e1_pr80/gost_schematic/structural/model.py":
+    "qa_e1_pr80/gost_schematic/structural/model.txt":
         "c1a6239f4475a8e2c1bcd428168a32726dc53b03",
-    "qa_e1_pr80/gost_schematic/structural/serialization.py":
+    "qa_e1_pr80/gost_schematic/structural/serialization.txt":
         "8f9a7492b99b9f98a8bc0a21edc6269d575202dc",
-    "qa_e1_pr80/gost_schematic/structural/validation.py":
+    "qa_e1_pr80/gost_schematic/structural/validation.txt":
         "70ee1f368f0dcaa9b3617bcad8a2c9d48c595162",
-    "qa_e1_pr80/review_structural_e1.py":
+    "qa_e1_pr80/review_structural_e1.txt":
         "bc3f3e042714082b4a2794cdc367ae060498c3c9",
     "qa_e1_pr80/structural-e1.json":
         "fbcbf1a6bf5b2303b004b21ffdb1f90e1d2e636f",
-    "qa_e1_pr78/review_structural_e1_design.py":
+    "qa_e1_pr78/review_structural_e1_design.txt":
         "85fcf7bc5aff7057f5c489d3f5b697d10c36f119",
     "qa_e1_pr78/blocks.json":
         "cd1ecc6b6c2219b0615dc00b8952ea5588ee77be",
@@ -74,33 +75,47 @@ def _load_standalone(name: str, path: Path):
 
 @contextmanager
 def real_sources():
-    """Load upstream source code, keep model import identities unmodified."""
+    """Materialize exactly verified upstream bytes into ephemeral Python files.
+
+    Ruff can inspect authored QA code without reformatting upstream copies.
+    Neither Git fetch nor pip-installed owner implementation is needed.
+    """
     verify_exact_source_files()
-    search_path = str(MODEL_ROOT / "gost_schematic")
-    package_path = gost_schematic.__path__
     assert "gost_schematic.structural" not in sys.modules, (
         "This QA must not accidentally execute an installed model instead of PR80"
     )
-    package_path.append(search_path)
-    try:
-        model = import_module("gost_schematic.structural")
-        model_specimen = _load_standalone(
-            "_qa_real_pr80_7block", MODEL_ROOT / "review_structural_e1.py"
+    with tempfile.TemporaryDirectory(prefix="qa-e1-upstream-") as sandbox:
+        root = Path(sandbox)
+        package = root / "gost_schematic" / "structural"
+        package.mkdir(parents=True)
+        for name in ("__init__", "model", "serialization", "validation"):
+            (package / f"{name}.py").write_bytes(
+                (MODEL_ROOT / "gost_schematic" / "structural" / f"{name}.txt"
+                 ).read_bytes()
+            )
+        example = root / "review_structural_e1.py"
+        example.write_bytes((MODEL_ROOT / "review_structural_e1.txt").read_bytes())
+        graphic = root / "review_structural_e1_design.py"
+        graphic.write_bytes(
+            (GRAPHIC_ROOT / "review_structural_e1_design.txt").read_bytes()
         )
-        graphics = _load_standalone(
-            "_qa_real_pr78_svg", GRAPHIC_ROOT / "review_structural_e1_design.py"
-        )
-        yield model, model_specimen, graphics
-    finally:
-        package_path.remove(search_path)
-        for name in ("_qa_real_pr80_7block", "_qa_real_pr78_svg"):
-            sys.modules.pop(name, None)
-        for name in tuple(sys.modules):
-            if name == "gost_schematic.structural" or name.startswith(
-                "gost_schematic.structural."
-            ):
-                del sys.modules[name]
-        # Re-imports from production after test teardown remain unmodified.
+        search_path = str(root / "gost_schematic")
+        package_path = gost_schematic.__path__
+        package_path.append(search_path)
+        try:
+            model = import_module("gost_schematic.structural")
+            model_specimen = _load_standalone("_qa_real_pr80_7block", example)
+            graphics = _load_standalone("_qa_real_pr78_svg", graphic)
+            yield model, model_specimen, graphics
+        finally:
+            package_path.remove(search_path)
+            for name in ("_qa_real_pr80_7block", "_qa_real_pr78_svg"):
+                sys.modules.pop(name, None)
+            for name in tuple(sys.modules):
+                if name == "gost_schematic.structural" or name.startswith(
+                    "gost_schematic.structural."
+                ):
+                    del sys.modules[name]
 
 
 def graphic_source():
