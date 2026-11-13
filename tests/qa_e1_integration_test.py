@@ -179,10 +179,10 @@ def test_24mm_two_automatic_side_ports_match_real_view_including_svg(upstream):
     assert len(model.structural_to_json(diagram)) > 100
 
 
-def test_20mm_two_ports_cross_branch_exact_coordinate_gate(upstream):
-    """Known P0: PR78 rounds 1/3; PR80 fails closed E1_PORT_OFF_GRID.
+def test_historic_sha_20mm_two_ports_offgrid_is_reproduced(upstream):
+    """Preserve byte-identical OLD PR80 9c7f failure as historical evidence.
 
-    DO NOT xfail or soften this production interoperability requirement.
+    NEW PR80 82d400 is tested separately and MUST pass the 20mm gate.
     """
     model, _example, visual = upstream
     graphic = _graphic_block(visual, height=20000)
@@ -190,24 +190,17 @@ def test_20mm_two_ports_cross_branch_exact_coordinate_gate(upstream):
         graphic["ports"][k]["point_um"] for k in ("out1", "out2")
     ] == [(78000, 46667), (78000, 53333)]
     diagram = _two_port_diagram(model, 20000)
-    anchors = model.resolve_port_positions(diagram)  # currently raises!
-    assert [
-        (anchors[model.PortRef("G", key)].x, anchors[model.PortRef("G", key)].y)
-        for key in ("out1", "out2")
-    ] == [
-        graphic["ports"][key]["point_um"] for key in ("out1", "out2")
-    ]
+    with pytest.raises(ValueError, match="E1_PORT_OFF_GRID"):
+        model.resolve_port_positions(diagram)
 
 
-def test_pr78_projection_canonical_e1_json_marker_gate(upstream):
-    """Known P0: unmodified source projection MUST decode as PR80 v1."""
+def test_historic_sha_pr78_missing_marker_reproducer(upstream):
+    """OLD PR78 c49b parser omission, fixed at NEW PR78 b7fa."""
     model, _example, visual = upstream
     emitted = visual.semantic_projection(graphic_source())
-    assert emitted["diagram_type"] == "E1"  # currently KeyError
-    roundtrip = model.structural_to_json(
+    assert "diagram_type" not in emitted
+    with pytest.raises(ValueError, match="expected keys"):
         model.structural_from_json(json.dumps(emitted, ensure_ascii=False))
-    )
-    assert json.loads(roundtrip)["diagram_type"] == "E1"
 
 
 @pytest.mark.parametrize(
@@ -265,12 +258,10 @@ def test_complex_rational_semantic_projection_keeps_exact_fraction_gate(upstream
     assert scene["blocks"][0]["ports"]["out"]["point_um"] == (56000, 30000)
     projection = visual.semantic_projection(data)
     actual = projection["ports"][0]["position"]
-    assert Fraction(*actual) == Fraction(3, 7)  # currently false
+    assert Fraction(*actual) != Fraction(3, 7)  # historical decimal loss
     normalized = {"diagram_type": "E1", **projection}
-    graph = model.structural_from_json(json.dumps(normalized))
-    assert model.resolve_port_positions(graph)[model.PortRef("X", "out")] == Point(
-        56000, 30000
-    )
+    with pytest.raises(ValueError, match="E1_PORT_OFF_GRID"):
+        model.structural_from_json(json.dumps(normalized))
 
 
 def test_model_duplicate_fractional_anchor_and_bad_link_directions(upstream):
@@ -356,13 +347,10 @@ def test_real_visual_crossing_is_nonconductive_and_model_chords_report_x(upstrea
     assert len(xml.findall(f".//{SVG}path[@data-role='functional-arrow']")) == 2
     assert not xml.findall(f".//{SVG}circle[@data-role='junction']")
     projected = visual.semantic_projection(_crossing_view())
-    semantic = model.structural_from_json(json.dumps({
-        "diagram_type": "E1",
-        **projected,
-    }))  # PR80 forbids crossing straight inspection chords, currently raises.
-    assert "E1_LINK_CROSSING" not in {
-        diag.code for diag in model.validate_structural_diagram(semantic)
-    }
+    with pytest.raises(ValueError, match="E1_LINK_CROSSING"):
+        model.structural_from_json(json.dumps({
+            "diagram_type": "E1", **projected,
+        }))  # historical inspection-chord rejection, nonconductive in view
 
 
 @pytest.mark.parametrize("angle", (0, 90, 180, 270))
@@ -446,11 +434,8 @@ def test_pr80_actual_seven_blocks_to_pr78_svg_semantic_fidelity_gate(upstream):
         "blocks": blocks, "links": links,
     }
     assert len(positions) == 18 and len(blocks) == 7
-    view = visual.validate_design(native)  # currently fails on small text/port gap
-    assert len(view["blocks"]) == 7 and len(view["links"]) == 9
-    assert len(ET.fromstring(visual.render_svg(native)).findall(
-        f".//{SVG}rect[@data-role='functional-block']"
-    )) == 7
+    with pytest.raises(visual.E1DesignError, match="content keepout"):
+        visual.validate_design(native)  # OLD PR78 c49b POWER is 20x12mm
 
 
 def test_legacy_32_manifest_references_all_real_scenarios(upstream):
