@@ -262,7 +262,12 @@ def test_semantic_seam_catches_mutation_even_when_terminal_matches(
     style, measurer = typography
     binding = propose_ic_paint_binding(synthetic_ic(8), style, measurer)
     view = binding.views[0]
-    original = view.pins[0]
+    # A normal INPUT on RIGHT is rejected by PAINT already at object
+    # construction. Probe the *extra* electrical guard using a POWER pin:
+    # PAINT accepts both drawing sides for POWER, whereas the model contract
+    # still must reject a side change at an identical immutable endpoint.
+    index = 6 if corruption == "side" else 0
+    original = view.pins[index]
     edits = {
         "number": {"number": "999"},
         "pin_id": {"pin_id": "WRONG.P1"},
@@ -274,9 +279,9 @@ def test_semantic_seam_catches_mutation_even_when_terminal_matches(
         "anchor": {"anchor": Point(original.anchor.x + 1, original.anchor.y)},
     }
     if corruption in edits:
-        view = replace(view, pins=(
-            replace(original, **edits[corruption]), *view.pins[1:],
-        ))
+        altered = list(view.pins)
+        altered[index] = replace(original, **edits[corruption])
+        view = replace(view, pins=tuple(altered))
     elif corruption == "pin-order":
         view = replace(view, pins=(
             view.pins[1], view.pins[0], *view.pins[2:],
