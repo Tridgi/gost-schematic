@@ -22,13 +22,14 @@ from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
 from gost_schematic.electrical.ic_serde import ic_to_json
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
-from gost_schematic.rendering.ic_rectangular import render_resolved_ic
 from gost_schematic.standards.type_a_font import inspect_type_a_font
 
 SVG = "{http://www.w3.org/2000/svg}"
 
 
 def generate(output_dir: Path, font_file: Path) -> dict:
+    from gost_schematic.rendering.ic_rectangular import render_resolved_ic
+
     inspection = inspect_type_a_font(font_file, h_um=3500)
     style = inspection.style
     measurer = PillowTextMeasurer()
