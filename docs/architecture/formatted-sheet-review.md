@@ -2,9 +2,9 @@
 
 ## Contract and provenance
 
-The **private** \`gost_schematic.rendering.formatted_sheet\` adapter wraps an already
-rendered \`ExternalWireSheet\` and **does not** alter \`Circuit\`, pins,
-\`ExternalWireGraph\`, UGO JSON, the public API or routing algorithms. It neither
+The **private** `gost_schematic.rendering.formatted_sheet` adapter wraps an already
+rendered `ExternalWireSheet` and **does not** alter `Circuit`, pins,
+`ExternalWireGraph`, UGO JSON, the public API or routing algorithms. It neither
 connects nor splits electrical nets.
 
 This implementation is a **source-based, unapproved engineering preview**, not
@@ -13,13 +13,13 @@ certification under ГОСТ/ЕСКД or validation by КОМПАС. Standard: *
 with accepted [Issue #35 normative review](../standards/issue-35-full-sheet.md).
 Source graphics: [ГОСТ Р 2.104-2023, p. 11 / PDF P14](https://files.stroyinf.ru/Data/816/81679.pdf#page=15).
 
-The page is expressed in **integer micrometres**, with SVG \`width\`,
-\`height\`, \`viewBox\` and shape coordinates serialized as exact **millimetres**.
-The old SVG artwork is nested under \`schematic-content\` with a **translation
+The page is expressed in **integer micrometres**, with SVG `width`,
+`height`, `viewBox` and shape coordinates serialized as exact **millimetres**.
+The old SVG artwork is nested under `schematic-content` with a **translation
 only**, never a scale. Its actual endpoint data and order stay byte-identical
 in the nested DOM. The page compositor adds **no clipPath and no viewBox-based
 content clipping**: content too large or shifted into a reserved field causes
-\`SCHEMATIC_PAGE_OVERFLOW\`. Source geometry and label boxes must already fit
+`SCHEMATIC_PAGE_OVERFLOW`. Source geometry and label boxes must already fit
 the supplied inner SVG viewBox; unsupported transformed, masked or unsupported
 path sources fail closed. There is no automatic paginate/scale behavior.
 
@@ -47,22 +47,22 @@ annex Б original print and actual font metrics is **BLOCKED** for any claim of
 normative approval. Do not fill invented names or signatures.
 
 Content is placed into a conservative inset strip above the 55-mm title:
-\`x = frame.left + safe_gap ... frame.right - safe_gap\`, \`y =
-frame.top + safe_gap ... title.top - safe_gap\`. This intentionally wastes
+`x = frame.left + safe_gap ... frame.right - safe_gap`, `y =
+frame.top + safe_gap ... title.top - safe_gap`. This intentionally wastes
 some space on A3 to guarantee no stamp overlap. The gap is a project choice
 (default 2 mm), **not** a quoted ГОСТ spacing requirement. All source
-coords are translated by \`offset_um\` without changing the original geometry.
+coords are translated by `offset_um` without changing the original geometry.
 The same offset can be supplied for the diagnostic SVG so text and wires
 stay in exactly the same positions.
 
 ## Electronic document exceptions
 
-\`PageProfile(mode="electronic_layout")\` leaves the paper frame and title
+`PageProfile(mode="electronic_layout")` leaves the paper frame and title
 absent by default, **not** automatically emitting them for every electronic
 SVG. This implements the distinction in ГОСТ Р 2.104-2023 **§4.2**; the final
 organizational decision and contract-specific requisites remain external.
 
-\`PageProfile(mode="electronic_layout", electronic_title_block=True)\` includes
+`PageProfile(mode="electronic_layout", electronic_title_block=True)` includes
 the DRAFT first-sheet table but still omits the frame, consistent with the
 allowed omission in **§5.6** (using the same 20/5/5/5 information-placement
 margins). Omission of supplementary graphs and correct electronic requisite
@@ -70,13 +70,13 @@ placement remains an organizational and ГОСТ Р 2.058 policy decision.
 
 ## Visual artefacts and regression gates
 
-Run \`python -m examples.review_formatted_sheet --font-file /path/to/OpenGostTypeA.ttf
---output-dir output/formatted-sheet-review\` after installing the same
+Run `python -m examples.review_formatted_sheet --font-file /path/to/OpenGostTypeA.ttf
+--output-dir output/formatted-sheet-review` after installing the same
 externally licensed font used by the text measurer. This exports A4 portrait,
 A3 landscape and A3 portrait **clean + diagnostic** SVGs and a manifest
 recording page geometry, 6 refdes, 18 authored wire segments, 3 explicit
 junctions, net names and font SHA256. The specialized CI workflow produces
-matching PNGs and uploads \`draft-formatted-sheet-review\`.
+matching PNGs and uploads `draft-formatted-sheet-review`.
 
 Automated tests prove: physical mm page dimensions; 20/5 margins, 185×55 form;
 subdivision segments; clean/diagnostic parity; unchanged pin geometry,
