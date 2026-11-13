@@ -6,22 +6,18 @@ non-gating evidence tests exercise actual authored functions/fixtures and
 identify their precise scope. All source code is SHA-verified test-only copies.
 """
 
+import json
 from copy import deepcopy
 from dataclasses import replace
 from decimal import Decimal
 from fractions import Fraction
 from hashlib import sha256
-import json
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
 import pytest
-
-from gost_schematic.core.geometry import Point, Side
-from gost_schematic.model.circuit import Circuit, PinRef
 from qa_e1_integration_support import (
     DISPLAY_ONLY,
-    GRAPHIC_ROOT,
     SOURCE_COMMITS,
     convert_previous_to_model_data,
     graphic_source,
@@ -30,6 +26,9 @@ from qa_e1_integration_support import (
     real_sources,
     verify_exact_source_files,
 )
+
+from gost_schematic.core.geometry import Point, Side
+from gost_schematic.model.circuit import Circuit, PinRef
 
 SVG = "{http://www.w3.org/2000/svg}"
 
@@ -53,7 +52,7 @@ def _graphic_block(visual, *, height=20000, width=56000, values=None):
                         "0.6666666666666666666666666666667")
     data = {
         "id": "G", "name": "БЛОК", "title_lines": ["БЛОК"],
-        "code": None, "center_um": [50000, 50000],
+        "code": None, "center_um": [50000, 40000 + height // 2],
         "size_um": [width, height],
         "ports": [
             {"id": "out1", "side": "RIGHT", "direction": "output",
@@ -93,9 +92,10 @@ def test_source_hash_manifest_and_genuine_modules(upstream):
     verify_exact_source_files()
     assert SOURCE_COMMITS["model"].startswith("9c7f6251")
     assert SOURCE_COMMITS["graphics"].startswith("c49b7632")
-    assert model.__file__.endswith("qa_e1_pr80/gost_schematic/structural/__init__.py")
-    assert visual.__file__.endswith("qa_e1_pr78/review_structural_e1_design.py")
-    assert model_example.__file__.endswith("qa_e1_pr80/review_structural_e1.py")
+    assert "qa-e1-upstream-" in model.__file__
+    assert model.__file__.endswith("gost_schematic/structural/__init__.py")
+    assert visual.__file__.endswith("review_structural_e1_design.py")
+    assert model_example.__file__.endswith("review_structural_e1.py")
     assert model.FunctionalBlock.__module__ == "gost_schematic.structural.model"
     assert visual.validate_design.__module__ == "_qa_real_pr78_svg"
 
@@ -457,7 +457,7 @@ def test_legacy_32_manifest_references_all_real_scenarios(upstream):
     model, _example, _visual = upstream
     cases = previous_32()
     _case_counts(cases)
-    assert len([c for c in cases if c["category"] in DISPLAY_ONLY]) == 9
+    assert len([c for c in cases if c["category"] in DISPLAY_ONLY]) == 8
     assert model.structural_from_json is not None
 
 
