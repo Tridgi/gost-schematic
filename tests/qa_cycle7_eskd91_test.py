@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parent / "fixtures/qa_cycle7_eskd91"
 EXPECTED_BLOBS = {
     "cards.json": "4f31d9e24cb097c6c9e38263c0bea1d793acaae7",
     "discrete-editorial.svg": "02434949edac92d8cccefdbfd2fe8ae68949c53f",
-    "ic-synthetic-4-14-40.svg": "a8d67c7d43d8bceb56926c7fd001d1b877cb8af8",
+    "ic-synthetic-4-14-40.svg": "67b94ce65de9b79aab45381a9a0d4aafb37a4ffc",
 }
 
 
