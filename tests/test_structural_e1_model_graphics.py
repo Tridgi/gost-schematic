@@ -266,7 +266,7 @@ def test_nonexistent_waypoint_link_and_inward_path_rejected():
     with pytest.raises(E1GraphicError, match="Unknown link route"):
         render_structural_model(diagram, font(), via_by_link={"NONEXISTENT": ((1, 2),)})
     with pytest.raises(E1GraphicError, match="does not exit source"):
-        render_structural_model(diagram, font(), via_by_link={"L01": ((18000, 6000),)})
+        render_structural_model(diagram, font(), via_by_link={"L1": ((90000, 40000),)})
 
 
 def test_both_input_and_output_same_side_keep_distinct_roles_and_spacing():
