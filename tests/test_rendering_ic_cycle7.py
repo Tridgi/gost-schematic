@@ -4,7 +4,8 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
-from gost_schematic.core.geometry import Box, Point, Side
+from gost_schematic.core.geometry import SIDE_VECTORS, Box, Point, Side
+from gost_schematic.core.units import format_mm
 from gost_schematic.core.transforms import Transform
 from gost_schematic.model.annotations import MeasuredText, TextStyle
 from gost_schematic.rendering.ic_rectangular import (
@@ -66,7 +67,12 @@ def specimen(
     for p in pins:
         x = 0 if p.side == Side.LEFT else plan.width_um
         y = (p.row * plan.row_pitch_um + plan.row_pitch_um // 2)
-        world = transform.apply(Point(x, y)) + origin
+        frame = transform.apply(Point(x, y)) + origin
+        outward = SIDE_VECTORS[transform.side(p.side)]
+        world = Point(
+            frame.x + outward.x * plan.lead_length_um,
+            frame.y + outward.y * plan.lead_length_um,
+        )
         real.append(replace(p, anchor=world))
     return IcResolvedUnit(
         "DD1", body, tuple(real), content, origin, transform,
@@ -84,10 +90,9 @@ def test_five_stress_counts_satisfy_grid_and_keep_all_authoritative_pins(count):
     assert len({x.get("data-pin-number") for x in links}) == count
     assert built.pin_anchors == tuple((p.pin_id, p.anchor) for p in source.pins)
     assert all(
-        (x.get("x1"), x.get("y1")) == (
-            str(pin.anchor.x / 1000).rstrip("0").rstrip("."),
-            str(pin.anchor.y / 1000).rstrip("0").rstrip("."),
-        ) or x.get("data-real-anchor") == "true"
+        (x.get("x2"), x.get("y2")) == (
+            format_mm(pin.anchor.x), format_mm(pin.anchor.y),
+        ) and x.get("data-real-anchor") == "true"
         for x, pin in zip(links, source.pins, strict=True)
     )
     assert root.get("data-pin-anchor-authority") == "external-resolved-only"
