@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "id": "transistor.mosfet_n_enh",
+  "reference_prefix": "VT",
+  "symbol_id": "transistor.mosfet_n_enh",
+  "nominal_kind": null,
+  "voltage_orientation_rule": "none",
+  "pins": [
+    {
+      "number": "1",
+      "name": "G",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    },
+    {
+      "number": "2",
+      "name": "D",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    },
+    {
+      "number": "3",
+      "name": "S",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    }
+  ]
+}
