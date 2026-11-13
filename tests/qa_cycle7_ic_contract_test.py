@@ -29,7 +29,7 @@ def _pin(mod, number, *, side=Side.LEFT, row=1, at=None):
 
 
 def test_real_owner_ic_source_is_not_integrated_code_mock(painter):
-    assert BLOBS["qa_cycle7_ic_owner88/ic_rectangular.txt"].startswith("0aeaf02e")
+    assert BLOBS["qa_cycle7_ic_owner88/ic_rectangular.txt"].startswith("a2077cd2")
     assert painter.__file__.endswith(
         "tests/fixtures/qa_cycle7_ic_owner88/ic_rectangular.txt"
     )
