@@ -140,10 +140,12 @@ def test_sheet_local_two_fragments_share_real_net_without_cross_sheet_address():
     project = specimen()
     second = replace(
         project.endpoints[1], sheet_id="S1", sheet_number=1,
+        address="1/B7",
     )
+    first = replace(project.endpoints[0], target_address="1/B7")
     pair = replace(project.pairs[0], scope=ContinuationScope.SHEET_LOCAL)
     local = replace(
-        project, endpoints=(project.endpoints[0], second), pairs=(pair,),
+        project, endpoints=(first, second), pairs=(pair,),
     )
     assert codes(local) == set()
     assert local.circuit is project.circuit
