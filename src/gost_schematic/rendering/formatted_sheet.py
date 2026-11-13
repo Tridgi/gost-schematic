@@ -12,11 +12,11 @@ from gost_schematic.core.geometry import Box
 from gost_schematic.core.units import format_mm, mm
 from gost_schematic.engines.annotation.metrics import TextMeasurer
 from gost_schematic.model.annotations import TextStyle
+from gost_schematic.rendering.external_wire_sheet import ExternalWireSheet
 from gost_schematic.rendering.form_one import (
     draw_form_one_geometry,
     write_form_one_fields,
 )
-from gost_schematic.rendering.external_wire_sheet import ExternalWireSheet
 
 _URI = "http://www.w3.org/2000/svg"
 _SVG = "{" + _URI + "}"
