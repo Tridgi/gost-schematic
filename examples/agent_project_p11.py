@@ -19,46 +19,10 @@ from dataclasses import replace
 from pathlib import Path
 
 from gost_schematic.agent_project import CatalogResolver, ProjectService
+from gost_schematic.agent_project.evidence import model_manifest
 from gost_schematic.core.geometry import Point
 from gost_schematic.engines.routing.two_pin_sheet import route_circuit_two_pins
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
-
-
-def model_manifest(project, catalog: CatalogResolver) -> dict:
-    """Compare real physical data, not raster ink or a custom fake netlist."""
-    parts, symbols = catalog.verify(list(project.catalog_lock))
-    return {
-        "project_revision": project.revision,
-        "components": [{
-            "reference": comp.reference,
-            "part_id": comp.part_id,
-            "origin_um": [comp.origin.x, comp.origin.y],
-            "transform": [comp.transform.rotation, comp.transform.mirror_x],
-            "physical_pins": [{
-                "number": pin.number,
-                "name": pin.name,
-                "type": pin.electrical_type.value,
-                "polarity": pin.polarity.value,
-                "function": pin.function.value,
-                "point_um": [
-                    comp.pin_positions(symbols[parts[comp.part_id].symbol_id])[pin.number].x,
-                    comp.pin_positions(symbols[parts[comp.part_id].symbol_id])[pin.number].y,
-                ],
-            } for pin in parts[comp.part_id].pins],
-        } for comp in project.circuit.components],
-        "nets": [{
-            "name": net.name,
-            "members": [[pin.reference, pin.number] for pin in net.members],
-        } for net in project.circuit.nets],
-        "segments": [{
-            "net": wire.net_name,
-            "start_um": [wire.start.x, wire.start.y],
-            "end_um": [wire.end.x, wire.end.y],
-            "stroke_um": project.stroke_widths_um[index],
-        } for index, wire in enumerate(project.graph.segments)],
-        "junctions_um": [[p.x, p.y] for p in project.graph.junctions],
-        "catalog_lock": project.to_record()["catalog_lock"],
-    }
 
 
 def _keepout(component: ComponentInstance, catalog: CatalogResolver):
