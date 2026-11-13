@@ -500,7 +500,7 @@ def semantic_projection(data: dict) -> dict:
         "id": link["id"],
         "source": dict(link["source"]), "target": dict(link["target"]),
     } for link in data["links"]]
-    return {"schema_version": 1, "blocks": blocks,
+    return {"schema_version": 1, "diagram_type": "E1", "blocks": blocks,
             "ports": ports, "links": links}
 
 

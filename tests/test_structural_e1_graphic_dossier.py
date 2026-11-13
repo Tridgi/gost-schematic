@@ -223,7 +223,7 @@ def test_diagram_link_crossing_remains_declared_only_not_a_junction():
 
 def test_proposed_elektrik_semantic_projection_has_exact_rational_ports_and_no_view_data():
     graph = semantic_projection(specimen())
-    assert set(graph) == {"schema_version", "blocks", "ports", "links"}
+    assert set(graph) == {"schema_version", "diagram_type", "blocks", "ports", "links"}
     assert graph["schema_version"] == 1
     assert graph["blocks"][0] == {
         "id": "B1", "name": "ДАТЧИК СИГНАЛА",
