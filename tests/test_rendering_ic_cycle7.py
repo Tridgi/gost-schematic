@@ -179,9 +179,8 @@ def test_page_overflow_and_foreign_obstacle_fail_closed():
 
 
 def test_side_field_row_conflict_is_never_silently_overwritten():
-    unit, _ = specimen(8, columns=("LEFT-FIELD", "DIFFERENT"))
     with pytest.raises(ValueError, match="IC_TEXT_OVERFLOW: conflict left row"):
-        render_resolved_ic(unit, STYLE, FixedInk())
+        specimen(8, columns=("LEFT-FIELD", "DIFFERENT"))
 
 
 def test_empty_additional_fields_are_optional_and_no_fake_header():
