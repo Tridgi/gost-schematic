@@ -6,11 +6,11 @@ production parse_symbol/parse_part/renderers/validators execute them.
 No git/network access during pytest; no owner production file is modified.
 """
 
+import json
+import sys
 from hashlib import sha1
 from importlib import util
-import json
 from pathlib import Path
-import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 SNAPSHOTS = Path(__file__).resolve().parent / "fixtures"
