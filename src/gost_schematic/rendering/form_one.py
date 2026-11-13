@@ -18,7 +18,7 @@ HEIGHT_UM = 55000
 # Project-level title field identifiers; field numbers follow annex Б.1.
 # The rectangles are intentionally separate from the drawing of the frame.
 CELLS = {
-    "designation": Box(65000, 0, 175000, 15000),  # (2)
+    "designation": Box(65000, 8000, 175000, 15000),  # (2), below (30)
     "name": Box(65000, 15000, 135000, 40000),  # (1)
     "material": Box(65000, 40000, 135000, 50000),  # (3)
     "letter": Box(135000, 20000, 140000, 35000),  # (4) first 5mm cell
@@ -29,23 +29,48 @@ CELLS = {
     "sheet": Box(135000, 40000, 155000, 50000),  # (7)
     "sheets": Box(155000, 40000, 185000, 50000),  # (8)
     "organization": Box(135000, 50000, 185000, 55000),  # (9)
-    "developed": Box(0, 30000, 17000, 35000),  # role (10)
-    "checked": Box(0, 35000, 17000, 40000),
-    "tech_control": Box(0, 40000, 17000, 45000),
-    "norm_control": Box(0, 45000, 17000, 50000),
-    "approved": Box(0, 50000, 17000, 55000),
+    "version": Box(175000, 5000, 185000, 15000),  # (35) below Вер.
+    "developed_surname": Box(17000, 30000, 40000, 35000),  # (11)
+    "developed_signature": Box(40000, 30000, 55000, 35000),  # (12)
+    "developed_date": Box(55000, 30000, 65000, 35000),  # (13)
+    "checked_surname": Box(17000, 35000, 40000, 40000),  # (11)
+    "checked_signature": Box(40000, 35000, 55000, 40000),  # (12)
+    "checked_date": Box(55000, 35000, 65000, 40000),  # (13)
+    "tech_control_surname": Box(17000, 40000, 40000, 45000),  # (11)
+    "tech_control_signature": Box(40000, 40000, 55000, 45000),  # (12)
+    "tech_control_date": Box(55000, 40000, 65000, 45000),  # (13)
+    "norm_control_surname": Box(17000, 45000, 40000, 50000),  # (11)
+    "norm_control_signature": Box(40000, 45000, 55000, 50000),  # (12)
+    "norm_control_date": Box(55000, 45000, 65000, 50000),  # (13)
+    "approved_surname": Box(17000, 50000, 40000, 55000),  # (11)
+    "approved_signature": Box(40000, 50000, 55000, 55000),  # (12)
+    "approved_date": Box(55000, 50000, 65000, 55000),  # (13)
 }
 # Only confirmed printed headings in the original annex, no document values.
 # Small role fields have 17 mm width, NOT the 7 mm "Изм." column.
+# Role (10) captions are fixed structural fields; the caller cannot replace them.
+# Individual identity fields (11)/(12)/(13) are listed in CELLS above.
 CAPTIONS = {
-    "developed": "Разраб.",
-    "checked": "Пров.",
-    "tech_control": "Т. контр.",
-    "norm_control": "Н. контр.",
-    "approved": "Утв.",
+    "role_developed": "Разраб.",
+    "role_checked": "Пров.",
+    "role_tech_control": "Т. контр.",
+    "role_norm_control": "Н. контр.",
+    "role_approved": "Утв.",
 }
+ROLE_CAPTION_CELLS = {
+    "role_developed": Box(0, 30000, 17000, 35000),
+    "role_checked": Box(0, 35000, 17000, 40000),
+    "role_tech_control": Box(0, 40000, 17000, 45000),
+    "role_norm_control": Box(0, 45000, 17000, 50000),
+    "role_approved": Box(0, 50000, 17000, 55000),
+}
+ROLE_CAPTION_INSET_UM = 800  # editorial alignment policy, NOT a GOST mandate
 # Revision and auxiliary table headings are separate cells above the role rows.
 CAPTION_CELLS = {
+    "zone_caption": Box(0, 20000, 17000, 25000),  # (33)
+    "version_caption": Box(175000, 0, 185000, 5000),  # (35)
+    "copied_caption": Box(65000, 55000, 135000, 60000),  # (31) lower sheet margin
+    "format_caption": Box(135000, 55000, 185000, 60000),  # (32) lower sheet margin
     "rev_change": Box(0, 15000, 7000, 20000),
     "rev_sheet": Box(7000, 15000, 17000, 20000),
     "rev_document": Box(17000, 15000, 40000, 20000),
@@ -58,6 +83,10 @@ CAPTION_CELLS = {
     "sheets_caption": Box(155000, 35000, 185000, 40000),
 }
 CAPTION_TEXT = {
+    "zone_caption": "Зона",
+    "version_caption": "Вер.",
+    "copied_caption": "Копировал",
+    "format_caption": "Формат",
     "rev_change": "Изм.",
     "rev_sheet": "Лист",
     "rev_document": "№ докум.",
@@ -76,14 +105,18 @@ def _abs(local: Box, bounds: Box) -> Box:
 
 
 def _line(parent: ET.Element, a: int, b: int, c: int, d: int, section: str,
-          bounds: Box) -> None:
-    ET.SubElement(parent, _SVG + "line", {
+          bounds: Box, *, dashed: bool = False) -> None:
+    attrs = {
         "x1": format_mm(bounds.min_x + a),
         "y1": format_mm(bounds.min_y + b),
         "x2": format_mm(bounds.min_x + c),
         "y2": format_mm(bounds.min_y + d),
         "data-grid-section": section,
-    })
+    }
+    if dashed:
+        attrs["stroke-dasharray"] = "3 2"
+        attrs["data-service-graph"] = "30"
+    ET.SubElement(parent, _SVG + "line", attrs)
 
 
 def draw_form_one_geometry(parent: ET.Element, bounds: Box) -> None:
@@ -108,13 +141,21 @@ def draw_form_one_geometry(parent: ET.Element, bounds: Box) -> None:
     # 7+10+23+15+10 + 110+10 = 185 mm, total height 55 mm.
     _line(group, 65000, 0, 65000, 55000, "revision-columns", bounds)
     for x, y0, y1 in (
-        (7000, 15000, 30000), (17000, 15000, 55000),
+        (7000, 15000, 20000), (7000, 25000, 30000),
+        (17000, 15000, 55000),
         (40000, 15000, 55000), (55000, 15000, 55000),
     ):
         _line(group, x, y0, x, y1, "revision-columns", bounds)
     for y in (15000, 20000, 25000, 30000, 35000, 40000, 45000, 50000):
         _line(group, 0, y, 65000, y, "revision-rows", bounds)
 
+    # (30) is a distinct dashed auxiliary band; its exact organizational
+    # applicability and external graph geometry remain DRAFT pending 1:1 review.
+    _line(group, 65000, 8000, 175000, 8000, "auxiliary-30", bounds,
+          dashed=True)
+    _line(group, 175000, 5000, 185000, 5000, "auxiliary-35", bounds)
+    # Separate (33) zone caption and (35) revision/service version region.
+    _line(group, 0, 25000, 17000, 25000, "auxiliary-33", bounds)
     _line(group, 175000, 0, 175000, 15000, "title-columns", bounds)
     _line(group, 65000, 15000, 185000, 15000, "title-rows", bounds)
     # Four-column metadata upper-right of the main name field.
@@ -169,6 +210,10 @@ def write_form_one_fields(
             f"TITLE_FONT_CAP_HEIGHT_MISMATCH: expected {cap_height_um} um, "
             f"measured {measured_h} um"
         )
+    reserved = {"developed", "checked", "tech_control", "norm_control", "approved"}
+    if any(key in reserved for key in fields):
+        raise ValueError("TITLE_ROLE_RESERVED: graph (10) is a fixed caption; "
+                         "surnames belong in graph (11)")
     if any(not isinstance(k, str) or k not in CELLS for k in fields):
         raise ValueError("Unknown form-1 field identifier")
     if any(not isinstance(v, str) or "\n" in v or "\r" in v for v in fields.values()):
@@ -177,9 +222,9 @@ def write_form_one_fields(
     positions = {k: CELLS[k] for k in selections}
     if captions:
         # Structural official captions, not application-specific requisites.
-        selections.update({k: v for k, v in CAPTIONS.items() if k not in selections})
+        selections.update(CAPTIONS)
         selections.update(CAPTION_TEXT)
-        positions.update({k: CELLS[k] for k in CAPTIONS})
+        positions.update(ROLE_CAPTION_CELLS)
         positions.update(CAPTION_CELLS)
     if not selections:
         return ()
@@ -194,8 +239,11 @@ def write_form_one_fields(
         cell = _abs(positions[key], bounds)
         # Font metrics are authoritative, not SVG CSS text-anchor heuristics.
         metrics = measurer.measure(value, style)
-        tx = (cell.min_x + cell.max_x
-              - metrics.ink_box.min_x - metrics.ink_box.max_x) // 2
+        if key in ROLE_CAPTION_CELLS:
+            tx = cell.min_x + ROLE_CAPTION_INSET_UM - metrics.ink_box.min_x
+        else:
+            tx = (cell.min_x + cell.max_x
+                  - metrics.ink_box.min_x - metrics.ink_box.max_x) // 2
         ty = (cell.min_y + cell.max_y
               - metrics.ink_box.min_y - metrics.ink_box.max_y) // 2
         ink = metrics.ink_box.translated(Point(tx, ty))
@@ -211,6 +259,16 @@ def write_form_one_fields(
             "font-style": style.font_style,
             "data-cap-height-mm": format_mm(cap_height_um),
             "data-graph": key,
+            "data-graph-number": (
+                "10" if key in ROLE_CAPTION_CELLS
+                else "11" if key.endswith("_surname")
+                else "12" if key.endswith("_signature")
+                else "13" if key.endswith("_date")
+                else "30" if key == "designation" else ""
+            ),
+            "data-ink-align": (
+                "left" if key in ROLE_CAPTION_CELLS else "center"
+            ),
             "data-cell-bounds-um": ",".join(
                 str(n) for n in (cell.min_x, cell.min_y, cell.max_x, cell.max_y)
             ),
