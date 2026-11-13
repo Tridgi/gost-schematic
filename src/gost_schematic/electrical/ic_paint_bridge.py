@@ -146,9 +146,17 @@ def propose_ic_paint_binding(
             for row in layout_rows
         ):
             raise ValueError("IC_FIELD_SIDE_MISMATCH")
-        layout_spec = replace(spec, rows=layout_rows)
-        prelim = _preliminary_pins(layout_spec, placement, record.device)
-        content = _content(layout_spec, record.device)
+        # Deliberately DO NOT instantiate an intermediate IcSymbolSpec:
+        # its previous anchors belong to the old sides, so they must fail
+        # validation until fresh exact endpoints have been calculated.
+        prelim = tuple(
+            replace(pin, side=row.side)
+            for pin, row in zip(
+                _preliminary_pins(spec, placement, record.device),
+                layout_rows, strict=True,
+            )
+        )
+        content = _content(spec, record.device)
         dimensions = propose_ic_dimensions(content, prelim, style, measurer, policy)
         # PAINT returns the minimum measured geometry. The original rectangle
         # is not silently edited. Instead produce a freshly versioned record.
@@ -158,7 +166,7 @@ def propose_ic_paint_binding(
             spec.body.min_y + dimensions.height_um,
         )
         new_rows = []
-        for row in layout_spec.rows:
+        for row in layout_rows:
             if row.visual_row >= dimensions.row_count:
                 raise ValueError("IC_PIN_ROW_OVERFLOW")
             boundary = Point(
@@ -173,7 +181,7 @@ def propose_ic_paint_binding(
             )
             new_rows.append(replace(row, anchor=anchor))
         new_spec = replace(
-            layout_spec, body=body, rows=tuple(new_rows),
+            spec, body=body, rows=tuple(new_rows),
             revision=spec.revision + 1,
         )
         new_specs.append(new_spec)
