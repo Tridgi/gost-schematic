@@ -10,7 +10,7 @@
 | ELEKTRIK #87, ИС DA/DD | ветка `parallel/electrical-ic-contract-cycle7`, **`4e6c1235becc4d351760660180ec31fdedc06e40`** | Реальный `IcDeviceDefinition` + `IcSymbolSpec` + `ic_serde`; только synthetic 2/4/8/14/40/64, нет vendor pinout |
 | PAINT #88 | ветка `parallel/rendering-ic-cycle7` **`f8f9dc4c1fd8266b807dea9d6f268d971bec8d7a`** | `src/.../ic_rectangular.py` blob **`a2077cd21bcd5f497ac3304bf7f9d0d76d6b32bd`**; точная копия `.txt` в тесте с выполнением функций оригинала |
 | YGO 2 #89 | ветка `parallel/catalog-electronic-cycle7` **`ddb7881c52055fe44120a36015a469a847c70c16`** | неизменённые первые 6 реальных catalog JSON blobs, физические паспорта и символы |
-| ELEKTRIK #90, продолжения | ветка `parallel/electrical-netrefs-cycle7`, **`cd004f626450367082a44784cac7f9563dbe9eef`** | Реальный `NetContinuationProject`, `validate_net_continuations`, строгий `netrefs_serde`, 2 реальных фрагмента CTRL; совместные 1:1 схемные шрифты ещё BLOCKED |
+| ELEKTRIK #90, продолжения | ветка `parallel/electrical-netrefs-cycle7`, **`0738059d8d4c0f5b8854a73018501fb16543434b`** | Реальный `NetContinuationProject`, `validate_net_continuations`, строгий `netrefs_serde`, 2 реальных фрагмента CTRL; совместные 1:1 схемные шрифты ещё BLOCKED |
 | ESKD #91 | ветка `parallel/standards-electronic-cycle7` **`9aa2d98a22a8dc8bac0394e744d205dcc336ecff`** | `docs/standards/issue-91-cycle7-electronics-cards.json` blob **`4f31d9e24cb097c6c9e38263c0bea1d793acaae7`**; 2 исходных сравнительных SVG также pinned |
 
 Снимки новых исходников проверяются реальной формулой Git blob SHA1 и сохраняются под `tests/fixtures/qa_cycle7_*`; оригинальный Python #88 исполняется через `SourceFileLoader` **как настоящий код без заменённых функций, без моков, без изменений `src/`**. Все источники reproducible offline в `pytest`. `tests/qa_cycle7_support.py` — только загрузчик и контроль SHA. Для ESKD тест строго подтверждает только корректность *описания источника/статуса*, не графическую подпись по ГОСТ.
@@ -66,7 +66,7 @@ ESKD #91 подтвердил нормативные **кандидаты**, н�
 
 ## 7. Последующий независимый реальный аудит PR #97 / PR #98
 
-После первоначальных блокировок владельцы подготовили **реальные Draft PR #97** (`4e6c1235becc4d351760660180ec31fdedc06e40`) и **#98** (`cd004f626450367082a44784cac7f9563dbe9eef`). QA не использует устаревшее предположение об отсутствии классов. `tests/qa_cycle7_electrical_sources.py` фиксирует точные Git blob SHA, временно загружает владельческие `ic.py`, `ic_serde.py`, `netrefs.py`, `netrefs_serde.py` и **настоящие примеры владельцев**, без подмены production-моделей. 
+После первоначальных блокировок владельцы подготовили **реальные Draft PR #97** (`4e6c1235becc4d351760660180ec31fdedc06e40`) и **#98** (`0738059d8d4c0f5b8854a73018501fb16543434b`). QA не использует устаревшее предположение об отсутствии классов. `tests/qa_cycle7_electrical_sources.py` фиксирует точные Git blob SHA, временно загружает владельческие `ic.py`, `ic_serde.py`, `netrefs.py`, `netrefs_serde.py` и **настоящие примеры владельцев**, без подмены production-моделей. 
 
 **PASS на собственном реальном owner-коде:** 12 synthetic analog/digital корпусов (2/4/8/14/40/64) с настоящими типизированными `IcPhysicalPin`, отдельными `IcUnit`, единственным физическим `DA1`/`DD1`, `PinRef`, уникальными координатами и lossless JSON. Отрицательные тесты: повтор физического номера, исчезновение non-NC pin, неправильный view unit, физический `NC` под Net → `IC_NC_CONNECTED`, несоответствие внешнего якоря; 8 поворотов/отражений сохраняют идентичности. **Ограничение:** примеры явно `TEST_IC_*`, **не** datasheet/реальный корпус.
 
@@ -77,3 +77,9 @@ ESKD #91 подтвердил нормативные **кандидаты**, н�
 **ESKD #91:** первоначальный source comparison SVG имел некорректный XML; исправлен владельцем в HEAD `4445b9d916217756d2586e4257a2b59ad72f9103` (новый SVG blob `67b94ce65de9b79aab45381a9a0d4aafb37a4ffc`). QA проверяет исправленное изображение XML-парсером. Нормативные `107 source-rule PASS` / `107 approval BLOCKED` не изменены.
 
 **Решение на этом SHA:** **NO-GO** интеграции полного E3 и **NO-GO** общего двухлистового SVG до исправления #98. Это точный, намеренно красный gate с подтверждёнными PASS/FAIL/BLOCKED, а не тест, отключённый ради зеленого CI.
+
+## 8. Повторный аудит исправления SVG owner #98
+
+**Ранее FAIL (исходный HEAD `cd004f626...`):** в `sheet_svg` возникал повтор `xmlns` при глобальном `ET.register_namespace`. Это было подтверждено независимым реальным `pytest` без xfail на 3.12 и 3.13.
+
+**НОВЫЙ точный HEAD владельца `0738059d8d4c0f5b8854a73018501fb16543434b`** устранил повтор `xmlns`, вызывает `ET.register_namespace("", SVG_NS)`, задаёт namespaced SVG root **без** вручную дублированного `xmlns`. QA перепривязала fixture к точному Git blob **`21e76f0ab779cbc13eeeffdd1e0273fa38869e8f`** и сохранила **тот же strict тест** с предварительной регистрацией namespace, не отключая его. Это полноценная регрессия на предыдущий дефект; новый статус PASS должен подтверждаться **последним полным CI именно на перепривязанном QA HEAD**. Не интерпретировать старую красную CI #43525050784 как дефект нового #98.
