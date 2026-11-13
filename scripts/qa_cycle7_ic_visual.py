@@ -57,16 +57,29 @@ def _fixture(mod, n, label, content, transform=None):
     assert height % policy.module_um == 0
     body = Box(0, 0, width, height)
     origin = Point(30000, 33000)
-    resolved = tuple(replace(
-        pin,
-        anchor=trans.apply(
-            Point(0 if pin.side == Side.LEFT else width,
-                  pin.row * suggestion.row_pitch_um
-                  + suggestion.row_pitch_um // 2)
-        ) + origin,
-    ) for pin in pins0)
+    # PR88 1b09e59 contract: anchor is EXTERNAL copper connection end.
+    # Border point and lead direction are separately derived only in this
+    # TEST fixture. Actual owner render checks exact end points against them.
+    resolved = []
+    for pin in pins0:
+        rim = trans.apply(Point(
+            0 if pin.side == Side.LEFT else width,
+            pin.row * suggestion.row_pitch_um
+            + suggestion.row_pitch_um // 2,
+        )) + origin
+        outward = trans.side(pin.side)
+        from gost_schematic.core.geometry import SIDE_VECTORS
+
+        offset = SIDE_VECTORS[outward]
+        resolved.append(replace(
+            pin,
+            anchor=Point(
+                rim.x + offset.x * suggestion.lead_length_um,
+                rim.y + offset.y * suggestion.lead_length_um,
+            ),
+        ))
     return mod.IcResolvedUnit(
-        reference=label, body=body, pins=resolved,
+        reference=label, body=body, pins=tuple(resolved),
         content=field, origin=origin, transform=trans,
     ), suggestion
 
@@ -146,8 +159,8 @@ def run(font_file, output):
             ref = lead.attrib["data-pin-id"]
             owner = next(p for p in unit.pins if p.pin_id == ref)
             assert [
-                round(float(lead.attrib["x1"]) * 1000),
-                round(float(lead.attrib["y1"]) * 1000),
+                round(float(lead.attrib["x2"]) * 1000),
+                round(float(lead.attrib["y2"]) * 1000),
             ] == [owner.anchor.x, owner.anchor.y]
         # Independent real SVG glyph metadata vs owner measured ink
         txt = [x for x in drawn.ink if x.kind in {
