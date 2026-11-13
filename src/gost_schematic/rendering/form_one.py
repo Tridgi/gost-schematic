@@ -220,11 +220,14 @@ def write_form_one_fields(
         raise ValueError("Form-1 fields must be single-line strings")
     selections = {k: v for k, v in fields.items() if v}
     positions = {k: CELLS[k] for k in selections}
-    if captions:
-        # Structural official captions, not application-specific requisites.
+    role_person_keys = ("_surname", "_signature", "_date")
+    if captions or any(key.endswith(role_person_keys) for key in selections):
+        # Fixed (10) role labels accompany (11)/(12)/(13) personal values,
+        # even when the caller omitted the optional remaining headings.
         selections.update(CAPTIONS)
-        selections.update(CAPTION_TEXT)
         positions.update(ROLE_CAPTION_CELLS)
+    if captions:
+        selections.update(CAPTION_TEXT)
         positions.update(CAPTION_CELLS)
     if not selections:
         return ()
@@ -264,7 +267,12 @@ def write_form_one_fields(
                 else "11" if key.endswith("_surname")
                 else "12" if key.endswith("_signature")
                 else "13" if key.endswith("_date")
-                else "30" if key == "designation" else ""
+                else "2" if key == "designation"
+                else "35" if key in ("version", "version_caption")
+                else "33" if key == "zone_caption"
+                else "31" if key == "copied_caption"
+                else "32" if key == "format_caption"
+                else ""
             ),
             "data-ink-align": (
                 "left" if key in ROLE_CAPTION_CELLS else "center"
