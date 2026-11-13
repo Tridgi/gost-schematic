@@ -56,8 +56,8 @@ def test_real_source_symbol_and_physical_contract_are_separate_and_draft(key):
     assert tuple(pin.number for pin in part.pins) == EXPECTED_NUMBERS[key]
     assert tuple(pin.name for pin in part.pins) == EXPECTED_NAMES[key]
     assert tuple(pin.label for pin in symbol.pins) == EXPECTED_NAMES[key]
-    assert len(set(pin.at for pin in symbol.pins)) == len(symbol.pins)
-    assert len(set(pin.number for pin in part.pins)) == len(part.pins)
+    assert len({pin.at for pin in symbol.pins}) == len(symbol.pins)
+    assert len({pin.number for pin in part.pins}) == len(part.pins)
     assert not [d for d in validate_symbol(symbol) if d.severity.value == "error"]
     assert all(pin.electrical_type.value == "passive" for pin in part.pins)
     assert any("EDITORIAL_ASSUMPTION" in s for s in symbol.standard_refs)
@@ -72,9 +72,9 @@ def test_no_shorts_in_genuine_authored_internal_conductor_graph(key):
     assert r.valid, [(x.code, x.message) for x in r.diagnostics]
     assert r.pin_islands == tuple((x,) for x in EXPECTED_NUMBERS[key])
     assert r.explicit_junctions == 0
-    assert set(pin.number for pin in part.pins) == set(
+    assert {pin.number for pin in part.pins} == {
         a[0] for a in r.pin_islands
-    )
+    }
     # Nonconductive glyph lines do not create direct short-circuits.
     assert len(symbol.conductor_topology.conductor_indices) < len(symbol.graphics)
 
@@ -174,8 +174,8 @@ def test_real_svg_ports_and_physical_strokes_match_actual_parsed_owner_source(ke
     assert not clean.findall(f".//{SVG}image")
     markers = review.findall(f".//{SVG}circle")
     coords = {
-        (int(round(float(m.attrib["cx"]) * 1000)),
-         int(round(float(m.attrib["cy"]) * 1000)))
+        (round(float(m.attrib["cx"]) * 1000),
+         round(float(m.attrib["cy"]) * 1000))
         for m in markers
     }
     assert coords == {(p.at.x, p.at.y) for p in symbol.pins}
