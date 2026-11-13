@@ -232,6 +232,34 @@ def test_source_viewbox_cannot_hide_lines_or_silently_resize_document():
         )
 
 
+def test_stroke_at_viewport_edge_is_rejected_even_if_line_axis_is_inside():
+    source, *_ = specimen()
+    element = ET.fromstring(source.svg)
+    x, _, width, _ = (mm(value) for value in element.get("viewBox").split())
+    line = element.find(f".//{SVG}line[@data-layer='wires']")
+    assert line is not None
+    line.set("x2", format_mm(x + width))
+    # The centreline touches the input viewBox edge, but 0.3-mm ink exceeds it.
+    with pytest.raises(ValueError, match="viewport excludes"):
+        compose_formatted_sheet(
+            replace(source, svg=ET.tostring(element, encoding="unicode")),
+            PageProfile(),
+        )
+
+
+def test_missing_stroke_width_cannot_be_misclassified_as_clipping_safe():
+    source, *_ = specimen()
+    element = ET.fromstring(source.svg)
+    line = element.find(f".//{SVG}line[@data-layer='wires']")
+    assert line is not None
+    line.attrib.pop("stroke-width")
+    with pytest.raises(ValueError, match="stroke width not specified"):
+        compose_formatted_sheet(
+            replace(source, svg=ET.tostring(element, encoding="unicode")),
+            PageProfile(),
+        )
+
+
 @pytest.mark.parametrize("kind", ("clipPath", "foreignObject", "script"))
 def test_injected_clip_or_unsupported_geometry_is_rejected(kind):
     source, *_ = specimen()
