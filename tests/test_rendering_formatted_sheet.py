@@ -84,9 +84,8 @@ def test_paper_dimensions_margins_form_one_and_no_overlap(
     assert {el.get("data-grid-section") for el in svg.findall(
         f".//{SVG}g[@data-layer='title-block-grid']/{SVG}line"
     )} == {"revision-columns", "revision-rows", "title-rows", "title-columns"}
-    assert {el.get("data-graph") for el in svg.findall(
-        f".//{SVG}g[@data-layer='title-block-headings']/{SVG}text"
-    )} >= {"1", "2", "3", "4", "5", "6", "7", "8", "14", "17", "18", "31", "32"}
+    # Default form is a real empty grid, never fabricated named/signature data.
+    assert not svg.findall(f".//{SVG}g[@data-layer='title-block-fields']/{SVG}text")
     assert (result.placed_viewport_um.min_x >= profile.content_zone_um.min_x)
     assert (result.placed_viewport_um.max_x <= profile.content_zone_um.max_x)
     assert (result.placed_viewport_um.max_y <= profile.content_zone_um.max_y)
@@ -95,19 +94,87 @@ def test_paper_dimensions_margins_form_one_and_no_overlap(
     assert not svg.findall(f".//{SVG}image")
 
 
-def test_narrow_form_one_role_headings_use_smaller_unembedded_preview_type():
+def test_title_field_geometry_and_content_are_independent():
     source, *_ = specimen()
-    formatted = root(compose_formatted_sheet(source, PageProfile()))
-    title = PageProfile().title_um
-    roles = formatted.findall(
-        f".//{SVG}g[@data-layer='title-block-headings']/{SVG}text"
-    )
-    named = {element.text: element for element in roles}
-    for label in ("Разраб.", "Пров.", "Т. контр.", "Н. контр.", "Утв."):
-        entry = named[label]
-        assert entry.get("font-size") == "1.6"
-        assert title.min_x < mm(entry.get("x")) < title.min_x + 7000
-        assert entry.get("font-family") == "OpenGost Type A"
+    plain = root(compose_formatted_sheet(source, PageProfile()))
+    filled = root(compose_formatted_sheet(
+        source, PageProfile(),
+        title_values={"designation": "Э3", "name": "Схема"},
+        title_text_style=STYLE, title_measurer=FixedInk(),
+    ))
+    assert ET.tostring(plain.find(
+        f".//{SVG}g[@data-layer='title-block-grid']"
+    )) == ET.tostring(filled.find(
+        f".//{SVG}g[@data-layer='title-block-grid']"
+    ))
+    fields = filled.findall(f".//{SVG}g[@data-layer='title-block-fields']/{SVG}text")
+    assert {item.get("data-graph") for item in fields} == {"designation", "name"}
+    for item in fields:
+        ink = tuple(map(int, item.get("data-ink-bounds-um").split(",")))
+        cell = tuple(map(int, item.get("data-cell-bounds-um").split(",")))
+        assert cell[0] + 400 <= ink[0] <= ink[2] <= cell[2] - 400
+        assert cell[1] + 400 <= ink[1] <= ink[3] <= cell[3] - 400
+        assert item.get("data-cap-height-mm") == "2.5"
+    assert not plain.findall(f".//{SVG}text[@data-graph]")
+
+
+def test_form_one_measured_headings_use_full_seventeen_mm_role_column():
+    source, *_ = specimen()
+    filled = root(compose_formatted_sheet(
+        source, PageProfile(),
+        title_text_style=STYLE, title_measurer=FixedInk(),
+        title_captions=True,
+    ))
+    named = {el.text: el for el in filled.findall(
+        f".//{SVG}g[@data-layer='title-block-fields']/{SVG}text"
+    )}
+    assert {"Разраб.", "Пров.", "Т. контр.", "Н. контр.", "Утв."} <= named.keys()
+    for value in ("Разраб.", "Т. контр.", "Н. контр."):
+        node = named[value]
+        cell = tuple(map(int, node.get("data-cell-bounds-um").split(",")))
+        assert cell[2] - cell[0] == 17000  # not a 7 mm "Изм." cell
+        assert node.get("data-cap-height-mm") == "2.5"
+        assert node.get("font-size") == "3.5"  # test style; not a CSS cap-height claim
+
+
+@pytest.mark.parametrize("title_values", (
+    {"designation": "X" * 200},
+    {"approved": "Слишком длинная подпись без автоподгонки"},
+))
+def test_form_one_rejects_long_text_without_font_shrink(title_values):
+    source, *_ = specimen()
+    with pytest.raises(ValueError, match="TITLE_FIELD_OVERFLOW"):
+        compose_formatted_sheet(
+            source, PageProfile(), title_values=title_values,
+            title_text_style=STYLE, title_measurer=FixedInk(),
+        )
+
+
+def test_title_fields_empty_missing_style_and_unknown_keys_fail_closed():
+    source, *_ = specimen()
+    blank = root(compose_formatted_sheet(
+        source, PageProfile(), title_values={"designation": ""},
+        title_text_style=STYLE, title_measurer=FixedInk(),
+    ))
+    assert not blank.findall(f".//{SVG}g[@data-layer='title-block-fields']")
+    with pytest.raises(ValueError, match="require calibrated"):
+        compose_formatted_sheet(source, PageProfile(), title_values={"name": "X"})
+    with pytest.raises(ValueError, match="Unknown form-1"):
+        compose_formatted_sheet(
+            source, PageProfile(), title_values={"unapproved_field": "X"},
+            title_text_style=STYLE, title_measurer=FixedInk(),
+        )
+    with pytest.raises(ValueError, match="single-line"):
+        compose_formatted_sheet(
+            source, PageProfile(), title_values={"name": "A\\nB"},
+            title_text_style=STYLE, title_measurer=FixedInk(),
+        )
+    with pytest.raises(ValueError, match="Title values require"):
+        compose_formatted_sheet(
+            source, PageProfile(mode="electronic_layout"),
+            title_values={"designation": "X"},
+            title_text_style=STYLE, title_measurer=FixedInk(),
+        )
 
 
 def test_preserves_exact_authored_wires_nets_physical_pins_and_source_inputs():
