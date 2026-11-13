@@ -74,7 +74,7 @@ jobs:
               evidence=report["cases"][key]
               assert evidence["physical_pin_count"]==count
               assert len(evidence["pin_anchors"])==count
-              assert evidence["minimum_text_to_stroke_ink_gap_um"]>=500
+              assert evidence["minimum_text_to_stroke_ink_gap_um"]>=1000
               for view in ("clean","diagnostic"):
                   svg=ET.fromstring((root/f"{key}-{view}.svg").read_text())
                   lines=svg.findall(".//{http://www.w3.org/2000/svg}line[@data-pin-id]")
