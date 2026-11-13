@@ -2,6 +2,29 @@
 
 Status: **DRAFT QA / NO production changes / NO merges**. Date: 2026-11-13.
 
+## B0. New PAINT SHA after historical PR66 audit — separate fresh QA (2026-11-13)
+
+**Important: the PR #59 owner advanced independently while this review was running.** The original normative PR #66 matrix (**24 PASS / 6 FAIL / 8 BLOCKED**) describes **OLD SHA `c42f7b617942c8a0b1cae45e432ef12cede7f876` / `form_one.py` blob `9025fefd18ec9e50118d7353f5b2565eb064b5c4`** and remains immutable history. It must **NOT** be presented as an audit of the **NEW Draft PR #59 HEAD `71ee7f0c26d2f2f41a67d9e4450aa33d265286fa`**, new `form_one.py` blob `ffa94169439353ab5c35738c5dfae9c7fb6dfe6f`.
+
+This QA therefore independently pinned **both** byte-for-byte source snapshots and added `tests/qa_form_one_fixed_71ee7f_test.py`. The new file uses a deliberately **synthetic narrow 2.5mm-cap deterministic glyph metric** ONLY to isolate and test the structural rendering API; it is **not** an actual OpenGost physical/print test or source-author approval. Real OpenGost Type A 1:1 updated title-block proof still requires independent ESKD review of PR #59's output. No code from PR #59 has been merged into this QA integration.
+
+| Requirement originally FAIL (old PR66) | Old pinned SHA `c42f7b` | New pinned SHA `71ee7f0` — independent result |
+|---|---|---|
+| Five role captions left ink-aligned | **FAIL**: all centered | **PASS behavior**: five actual role captions use same `800µm` left ink inset, fixed 17mm × 5mm row; measured `PlacedField.ink.min_x - cell.min_x == 800` with deterministic height-2.5mm QA metrics. **0.8mm is editorial**, not a GOST-required numeric inset |
+| Fixed role (10) vs surname (11) | **FAIL**: `developed="Иванов"` overwrote «Разраб.» | **PASS behavior**: `developed="Иванов"` raises `TITLE_ROLE_RESERVED`; `developed_surname="Иванов"` creates a separate graph-11 object while retaining graph-10 «Разраб.» |
+| Surname, signature, date | **FAIL**: none per role | **PASS structure**: five independently addressable `*_surname` (x17..40mm), `*_signature` (x40..55mm), `*_date` (x55..65mm); all separate from role x0..17mm |
+| Auxiliary (30) dashed | **FAIL**: no dashed graphics | **PASS vector data**: exactly one source-labelled `data-service-graph=30` SVG line with `stroke-dasharray="3 2"`, from x65..175mm at y8mm |
+| «Зона» (33), «Вер.» (35) | **FAIL**: absent | **PASS structural output**: explicit text graph numbers 33/35 and distinct cells in captioned source |
+| «Копировал» (31), «Формат» (32) | **FAIL**: absent | **PASS structural output**: explicit caption nodes 31/32 at relative y55..60mm (bottom sheet margin, outside 185×55 stamp) |
+| Role font cap-height, no autoshrink | **PASS old Type A profile** | **PASS with QA deterministic 2500µm glyph contract**; **BLOCKED** final independent verification with actual OpenGost Type A, 300 DPI, physical 1:1 print and office-specific applicability |
+| (2)/(30), (9)/(31)/(32) exact controlled Annex B.1 placement | **BLOCKED** | **BLOCKED** still: altered geometry must be independently compared to dimensioned 1:1 original, including external service cells and printer stroke |
+
+The new source does **not** fabricate signatures/dates or declare full paper-ESKD approval; blank output remains blank. The older **DejaVu Sans** fallback is too wide for some 5–7mm cells even at measured cap height 2.5mm and appropriately raises `TITLE_FIELD_OVERFLOW`; this proves why a random OS sans-serif substitute cannot certify OpenGost and why the QA functional tests label their metrics as **synthetic contract-only**. The new renderer is **Draft**, and print approval remains **BLOCKED** pending ESKD.
+
+**Critical distinction:** the six original FAIL criteria are confirmed *fixed in the new implementation's supported source/functional geometry*, while the 8 original BLOCKED conditions are **not automatically resolved** by a developer declaring the changes done. Refer to exact SHA of each sample.
+
+---
+
 ## Precise source snapshots
 
 | Target | Exact immutable source |
@@ -41,9 +64,9 @@ This QA does not modify the draft PAINT code; it only imports a pinned source co
 
 **Reproduction:** `pytest -q tests/qa_structural_l1_test.py -s` parses the actual six-part SVG, recomputes transformed UGO strokes + actual measured text ink in µm, checks fixed tap/body/coil coordinates and compares all six labels. CI warning prints the exact ink AABBs and font fingerprint. Positive absolute distances do not certify a project clearance threshold.
 
-## B. Form 1 / Issue #67 / PR #66 — legacy Draft PR59 FAIL acceptance, historical audit unchanged
+## B. Historic form 1 / Issue #67 / PR #66 — old PR59 SHA FAIL, NOT new SHA
 
-Normative source: **ГОСТ Р 2.104-2023**, appendix Б.1 (form 1), §5.7 table 1 graphs (10)–(13); auxiliary graphs (30), (31), (32), (33), (35); **ГОСТ 2.304-81** font. Read as controlled by accepted normative **PR #66**, **24 PASS / 6 FAIL / 8 BLOCKED**, not as an unqualified design approval. Observed **actual PR59 form_one.py** stays pinned at `c42f7b... / blob 9025fe...`. ESKD corrections in Issue #67 are **not in PR #59 at this SHA**.
+Normative source: **ГОСТ Р 2.104-2023**, appendix Б.1 (form 1), §5.7 table 1 graphs (10)–(13); auxiliary graphs (30), (31), (32), (33), (35); **ГОСТ 2.304-81** font. Read as controlled by accepted normative **PR #66**, **24 PASS / 6 FAIL / 8 BLOCKED**, not as an unqualified design approval. Observed **actual PR59 form_one.py** stays pinned at `c42f7b... / blob 9025fe...`. ESKD corrections in Issue #67 are **not in this pinned OLD PR59 SHA**. For independently tested NEW HEAD, see B0 above.
 
 | Requirement / test | Status on PINNED PR59 | Reproduced result |
 |---|---|---|
@@ -83,13 +106,13 @@ Owners: ELEKTRIK Issue #70 (typed model), YGO Issue #71 (block graphics), ESKD I
 | Current actual six-part source and L1 exact ink geometry | **PASS measured** |
 | Consistent L1-to-winding visual label spacing | **FAIL editorial**; source of discrepancy established |
 | PR59 form 1 geometry/cap in controlled PR66 | **PASS for supported cells** |
-| PR59 left alignment + separate signer fields | **FAIL (known PAINT Issue #67)** |
-| PR59 auxiliary graphics / service captions | **FAIL (known PAINT Issue #67)** |
+| PR59 *old* left alignment + signer cells / **new SHA** | **old FAIL / new PASS functional; print BLOCKED** |
+| PR59 *old* auxiliary graphics and services / **new SHA** | **old FAIL / new PASS functional; print BLOCKED** |
 | Future Э1 model behavior (ports, crossing, text, arrows) | **BLOCKED not merged** |
 | Future Э1 QA regression vector completeness | **PASS fixture sanity only** |
 | General ГОСТ/ЕСКД approval of form 1 or E1 | **BLOCKED** |
 | No production edits, no merges, no changes to others' PRs | **PASS** |
 
-**Next actions:** PAINT should resolve Issue #67 using ESKD PR66 acceptance matrix and provide independently measurable artwork and actual role field data. ELEKTRIK/YGO/ESKD should agree on E1 typed schema and provisional diagnostic classes before wiring QA vectors into functional tests. User/coordinator should decide target L1 placement based on actual routed scene and approved font, not an arbitrary numerical gap.
+**Next actions:** PAINT reports the six Issue #67 fixes implemented at NEW SHA `71ee7f0c26d2f2f41a67d9e4450aa33d265286fa`; independent Type A full-sheet artwork/1:1 print and remaining BLOCKED normative cases still require ESKD review. ELEKTRIK/YGO/ESKD should agree on E1 typed schema and provisional diagnostic classes before wiring QA vectors into functional tests. User/coordinator should decide target L1 placement based on actual routed scene and approved font, not an arbitrary numerical gap.
 
 **CI / HEAD SHA:** appended after completing Actions on the final Draft QA branch. Follow `parallel/qa-structural-review` head and verify both Python 3.12/3.13, Ruff, pytest, catalog audit 21 DRAFT and wheel packaging. Only QA files in the diff; no production/generator modification.
