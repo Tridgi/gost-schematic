@@ -262,6 +262,8 @@ CURRENT_SHAS = {
     "graphics": "b7fa2138e84d5279ef0b894cb4ca56b32732b11b",
 }
 CURRENT_BLOBS = {
+    "qa_e1_current80/__init__.txt":
+        "c651d580daf68193554199fbcbfc75107d3a210c",
     "qa_e1_current80/validation.txt":
         "a73dfd1f454031e65142dc91e01f87748b842001",
     "qa_e1_current80/review_structural_e1.txt":
@@ -304,11 +306,14 @@ def real_current_sources():
         work = Path(directory)
         pack = work / "gost_schematic" / "structural"
         pack.mkdir(parents=True)
-        for part in ("__init__", "model", "serialization"):
+        for part in ("model", "serialization"):
             (pack / (part + ".py")).write_bytes(
                 (MODEL_ROOT / "gost_schematic" / "structural"
                  / (part + ".txt")).read_bytes()
             )
+        (pack / "__init__.py").write_bytes(
+            (FIXTURES / "qa_e1_current80/__init__.txt").read_bytes()
+        )
         (pack / "validation.py").write_bytes(
             (FIXTURES / "qa_e1_current80/validation.txt").read_bytes()
         )
