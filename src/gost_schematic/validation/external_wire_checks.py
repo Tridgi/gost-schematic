@@ -211,7 +211,10 @@ def validate_external_wires(
                 wires_with_pins[i].add(ref)
             elif _on_wire(wire, point):
                 interior_contact = True
-        if interior_contact and not attachments[ref] and ref in owners:
+        # A geometric wire crossing an unassigned physical terminal is still
+        # unsafe: the contact exists even when no semantic net owns it.
+        # Never infer an attachment or net from a non-junction crossing.
+        if interior_contact and not attachments[ref]:
             error(
                 "WIRE_PIN_CONTACT_UNDECLARED",
                 f"{ref.reference}.{ref.number} touches a wire interior without junction",

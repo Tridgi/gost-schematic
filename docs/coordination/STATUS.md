@@ -43,3 +43,19 @@ Next-cycle Issues: [#24 copper-core correction](https://github.com/Tridgi/gost-s
 - **PR #28 / Issue #25**: dynamic catalog-triggered SVG/PNG visual regression workflow, with 7 SVG/7 PNG and source-font provenance, actual 19-UGO clean/review sheets. Merge `6f359e3324338bad73b8443cc69857571fbaffd0`. Important follow-up: test `test_real_19_catalog_entries_and_unique_C_references` contains exact 19-count assertions, and must be adapted before adding a 20th symbol.
 - **Combined CI HEAD** `6f359e3324338bad73b8443cc69857571fbaffd0`: [run #43309918713](https://github.com/Tridgi/gost-schematic/actions/runs/43309918713) **SUCCESS** on Python 3.12/3.13, 623/623 tests each, Ruff pass, catalog audit 19 DRAFT / 0 hard errors, wheel verified. Separate [rendering #43309918718](https://github.com/Tridgi/gost-schematic/actions/runs/43309918718) successful, artifact `draft-rendering-sheet-review` id 13985526602.
 - All above merged **only** into experimental `integration/stage0-12`, not `main`. Review of code and generated artifact structure does not equal manual normative acceptance or KOMPAS comparison; **0 APPROVED**.
+
+## 2026-11-13 — Cycle4 coordinator partial review and routing safety gate
+
+**Current experimental integration SHA** `41e23513176d51c21bde5b4363ea4f67469e3bd8` before this status commit.
+
+- **#37** already merged: dynamic 20+ gallery and authored-wire rendering adapter.
+- **#47 / #43** merged `8ffbab3be3735add4fc0021a803aeef2d5f70556`: test `nominal=None` is legitimate and no longer crashes. Visual regression CI 19 DRAFT passes; new diode 21-DRAFT run must be done by YGO 2 after syncing.
+- **#48 / #40** merged `42cb8ff63cd5685f98e24081f85c947262c12c08`: detect unassigned real physical pin touched by wire interior, without auto net attachment. 365 tests added; integration CI green. Separate QA hypothesis #54 remains to verify other-net crossing when a pin already has another attachment.
+- **#38 / #35** merged `41e23513176d51c21bde5b4363ea4f67469e3bd8`: source-backed full-sheet/ESKD review; no approved UGO.
+- **Combined integration CI** [#43455652130](https://github.com/Tridgi/gost-schematic/actions/runs/43455652130) **SUCCESS**, Python 3.12/3.13, 1019 tests, Ruff PASS, audit 19 DRAFT/0 hard errors, wheel verified.
+- **#49 / #45** standalone 2.728-74 C3 normalized-source review approved for documents, but merge blocked by conflict in `docs/standards/registry.md` and `known-limitations.md` after #38; ESKD asked to sync while preserving both sections. No silent symbol replacement, both DRAFT.
+- **#42 QA** and **#53 QA follow-up** remain Draft to update stale #40 xfail/retroactive report and remove brittle permanently Git-fetched router SHA source test; original evidence kept.
+- **#39 / #34 autorouter** remains **BLOCKED**: independent QA #50 and #52 (unassigned pin/wire stroke clearance) and #51 (far-away keepout + cell limit). Mandatory remediation tracked in **#55**, no claim of universal safe routing; separate placement quality #44.
+- **#32 YGO 2** may now resume: both historical visual regressions (#37 and #47) have fixes integrated, next full catalog is 21 DRAFT once two diode JSON and physical part passports are accepted.
+- **#41** malformed geometry should emit CatalogError and remains open.
+- `main` was never changed, **0 APPROVED**, all normative/visual acceptance remains separate manual work.
