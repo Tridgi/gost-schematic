@@ -6,9 +6,12 @@ Target: independent future implementation PRs, **not** PR #73.
 
 ## Scope and ownership
 
-The first release must be a usable persistent editable E3 project opened by
-Codex over MCP, not a Python source code edit or an example scripted to look
-as if a model mutation happened. The in-process ProjectService owns every
+This document describes a **later connected-C3 editing acceptance gate**, not
+the next P1.1 implementation. The first independent implementation PR must
+follow the [read-only persisted six-part roundtrip](agent-project-service-readonly-roundtrip.md)
+first. That PR saves and cold-opens real Circuit/ExternalWireGraph and renders
+revision-bound SVG/PNG; no arbitrary editing is enabled. The connected-C3
+pilot requires later explicitly authorized safe multi-member branch routing. The in-process ProjectService owns every
 command, controls revisions and produces snapshots. P0's existing PNG
 renderer remains read-only. It must not be extended with write-on-render.
 
@@ -20,8 +23,8 @@ revision and DRAFT locking; QA checks frozen archive and independent regressions
 
 | Milestone | Delivery | Blocker / acceptance |
 | --- | --- | --- |
-| P1.1 | Schema v1 + stable IDs + `.gseproj` importer/exporter + ProjectService immutable snapshots | Live 6-component data serializes to stable JSON and reopens with 5 nets, 3 explicit junctions, 16 authored wires |
-| P1.2 | In-process create/open/get/save/validate + CAS + idempotency + atomic storage | Old/new SHA, restart recovery and hostile path/JSON tests; no MCP writes |
+| P1.1 | Controlled import, typed immutable `.gseproj`, store/open, model re-projection, real SVG/PNG/diagnostics | Fresh process reopens 6 components, 5 nets, 3 junctions, 16 authored wires; **no MCP writes** |
+| P1.2 | Isolated transactional add/nominal/transform and fail-closed connected moves | CAS, replay, rollback, store journal/HEAD atomicity tests; no C3 routing claim |
 | P1.3 | Typed add/nominal/transform/move with transactional write scopes | Isolated component move works; moved connected C3 must reject without corresponding route fix |
 | P1.4 | Reviewed multi-member net branch repair | Current safe router accepts only 2-member nets; branch adapter requires ELEKTRIK+QA sign-off, no silent junction |
 | P1.5 | Revision-bound SVG/PNG before/after + diff + MCP commands | Agent sees real ImageContent for both revisions, matched diagnostics and read-after-write hash |

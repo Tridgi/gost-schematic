@@ -1,9 +1,33 @@
 # RFC #74 — Agent Project Service: revisioned, transactional schematic editing
 
-**State:** PROPOSED, design only; independent of Draft PR #73 and Issue #65.
+**State:** PROPOSED / Gate 1 technical review; documentation only. MCP Vision PR #73 is merged and remains the accepted read-only P0 foundation.
 **Parent:** Issue #64. **Target:** `integration/stage0-12`.
 **No production model, public API, electrical catalog, physical-pin, or router changes.**
-**Decision requested:** coordinator + ELEKTRIK + PAINT + QA review before any P1 write tool.
+**Decision requested:** MAIN 2, ELEKTRIK, PAINT, YGO and QA architecture approval before any P1 implementation. The separate implementation PR starts with read-only persistence, not arbitrary write MCP.
+
+## Architecture clarification after MAIN 2 review
+
+This parent RFC is complemented by three **normative design annexes**. Where a
+preliminary interface, hashing suggestion or storage example below differs,
+the explicit Annex A contract controls and must be approved by the coordinator:
+
+- [Annex A — precise v1 type, persistence, CAS, command, error and revision contracts](agent-project-service-contract-v1.md)
+- [Annex B — component, import and transaction diagrams](agent-project-service-diagrams.md)
+- [Annex C — first *read-only* persisted E3 implementation gate](../plans/agent-project-service-readonly-roundtrip.md)
+- [Later, gated connected-C3 editing pilot](../plans/agent-project-service-c3-pilot.md)
+
+Key decision: **the initial P1.1 implementation is controlled import →
+canonical save → cold reopen → real Circuit/ExternalWireGraph projection →
+revision-bound SVG/PNG → independent diagnostics**. No generic editing.
+The inherited P0 computed six-part project_revision is retained only as
+migration provenance, not reused as v1 content SHA. Wire stroke is known
+from renderer_wires(): 300 µm for the fixed specimen; future imports must
+prove their own style provenance.
+
+Domain kind isolation: E3 uses electrical Circuit/ExternalWireGraph;
+E1 after its independent model RFC uses StructuralDiagram; algorithmic
+control-flow diagrams under Issue #82 use AlgorithmDiagram. Neither
+alternative kind is represented as fake electrical PartDefinition/PinRef.
 
 ## 1. Non-negotiable data flow
 
