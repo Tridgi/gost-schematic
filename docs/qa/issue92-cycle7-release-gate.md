@@ -7,10 +7,10 @@
 | Проверяемая область | Фиксированная версия реализации | Реальные байты |
 |---|---|---|
 | Интеграционная база | `integration/stage0-12` `578e018f2b0be37b37fa4c8e52692cc1c5f941c5` | настоящий пакет `gost_schematic` в pytest/Actions |
-| ELEKTRIK #87, ИС DA/DD | ветка `parallel/electrical-ic-contract-cycle7`, только `957c73e9…` | **BLOCKED**: нового контракта `MultiPinPartDefinition`/pinmap нет |
-| PAINT #88 | ветка `parallel/rendering-ic-cycle7` **`1b09e5995703dee8dd1f6759595084cb94573fd6`** | `src/.../ic_rectangular.py` blob **`0aeaf02e038c0b7becbee0e8f0f6b073a203ca99`**; точная копия `.txt` в тесте с выполнением функций оригинала |
+| ELEKTRIK #87, ИС DA/DD | ветка `parallel/electrical-ic-contract-cycle7`, **`4e6c1235becc4d351760660180ec31fdedc06e40`** | Реальный `IcDeviceDefinition` + `IcSymbolSpec` + `ic_serde`; только synthetic 2/4/8/14/40/64, нет vendor pinout |
+| PAINT #88 | ветка `parallel/rendering-ic-cycle7` **`f8f9dc4c1fd8266b807dea9d6f268d971bec8d7a`** | `src/.../ic_rectangular.py` blob **`a2077cd21bcd5f497ac3304bf7f9d0d76d6b32bd`**; точная копия `.txt` в тесте с выполнением функций оригинала |
 | YGO 2 #89 | ветка `parallel/catalog-electronic-cycle7` **`ddb7881c52055fe44120a36015a469a847c70c16`** | неизменённые первые 6 реальных catalog JSON blobs, физические паспорта и символы |
-| ELEKTRIK #90, продолжения | ветка `parallel/electrical-netrefs-cycle7`, только `957c73e9…` | **BLOCKED**: `NetContinuation`/лист/адрес отсутствуют |
+| ELEKTRIK #90, продолжения | ветка `parallel/electrical-netrefs-cycle7`, **`cd004f626450367082a44784cac7f9563dbe9eef`** | Реальный `NetContinuationProject`, `validate_net_continuations`, строгий `netrefs_serde`, 2 реальных фрагмента CTRL; совместные 1:1 схемные шрифты ещё BLOCKED |
 | ESKD #91 | ветка `parallel/standards-electronic-cycle7` **`9aa2d98a22a8dc8bac0394e744d205dcc336ecff`** | `docs/standards/issue-91-cycle7-electronics-cards.json` blob **`4f31d9e24cb097c6c9e38263c0bea1d793acaae7`**; 2 исходных сравнительных SVG также pinned |
 
 Снимки новых исходников проверяются реальной формулой Git blob SHA1 и сохраняются под `tests/fixtures/qa_cycle7_*`; оригинальный Python #88 исполняется через `SourceFileLoader` **как настоящий код без заменённых функций, без моков, без изменений `src/`**. Все источники reproducible offline в `pytest`. `tests/qa_cycle7_support.py` — только загрузчик и контроль SHA. Для ESKD тест строго подтверждает только корректность *описания источника/статуса*, не графическую подпись по ГОСТ.
@@ -19,7 +19,7 @@
 
 | QA-ID | Критерий | Статус и доказательство |
 |---|---|---|
-| E92-IC01 | Э3 ИС 2/8/14/40/64, отдельные физические номера/имена/строки | **PASS renderer-only**: код PAINT #88 действительно выводит 2/8/14/40/64 независимых тестовых контактов. **BLOCKED real IC #87**: номера **синтетические**, нет паспорта марки/корпуса, нет `PartDefinition`/схемного `PinRef` для DA/DD |
+| E92-IC01 | Э3 ИС 2/8/14/40/64, отдельные физические номера/имена/строки | **PASS renderer-only**: код PAINT #88 действительно выводит 2/8/14/40/64 независимых тестовых контактов. **PARTIAL PASS real IC #87**: теперь есть типизированный пакет DA/DD, `PinRef`, split-unit и строгий JSON; **BLOCKED manufacturer**: номера **синтетические**, нет паспорта конкретной марки/корпуса и доказанной межкомандной совместимости всех 64 точек |
 | E92-IC02 | Реальная OpenGost Type A ink + 300DPI | **PASS**: внешний SIL OFL OpenGost Type A SHA256 `f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a`, h=2500µм; для каждой реально нарисованной строки тёмные пиксели находятся внутри её самостоятельного glyph ink box. Не делался вывод об APPROVED |
 | E92-IC03 | Положение портов/номеров, разные стороны, поля | **PASS для синтетической графики**: реальные SVG `ic-physical-pin-leads`, `data-pin-number`, координаты **внешнего** разрешённого контакта сверяются с `x2/y2` линий; отдельные основные и боковые поля. Проверяются 1/10/40 номера, текстовые узлы, отсутствие обрезки |
 | E92-IC04 | Авто габариты, длинные русские/английские строки, невозможное размещение | **PASS test-only**: размер по настоящим глифам, шаг ряда и поле увеличиваются на модульной сетке; 1 µм смещение вывода вызывает `IC_PIN_ANCHOR_MISMATCH`, слишком маленькая страница вызывает `IC_PAGE_OVERFLOW`, дубли номера и узла — hard fail, некорректная подпись не отрезается |
@@ -29,9 +29,9 @@
 | E92-MOS | N/P MOSFET, G/D/S/B, графический корпус | **BLOCKED**: нет реальных пар и доказательства гальванической изоляции/пакета |
 | E92-VD | Schottky, LED, photo, varicap | **BLOCKED**: нет новых исполняемых пар; старые general/zener НЕ доказывают новых разновидностей |
 | E92-XP | реальные XP/XS | **BLOCKED**: нет физической модели разъёма; запрещено имитировать порт сетевой стрелкой |
-| E92-NET | Два визуально разорванных фрагмента одной `Net` | **PASS baseline semantic only**: настоящий `Circuit.Net` хранит оба `PinRef` без проводника, Circuit validation действительно принимает. **BLOCKED graphic/net-continuation API**: ещё нет реальных маркеров/адресов, PNG и листового roundtrip |
-| E92-NET-NEG | одинаковое видимое имя двух разных `Net` | **PASS baseline rejection**: `validate_circuit` возвращает `DUPLICATE_NET_NAME`. **BLOCKED** unknown/wrong sheet, missing address, duplicate continuation ID — новых сущностей пока нет |
-| E92-MIX | единый E3 образец DA/DD, 2 транзистора, 3 диода, FU, R, XP, 2 continuation | **BLOCKED**: невозможно честно сформировать действительные физические `PinRef` для отсутствующих элементов. Собраны только воспроизводимые частные галереи |
+| E92-NET | Два визуально разорванных фрагмента одной `Net` | **PASS baseline semantic only**: настоящий `Circuit.Net` хранит оба `PinRef` без проводника, Circuit validation действительно принимает. **PARTIAL PASS #90**: теперь имеются реальные маркеры, два листа, адреса, пары и roundtrip; **BLOCKED** общий production-маршрутизатор и замер OpenGost на листах |
+| E92-NET-NEG | одинаковое видимое имя двух разных `Net` | **PASS baseline rejection**: `validate_circuit` возвращает `DUPLICATE_NET_NAME`. **PARTIAL PASS #90**: сущности и валидатор теперь существуют, требуются реальные независимые отрицательные регрессии на нового владельца |
+| E92-MIX | единый E3 образец DA/DD, 2 транзистора, 3 диода, FU, R, XP, 2 continuation | **BLOCKED**: полноценные BJT/MOSFET/VD/XP отсутствуют, а физический IC пока synthetic. Нельзя выдавать составленную из фиктивных компонентов демонстрацию за настоящий E3. Собраны только воспроизводимые частные галереи |
 | E92-ESKD | источники, корректность DRAFT статуса | **PASS metadata-only**: **107** нормативных карточек #91 имеют `normative_rule_status=PASS`, но **107 из 107** имеют `acceptance=BLOCKED`, `approval=DRAFT`. Уже существовавшие 12 карточек #27 лишь процитированы, не превращены в 107 новых готовых УГО |
 | E92-REG | Базовая схема 16 проводов и старый каталог | **PASS**: полные обычные тесты integration проходят; динамический `audit_catalog` сверяет число записей с реальными JSON и физическими паспортами, без захардкоженного конечного числа УГО |
 
@@ -58,7 +58,7 @@
 
 ESKD #91 подтвердил нормативные **кандидаты**, не готовые графические устройства. Для физической ИС нужны проверенный datasheet+revision+package, тождество всех физических выводов, отсутствие скрытых NC/power, корректная связь split-unit package; для BJT/VD/FU/XP нужны конкретные table/position и внешние 1:1 фотографии/печатные масштабы. Никакое содержимое `tests/fixtures/qa_cycle7_*` не является регистрацией УГО в production каталоге.
 
-**Release decision: NO-GO полного E3 Cycle 7.** Допустима техническая приёмка только ограниченных DRAFT частей рендерера PAINT и первых 3 YGO символов. Ждать реальные #87/#90 и следующий набор #89, независимый source-backed ESKD-1:1 signoff. QA PR держать Draft и не объединять с E1 #83.
+**Обновление HEAD во время независимого аудита:** теперь созданы Draft PR #97 и #98 на `IcDeviceDefinition` и `NetContinuationProject`; выполненные до появления этих PR BLOCKED-строки исторические, требуют новых исполняемых QA-регрессий по точным SHA. **Release decision: NO-GO полного E3 Cycle 7.** Допустима техническая приёмка только ограниченных DRAFT частей рендерера PAINT и первых 3 YGO символов. Ждать реальные #87/#90 и следующий набор #89, независимый source-backed ESKD-1:1 signoff. QA PR держать Draft и не объединять с E1 #83.
 
 ## 6. CI / архитектурная изоляция
 
