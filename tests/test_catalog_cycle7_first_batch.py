@@ -118,19 +118,25 @@ def test_reostat_connection_is_real_Circuit_Net_and_retains_three_physical_conta
         Net("RHEOSTAT_TIED_END", (PinRef("R4", "1"), PinRef("R4", "3"))),
         Net("RHEOSTAT_OTHER_END", (PinRef("R4", "2"),)),
     ))
+    rheostat_reverse = Circuit((instance,), (
+        Net("RHEOSTAT_TIED_OTHER_END", (PinRef("R4", "2"), PinRef("R4", "3"))),
+        Net("RHEOSTAT_OTHER_END", (PinRef("R4", "1"),)),
+    ))
     standalone = Circuit((instance,), (
         Net("END_A", (PinRef("R4", "1"),)),
         Net("END_B", (PinRef("R4", "2"),)),
         Net("SLIDER", (PinRef("R4", "3"),)),
     ))
-    for graph in (rheostat, standalone):
+    # Two genuine wiring choices: A↔W or B↔W, never a two-pin physical part.
+    for graph in (rheostat, rheostat_reverse, standalone):
         diagnostics = validate_circuit(
             graph, {part.identifier: part}, {symbol.identifier: symbol}
         )
         assert not [d for d in diagnostics if d.severity.value == "error"]
     assert tuple(x.number for x in part.pins) == ("1", "2", "3")
     assert tuple(x.number for x in symbol.pins) == ("1", "2", "3")
-    assert len(rheostat.nets) == 2 and len(standalone.nets) == 3
+    assert len(rheostat.nets) == len(rheostat_reverse.nets) == 2
+    assert len(standalone.nets) == 3
 
 
 def test_variable_wiper_is_real_top_pin_and_arrowhead_not_an_electrical_bridge():
