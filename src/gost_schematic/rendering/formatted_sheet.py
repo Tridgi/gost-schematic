@@ -248,10 +248,33 @@ def _inside(inner: Box, outer: Box) -> bool:
             and outer.min_y <= inner.min_y <= inner.max_y <= outer.max_y)
 
 
+def _stroke_half_width(node: ET.Element,
+                       parents: dict[ET.Element, ET.Element]) -> int:
+    """Include inherited visible line thickness in the no-clipping proof."""
+    stroke = None
+    width = None
+    current = node
+    while current is not None:
+        if stroke is None:
+            stroke = current.get("stroke")
+        if width is None:
+            width = current.get("stroke-width")
+        current = parents.get(current)
+    if stroke is None or stroke == "none":
+        return 0
+    if width is None:
+        raise ValueError("Source stroke width not specified; cannot prove no clipping")
+    thickness = mm(width)
+    if thickness <= 0:
+        raise ValueError("Source stroke width must be positive")
+    return (thickness + 1) // 2
+
+
 def _audit_source_geometry(root: ET.Element, viewport: Box,
                            source: ExternalWireSheet) -> None:
     """Conservative visible-shape audit; never trust an undersized viewBox."""
     forbidden = {"clipPath", "mask", "image", "use", "foreignObject", "script"}
+    parents = {child: parent for parent in root.iter() for child in parent}
     for node in root.iter():
         local = node.tag.rsplit("}", 1)[-1]
         if local in forbidden or "transform" in node.attrib:
@@ -289,11 +312,12 @@ def _audit_source_geometry(root: ET.Element, viewport: Box,
             )
         else:
             continue
-        # A deliberately generous 1 mm paint allowance covers the SVG
-        # review stroke widths without silently discarding a real overrun.
+        # The geometry AND the painted stroke must stay within the source
+        # viewport. SVG's implicit clipping must not hide a 0.15-mm overrun.
+        margin = 0 if local == "text" else _stroke_half_width(node, parents)
         x1, y1, x2, y2 = shape_coords
-        if not (viewport.min_x <= x1 <= x2 <= viewport.max_x
-                and viewport.min_y <= y1 <= y2 <= viewport.max_y):
+        if not (viewport.min_x <= x1 - margin <= x2 + margin <= viewport.max_x
+                and viewport.min_y <= y1 - margin <= y2 + margin <= viewport.max_y):
             raise ValueError(f"Source viewport excludes {local} geometry")
     for label in source.layout.placements:
         if not _inside(label.collision_bounds, viewport):
