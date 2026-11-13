@@ -5,6 +5,7 @@ coordinates in Issue #44 and must pass electrical/physical validation first.
 """
 
 from dataclasses import replace
+from itertools import pairwise
 
 import pytest
 
@@ -37,7 +38,7 @@ NEW_RIGHT = _branch((120, 40), (120, 80), (109, 80))
 def _segments(points, name):
     return tuple(
         WireSegment(a, b, name)
-        for a, b in zip(points, points[1:], strict=False)
+        for a, b in pairwise(points)
     )
 
 
