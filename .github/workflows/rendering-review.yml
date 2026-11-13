@@ -244,7 +244,6 @@ jobs:
           )
           print("Explicit DEMO exported separately, no fictional signatures/dates")
           PY
-          PY
       - name: Rasterize clean and diagnostic A4/A3 at common pixel width
         run: |
           for PAGE in a4-portrait a3-landscape a3-portrait; do
