@@ -6,11 +6,9 @@ The 3 symbols are DRAFT, physical numbers abstract (NOT datasheet approved).
 """
 import json
 from dataclasses import replace
-from pathlib import Path
 from xml.etree import ElementTree as ET
 
 import pytest
-
 from qa_cycle7_support import (
     BLOBS,
     EXPECTED_NAMES,
