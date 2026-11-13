@@ -9,7 +9,8 @@ Two independent phases:
   render_resolved_ic -> validates and uses exact externally RESOLVED pins.
 Never use E1 FunctionalBlock, physical footprint or electrical net inference.
 """
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+from enum import Enum
 from math import ceil, floor
 from xml.etree import ElementTree as ET
 
@@ -26,8 +27,9 @@ from gost_schematic.engines.annotation.metrics import TextMeasurer
 from gost_schematic.model.annotations import TextStyle
 
 _SVG = "http://www.w3.org/2000/svg"
-ET.register_namespace("", _SVG)
-S = "{" + _SVG + "}"
+# Never mutate the process-global ElementTree namespace table. The ordinary
+# sheet renderer uses unqualified tags and its own xmlns declaration.
+S = ""
 
 
 def _round_grid(value: int, module: int) -> int:
@@ -54,6 +56,13 @@ def _inverse(transform: Transform, p: Point) -> Point:
     if transform.mirror_x:
         x = -x
     return Point(x, y)
+
+
+class IcOrientation(str, Enum):
+    """Separate semantic view from the arbitrary D4 placement transform."""
+
+    LEFT_RIGHT = "left_right"
+    TOP_BOTTOM = "top_bottom"  # ГОСТ 2.743-91 fig.3 / 2.759-82 §1.8
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,10 +144,13 @@ class IcProposedSize:
     row_count: int
     lead_length_um: int
     module_um: int
+    body_width_um: int | None = None
+    vertical_field_heights_um: tuple[int, int, int] = (0, 0, 0)
 
     @property
     def width_um(self) -> int:
-        return self.left_width_um + self.main_width_um + self.right_width_um
+        return (self.body_width_um if self.body_width_um is not None
+                else self.left_width_um + self.main_width_um + self.right_width_um)
 
 
 @dataclass(frozen=True, slots=True)
@@ -149,8 +161,19 @@ class IcResolvedUnit:
     content: IcFieldContent
     origin: Point = field(default_factory=lambda: Point(0, 0))
     transform: Transform = field(default_factory=Transform)
+    orientation: IcOrientation = IcOrientation.LEFT_RIGHT
+    function_rotation: int = 0
+    field_text_rotation: int = 0
 
     def __post_init__(self) -> None:
+        if not isinstance(self.orientation, IcOrientation):
+            raise TypeError("IC_ORIENTATION_TYPED_REQUIRED")
+        if self.function_rotation not in (0, 90) or self.field_text_rotation not in (0, 90):
+            raise ValueError("IC_TEXT_ROTATION_UNVERIFIED: only 0/90 fig.3")
+        if self.orientation is IcOrientation.LEFT_RIGHT and (
+            self.function_rotation or self.field_text_rotation
+        ):
+            raise ValueError("IC_TEXT_ROTATION_REQUIRES_TOP_BOTTOM_PROFILE")
         if not self.reference:
             raise ValueError("IC_REFERENCE_REQUIRED")
         if len({p.pin_id for p in self.pins}) != len(self.pins):
@@ -161,10 +184,18 @@ class IcResolvedUnit:
             raise ValueError("IC_DUPLICATE_RESOLVED_ANCHOR")
         if len({(p.side, p.row) for p in self.pins}) != len(self.pins):
             raise ValueError("IC_DUPLICATE_PIN_ROW")
-        if any(p.role == "in" and p.side != Side.LEFT for p in self.pins):
-            raise ValueError("IC_NONSTANDARD_INPUT_SIDE: needs separate profile")
-        if any(p.role == "out" and p.side != Side.RIGHT for p in self.pins):
-            raise ValueError("IC_NONSTANDARD_OUTPUT_SIDE: needs separate profile")
+        input_side = (Side.LEFT if self.orientation is IcOrientation.LEFT_RIGHT
+                      else Side.TOP)
+        output_side = (Side.RIGHT if self.orientation is IcOrientation.LEFT_RIGHT
+                       else Side.BOTTOM)
+        if any(p.role == "in" and p.side != input_side for p in self.pins):
+            raise ValueError("IC_NONSTANDARD_INPUT_SIDE: rejected by active orientation")
+        if any(p.role == "out" and p.side != output_side for p in self.pins):
+            raise ValueError("IC_NONSTANDARD_OUTPUT_SIDE: rejected by active orientation")
+        allowed = ({Side.LEFT, Side.RIGHT} if self.orientation is IcOrientation.LEFT_RIGHT
+                   else {Side.TOP, Side.BOTTOM})
+        if any(p.side not in allowed for p in self.pins):
+            raise ValueError("IC_MIXED_SIDE_PROFILE: requires source-specific ESKD card")
 
 
 @dataclass(frozen=True, slots=True)
