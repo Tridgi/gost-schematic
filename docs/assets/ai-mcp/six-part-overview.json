@@ -1,0 +1,40 @@
+{
+  "bbox_mm": [
+    "2.85",
+    "6.85",
+    "129.151",
+    "93.151"
+  ],
+  "catalog_sha256": "849b065b92ba1df7857d50e206e1471144fe9fd258c011b765e280b054a4f205",
+  "component_count": 6,
+  "effective_dpi": [
+    321.771,
+    321.69
+  ],
+  "engine_version": "0.0.1",
+  "font_provenance": "specimen reference labels: sans-serif (not verified OpenGost Type A)",
+  "font_warning": "specimen labels are sans-serif; OpenGost Type A not verified",
+  "geometry_sha256": "2c98f64f48935055ebebbf509818907993068a1bc80aceb9c22f0928a32df6bb",
+  "mime_type": "image/png",
+  "mode": "clean",
+  "pixels": [
+    1600,
+    1093
+  ],
+  "png_sha256": "336339a9f6b2572af93b86b9a06dd262f0ab2a76bc3eda65db52733092080d5a",
+  "project_ref": "six-part",
+  "project_revision": "03c624ec68760a31b5b7f48d1cfcfffe1fb3e293fb616f2b03127cdd2ed1ddf9",
+  "rasterizer": "resvg_py",
+  "schema_version": 1,
+  "sheet_bbox_mm": [
+    "2.85",
+    "6.85",
+    "129.151",
+    "93.151"
+  ],
+  "source_geometry": "existing render_sheet_svg",
+  "status": "DRAFT / experimental / not ESKD-approved",
+  "view_id": "b366cd076b7c8875e2516772",
+  "view_svg_sha256": "b2e0c07553b113aee5221d70ba2c1e4f16bddec8204ba07b14cadefc9c48e404",
+  "wire_segment_count": 16
+}
