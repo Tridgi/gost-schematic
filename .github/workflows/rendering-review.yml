@@ -23,6 +23,10 @@ on:
       - "tests/test_rendering_external_wire_sheet.py"
       - "examples/review_external_wire_sheet.py"
       - "docs/architecture/rendering-review.md"
+      - "src/gost_schematic/rendering/formatted_sheet.py"
+      - "tests/test_rendering_formatted_sheet.py"
+      - "examples/review_formatted_sheet.py"
+      - "docs/architecture/formatted-sheet-review.md"
       - ".github/workflows/rendering-review.yml"
   push:
     branches:
@@ -44,6 +48,10 @@ on:
       - "tests/test_rendering_dynamic_gallery.py"
       - "tests/test_rendering_electrolytic_gallery.py"
       - "docs/architecture/rendering-review.md"
+      - "src/gost_schematic/rendering/formatted_sheet.py"
+      - "tests/test_rendering_formatted_sheet.py"
+      - "examples/review_formatted_sheet.py"
+      - "docs/architecture/formatted-sheet-review.md"
       - ".github/workflows/rendering-review.yml"
   workflow_dispatch:
 
@@ -69,9 +77,11 @@ jobs:
           ruff check src/gost_schematic/rendering examples/review_full_sheet.py examples/verify_rendering_review.py examples/review_external_wire_sheet.py tests/test_rendering_review_sheet.py tests/test_rendering_dynamic_gallery.py tests/test_rendering_electrolytic_gallery.py tests/test_rendering_external_wire_sheet.py
           pytest -q tests/test_rendering_review_sheet.py tests/test_rendering_dynamic_gallery.py tests/test_rendering_electrolytic_gallery.py tests/test_rendering_external_wire_sheet.py
       - name: Install and verify externally licensed OpenGost Type A
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          python scripts/install_opengost_type_a.py --directory "$HOME/.local/share/fonts"
+          python scripts/install_opengost_type_a.py --directory "$HOME/.local/share/fonts" --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a
           fc-cache -f
           FONT_FILE="$(find "$HOME/.local/share/fonts" -type f \( -iname '*TypeA*.ttf' -o -iname '*TypeA*.otf' \) | head -1)"
           test -n "$FONT_FILE" && test -f "$FONT_FILE"
@@ -130,6 +140,270 @@ jobs:
         with:
           name: draft-external-wire-sheet-review
           path: output/external-wire-review/*
+          if-no-files-found: error
+      - name: Gate A4/A3 paper and electronic page regression tests
+        run: |
+          ruff check src/gost_schematic/rendering/formatted_sheet.py src/gost_schematic/rendering/form_one.py examples/review_formatted_sheet.py examples/review_c3_placement_proposal.py tests/test_rendering_formatted_sheet.py tests/test_rendering_c3_placement_review.py
+          pytest -q tests/test_rendering_formatted_sheet.py tests/test_rendering_c3_placement_review.py
+      - name: Generate A4/A3 physical-size sheets from exact authored wiring
+        run: |
+          python -m examples.review_formatted_sheet \
+            --font-file "$REVIEW_FONT" --font-family "OpenGost Type A" \
+            --mode all --title-headings --compare-c3 \
+            --output-dir output/formatted-sheet-review
+      - name: Verify the actual default CLI is unframed and title-free
+        run: |
+          python -m examples.review_formatted_sheet \
+            --font-file "$REVIEW_FONT" \
+            --output-dir output/default-clean-review
+          python - <<'PY'
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+          folder = Path("output/default-clean-review")
+          assert sorted(f.name for f in folder.iterdir()) == [
+              "formatted-sheet-manifest.json",
+              "schematic-clean.svg",
+              "schematic-diagnostic.svg",
+          ]
+          root = ET.fromstring((folder / "schematic-clean.svg").read_text())
+          ns = "{http://www.w3.org/2000/svg}"
+          assert not root.findall(f".//{ns}g[@data-layer='frame']")
+          assert not root.findall(f".//{ns}g[@data-layer='title-block']")
+          print("Verified default bare SVG: no page/form-one or frame")
+          PY
+      - name: Verify and export isolated explicit DEMO values (not signatories)
+        run: |
+          python -m examples.review_formatted_sheet \
+            --font-file "$REVIEW_FONT" --mode a4 --title-headings \
+            --title-field "designation=DEMO-001" \
+            --title-field "developed_surname=ТЕСТ" \
+            --title-field "name=Демонстрационный лист" \
+            --output-dir output/explicit-form-ci-only
+          python - <<'PY'
+          import json
+          import shutil
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+          folder = Path("output/explicit-form-ci-only")
+          ns = "{http://www.w3.org/2000/svg}"
+          blank = ET.fromstring((folder / "a4-portrait-clean.svg").read_text())
+          explicitly = ET.fromstring(
+              (folder / "a4-portrait-explicit-fields.svg").read_text()
+          )
+          assert not blank.findall(f".//{ns}g[@data-layer='title-block-fields']")
+          fields = explicitly.findall(
+              f".//{ns}g[@data-layer='title-block-fields']/{ns}text"
+          )
+          marked = {f.get("data-graph"): f for f in fields}
+          assert marked["designation"].text == "DEMO-001"
+          assert marked["developed_surname"].text == "ТЕСТ"
+          assert marked["name"].text == "Демонстрационный лист"
+          assert marked["developed_surname"].get("data-graph-number") == "11"
+          assert marked["role_developed"].text == "Разраб."
+          assert marked["role_developed"].get("data-graph-number") == "10"
+          assert all(f.get("data-cap-height-mm") == "2.5" for f in fields)
+          roles = [marked[k] for k in (
+              "role_developed", "role_checked", "role_tech_control",
+              "role_norm_control", "role_approved",
+          )]
+          positions = []
+          for node in roles:
+              cell = list(map(int, node.get("data-cell-bounds-um").split(",")))
+              ink = list(map(int, node.get("data-ink-bounds-um").split(",")))
+              assert node.get("data-ink-align") == "left"
+              assert node.get("data-graph-number") == "10"
+              assert ink[0] - cell[0] == 800
+              positions.append(ink[0])
+          assert positions == [20800] * 5
+          for key in ("developed_signature", "developed_date"):
+              assert key not in marked  # No invented signature or date.
+          assert marked["developed_surname"].get("data-graph-number") == "11"
+          assert not marked["role_developed"].text == "ТЕСТ"
+          assert explicitly.get("width") == "210mm"
+          dest = Path("output/formatted-sheet-review")
+          for source, output in (
+              ("a4-portrait-explicit-fields.svg", "explicit-demo-a4.svg"),
+              ("form-one-explicit-fields-closeup.svg",
+               "explicit-demo-form-one-closeup.svg"),
+          ):
+              shutil.copyfile(folder / source, dest / output)
+          original = json.loads((folder / "formatted-sheet-manifest.json").read_text())
+          (dest / "explicit-demo-manifest.json").write_text(
+              json.dumps({
+                  "status": "DRAFT_SYNTHETIC_EXPLICIT_DEMO_ONLY",
+                  "is_real_document": False,
+                  "filled_keys": original["explicit_title_keys"],
+                  "role_left_ink_inset_um": 800,
+                  "role_ink_x_um": positions,
+                  "signature_fields": "BLANK",
+                  "date_fields": "BLANK",
+                  "font_sha256": original["font"]["sha256"],
+                  "font_cap_height_um": 2500,
+                  "not_normative_acceptance": True,
+              }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8",
+          )
+          print("Explicit DEMO exported separately, no fictional signatures/dates")
+          PY
+      - name: Rasterize clean and diagnostic A4/A3 at common pixel width
+        run: |
+          for PAGE in a4-portrait a3-landscape a3-portrait; do
+            for VIEW in clean diagnostic; do
+              NAME="$PAGE-$VIEW"
+              rsvg-convert --background-color white --width 2400 \
+                --output "output/formatted-sheet-review/$NAME.png" \
+                "output/formatted-sheet-review/$NAME.svg"
+            done
+          done
+          for NAME in schematic-clean schematic-diagnostic a4-portrait-captioned; do
+            rsvg-convert --background-color white --width 2400 \
+              --output "output/formatted-sheet-review/$NAME.png" \
+              "output/formatted-sheet-review/$NAME.svg"
+          done
+          # 1:1 check with real OpenGost, dimensioned at genuine 300 DPI:
+          # A4 210x297 mm => 2480x3508 px; zoom 189x64 mm => 2232x756 px.
+          for NAME in a4-portrait-clean a4-portrait-captioned form-one-title-closeup explicit-demo-a4 explicit-demo-form-one-closeup; do
+            rsvg-convert --background-color white --dpi-x 300 --dpi-y 300 \
+              --output "output/formatted-sheet-review/$NAME-300dpi.png" \
+              "output/formatted-sheet-review/$NAME.svg"
+          done
+          cp output/formatted-sheet-review/form-one-title-closeup-300dpi.png \
+             output/formatted-sheet-review/form-one-title-closeup.png
+          cp output/formatted-sheet-review/explicit-demo-form-one-closeup-300dpi.png \
+             output/formatted-sheet-review/explicit-demo-form-one-closeup.png
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          folder = Path("output/formatted-sheet-review")
+          expected = {
+              "a4-portrait-clean": (2480, 3508),
+              "a4-portrait-captioned": (2480, 3508),
+              "form-one-title-closeup": (2232, 756),
+              "explicit-demo-a4": (2480, 3508),
+              "explicit-demo-form-one-closeup": (2232, 756),
+          }
+          for name, dims in expected.items():
+              filename = folder / f"{name}-300dpi.png"
+              with Image.open(filename) as picture:
+                  actual = picture.size
+                  assert all(abs(a-b) <= 1 for a, b in zip(actual, dims)), (
+                      name, actual, dims,
+                  )
+                  # librsvg respects pixel dimensions but may not persist pHYs.
+                  # Store explicit physical 300-DPI metadata, without rescaling.
+                  picture.save(filename, dpi=(300, 300))
+              with Image.open(filename) as picture:
+                  assert all(abs(value - 300) < .2
+                             for value in picture.info["dpi"])
+          print("300 DPI physical raster dimensions AND PNG metadata verified")
+          PY
+          for CASE in archived-issue35 current; do
+            for VIEW in clean diagnostic; do
+              NAME="c3-$CASE-$VIEW"
+              rsvg-convert --background-color white --width 1800 \
+                --output "output/formatted-sheet-review/$NAME.png" \
+                "output/formatted-sheet-review/$NAME.svg"
+            done
+          done
+      - name: Assemble only a visual before/after C3 comparison
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image, ImageDraw
+          folder = Path("output/formatted-sheet-review")
+          left = Image.open(folder / "c3-archived-issue35-clean.png").convert("RGB")
+          right = Image.open(folder / "c3-current-clean.png").convert("RGB")
+          assert left.size == right.size
+          margin, caption = 28, 78
+          output = Image.new(
+              "RGB", (left.width * 2 + margin * 3,
+                      left.height + caption + margin * 2), "white",
+          )
+          output.paste(left, (margin, caption))
+          output.paste(right, (left.width + margin * 2, caption))
+          pencil = ImageDraw.Draw(output)
+          pencil.text((margin, 24), "ARCHIVE Issue #35: C3 y=75 mm (18 wires)", fill="black")
+          pencil.text(
+              (left.width + margin * 2, 24),
+              "CURRENT accepted PR #62: C3 y=80 mm (16 wires)",
+              fill="black",
+          )
+          output.save(folder / "c3-comparison-side-by-side.png")
+          PY
+      - name: Verify physical size, content layers, exact nets and PNG outputs
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+          import json
+
+          directory = Path("output/formatted-sheet-review")
+          manifest = json.loads((directory / "formatted-sheet-manifest.json").read_text())
+          assert manifest["status"] == "DRAFT_VISUAL_REVIEW_ONLY"
+          assert manifest["components"] == ["R1", "R2", "C1", "C2", "L1", "C3"]
+          assert manifest["wires"] == 16 and len(manifest["junctions"]) == 3
+          assert len(manifest["sheets"]) == 3
+          assert manifest["default_export_mode"] == "clean"
+          assert manifest["selected_mode"] == "all"
+          assert manifest["c3_current"]["symbol_id"] == "capacitor.electrolytic"
+          assert manifest["c3_current"]["revision"] == 1
+          assert manifest["c3_current"]["pins_um"] == {
+              "1": [91000, 80000], "2": [109000, 80000]
+          }
+          assert manifest["c3_current"]["status"] == "draft"
+          tag = "{http://www.w3.org/2000/svg}"
+          for item in manifest["sheets"]:
+              dims = item["dimensions_um"]
+              prefix = "a4-portrait" if item["format"] == "A4" else (
+                  "a3-landscape" if item["orientation"] == "landscape" else "a3-portrait"
+              )
+              for mode in ("clean", "diagnostic"):
+                  file = directory / f"{prefix}-{mode}.svg"
+                  raster = directory / f"{prefix}-{mode}.png"
+                  assert file.is_file() and raster.stat().st_size > 1000
+                  svg = ET.fromstring(file.read_text())
+                  assert svg.get("width") == f"{dims[0] / 1000:g}mm"
+                  assert svg.get("height") == f"{dims[1] / 1000:g}mm"
+                  assert svg.get("data-approval-status") == "DRAFT"
+                  assert len(svg.findall(f".//{tag}line[@data-layer='wires']")) == 16
+                  assert len(svg.findall(
+                      f".//{tag}circle[@data-kind='authored-junction']"
+                  )) == 3
+                  assert svg.find(f".//{tag}rect[@data-kind='form-one-outline']") is not None
+                  assert svg.find(f".//{tag}g[@data-layer='schematic-content']") is not None
+                  assert not svg.findall(f".//{tag}clipPath")
+          for name in (
+              "schematic-clean", "schematic-diagnostic",
+              "a4-portrait-captioned", "form-one-title-closeup",
+              "c3-archived-issue35-clean", "c3-archived-issue35-diagnostic",
+              "c3-current-clean", "c3-current-diagnostic",
+          ):
+              svg_path = directory / f"{name}.svg"
+              png_path = directory / f"{name}.png"
+              assert svg_path.is_file() and png_path.stat().st_size > 1000
+              root = ET.fromstring(svg_path.read_text())
+              assert root.get("data-approval-status") == "DRAFT"
+          plain = ET.fromstring((directory / "schematic-clean.svg").read_text())
+          assert not plain.findall(f".//{tag}g[@data-layer='frame']")
+          assert not plain.findall(f".//{tag}g[@data-layer='title-block']")
+          captioned = ET.fromstring(
+              (directory / "a4-portrait-captioned.svg").read_text()
+          )
+          assert captioned.findall(
+              f".//{tag}g[@data-layer='title-block-fields']/{tag}text"
+          )
+          comparison = json.loads((directory / "c3-comparison.json").read_text())
+          assert comparison["archive_wire_count"] == 18
+          assert comparison["current_wire_count"] == 16
+          assert (directory / "c3-comparison-side-by-side.png").stat().st_size > 1000
+          assert comparison["archive_junctions_um"] == comparison["current_junctions_um"]
+          print("Clean default + 3 optional formats + measured title + C3 comparison verified")
+          print("A4/A3 SVG, PNG, form-1, 16 current wires and 3 junctions verified")
+          PY
+      - name: Upload DRAFT formatted-sheet review set
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-formatted-sheet-review
+          path: output/formatted-sheet-review/*
           if-no-files-found: error
       - name: Upload DRAFT sheet and capacitor comparison artifacts
         uses: actions/upload-artifact@v4
