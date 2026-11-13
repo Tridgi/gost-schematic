@@ -19,11 +19,11 @@ def painter():
     return owner_renderer()
 
 
-def _pin(mod, number, *, side=Side.LEFT, row=1, at=Point(0, 0)):
+def _pin(mod, number, *, side=Side.LEFT, row=1, at=None):
     return mod.ResolvedIcPin(
         pin_id=f"test_{number}", number=str(number),
         label=f"ДЛИННОЕ НАЗВАНИЕ ВЫВОДА {number}",
-        side=side, row=row, anchor=at,
+        side=side, row=row, anchor=at if at is not None else Point(0, 0),
         role="passive",
     )
 
