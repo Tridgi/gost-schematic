@@ -119,11 +119,12 @@ def audit_catalog() -> dict[str, object]:
 
     for source in source_symbols:
         symbol = load_symbol(source)
-        part = None
-        if symbol.identifier.startswith(("capacitor.", "resistor.")):
-            group, filename = symbol.identifier.split(".", maxsplit=1)
-            directory = "capacitors" if group == "capacitor" else "resistors"
-            part = load_part(root / "parts" / directory / f"{filename}.json")
+        # Match *every* static UGO to its independently versioned physical
+        # passport by its catalog-relative path. Never special-case resistor/
+        # capacitor families: new diodes (and later families) must not appear
+        # as physically unmodelled in an otherwise green structural audit.
+        physical_source = root / "parts" / source.relative_to(root / "symbols")
+        part = load_part(physical_source) if physical_source.is_file() else None
         path = "catalog/" + source.relative_to(root).as_posix()
         entries.append(_entry(symbol, source, path, part))
 

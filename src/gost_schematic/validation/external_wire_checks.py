@@ -202,7 +202,7 @@ def validate_external_wires(
     attachments: dict[PinRef, set[int]] = defaultdict(set)
     wires_with_pins: dict[int, set[PinRef]] = defaultdict(set)
     for ref, point in positions.items():
-        interior_contact = False
+        interior_nets: set[str] = set()
         for i, wire in enumerate(segments):
             if point == wire.start or point == wire.end or (
                 point in explicit and _on_wire(wire, point)
@@ -210,11 +210,15 @@ def validate_external_wires(
                 attachments[ref].add(i)
                 wires_with_pins[i].add(ref)
             elif _on_wire(wire, point):
-                interior_contact = True
-        # A geometric wire crossing an unassigned physical terminal is still
-        # unsafe: the contact exists even when no semantic net owns it.
-        # Never infer an attachment or net from a non-junction crossing.
-        if interior_contact and not attachments[ref]:
+                interior_nets.add(wire.net_name)
+        # Issue #40: report an unmarked interior touching an unattached pin.
+        # Issue #58: another legitimate endpoint attachment must NOT hide an
+        # unmarked interior of a FOREIGN net at that physical contact.
+        # Neither case implies a junction or electrically joins wire islands.
+        if interior_nets and (
+            not attachments[ref]
+            or any(net not in owners.get(ref, ()) for net in interior_nets)
+        ):
             error(
                 "WIRE_PIN_CONTACT_UNDECLARED",
                 f"{ref.reference}.{ref.number} touches a wire interior without junction",
