@@ -88,7 +88,7 @@ class ResolvedIcPin:
     label: str
     side: Side
     row: int
-    anchor: Point  # AUTHORITATIVE resolved WORLD connector point
+    anchor: Point  # AUTHORITATIVE WORLD external end of physical lead
     role: str = "passive"
 
     def __post_init__(self) -> None:
@@ -180,7 +180,7 @@ class IcRendered:
     body_world: Box
     ink: tuple[IcInkBox, ...]
     font_sha256: str | None
-    pin_anchors: tuple[tuple[str, Point], ...]
+    pin_anchors: tuple[tuple[str, Point], ...]  # exact external ends
 
 
 def _measure(text: str, style: TextStyle, measure: TextMeasurer) -> Box:
@@ -386,20 +386,20 @@ def render_resolved_ic(
             # Vertical pin row is not an electrical grid index; an owner must
             # supply a separate explicit x coordinate/semantic ESKD profile.
             raise ValueError("IC_UNSUPPORTED_VERTICAL_PORT: ESKD policy required")
-        expected = world(Point(local_x, local_y))
-        if expected != pin.anchor:
-            raise ValueError(
-                f"IC_PIN_ANCHOR_MISMATCH: {pin.pin_id} exact "
-                f"expected {expected}, model supplied {pin.anchor}"
-            )
+        frame_point = world(Point(local_x, local_y))
         outward = unit.transform.side(pin.side)
         vector = SIDE_VECTORS[outward]
-        lead = Point(
-            pin.anchor.x + vector.x * proposed.lead_length_um,
-            pin.anchor.y + vector.y * proposed.lead_length_um,
+        expected = Point(
+            frame_point.x + vector.x * proposed.lead_length_um,
+            frame_point.y + vector.y * proposed.lead_length_um,
         )
-        pin_leads.append((pin, lead))
-        stroke(pin.anchor, lead, pin.pin_id, "pin-lead")
+        if expected != pin.anchor:
+            raise ValueError(
+                f"IC_PIN_ANCHOR_MISMATCH: {pin.pin_id} exact external "
+                f"endpoint expected {expected}, model supplied {pin.anchor}"
+            )
+        pin_leads.append((pin, frame_point))
+        stroke(frame_point, pin.anchor, pin.pin_id, "pin-lead")
     texts: list[tuple[IcInkBox, Point]] = []
     def add(text: str, cell: Box, owner: str, kind: str,
             align: str = "center") -> None:
@@ -432,15 +432,15 @@ def render_resolved_ic(
                     p.side == side and p.row == row and p.label
                     for p in unit.pins
                 ) else "field-text")
-    for pin, lead in pin_leads:
+    for pin, frame_point in pin_leads:
         # ГОСТ 2.743-91 §2.3.12: numbers ABOVE the connection line.
         # For vertical rotated leads the external left is a DRAFT editorial
         # analogue; source-specific ESKD approval still required.
         side = unit.transform.side(pin.side)
         n = _measure(pin.number, style, measurer)
         width, height = _width(n), _height(n)
-        middle = Point((pin.anchor.x + lead.x) // 2,
-                       (pin.anchor.y + lead.y) // 2)
+        middle = Point((pin.anchor.x + frame_point.x) // 2,
+                       (pin.anchor.y + frame_point.y) // 2)
         pad = policy.ink_padding_um + (policy.line_width_um + 1) // 2
         if side in (Side.LEFT, Side.RIGHT):
             box = Box(middle.x - width // 2,
@@ -550,10 +550,12 @@ def render_resolved_ic(
         "stroke": "#000000",
         "stroke-width": format_mm(policy.line_width_um),
     })
-    for pin, lead in pin_leads:
+    for pin, frame_point in pin_leads:
         ET.SubElement(leads, S + "line", {
-            "x1": format_mm(pin.anchor.x), "y1": format_mm(pin.anchor.y),
-            "x2": format_mm(lead.x), "y2": format_mm(lead.y),
+            "x1": format_mm(frame_point.x),
+            "y1": format_mm(frame_point.y),
+            "x2": format_mm(pin.anchor.x),
+            "y2": format_mm(pin.anchor.y),
             "data-pin-id": pin.pin_id, "data-pin-number": pin.number,
             "data-role": pin.role,
             "data-real-anchor": "true",
