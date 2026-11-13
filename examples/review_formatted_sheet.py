@@ -27,11 +27,11 @@ def _closeup_title(svg: str) -> str:
     if title is None:
         raise ValueError("No title-block for the explicit review close-up")
     root = ET.Element(_SVG + "svg", {
-        "width": "189mm", "height": "59mm", "viewBox": "18 235 189 59",
+        "width": "189mm", "height": "64mm", "viewBox": "18 235 189 64",
         "data-approval-status": "DRAFT", "data-view": "title-1-to-1",
     })
     ET.SubElement(root, _SVG + "title").text = (
-        "Unapproved form 1 title: zoomed illustration for metric inspection"
+        "DRAFT form 1 with auxiliary lower sheet-margin fields: 1:1 metric review"
     )
     root.append(title)
     return ET.tostring(root, encoding="unicode") + "\n"
