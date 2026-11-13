@@ -171,14 +171,17 @@ jobs:
           assert not root.findall(f".//{ns}g[@data-layer='title-block']")
           print("Verified default bare SVG: no page/form-one or frame")
           PY
-      - name: Gate explicit form-one CLI values without shipping synthetic data
+      - name: Verify and export isolated explicit DEMO values (not signatories)
         run: |
           python -m examples.review_formatted_sheet \
-            --font-file "$REVIEW_FONT" --mode a4 \
-            --title-field "designation=CI-TEST-ONLY" \
-            --title-field "developed_surname=TEST" \
+            --font-file "$REVIEW_FONT" --mode a4 --title-headings \
+            --title-field "designation=DEMO-001" \
+            --title-field "developed_surname=ТЕСТ" \
+            --title-field "name=Демонстрационный лист" \
             --output-dir output/explicit-form-ci-only
           python - <<'PY'
+          import json
+          import shutil
           from pathlib import Path
           from xml.etree import ElementTree as ET
           folder = Path("output/explicit-form-ci-only")
@@ -192,13 +195,55 @@ jobs:
               f".//{ns}g[@data-layer='title-block-fields']/{ns}text"
           )
           marked = {f.get("data-graph"): f for f in fields}
-          assert marked["designation"].text == "CI-TEST-ONLY"
-          assert marked["developed_surname"].text == "TEST"
+          assert marked["designation"].text == "DEMO-001"
+          assert marked["developed_surname"].text == "ТЕСТ"
+          assert marked["name"].text == "Демонстрационный лист"
           assert marked["developed_surname"].get("data-graph-number") == "11"
           assert marked["role_developed"].text == "Разраб."
           assert marked["role_developed"].get("data-graph-number") == "10"
           assert all(f.get("data-cap-height-mm") == "2.5" for f in fields)
-          print("Explicit-only title value verified; temporary fixture NOT uploaded")
+          roles = [marked[k] for k in (
+              "role_developed", "role_checked", "role_tech_control",
+              "role_norm_control", "role_approved",
+          )]
+          positions = []
+          for node in roles:
+              cell = list(map(int, node.get("data-cell-bounds-um").split(",")))
+              ink = list(map(int, node.get("data-ink-bounds-um").split(",")))
+              assert node.get("data-ink-align") == "left"
+              assert node.get("data-graph-number") == "10"
+              assert ink[0] - cell[0] == 800
+              positions.append(ink[0])
+          assert positions == [20800] * 5
+          for key in ("developed_signature", "developed_date"):
+              assert key not in marked  # No invented signature or date.
+          assert marked["developed_surname"].get("data-graph-number") == "11"
+          assert not marked["role_developed"].text == "ТЕСТ"
+          assert explicitly.get("width") == "210mm"
+          dest = Path("output/formatted-sheet-review")
+          for source, output in (
+              ("a4-portrait-explicit-fields.svg", "explicit-demo-a4.svg"),
+              ("form-one-explicit-fields-closeup.svg",
+               "explicit-demo-form-one-closeup.svg"),
+          ):
+              shutil.copyfile(folder / source, dest / output)
+          original = json.loads((folder / "formatted-sheet-manifest.json").read_text())
+          (dest / "explicit-demo-manifest.json").write_text(
+              json.dumps({
+                  "status": "DRAFT_SYNTHETIC_EXPLICIT_DEMO_ONLY",
+                  "is_real_document": False,
+                  "filled_keys": original["explicit_title_keys"],
+                  "role_left_ink_inset_um": 800,
+                  "role_ink_x_um": positions,
+                  "signature_fields": "BLANK",
+                  "date_fields": "BLANK",
+                  "font_sha256": original["font"]["sha256"],
+                  "font_cap_height_um": 2500,
+                  "not_normative_acceptance": True,
+              }, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8",
+          )
+          print("Explicit DEMO exported separately, no fictional signatures/dates")
+          PY
           PY
       - name: Rasterize clean and diagnostic A4/A3 at common pixel width
         run: |
@@ -217,13 +262,15 @@ jobs:
           done
           # 1:1 check with real OpenGost, dimensioned at genuine 300 DPI:
           # A4 210x297 mm => 2480x3508 px; zoom 189x64 mm => 2232x756 px.
-          for NAME in a4-portrait-clean a4-portrait-captioned form-one-title-closeup; do
+          for NAME in a4-portrait-clean a4-portrait-captioned form-one-title-closeup explicit-demo-a4 explicit-demo-form-one-closeup; do
             rsvg-convert --background-color white --dpi-x 300 --dpi-y 300 \
               --output "output/formatted-sheet-review/$NAME-300dpi.png" \
               "output/formatted-sheet-review/$NAME.svg"
           done
           cp output/formatted-sheet-review/form-one-title-closeup-300dpi.png \
              output/formatted-sheet-review/form-one-title-closeup.png
+          cp output/formatted-sheet-review/explicit-demo-form-one-closeup-300dpi.png \
+             output/formatted-sheet-review/explicit-demo-form-one-closeup.png
           python - <<'PY'
           from pathlib import Path
           from PIL import Image
@@ -232,6 +279,8 @@ jobs:
               "a4-portrait-clean": (2480, 3508),
               "a4-portrait-captioned": (2480, 3508),
               "form-one-title-closeup": (2232, 756),
+              "explicit-demo-a4": (2480, 3508),
+              "explicit-demo-form-one-closeup": (2232, 756),
           }
           for name, dims in expected.items():
               filename = folder / f"{name}-300dpi.png"
