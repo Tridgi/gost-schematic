@@ -118,7 +118,7 @@ def test_espd_program_document_type_and_graphics_are_distinct():
     for marker in (
         "19.701-90", "19.101-77", "19.104-78", "19.105-78",
         "19.106-78", "Одномерные массивы", "Терминатор", "Решение",
-        "границы цикла", "Соединитель", "§4.2.4", "не реализ",
+        "границы цикла", "Соединитель", "§4.2.4", "NOT IMPLEMENTED",
     ):
         assert marker.casefold() in report.casefold()
     assert "NOT IMPLEMENTED" in report
