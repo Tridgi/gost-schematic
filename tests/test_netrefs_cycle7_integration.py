@@ -164,8 +164,8 @@ def _font():
 def test_measured_type_a_two_sheets_real_glyph_bboxes_keepouts_and_300dpi():
     from io import BytesIO
 
-    from PIL import Image
     import resvg_py
+    from PIL import Image
 
     font = _font()
     project = specimen()
