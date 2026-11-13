@@ -33,7 +33,7 @@ from gost_schematic.validation.external_wire_checks import (
 )
 from gost_schematic.validation.polarity_checks import PolarityStatus, assess_polarity
 
-FIXTURE_DIR = Path(__file__).parent / "fixtures" / "electrical-cycle3"
+FIXTURE_DIR = Path(__file__).parent / "fixtures" / "electrical-layout44"
 
 
 @pytest.fixture(scope="module")
@@ -46,7 +46,7 @@ def test_six_real_parts_include_draft_electrolytic_and_real_tapped_winding(catal
     circuit, graph = authored_specimen()
     assert len(circuit.components) == 6
     assert len(circuit.nets) == 5
-    assert len(graph.segments) == 18
+    assert len(graph.segments) == 16
     assert len(graph.junctions) == 3
     assert [part.reference for part in circuit.components] == [
         "R1", "R2", "C1", "C2", "L1", "C3",
@@ -71,7 +71,7 @@ def test_six_real_parts_include_draft_electrolytic_and_real_tapped_winding(catal
     ]
     capacitor = next(item for item in circuit.components if item.reference == "C3")
     assert capacitor.pin_positions(symbols[electrolytic.symbol_id]) == {
-        "1": Point(91000, 75000), "2": Point(109000, 75000),
+        "1": Point(91000, 80000), "2": Point(109000, 80000),
     }
 
 
