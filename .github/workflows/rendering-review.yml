@@ -189,7 +189,7 @@ jobs:
           rsvg-convert --background-color white --width 2700 \
             --output output/formatted-sheet-review/form-one-title-closeup.png \
             output/formatted-sheet-review/form-one-title-closeup.svg
-          for CASE in as-authored proposal-only; do
+          for CASE in archived-issue35 current; do
             for VIEW in clean diagnostic; do
               NAME="c3-$CASE-$VIEW"
               rsvg-convert --background-color white --width 1800 \
@@ -203,8 +203,8 @@ jobs:
           from pathlib import Path
           from PIL import Image, ImageDraw
           folder = Path("output/formatted-sheet-review")
-          left = Image.open(folder / "c3-as-authored-clean.png").convert("RGB")
-          right = Image.open(folder / "c3-proposal-only-clean.png").convert("RGB")
+          left = Image.open(folder / "c3-archived-issue35-clean.png").convert("RGB")
+          right = Image.open(folder / "c3-current-clean.png").convert("RGB")
           assert left.size == right.size
           margin, caption = 28, 78
           output = Image.new(
@@ -214,10 +214,10 @@ jobs:
           output.paste(left, (margin, caption))
           output.paste(right, (left.width + margin * 2, caption))
           pencil = ImageDraw.Draw(output)
-          pencil.text((margin, 24), "SOURCE: C3 at 100,75 mm (18 wires)", fill="black")
+          pencil.text((margin, 24), "ARCHIVE Issue #35: C3 y=75 mm (18 wires)", fill="black")
           pencil.text(
               (left.width + margin * 2, 24),
-              "ISSUE #44 PROPOSAL ONLY: C3 at 100,80 mm (16 wires)",
+              "CURRENT accepted PR #62: C3 y=80 mm (16 wires)",
               fill="black",
           )
           output.save(folder / "c3-comparison-side-by-side.png")
@@ -233,16 +233,16 @@ jobs:
           manifest = json.loads((directory / "formatted-sheet-manifest.json").read_text())
           assert manifest["status"] == "DRAFT_VISUAL_REVIEW_ONLY"
           assert manifest["components"] == ["R1", "R2", "C1", "C2", "L1", "C3"]
-          assert manifest["wires"] == 18 and len(manifest["junctions"]) == 3
+          assert manifest["wires"] == 16 and len(manifest["junctions"]) == 3
           assert len(manifest["sheets"]) == 3
           assert manifest["default_export_mode"] == "clean"
           assert manifest["selected_mode"] == "all"
-          assert manifest["c3_original"]["symbol_id"] == "capacitor.electrolytic"
-          assert manifest["c3_original"]["revision"] == 1
-          assert manifest["c3_original"]["pins_um"] == {
-              "1": [91000, 75000], "2": [109000, 75000]
+          assert manifest["c3_current"]["symbol_id"] == "capacitor.electrolytic"
+          assert manifest["c3_current"]["revision"] == 1
+          assert manifest["c3_current"]["pins_um"] == {
+              "1": [91000, 80000], "2": [109000, 80000]
           }
-          assert manifest["c3_original"]["status"] == "draft"
+          assert manifest["c3_current"]["status"] == "draft"
           tag = "{http://www.w3.org/2000/svg}"
           for item in manifest["sheets"]:
               dims = item["dimensions_um"]
@@ -257,7 +257,7 @@ jobs:
                   assert svg.get("width") == f"{dims[0] / 1000:g}mm"
                   assert svg.get("height") == f"{dims[1] / 1000:g}mm"
                   assert svg.get("data-approval-status") == "DRAFT"
-                  assert len(svg.findall(f".//{tag}line[@data-layer='wires']")) == 18
+                  assert len(svg.findall(f".//{tag}line[@data-layer='wires']")) == 16
                   assert len(svg.findall(
                       f".//{tag}circle[@data-kind='authored-junction']"
                   )) == 3
@@ -267,8 +267,8 @@ jobs:
           for name in (
               "schematic-clean", "schematic-diagnostic",
               "a4-portrait-captioned", "form-one-title-closeup",
-              "c3-as-authored-clean", "c3-as-authored-diagnostic",
-              "c3-proposal-only-clean", "c3-proposal-only-diagnostic",
+              "c3-archived-issue35-clean", "c3-archived-issue35-diagnostic",
+              "c3-current-clean", "c3-current-diagnostic",
           ):
               svg_path = directory / f"{name}.svg"
               png_path = directory / f"{name}.png"
@@ -285,12 +285,12 @@ jobs:
               f".//{tag}g[@data-layer='title-block-fields']/{tag}text"
           )
           comparison = json.loads((directory / "c3-comparison.json").read_text())
-          assert comparison["original_wire_count"] == 18
-          assert comparison["proposed_wire_count"] == 16
+          assert comparison["archive_wire_count"] == 18
+          assert comparison["current_wire_count"] == 16
           assert (directory / "c3-comparison-side-by-side.png").stat().st_size > 1000
-          assert comparison["original_junctions_um"] == comparison["proposed_junctions_um"]
+          assert comparison["archive_junctions_um"] == comparison["current_junctions_um"]
           print("Clean default + 3 optional formats + measured title + C3 comparison verified")
-          print("A4/A3 SVG, PNG, form-1, 18 authored nets and 3 junctions verified")
+          print("A4/A3 SVG, PNG, form-1, 16 current wires and 3 junctions verified")
           PY
       - name: Upload DRAFT formatted-sheet review set
         uses: actions/upload-artifact@v4
