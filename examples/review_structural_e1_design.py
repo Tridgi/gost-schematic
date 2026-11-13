@@ -72,14 +72,15 @@ def _transform(x: Decimal, y: Decimal, rotation: int, mirror_x: bool) -> tuple[D
     return x, y
 
 
-def _local_port(side: str, t: Decimal, width: Decimal, height: Decimal):
+def _local_port(side: str, t: Fraction, width: Fraction, height: Fraction):
+    """Pure rational placement; this legacy sketch must not round model ports."""
     if side == "LEFT":
-        return -width / 2, height * (t - Decimal("0.5"))
+        return -width / 2, height * (t - Fraction(1, 2))
     if side == "RIGHT":
-        return width / 2, height * (t - Decimal("0.5"))
+        return width / 2, height * (t - Fraction(1, 2))
     if side == "TOP":
-        return width * (t - Decimal("0.5")), -height / 2
-    return width * (t - Decimal("0.5")), height / 2
+        return width * (t - Fraction(1, 2)), -height / 2
+    return width * (t - Fraction(1, 2)), height / 2
 
 
 def _normal(side: str, rotation: int, mirror: bool) -> tuple[int, int]:
@@ -134,17 +135,22 @@ def _block(entry: dict) -> dict:
     if outline not in OUTLINES:
         raise E1DesignError(f"{identifier}: invalid structural outline category")
     width, height = Decimal(w) * scale, Decimal(h) * scale
+    if Fraction(width).denominator != 1 or Fraction(height).denominator != 1:
+        raise E1DesignError(f"{identifier}: E1_PORT_OFF_GRID (fractional scaled bounds)")
     corners = [
         _transform(x, y, rotation, mirror)
         for x in (-width / 2, width / 2)
         for y in (-height / 2, height / 2)
     ]
-    box = (
-        _round_um(Decimal(cx) + min(point[0] for point in corners)),
-        _round_um(Decimal(cy) + min(point[1] for point in corners)),
-        _round_um(Decimal(cx) + max(point[0] for point in corners)),
-        _round_um(Decimal(cy) + max(point[1] for point in corners)),
+    box_coordinates = (
+        Fraction(cx) + Fraction(min(point[0] for point in corners)),
+        Fraction(cy) + Fraction(min(point[1] for point in corners)),
+        Fraction(cx) + Fraction(max(point[0] for point in corners)),
+        Fraction(cy) + Fraction(max(point[1] for point in corners)),
     )
+    if any(value.denominator != 1 for value in box_coordinates):
+        raise E1DesignError(f"{identifier}: E1_PORT_OFF_GRID (fractional view corners)")
+    box = tuple(value.numerator for value in box_coordinates)
     available_w, available_h = box[2] - box[0], box[3] - box[1]
     max_title = max(_text_width_estimate(line, TITLE_EM_UM) for line in title)
     title_stack_h = TITLE_EM_UM + (len(title) - 1) * TITLE_LEADING_UM
@@ -179,9 +185,16 @@ def _block(entry: dict) -> dict:
         t = _decimal(item.get("relative_position"), identifier + "." + port_id)
         if t <= 0 or t >= 1:
             raise E1DesignError(f"{identifier}.{port_id}: port cannot touch corner")
-        lx, ly = _local_port(side, t, width, height)
+        lx, ly = _local_port(
+            side, Fraction(t), Fraction(width), Fraction(height),
+        )
         x, y = _transform(lx, ly, rotation, mirror)
-        point = (_round_um(Decimal(cx) + x), _round_um(Decimal(cy) + y))
+        world_x, world_y = Fraction(cx) + x, Fraction(cy) + y
+        if world_x.denominator != 1 or world_y.denominator != 1:
+            raise E1DesignError(
+                f"{identifier}.{port_id}: E1_PORT_OFF_GRID; never round side-port anchors"
+            )
+        point = (world_x.numerator, world_y.numerator)
         p = {"id": port_id, "side": side, "direction": direction,
              "relative_position": str(t), "point_um": point,
              "normal": _normal(side, rotation, mirror)}
@@ -192,8 +205,11 @@ def _block(entry: dict) -> dict:
             continue
         side_length = height if side in ("LEFT", "RIGHT") else width
         ordered = sorted(group, key=lambda item: item[0])
-        offsets = [_round_um(side_length * t) for t, _ in ordered]
-        if offsets[0] < MIN_CORNER_UM or _round_um(side_length) - offsets[-1] < MIN_CORNER_UM:
+        slot_offsets = [Fraction(side_length) * Fraction(t) for t, _ in ordered]
+        if any(value.denominator != 1 for value in slot_offsets):
+            raise E1DesignError(f"{identifier}.{side}: E1_PORT_OFF_GRID")
+        offsets = [value.numerator for value in slot_offsets]
+        if offsets[0] < MIN_CORNER_UM or int(side_length) - offsets[-1] < MIN_CORNER_UM:
             raise E1DesignError(f"{identifier}.{side}: port too close to rectangle corner")
         if any(b - a < MIN_PORT_PITCH_UM for a, b in pairwise(offsets)):
             raise E1DesignError(f"{identifier}.{side}: adjacent ports closer than editorial pitch")
