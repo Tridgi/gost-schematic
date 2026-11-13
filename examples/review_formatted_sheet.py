@@ -37,6 +37,20 @@ def _closeup_title(svg: str) -> str:
     return ET.tostring(root, encoding="unicode") + "\n"
 
 
+def parse_title_fields(raw_fields: list[str]) -> dict[str, str]:
+    """Explicit values only, never generated or silently overwritten."""
+    parsed: dict[str, str] = {}
+    for entry in raw_fields:
+        key, separator, value = entry.partition("=")
+        if not separator or not key.strip():
+            raise ValueError("--title-field requires KEY=VALUE")
+        key = key.strip()
+        if key in parsed:
+            raise ValueError(f"Duplicate --title-field: {key}")
+        parsed[key] = value
+    return parsed
+
+
 def generate(
     output_dir: Path,
     font_file: Path,
@@ -44,12 +58,15 @@ def generate(
     font_family: str = "OpenGost Type A",
     mode: str = "clean",
     title_headings: bool = False,
+    title_values: dict[str, str] | None = None,
     compare_c3: bool = False,
 ) -> dict[str, object]:
     if mode not in {"clean", "a4", "a3", "all"}:
         raise ValueError("Mode must be clean, a4, a3 or all")
     if title_headings and mode == "clean":
         raise ValueError("Title headings require explicit A4/A3 mode")
+    if title_values and mode == "clean":
+        raise ValueError("Explicit title values require --mode a4|a3|all")
     circuit, graph = authored_specimen()
     parts, symbols = definitions()
     issues = validate_external_wires(circuit, graph, parts, symbols)
@@ -60,7 +77,7 @@ def generate(
     style = inspect_type_a_font(font_file, family=font_family, h_um=3500).style
     caption_style = inspect_type_a_font(
         font_file, family=font_family, h_um=2500,
-    ).style if title_headings else None
+    ).style if (title_headings or title_values) else None
     by_part = {
         part_id: symbols[part.symbol_id] for part_id, part in parts.items()
     }
@@ -142,6 +159,19 @@ def generate(
         )
         files.extend((example, close))
 
+    if title_values:
+        # A document number, drawing name, author and signatory must come
+        # explicitly from the caller; no sample requisites are invented.
+        for name in selected:
+            filled = compose_formatted_sheet(
+                original_clean, profiles[name], title_values=title_values,
+                title_text_style=caption_style, title_measurer=measurer,
+                title_captions=title_headings,
+            )
+            filename = f"{name}-explicit-fields.svg"
+            (output_dir / filename).write_text(filled.svg, encoding="utf-8")
+            files.append(filename)
+
     if compare_c3:
         generate_c3_comparison(output_dir, style)
         files.extend(
@@ -202,6 +232,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--font-family", default="OpenGost Type A")
     parser.add_argument("--mode", choices=("clean", "a4", "a3", "all"), default="clean")
     parser.add_argument("--title-headings", action="store_true")
+    parser.add_argument(
+        "--title-field", action="append", default=[], metavar="KEY=VALUE",
+        help="Explicit form-one cell text, e.g. designation=...; never fabricated",
+    )
     parser.add_argument("--compare-c3", action="store_true")
     parser.add_argument(
         "--output-dir", type=Path, default=Path("output/formatted-sheet-review"),
@@ -210,6 +244,7 @@ def main(argv: list[str] | None = None) -> int:
     report = generate(
         args.output_dir, args.font_file, font_family=args.font_family,
         mode=args.mode, title_headings=args.title_headings,
+        title_values=parse_title_fields(args.title_field),
         compare_c3=args.compare_c3,
     )
     print(
