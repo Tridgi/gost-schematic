@@ -280,12 +280,29 @@ def propose_ic_dimensions(
     style: TextStyle,
     measurer: TextMeasurer,
     policy: IcRenderingPolicy = IcRenderingPolicy(),
+    *,
+    orientation: IcOrientation = IcOrientation.LEFT_RIGHT,
 ) -> IcProposedSize:
     """Minimum grid-rounded box computed exclusively from real glyph ink.
 
     Pins are examined for text/row demands, but their anchor Point is NEVER
     altered or inferred by this sizing pass.
     """
+    if orientation is IcOrientation.TOP_BOTTOM:
+        from gost_schematic.rendering.ic_orientation import vertical_proposal
+
+        if any(p.side not in (Side.TOP, Side.BOTTOM) for p in pins):
+            raise ValueError("IC_MIXED_SIDE_PROFILE: vertical proposal")
+        max_col = max((p.row for p in pins), default=0)
+        virtual = tuple(replace(
+            p, side=Side.LEFT if p.side is Side.TOP else Side.RIGHT,
+            row=max_col + 1 - p.row,
+        ) for p in pins)
+        return vertical_proposal(propose_ic_dimensions(
+            content, virtual, style, measurer, policy,
+        ))
+    if orientation is not IcOrientation.LEFT_RIGHT:
+        raise ValueError("IC_ORIENTATION_UNSUPPORTED")
     left = _occupied_side_rows(content.left_rows, pins, Side.LEFT)
     right = _occupied_side_rows(content.right_rows, pins, Side.RIGHT)
     main = (content.function, *content.main_rows)
