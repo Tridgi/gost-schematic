@@ -4,8 +4,8 @@ A 1:1 sheet wrapper: never scale, crop, reorder, or reinterpret the source
 Circuit/ExternalWireGraph. Geometry and form-1 cells are experimental DRAFT.
 Sources: docs/standards/issue-35-full-sheet.md and GOST R 2.104-2023 B.1.
 """
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 from xml.etree import ElementTree as ET
 
 from gost_schematic.core.geometry import Box
