@@ -137,7 +137,14 @@ def _is_obstructed(
     return (
         any(area.overlaps(block.box) for block in boxes)
         or any(wire_intersects_box(wire, area) for wire in wires)
-        or any(area.overlaps(label.collision_bounds) for label in existing)
+        or any(
+            area.overlaps(label.collision_bounds)
+            or (
+                label.reservation_bounds is not None
+                and area.overlaps(label.reservation_bounds)
+            )
+            for label in existing
+        )
     )
 
 
