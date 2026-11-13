@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import argparse
 import json
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+from itertools import pairwise
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -188,7 +189,7 @@ def _block(entry: dict) -> dict:
         offsets = [_round_um(side_length * t) for t, _ in ordered]
         if offsets[0] < MIN_CORNER_UM or _round_um(side_length) - offsets[-1] < MIN_CORNER_UM:
             raise E1DesignError(f"{identifier}.{side}: port too close to rectangle corner")
-        if any(b - a < MIN_PORT_PITCH_UM for a, b in zip(offsets, offsets[1:])):
+        if any(b - a < MIN_PORT_PITCH_UM for a, b in pairwise(offsets)):
             raise E1DesignError(f"{identifier}.{side}: adjacent ports closer than editorial pitch")
         if len(group) > 1:
             for i, (t, _) in enumerate(ordered):
@@ -294,7 +295,7 @@ def validate_design(data: dict) -> dict:
         path = [s_port["point_um"]]
         path.extend(_exact_pair(p, link_id + ".via") for p in via)
         path.append(t_port["point_um"])
-        segments = list(zip(path, path[1:]))
+        segments = list(pairwise(path))
         if any(a == b or (a[0] != b[0] and a[1] != b[1]) for a, b in segments):
             raise E1DesignError(f"{link_id}: zero-length or diagonal link segment")
         sx, sy = segments[0][1][0] - segments[0][0][0], (
@@ -308,9 +309,10 @@ def validate_design(data: dict) -> dict:
         if tx * t_port["normal"][0] + ty * t_port["normal"][1] >= 0:
             raise E1DesignError(f"{link_id}: last segment does not enter target side")
         for block_id, block in blocks.items():
-            if block_id not in (s_block["id"], t_block["id"]):
-                if any(_crosses_interior(a, b, block["box_um"]) for a, b in segments):
-                    raise E1DesignError(f"{link_id}: route intersects unrelated block {block_id}")
+            if block_id not in (s_block["id"], t_block["id"]) and any(
+                _crosses_interior(a, b, block["box_um"]) for a, b in segments
+            ):
+                raise E1DesignError(f"{link_id}: route intersects unrelated block {block_id}")
         for segment in segments:
             if any(_segments_too_close(segment, prior) for prior in all_segments):
                 raise E1DesignError(f"{link_id}: parallel functional links too close")
