@@ -290,6 +290,11 @@ def build_inductor(spec: InductorSpec) -> InductorDefinition:
                        VerticalAlign.CENTER),
                 Anchor(Point(core_right + mm("3"), core_y - mm("4")),
                        HorizontalAlign.LEFT, VerticalAlign.CENTER),
+                # Editorial fallback for crowded, rotated catalog previews.
+                # This moves only the Cu text, never the winding geometry
+                # or its A/B physical and conducting pin relationships.
+                Anchor(Point(core_right + mm("9"), core_y),
+                       HorizontalAlign.LEFT, VerticalAlign.CENTER),
             ), required=True,
         ))
         constants = (("core_material", "Cu"),)
