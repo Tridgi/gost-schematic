@@ -2,15 +2,23 @@
 
 **Target under test**: [Draft PR #39](https://github.com/Tridgi/gost-schematic/pull/39) / Issue #34, head `4e86e2e0e10d05c591ed004c4d6096de21520007`, router source Git blob `50b9102191fbe7f5876b14bd9ef10dcbbb1fe600`. **Separate QA branch baseline**: `integration/stage0-12` at `73bc6f88a814d7b92267326fc1dab8f127e92e77`. No review of a later changed PR39 head is implied.
 
-The router is **not merged** into the baseline. `scripts/qa_followup_pr39.py` loads **exactly** the PR SHA and checks the source Git blob hash. The GitHub Actions shallow checkout fetches the immutable commit when necessary. It fails closed if unavailable; tests do not silently skip and do not copy/change another team's production module.
+The router is **not merged** into the baseline. `scripts/qa_followup_pr39.py` loads **exactly** the PR SHA and checks the source Git blob hash. The repo includes a QA-only exact PR39 source snapshot verified by blob hash; pytest does **not** invoke Git or download old commits. The loader preferentially imports an installed production implementation when it exists and falls back to the historical QA fixture only until integration.
 
 These scenarios deliberately differ from author-owned `tests/test_two_pin_orthogonal.py` and earlier QA PR #42. All device geometries and physical pin identities come from the **installed actual versioned catalog** in the baseline.
+
+## Update: fixed validator #40 vs unresolved router #50 (2026-11-13)
+
+After integration of [PR #48](https://github.com/Tridgi/gost-schematic/pull/48), base SHA `2052e9d3a903edea860c100e00609ceee3c9062b`, the **validator now correctly emits `WIRE_PIN_CONTACT_UNDECLARED`** when the old PR39 router crosses real unassigned terminal R3.1. This is tested as **mandatory passing** `test_fixed_validator_reports_router_generated_unassigned_pin_contact`. The **router still geometrically returns the unsafe wire**; that separate invariant remains a strict xfail under [#50](https://github.com/Tridgi/gost-schematic/issues/50). Accordingly, #40 is CLOSED while #50 remains OPEN. A safe warning after routing is not the same as making the route safe.
+
+The router test loader **never fetches Git** during pytest. It prefers the installed production router if present, otherwise imports `tests/fixtures/qa_router_pr39_snapshot.py` as an offline historical fixture and validates its original Git blob `50b9102191fbe7f5876b14bd9ef10dcbbb1fe600`. No network or git command is needed. Because this fixture is pinned, an eventual integrated router will be tested only when present under the standard package module path. QA does not modify production.
+
+**Separate validator defect:** [Issue #54](https://github.com/Tridgi/gost-schematic/issues/54) is independently confirmed and assigned production fix [#58](https://github.com/Tridgi/gost-schematic/issues/58) in PR #42's D4 regression: a foreign wire's interior can touch a contact already attached to net A while the validator silently accepts it. This does not alter the #50 router geometry finding.
 
 ## Confirmed open defects
 
 | Case | Actual behavior | Expected / why unsafe | Severity | Issue | QA test |
 |---|---|---|---|---|---|
-| Real unrelated unassigned terminal | A vertical net R1.1→R2.1 is drawn through R3.1=(0,0), with **all three body keepouts provided**. Downstream `validate_external_wires` returns no error. | Prevent unintentional physical connector contact; route preflight must include pin/lead geometry, not only component bodies. | **MAJOR** | [#50](https://github.com/Tridgi/gost-schematic/issues/50), related [#40](https://github.com/Tridgi/gost-schematic/issues/40) | `test_pinned_router_passes_through_real_unassigned_pin_outside_all_body_keepouts` |
+| Real unrelated unassigned terminal | A vertical net R1.1→R2.1 is drawn through R3.1=(0,0), with **all three body keepouts provided**. At original baseline the validator was silent; **after #40 fix it correctly emits WIRE_PIN_CONTACT_UNDECLARED**, while the router geometry remains unsafe. | Prevent unintentional physical connector contact; route preflight must include pin/lead geometry, not only component bodies. | **MAJOR** | [#50](https://github.com/Tridgi/gost-schematic/issues/50), related [#40](https://github.com/Tridgi/gost-schematic/issues/40) | `test_pinned_router_passes_through_real_unassigned_pin_outside_all_body_keepouts` |
 | Remote obstacle pollutes auto-window | Start=(0,0), end=(1000,0) and remote Box near (1e9,1e9) cause `ROUTE_CELL_LIMIT` for **1,000,020,000,100 cells**; explicit small bounds gives valid direct route. | Irrelevant far-away object should not prevent locally feasible one-grid-step route. | **MODERATE** | [#51](https://github.com/Tridgi/gost-schematic/issues/51) | `test_remote_irrelevant_obstacle_does_not_exhaust_cell_budget_for_clear_direct_path` |
 | Existing wire differs in stroke | New 0.3mm conductor routes within the required printed 0.4mm clearance of an existing 1.0mm conductor; `WireSegment` has no width, router assumes both strokes equal. | Use known existing ink width or explicit ink keepout; otherwise output does not satisfy stroke-edge clearance. | **MAJOR** | [#52](https://github.com/Tridgi/gost-schematic/issues/52) | `test_mixed_existing_wire_stroke_must_respect_actual_printed_clearance` |
 
@@ -39,11 +47,11 @@ pytest -q tests/test_qa_followup_router.py
 pytest -q
 ```
 
-All tests require Git to access the pinned PR commit; when PR39 code is eventually integrated, coordinator should explicitly transition tests from pinned snapshot to the accepted implementation commit. A green baseline CI on `integration/stage0-12` alone **cannot** prove PR39 correctness.
+All tests run offline without a Git dependency using a verified, versioned QA fixture. The fixture is **historical PR39 code only**; when routing is integrated the loader automatically uses the new installed module. A green baseline CI by itself is not proof PR39 is fixed.
 
 ## Related but nonduplicated prior issues
 
-- [#40](https://github.com/Tridgi/gost-schematic/issues/40): the **external wire validator** is silent on an unassigned pin crossed in the wire interior. PR39 routing makes this observable as a generated-wire defect (#50), but fixing either issue alone does not necessarily resolve both.
+- [#40](https://github.com/Tridgi/gost-schematic/issues/40): **FIXED** by PR #48, now emits required ERROR on unassigned real pin. PR39 still physically routes through that pin (#50), now caught by passing QA validator check; the routing xfail remains.
 - [#41](https://github.com/Tridgi/gost-schematic/issues/41): malformed catalog JSON leaks `AttributeError` instead of `CatalogError`; independent of routing. Keep PR #42's existing negative regression; do not clone it here.
 
 ## Scope and limitations
