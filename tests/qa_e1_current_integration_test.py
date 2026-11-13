@@ -42,7 +42,7 @@ def _model_two_ports(model, length):
 
 def test_latest_snapshots_are_exact_upstream_commits():
     assert CURRENT_SHAS["model"] == "82d400d2472a0a546dafcbf18f70d581642ca284"
-    assert CURRENT_SHAS["graphics"] == "b7fa2138e84d5279ef0b894cb4ca56b32732b11b"
+    assert CURRENT_SHAS["graphics"] == "0ea11ae8ba608259080fda7341cc81d5b15f5d14"
     from qa_e1_integration_support import FIXTURES
     assert all(
         blob_hash((FIXTURES / path).read_bytes()) == target
