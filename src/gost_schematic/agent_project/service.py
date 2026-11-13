@@ -90,6 +90,25 @@ class ProjectService:
             "diagnostics_revision": snapshot.project.revision,
         })
 
+    def export_project_view(
+        self, project_id: str, revision: str, *, mode: str = "clean",
+        reference: str | None = None, target_dpi: int = 500,
+    ) -> dict[str, Any]:
+        """Trusted local export; no user-selected filesystem path.
+
+        The saved SVG/PNG are derived artifacts of the exact immutable
+        revision, never an alternative source of electrical topology.
+        No general MCP write endpoint exposes this operation.
+        """
+        view = self.render_project(
+            project_id, revision, mode=mode, reference=reference,
+            target_dpi=target_dpi,
+        )
+        artifacts = self.repository.write_view(
+            project_id, revision, view.metadata["view_id"], view.svg, view.png,
+        )
+        return {**view.metadata, "artifacts": artifacts}
+
     def _report(self, project: SchematicProject, generation: int) -> dict[str, Any]:
         parts, symbols = self.catalog.verify(list(project.catalog_lock))
         diagnostics = [
