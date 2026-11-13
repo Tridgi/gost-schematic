@@ -1,0 +1,112 @@
+name: E1 real-model graphics contract review (PR78 + PR80)
+
+on:
+  push:
+    branches:
+      - parallel/catalog-structural-e1-design
+    paths:
+      - "examples/review_structural_e1_model.py"
+      - "examples/verify_structural_e1_model_render.py"
+      - "examples/fixtures/structural_e1/pr80-shared-7b-18p-9l.json"
+      - "tests/test_structural_e1_model_graphics.py"
+      - ".github/workflows/e1-pr80-graphics-review.yml"
+  pull_request:
+    branches:
+      - integration/stage0-12
+    paths:
+      - "examples/review_structural_e1_model.py"
+      - "examples/verify_structural_e1_model_render.py"
+      - "examples/fixtures/structural_e1/pr80-shared-7b-18p-9l.json"
+      - "tests/test_structural_e1_model_graphics.py"
+      - ".github/workflows/e1-pr80-graphics-review.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e1-real-model-visual-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  real-model-visual-proof:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - name: Checkout the YGO2 PR78 source (never switch the main branch)
+        uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Overlay actual PR80 structural source in ephemeral runner only
+        shell: bash
+        run: |
+          git fetch --no-tags --depth=1 origin parallel/structural-e1-model
+          MODEL_SHA="$(git rev-parse FETCH_HEAD)"
+          echo "E1_MODEL_SHA=$MODEL_SHA" >> "$GITHUB_ENV"
+          git restore --source="$MODEL_SHA" --worktree -- src/gost_schematic/structural
+          git show "$MODEL_SHA:tests/fixtures/structural-e1/structural-e1.json" \
+            | cmp - examples/fixtures/structural_e1/pr80-shared-7b-18p-9l.json
+          echo "Loaded real PR80 structural source SHA $MODEL_SHA"
+          test -f src/gost_schematic/structural/model.py
+          test -f src/gost_schematic/structural/validation.py
+
+      - name: Install tests and external OpenGost Type A
+        shell: bash
+        run: |
+          python -m pip install -e ".[dev]"
+          python scripts/install_opengost_type_a.py \
+            --directory "$HOME/.local/share/fonts"
+          fc-cache -f
+          FONT_FILE="$(find "$HOME/.local/share/fonts" -type f \
+            \( -iname '*TypeA*.ttf' -o -iname '*TypeA*.otf' \) | head -1)"
+          test -n "$FONT_FILE" && test -f "$FONT_FILE"
+          VIEWER_FONT="$(fc-match -f '%{file}' 'OpenGost Type A')"
+          test "$(realpath "$FONT_FILE")" = "$(realpath "$VIEWER_FONT")"
+          echo "E1_TEST_FONT=$FONT_FILE" >> "$GITHUB_ENV"
+
+      - name: Ruff (real model plus source-only graphics layer)
+        run: ruff check examples/review_structural_e1_model.py examples/verify_structural_e1_model_render.py tests/test_structural_e1_model_graphics.py src/gost_schematic/structural
+
+      - name: Execute true cross-PR model ↔ visual regression
+        run: pytest -q tests/test_structural_e1_model_graphics.py tests/test_structural_e1_graphic_dossier.py
+
+      - name: Render seven REAL FunctionalBlocks and nine directed PortRef links
+        if: matrix.python-version == '3.12'
+        shell: bash
+        run: |
+          python -m examples.review_structural_e1_model \
+            --model-json examples/fixtures/structural_e1/pr80-shared-7b-18p-9l.json \
+            --font-file "$E1_TEST_FONT" --model-sha "$E1_MODEL_SHA" \
+            --output-dir output/e1-real-model
+          echo "$E1_MODEL_SHA" > output/e1-real-model/PR80_SOURCE_SHA.txt
+
+      - name: Render real SVG to PNG at 4200 pixels (high resolution)
+        if: matrix.python-version == '3.12'
+        shell: bash
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+          for variant in clean diagnostic; do
+            rsvg-convert --background-color white --width 4200 \
+              -o "output/e1-real-model/e1-seven-$variant-4200px.png" \
+              "output/e1-real-model/e1-seven-$variant.svg"
+          done
+
+      - name: Independently inspect SVG d paths, all PortRefs and PNG/hash provenance
+        if: matrix.python-version == '3.12'
+        run: |
+          python -m examples.verify_structural_e1_model_render \
+            --output-dir output/e1-real-model
+
+      - name: Publish E1 7/18/9 clean/diagnostic SVG, PNG, geometry and SHA256
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-e1-pr80-graphics-seven-blocks
+          path: output/e1-real-model/*
+          if-no-files-found: error
