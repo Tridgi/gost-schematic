@@ -102,7 +102,9 @@ def test_manifest_preserves_exact_pins_and_si_nominals_after_transform():
     assert len(manifest["components"]) == len(scene.circuit.components)
     assert all(item["symbol_status"] == "draft" for item in manifest["components"])
     for item, row in zip(scene.circuit.components, manifest["components"], strict=True):
-        assert row["nominal_si"] == item.nominal.to_record()
+        assert row["nominal_si"] == (
+            item.nominal.to_record() if item.nominal is not None else None
+        )
         points = item.pin_positions(scene.symbols_by_part[item.part_id])
         assert len(row["pins"]) == len(points)
         for pin in row["pins"]:
@@ -114,6 +116,65 @@ def test_manifest_preserves_exact_pins_and_si_nominals_after_transform():
     for pin in sym.pins:
         expected = turned.transform.apply(pin.at) + turned.origin
         assert turned.pin_positions(sym)[pin.number] == expected
+
+
+
+def test_manifest_null_nominal_is_valid_and_preserves_immutable_component():
+    scene, _ = catalog()
+    original = next(
+        item for item in scene.circuit.components if item.nominal is not None
+    )
+    # A real versioned UGO with its nominal intentionally absent; the catalog,
+    # symbol passport, physical pins and production code are not modified.
+    without_nominal = replace(original, nominal=None)
+    revised_circuit = replace(
+        scene.circuit,
+        components=tuple(
+            without_nominal if item.reference == original.reference else item
+            for item in scene.circuit.components
+        ),
+    )
+    revised_scene = replace(scene, circuit=revised_circuit)
+    before = revised_scene.circuit.components
+    layout = layout_review_scene(revised_scene, STYLE, DeterministicMetrics())
+    assert layout.valid, [(issue.code, issue.message) for issue in layout.diagnostics]
+    manifest = review_manifest(revised_scene, layout)
+    record = next(
+        row for row in manifest["components"]
+        if row["reference"] == without_nominal.reference
+    )
+    assert record["nominal_si"] is None
+    assert record["part_id"] == original.part_id
+    assert record["origin_um"] == [original.origin.x, original.origin.y]
+    assert record["rotation_clockwise_deg"] == original.transform.rotation
+    assert record["mirror_x"] == original.transform.mirror_x
+    assert {
+        pin["number"]: (pin["x_um"], pin["y_um"])
+        for pin in record["pins"]
+    } == {
+        number: (point.x, point.y)
+        for number, point in without_nominal.pin_positions(
+            revised_scene.symbols_by_part[without_nominal.part_id]
+        ).items()
+    }
+    assert revised_scene.circuit.components == before
+    assert original.nominal is not None  # Source scene unchanged.
+
+
+def test_manifest_keeps_existing_non_null_si_nominal_unchanged():
+    scene, layout = catalog()
+    original = next(
+        item for item in scene.circuit.components if item.nominal is not None
+    )
+    before = tuple(item.nominal for item in scene.circuit.components)
+    manifest = review_manifest(scene, layout)
+    record = next(
+        row for row in manifest["components"]
+        if row["reference"] == original.reference
+    )
+    assert record["nominal_si"] == original.nominal.to_record()
+    assert record["nominal_si"] is not None
+    assert tuple(item.nominal for item in scene.circuit.components) == before
 
 
 def test_deliberate_overlap_is_rejected_and_red_markers_name_affected_parts():
