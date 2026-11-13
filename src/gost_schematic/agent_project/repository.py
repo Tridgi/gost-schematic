@@ -38,7 +38,7 @@ class ProjectRepository(Protocol):
         if not isinstance(svg, str) or not svg.startswith("<") or not isinstance(png, bytes):
             raise ProjectError("IMAGE_INVALID", "Expected genuine SVG and PNG bytes")
         if len(svg.encode("utf-8")) > 4_000_000 or len(png) > 8_000_000 or not (
-            png.startswith(b"\\x89PNG\\r\\n\\x1a\\n")
+            png.startswith(b"\x89PNG\r\n\x1a\n")
         ):
             raise ProjectError("IMAGE_INVALID", "Visual evidence exceeds bounds or PNG invalid")
         artifacts = self.root / "artifacts"
@@ -72,6 +72,8 @@ class ProjectRepository(Protocol):
     def create_initial(self, project: SchematicProject, idempotency_key: str) -> ProjectHead: ...
     def read(self, project_id: str, revision: str | None = None
              ) -> tuple[ProjectHead, dict]: ...
+    def write_view(self, project_id: str, revision: str, view_id: str,
+                   svg: str, png: bytes) -> dict[str, str]: ...
 
 
 def _is_redirect(path: Path) -> bool:
