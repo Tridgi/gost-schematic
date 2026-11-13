@@ -254,6 +254,24 @@ def test_proposed_model_export_rejects_unmapped_view_transform():
         semantic_projection(data)
 
 
+def test_legacy_design_preview_rounds_only_absolute_fraction_once():
+    data = specimen()
+    sensor = block(data, "B1")
+    data["blocks"] = [sensor]
+    data["links"] = []
+    sensor["ports"][0]["relative_position"] = "0.33335"
+    # offset=10,000.5 µm on a 30,000µm side.
+    assert validate_design(data)["blocks"][0]["ports"]["data_out"]["point_um"] == (
+        94000, 35001,
+    )
+    # For negative absolute half ties, early rounding of +10,000.5 would
+    # give -34,999; signed absolute half-away correctly gives -35,000.
+    sensor["center_um"][1] = -30000
+    assert validate_design(data)["blocks"][0]["ports"]["data_out"]["point_um"] == (
+        94000, -35000,
+    )
+
+
 def test_two_links_cannot_occupy_same_parallel_sheet_segment():
     data = specimen()
     new_link = deepcopy(data["links"][0])
