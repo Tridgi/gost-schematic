@@ -103,12 +103,24 @@ def generate(output_dir: Path, font_file: Path) -> dict:
                 assert line.get("y2") == format_mm(expected.y)
             filename = f"{key}-unit{unit_index}.svg"
             (output_dir / filename).write_text(rendered.svg, encoding="utf-8")
+            diagnostic = render_resolved_ic(
+                view, style, measurer, review_overlay=True, glyph_detail=True,
+            )
+            assert diagnostic.pin_anchors == rendered.pin_anchors
+            diagnostic_name = f"{key}-unit{unit_index}-review.svg"
+            (output_dir / diagnostic_name).write_text(
+                diagnostic.svg, encoding="utf-8",
+            )
             case["units"].append({
                 "unit_id": placement.unit_id,
                 "refdes": view.reference,
                 "filename": filename,
                 "svg_sha256": hashlib.sha256(
                     rendered.svg.encode("utf-8"),
+                ).hexdigest(),
+                "diagnostic_filename": diagnostic_name,
+                "diagnostic_svg_sha256": hashlib.sha256(
+                    diagnostic.svg.encode("utf-8"),
                 ).hexdigest(),
                 "physical_numbers": [p.number for p in view.pins],
                 "outer_frame_um": [
