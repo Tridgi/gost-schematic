@@ -89,12 +89,11 @@ class PageProfile:
         frame = self.frame_um
         title = self.title_um
         bottom = title.min_y if title is not None else frame.max_y
-        return Box(
-            frame.min_x + self.safe_gap_um,
-            frame.min_y + self.safe_gap_um,
-            frame.max_x - self.safe_gap_um,
-            bottom - self.safe_gap_um,
-        )
+        left, top = frame.min_x + self.safe_gap_um, frame.min_y + self.safe_gap_um
+        right, lower = frame.max_x - self.safe_gap_um, bottom - self.safe_gap_um
+        if left >= right or top >= lower:
+            raise ValueError("SCHEMATIC_PAGE_OVERFLOW: margins exhaust content zone")
+        return Box(left, top, right, lower)
 
 
 @dataclass(frozen=True, slots=True)
@@ -309,6 +308,8 @@ def compose_formatted_sheet(
     offset_um: tuple[int, int] | None = None,
 ) -> FormattedSheet:
     """Place source 1:1 on a page; error rather than crop/scale/overlap."""
+    if not source.layout.valid:
+        raise ValueError("Cannot compose an invalid input annotation layout")
     root_source, viewport = _parse_source(source)
     width, height = profile.dimensions_um
     zone = profile.content_zone_um
