@@ -120,9 +120,10 @@ def generate(folder: Path, font_file: Path):
     for count in (4, 8, 14, 40, 64):
         kind = "analog" if count == 8 else "digital"
         unit, plan = _fixture(count, kind, style, measure)
-        render = render_resolved_ic(unit, style, measure, policy=policy)
+        render = render_resolved_ic(unit, style, measure, policy=policy,
+                                    glyph_detail=True)
         diag = render_resolved_ic(unit, style, measure, policy=policy,
-                                  review_overlay=True)
+                                  review_overlay=True, glyph_detail=True)
         key = f"ic-{count:02d}-{kind}"
         (folder / f"{key}-clean.svg").write_text(render.svg, encoding="utf-8")
         (folder / f"{key}-diagnostic.svg").write_text(diag.svg, encoding="utf-8")
@@ -148,6 +149,16 @@ def generate(folder: Path, font_file: Path):
             "row_count": plan.row_count,
             "minimum_text_to_stroke_ink_gap_um": round(min_gap, 3),
             "text_box_count": len(text_boxes),
+            "visible_glyph_count": len(render.glyph_ink),
+            "glyph_ink_boxes": [{
+                "owner": item.owner,
+                "codepoint_index": item.index,
+                "char": item.char,
+                "ink_um": [
+                    item.ink.min_x, item.ink.min_y,
+                    item.ink.max_x, item.ink.max_y,
+                ],
+            } for item in render.glyph_ink],
             "pin_source": "DEMONSTRATION_ONLY_NOT_DATASHEET",
             "pin_anchors": {
                 pin.pin_id: [pin.anchor.x, pin.anchor.y]
