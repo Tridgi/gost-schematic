@@ -28,7 +28,7 @@ jobs:
           pytest -q tests/test_rendering_ic_cycle7.py
       - name: Install pinned external Type A font
         env:
-          GITHUB_TOKEN: \${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           python scripts/install_opengost_type_a.py \
             --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a \
