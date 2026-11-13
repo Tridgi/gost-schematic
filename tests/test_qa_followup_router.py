@@ -164,11 +164,8 @@ def test_seeded_component_blocker_permutations_cannot_change_path(router, catalo
         _assert_route_structure(canonical, source, target, hazards)
 
 
-@pytest.mark.xfail(reason="Confirmed issue #50: real unassigned pin crosses routed wire", strict=True)
-def test_pinned_router_passes_through_real_unassigned_pin_outside_all_body_keepouts(
-    router, catalog,
-):
-    """New cross-layer risk: body keepouts alone do not protect free lead tips."""
+def _unassigned_physical_pin_case(router, catalog):
+    """Three real resistor positions; R3.1 is unowned but on LINK's straight path."""
     first = ComponentInstance("R1", "resistor.fixed", Point(8000, -10000))
     middle = ComponentInstance("R3", "resistor.fixed", Point(8000, 0))
     last = ComponentInstance("R2", "resistor.fixed", Point(8000, 10000))
@@ -180,17 +177,41 @@ def test_pinned_router_passes_through_real_unassigned_pin_outside_all_body_keepo
     target = _pins(catalog, last)["1"]
     unrelated_pin = _pins(catalog, middle)["1"]
     hazards = _keepouts(catalog, *circuit.components)
-    result = router.route_two_pins(
+    route = router.route_two_pins(
         source, target, keepouts=hazards, max_cells=5000
     )
-    _assert_route_structure(result, source, target, hazards)
-    parts, graphics = _parts(catalog, *circuit.components)
-    # Existing #40 validator also misses the contact, causing false confidence.
-    assert validate_external_wires(
-        circuit, result.external_graph("LINK"), parts, graphics
-    ) == ()
+    _assert_route_structure(route, source, target, hazards)
     assert unrelated_pin not in (source, target)
-    assert not any(_contains_point(edge, unrelated_pin) for edge in _edges(result)), (
+    assert any(_contains_point(edge, unrelated_pin) for edge in _edges(route))
+    return circuit, route, unrelated_pin
+
+
+def test_fixed_validator_reports_router_generated_unassigned_pin_contact(
+    router, catalog,
+):
+    """Issue #40 fixed independently: correct ERC does NOT fix the unsafe route."""
+    circuit, route, unassigned_pin = _unassigned_physical_pin_case(router, catalog)
+    parts, graphics = _parts(catalog, *circuit.components)
+    diagnostics = validate_external_wires(
+        circuit, route.external_graph("LINK"), parts, graphics
+    )
+    codes = {item.code for item in diagnostics}
+    assert codes == {"WIRE_PIN_CONTACT_UNDECLARED"}, diagnostics
+    assert all(item.severity.value == "error" for item in diagnostics)
+    assert unassigned_pin == Point(0, 0)
+    assert "WIRE_NET_SHORT" not in codes
+
+
+@pytest.mark.xfail(
+    reason="Issue #50: router geometry still crosses real unassigned pin",
+    strict=True,
+)
+def test_pinned_router_passes_through_real_unassigned_pin_outside_all_body_keepouts(
+    router, catalog,
+):
+    """Unresolved ROUTER issue #50; do not suppress it after validator #40 fix."""
+    _circuit, route, unrelated_pin = _unassigned_physical_pin_case(router, catalog)
+    assert not any(_contains_point(edge, unrelated_pin) for edge in _edges(route)), (
         "Router placed a real unassigned pin R3.1 directly on the new net"
     )
 
