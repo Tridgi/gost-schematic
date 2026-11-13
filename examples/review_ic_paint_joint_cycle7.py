@@ -45,7 +45,10 @@ def generate(output_dir: Path, font_file: Path) -> dict:
         "cap_height_um": inspection.measured_cap_height_um,
         "cases": {},
     }
-    for count, kind in ((8, IcKind.ANALOG), (14, IcKind.DIGITAL)):
+    for count, kind in (
+        (8, IcKind.ANALOG), (14, IcKind.DIGITAL),
+        (40, IcKind.DIGITAL), (64, IcKind.DIGITAL),
+    ):
         source = synthetic_ic(count, kind)
         reference = kind.reference_prefix + "1"
         nets = (Net("SIGNAL", (PinRef(reference, "1"),)),)
