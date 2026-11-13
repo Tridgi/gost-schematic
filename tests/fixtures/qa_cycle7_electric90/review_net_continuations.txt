@@ -84,8 +84,11 @@ def sheet_svg(project: NetContinuationProject, sheet_id: str) -> str:
     if validate_net_continuations(project):
         raise ValueError("Must validate typed net identity before drawing")
     sheet = next(x for x in project.sheets if x.id == sheet_id)
+    # ElementTree namespace registry is process-global; other pytest suites
+    # register their own defaults. Reset it for byte-stable goldens on CI.
+    ET.register_namespace("", SVG_NS)
     root = ET.Element(f"{{{SVG_NS}}}svg", {
-        "xmlns": SVG_NS, "width": "210mm", "height": "297mm",
+        "width": "210mm", "height": "297mm",
         "viewBox": "0 0 210000 297000", "data-schema": "E3",
         "data-source": "DRAFT-only-sheet-continuation-not-a-connector",
         "data-approval": "DRAFT_UNMEASURED_FONT",
