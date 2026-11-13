@@ -149,6 +149,7 @@ jobs:
         run: |
           python -m examples.review_formatted_sheet \
             --font-file "$REVIEW_FONT" --font-family "OpenGost Type A" \
+            --mode all --title-headings --compare-c3 \
             --output-dir output/formatted-sheet-review
       - name: Rasterize clean and diagnostic A4/A3 at common pixel width
         run: |
@@ -156,6 +157,22 @@ jobs:
             for VIEW in clean diagnostic; do
               NAME="$PAGE-$VIEW"
               rsvg-convert --background-color white --width 2400 \
+                --output "output/formatted-sheet-review/$NAME.png" \
+                "output/formatted-sheet-review/$NAME.svg"
+            done
+          done
+          for NAME in schematic-clean schematic-diagnostic a4-portrait-captioned; do
+            rsvg-convert --background-color white --width 2400 \
+              --output "output/formatted-sheet-review/$NAME.png" \
+              "output/formatted-sheet-review/$NAME.svg"
+          done
+          rsvg-convert --background-color white --width 2700 \
+            --output output/formatted-sheet-review/form-one-title-closeup.png \
+            output/formatted-sheet-review/form-one-title-closeup.svg
+          for CASE in as-authored proposal-only; do
+            for VIEW in clean diagnostic; do
+              NAME="c3-$CASE-$VIEW"
+              rsvg-convert --background-color white --width 1800 \
                 --output "output/formatted-sheet-review/$NAME.png" \
                 "output/formatted-sheet-review/$NAME.svg"
             done
@@ -173,6 +190,14 @@ jobs:
           assert manifest["components"] == ["R1", "R2", "C1", "C2", "L1", "C3"]
           assert manifest["wires"] == 18 and len(manifest["junctions"]) == 3
           assert len(manifest["sheets"]) == 3
+          assert manifest["default_export_mode"] == "clean"
+          assert manifest["selected_mode"] == "all"
+          assert manifest["c3_original"]["symbol_id"] == "capacitor.electrolytic"
+          assert manifest["c3_original"]["revision"] == 1
+          assert manifest["c3_original"]["pins_um"] == {
+              "1": [91000, 75000], "2": [109000, 75000]
+          }
+          assert manifest["c3_original"]["status"] == "draft"
           tag = "{http://www.w3.org/2000/svg}"
           for item in manifest["sheets"]:
               dims = item["dimensions_um"]
@@ -194,6 +219,31 @@ jobs:
                   assert svg.find(f".//{tag}rect[@data-kind='form-one-outline']") is not None
                   assert svg.find(f".//{tag}g[@data-layer='schematic-content']") is not None
                   assert not svg.findall(f".//{tag}clipPath")
+          for name in (
+              "schematic-clean", "schematic-diagnostic",
+              "a4-portrait-captioned", "form-one-title-closeup",
+              "c3-as-authored-clean", "c3-as-authored-diagnostic",
+              "c3-proposal-only-clean", "c3-proposal-only-diagnostic",
+          ):
+              svg_path = directory / f"{name}.svg"
+              png_path = directory / f"{name}.png"
+              assert svg_path.is_file() and png_path.stat().st_size > 1000
+              root = ET.fromstring(svg_path.read_text())
+              assert root.get("data-approval-status") == "DRAFT"
+          plain = ET.fromstring((directory / "schematic-clean.svg").read_text())
+          assert not plain.findall(f".//{tag}g[@data-layer='frame']")
+          assert not plain.findall(f".//{tag}g[@data-layer='title-block']")
+          captioned = ET.fromstring(
+              (directory / "a4-portrait-captioned.svg").read_text()
+          )
+          assert captioned.findall(
+              f".//{tag}g[@data-layer='title-block-fields']/{tag}text"
+          )
+          comparison = json.loads((directory / "c3-comparison.json").read_text())
+          assert comparison["original_wire_count"] == 18
+          assert comparison["proposed_wire_count"] == 16
+          assert comparison["original_junctions_um"] == comparison["proposed_junctions_um"]
+          print("Clean default + 3 optional formats + measured title + C3 comparison verified")
           print("A4/A3 SVG, PNG, form-1, 18 authored nets and 3 junctions verified")
           PY
       - name: Upload DRAFT formatted-sheet review set
