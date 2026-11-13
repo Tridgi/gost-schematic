@@ -250,12 +250,8 @@ def test_new_model_view_rotations_are_view_only_and_fail_closed_for_legacy_expor
     assert len(base["blocks"]) == 7
 
 
-def test_new_ygo_standalone_projection_still_not_canonical(latest):
+def test_new_ygo_standalone_projection_now_roundtrips_without_adapter(latest):
     model, authored, viewer, _typed = latest
     projected = viewer.semantic_projection(authored.ygo2_visual_seed())
-    assert "diagram_type" not in projected
-    # Test adapter is an EXPLICIT delta for source reconciliation ONLY.
-    corrected = {"diagram_type": "E1", **projected}
-    assert model.structural_from_json(json.dumps(corrected)) == authored.specimen()
-    with pytest.raises(ValueError, match="expected keys"):
-        model.structural_from_json(json.dumps(projected))
+    assert projected["diagram_type"] == "E1"
+    assert model.structural_from_json(json.dumps(projected)) == authored.specimen()
