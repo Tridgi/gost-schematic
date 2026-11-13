@@ -21,7 +21,7 @@ class FixedInk:
 
 
 def test_c3_current_json_id_revision_physical_pins_and_authored_dogleg():
-    (original, graph), (candidate, proposal) = proposed_c3_geometry()
+    (original, graph), (_, proposal) = proposed_c3_geometry()
     parts, symbols = definitions()
     c3 = next(x for x in original.components if x.reference == "C3")
     part = parts[c3.part_id]
