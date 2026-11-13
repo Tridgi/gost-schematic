@@ -1,261 +1,263 @@
 {
   "blocks": 7,
   "diagnostics": [],
+  "diagram_type": "E1",
+  "electrical_nets": null,
   "inspection_chords_um": [
     {
       "arrow": "source_to_target",
-      "link_id": "L01",
+      "link_id": "L1",
       "source": [
-        20000,
-        6000
+        94000,
+        40000
       ],
       "target": [
-        40000,
-        6000
+        142000,
+        40000
       ]
     },
     {
       "arrow": "source_to_target",
-      "link_id": "L02",
+      "link_id": "L2",
       "source": [
-        60000,
-        4000
+        198000,
+        31000
       ],
       "target": [
-        80000,
-        4000
+        252000,
+        31000
       ]
     },
     {
       "arrow": "source_to_target",
-      "link_id": "L03",
+      "link_id": "L3",
       "source": [
-        60000,
-        8000
+        198000,
+        40000
       ],
       "target": [
-        80000,
-        8000
+        252000,
+        40000
       ]
     },
     {
       "arrow": "source_to_target",
-      "link_id": "L04",
+      "link_id": "L4",
       "source": [
-        20000,
-        36000
+        198000,
+        49000
       ],
       "target": [
-        40000,
-        36000
+        252000,
+        49000
       ]
     },
     {
       "arrow": "source_to_target",
-      "link_id": "L05",
+      "link_id": "L5",
       "source": [
-        60000,
-        36000
+        280000,
+        58000
       ],
       "target": [
-        80000,
-        36000
+        280000,
+        102000
       ]
     },
     {
       "arrow": "source_to_target",
-      "link_id": "L06",
+      "link_id": "L6",
       "source": [
+        250000,
+        120000
+      ],
+      "target": [
+        198000,
+        120000
+      ]
+    },
+    {
+      "arrow": "source_to_target",
+      "link_id": "L7",
+      "source": [
+        142000,
+        120000
+      ],
+      "target": [
         100000,
-        6000
-      ],
-      "target": [
-        120000,
-        6000
+        120000
       ]
     },
     {
       "arrow": "source_to_target",
-      "link_id": "L07",
+      "link_id": "L8",
       "source": [
-        90000,
-        12000
+        310000,
+        120000
       ],
       "target": [
-        90000,
-        30000
+        352000,
+        120000
       ]
     },
     {
       "arrow": "source_to_target",
-      "link_id": "L08",
+      "link_id": "L9",
       "source": [
-        50000,
-        30000
+        380000,
+        138000
       ],
       "target": [
-        50000,
-        12000
-      ]
-    },
-    {
-      "arrow": "source_to_target",
-      "link_id": "L09",
-      "source": [
-        100000,
-        36000
-      ],
-      "target": [
-        130000,
-        12000
+        70000,
+        138000
       ]
     }
   ],
   "links": 9,
   "port_anchors_um": [
     {
-      "block_id": "ACT",
+      "block_id": "B1",
       "point_um": [
-        80000,
-        36000
+        94000,
+        40000
       ],
-      "port_id": "command"
+      "port_id": "data_out"
     },
     {
-      "block_id": "ACT",
+      "block_id": "B2",
       "point_um": [
-        90000,
-        30000
+        198000,
+        31000
       ],
-      "port_id": "control"
+      "port_id": "a"
     },
     {
-      "block_id": "ACT",
+      "block_id": "B2",
+      "point_um": [
+        198000,
+        40000
+      ],
+      "port_id": "b"
+    },
+    {
+      "block_id": "B2",
+      "point_um": [
+        198000,
+        49000
+      ],
+      "port_id": "c"
+    },
+    {
+      "block_id": "B2",
+      "point_um": [
+        142000,
+        40000
+      ],
+      "port_id": "data_in"
+    },
+    {
+      "block_id": "B3",
+      "point_um": [
+        252000,
+        31000
+      ],
+      "port_id": "a"
+    },
+    {
+      "block_id": "B3",
+      "point_um": [
+        252000,
+        40000
+      ],
+      "port_id": "b"
+    },
+    {
+      "block_id": "B3",
+      "point_um": [
+        252000,
+        49000
+      ],
+      "port_id": "c"
+    },
+    {
+      "block_id": "B3",
+      "point_um": [
+        280000,
+        58000
+      ],
+      "port_id": "out"
+    },
+    {
+      "block_id": "B4",
+      "point_um": [
+        310000,
+        120000
+      ],
+      "port_id": "branch_out"
+    },
+    {
+      "block_id": "B4",
+      "point_um": [
+        280000,
+        102000
+      ],
+      "port_id": "in"
+    },
+    {
+      "block_id": "B4",
+      "point_um": [
+        250000,
+        120000
+      ],
+      "port_id": "out"
+    },
+    {
+      "block_id": "B5",
+      "point_um": [
+        198000,
+        120000
+      ],
+      "port_id": "in"
+    },
+    {
+      "block_id": "B5",
+      "point_um": [
+        142000,
+        120000
+      ],
+      "port_id": "out"
+    },
+    {
+      "block_id": "B6",
+      "point_um": [
+        70000,
+        138000
+      ],
+      "port_id": "feedback_in"
+    },
+    {
+      "block_id": "B6",
       "point_um": [
         100000,
-        36000
+        120000
       ],
-      "port_id": "state"
+      "port_id": "in"
     },
     {
-      "block_id": "ADAPT",
+      "block_id": "B7",
       "point_um": [
-        60000,
-        36000
+        352000,
+        120000
       ],
-      "port_id": "actuate"
+      "port_id": "branch_in"
     },
     {
-      "block_id": "ADAPT",
+      "block_id": "B7",
       "point_um": [
-        50000,
-        30000
+        380000,
+        138000
       ],
-      "port_id": "feedback"
-    },
-    {
-      "block_id": "ADAPT",
-      "point_um": [
-        40000,
-        36000
-      ],
-      "port_id": "sensor"
-    },
-    {
-      "block_id": "CTRL",
-      "point_um": [
-        90000,
-        12000
-      ],
-      "port_id": "actuate"
-    },
-    {
-      "block_id": "CTRL",
-      "point_um": [
-        80000,
-        4000
-      ],
-      "port_id": "cmd1"
-    },
-    {
-      "block_id": "CTRL",
-      "point_um": [
-        80000,
-        8000
-      ],
-      "port_id": "cmd2"
-    },
-    {
-      "block_id": "CTRL",
-      "point_um": [
-        100000,
-        6000
-      ],
-      "port_id": "display"
-    },
-    {
-      "block_id": "DISPLAY",
-      "point_um": [
-        130000,
-        12000
-      ],
-      "port_id": "alarm"
-    },
-    {
-      "block_id": "DISPLAY",
-      "point_um": [
-        120000,
-        6000
-      ],
-      "port_id": "status"
-    },
-    {
-      "block_id": "ENTRY",
-      "point_um": [
-        60000,
-        4000
-      ],
-      "port_id": "cmd1"
-    },
-    {
-      "block_id": "ENTRY",
-      "point_um": [
-        60000,
-        8000
-      ],
-      "port_id": "cmd2"
-    },
-    {
-      "block_id": "ENTRY",
-      "point_um": [
-        50000,
-        12000
-      ],
-      "port_id": "feedback"
-    },
-    {
-      "block_id": "ENTRY",
-      "point_um": [
-        40000,
-        6000
-      ],
-      "port_id": "supply"
-    },
-    {
-      "block_id": "POWER",
-      "point_um": [
-        20000,
-        6000
-      ],
-      "port_id": "feed"
-    },
-    {
-      "block_id": "SENSOR",
-      "point_um": [
-        20000,
-        36000
-      ],
-      "port_id": "measurement"
+      "port_id": "feedback_out"
     }
   ],
   "ports": 18,

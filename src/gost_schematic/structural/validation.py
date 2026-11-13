@@ -6,7 +6,7 @@ Intersections never connect structural links, and cannot short electrical nets.
 
 from collections import defaultdict
 from fractions import Fraction
-from itertools import combinations
+from itertools import combinations, pairwise
 
 from gost_schematic.core.diagnostics import Diagnostic, Severity
 from gost_schematic.core.geometry import Box, Point, Side
@@ -84,20 +84,28 @@ def _segment_through_block_interior(a: Point, b: Point, box: Box) -> bool:
     return low < high
 
 
+def _round_half_up(value: Fraction) -> int:
+    """Round exact absolute micrometres, ties AWAY from zero (YGO2 Decimal HALF_UP).
+
+    The rounding happens only once after adding the rectangle origin, not on
+    a local side offset. No float, pre-quantization or tolerance is involved.
+    """
+    magnitude = (2 * abs(value.numerator) + value.denominator) // (
+        2 * value.denominator
+    )
+    return magnitude if value.numerator >= 0 else -magnitude
+
+
 def _anchor(block: FunctionalBlock, side: Side, fraction: Fraction) -> Point:
     bounds = block.bounds
     length = block.height_um if side in (Side.LEFT, Side.RIGHT) else block.width_um
-    coordinate = fraction * length
-    if coordinate.denominator != 1:
-        raise ValueError("relative port position is not integral in micrometres")
-    index = coordinate.numerator
     if side == Side.LEFT:
-        return Point(bounds.min_x, bounds.min_y + index)
+        return Point(bounds.min_x, _round_half_up(bounds.min_y + length * fraction))
     if side == Side.RIGHT:
-        return Point(bounds.max_x, bounds.min_y + index)
+        return Point(bounds.max_x, _round_half_up(bounds.min_y + length * fraction))
     if side == Side.TOP:
-        return Point(bounds.min_x + index, bounds.min_y)
-    return Point(bounds.min_x + index, bounds.max_y)
+        return Point(_round_half_up(bounds.min_x + length * fraction), bounds.min_y)
+    return Point(_round_half_up(bounds.min_x + length * fraction), bounds.max_y)
 
 
 def _port_geometry(
@@ -132,15 +140,7 @@ def _port_geometry(
                 port.position if port.position is not None
                 else Fraction(index + 1, len(group) + 1)
             )
-            try:
-                point = _anchor(block, side, fraction)
-            except ValueError:
-                issues.append(_error(
-                    "E1_PORT_OFF_GRID",
-                    f"Port {block_id}.{port.id} at {fraction} is off the 1µm grid",
-                    block_id,
-                ))
-                continue
+            point = _anchor(block, side, fraction)
             positions[ref] = point
             previous = owners[block_id].get(point)
             if previous is not None:
@@ -163,6 +163,72 @@ def resolve_port_positions(diagram: StructuralDiagram) -> dict[PortRef, Point]:
     if issues:
         raise ValueError("; ".join(f"{d.code}:{d.message}" for d in issues))
     return points
+
+
+def validate_port_clearances(
+    diagram: StructuralDiagram,
+    *,
+    min_corner_um: int = 5000,
+    min_pitch_um: int = 6000,
+) -> tuple[Diagnostic, ...]:
+    """Optional YGO2 EDITORIAL view-profile check, NOT a GOST semantic rule.
+
+    Distances use final integer-micrometre anchors AFTER absolute ROUND_HALF_UP,
+    so quantization can never hide a collision. Source Fractions are unchanged.
+    """
+    for name, value in (
+        ("min_corner_um", min_corner_um),
+        ("min_pitch_um", min_pitch_um),
+    ):
+        if type(value) is not int or value < 0:
+            raise ValueError(f"{name} must be a nonnegative integer micrometre value")
+    if not isinstance(diagram, StructuralDiagram):
+        raise TypeError("Expected StructuralDiagram")
+    blocks = {block.id: block for block in diagram.blocks}
+    if len(blocks) != len(diagram.blocks):
+        return (_error(
+            "E1_DUPLICATE_BLOCK", "Duplicate blocks prevent port clearance", "diagram",
+        ),)
+    positions, errors = _port_geometry(diagram, blocks)
+    if errors:
+        return errors
+    groups: dict[tuple[str, Side], list[tuple[PortRef, int]]] = defaultdict(list)
+    issues: list[Diagnostic] = []
+    for port in diagram.ports:
+        ref = port.ref
+        block = blocks[port.block_id]
+        bounds = block.bounds
+        point = positions[ref]
+        index = (
+            point.y - bounds.min_y if port.side in (Side.LEFT, Side.RIGHT)
+            else point.x - bounds.min_x
+        )
+        length = (
+            block.height_um if port.side in (Side.LEFT, Side.RIGHT)
+            else block.width_um
+        )
+        if min(index, length - index) < min_corner_um:
+            issues.append(_error(
+                "E1_PORT_CORNER_CLEARANCE",
+                f"Port {port.block_id}.{port.id} is too close to a rectangle corner",
+                port.block_id,
+            ))
+        groups[(port.block_id, port.side)].append((ref, index))
+    for (block_id, side), values in sorted(
+        groups.items(), key=lambda item: (item[0][0], item[0][1].value)
+    ):
+        ordered = sorted(values, key=lambda item: (item[1], item[0].port_id))
+        for (left, a), (right, b) in pairwise(ordered):
+            if b - a < min_pitch_um:
+                issues.append(_error(
+                    "E1_PORT_PITCH",
+                    f"Ports {block_id}.{left.port_id}/{right.port_id} on "
+                    f"{side.value} are only {b - a}µm apart",
+                    block_id,
+                ))
+    return tuple(sorted(
+        issues, key=lambda item: (item.code, item.subject or "", item.message)
+    ))
 
 
 def _invalid_link(

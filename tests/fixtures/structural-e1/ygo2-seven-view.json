@@ -1,0 +1,368 @@
+{
+  "blocks": [
+    {
+      "center_um": [
+        70000,
+        40000
+      ],
+      "code": "ФБ1",
+      "id": "B1",
+      "name": "ДАТЧИК СИГНАЛА",
+      "ports": [
+        {
+          "direction": "output",
+          "id": "data_out",
+          "relative_position": "0.5",
+          "side": "RIGHT"
+        }
+      ],
+      "size_um": [
+        48000,
+        30000
+      ],
+      "title_lines": [
+        "ДАТЧИК",
+        "СИГНАЛА"
+      ]
+    },
+    {
+      "center_um": [
+        170000,
+        40000
+      ],
+      "code": "ФБ2",
+      "id": "B2",
+      "name": "ОБРАБОТКА СИГНАЛА",
+      "ports": [
+        {
+          "direction": "input",
+          "id": "data_in",
+          "relative_position": "0.5",
+          "side": "LEFT"
+        },
+        {
+          "direction": "output",
+          "id": "a",
+          "relative_position": "0.25",
+          "side": "RIGHT"
+        },
+        {
+          "direction": "output",
+          "id": "b",
+          "relative_position": "0.5",
+          "side": "RIGHT"
+        },
+        {
+          "direction": "output",
+          "id": "c",
+          "relative_position": "0.75",
+          "side": "RIGHT"
+        }
+      ],
+      "size_um": [
+        56000,
+        36000
+      ],
+      "title_lines": [
+        "ОБРАБОТКА",
+        "СИГНАЛА"
+      ]
+    },
+    {
+      "center_um": [
+        280000,
+        40000
+      ],
+      "code": "ФБ3",
+      "id": "B3",
+      "name": "МОДУЛЬ СВЯЗИ",
+      "ports": [
+        {
+          "direction": "input",
+          "id": "a",
+          "relative_position": "0.25",
+          "side": "LEFT"
+        },
+        {
+          "direction": "input",
+          "id": "b",
+          "relative_position": "0.5",
+          "side": "LEFT"
+        },
+        {
+          "direction": "input",
+          "id": "c",
+          "relative_position": "0.75",
+          "side": "LEFT"
+        },
+        {
+          "direction": "output",
+          "id": "out",
+          "relative_position": "0.5",
+          "side": "BOTTOM"
+        }
+      ],
+      "size_um": [
+        56000,
+        36000
+      ],
+      "title_lines": [
+        "МОДУЛЬ",
+        "СВЯЗИ"
+      ]
+    },
+    {
+      "center_um": [
+        280000,
+        120000
+      ],
+      "code": "ФБ4",
+      "id": "B4",
+      "name": "СИСТЕМА ИНДИКАЦИИ",
+      "ports": [
+        {
+          "direction": "input",
+          "id": "in",
+          "relative_position": "0.5",
+          "side": "TOP"
+        },
+        {
+          "direction": "output",
+          "id": "out",
+          "relative_position": "0.5",
+          "side": "LEFT"
+        },
+        {
+          "direction": "output",
+          "id": "branch_out",
+          "relative_position": "0.5",
+          "side": "RIGHT"
+        }
+      ],
+      "size_um": [
+        60000,
+        36000
+      ],
+      "title_lines": [
+        "СИСТЕМА",
+        "ИНДИКАЦИИ"
+      ]
+    },
+    {
+      "center_um": [
+        170000,
+        120000
+      ],
+      "code": "ФБ5",
+      "id": "B5",
+      "name": "УПРАВЛЯЮЩИЙ БЛОК",
+      "ports": [
+        {
+          "direction": "input",
+          "id": "in",
+          "relative_position": "0.5",
+          "side": "RIGHT"
+        },
+        {
+          "direction": "output",
+          "id": "out",
+          "relative_position": "0.5",
+          "side": "LEFT"
+        }
+      ],
+      "size_um": [
+        56000,
+        36000
+      ],
+      "title_lines": [
+        "УПРАВЛЯЮЩИЙ",
+        "БЛОК"
+      ]
+    },
+    {
+      "center_um": [
+        70000,
+        120000
+      ],
+      "code": "ФБ6",
+      "id": "B6",
+      "name": "ИСПОЛНИТЕЛЬНЫЙ УЗЕЛ",
+      "ports": [
+        {
+          "direction": "input",
+          "id": "in",
+          "relative_position": "0.5",
+          "side": "RIGHT"
+        },
+        {
+          "direction": "input",
+          "id": "feedback_in",
+          "relative_position": "0.5",
+          "side": "BOTTOM"
+        }
+      ],
+      "size_um": [
+        60000,
+        36000
+      ],
+      "title_lines": [
+        "ИСПОЛНИТЕЛЬНЫЙ",
+        "УЗЕЛ"
+      ]
+    },
+    {
+      "center_um": [
+        380000,
+        120000
+      ],
+      "code": "ФБ7",
+      "id": "B7",
+      "name": "ОБРАТНАЯ СВЯЗЬ",
+      "ports": [
+        {
+          "direction": "input",
+          "id": "branch_in",
+          "relative_position": "0.5",
+          "side": "LEFT"
+        },
+        {
+          "direction": "output",
+          "id": "feedback_out",
+          "relative_position": "0.5",
+          "side": "BOTTOM"
+        }
+      ],
+      "size_um": [
+        56000,
+        36000
+      ],
+      "title_lines": [
+        "ОБРАТНАЯ",
+        "СВЯЗЬ"
+      ]
+    }
+  ],
+  "diagram_type": "E1",
+  "links": [
+    {
+      "arrow_at": "target",
+      "id": "L1",
+      "source": {
+        "block_id": "B1",
+        "port_id": "data_out"
+      },
+      "target": {
+        "block_id": "B2",
+        "port_id": "data_in"
+      }
+    },
+    {
+      "arrow_at": "target",
+      "id": "L2",
+      "source": {
+        "block_id": "B2",
+        "port_id": "a"
+      },
+      "target": {
+        "block_id": "B3",
+        "port_id": "a"
+      }
+    },
+    {
+      "arrow_at": "target",
+      "id": "L3",
+      "source": {
+        "block_id": "B2",
+        "port_id": "b"
+      },
+      "target": {
+        "block_id": "B3",
+        "port_id": "b"
+      }
+    },
+    {
+      "arrow_at": "target",
+      "id": "L4",
+      "source": {
+        "block_id": "B2",
+        "port_id": "c"
+      },
+      "target": {
+        "block_id": "B3",
+        "port_id": "c"
+      }
+    },
+    {
+      "arrow_at": "target",
+      "id": "L5",
+      "source": {
+        "block_id": "B3",
+        "port_id": "out"
+      },
+      "target": {
+        "block_id": "B4",
+        "port_id": "in"
+      }
+    },
+    {
+      "arrow_at": "target",
+      "id": "L6",
+      "source": {
+        "block_id": "B4",
+        "port_id": "out"
+      },
+      "target": {
+        "block_id": "B5",
+        "port_id": "in"
+      }
+    },
+    {
+      "arrow_at": "target",
+      "id": "L7",
+      "source": {
+        "block_id": "B5",
+        "port_id": "out"
+      },
+      "target": {
+        "block_id": "B6",
+        "port_id": "in"
+      }
+    },
+    {
+      "arrow_at": "target",
+      "id": "L8",
+      "source": {
+        "block_id": "B4",
+        "port_id": "branch_out"
+      },
+      "target": {
+        "block_id": "B7",
+        "port_id": "branch_in"
+      }
+    },
+    {
+      "arrow_at": "target",
+      "id": "L9",
+      "source": {
+        "block_id": "B7",
+        "port_id": "feedback_out"
+      },
+      "target": {
+        "block_id": "B6",
+        "port_id": "feedback_in"
+      },
+      "via_um": [
+        [
+          380000,
+          180000
+        ],
+        [
+          70000,
+          180000
+        ]
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "status": "DRAFT"
+}

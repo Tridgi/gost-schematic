@@ -27,7 +27,9 @@ All IDs and block names must be nonblank trimmed strings (semantic names have no
 
 `position = None`: placement by ordered declaration rank among **all ports on this block side**. With N ports, slot i (zero-indexed) is exactly `Fraction(i+1,N+1)`. N=1 → exactly `1/2`. Left/right fractions increase top-to-bottom; top/bottom increase left-to-right. Explicit `position = Fraction(n,d)` (or integral 0/1) replaces that port's automatic fraction. Mixing explicit and automatic is allowed only if no position collides; distinct ports cannot share an exact anchor, including at neighboring-side corners. Fractional position range is inclusive [0,1]; invalid types, booleans, out-of-range, and duplicate final coordinates fail.
 
-The point is computed from **that exact declared side and rectangle**. YGO2's optional visual profile adds independent editorial minimums (5mm from corners, 6mm between ports); these are **not** hardcoded in the semantic model and must be checked by a future view/renderer. Integer µm are an invariant. If e.g. `Fraction(1,3) * 10000 µm` cannot be represented exactly, `E1_PORT_OFF_GRID` is an ERROR: **never silently round or slide an endpoint**. `FunctionalLink` stores only `PortRef`s, no raw `Point` fields. The model guarantees every representable endpoint terminates **on a declared port**.
+The endpoint is computed from **the exact declared fraction, rectangle and absolute document origin**. Quantization follows YGO2's `Decimal(ROUND_HALF_UP)`: perform **one** round of the complete absolute rational coordinate to an integer µm; half ties round **away from zero**, including at negative coordinates. Integer-only implementation: for `n/d`, `sign(n)*((2*abs(n)+d)//(2*d))`. Never round the relative offset before adding the origin and never convert through binary floats. For a 20,000µm side and two auto ports, exact `1/3` and `2/3` remain in the model/JSON and resolve to **6,667µm and 13,333µm**. Different fractions mapping to the same final integer-micrometre Point are a hard `E1_PORT_COLLISION`, including opposite sides/corners. `FunctionalLink` stores only `PortRef`s, never arbitrary coordinates.
+
+**Optional YGO2 editorial guard:** `validate_port_clearances(diagram, min_corner_um=5000, min_pitch_um=6000)` checks the **rounded** anchors against minimum 5mm from either side's corners and minimum 6mm adjacent same-side pitch. These are **project-specific view values, NOT ГОСТ semantic norms**. Graph validity does not impose graphical ink constraints: a logically valid corner fraction `0` may be rejected for the chosen printed view, without rewriting its original Fraction. Negative editorial clearances are invalid. Visual routing/letter metrics need independent YGO2/ESKD evaluation.
 
 ## Validation contract and limitations
 
@@ -36,7 +38,8 @@ The point is computed from **that exact declared side and rectangle**. YGO2's op
 - `E1_DUPLICATE_BLOCK`, `E1_DUPLICATE_PORT`, `E1_DUPLICATE_LINK`, `E1_DUPLICATE_CONNECTION`: IDs and repeated directed port-to-port arc.
 - `E1_PORT_BLOCK_UNKNOWN`, `E1_LINK_PORT_UNKNOWN`: no orphan declaration or missing directed endpoint.
 - `E1_SOURCE_DIRECTION`, `E1_TARGET_DIRECTION`, `E1_SELF_LINK`, `E1_ZERO_LENGTH_LINK`: contradictory process direction, trivial self-link, zero-length connector.
-- `E1_PORT_OFF_GRID`, `E1_PORT_COLLISION`: fractional-µm endpoints, two anchors at one coordinate.
+- `E1_PORT_COLLISION`: distinct declared ports resolve to the same **post-rounding** absolute point (including mixed sides/corners). `E1_PORT_OFF_GRID` is retired; fractional-micrometre results are deterministically quantized instead.
+- `E1_PORT_CORNER_CLEARANCE`, `E1_PORT_PITCH`: optional editorial YGO2 view-profile diagnostics, not automatically evidence of a ГОСТ violation.
 - `E1_BLOCK_OVERLAP`: two rectangles overlap in **positive area**, touching at the edge not claimed to be an overlap.
 - `E1_LINK_THROUGH_BLOCK`: a temporary **straight geometric inspection chord** between port points enters any functional block interior. This is only a conservative static layout check, **not a real path router**.
 - `E1_LINK_THROUGH_PORT`: an inspection chord passes through an unrelated declared anchor without creating a logical connection.
@@ -46,7 +49,7 @@ Straight lines are *inspection chords*, not finalized directed multi-segment dra
 
 ## Exact JSON v1
 
-`structural_to_json` serializes **validated** structures deterministically; `structural_from_json` strictly validates typed fields, exact keys, duplicate JSON keys, version and actual graph. Arrays preserve declared block/port/link order. Every link endpoint is a named JSON object `{"block_id": "...", "port_id": "..."}`, matching YGO2's provisional semantic projection (rather than a positional two-string array). Integers are µm; relative positions are `null` for auto or `[numerator,denominator]` in canonical lowest terms; no binary float/NaN or rounding. Example:
+`structural_to_json` serializes **validated** structures deterministically; `structural_from_json` strictly validates typed fields, exact keys, duplicate JSON keys, version and actual graph. Arrays preserve declared block/port/link order. Every link endpoint is a named JSON object `{"block_id": "...", "port_id": "..."}`, matching YGO2's provisional semantic projection (rather than a positional two-string array). Integers are **post-rounding** absolute µm in resolved coordinates; original relative positions remain `null` for automatic slots or exact canonical `[numerator,denominator]` fractions. No floats, NaN, loss of Fraction precision or silent anchor snapping. Example:
 
 ```json
 {
@@ -68,7 +71,7 @@ Top-level `diagram_type="E1"` distinguishes this JSON from E3. This JSON is **ex
 
 ## Seven-block proof and reproducibility
 
-`examples/review_structural_e1.py::specimen()`: POWER, ENTRY, CTRL, SENSOR, ADAPT, ACT, DISPLAY (7 real functional regions), 18 declared side ports, 9 source→target functional links, two ordered ports on ENTRY.RIGHT / CTRL.LEFT, outputs, inputs, arrows and an upstream feedback branch. `report()` lists every precisely computed declared port and the straight inspection chord endpoints. The outputs are **JSON only**, deliberately no improvised or normatively unverified SVG/ГОСТ sheet.
+`examples/review_structural_e1.py::specimen()`: B1..B7 (7 real functional rectangles, semantic Russian names and separate view-only two-line titles), 18 declared side ports, 9 directed links including B2.RIGHT/B3.LEFT three-port bundles and a lower visual feedback detour B7→B6. The 7-block model is **the source of truth**; `ygo2_visual_seed()` derives matching names, ids, ports and link endpoints, then adds view-only `title_lines`, code `ФБ*`, `arrow_at=target`, and `via_um` for L9. It passes the independent PR78 `validate_design` on real code and generates two real DRAFT SVG fixtures, not an approved ГОСТ sheet. `report()` lists resolved `PortRef→Point` anchors, functional inspection chords, no electrical nets.
 
 ```sh
 python -m examples.review_structural_e1 --output-dir output/structural-e1
@@ -79,11 +82,55 @@ python -m pip wheel . --no-deps --wheel-dir dist
 python scripts/verify_wheel_payload.py dist
 ```
 
-Regression checks cover 1 through 8 auto ports on each side and all eight D4 example-only transformations, mixed explicit fractions, unique corners, exact 1µm representation/invalid fractions, duplicates, unresolved ports, wrong direction, block overlaps, chord/block intersection, tangency, X crossing without electric tie, common-port fan-out, directed cycles, invalid JSON and immutable objects. YGO2 / ESKD independent approval is required before turning this prototype into a stable product contract.
+Regressions cover 1 through 8 auto ports on each side, all eight D4 test-only transformations, **absolute half-away-from-zero** for positive and negative origins, width/height including 1µm and odd dimensions, exact `1/3,2/3` preservation, rounded collisions including mixed-side corners, 5mm corner/6mm pitch visual fail-closed, declared port-only endpoints, YGO2 view JSON parity and the actual pinned SVG diagnostic port markers, duplicates, dangling links, wrong flow direction, cycles, immutable JSON and no electrical nets. YGO2 / ESKD independent approval is required before turning this prototype into a stable product contract.
+
+## Cross-branch real YGO2 integration evidence (QA #83)
+
+Verified against **actual standalone Python code from YGO2 Draft PR #78** at head
+`c49b7632cac33eafd77b29cc746a37978838f3e4`,
+source blob `85fcf7bc5aff7057f5c489d3f5b697d10c36f119`.
+No fake renderer was substituted or copied into production; the source was loaded
+**temporarily** for the independent verification script.
+
+A new 7-block / 18-port / 9-link view seed in
+`tests/fixtures/structural-e1/ygo2-seven-view.json` was generated from typed
+`specimen()`, *not* treated as the semantic master.
+`examples/verify_structural_e1_ygo2.py` loads PR78 source with an explicit
+`--ygo-source` CLI argument and executes:
+`validate_design`, `semantic_projection`, `render_svg` (clean and diagnostic),
+all 18 exact `PortRef→Point` comparisons and all 9 directed path endpoints,
+and byte-identical regeneration of the two committed SVG fixtures.
+The manifest `tests/fixtures/structural-e1/ygo2-seven-interop-report.json`
+records source and output SHA256 hashes; no electrical short or implied
+functional junction appears at graphical crossings.
+
+**One outstanding owner-branch schema delta:** actual PR78
+`semantic_projection()` omits the *mandatory* top-level constant
+`diagram_type:"E1"`. The cross-branch verification explicitly injects this
+*one test-only adapter key* before sending JSON to our **strict** structural
+decoder; no other field is modified and no schema gate disabled.
+YGO2 should add the constant in its own workstream. There is no implicit
+loss of semantic Fraction for the shared example: all its fractions have
+terminating decimal representations (0.25, 0.5, 0.75).
+For **general** auto positions `1/3`, the current view's finite decimal
+string can give identical rounded ink coordinates, but cannot carry the
+original infinite-repeating rational value; a future view adapter must use a
+rational `[numerator,denominator]` or preserve the semantic JSON separately.
+
+Use:
+```sh
+git show c49b7632cac33eafd77b29cc746a37978838f3e4:examples/review_structural_e1_design.py > output/ygo2_design_qa.py
+python -m examples.review_structural_e1 --output-dir tests/fixtures/structural-e1
+python -m examples.verify_structural_e1_ygo2 --ygo-source output/ygo2_design_qa.py --output-dir output/e1-interop
+```
+
+The sample is **DRAFT** only. YGO2's text sizing is an approximate preview,
+not a measured GOST Type A metric. Bends and arrows are view overlays; the
+electrical E3 model remains untouched.
 
 ## Open architecture questions for coordinator / teams
 
-1. Should production accept fractions at sub-µm granularity (reject vs render-time rounding), and should auto-slot order be persisted as explicit fractions in JSON? This RFC chooses reject non-integral µm, keep null auto for minimal deterministic payload.
+1. **Resolved for experimental v1:** preserve original exact Fraction, quantize **absolute** document endpoints once with ROUND_HALF_UP, and reject rounded collisions. Keep `null` for automatic slots in semantic JSON; future view may choose to emit exact rational fractions to avoid repeating-decimal drift. No public API stability promise.
 2. Should graph-level repeated directed arcs and overlapping inspection chords be hard errors or explicit UI warnings? Prototype opts fail-closed.
 3. Should link ports support named semantic interface types or capacity constraints? Deferred; no physical `PinRef` allowed.
 4. Visual routing, arrowhead geometry and notation shall follow future YGO2 #71 / ESKD #69 signed-off constraints, never be inferred from this unapproved experimental model.

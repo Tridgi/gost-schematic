@@ -73,12 +73,13 @@ def test_seven_block_real_demo_deterministic_and_no_electrical_semantics():
 
 def test_exact_auto_layout_for_two_and_single_ports():
     p = resolve_port_positions(specimen())
-    assert p[PortRef("ENTRY", "cmd1")] == Point(60000, 4000)
-    assert p[PortRef("ENTRY", "cmd2")] == Point(60000, 8000)
-    assert p[PortRef("CTRL", "cmd1")] == Point(80000, 4000)
-    assert p[PortRef("CTRL", "cmd2")] == Point(80000, 8000)
-    assert p[PortRef("POWER", "feed")] == Point(20000, 6000)
-    assert p[PortRef("ACT", "control")] == Point(90000, 30000)
+    assert p[PortRef("B2", "a")] == Point(198000, 31000)
+    assert p[PortRef("B2", "b")] == Point(198000, 40000)
+    assert p[PortRef("B2", "c")] == Point(198000, 49000)
+    assert p[PortRef("B3", "a")] == Point(252000, 31000)
+    assert p[PortRef("B3", "b")] == Point(252000, 40000)
+    assert p[PortRef("B1", "data_out")] == Point(94000, 40000)
+    assert p[PortRef("B7", "feedback_out")] == Point(380000, 138000)
 
 
 @pytest.mark.parametrize("side", list(Side))
@@ -119,16 +120,15 @@ def test_explicit_fraction_and_mixed_auto_ports_keep_individual_positions():
     assert validate_structural_diagram(d) == ()
 
 
-def test_one_third_of_ten_thousand_micrometres_fails_no_rounding():
+def test_one_third_of_ten_thousand_micrometres_rounds_half_up():
     d = StructuralDiagram(
         (block("B", 0, 0, 10000, 12000),),
         (port("B", "p", Side.TOP, IN, Fraction(1, 3)),), (),
     )
-    assert codes(d) == {"E1_PORT_OFF_GRID"}
-    with pytest.raises(ValueError, match="E1_PORT_OFF_GRID"):
-        resolve_port_positions(d)
-    with pytest.raises(ValueError, match="E1_PORT_OFF_GRID"):
-        structural_to_json(d)
+    assert codes(d) == set()
+    assert resolve_port_positions(d)[PortRef("B", "p")] == Point(3333, 0)
+    assert structural_from_json(structural_to_json(d)) == d
+    assert d.ports[0].position == Fraction(1, 3)
 
 
 def test_same_side_and_cross_side_duplicate_anchors_fail_closed():
@@ -347,7 +347,7 @@ def test_json_exact_roundtrip_unicode_direction_and_position():
     text = structural_to_json(d)
     assert text == structural_to_json(d)
     assert json.loads(text)["schema_version"] == 1
-    assert "Контроллер" in text
+    assert "МОДУЛЬ СВЯЗИ" in text
     assert structural_from_json(text) == d
     assert structural_to_json(structural_from_json(text)) == text
     explicit = StructuralDiagram(
