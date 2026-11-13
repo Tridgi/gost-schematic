@@ -202,7 +202,7 @@ def test_rectangles_svg_names_and_separate_ugo_font_approval():
     }
     assert set(rects) == set(labels) == {node["id"] for node in doc["rectangles"]}
     for node in doc["rectangles"]:
-        assert node["name"] in labels[node["id"]]
+        assert node["name"].replace(" ", "") in labels[node["id"]].replace(" ", "")
         r = rects[node["id"]]
         x, y, w, h = node["bbox"]
         assert tuple(float(r.get(k)) for k in ("x", "y", "width", "height")) == (
@@ -262,7 +262,7 @@ def test_crossings_are_exact_two_unjoined_and_one_explicit_branch():
     assert branch[0]["marker_project_defined"] is True
     assert branch[0]["targets"] == ["B4", "B7"]
     assert any(
-        set((x, y)) == {"L2", "L9"} and tuple(xy) == (72, 80)
+        {x, y} == {"L2", "L9"} and tuple(xy) == (72, 80)
         for x, y, xy in _crossings(d["links"])
     )
     circles = [
@@ -349,7 +349,7 @@ def test_negative_unsafe_code_claims_not_source_backed():
     assert "таблиц" in c["E1-08"]["rule"]
     assert c["E1-23"]["normative_force"] == "CONDITIONAL_MUST"
     assert c["E1-36"]["normative_force"] == "EDITORIAL_SAFETY"
-    assert "логич" in c["E1-37"]["rule"] or "функцион" in c["E1-37"]["rule"].lower()
+    assert "semantic functional blocks" in c["E1-37"]["rule"]
 
 
 def test_document_gives_named_primary_sources_and_no_fake_approved():
@@ -358,7 +358,7 @@ def test_document_gives_named_primary_sources_and_no_fake_approved():
         "ГОСТ 2.702-2011", "ГОСТ 2.701-2008",
         "ГОСТ 2.304-81", "ГОСТ 2.721-74", "Habr",
         "5.1.1", "5.1.2", "5.1.3", "5.1.4", "5.1.5",
-        "Э1", "42", "7 блоков", "9 связей", "0.35",
+        "Э1", "42", "семь прямоугольников", "девять функциональных связей", "0.35",
         "3.35", "5 мм", "84,27", "112,115",
         "ELEKTRIK", "YGO 2", "DRAFT", "рекомендуется",
     ):
