@@ -423,8 +423,7 @@ def test_mixed_source_sides_no_fictitious_normalization():
 
 def test_svg_namespace_import_does_not_change_global_elementtree_state():
     # Importing ic_rectangular must NOT call global ET.register_namespace.
-    root=ET.fromstring(render_resolved_ic(*(
-        lambda u: (u,STYLE,FixedInk())
-    )(vertical_specimen(4)[0])).svg)
+    unit, _ = vertical_specimen(4)
+    root = ET.fromstring(render_resolved_ic(unit, STYLE, FixedInk()).svg)
     assert root.tag == f"{NS}svg"
     assert b"xmlns" in ET.tostring(root)
