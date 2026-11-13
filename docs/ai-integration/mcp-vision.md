@@ -5,12 +5,12 @@ editor. The known project is `six-part` (R1, R2, C1, C2, C3, L1). The live
 review specimen has C3 origin `(100000, 80000)` µm, **16** authored wire
 segments, 5 Circuit nets and 3 explicitly marked junctions.
 
-## Install and launch (Windows PowerShell)
+## Install and launch (verified Windows 11 checkout)
 
 Run from the repository checkout, not an unrelated working directory:
 
 ```powershell
-cd C:\path\to\gost-schematic
+cd C:\Users\User\Documents\gost-schematic-ai-mcp
 uv venv --python 3.13 .venv
 uv pip install --python .venv\Scripts\python.exe -e ".[mcp,dev]"
 .\.venv\Scripts\python.exe -m gost_schematic.mcp_server
@@ -23,10 +23,13 @@ Windows-compatible raster backend that needs no Cairo DLL. Optional installed
 CairoSVG is a fallback. The first working implementation was smoke-tested with
 `mcp 1.30.0`, `resvg_py 0.5.0`, Python 3.13.
 
-## Codex CLI config.toml example
+## Verified Codex CLI config.toml (Windows 11, local checkout)
 
-Use the *absolute path to the virtualenv interpreter on the machine running
-Codex*, and replace the working directory with the matching repo checkout:
+The paths below were checked on the connected Windows 11 machine. The
+original independent Git checkout is `C:\\Users\\User\\Documents\\gost-schematic`;
+the actual **P0 MCP worktree** with this feature is
+`C:\\Users\\User\\Documents\\gost-schematic-ai-mcp`. Use the latter
+until PR #73 is merged; do not point Codex at the old main checkout:
 
 ```toml
 [mcp_servers.gost_schematic_vision]
@@ -52,6 +55,15 @@ the same tool response includes the exact local PNG/SVG artifact locations as
 fallback. A *real MCP SDK stdio client* is exercised in
 `tests/agent_api/test_mcp_stdio.py`; it asserts an actual `ImageContent`,
 not a path/base64 string masquerading as a screenshot.
+
+## Real Codex CLI result (verified)
+
+The real Codex CLI 0.169.0 on the connected Windows 11 machine discovered
+our server, completed an agent tool cycle, received 12 native image/png blocks
+and requested subsequent component zooms. Read-only MCP ToolAnnotations are
+required for unattended CLI exec to allow inspection without sandbox bypass.
+See [full Codex proof](codex-cli-smoke.md) and
+[C3 symbol/source evidence](pr73-c3-evidence.md).
 
 ## Tools and response contract
 

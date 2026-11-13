@@ -25,6 +25,7 @@
   "project_ref": "six-part",
   "project_revision": "03c624ec68760a31b5b7f48d1cfcfffe1fb3e293fb616f2b03127cdd2ed1ddf9",
   "rasterizer": "resvg_py",
+  "schema_version": 1,
   "sheet_bbox_mm": [
     "2.85",
     "6.85",

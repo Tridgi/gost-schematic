@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
-from mcp.types import ImageContent, TextContent
+from mcp.types import ImageContent, TextContent, ToolAnnotations
 
 from gost_schematic.agent_api import vision
 
@@ -16,6 +16,11 @@ mcp = FastMCP("gost-schematic-vision", instructions=(
     "Use returned diagnostics from Circuit and ExternalWireGraph, never infer nets "
     "from pixels. DRAFT status is not ГОСТ approval. No mutating tools exist."
 ))
+
+
+READ_ONLY = ToolAnnotations(
+    readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False,
+)
 
 
 def _workspace() -> Path:
@@ -33,7 +38,7 @@ def _blocks(view: vision.View) -> list[ImageContent | TextContent]:
     ]
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def schematic_render_overview(
     project_ref: str = "six-part", mode: str = "clean", max_px: int = 1600,
 ) -> list[ImageContent | TextContent]:
@@ -41,7 +46,7 @@ def schematic_render_overview(
     return _blocks(vision.render_overview(project_ref, mode, max_px, _workspace()))
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def schematic_inspect_region(
     project_ref: str, selector: dict[str, Any], padding_mm: float = 3,
     target_dpi: int = 300, mode: str = "diagnostic",
@@ -52,7 +57,7 @@ def schematic_inspect_region(
     ))
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def schematic_inspect_component(
     project_ref: str, reference: str, padding_mm: float = 3,
     target_dpi: int = 300, mode: str = "diagnostic",
@@ -63,7 +68,7 @@ def schematic_inspect_component(
     ))
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def schematic_inspect_connection(
     project_ref: str, a: dict[str, str], b: dict[str, str],
     padding_mm: float = 3, target_dpi: int = 250, mode: str = "diagnostic",
@@ -74,7 +79,7 @@ def schematic_inspect_connection(
     ))
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def schematic_get_diagnostics(
     project_ref: str = "six-part", check: str = "all",
 ) -> dict[str, Any]:
@@ -82,7 +87,7 @@ def schematic_get_diagnostics(
     return vision.diagnostics(project_ref, check)
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def schematic_list_views(project_ref: str = "six-part") -> dict[str, Any]:
     """Discover available read-only specimen views and current project revision."""
     return vision.list_views(project_ref)

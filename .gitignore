@@ -11,3 +11,4 @@ dist/
 .venv/
 .env
 output/
+/artifacts/ai-mcp/

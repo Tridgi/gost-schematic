@@ -28,6 +28,12 @@ def test_mcp_stdio_image_content_and_tool_discovery(tmp_path):
                     "schematic_get_diagnostics",
                 }
                 assert required <= names
+                for tool in available.tools:
+                    if tool.name in required:
+                        assert tool.annotations is not None
+                        assert tool.annotations.readOnlyHint is True
+                        assert tool.annotations.destructiveHint is False
+                        assert tool.annotations.openWorldHint is False
                 calls = (
                     ("schematic_render_overview", {"project_ref": "six-part"}),
                     ("schematic_inspect_component", {

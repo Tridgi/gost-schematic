@@ -176,6 +176,7 @@ def diagnostics(project_ref: str = "six-part", check: str = "all") -> dict[str, 
                                         scenario=scene.scenario))
     entries.sort(key=lambda d: (d["source"], d["code"], d["subject"] or "", d["message"]))
     return {
+        "schema_version": 1,
         **_model_metadata(scene), "check": check, "diagnostics": entries,
         "labels_check_status": "not implemented" if check in ("all", "labels") else "not requested",
         "authoritative_sources": ["Circuit", "ExternalWireGraph"],
@@ -190,6 +191,37 @@ def _load(project_ref: str) -> Specimen:
         return load_specimen(project_ref)
     except ValueError as exc:
         raise VisionError("UNKNOWN_PROJECT", str(exc)) from exc
+
+
+def _component_identity(scene: Specimen, reference: str) -> dict[str, Any]:
+    component = next((c for c in scene.circuit.components if c.reference == reference), None)
+    if component is None:
+        raise VisionError("UNKNOWN_COMPONENT", f"No component {reference!r}")
+    part = scene.parts[component.part_id]
+    symbol = scene.symbols[part.symbol_id]
+    positions = component.pin_positions(symbol)
+    return {
+        "reference": component.reference,
+        "part_id": part.identifier,
+        "symbol_id": symbol.identifier,
+        "symbol_revision": symbol.revision,
+        "symbol_status": symbol.status.value,
+        "origin_mm": [str(Decimal(component.origin.x) / 1000),
+                      str(Decimal(component.origin.y) / 1000)],
+        "graphics_primitive_count": len(symbol.graphics),
+        "physical_pins": [
+            {
+                "number": p.number,
+                "name": p.name,
+                "polarity": p.polarity.value,
+                "position_mm": [
+                    str(Decimal(positions[p.number].x) / 1000),
+                    str(Decimal(positions[p.number].y) / 1000),
+                ],
+            }
+            for p in part.pins
+        ],
+    }
 
 
 def _component_box(scene: Specimen, ref: str) -> Box:
@@ -319,6 +351,7 @@ def _render(
         "px": [width, height], "mode": mode,
     }, sort_keys=True).encode()).hexdigest()[:24]
     metadata: dict[str, Any] = {
+        "schema_version": 1,
         **_model_metadata(scene),
         "view_id": view_id, "mode": mode,
         "geometry_sha256": source_sha,
@@ -366,6 +399,14 @@ def inspect_region(project_ref: str, selector: dict[str, Any],
     result = _render(scene, bounds, mode=mode, dpi=target_dpi,
                      output_root=output_root)
     result.metadata["selector"] = selector
+    if "reference" in selector:
+        result.metadata["selected_component"] = _component_identity(
+            scene, selector["reference"]
+        )
+    elif "pin" in selector:
+        result.metadata["selected_component"] = _component_identity(
+            scene, selector["pin"]["component"]
+        )
     return result
 
 
