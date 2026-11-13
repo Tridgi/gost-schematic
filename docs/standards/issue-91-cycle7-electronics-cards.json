@@ -139,9 +139,10 @@
       "net": 6,
       "line": 2
     },
-    "physical_source_rule_pass": 107,
+    "physical_source_rule_pass": 103,
     "per_variant_acceptance_blocked": 107,
-    "approved_ugos": 0
+    "approved_ugos": 0,
+    "source_scope_blocked": 4
   },
   "cards": [
     {
@@ -1133,7 +1134,8 @@
         "corner-attached lead",
         "hidden second unit creates duplicate physical pin number",
         "function text or pin label overlaps separator",
-        "modular M in mm claimed mandatory with no defined M"
+        "modular M in mm claimed mandatory with no defined M",
+        "rotate only central function in fixed horizontal rectangle and claim fig3 universal approval"
       ],
       "normative_rule_status": "PASS",
       "acceptance": "BLOCKED",
@@ -1143,7 +1145,13 @@
         "manufacturer datasheet for concrete IC physical mapping",
         "clock, marker geometry and appendix5 graphic overlay"
       ],
-      "owner": "ELEKTRIK #87 / PAINT #88"
+      "owner": "ELEKTRIK #87 / PAINT #88",
+      "deep_audit_2026_11_14": {
+        "status": "PASS_WITH_SCOPED_CAVEAT",
+        "finding": "2.743 §2.1.6 figure3 contains upright AND vertically oriented lettering in alternate whole-UGO arrangement; does not license rotate_function_text_only=90 on unchanged symbol.",
+        "source": "docs/standards/issue-91-deep-primary-audit.md",
+        "manual_signoff": "REQUIRED_BEFORE_APPROVED"
+      }
     },
     {
       "id": "ic.analog.main_only",
@@ -1218,7 +1226,13 @@
         "validated manufacturer pin map if a real E3 part is instantiated",
         "source-backed dimensional variant and signed engineering review"
       ],
-      "owner": "ELEKTRIK #87 / PAINT #88"
+      "owner": "ELEKTRIK #87 / PAINT #88",
+      "deep_audit_2026_11_14": {
+        "status": "PASS_WITH_SCOPED_CAVEAT",
+        "finding": "2.759 §1.8 top/bottom orientation allowed; inherits 2.743, but function-only 90-degree rotation is not universally authorized.",
+        "source": "docs/standards/issue-91-deep-primary-audit.md",
+        "manual_signoff": "REQUIRED_BEFORE_APPROVED"
+      }
     },
     {
       "id": "ic.analog.main_right",
@@ -1293,7 +1307,13 @@
         "validated manufacturer pin map if a real E3 part is instantiated",
         "source-backed dimensional variant and signed engineering review"
       ],
-      "owner": "ELEKTRIK #87 / PAINT #88"
+      "owner": "ELEKTRIK #87 / PAINT #88",
+      "deep_audit_2026_11_14": {
+        "status": "PASS_WITH_SCOPED_CAVEAT",
+        "finding": "2.759 §1.8 top/bottom orientation allowed; inherits 2.743, but function-only 90-degree rotation is not universally authorized.",
+        "source": "docs/standards/issue-91-deep-primary-audit.md",
+        "manual_signoff": "REQUIRED_BEFORE_APPROVED"
+      }
     },
     {
       "id": "ic.analog.main_left",
@@ -1368,7 +1388,13 @@
         "validated manufacturer pin map if a real E3 part is instantiated",
         "source-backed dimensional variant and signed engineering review"
       ],
-      "owner": "ELEKTRIK #87 / PAINT #88"
+      "owner": "ELEKTRIK #87 / PAINT #88",
+      "deep_audit_2026_11_14": {
+        "status": "PASS_WITH_SCOPED_CAVEAT",
+        "finding": "2.759 §1.8 top/bottom orientation allowed; inherits 2.743, but function-only 90-degree rotation is not universally authorized.",
+        "source": "docs/standards/issue-91-deep-primary-audit.md",
+        "manual_signoff": "REQUIRED_BEFORE_APPROVED"
+      }
     },
     {
       "id": "ic.analog.main_both",
@@ -1443,7 +1469,13 @@
         "validated manufacturer pin map if a real E3 part is instantiated",
         "source-backed dimensional variant and signed engineering review"
       ],
-      "owner": "ELEKTRIK #87 / PAINT #88"
+      "owner": "ELEKTRIK #87 / PAINT #88",
+      "deep_audit_2026_11_14": {
+        "status": "PASS_WITH_SCOPED_CAVEAT",
+        "finding": "2.759 §1.8 top/bottom orientation allowed; inherits 2.743, but function-only 90-degree rotation is not universally authorized.",
+        "source": "docs/standards/issue-91-deep-primary-audit.md",
+        "manual_signoff": "REQUIRED_BEFORE_APPROVED"
+      }
     },
     {
       "id": "ic.analog.amplifier",
@@ -2474,7 +2506,7 @@
       "source_key": "semi",
       "source_original_pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
       "source_official": "https://protect.gost.ru/gost/details/8e7d0ff4-ab0d-44b5-8efd-b0fcdb13950b",
-      "source_exactness": "original_figure_and_clause_seen_2026-11-14",
+      "source_exactness": "SOURCE_SHOWS_ONLY_PARTIAL_EFFECT_OR_TYPICAL_CIRCUIT",
       "physical_contacts": {
         "type": "PHYSICAL_PART_PINS",
         "roles": [
@@ -2522,15 +2554,22 @@
         "case drawing treated as physical package/footprint",
         "fabricated generic part pin numbers from a sample picture"
       ],
-      "normative_rule_status": "PASS",
+      "normative_rule_status": "BLOCKED",
       "acceptance": "BLOCKED",
       "approval": "DRAFT",
       "blocking_evidence": [
         "signed 1:1 screenshot/printed overlay for each exact graphic figure including change sheets",
         "manufacturer datasheet and revision for actual package numbers",
-        "D4 transformation coverage; no approval by inherited table alone"
+        "D4 transformation coverage; no approval by inherited table alone",
+        "Original cited figure does not independently establish one full standalone vendor part UGO."
       ],
-      "owner": "YGO2 #89"
+      "owner": "YGO2 #89",
+      "deep_audit_2026_11_14": {
+        "status": "BLOCKED_SOURCE_SCOPE",
+        "finding": "Table4 position2a is avalanche-effect primitive only; independent complete diode schematic UGO not proven.",
+        "source": "docs/standards/issue-91-deep-primary-audit.md",
+        "manual_signoff": "REQUIRED_BEFORE_APPROVED"
+      }
     },
     {
       "id": "diode.bidirectional_avalanche",
@@ -2543,7 +2582,7 @@
       "source_key": "semi",
       "source_original_pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
       "source_official": "https://protect.gost.ru/gost/details/8e7d0ff4-ab0d-44b5-8efd-b0fcdb13950b",
-      "source_exactness": "original_figure_and_clause_seen_2026-11-14",
+      "source_exactness": "SOURCE_SHOWS_ONLY_PARTIAL_EFFECT_OR_TYPICAL_CIRCUIT",
       "physical_contacts": {
         "type": "PHYSICAL_PART_PINS",
         "roles": [
@@ -2590,15 +2629,22 @@
         "case drawing treated as physical package/footprint",
         "fabricated generic part pin numbers from a sample picture"
       ],
-      "normative_rule_status": "PASS",
+      "normative_rule_status": "BLOCKED",
       "acceptance": "BLOCKED",
       "approval": "DRAFT",
       "blocking_evidence": [
         "signed 1:1 screenshot/printed overlay for each exact graphic figure including change sheets",
         "manufacturer datasheet and revision for actual package numbers",
-        "D4 transformation coverage; no approval by inherited table alone"
+        "D4 transformation coverage; no approval by inherited table alone",
+        "Original cited figure does not independently establish one full standalone vendor part UGO."
       ],
-      "owner": "YGO2 #89"
+      "owner": "YGO2 #89",
+      "deep_audit_2026_11_14": {
+        "status": "BLOCKED_SOURCE_SCOPE",
+        "finding": "Table4 position2b is bidirectional avalanche-effect primitive only; full standalone UGO not proven.",
+        "source": "docs/standards/issue-91-deep-primary-audit.md",
+        "manual_signoff": "REQUIRED_BEFORE_APPROVED"
+      }
     },
     {
       "id": "diode.thermoelectric",
@@ -5277,9 +5323,9 @@
       "source_key": "semi",
       "source_original_pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
       "source_official": "https://protect.gost.ru/gost/details/8e7d0ff4-ab0d-44b5-8efd-b0fcdb13950b",
-      "source_exactness": "original_figure_and_clause_seen_2026-11-14",
+      "source_exactness": "SOURCE_SHOWS_ONLY_PARTIAL_EFFECT_OR_TYPICAL_CIRCUIT",
       "physical_contacts": {
-        "type": "PHYSICAL_PART_PINS",
+        "type": "TYPICAL_MULTIPART_CIRCUIT_NOT_ONE_PHYSICAL_DEVICE",
         "roles": [
           "AC1",
           "AC2",
@@ -5325,17 +5371,25 @@
         "wrong single-/dual-sided junction",
         "optical arrows counted as conductive pins",
         "case drawing treated as physical package/footprint",
-        "fabricated generic part pin numbers from a sample picture"
+        "fabricated generic part pin numbers from a sample picture",
+        "treat sample bridge terminals 1–4 as guaranteed physical pins of a packaged rectifier"
       ],
-      "normative_rule_status": "PASS",
+      "normative_rule_status": "BLOCKED",
       "acceptance": "BLOCKED",
       "approval": "DRAFT",
       "blocking_evidence": [
         "signed 1:1 screenshot/printed overlay for each exact graphic figure including change sheets",
         "manufacturer datasheet and revision for actual package numbers",
-        "D4 transformation coverage; no approval by inherited table alone"
+        "D4 transformation coverage; no approval by inherited table alone",
+        "Original cited figure does not independently establish one full standalone vendor part UGO."
       ],
-      "owner": "YGO2 #89"
+      "owner": "YGO2 #89",
+      "deep_audit_2026_11_14": {
+        "status": "BLOCKED_SOURCE_SCOPE",
+        "finding": "GOST 2.730-73 table12 is a typical multi-diode rectifier CIRCUIT, not evidence for one packaged physical PartDefinition or universal manufacturer numbers.",
+        "source": "docs/standards/issue-91-deep-primary-audit.md",
+        "manual_signoff": "REQUIRED_BEFORE_APPROVED"
+      }
     },
     {
       "id": "semiconductor.bridge_compact",
@@ -5348,9 +5402,9 @@
       "source_key": "semi",
       "source_original_pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
       "source_official": "https://protect.gost.ru/gost/details/8e7d0ff4-ab0d-44b5-8efd-b0fcdb13950b",
-      "source_exactness": "original_figure_and_clause_seen_2026-11-14",
+      "source_exactness": "SOURCE_SHOWS_ONLY_PARTIAL_EFFECT_OR_TYPICAL_CIRCUIT",
       "physical_contacts": {
-        "type": "PHYSICAL_PART_PINS",
+        "type": "TYPICAL_MULTIPART_CIRCUIT_NOT_ONE_PHYSICAL_DEVICE",
         "roles": [
           "AC1",
           "AC2",
@@ -5396,17 +5450,25 @@
         "wrong single-/dual-sided junction",
         "optical arrows counted as conductive pins",
         "case drawing treated as physical package/footprint",
-        "fabricated generic part pin numbers from a sample picture"
+        "fabricated generic part pin numbers from a sample picture",
+        "treat sample bridge terminals 1–4 as guaranteed physical pins of a packaged rectifier"
       ],
-      "normative_rule_status": "PASS",
+      "normative_rule_status": "BLOCKED",
       "acceptance": "BLOCKED",
       "approval": "DRAFT",
       "blocking_evidence": [
         "signed 1:1 screenshot/printed overlay for each exact graphic figure including change sheets",
         "manufacturer datasheet and revision for actual package numbers",
-        "D4 transformation coverage; no approval by inherited table alone"
+        "D4 transformation coverage; no approval by inherited table alone",
+        "Original cited figure does not independently establish one full standalone vendor part UGO."
       ],
-      "owner": "YGO2 #89"
+      "owner": "YGO2 #89",
+      "deep_audit_2026_11_14": {
+        "status": "BLOCKED_SOURCE_SCOPE",
+        "finding": "GOST 2.730-73 table12 is a typical multi-diode rectifier CIRCUIT, not evidence for one packaged physical PartDefinition or universal manufacturer numbers.",
+        "source": "docs/standards/issue-91-deep-primary-audit.md",
+        "manual_signoff": "REQUIRED_BEFORE_APPROVED"
+      }
     },
     {
       "id": "resistor.variable",
@@ -5457,12 +5519,14 @@
       },
       "positive_cases": [
         "independent wiper pin stays in PartDefinition even if used as two-net rheostat",
-        "3-pin device not silently downgraded to 2 physical pins"
+        "3-pin device not silently downgraded to 2 physical pins",
+        "Source 2.728 table1 pos4 note2: unused graphic terminal may be omitted by declared display policy, physical PinRef not deleted"
       ],
       "negative_cases": [
         "wiper omitted from actual three-pin part",
         "wiper connected to endpoint without explicit Circuit.Net",
-        "functional 20×4mm falsely applied to generic resistor.variable"
+        "functional 20×4mm falsely applied to generic resistor.variable",
+        "Claim GOST always requires all three terminal graphics visible in every variable-resistor representation"
       ],
       "normative_rule_status": "PASS",
       "acceptance": "BLOCKED",
@@ -5471,7 +5535,13 @@
         "mechanical/physical pin numbering from selected device datasheet",
         "dimensions/arrow placement for each non-functional variant verified graphically"
       ],
-      "owner": "YGO2 #89"
+      "owner": "YGO2 #89",
+      "deep_audit_2026_11_14": {
+        "status": "PASS_WITH_SCOPED_CAVEAT",
+        "finding": "2.728 table1 pos4 note2 expressly permits NOT DRAWING an UNUSED graphic terminal. Real 3-terminal physical part pin inventory remains in model; omission must not fabricate a net.",
+        "source": "docs/standards/issue-91-deep-primary-audit.md",
+        "manual_signoff": "REQUIRED_BEFORE_APPROVED"
+      }
     },
     {
       "id": "resistor.trimmer",
@@ -5537,7 +5607,13 @@
         "mechanical/physical pin numbering from selected device datasheet",
         "dimensions/arrow placement for each non-functional variant verified graphically"
       ],
-      "owner": "YGO2 #89"
+      "owner": "YGO2 #89",
+      "deep_audit_2026_11_14": {
+        "status": "PASS_WITH_SCOPED_CAVEAT",
+        "finding": "Graphic adjustment handle is not a fourth electrical contact; maintain actual wiper physical role and source-specific shape 2.728 table1 pos9, tab6 pos5.",
+        "source": "docs/standards/issue-91-deep-primary-audit.md",
+        "manual_signoff": "REQUIRED_BEFORE_APPROVED"
+      }
     },
     {
       "id": "resistor.variable_dual_wiper",
@@ -5618,7 +5694,7 @@
       "source_official": "https://protect.gost.ru/gost/details/ba115ccd-e5aa-4ba1-a672-b17170f1a7f2",
       "source_exactness": "original_figure_and_clause_seen_2026-11-14",
       "physical_contacts": {
-        "type": "PHYSICAL_PART_PINS",
+        "type": "USAGE_PROFILE_OF_EXISTING_VARIABLE_RESISTOR_PART",
         "roles": [
           "END1",
           "END2",
@@ -5668,7 +5744,13 @@
         "mechanical/physical pin numbering from selected device datasheet",
         "dimensions/arrow placement for each non-functional variant verified graphically"
       ],
-      "owner": "YGO2 #89"
+      "owner": "YGO2 #89",
+      "deep_audit_2026_11_14": {
+        "status": "PASS_WITH_SCOPED_CAVEAT",
+        "finding": "2.728 table1 pos4 note3 allows rheostat view but this is a connection/representation variant, not a new manufactured physical part.",
+        "source": "docs/standards/issue-91-deep-primary-audit.md",
+        "manual_signoff": "REQUIRED_BEFORE_APPROVED"
+      }
     },
     {
       "id": "potentiometer.functional_linear",
@@ -5991,7 +6073,13 @@
         "validated manufacturer pin map if a real E3 part is instantiated",
         "source-backed dimensional variant and signed engineering review"
       ],
-      "owner": "YGO2 #89"
+      "owner": "YGO2 #89",
+      "deep_audit_2026_11_14": {
+        "status": "PASS_WITH_SCOPED_CAVEAT",
+        "finding": "GOST 2.727 table3 pos2 fusing element; thick energized-side stroke note is conditional, never default left-side polarity.",
+        "source": "docs/standards/issue-91-deep-primary-audit.md",
+        "manual_signoff": "REQUIRED_BEFORE_APPROVED"
+      }
     },
     {
       "id": "fuse.inertial",
@@ -6588,7 +6676,13 @@
         "validated manufacturer pin map if a real E3 part is instantiated",
         "source-backed dimensional variant and signed engineering review"
       ],
-      "owner": "YGO2 #89"
+      "owner": "YGO2 #89",
+      "deep_audit_2026_11_14": {
+        "status": "PASS_WITH_SCOPED_CAVEAT",
+        "finding": "2.755 table5 pos1(1) identifies physical male contact; tab6 multi-contact numbers are examples, not a universal vendor pinout.",
+        "source": "docs/standards/issue-91-deep-primary-audit.md",
+        "manual_signoff": "REQUIRED_BEFORE_APPROVED"
+      }
     },
     {
       "id": "connector.socket",
@@ -6656,7 +6750,13 @@
         "validated manufacturer pin map if a real E3 part is instantiated",
         "source-backed dimensional variant and signed engineering review"
       ],
-      "owner": "YGO2 #89"
+      "owner": "YGO2 #89",
+      "deep_audit_2026_11_14": {
+        "status": "PASS_WITH_SCOPED_CAVEAT",
+        "finding": "2.755 table5 pos1(1) identifies physical female contact; do not confuse with nonphysical net break marker.",
+        "source": "docs/standards/issue-91-deep-primary-audit.md",
+        "manual_signoff": "REQUIRED_BEFORE_APPROVED"
+      }
     },
     {
       "id": "connector.mated_pair",
@@ -7256,13 +7356,15 @@
       "positive_cases": [
         "same NetID persists across separated SVG fragments and sheet addresses",
         "equal visible label on distinct physical nets rejects as ambiguity",
-        "physical plug XP/XS distinctly has PartDefinition and manufacturer contacts"
+        "physical plug XP/XS distinctly has PartDefinition and manufacturer contacts",
+        "Reciprocal R1 / C3, or verified device/contact address A7:X16 / A4:X11, with actual typed NetId"
       ],
       "negative_cases": [
         "create physical plug solely because conductor ends at off-page indicator",
         "join two distinct Net IDs on equal displayed text",
         "make accidental X automatically a junction",
-        "invent wireless connection where none exists"
+        "invent wireless connection where none exists",
+        "Treat sheet:zone-only display text as unique prescribed §5.14 address"
       ],
       "normative_rule_status": "PASS",
       "acceptance": "BLOCKED",
@@ -7271,7 +7373,13 @@
         "source diagram break figure 1:1 overlay and exact addressing syntax review",
         "sheet-level data model and explicit net identity checked by QA"
       ],
-      "owner": "ELEKTRIK #90"
+      "owner": "ELEKTRIK #90",
+      "deep_audit_2026_11_14": {
+        "status": "PASS_WITH_SCOPED_CAVEAT",
+        "finding": "2.709 §5.14 addresses are actual opposite endpoint element, device or functional group designations according 2.710; sheet/zone is supplemental editorial navigation.",
+        "source": "docs/standards/issue-91-deep-primary-audit.md",
+        "manual_signoff": "REQUIRED_BEFORE_APPROVED"
+      }
     },
     {
       "id": "net.continuation.addressed",
@@ -7323,13 +7431,15 @@
       "positive_cases": [
         "same NetID persists across separated SVG fragments and sheet addresses",
         "equal visible label on distinct physical nets rejects as ambiguity",
-        "physical plug XP/XS distinctly has PartDefinition and manufacturer contacts"
+        "physical plug XP/XS distinctly has PartDefinition and manufacturer contacts",
+        "Reciprocal R1 / C3, or verified device/contact address A7:X16 / A4:X11, with actual typed NetId"
       ],
       "negative_cases": [
         "create physical plug solely because conductor ends at off-page indicator",
         "join two distinct Net IDs on equal displayed text",
         "make accidental X automatically a junction",
-        "invent wireless connection where none exists"
+        "invent wireless connection where none exists",
+        "Treat sheet:zone-only display text as unique prescribed §5.14 address"
       ],
       "normative_rule_status": "PASS",
       "acceptance": "BLOCKED",
@@ -7338,7 +7448,13 @@
         "source diagram break figure 1:1 overlay and exact addressing syntax review",
         "sheet-level data model and explicit net identity checked by QA"
       ],
-      "owner": "ELEKTRIK #90"
+      "owner": "ELEKTRIK #90",
+      "deep_audit_2026_11_14": {
+        "status": "PASS_WITH_SCOPED_CAVEAT",
+        "finding": "2.709 §5.14 addresses are actual opposite endpoint element, device or functional group designations according 2.710; sheet/zone is supplemental editorial navigation.",
+        "source": "docs/standards/issue-91-deep-primary-audit.md",
+        "manual_signoff": "REQUIRED_BEFORE_APPROVED"
+      }
     },
     {
       "id": "net.continuation.named_horizontal",
@@ -7396,7 +7512,8 @@
         "create physical plug solely because conductor ends at off-page indicator",
         "join two distinct Net IDs on equal displayed text",
         "make accidental X automatically a junction",
-        "invent wireless connection where none exists"
+        "invent wireless connection where none exists",
+        "add break arrow to every uninterrupted labelled wire and call it mandatory GOST"
       ],
       "normative_rule_status": "PASS",
       "acceptance": "BLOCKED",
@@ -7405,7 +7522,13 @@
         "source diagram break figure 1:1 overlay and exact addressing syntax review",
         "sheet-level data model and explicit net identity checked by QA"
       ],
-      "owner": "ELEKTRIK #90"
+      "owner": "ELEKTRIK #90",
+      "deep_audit_2026_11_14": {
+        "status": "PASS_WITH_SCOPED_CAVEAT",
+        "finding": "2.709 §5.13 defines an ordinary name on line segment, NOT a universal requirement to add arrow/break. Graphic break is separate 2.721 table6в pos8.",
+        "source": "docs/standards/issue-91-deep-primary-audit.md",
+        "manual_signoff": "REQUIRED_BEFORE_APPROVED"
+      }
     },
     {
       "id": "net.continuation.named_vertical",
@@ -7463,7 +7586,8 @@
         "create physical plug solely because conductor ends at off-page indicator",
         "join two distinct Net IDs on equal displayed text",
         "make accidental X automatically a junction",
-        "invent wireless connection where none exists"
+        "invent wireless connection where none exists",
+        "add break arrow to every uninterrupted labelled wire and call it mandatory GOST"
       ],
       "normative_rule_status": "PASS",
       "acceptance": "BLOCKED",
@@ -7472,7 +7596,13 @@
         "source diagram break figure 1:1 overlay and exact addressing syntax review",
         "sheet-level data model and explicit net identity checked by QA"
       ],
-      "owner": "ELEKTRIK #90"
+      "owner": "ELEKTRIK #90",
+      "deep_audit_2026_11_14": {
+        "status": "PASS_WITH_SCOPED_CAVEAT",
+        "finding": "2.709 §5.13 defines an ordinary name on line segment, NOT a universal requirement to add arrow/break. Graphic break is separate 2.721 table6в pos8.",
+        "source": "docs/standards/issue-91-deep-primary-audit.md",
+        "manual_signoff": "REQUIRED_BEFORE_APPROVED"
+      }
     },
     {
       "id": "net.continuation.grouped",
@@ -7702,5 +7832,19 @@
       "evidence": "ГОСТ 2.755-87 табл.5 / ГОСТ 2.721-74 табл.6 поз.8",
       "violation": "Net continuation treated as physical connector/PartDefinition"
     }
-  ]
+  ],
+  "deep_source_review": {
+    "date": "2026-11-14",
+    "document": "docs/standards/issue-91-deep-primary-audit.md",
+    "machine_matrix": "docs/standards/issue-91-deep-source-audit.json",
+    "new_cards_count": 107,
+    "critical_scope_blocked": [
+      "diode.avalanche",
+      "diode.bidirectional_avalanche",
+      "semiconductor.bridge_full",
+      "semiconductor.bridge_compact"
+    ],
+    "unchanged_product_status": "DRAFT / BLOCKED",
+    "note": "Original 107 source-label PASS did not mean schematic symbol fully approved; four partial source scopes downgraded."
+  }
 }
