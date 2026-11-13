@@ -249,6 +249,26 @@ def _font_lines(block, view, bounds, style, measurer):
     return labels
 
 
+def _demonstration_routes(diagram: StructuralDiagram, anchors) -> dict:
+    """One explicit, review-only feedback route of the canonical B1..B7 example.
+
+    Unlike a production autorouter this is intentionally limited to the
+    recognised link PortRefs, and never changes the semantic model.
+    """
+    routes = {}
+    for link in diagram.links:
+        if (
+            link.id == "L9"
+            and (link.source.block_id, link.source.port_id) == ("B7", "feedback_out")
+            and (link.target.block_id, link.target.port_id) == ("B6", "feedback_in")
+        ):
+            src, dst = anchors[link.source], anchors[link.target]
+            lower = max(block.origin.y + block.height_um for block in diagram.blocks)
+            lower += 16000
+            routes[link.id] = ((src.x, lower), (dst.x, lower))
+    return routes
+
+
 def render_structural_model(
     diagram: StructuralDiagram,
     font_file: str | Path,
@@ -321,7 +341,7 @@ def render_structural_model(
         )
         for block in diagram.blocks
     }
-    routes = dict(via_by_link or {})
+    routes = {**_demonstration_routes(diagram, authoritative), **(via_by_link or {})}
     if set(routes) - {link.id for link in diagram.links}:
         raise E1GraphicError("Unknown link route override")
     final_routes = []
