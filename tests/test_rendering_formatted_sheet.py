@@ -23,6 +23,12 @@ class FixedInk:
         return MeasuredText(Box(0, -2000, len(text) * 500, 1), len(text) * 500)
 
 
+class FixedTitleInk:
+    def measure(self, text, style):
+        # "Н" ink is 2500 µm cap-high, independent of SVG em size.
+        return MeasuredText(Box(0, -2500, len(text) * 500, 1), len(text) * 500)
+
+
 def specimen(*, diagnostic=False):
     circuit, graph = authored_specimen()
     parts, symbols = definitions()
@@ -100,7 +106,7 @@ def test_title_field_geometry_and_content_are_independent():
     filled = root(compose_formatted_sheet(
         source, PageProfile(),
         title_values={"designation": "Э3", "name": "Схема"},
-        title_text_style=STYLE, title_measurer=FixedInk(),
+        title_text_style=STYLE, title_measurer=FixedTitleInk(),
     ))
     assert ET.tostring(plain.find(
         f".//{SVG}g[@data-layer='title-block-grid']"
@@ -122,7 +128,7 @@ def test_form_one_measured_headings_use_full_seventeen_mm_role_column():
     source, *_ = specimen()
     filled = root(compose_formatted_sheet(
         source, PageProfile(),
-        title_text_style=STYLE, title_measurer=FixedInk(),
+        title_text_style=STYLE, title_measurer=FixedTitleInk(),
         title_captions=True,
     ))
     named = {el.text: el for el in filled.findall(
@@ -146,15 +152,44 @@ def test_form_one_rejects_long_text_without_font_shrink(title_values):
     with pytest.raises(ValueError, match="TITLE_FIELD_OVERFLOW"):
         compose_formatted_sheet(
             source, PageProfile(), title_values=title_values,
+            title_text_style=STYLE, title_measurer=FixedTitleInk(),
+        )
+
+
+def test_wrong_declared_cap_height_is_rejected_not_hidden_by_css_size():
+    source, *_ = specimen()
+    with pytest.raises(ValueError, match="TITLE_FONT_CAP_HEIGHT_MISMATCH"):
+        compose_formatted_sheet(
+            source, PageProfile(), title_values={"name": "Схема"},
             title_text_style=STYLE, title_measurer=FixedInk(),
         )
+
+
+def test_three_independent_5mm_letter_cells_match_original_b1():
+    source, *_ = specimen()
+    result = root(compose_formatted_sheet(
+        source, PageProfile(),
+        title_values={"letter": "А", "letter_b": "Б", "letter_c": "В"},
+        title_text_style=STYLE, title_measurer=FixedTitleInk(),
+    ))
+    cells = {
+        item.get("data-graph"): tuple(map(int, item.get("data-cell-bounds-um").split(",")))
+        for item in result.findall(f".//{SVG}g[@data-layer='title-block-fields']/{SVG}text")
+    }
+    assert len(cells) == 3
+    assert all(cell[2] - cell[0] == 5000 for cell in cells.values())
+    xs = [cells[key][0] for key in ("letter", "letter_b", "letter_c")]
+    assert xs == [155000, 160000, 165000]  # A4 form left 20 mm + 135/140/145
+    grid_lines = result.findall(f".//{SVG}g[@data-grid-section='title-columns']")
+    assert any(line.get("x1") == "160" for line in grid_lines)
+    assert any(line.get("x1") == "165" for line in grid_lines)
 
 
 def test_title_fields_empty_missing_style_and_unknown_keys_fail_closed():
     source, *_ = specimen()
     blank = root(compose_formatted_sheet(
         source, PageProfile(), title_values={"designation": ""},
-        title_text_style=STYLE, title_measurer=FixedInk(),
+        title_text_style=STYLE, title_measurer=FixedTitleInk(),
     ))
     assert not blank.findall(f".//{SVG}g[@data-layer='title-block-fields']")
     with pytest.raises(ValueError, match="require calibrated"):
@@ -162,18 +197,18 @@ def test_title_fields_empty_missing_style_and_unknown_keys_fail_closed():
     with pytest.raises(ValueError, match="Unknown form-1"):
         compose_formatted_sheet(
             source, PageProfile(), title_values={"unapproved_field": "X"},
-            title_text_style=STYLE, title_measurer=FixedInk(),
+            title_text_style=STYLE, title_measurer=FixedTitleInk(),
         )
     with pytest.raises(ValueError, match="single-line"):
         compose_formatted_sheet(
             source, PageProfile(), title_values={"name": "A" + chr(10) + "B"},
-            title_text_style=STYLE, title_measurer=FixedInk(),
+            title_text_style=STYLE, title_measurer=FixedTitleInk(),
         )
     with pytest.raises(ValueError, match="Title values require"):
         compose_formatted_sheet(
             source, PageProfile(mode="electronic_layout"),
             title_values={"designation": "X"},
-            title_text_style=STYLE, title_measurer=FixedInk(),
+            title_text_style=STYLE, title_measurer=FixedTitleInk(),
         )
 
 
