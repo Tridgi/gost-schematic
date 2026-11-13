@@ -1,8 +1,8 @@
 # Cycle 4: minimal independent reproductions
 
-Baseline `caf7db7ad22d9cd22202664471da5ff3a49a754c`; these cases use the **real installed catalog** and are not geometry invented for demonstration. Reproduce with `python -m pip install -e ".[dev]"`. The failing expectations are intentionally documented as `xfail` in the QA suite, because changing production implementations is out of scope.
+Historical finding baseline: `caf7db7ad22d9cd22202664471da5ff3a49a754c`. **Updated verification:** integrated validator fix #40 at `2052e9d3a903edea860c100e00609ceee3c9062b` (PR #48). All reproductions use actual catalog parts, never synthetic terminals. Run `python -m pip install -e ".[dev]"`. The fixed #40 regression is now **ordinary passing test**, not an xfail; #41 remains a separate expected failure, and newly confirmed #58 from Issue #54 has its own strict xfail until an owner fixes it.
 
-## MAJOR: an unassigned physical pin crossed by a wire gets no diagnostic — Issue #40
+## RESOLVED MAJOR — Issue #40: unassigned physical pin contact now produces ERROR
 
 ```python
 from importlib.resources import files
@@ -37,10 +37,10 @@ graph = ExternalWireGraph((WireSegment(start, end, "SIG"),))
 diagnostics = validate_external_wires(
     circuit, graph, {part.identifier: part}, {symbol.identifier: symbol}
 )
-print([issue.code for issue in diagnostics])  # ACTUAL: []  (undesirable silent contact)
+assert [issue.code for issue in diagnostics] == ["WIRE_PIN_CONTACT_UNDECLARED"]
 ```
 
-Expected behavior needs an agreed precise electrical-safety contract (diagnose the unassigned connector contact without automatically joining an unmarked crossing). The observed defect is precisely that **no warning or error exists at all**. Dedicated test: `tests/qa_wires_test.py::test_unassigned_physical_pin_never_disappears_into_a_valid_net`.
+With PR #48, the expected actual result is **ERROR `WIRE_PIN_CONTACT_UNDECLARED`**, with no implicit net joining. Before this fix the validator returned `[]`. Dedicated passing test: `tests/qa_wires_test.py::test_unassigned_physical_pin_never_disappears_into_a_valid_net`.
 
 ## MINOR: malformed geometry JSON escapes the catalog error boundary — Issue #41
 
@@ -56,6 +56,14 @@ except CatalogError:
 
 Actual: `AttributeError: 'list' object has no attribute 'get'`. Expected: public `CatalogError` with a helpful nested schema diagnostic. Dedicated test: `tests/qa_catalog_test.py::test_json_array_in_geometry_returns_catalog_error_instead_of_attribute_error`.
 
-## Regression after owner fixes
+## Confirmed new MAJOR — Issue #54 / production fix #58
 
-Run `pytest -q tests/qa_catalog_test.py tests/qa_wires_test.py` and inspect the two known `xfail` cases. Remove the corresponding `xfail` decorators **only after** verifying fixed behavior and asserting the actual diagnostic codes. Treat `XPASS` as a request to review, not as proof the contract is satisfied. Do not change physical pin identities, guess nets from visible SVG, or drop the no-junction X-crossing behavior.
+The narrower #40 fix still misses a **foreign-net interior crossing of a pin already connected to its legitimate net**. Four real resistors with physical pin #1 positioned at R1=(0,0), R2=(-20000,0), R3=(0,-10000), R4=(0,10000) µm are wired as A: R2.1→R1.1 and B: R3.1→R4.1. R1.1 is attached to A at its endpoint while B traverses it as an interior point. There is no junction.
+
+On current integrated validator SHA `2052e9d3a903edea860c100e00609ceee3c9062b`, **actual diagnostics are empty**, not the expected `WIRE_PIN_CONTACT_UNDECLARED`. This is distinct from free-contact #40.
+
+Dedicated D4/reversed-direction/1µm control matrix: `tests/qa_wires_test.py::test_foreign_net_interior_hits_preassigned_real_pin_without_false_short`; 16 exact-crossing inputs are strict xfail and 16 near-miss cases pass. See [Issue #58](https://github.com/Tridgi/gost-schematic/issues/58).
+
+## Regression status after integrated #40 fix
+
+Run `pytest -q tests/qa_catalog_test.py tests/qa_wires_test.py`. **No xfail remains for #40.** The #41 parser regression remains xfail, and new Issue #58 stays strict xfail until independently verified corrected. Do not infer junctions from SVG; an unmarked X away from a pin must not turn into a short. A correction to #58 must preserve real pin identity and all 1 µm near-miss controls.
