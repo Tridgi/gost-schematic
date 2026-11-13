@@ -59,3 +59,16 @@ Next-cycle Issues: [#24 copper-core correction](https://github.com/Tridgi/gost-s
 - **#32 YGO 2** may now resume: both historical visual regressions (#37 and #47) have fixes integrated, next full catalog is 21 DRAFT once two diode JSON and physical part passports are accepted.
 - **#41** malformed geometry should emit CatalogError and remains open.
 - `main` was never changed, **0 APPROVED**, all normative/visual acceptance remains separate manual work.
+
+## 2026-11-13 — Coordinator integration review: diode, ESKD, safety, router, and C3
+
+- **PR #49** accepted and merged as `9cca588a364561ef32050cec2ae14fa1840bbf4a`: normative evidence for `capacitor.polarized` vs special outlined `capacitor.electrolytic`. No physical/graphics mutation, both remain DRAFT; controlled 1:1 normative overlay still needed.
+- **PR #60** accepted/merged as `8c222019397668eb00711b34bd341228946d5ce8`: MAJOR #58 fixed in validator, real physical pin foreign-net interior contact diagnostic, preserves unmarked X semantically separate.
+- **PR #57** accepted/merged as `3f0b2fca929079f836ecb38ea93d42a6556db247`: `diode.general`, `diode.zener`, physical A/K and 21 DRAFT/0 hard errors; no APPROVED.
+- **PR #39** accepted/merged as `a3aefe4447dff840eabd894d71a3b83eb77b0f64`: restricted *experimental* two-pin typed safe adapter, #50–52 independent latest-HEAD QA evidenced via PR #61, not full multi-net placement or professional safety certification. Low-level geometry-only helper requires complete barriers.
+- **PR #62** accepted/merged as `f464879d79d3b964fff52e884c4c446d0057d677`: C3 live authored specimen moved y75→y80mm, 18→16 wires, TOP backtrack 5→0mm, bends 4→2, total TOP+RIGHT length remains 142mm. Old archived 18-wire fixture and normative Issue35 test preserved. Manual source improvement, NOT autoroute placement.
+- **Full combined CI** on `f464879d79d3b964fff52e884c4c446d0057d677`: [Actions 43471846041](https://github.com/Tridgi/gost-schematic/actions/runs/43471846041) SUCCESS, Python 3.12 and 3.13 **1372 passed each**, Ruff PASS, **21 DRAFT / 0 hard errors**, installed wheel payload 6 symbolic/6 physical plus 15 winding/1 normative profile.
+- Closed issues #32, #45, #58, #34, #55, #50, #51, #52 and investigation #54 as scoped technical milestones, **not** normative approval or completion of full routing. #44 remains open for automatic placement-aware optimization.
+- **HOLD PR #59**: typography/form-one geometry/clean-first revised, CI green on its own old base, but tests and example still assume live C3 y75mm / 18 wires. Must sync after merged #62, adapt to archival-vs-live (16 wires), regenerate SVG/PNG, seek independent ESKD normative review Issue #63. Do not merge without visual acceptance.
+- **HOLD QA PR #61**: independent new-HEAD #39 safety proof accepted, but strict `xfail` for #58 must convert to ordinary PASS after #60; add tests against actual integrated router modules, not frozen-source alone, and rerun on 21-DRAFT base. Historical QA PR #42/#53 retained pending reconciliation/archival, never merge stale xfails.
+- **Issue #63** ESKD independent normative form-one review; branch `parallel/standards-form1-review` forked from last combined head. `main` remains unchanged; 0 symbols approved to ГОСТ.

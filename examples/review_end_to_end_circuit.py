@@ -10,6 +10,7 @@ import argparse
 import json
 from dataclasses import dataclass, replace
 from importlib.resources import files
+from itertools import pairwise
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -64,7 +65,7 @@ def authored_specimen() -> tuple[Circuit, ExternalWireGraph]:
     original, graph = catalog_sheet()
     components = (
         *original.components,
-        ComponentInstance("C3", "capacitor.electrolytic", Point(100000, 75000)),
+        ComponentInstance("C3", "capacitor.electrolytic", Point(100000, 80000)),
     )
     nets = tuple(
         replace(
@@ -76,11 +77,9 @@ def authored_specimen() -> tuple[Circuit, ExternalWireGraph]:
     # Shared endpoint nodes are also marked explicitly for unambiguous SVG.
     wires = (*graph.segments,
              _segment(40000, 40000, 40000, 80000, "TOP"),
-             _segment(40000, 80000, 84000, 80000, "TOP"),
-             _segment(84000, 80000, 84000, 75000, "TOP"),
-             _segment(84000, 75000, 91000, 75000, "TOP"),
-             _segment(120000, 40000, 120000, 75000, "RIGHT"),
-             _segment(120000, 75000, 109000, 75000, "RIGHT"))
+             _segment(40000, 80000, 91000, 80000, "TOP"),
+             _segment(120000, 40000, 120000, 80000, "RIGHT"),
+             _segment(120000, 80000, 109000, 80000, "RIGHT"))
     junctions = (
         *graph.junctions,
         Point(40000, 40000),
@@ -134,7 +133,7 @@ def scenarios() -> tuple[Case, ...]:
             "one_micrometre_gap", circuit,
             ExternalWireGraph(
                 (*all_wires[:13],
-                 _segment(40001, 80000, 84000, 80000, "TOP"),
+                 _segment(40001, 80000, 91000, 80000, "TOP"),
                  *all_wires[14:]),
                 graph.junctions,
             ),
@@ -197,6 +196,75 @@ def diagnose(case: Case) -> dict[str, object]:
     }
 
 
+def c3_manual_layout_metrics() -> dict[str, object]:
+    """Compare exact authored C3 branches before/after a MANUAL 5mm Y shift.
+
+    This reports geometric quality only. It does not optimize placement,
+    search for better arrangements, or mutate the electrical netlist.
+    """
+    _, graph = authored_specimen()
+    new_top = graph.segments[-4:-2]
+    new_right = graph.segments[-2:]
+
+    def path_points(wires: tuple[WireSegment, ...]) -> tuple[Point, ...]:
+        if any(a.end != b.start for a, b in pairwise(wires)):
+            raise AssertionError("C3 branch has disconnected authored segments")
+        return (wires[0].start, *(wire.end for wire in wires))
+
+    def metrics(points: tuple[Point, ...]) -> dict[str, int]:
+        steps = tuple(
+            (b.x - a.x, b.y - a.y)
+            for a, b in pairwise(points)
+        )
+        if any((dx == 0) == (dy == 0) for dx, dy in steps):
+            raise AssertionError("C3 manual branch must be nonzero orthogonal")
+        directions = tuple((0 if dy == 0 else 1) for dx, dy in steps)
+        length = sum(abs(dx) + abs(dy) for dx, dy in steps)
+        manhattan = (
+            abs(points[-1].x - points[0].x)
+            + abs(points[-1].y - points[0].y)
+        )
+        excess = length - manhattan
+        return {
+            "length_um": length,
+            "bends": sum(a != b for a, b in pairwise(directions)),
+            "manhattan_excess_um": excess,
+            "backtrack_um": excess // 2,
+        }
+
+    original_top = (
+        Point(40000, 40000), Point(40000, 80000),
+        Point(84000, 80000), Point(84000, 75000),
+        Point(91000, 75000),
+    )
+    original_right = (
+        Point(120000, 40000), Point(120000, 75000),
+        Point(109000, 75000),
+    )
+    plans = {
+        "before": {"TOP": original_top, "RIGHT": original_right},
+        "after": {
+            "TOP": path_points(new_top),
+            "RIGHT": path_points(new_right),
+        },
+    }
+    result: dict[str, object] = {
+        "method": "manual-authored-specimen-correction-not-auto-placement",
+        "c3_origin_before_um": [100000, 75000],
+        "c3_origin_after_um": [100000, 80000],
+    }
+    for key, branches in plans.items():
+        top = metrics(branches["TOP"])
+        right = metrics(branches["RIGHT"])
+        result[key] = {
+            "TOP": top,
+            "RIGHT": right,
+            "combined_length_um": top["length_um"] + right["length_um"],
+            "combined_bends": top["bends"] + right["bends"],
+        }
+    return result
+
+
 def report() -> dict[str, object]:
     cases = scenarios()
     parts, symbols = definitions()
@@ -204,6 +272,7 @@ def report() -> dict[str, object]:
     return {
         "schema_version": 1,
         "kind": "electrical_end_to_end_specimen",
+        "manual_c3_layout_comparison": c3_manual_layout_metrics(),
         "status": "experimental_not_eskd_approved",
         "catalog_ids": sorted(parts),
         "components": [

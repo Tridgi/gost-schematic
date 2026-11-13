@@ -168,12 +168,17 @@ def test_18_wires_are_orthogonal_with_allowed_actual_stroke():
         assert (x1 == x2) != (y1 == y2)
         assert float(wire.attrib["stroke-width"]) == 0.3
         assert 0.2 <= float(wire.attrib["stroke-width"]) <= 1.0
-    _, graph = authored_specimen()
-    for actual, source in zip(wires, graph.segments, strict=True):
+    # Issue #35 is an archival normative review of the ORIGINAL 18-wire SVG.
+    # Compare that frozen SVG to its own original authored-graph JSON, not to
+    # the now-improved 16-wire Issue #44 live specimen.
+    archive = json.loads(
+        FIXTURE.with_name("end-to-end-diagnostics.json").read_text(encoding="utf-8")
+    )
+    for actual, source in zip(wires, archive["authored_wires"], strict=True):
         coords = _wire_segment(actual)
         assert coords == (
-            source.start.x / 1000, source.start.y / 1000,
-            source.end.x / 1000, source.end.y / 1000,
+            source["start_um"][0] / 1000, source["start_um"][1] / 1000,
+            source["end_um"][0] / 1000, source["end_um"][1] / 1000,
         )
 
 

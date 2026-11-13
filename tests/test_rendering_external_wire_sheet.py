@@ -60,7 +60,7 @@ def test_valid_six_part_graph_renders_exact_segments_pins_and_junctions(diagnost
     immutable = (circuit, graph, parts.copy(), symbols.copy())
     rendered = _specimen(review=diagnostic)
     assert rendered.layout.valid, [(d.code, d.message) for d in rendered.layout.diagnostics]
-    assert len(rendered.wires) == len(graph.segments) == 18
+    assert len(rendered.wires) == len(graph.segments) == 16
     assert tuple(
         (w.line.start, w.line.end, w.net_name) for w in rendered.wires
     ) == tuple((seg.start, seg.end, seg.net_name) for seg in graph.segments)
