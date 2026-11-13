@@ -8,12 +8,15 @@ import hashlib
 import json
 import re
 from fractions import Fraction
+from importlib import import_module
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
 from PIL import Image, ImageChops
 
-from gost_schematic.structural import resolve_port_positions, structural_from_json
+_structural = import_module("gost_schematic.structural")
+resolve_port_positions = _structural.resolve_port_positions
+structural_from_json = _structural.structural_from_json
 
 SVG = "{http://www.w3.org/2000/svg}"
 COORDS = re.compile(r"[ML] (-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)")
@@ -56,7 +59,7 @@ def verify(folder: Path) -> dict:
         root = ET.fromstring(content)
         paths = root.findall(f".//{SVG}path[@data-role='functional-link']")
         arrows = root.findall(f".//{SVG}path[@data-role='functional-process-arrow']")
-        if len(paths) != len(arrows) != 9 or len(paths) != 9:
+        if len(paths) != 9 or len(arrows) != 9:
             raise ValueError("Missing or excess visual directed links/arrows")
         by_link = {x.get("data-link-id"): x for x in paths}
         if set(by_link) != set(expected_links):

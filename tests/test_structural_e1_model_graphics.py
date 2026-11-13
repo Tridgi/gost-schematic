@@ -9,32 +9,29 @@ import json
 import os
 from dataclasses import replace
 from fractions import Fraction
+from importlib import import_module
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
 import pytest
 
-pytest.importorskip("gost_schematic.structural")
+from gost_schematic.core.geometry import Point, Side
 
-from examples.review_structural_e1_model import (  # noqa: E402
-    BlockView,
-    E1GraphicError,
-    example_views,
-    render_structural_model,
-)
-from gost_schematic.core.geometry import Point, Side  # noqa: E402
-from gost_schematic.structural import (  # noqa: E402
-    BlockPort,
-    FunctionalBlock,
-    FunctionalLink,
-    PortDirection,
-    PortRef,
-    StructuralDiagram,
-    resolve_port_positions,
-    structural_from_json,
-    structural_to_json,
-    validate_structural_diagram,
-)
+_structural = pytest.importorskip("gost_schematic.structural")
+_graphics = import_module("examples.review_structural_e1_model")
+BlockView = _graphics.BlockView
+E1GraphicError = _graphics.E1GraphicError
+example_views = _graphics.example_views
+render_structural_model = _graphics.render_structural_model
+BlockPort = _structural.BlockPort
+FunctionalBlock = _structural.FunctionalBlock
+PortDirection = _structural.PortDirection
+PortRef = _structural.PortRef
+StructuralDiagram = _structural.StructuralDiagram
+resolve_port_positions = _structural.resolve_port_positions
+structural_from_json = _structural.structural_from_json
+structural_to_json = _structural.structural_to_json
+validate_structural_diagram = _structural.validate_structural_diagram
 
 FIXTURE = Path("examples/fixtures/structural_e1/pr80-shared-7b-18p-9l.json")
 SVG_NS = "{http://www.w3.org/2000/svg}"

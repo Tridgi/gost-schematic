@@ -12,20 +12,20 @@ import hashlib
 import json
 from dataclasses import dataclass
 from fractions import Fraction
+from importlib import import_module
 from itertools import combinations, pairwise
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.standards.type_a_font import inspect_type_a_font
-from gost_schematic.structural import (
-    PortRef,
-    StructuralDiagram,
-    resolve_port_positions,
-    structural_from_json,
-    structural_to_json,
-    validate_structural_diagram,
-)
+
+_e1 = import_module("gost_schematic.structural")
+StructuralDiagram = _e1.StructuralDiagram
+resolve_port_positions = _e1.resolve_port_positions
+structural_from_json = _e1.structural_from_json
+structural_to_json = _e1.structural_to_json
+validate_structural_diagram = _e1.validate_structural_diagram
 
 TEXT_HEIGHT_UM = 2500  # Reviewed face height, NOT certification of full glyphs.
 TEXT_LINE_STEP_UM = 4000  # EDITORIAL for multiline E1 boxes.
@@ -174,7 +174,7 @@ def _mm(x: int) -> str:
 
 def _arrowhead(parent, a, b, *, link_id: str):
     """Arrow head is graphics-only; the tip is exactly the model target."""
-    from decimal import Decimal, ROUND_HALF_UP
+    from decimal import ROUND_HALF_UP, Decimal
 
     dx = Decimal(b[0] - a[0])
     dy = Decimal(b[1] - a[1])
