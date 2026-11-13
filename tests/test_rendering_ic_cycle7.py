@@ -427,3 +427,65 @@ def test_svg_namespace_import_does_not_change_global_elementtree_state():
     root = ET.fromstring(render_resolved_ic(unit, STYLE, FixedInk()).svg)
     assert root.tag == f"{NS}svg"
     assert b"xmlns" in ET.tostring(root)
+
+
+def test_connection_targets_immutable_pinref_and_editor_layer_opt_in():
+    from gost_schematic.model.circuit import PinRef
+    from gost_schematic.rendering.ic_hotspots import IcConnectionTarget
+
+    unit, _ = specimen(4)
+    target = IcConnectionTarget(
+        pin_id=unit.pins[0].pin_id,
+        pin_ref=PinRef("DD1", "1"),
+        anchor=unit.pins[0].anchor,
+        connectable=True,
+        net_id="CLOCK",
+    )
+    result = render_resolved_ic(
+        unit, STYLE, FixedInk(), editor_targets=(target,),
+    )
+    assert result.connection_targets == (target,)
+    assert "editor-connection-targets" not in result.svg
+    assert "#148645" not in result.svg
+    visible = render_resolved_ic(
+        unit, STYLE, FixedInk(), editor_targets=(target,),
+        editor_overlay=True,
+    )
+    assert 'data-layer="editor-connection-targets"' in visible.svg
+    assert 'data-pin-ref="DD1.1"' in visible.svg
+    assert 'data-net-id="CLOCK"' in visible.svg
+    assert result.pin_anchors == visible.pin_anchors
+
+
+def test_invalid_editor_pinref_1um_and_nc_connection_rejected():
+    from gost_schematic.model.circuit import PinRef
+    from gost_schematic.rendering.ic_hotspots import IcConnectionTarget
+
+    unit,_=specimen(4)
+    bad=IcConnectionTarget(
+        unit.pins[0].pin_id, PinRef("DD1","1"),
+        unit.pins[0].anchor+Point(1,0),True,
+    )
+    with pytest.raises(ValueError,match="IC_EDITOR_PINREF_ENDPOINT_MISMATCH"):
+        render_resolved_ic(unit,STYLE,FixedInk(),editor_targets=(bad,))
+
+    p=list(unit.pins)
+    p[0]=replace(p[0],role="nc")
+    nc_unit=replace(unit,pins=tuple(p))
+    illegal=IcConnectionTarget(
+        p[0].pin_id, PinRef("DD1","1"),p[0].anchor,True,
+    )
+    with pytest.raises(ValueError,match="IC_EDITOR_NC_TARGET_CONNECTED"):
+        render_resolved_ic(nc_unit,STYLE,FixedInk(),editor_targets=(illegal,))
+    disabled=IcConnectionTarget(
+        p[0].pin_id,PinRef("DD1","1"),p[0].anchor,False,reason="NC",
+    )
+    assert render_resolved_ic(
+        nc_unit,STYLE,FixedInk(),editor_targets=(disabled,),
+    ).connection_targets == (disabled,)
+
+
+def test_editor_overlay_never_replaces_real_clean_pin_geometry():
+    unit,_=vertical_specimen(4)
+    with pytest.raises(ValueError,match="IC_EDITOR_OVERLAY_REQUIRES_EXPLICIT"):
+        render_resolved_ic(unit,STYLE,FixedInk(),editor_overlay=True)
