@@ -17,7 +17,18 @@ from gost_schematic.model.circuit import Circuit, PinRef
 def _id(value: str, label: str) -> str:
     if type(value) is not str or not value.strip() or value.strip() != value:
         raise ValueError(f"{label} must be a canonical nonblank string")
+    if any(
+        ord(char) < 32 or 0xD800 <= ord(char) <= 0xDFFF
+        or ord(char) in (0xFFFE, 0xFFFF) for char in value
+    ):
+        raise ValueError(f"{label} contains XML-unsafe/control characters")
     return value
+
+
+def _address_page(value: str) -> int | None:
+    """Recognize project sheet/zone address, not arbitrary GOST element addresses."""
+    match = fullmatch(r"([1-9][0-9]*)/[A-Za-zА-Яа-я][A-Za-zА-Яа-я0-9._-]*", value)
+    return int(match.group(1)) if match else None
 
 
 def _unique(values: list[str]) -> bool:
@@ -243,6 +254,15 @@ def validate_net_continuations(
         if sheet is None or e.sheet_number != sheet.number:
             errors.append(_err(
                 "E3_CONT_SHEET_UNKNOWN", e.id, "Unknown/mismatched sheet ID/number",
+            ))
+        # The project-specific '2/B7' grid notation is checked against the
+        # declared sheet number. GOST also permits device/contact addresses;
+        # those are NOT restricted to this illustrative sheet/zone format.
+        address_page = _address_page(e.address)
+        if address_page is not None and address_page != e.sheet_number:
+            errors.append(_err(
+                "E3_CONT_ADDRESS_SHEET_MISMATCH", e.id,
+                "Sheet/zone address references another declared sheet",
             ))
         key = (e.sheet_id, e.address)
         if key in by_address:
