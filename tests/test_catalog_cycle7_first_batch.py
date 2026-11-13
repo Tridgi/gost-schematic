@@ -14,7 +14,7 @@ from xml.etree import ElementTree as ET
 import pytest
 
 from examples.review_electronic_cycle7 import generate
-from gost_schematic.catalog.loader import parse_symbol, load_symbol
+from gost_schematic.catalog.loader import load_symbol, parse_symbol
 from gost_schematic.catalog.part_loader import load_part, parse_part
 from gost_schematic.core.geometry import Line, Point, Side
 from gost_schematic.core.transforms import Transform
@@ -139,7 +139,7 @@ def test_variable_wiper_is_real_top_pin_and_arrowhead_not_an_electrical_bridge()
     assert symbol.pins[2].side == Side.TOP and part.pins[2].name == "W"
     assert symbol.graphics[3] == Line(Point(0, -9000), Point(0, -2000))
     assert symbol.conductor_topology.conductor_indices == (1, 2, 3)
-    assert not set((4, 5)) & set(symbol.conductor_topology.conductor_indices)
+    assert not {4, 5} & set(symbol.conductor_topology.conductor_indices)
 
 
 def test_trimmer_wiper_forms_separate_right_upper_port_not_an_arrow():
