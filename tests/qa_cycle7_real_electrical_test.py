@@ -162,6 +162,10 @@ def test_split_ic_real_phys_pinref_identity_survives_d4(actual, rotation, mirror
 
 def test_real_named_continuation_two_sheets_one_exact_physical_net_svg(actual):
     _ic, _serde, _example, net, serde, example = actual
+    # Reproduce production module import order deterministically: the core
+    # SVG renderer globally registers the default SVG namespace. The #98
+    # owner must never serialize a second xmlns on its namespaced root.
+    ET.register_namespace("", "http://www.w3.org/2000/svg")
     project = example.specimen()
     assert net.validate_net_continuations(project) == ()
     assert len(project.circuit.nets) == 1
