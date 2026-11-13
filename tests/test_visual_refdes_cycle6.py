@@ -300,3 +300,31 @@ def test_non_refdes_annotations_are_reserved_by_opt_in_algorithm():
     assert not other[0].collision_bounds.overlaps(
         pseudo_value.collision_bounds
     )
+
+
+def test_opt_in_refdes_respects_other_text_reservation_not_only_ink():
+    circuit, _, by_part = _specimen()
+    single = Circuit(
+        (next(c for c in circuit.components if c.reference == "L1"),), (),
+    )
+    original = place_refdes_near_visible_graphics(
+        single, by_part, STYLE, UnitInk(),
+    )[0]
+    from gost_schematic.model.annotations import AnnotationPlacement, AnnotationRole
+
+    # Other text ink lives far away but reserves the original candidate's
+    # 0.5mm-expanded hitbox; the refdes must not occupy its future text zone.
+    reservation = original.collision_bounds
+    other = AnnotationPlacement(
+        owner="parameter", key="value", role=AnnotationRole.VALUE,
+        text="RESERVED", style=STYLE, baseline=Point(0, 0),
+        ink_bounds=Box(-5000, -5000, -4000, -4000),
+        collision_bounds=Box(-5500, -5500, -3500, -3500),
+        reservation_bounds=reservation, candidate_index=0,
+    )
+    new = place_refdes_near_visible_graphics(
+        single, by_part, STYLE, UnitInk(),
+        existing_placements=(other,),
+    )[0]
+    assert new.ink_bounds != original.ink_bounds
+    assert not new.collision_bounds.overlaps(reservation)
