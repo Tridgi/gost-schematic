@@ -441,6 +441,12 @@ def semantic_projection(data: dict) -> dict:
     blocks = []
     ports = []
     for block in data["blocks"]:
+        if block.get("rotation", 0) != 0 or block.get("mirror_x", False) or (
+            _decimal(block.get("scale", "1"), block["id"] + ".scale") != 1
+        ):
+            raise E1DesignError(
+                f"{block['id']}: model projection cannot silently apply view transformations"
+            )
         cx, cy = block["center_um"]
         width, height = block["size_um"]
         if width % 2 or height % 2:
@@ -498,7 +504,7 @@ def main(argv: list[str] | None = None) -> int:
         "limitations": "EDITORIAL spacing and approximate font metrics; NOT normative approval",
     }
     (args.output_dir / "semantic-projection.json").write_text(
-        json.dumps(semantic_projection(data), ensure_ascii=False, indent=2) + "\\n",
+        json.dumps(semantic_projection(data), ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
     (args.output_dir / "manifest.json").write_text(
