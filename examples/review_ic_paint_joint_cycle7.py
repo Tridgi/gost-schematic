@@ -68,7 +68,7 @@ def generate(output_dir: Path, font_file: Path) -> dict:
             "physical_pin_count": count,
             "logical_unit_count": len(source.device.units),
             "nets": {
-                net.identifier: [
+                net.name: [
                     {"reference": pin.reference, "number": pin.number}
                     for pin in net.members
                 ] for net in circuit.nets
