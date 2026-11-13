@@ -171,6 +171,29 @@ jobs:
           assert not root.findall(f".//{ns}g[@data-layer='title-block']")
           print("Verified default bare SVG: no page/form-one or frame")
           PY
+      - name: Gate explicit form-one CLI values without shipping synthetic data
+        run: |
+          python -m examples.review_formatted_sheet \
+            --font-file "$REVIEW_FONT" --mode a4 \
+            --title-field "designation=CI-TEST-ONLY" \
+            --output-dir output/explicit-form-ci-only
+          python - <<'PY'
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+          folder = Path("output/explicit-form-ci-only")
+          ns = "{http://www.w3.org/2000/svg}"
+          blank = ET.fromstring((folder / "a4-portrait-clean.svg").read_text())
+          explicitly = ET.fromstring(
+              (folder / "a4-portrait-explicit-fields.svg").read_text()
+          )
+          assert not blank.findall(f".//{ns}g[@data-layer='title-block-fields']")
+          fields = explicitly.findall(
+              f".//{ns}g[@data-layer='title-block-fields']/{ns}text"
+          )
+          assert len(fields) == 1 and fields[0].text == "CI-TEST-ONLY"
+          assert fields[0].get("data-cap-height-mm") == "2.5"
+          print("Explicit-only title value verified; temporary fixture NOT uploaded")
+          PY
       - name: Rasterize clean and diagnostic A4/A3 at common pixel width
         run: |
           for PAGE in a4-portrait a3-landscape a3-portrait; do
