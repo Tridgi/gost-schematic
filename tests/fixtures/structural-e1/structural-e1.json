@@ -75,102 +75,102 @@
   "links": [
     {
       "id": "L01",
-      "source": [
-        "POWER",
-        "feed"
-      ],
-      "target": [
-        "ENTRY",
-        "supply"
-      ]
+      "source": {
+        "block_id": "POWER",
+        "port_id": "feed"
+      },
+      "target": {
+        "block_id": "ENTRY",
+        "port_id": "supply"
+      }
     },
     {
       "id": "L02",
-      "source": [
-        "ENTRY",
-        "cmd1"
-      ],
-      "target": [
-        "CTRL",
-        "cmd1"
-      ]
+      "source": {
+        "block_id": "ENTRY",
+        "port_id": "cmd1"
+      },
+      "target": {
+        "block_id": "CTRL",
+        "port_id": "cmd1"
+      }
     },
     {
       "id": "L03",
-      "source": [
-        "ENTRY",
-        "cmd2"
-      ],
-      "target": [
-        "CTRL",
-        "cmd2"
-      ]
+      "source": {
+        "block_id": "ENTRY",
+        "port_id": "cmd2"
+      },
+      "target": {
+        "block_id": "CTRL",
+        "port_id": "cmd2"
+      }
     },
     {
       "id": "L04",
-      "source": [
-        "SENSOR",
-        "measurement"
-      ],
-      "target": [
-        "ADAPT",
-        "sensor"
-      ]
+      "source": {
+        "block_id": "SENSOR",
+        "port_id": "measurement"
+      },
+      "target": {
+        "block_id": "ADAPT",
+        "port_id": "sensor"
+      }
     },
     {
       "id": "L05",
-      "source": [
-        "ADAPT",
-        "actuate"
-      ],
-      "target": [
-        "ACT",
-        "command"
-      ]
+      "source": {
+        "block_id": "ADAPT",
+        "port_id": "actuate"
+      },
+      "target": {
+        "block_id": "ACT",
+        "port_id": "command"
+      }
     },
     {
       "id": "L06",
-      "source": [
-        "CTRL",
-        "display"
-      ],
-      "target": [
-        "DISPLAY",
-        "status"
-      ]
+      "source": {
+        "block_id": "CTRL",
+        "port_id": "display"
+      },
+      "target": {
+        "block_id": "DISPLAY",
+        "port_id": "status"
+      }
     },
     {
       "id": "L07",
-      "source": [
-        "CTRL",
-        "actuate"
-      ],
-      "target": [
-        "ACT",
-        "control"
-      ]
+      "source": {
+        "block_id": "CTRL",
+        "port_id": "actuate"
+      },
+      "target": {
+        "block_id": "ACT",
+        "port_id": "control"
+      }
     },
     {
       "id": "L08",
-      "source": [
-        "ADAPT",
-        "feedback"
-      ],
-      "target": [
-        "ENTRY",
-        "feedback"
-      ]
+      "source": {
+        "block_id": "ADAPT",
+        "port_id": "feedback"
+      },
+      "target": {
+        "block_id": "ENTRY",
+        "port_id": "feedback"
+      }
     },
     {
       "id": "L09",
-      "source": [
-        "ACT",
-        "state"
-      ],
-      "target": [
-        "DISPLAY",
-        "alarm"
-      ]
+      "source": {
+        "block_id": "ACT",
+        "port_id": "state"
+      },
+      "target": {
+        "block_id": "DISPLAY",
+        "port_id": "alarm"
+      }
     }
   ],
   "ports": [

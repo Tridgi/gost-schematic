@@ -378,8 +378,13 @@ def test_json_exact_roundtrip_unicode_direction_and_position():
                                     *d["ports"][1:]]},
         lambda d: {**d, "ports": [{**d["ports"][0], "position": [1.0, 2]},
                                     *d["ports"][1:]]},
-        lambda d: {**d, "links": [{**d["links"][0], "target": ["GHOST", "x"]},
-                                    *d["links"][1:]]},
+        lambda d: {**d, "links": [
+            {**d["links"][0], "target": {"block_id": "GHOST", "port_id": "x"}},
+            *d["links"][1:],
+        ]},
+        lambda d: {**d, "links": [
+            {**d["links"][0], "target": ["B", "in"]}, *d["links"][1:],
+        ]},
     ],
 )
 def test_json_decoder_rejects_invalid_or_unknown_fields(mutator):

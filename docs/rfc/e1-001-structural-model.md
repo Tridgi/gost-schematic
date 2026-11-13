@@ -46,7 +46,7 @@ Straight lines are *inspection chords*, not finalized directed multi-segment dra
 
 ## Exact JSON v1
 
-`structural_to_json` serializes **validated** structures deterministically; `structural_from_json` strictly validates typed fields, exact keys, duplicate JSON keys, version and actual graph. Arrays preserve declared block/port/link order. Integers are µm; relative positions are `null` for auto or `[numerator,denominator]` in canonical lowest terms; no binary float/NaN or rounding. Example:
+`structural_to_json` serializes **validated** structures deterministically; `structural_from_json` strictly validates typed fields, exact keys, duplicate JSON keys, version and actual graph. Arrays preserve declared block/port/link order. Every link endpoint is a named JSON object `{"block_id": "...", "port_id": "..."}`, matching YGO2's provisional semantic projection (rather than a positional two-string array). Integers are µm; relative positions are `null` for auto or `[numerator,denominator]` in canonical lowest terms; no binary float/NaN or rounding. Example:
 
 ```json
 {
@@ -60,7 +60,7 @@ Straight lines are *inspection chords*, not finalized directed multi-segment dra
     {"block_id": "A", "id": "out", "side": "right", "direction": "output", "position": null},
     {"block_id": "B", "id": "in", "side": "left", "direction": "input", "position": [1, 2]}
   ],
-  "links": [{"id": "L1", "source": ["A", "out"], "target": ["B", "in"]}]
+  "links": [{"id": "L1", "source": {"block_id": "A", "port_id": "out"}, "target": {"block_id": "B", "port_id": "in"}}]
 }
 ```
 

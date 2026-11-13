@@ -84,8 +84,12 @@ def structural_to_json(diagram: StructuralDiagram) -> str:
         "links": [
             {
                 "id": l.id,
-                "source": [l.source.block_id, l.source.port_id],
-                "target": [l.target.block_id, l.target.port_id],
+                "source": {
+                    "block_id": l.source.block_id, "port_id": l.source.port_id,
+                },
+                "target": {
+                    "block_id": l.target.block_id, "port_id": l.target.port_id,
+                },
             }
             for l in diagram.links
         ],
@@ -153,11 +157,12 @@ def structural_from_json(raw: str) -> StructuralDiagram:
         item = _object(value, {"id", "source", "target"}, f"link #{i}")
         refs = []
         for label in ("source", "target"):
-            pair = _array(item[label], f"link {label}")
-            if len(pair) != 2:
-                raise ValueError(f"link {label} requires [block_id,port_id]")
+            pair = _object(
+                item[label], {"block_id", "port_id"}, f"link {label}",
+            )
             refs.append(PortRef(
-                _text(pair[0], "port block ID"), _text(pair[1], "port ID"),
+                _text(pair["block_id"], "port block ID"),
+                _text(pair["port_id"], "port ID"),
             ))
         links.append(FunctionalLink(_text(item["id"], "link id"), *refs))
 
