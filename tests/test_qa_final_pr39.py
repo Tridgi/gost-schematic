@@ -50,7 +50,8 @@ def _point(x, y):
     return Point(x, y)
 
 
-def _place(catalog, ref, part, pin, contact, transform=Transform()):
+def _place(catalog, ref, part, pin, contact, transform=None):
+    transform = transform if transform is not None else Transform()
     _, symbols = catalog
     local = next(p.at for p in symbols[part].pins if p.number == pin)
     offset = transform.apply(local)
@@ -74,7 +75,8 @@ def _on_segment(segment, point):
     )
 
 
-def _sheet(catalog, tx=Transform(), blocker_part="resistor.fixed", miss=0):
+def _sheet(catalog, tx=None, blocker_part="resistor.fixed", miss=0):
+    tx = tx if tx is not None else Transform()
     source = tx.apply(_point(0, -14000))
     target = tx.apply(_point(0, 14000))
     middle = tx.apply(_point(miss, 0))
@@ -115,8 +117,8 @@ def test_pr39_source_is_distinct_from_previously_audited_pr53(engine):
     old_blob = "50b9102191fbe7f5876b14bd9ef10dcbbb1fe600"
     assert HEAD == "1a1375623c0f098cac14f7843c44d75982a4d749"
     assert all(blob != old_blob for _name, _path, blob in MODULES)
-    assert engine[0].__file__.endswith("qa_pr39_1a137562_orthogonal.py")
-    assert engine[1].__file__.endswith("qa_pr39_1a137562_sheet.py")
+    assert engine[0].__file__.endswith("qa_pr39_1a137562_orthogonal.txt")
+    assert engine[1].__file__.endswith("qa_pr39_1a137562_sheet.txt")
 
 
 @pytest.mark.parametrize("rotation", [0, 90, 180, 270])
