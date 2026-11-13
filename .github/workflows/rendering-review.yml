@@ -143,14 +143,34 @@ jobs:
           if-no-files-found: error
       - name: Gate A4/A3 paper and electronic page regression tests
         run: |
-          ruff check src/gost_schematic/rendering/formatted_sheet.py examples/review_formatted_sheet.py tests/test_rendering_formatted_sheet.py
-          pytest -q tests/test_rendering_formatted_sheet.py
+          ruff check src/gost_schematic/rendering/formatted_sheet.py src/gost_schematic/rendering/form_one.py examples/review_formatted_sheet.py examples/review_c3_placement_proposal.py tests/test_rendering_formatted_sheet.py tests/test_rendering_c3_placement_review.py
+          pytest -q tests/test_rendering_formatted_sheet.py tests/test_rendering_c3_placement_review.py
       - name: Generate A4/A3 physical-size sheets from exact authored wiring
         run: |
           python -m examples.review_formatted_sheet \
             --font-file "$REVIEW_FONT" --font-family "OpenGost Type A" \
             --mode all --title-headings --compare-c3 \
             --output-dir output/formatted-sheet-review
+      - name: Verify the actual default CLI is unframed and title-free
+        run: |
+          python -m examples.review_formatted_sheet \
+            --font-file "$REVIEW_FONT" \
+            --output-dir output/default-clean-review
+          python - <<'PY'
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+          folder = Path("output/default-clean-review")
+          assert sorted(f.name for f in folder.iterdir()) == [
+              "formatted-sheet-manifest.json",
+              "schematic-clean.svg",
+              "schematic-diagnostic.svg",
+          ]
+          root = ET.fromstring((folder / "schematic-clean.svg").read_text())
+          ns = "{http://www.w3.org/2000/svg}"
+          assert not root.findall(f".//{ns}g[@data-layer='frame']")
+          assert not root.findall(f".//{ns}g[@data-layer='title-block']")
+          print("Verified default bare SVG: no page/form-one or frame")
+          PY
       - name: Rasterize clean and diagnostic A4/A3 at common pixel width
         run: |
           for PAGE in a4-portrait a3-landscape a3-portrait; do
