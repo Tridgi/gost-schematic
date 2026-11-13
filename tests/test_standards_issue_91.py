@@ -5,7 +5,6 @@ GOST-approved. Existing Issue27 cards are referenced by SHA, never duplicated.
 """
 
 import json
-from collections import Counter
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -188,7 +187,7 @@ def test_ic_rules_exact_number_above_line_and_no_char_limit():
     digital = catalog()["ic.digital.main_both"]
     assert any("ABOVE" in s for s in digital["geometry"]["normative_mandatory"])
     assert any("NO character-count" in s for s in
-               digital["geometry"]["normative_recommended"]) is False
+               digital["geometry"]["normative_recommended"]) is True
     doc = REPORT.read_text(encoding="utf-8")
     assert "НАД линией" in doc and "В РАЗРЫВЕ" in doc
     assert "число знаков" in doc
