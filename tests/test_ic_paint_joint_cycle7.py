@@ -13,7 +13,8 @@ from xml.etree import ElementTree as ET
 import pytest
 
 from examples.review_ic_cycle7 import synthetic_ic
-from gost_schematic.core.geometry import Point
+from gost_schematic.core.geometry import Point, Side
+from gost_schematic.core.transforms import Transform
 from gost_schematic.core.units import format_mm
 from gost_schematic.electrical.ic import (
     IcKind,
@@ -166,3 +167,57 @@ def test_power_open_collector_nc_and_split_units_are_physical_not_svg_nets(typog
         validate_ic_circuit(source.device, circuit, "DD1")
     rendered = [render_resolved_ic(v, style, measurer) for v in binding.views]
     assert sum(len(r.pin_anchors) for r in rendered) == 14
+
+
+@pytest.mark.parametrize("rotation", (0, 90, 180, 270))
+@pytest.mark.parametrize("mirror", (False, True))
+def test_real_paint_d4_split_identity_and_fail_closed_views(
+    typography, rotation, mirror,
+):
+    style, measurer = typography
+    source = synthetic_ic(14)
+    placements = tuple(replace(
+        p, transform=Transform(rotation, mirror),
+    ) for p in source.placements)
+    transformed = IcLibraryRecord(source.device, source.specs, placements)
+    binding = propose_ic_paint_binding(transformed, style, measurer)
+    base = propose_ic_paint_binding(source, style, measurer)
+    refs = resolve_ic_pin_positions(
+        binding.record.device, binding.record.specs, binding.record.placements,
+    )
+    original_refs = resolve_ic_pin_positions(
+        base.record.device, base.record.specs, base.record.placements,
+    )
+    assert set(refs) == set(original_refs)
+    assert len(refs) == 14
+    binding.verify_endpoints()
+    for view in binding.views:
+        try:
+            svg = render_resolved_ic(view, style, measurer).svg
+        except ValueError as error:
+            # PAINT currently refuses some upright-text D4 cases; that is
+            # a documented DRAFT layout gate, not a permission to move pins.
+            assert any(marker in str(error) for marker in (
+                "IC_INK_COLLISION", "IC_TEXT_OVERFLOW",
+            )), str(error)
+        else:
+            lines = ET.fromstring(svg).findall(
+                f".//{SVG}g[@data-layer='ic-physical-pin-leads']/{SVG}line"
+            )
+            for line in lines:
+                ref = PinRef("DD1", line.get("data-pin-number"))
+                assert line.get("x2") == format_mm(refs[ref].x)
+                assert line.get("y2") == format_mm(refs[ref].y)
+
+
+def test_true_top_bottom_electrical_view_is_explicitly_blocked(typography):
+    style, measurer = typography
+    source = synthetic_ic(2)
+    spec = source.specs[0]
+    top_row = replace(
+        spec.rows[0], side=Side.TOP, anchor=Point(5000, -4000),
+    )
+    new_spec = replace(spec, rows=(top_row, spec.rows[1]))
+    top_view = IcLibraryRecord(source.device, (new_spec,), source.placements)
+    with pytest.raises(ValueError, match="IC_UNSUPPORTED_VERTICAL_PORT"):
+        propose_ic_paint_binding(top_view, style, measurer)
