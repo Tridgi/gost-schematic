@@ -1,0 +1,79 @@
+name: Cycle7 ELEKTRIK-PAINT exact IC cross-contract (DRAFT)
+
+on:
+  push:
+    branches:
+      - parallel/electrical-ic-contract-cycle7
+  pull_request:
+    paths:
+      - 'src/gost_schematic/electrical/**'
+      - 'tests/test_ic_paint_joint_cycle7.py'
+      - 'examples/review_ic_paint_joint_cycle7.py'
+      - '.github/workflows/ic-paint-cross-cycle7.yml'
+  workflow_dispatch:
+
+jobs:
+  true-source-joint-contract:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.12', '3.13']
+    steps:
+      - name: Checkout ELEKTRIK #97 working branch
+        uses: actions/checkout@v4
+      - name: Checkout immutable PAINT #93 source snapshot
+        uses: actions/checkout@v4
+        with:
+          repository: Tridgi/gost-schematic
+          ref: f8f9dc4c1fd8266b807dea9d6f268d971bec8d7a
+          path: _paint_review_snapshot
+          persist-credentials: false
+      - name: Verify exact PAINT revision, load one renderer for CI only
+        shell: bash
+        run: |
+          test "$(git -C _paint_review_snapshot rev-parse HEAD)" = 'f8f9dc4c1fd8266b807dea9d6f268d971bec8d7a'
+          test ! -e src/gost_schematic/rendering/ic_rectangular.py
+          cp _paint_review_snapshot/src/gost_schematic/rendering/ic_rectangular.py src/gost_schematic/rendering/ic_rectangular.py
+          echo 'PAINT source loaded into ephemeral checkout; no source branch merges.'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install exact physical-model project
+        run: python -m pip install -e '.[dev,mcp]'
+      - name: Install SHA-checked real OpenGost Type A
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          python scripts/install_opengost_type_a.py --directory "$HOME/.local/share/fonts" --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a
+          FONT_PATH="$(find "$HOME/.local/share/fonts" -type f \( -iname '*TypeA*.ttf' -o -iname '*TypeA*.otf' \) | head -1)"
+          test -n "$FONT_PATH"
+          echo "IC_TYPE_A_FONT_PATH=$FONT_PATH" >> "$GITHUB_ENV"
+          fc-cache -f
+      - name: Ruff (owner-owned new files and joint tests)
+        run: ruff check src/gost_schematic/electrical/ic_paint_bridge.py tests/test_ic_paint_joint_cycle7.py examples/review_ic_paint_joint_cycle7.py
+      - name: Assert both packages exist and execute true 1um boundary tests
+        run: |
+          python -c 'import gost_schematic.electrical.ic_paint_bridge, gost_schematic.rendering.ic_rectangular'
+          pytest -q -ra tests/test_ic_paint_joint_cycle7.py
+      - name: Reproduce joint DA8 and split DD14 SVG + physical Circuit QA manifest
+        if: matrix.python-version == '3.12'
+        run: |
+          python -m examples.review_ic_paint_joint_cycle7 --font-file "$IC_TYPE_A_FONT_PATH" --output-dir output/ic-paint-joint-cycle7
+      - name: Rasterize actual physical 300 DPI previews
+        if: matrix.python-version == '3.12'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+          for src in output/ic-paint-joint-cycle7/*.svg; do
+            rsvg-convert --dpi-x 300 --dpi-y 300 "$src" -o "${src%.svg}.png"
+          done
+          ( cd output/ic-paint-joint-cycle7 && sha256sum *.svg *.png *.json > SHA256SUMS.txt )
+      - name: Upload reproducible joint QA evidence
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-cycle7-real-model-paint-joint-qa
+          path: output/ic-paint-joint-cycle7/
+          if-no-files-found: error
