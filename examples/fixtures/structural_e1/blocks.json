@@ -25,7 +25,8 @@
           "relative_position": "0.5",
           "direction": "output"
         }
-      ]
+      ],
+      "name": "ДАТЧИК СИГНАЛА"
     },
     {
       "id": "B2",
@@ -67,7 +68,8 @@
           "relative_position": "0.75",
           "direction": "output"
         }
-      ]
+      ],
+      "name": "ОБРАБОТКА СИГНАЛА"
     },
     {
       "id": "B3",
@@ -109,7 +111,8 @@
           "relative_position": "0.5",
           "direction": "output"
         }
-      ]
+      ],
+      "name": "МОДУЛЬ СВЯЗИ"
     },
     {
       "id": "B4",
@@ -139,7 +142,8 @@
           "relative_position": "0.5",
           "direction": "output"
         }
-      ]
+      ],
+      "name": "СИСТЕМА ИНДИКАЦИИ"
     },
     {
       "id": "B5",
@@ -169,7 +173,8 @@
           "relative_position": "0.5",
           "direction": "output"
         }
-      ]
+      ],
+      "name": "УПРАВЛЯЮЩИЙ БЛОК"
     },
     {
       "id": "B6",
@@ -193,7 +198,8 @@
           "relative_position": "0.5",
           "direction": "input"
         }
-      ]
+      ],
+      "name": "ИСПОЛНИТЕЛЬНЫЙ УЗЕЛ"
     }
   ],
   "links": [

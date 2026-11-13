@@ -20,7 +20,7 @@
 
 ## Functional block passport / geometry
 
-- Unique stable `id`; `title_lines` explicitly splits the text. `code` is optional document-facing identifier, not an electrical position marker.
+- Unique stable `id`, semantic `name`, and explicit `title_lines` whose space-joined content must equal `name`; `code` is an optional *view-only* document-facing identifier, not an electrical position marker.
 - Rectangle is local `width_um × height_um` around `center_um`; its size can be freely selected **if** text, declared ports, inter-block limits and applicable contour constraints pass. No silent auto-stretch that changes authored size.
 - `rotation ∈ {0,90,180,270}`, `mirror_x` and `scale > 0` transform the **body and port coordinates**, never the stable port IDs/functional roles. Text is regenerated horizontally after transform. Fractional results round **half up** to integer µm (project determinism, not GOST prescription).
 - Outline is an independent explicit choice: `functional`, `device_with_schematic` or `group_without_schematic`. Avoid guessing whether a particular block is a device with its own schematic.
@@ -40,7 +40,7 @@
 
 For **one** port per side, `t=0.5` is an editorial preference only. For **N** on the same side, proposal: `t_i=(i+1)/(N+1)`, i=0..N−1, rounded to nearest integer µm; actual resulting pitch and corner distances still must pass 6/5 mm editorial checks. A fractional position must be *explicitly recorded* and immutable; do not infer ports where a line touches a border. Multiple ports of a side with nonuniform spacing are rejected by this proposal's default visual policy; ELEKTRIK can propose another named layout policy explicitly.
 
-`FunctionalLink` binds two `{block_id,port_id}` endpoints. `arrow_at=target` expresses flow from source to target, `source` reverse, `both` bidirectional and `none` no indicated process. Port directions are checked against arrow semantics. Route waypoints are explicit orthogonal sheet coordinates. No arrow, link crossing or touched border creates a `PinRef`, a node, a conductor, or electrical continuity. The first/last segment must exit/enter the declared outward normal without crossing the block interior; do not silently change endpoint attachment under routing.
+`FunctionalLink` binds two `{block_id,port_id}` endpoints: **source → target is always the semantic process direction** in ELEKTRIK RFC E1-001. The standalone **visual-only** `arrow_at=target` draws the recommended arrow, and `none` omits it; reverse/source/both arrow styles remain BLOCKED pending an independent graphics contract, rather than silently reversing the typed link. Port directions are checked against arrow semantics. Route waypoints are explicit orthogonal sheet coordinates. No arrow, link crossing or touched border creates a `PinRef`, a node, a conductor, or electrical continuity. The first/last segment must exit/enter the declared outward normal without crossing the block interior; do not silently change endpoint attachment under routing.
 
 **Important:** an arrow symbol at a document/sheet break has special §5.5 requirements. This design does **not** model sheet transitions; never re-label its process arrow as a verified sheet-break arrow.
 
@@ -50,17 +50,17 @@ The JSON files in this PR are **standalone design fixtures**, not a locked produ
 
 | Visual proposal | ELEKTRIK typed graph notion | Ownership |
 |---|---|---|
-| `blocks[*].id/title_lines/code` | `FunctionalBlock.id/name/code` | ELEKTRIK: entity identity, YGO: line breaks and fitting |
-| `center_um/size_um/rotation/mirror_x/scale` | `FunctionalBlock` pose / visual spec | YGO layout; ELEKTRIK decides whether pose belongs in model or separate view |
-| `ports[*].id/side/relative_position/direction` | `BlockPort` | ELEKTRIK owns type/roles, YGO owns attachment geometry and clearance |
-| `links[*].source/target/arrow_at/via_um` | `FunctionalLink` | ELEKTRIK owns semantics, YGO preview only |
+| `blocks[*].id/name/title_lines/code` | `FunctionalBlock.id/name`, view-only `title_lines/code` | ELEKTRIK owns semantic name; YGO enforces exact split mapping, never embeds line breaks or code into the graph |
+| `center_um/size_um/rotation/mirror_x/scale` | model `origin:Point, width_um,height_um`; view-only rotation/mirror/scale | For untransformed geometry, model origin=visual center−size/2; odd-µm half-origins fail closed; transforms are an independent view |
+| `ports[*].id/side/relative_position/direction` | separate typed `BlockPort(block_id,id,side,direction,position:Fraction)` | Visual decimal strings convert exactly to rational `[numerator,denominator]`; no float; model owns IDs/roles, YGO view owns clearances |
+| `links[*].source/target/arrow_at/via_um` | typed `FunctionalLink(id,source,target)`, view-only `arrow_at/via_um` | Source→target remains semantic direction; route waypoints and arrow markers are not part of the model |
 | `diagram_type=E1` | `StructuralDiagram` | Typed separate structural domain; never `Circuit` |
 
-Proposal thread: https://github.com/Tridgi/gost-schematic/issues/70#issuecomment-6862704037 . **BLOCKED for stable schema** until ELEKTRIK and coordinator acknowledge names, normalized fraction representation, process arrows and port direction.
+Issue #70 RFC E1-001: https://github.com/Tridgi/gost-schematic/issues/70#issuecomment-6862724943 ; coordinator conditional **GO for isolated prototype only**, not a public schema or merge: https://github.com/Tridgi/gost-schematic/issues/70#issuecomment-6862999265 . The `semantic_projection()` adapter exports experimental `{schema_version,blocks,ports,links}` with separate typed ports and `[numerator,denominator]` rational positions. **BLOCKED for stable/public schema and renderer integration** pending subsequent ELEKTRIK/ESKD review.
 
 ## Reference preview and evidence
 
-`python examples/review_structural_e1_design.py --fixture examples/fixtures/structural_e1/blocks.json --output-dir output/structural-e1` generates **clean/diagnostic vector SVG** and manifest. Six functional blocks, seven semantic links, 3 parallel B2→B3 tracks, one bottom/top flow, two right→left flows, explicit ports, inside multiline names and optional codes. Everything is DRAFT. This is *not* a production renderer and intentionally uses only Python stdlib; it cannot represent a physically validated net.
+`python examples/review_structural_e1_design.py --fixture examples/fixtures/structural_e1/blocks.json --output-dir output/structural-e1` generates **clean/diagnostic vector SVG**, a geometric manifest and `semantic-projection.json` (draft Issue #70 field mapping, no runtime model import). Six functional blocks, seven semantic links, 3 parallel B2→B3 tracks, one bottom/top flow, two right→left flows, explicit ports, inside multiline names and optional codes. Everything is DRAFT. This is *not* a production renderer and intentionally uses only Python stdlib; it cannot represent a physically validated net.
 
 The default sample has no crossed links. A separate negative fixture/test verifies ambiguous border contact does not create a port. For invalid geometry the reference renderer fails closed rather than painting a misleading valid sheet. Additional manually measured OpenGost, independent human typography/contour review, text collision with neighboring blocks/arrows, special line crossing policies, page breaks and cycle policy are **deferred**.
 

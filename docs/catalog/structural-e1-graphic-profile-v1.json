@@ -70,7 +70,8 @@
     "default_single_port_t": "0.5",
     "n_ports_positions": "t_i=(i+1)/(N+1) from top/left; geometry rounds half-up to nearest integer um",
     "font_metric_status": "approximate; must re-run with real Type A glyph metrics before normative approval",
-    "note": "none of the specific block dimensions, port distribution formulas or title placements above are prescribed by these GOST sections"
+    "note": "none of the specific block dimensions, port distribution formulas or title placements above are prescribed by these GOST sections",
+    "model_seam": "Issue #70 RFC E1-001: visual center/size->typed origin/size; nested ports->typed standalone port list; decimal string->exact Fraction [num,den]; directed source->target; code/title_lines and arrow style remain only in the view"
   },
   "contract": {
     "diagram_type": "E1",
@@ -84,7 +85,8 @@
       "mirror_x": "boolean",
       "scale": "positive decimal string",
       "outline": "functional|device_with_schematic|group_without_schematic",
-      "ports": "array BlockPort"
+      "ports": "array BlockPort",
+      "name": "semantic name string; must equal title_lines joined by spaces"
     },
     "port": {
       "id": "unique per block string",
@@ -96,7 +98,7 @@
       "id": "string",
       "source": "{block_id,port_id}",
       "target": "{block_id,port_id}",
-      "arrow_at": "target|source|both|none",
+      "arrow_at": "target|none; visual marker independent from directed semantic source->target; reverse/both deferred",
       "via_um": "optional array of [int,int]"
     },
     "electrical_fields_forbidden": [
@@ -116,6 +118,7 @@
     "functional graph cycle semantics",
     "non-orthogonal process arrows",
     "page break markers",
-    "full 1:1 normative manual sign-off"
+    "full 1:1 normative manual sign-off",
+    "visual arrow_at=source/both needs explicit independent graphics decision; cannot reverse semantic link"
   ]
 }

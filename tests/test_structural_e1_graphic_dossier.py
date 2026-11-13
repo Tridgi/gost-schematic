@@ -11,6 +11,7 @@ from examples.review_structural_e1_design import (
     E1DesignError,
     main,
     render_svg,
+    semantic_projection,
     validate_design,
 )
 from scripts.audit_symbol_catalog import audit_catalog
@@ -65,7 +66,7 @@ def test_eight_poses_preserve_port_id_side_normal_and_upright_title(rotation, mi
     data = {
         "schema_version": 1, "diagram_type": "E1", "status": "DRAFT",
         "blocks": [{
-            "id": "B", "title_lines": ["БЛОК"], "code": None,
+            "id": "B", "name": "БЛОК", "title_lines": ["БЛОК"], "code": None,
             "center_um": [75000, 40000], "size_um": [50000, 50000],
             "rotation": rotation, "mirror_x": mirror,
             "ports": [
@@ -134,6 +135,9 @@ def test_cli_generates_two_svg_specimens_and_provenance(tmp_path):
     manifest = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
     assert clean == render_svg(specimen())
     assert (tmp_path / "e1-diagnostic.svg").is_file()
+    graph = json.loads((tmp_path / "semantic-projection.json").read_text(encoding="utf-8"))
+    assert graph == semantic_projection(specimen())
+    assert len(graph["ports"]) == 14
     assert manifest["block_count"] == 6 and manifest["link_count"] == 7
     assert manifest["electrical_semantics"] is False
 
@@ -161,6 +165,8 @@ def test_cli_generates_two_svg_specimens_and_provenance(tmp_path):
         relative_position=0.5), "decimal string"),
     (lambda d: block(d, "B1").update(title_lines=["X" * 100]), "title"),
     (lambda d: block(d, "B1").update(PartDefinition={}), "electrical"),
+    (lambda d: block(d, "B1").update(name="НЕСОВПАДЕНИЕ"), "semantic name"),
+    (lambda d: d["links"][0].update(arrow_at="source"), "arrow"),
     (lambda d: d.update(nets=[]), "electrical"),
     (lambda d: d["links"].append(deepcopy(d["links"][0])), "duplicate or blank"),
 ])
@@ -184,7 +190,7 @@ def test_diagram_link_crossing_remains_declared_only_not_a_junction():
     # Two visually crossing line segments, four independent block/port pairs.
     def b(identifier, xy, side, direction):
         return {
-            "id": identifier, "title_lines": ["A"], "code": None,
+            "id": identifier, "name": "A", "title_lines": ["A"], "code": None,
             "center_um": list(xy), "size_um": [20000, 20000],
             "ports": [{"id": "P", "side": side, "relative_position": "0.5",
                        "direction": direction}],
@@ -213,6 +219,23 @@ def test_diagram_link_crossing_remains_declared_only_not_a_junction():
         node.get("data-role") in {"electrical-junction", "junction", "pinref"}
         for node in svg.iter()
     )
+
+
+def test_proposed_elektrik_semantic_projection_has_exact_rational_ports_and_no_view_data():
+    graph = semantic_projection(specimen())
+    assert set(graph) == {"schema_version", "blocks", "ports", "links"}
+    assert graph["schema_version"] == 1
+    assert graph["blocks"][0] == {
+        "id": "B1", "name": "ДАТЧИК СИГНАЛА",
+        "origin_um": [46000, 25000], "width_um": 48000, "height_um": 30000,
+    }
+    p = next(item for item in graph["ports"]
+             if item["block_id"] == "B2" and item["id"] == "a")
+    assert p == {"block_id": "B2", "id": "a", "side": "right",
+                 "direction": "output", "position": [1, 4]}
+    assert all("code" not in b and "title_lines" not in b for b in graph["blocks"])
+    assert all("via_um" not in link and "arrow_at" not in link for link in graph["links"])
+    assert json.loads(json.dumps(graph, ensure_ascii=False)) == graph
 
 
 def test_two_links_cannot_occupy_same_parallel_sheet_segment():

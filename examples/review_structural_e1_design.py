@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+from fractions import Fraction
 from itertools import pairwise
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -17,7 +18,7 @@ from xml.etree import ElementTree as ET
 SIDES = ("LEFT", "RIGHT", "TOP", "BOTTOM")
 DIRECTIONS = ("input", "output", "bidirectional")
 OUTLINES = ("functional", "device_with_schematic", "group_without_schematic")
-ARROWS = ("target", "source", "both", "none")
+ARROWS = ("target", "none")  # Reverse/bidirectional arrow graphics need a separate RFC.
 FORBIDDEN = frozenset(("PartDefinition", "PinRef", "Circuit", "nets", "part_id",
                        "physical_pins", "conducting_indices", "net_id"))
 MIN_CORNER_UM = 5000  # EDITORIAL, not a ГОСТ dimension.
@@ -105,11 +106,16 @@ def _block(entry: dict) -> dict:
     if FORBIDDEN.intersection(entry):
         raise E1DesignError("structural block cannot include electrical/physical fields")
     identifier = entry["id"]
+    name = entry.get("name")
+    if not isinstance(name, str) or not name.strip():
+        raise E1DesignError(f"{identifier}: semantic nonempty name required")
     title = entry.get("title_lines")
     if not isinstance(title, list) or not title or any(
         not isinstance(line, str) or not line.strip() or "\n" in line for line in title
     ):
         raise E1DesignError(f"{identifier}: nonempty explicit title_lines required")
+    if " ".join(name.split()) != " ".join(" ".join(title).split()):
+        raise E1DesignError(f"{identifier}: title_lines must spell the semantic name")
     code = entry.get("code")
     if code is not None and (not isinstance(code, str) or not code.strip()):
         raise E1DesignError(f"{identifier}: optional code must be nonempty string or null")
@@ -196,7 +202,7 @@ def _block(entry: dict) -> dict:
                 expected = Decimal(i + 1) / Decimal(len(ordered) + 1)
                 if abs((expected - t) * side_length) > Decimal("0.5"):
                     raise E1DesignError(f"{identifier}.{side}: multiple ports not evenly distributed")
-    return {"id": identifier, "title_lines": title, "code": code,
+    return {"id": identifier, "name": name, "title_lines": title, "code": code,
             "box_um": box, "center_um": (cx, cy), "outline": outline,
             "ports": indexed, "rotation": rotation, "mirror_x": mirror,
             "scale": str(scale)}
@@ -281,14 +287,10 @@ def validate_design(data: dict) -> dict:
         arrow = item.get("arrow_at", "target")
         if arrow not in ARROWS:
             raise E1DesignError(f"{link_id}: unknown process-arrow direction")
-        if arrow in ("target", "both") and (
+        if arrow == "target" and (
             s_port["direction"] == "input" or t_port["direction"] == "output"
         ):
             raise E1DesignError(f"{link_id}: target arrow violates port flow")
-        if arrow in ("source", "both") and (
-            s_port["direction"] == "output" or t_port["direction"] == "input"
-        ):
-            raise E1DesignError(f"{link_id}: source arrow violates port flow")
         via = item.get("via_um", [])
         if not isinstance(via, list):
             raise E1DesignError(f"{link_id}: via must be ordered points")
@@ -424,11 +426,47 @@ def render_svg(data: dict, *, diagnostic: bool = False) -> str:
             "d": path, "stroke": "black", "stroke-width": _mm(STROKE_UM),
             "fill": "none", "data-role": "functional-link", "data-link-id": link["id"],
         })
-        if link["arrow_at"] in ("target", "both"):
+        if link["arrow_at"] == "target":
             _arrow(root, link["path_um"][-1], link["path_um"][-2])
-        if link["arrow_at"] in ("source", "both"):
-            _arrow(root, link["path_um"][0], link["path_um"][1])
     return ET.tostring(root, encoding="unicode") + "\n"
+
+
+def semantic_projection(data: dict) -> dict:
+    """An explicit mapping to Issue #70's PROPOSED typed graph JSON seam.
+
+    This is serialization data only; it does NOT instantiate its structural
+    model and never returns any PartDefinition/PinRef/Circuit.
+    """
+    validate_design(data)
+    blocks = []
+    ports = []
+    for block in data["blocks"]:
+        cx, cy = block["center_um"]
+        width, height = block["size_um"]
+        if width % 2 or height % 2:
+            raise E1DesignError(
+                f"{block['id']}: cannot map half-micrometre origin to exact Point"
+            )
+        blocks.append({
+            "id": block["id"], "name": block["name"],
+            "origin_um": [cx - width // 2, cy - height // 2],
+            "width_um": width, "height_um": height,
+        })
+        for port in block["ports"]:
+            fraction = Fraction(_decimal(
+                port["relative_position"], block["id"] + "." + port["id"]
+            ))
+            ports.append({
+                "block_id": block["id"], "id": port["id"],
+                "side": port["side"].lower(), "direction": port["direction"],
+                "position": [fraction.numerator, fraction.denominator],
+            })
+    links = [{
+        "id": link["id"],
+        "source": dict(link["source"]), "target": dict(link["target"]),
+    } for link in data["links"]]
+    return {"schema_version": 1, "blocks": blocks,
+            "ports": ports, "links": links}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -459,6 +497,10 @@ def main(argv: list[str] | None = None) -> int:
         "source": "ГОСТ 2.701-2008 / ГОСТ 2.702-2011",
         "limitations": "EDITORIAL spacing and approximate font metrics; NOT normative approval",
     }
+    (args.output_dir / "semantic-projection.json").write_text(
+        json.dumps(semantic_projection(data), ensure_ascii=False, indent=2) + "\\n",
+        encoding="utf-8",
+    )
     (args.output_dir / "manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8",
     )
