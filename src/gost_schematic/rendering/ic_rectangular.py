@@ -615,12 +615,35 @@ def render_resolved_ic(
     # than silently moving a component or shrinking the font.
     label = _measure(unit.reference, style, measurer)
     if _vertical_internal:
-        refbox = Box(
-            actual_body.min_x - policy.refdes_gap_um - _width(label),
-            actual_body.min_y,
-            actual_body.min_x - policy.refdes_gap_um,
-            actual_body.min_y + _height(label),
+        # Candidate sides must be in the same WORLD frame as transformed
+        # physical leads. Never assume that paper "left" is a free side after
+        # a D4 transform, and do not change any connection point to fit DA1.
+        w, h, g = _width(label), _height(label), policy.refdes_gap_um
+        cx = (actual_body.min_x + actual_body.max_x) // 2
+        cy = (actual_body.min_y + actual_body.max_y) // 2
+        choices = (
+            (Side.LEFT, Box(actual_body.min_x-g-w,cy-h//2,
+                            actual_body.min_x-g,cy-h//2+h)),
+            (Side.RIGHT,Box(actual_body.max_x+g,cy-h//2,
+                            actual_body.max_x+g+w,cy-h//2+h)),
+            (Side.TOP,Box(cx-w//2,actual_body.min_y-g-h,
+                          cx-w//2+w,actual_body.min_y-g)),
+            (Side.BOTTOM,Box(cx-w//2,actual_body.max_y+g,
+                             cx-w//2+w,actual_body.max_y+g+h)),
         )
+        busy_sides = {unit.transform.side(p.side) for p in unit.pins}
+        refbox = next((
+            box for side, box in choices
+            if side not in busy_sides
+            and not any(_ink_intersects(box, edge.box, policy.ink_padding_um)
+                        for edge in strokes)
+            and not any(_ink_intersects(box, text.box, policy.ink_padding_um)
+                        for text, _, _ in texts)
+        ), None)
+        if refbox is None:
+            raise ValueError(
+                f"IC_REFDES_UNPLACEABLE: {unit.reference} no free perimeter side"
+            )
     else:
         refbox = Box(
             actual_body.min_x,
