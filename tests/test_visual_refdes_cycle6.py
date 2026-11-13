@@ -1,15 +1,23 @@
 """Issue #68: graphics-aware measured reference designator placement review."""
 from dataclasses import replace
 from math import isclose
+from pathlib import Path
+from xml.etree import ElementTree as ET
 
 import pytest
 
-from examples.review_end_to_end_circuit import authored_specimen, definitions, renderer_wires
+from examples.review_end_to_end_circuit import (
+    authored_specimen,
+    definitions,
+    renderer_wires,
+    specimen_svg,
+)
 from examples.review_visual_refdes import legacy_placements
 from gost_schematic.core.geometry import Box, Point
 from gost_schematic.core.transforms import Transform
 from gost_schematic.engines.annotation.visual_refdes import (
     VisualRefdesProfile,
+    apply_visible_refdes_to_layout,
     distance_ink_to_main_ugo_um,
     legacy_keepout_label_ink,
     main_ugo_graphic_bounds,
@@ -18,6 +26,8 @@ from gost_schematic.engines.annotation.visual_refdes import (
 from gost_schematic.model.annotations import MeasuredText, TextStyle
 from gost_schematic.model.circuit import Circuit
 from gost_schematic.model.obstacles import BoxObstacle, WireObstacle, wire_intersects_box
+from gost_schematic.rendering.external_wire_sheet import render_external_wire_sheet
+from gost_schematic.rendering.sheet_svg import render_sheet_svg
 
 STYLE = TextStyle("unit-test-face.ttf", "Measured Unit Test", 3500, 500)
 
@@ -189,3 +199,104 @@ def test_l1_legacy_baseline_comes_from_keepout_not_visible_winding():
     old = legacy_keepout_label_ink(by_part[l1.part_id], l1, metric)
     assert old.max_y == 30501
     assert old.min_y == 28000
+
+
+def test_r_and_c_refdes_never_get_farther_from_visible_symbol():
+    circuit, graph, by_part = _specimen()
+    before = {x.owner: x for x in legacy_placements(
+        circuit, by_part, STYLE, UnitInk(),
+    )}
+    after = {x.owner: x for x in place_refdes_near_visible_graphics(
+        circuit, by_part, STYLE, UnitInk(), wires=renderer_wires(graph),
+    )}
+    for component in circuit.components:
+        if component.reference == "L1":
+            continue
+        main = main_ugo_graphic_bounds(by_part[component.part_id], component)
+        old = distance_ink_to_main_ugo_um(
+            before[component.reference].ink_bounds, main,
+        )
+        new = distance_ink_to_main_ugo_um(
+            after[component.reference].ink_bounds, main,
+        )
+        assert new <= old, (component.reference, old, new)
+        assert new >= 800, (component.reference, old, new)
+
+
+def test_explicit_refdes_adapter_uses_ordinary_layout_and_svg_without_golden_drift():
+    circuit, graph, by_part = _specimen()
+    frozen = (circuit, graph)
+    measure = UnitInk()
+    ordinary = render_external_wire_sheet(
+        circuit, graph, by_part, STYLE, measure,
+    )
+    assert ordinary.layout.valid
+    adapted = apply_visible_refdes_to_layout(
+        circuit, by_part, ordinary.layout, STYLE, measure,
+        wires=ordinary.wires,
+    )
+    assert adapted.valid and adapted is not ordinary.layout
+    assert ordinary.layout == render_external_wire_sheet(
+        circuit, graph, by_part, STYLE, measure,
+    ).layout
+    before = {p.owner: p for p in ordinary.layout.placements if p.key == "refdes"}
+    after = {p.owner: p for p in adapted.placements if p.key == "refdes"}
+    assert set(before) == set(after) == {
+        "R1", "R2", "C1", "C2", "L1", "C3",
+    }
+    assert before["L1"].ink_bounds != after["L1"].ink_bounds
+    assert tuple(p for p in ordinary.layout.placements if p.key != "refdes") == (
+        tuple(p for p in adapted.placements if p.key != "refdes")
+    )
+
+    original = ET.fromstring(render_sheet_svg(
+        circuit, by_part, ordinary.layout, wires=ordinary.wires,
+    ))
+    preview = ET.fromstring(render_sheet_svg(
+        circuit, by_part, adapted, wires=ordinary.wires,
+    ))
+    ns = "{http://www.w3.org/2000/svg}"
+    for layer, tag in (("symbols", "g"), ("wires", "line")):
+        old_elements = original.findall(f".//{ns}{tag}[@data-layer='{layer}']")
+        new_elements = preview.findall(f".//{ns}{tag}[@data-layer='{layer}']")
+        assert [ET.tostring(x) for x in old_elements] == [
+            ET.tostring(x) for x in new_elements
+        ]
+    assert len(preview.findall(f".//{ns}line[@data-layer='wires']")) == 16
+    assert [x.text for x in preview.findall(f".//{ns}text[@data-key='refdes']")]
+    assert original.get("width", "").endswith("mm")
+    assert preview.get("width", "").endswith("mm")
+
+    # The default historical source is not rerendered/overwritten.
+    golden = Path(__file__).parent / "fixtures" / "electrical-layout44" / (
+        "end-to-end-clean.svg"
+    )
+    assert specimen_svg().encode("utf-8").replace(b"\r\n", b"\n") == (
+        golden.read_bytes().replace(b"\r\n", b"\n")
+    )
+    assert (circuit, graph) == frozen == authored_specimen()
+
+
+def test_non_refdes_annotations_are_reserved_by_opt_in_algorithm():
+    circuit, graph, by_part = _specimen()
+    single = Circuit((next(c for c in circuit.components
+                      if c.reference == "L1"),), ())
+    first = place_refdes_near_visible_graphics(
+        single, by_part, STYLE, UnitInk(),
+    )[0]
+    from gost_schematic.model.annotations import AnnotationPlacement
+
+    pseudo_value = AnnotationPlacement(
+        owner="other", key="value", role=first.role, text="RESERVED",
+        style=STYLE, baseline=first.baseline,
+        ink_bounds=first.ink_bounds, collision_bounds=first.collision_bounds,
+        reservation_bounds=None, candidate_index=0,
+    )
+    other = place_refdes_near_visible_graphics(
+        single, by_part, STYLE, UnitInk(),
+        existing_placements=(pseudo_value,),
+    )
+    assert other[0].ink_bounds != first.ink_bounds
+    assert not other[0].collision_bounds.overlaps(
+        pseudo_value.collision_bounds
+    )
