@@ -81,7 +81,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          python scripts/install_opengost_type_a.py --directory "$HOME/.local/share/fonts"
+          python scripts/install_opengost_type_a.py --directory "$HOME/.local/share/fonts" --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a
           fc-cache -f
           FONT_FILE="$(find "$HOME/.local/share/fonts" -type f \( -iname '*TypeA*.ttf' -o -iname '*TypeA*.otf' \) | head -1)"
           test -n "$FONT_FILE" && test -f "$FONT_FILE"
