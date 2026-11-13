@@ -5,8 +5,8 @@ from xml.etree import ElementTree as ET
 import pytest
 
 from gost_schematic.core.geometry import SIDE_VECTORS, Box, Point, Side
-from gost_schematic.core.units import format_mm
 from gost_schematic.core.transforms import Transform
+from gost_schematic.core.units import format_mm
 from gost_schematic.model.annotations import MeasuredText, TextStyle
 from gost_schematic.rendering.ic_rectangular import (
     IcFieldContent,
