@@ -22,7 +22,7 @@
 
 - Unique stable `id`, semantic `name`, and explicit `title_lines` whose space-joined content must equal `name`; `code` is an optional *view-only* document-facing identifier, not an electrical position marker.
 - Rectangle is local `width_um × height_um` around `center_um`; its size can be freely selected **if** text, declared ports, inter-block limits and applicable contour constraints pass. No silent auto-stretch that changes authored size.
-- `rotation ∈ {0,90,180,270}`, `mirror_x` and `scale > 0` transform the **body and port coordinates**, never the stable port IDs/functional roles. Text is regenerated horizontally after transform. Fractional results round **half up** to integer µm (project determinism, not GOST prescription).
+- `rotation ∈ {0,90,180,270}`, `mirror_x` and `scale > 0` transform the **body and port coordinates**, never the stable port IDs/functional roles. Text is regenerated horizontally after transform. The one production anchor authority is ELEKTRIK's `resolve_port_positions()`. Model positions stay exact `Fraction`; the final **absolute document** `Point` is rounded once using signed `ROUND_HALF_UP` (half away from zero). SVG never rounds a model anchor. View-only rotation/mirroring/scale are applied afterward and explicitly tracked in manifest.
 - Outline is an independent explicit choice: `functional`, `device_with_schematic` or `group_without_schematic`. Avoid guessing whether a particular block is a device with its own schematic.
 - Preview demonstrates a nested **text content keepout** (3 mm editorial inset) and code zone above a centered multiline title. A candidate is rejected if text dimensions do not fit; real Type A ink measurement is necessary later. In a production system keep distinct (1) exact glyph ink, (2) text hitbox with clearance, (3) outer block stroke, (4) port approach corridor, (5) arrow tip/stroke clearances, (6) external line keepout. AABB alone is conservative, not final pixel intersection.
 - Default title flow: split into `title_lines`, center each line at block `center_um.x`; line centers are symmetric about `center_um.y` at editorial leading 5 mm. Code lies in top inset, must not intersect title. Every transform must **remeasure** this upright text rather than rotate glyphs.
@@ -38,7 +38,7 @@
 | TOP | `(w(t-1/2), -h/2)` | (0,-1) |
 | BOTTOM | `(w(t-1/2), +h/2)` | (0,+1) |
 
-For **one** port per side, `t=0.5` is an editorial preference only. For **N** on the same side, proposal: `t_i=(i+1)/(N+1)`, i=0..N−1, rounded to nearest integer µm; actual resulting pitch and corner distances still must pass 6/5 mm editorial checks. A fractional position must be *explicitly recorded* and immutable; do not infer ports where a line touches a border. Multiple ports of a side with nonuniform spacing are rejected by this proposal's default visual policy; ELEKTRIK can propose another named layout policy explicitly.
+For **one** port per side, `t=0.5` is an editorial preference only. For **N** on the same side, proposal: `t_i=(i+1)/(N+1)`, i=0..N−1. This remains an exact `Fraction` through the model; only its **absolute** end coordinate is quantized once in ELEKTRIK. The legacy spacious view checks 6/5 mm editorial gaps, whereas the real PR80 compact view uses different measured clearances (see below). A fractional position must be *explicitly recorded* and immutable; do not infer ports where a line touches a border. Multiple ports of a side with nonuniform spacing are rejected by this proposal's default visual policy; ELEKTRIK can propose another named layout policy explicitly.
 
 `FunctionalLink` binds two `{block_id,port_id}` endpoints: **source → target is always the semantic process direction** in ELEKTRIK RFC E1-001. The standalone **visual-only** `arrow_at=target` draws the recommended arrow, and `none` omits it; reverse/source/both arrow styles remain BLOCKED pending an independent graphics contract, rather than silently reversing the typed link. Port directions are checked against arrow semantics. Route waypoints are explicit orthogonal sheet coordinates. No arrow, link crossing or touched border creates a `PinRef`, a node, a conductor, or electrical continuity. The first/last segment must exit/enter the declared outward normal without crossing the block interior; do not silently change endpoint attachment under routing.
 
@@ -46,7 +46,7 @@ For **one** port per side, `t=0.5` is an editorial preference only. For **N** on
 
 ## Separation from Issue #70
 
-The JSON files in this PR are **standalone design fixtures**, not a locked production model. Mapping proposed to ELEKTRIK:
+The JSON files in this PR are **standalone design fixtures**, not a locked production model. The new PR80 bridge uses the genuine typed model at runtime from an ephemeral CI worktree; the production model is not copied into PR #78. Mapping proposed to ELEKTRIK:
 
 | Visual proposal | ELEKTRIK typed graph notion | Ownership |
 |---|---|---|
@@ -62,7 +62,7 @@ Issue #70 RFC E1-001: https://github.com/Tridgi/gost-schematic/issues/70#issueco
 
 `python examples/review_structural_e1_design.py --fixture examples/fixtures/structural_e1/blocks.json --output-dir output/structural-e1` generates **clean/diagnostic vector SVG**, a geometric manifest and `semantic-projection.json` (draft Issue #70 field mapping, no runtime model import). Six functional blocks, seven semantic links, 3 parallel B2→B3 tracks, one bottom/top flow, two right→left flows, explicit ports, inside multiline names and optional codes. Everything is DRAFT. This is *not* a production renderer and intentionally uses only Python stdlib; it cannot represent a physically validated net.
 
-The default sample has no crossed links. A separate negative fixture/test verifies ambiguous border contact does not create a port. For invalid geometry the reference renderer fails closed rather than painting a misleading valid sheet. Additional manually measured OpenGost, independent human typography/contour review, text collision with neighboring blocks/arrows, special line crossing policies, page breaks and cycle policy are **deferred**.
+The default sample has no crossed links. A separate negative fixture/test verifies ambiguous border contact does not create a port. For invalid geometry the reference renderer fails closed rather than painting a misleading valid sheet. The new seven-block reference preview now measures OpenGost Type A ink from the actual external font and rejects title hitbox overflow. Independent normative font-outline/contour review, non-orthogonal diagram routing policies, page breaks and cycle policy remain **deferred**.
 
 ## Positive / negative acceptance scenarios
 
@@ -82,3 +82,56 @@ The default sample has no crossed links. A separate negative fixture/test verifi
 | E1-N08 | Geometric crossing of two functional links | No inferred net/junction; graph remains declared-only |
 
 **Not acceptance:** visual comparison to original ГОСТ does not prove 1:1 calibration or verified text heights; samples use editorial dimensions. All future bridges into shared rendering/graph APIs require separate RFC and coordinator consent.
+
+
+## Issue #71 follow-up: actual ELEKTRIK PR #80 compatibility, QA Issue #83
+
+**New deliverable:** `examples/review_structural_e1_model.py`, backed by the exact real `gost_schematic.structural` types from ELEKTRIK PR #80 (not a fake class, and never a new electrical UGO). The independent CI `.github/workflows/e1-pr80-graphics-review.yml` fetches the true owner branch **into a temporary runner only**, records its commit SHA and verifies a byte-exact copy of the owner's canonical 7/18/9 fixture. The branch/PR code remains strictly separated.
+
+### Common source of truth and quantization (ONE contract)
+
+The initial difference was material: PR #78 rounded intermediate local offsets while PR #80 previously rejected `E1_PORT_OFF_GRID`. ELEKTRIK's corrective plan in [Issue #70](https://github.com/Tridgi/gost-schematic/issues/70#issuecomment-6864537202) specifies signed absolute `ROUND_HALF_UP`, and YGO2 [accepted](https://github.com/Tridgi/gost-schematic/issues/70#issuecomment-6864809378). This is a **contract pending implementation in PR #80**, not a claim about its old `9c7f625...` binary.
+
+- **Typed positions:** `BlockPort.position: Fraction | None`, JSON `[numerator,denominator]` or `null`. Auto side positions `(i+1)/(N+1)`; exact fraction until final document point.
+- **Final integer model anchor:** given absolute rational `n/d` (`d>0`), use `sign(n) * ((2*abs(n)+d)//(2*d))` **once**, after addition of rectangle `origin`; not bankers' rounding, and not prior rounding of relative offset. Negative `-10000.5` → `-10001`.
+- **Consumer rule:** SVG/PNG generator **must use only** `resolve_port_positions(diagram): dict[PortRef, Point]` and never calculate parallel side-port anchors. The same resolved point is used for diagnostic marker, path start/end, scene manifest and post-raster audit. Coincident anchors after quantization must produce `E1_PORT_COLLISION` in the real model.
+- **Example:** 20 000 µm side + 2 automatic ports → final offsets `6667/13333` µm; 12 000 µm side → exact `4000/8000` µm. The legacy standalone reference preview now mirrors signed *absolute* rounding for illustration; **only** real-model SVG gate proves production equivalence.
+- **Transform:** rotation/mirroring and view scale operate on the resolved model Point and its rectangle, retain original `PortRef`, and record `model_um` vs `svg_um` in the manifest. Without view pose they must match 1:1. These graphics transforms are not silently added to `FunctionalBlock`; no production pose schema has been approved.
+
+### Explicit compatibility matrix
+
+| Concern | ELEKTRIK PR #80 (semantic authority) | YGO2 PR #78 (view authority) | Proof / caveat |
+|---|---|---|---|
+| Functional entity | `FunctionalBlock(id,name,origin,width_um,height_um)` | `BlockView(title_lines,code,rotation,mirror,scale,outline)` | `"".join(title_lines)==block.name` checked; no E3 part |
+| Side port | `BlockPort(block_id,id,side,direction,position)` | `PortRef → model Point`, corner/spacing reservations | No fake pin; identity remains stable across rotations |
+| Quantization | Final absolute Fraction → signed half-away `Point` (pending PR80 patch) | `resolve_port_positions` only, no extra SVG snap | 20k/N2, negative half ties, odd dimensions, post-round collisions |
+| Direction | `FunctionalLink(source,target)` | One process arrow at **target**, not a conductive net | Nine one-to-one `data-link-id` and `data-source-ref`/ `data-target-ref` |
+| Routing | PR80 straight *inspection chord* detects geometry but is NOT a router | Explicit visible path with possible orthogonal waypoints, endpoints always model anchors | L09 uses three visual waypoints; no inferred X junction |
+| Names | Flat semantic `name` | Centered 1–2-line separate fragments, optional code | Actual Type A glyph ink measured with FreeType/Pillow |
+| Visual transform | No pose field in typed model | Eight 90°/mirror combinations, exact PortRef identities | Body+link endpoints transformed in one view operation; manifest records both |
+| Model JSON | `diagram_type:E1`, strict canonical `blocks/ports/links` | Uses byte-for-byte PR80 fixture; old semantic projection now includes `diagram_type` | `structural_to_json(structural_from_json(raw)) == raw` |
+| Electrical data | No `Circuit`, `PinRef`, `Net` or `PartDefinition` | No physical side pins, no painted nodes, no E3 UGO registration | 21 DRAFT electrical UGO unaffected |
+
+### Two explicitly EDITORIAL layout profiles
+
+The previous **spacious 6-block design preview** uses 5 mm corner / 6 mm side-port pitch / 3 mm title inset. These are **NOT ГОСТ-prescribed** constraints. They cannot render the official PR #80 7/18/9 example, because two auto ports on its 12 mm-high blocks occur at offsets **4 and 8 mm**.
+
+The newer **compact real-model 7-block review view** uses 2 mm corner inset, a ≥3.35 mm side-port center-to-center pitch at 0.35 mm line thickness (≥3 mm clear gap for parallel connection strokes), 1.2 mm inner text inset and 2.5 mm capital glyphs calibrated against an actual installed external OpenGost Type A file. This is an *editorial fit profile* requiring independent ESKD approval; the general physical separation rules do not mandate a particular count or fractional position of ports. The E1 bridge checks measured text hitboxes within the block and does not silently shrink a failing name.
+
+### Shared end-to-end demonstration / artifact provenance
+
+`examples/fixtures/structural_e1/pr80-shared-7b-18p-9l.json` is the **exact canonical** 7 FunctionalBlock / 18 BlockPort / 9 FunctionalLink fixture from PR #80 (source blob SHA `fbcbf1a6bf5b2303b004b21ffdb1f90e1d2e636f`). It preserves POWER, ENTRY, CTRL, SENSOR, ADAPT, ACT and DISPLAY with all 18 declared stable `PortRef` identities, including two ENTRY.RIGHT outputs and two CTRL.LEFT inputs.
+
+`python -m examples.review_structural_e1_model --model-json examples/fixtures/structural_e1/pr80-shared-7b-18p-9l.json --font-file /path/to/licensed-OpenGost-Type-A.ttf --output-dir output/e1-real-model` generates:
+
+- `e1-seven-clean.svg` — true vector rectangles, centered multiline names, nine actual linked paths with process arrow tips at corresponding target PortRefs;
+- `e1-seven-diagnostic.svg` — same geometry plus all 18 **real** port marker coordinates and actual measured text hitboxes;
+- `structural-e1.json` — unmodified canonical semantic graph;
+- `manifest.json` — per-link PortRef identities and every real SVG path point in integer µm, model/view points, measured font SHA256, view box;
+- 4200-pixel `e1-seven-clean-4200px.png` and `e1-seven-diagnostic-4200px.png` produced by the real-font rsvg rasterizer in the independent workflow; `SHA256SUMS` and `PR80_SOURCE_SHA.txt` ensure repeatable provenance.
+
+The post-export verifier in `examples/verify_structural_e1_model_render.py` independently parses the **actual SVG `d` commands**, multiplies visible millimetres by 1000 using exact `Fraction`, compares every first/last coordinate to real model `resolve_port_positions`, validates every named link and arrow, checks the PNG is high resolution and nonblank and publishes SHA-256 hashes. This validates **displayed paths**, not merely image metadata.
+
+**Reference visual CI:** [GitHub E1 cross-branch job](https://github.com/Tridgi/gost-schematic/actions/runs/43506404601) (57 dedicated tests passed per interpreter on the original PR80 SHA `9c7f625...`), [SVG/PNG/JSON archive](https://github.com/Tridgi/gost-schematic/actions/runs/43506404601) named `draft-e1-pr80-graphics-seven-blocks` (artifact ID `14076705844`). Its hash report is reproducible; after PR80 quantization is updated the matrix and job must be rerun against its **new** exact SHA before final acceptance.
+
+**QA Issue #83:** https://github.com/Tridgi/gost-schematic/issues/83 . The independent QA owner will execute the wider 32-vector adversarial set and review real SVG/PNG; the YGO result does **not** certify GOST 2.304 glyph outlines or other normative geometry. No merge.
