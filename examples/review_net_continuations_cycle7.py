@@ -76,28 +76,32 @@ def specimen() -> NetContinuationProject:
 
 
 def _elem(parent: ET.Element, tag: str, attrs: dict[str, str]) -> ET.Element:
-    return ET.SubElement(parent, f"{{{SVG_NS}}}{tag}", attrs)
+    return ET.SubElement(parent, tag, attrs)
 
 
-def sheet_svg(project: NetContinuationProject, sheet_id: str) -> str:
-    """Diagnostic-free view-only SVG: no invisible cross-sheet conductor."""
+def sheet_svg(
+    project: NetContinuationProject, sheet_id: str, *,
+    font_path: str | Path | None = None, review_overlay: bool = False,
+) -> str:
+    """View-only SVG; optional measured Type A, never hidden physical wires."""
+    if font_path is not None:
+        return _measured_sheet_svg(project, sheet_id, font_path, review_overlay)
     if validate_net_continuations(project):
         raise ValueError("Must validate typed net identity before drawing")
     sheet = next(x for x in project.sheets if x.id == sheet_id)
-    # ElementTree namespace registry is process-global; other pytest suites
-    # register their own defaults. Reset it for byte-stable goldens on CI.
-    ET.register_namespace("", SVG_NS)
-    root = ET.Element(f"{{{SVG_NS}}}svg", {
-        "width": "210mm", "height": "297mm",
+    # Use exactly ONE namespace declaration, independent of the global
+    # ElementTree registry and import order in PAINT/other SVG modules.
+    root = ET.Element("svg", {
+        "xmlns": SVG_NS, "width": "210mm", "height": "297mm",
         "viewBox": "0 0 210000 297000", "data-schema": "E3",
         "data-source": "DRAFT-only-sheet-continuation-not-a-connector",
         "data-approval": "DRAFT_UNMEASURED_FONT",
         "data-sheet-id": sheet.id, "data-sheet-number": str(sheet.number),
     })
-    ET.SubElement(root, f"{{{SVG_NS}}}title").text = (
+    ET.SubElement(root, "title").text = (
         f"Cycle7 DRAFT physical net continuation sheet {sheet.number}"
     )
-    ET.SubElement(root, f"{{{SVG_NS}}}desc").text = (
+    ET.SubElement(root, "desc").text = (
         "Separate visible wire stubs; no hidden conductor between sheets. "
         "Unmeasured text Type A; ESKD signoff pending."
     )
@@ -145,10 +149,153 @@ def sheet_svg(project: NetContinuationProject, sheet_id: str) -> str:
     return ET.tostring(root, encoding="unicode") + "\n"
 
 
+
+def _measured_sheet_svg(
+    project: NetContinuationProject, sheet_id: str,
+    font_path: str | Path, review_overlay: bool,
+) -> str:
+    """Fail-closed OpenGost Type A preview, measured actual ink not character counts.
+
+    Arrows and project sheet/zone address notation remain ESKD-review DRAFT.
+    Marker/connector geometry never creates or infers a physical PinRef.
+    """
+    from gost_schematic.core.geometry import Box
+    from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
+    from gost_schematic.standards.type_a_font import inspect_type_a_font
+
+    diagnostics = validate_net_continuations(project)
+    if diagnostics:
+        raise ValueError("; ".join(x.code for x in diagnostics))
+    sheet = next((s for s in project.sheets if s.id == sheet_id), None)
+    if sheet is None:
+        raise ValueError("E3_CONT_SHEET_UNKNOWN")
+    label_font = inspect_type_a_font(font_path, h_um=3500)
+    address_font = inspect_type_a_font(font_path, h_um=2500)
+    if label_font.style.font_sha256 != address_font.style.font_sha256:
+        raise ValueError("E3_CONT_FONT_SHA_MISMATCH")
+    measure = PillowTextMeasurer()
+    padding_um = 1000  # Editorial clearance, not a mandatory GOST constant.
+    page_safe = Box(10000, 10000, 200000, 287000)  # A4, editorial 10 mm area.
+    root = ET.Element("svg", {
+        "xmlns": SVG_NS, "width": "210mm", "height": "297mm",
+        "viewBox": "0 0 210000 297000",
+        "data-schema": "E3",
+        "data-approval": "DRAFT_MEASURED_TYPE_A_ESKD_PENDING",
+        "data-source": "continuation-is-not-a-physical-connector",
+        "data-sheet-id": sheet.id, "data-sheet-number": str(sheet.number),
+        "data-font-sha256": label_font.style.font_sha256,
+    })
+    ET.SubElement(root, "title").text = f"DRAFT measured continuation, sheet {sheet.number}"
+    ET.SubElement(root, "desc").text = (
+        "Actual OpenGost Type A glyph ink/keepouts; GOST marker geometry and "
+        "sheet-address profile await ESKD. Only authored local wires are electrical."
+    )
+    endpoints = {e.id: e for e in project.endpoints if e.sheet_id == sheet_id}
+    # Precise text rectangles are drawing keepouts; they cannot establish a Net.
+    text_regions: list[tuple[str, Box, Box]] = []
+    electrical_regions: list[Box] = []
+
+    def place_text(
+        marker: NetContinuationEndpoint, kind: str, content: str,
+        style, baseline_y: int, alignment: str,
+    ) -> None:
+        glyph = measure.measure(content, style).ink_box
+        if alignment == "center":
+            baseline_x = marker.anchor.x - (glyph.min_x + glyph.max_x) // 2
+        elif alignment == "right-of-arrow":
+            baseline_x = marker.anchor.x + 3500 - glyph.min_x
+        else:
+            baseline_x = marker.anchor.x - 3500 - glyph.max_x
+        baseline = Point(baseline_x, baseline_y)
+        ink = glyph.translated(baseline)
+        reserved = ink.expanded(padding_um)
+        if not (
+            page_safe.includes(Point(reserved.min_x, reserved.min_y))
+            and page_safe.includes(Point(reserved.max_x, reserved.max_y))
+        ):
+            raise ValueError(f"E3_CONT_TEXT_PAGE_OVERFLOW: {marker.id} {kind}")
+        text_regions.append((marker.id + ":" + kind, ink, reserved))
+        _elem(root, "text", {
+            "x": str(baseline.x), "y": str(baseline.y),
+            "font-family": style.font_family, "font-style": style.font_style,
+            "font-size": str(style.em_height_um),
+            "fill": "black", "stroke": "none",
+            "data-role": "measured-" + kind,
+            "data-marker-id": marker.id,
+            "data-font-sha256": style.font_sha256,
+            "data-ink-box": ",".join(str(v) for v in (
+                ink.min_x, ink.min_y, ink.max_x, ink.max_y,
+            )),
+            "data-protected-box": ",".join(str(v) for v in (
+                reserved.min_x, reserved.min_y, reserved.max_x, reserved.max_y,
+            )),
+        }).text = content
+
+    for stub in project.stubs:
+        marker = endpoints.get(stub.endpoint_id)
+        if marker is None:
+            continue
+        if stub.start.y != stub.end.y:
+            raise ValueError("E3_CONT_VERTICAL_MARKER_PROFILE_BLOCKED")
+        outward = 1 if stub.end.x > stub.start.x else -1
+        x, y = marker.anchor.x, marker.anchor.y
+        _elem(root, "line", {
+            "x1": str(stub.start.x), "y1": str(stub.start.y),
+            "x2": str(stub.end.x), "y2": str(stub.end.y),
+            "stroke": "black", "stroke-width": "300",
+            "data-role": "explicit-real-wire-stub", "data-stub-id": stub.id,
+            "data-pin-ref": f"{stub.pin.reference}.{stub.pin.number}",
+            "data-net-id": marker.net_id,
+        })
+        # Review-only solid arrow; final GOST proportions need ESKD approval.
+        back = x - outward * 2000
+        _elem(root, "path", {
+            "d": f"M {back} {y-1100} L {x} {y} L {back} {y+1100} Z",
+            "fill": "black", "stroke": "black", "stroke-width": "150",
+            "data-role": "DRAFT-visual-continuation-marker",
+            "data-marker-id": marker.id, "data-net-id": marker.net_id,
+        })
+        electrical_regions.append(Box(
+            min(stub.start.x, stub.end.x) - 150, y - 150,
+            max(stub.start.x, stub.end.x) + 150, y + 150,
+        ))
+        electrical_regions.append(Box(
+            min(back, x) - 150, y - 1250, max(back, x) + 150, y + 1250,
+        ))
+        place_text(
+            marker, "net-label", marker.label, label_font.style,
+            y - 6000, "center",
+        )
+        place_text(
+            marker, "remote-address", marker.target_address, address_font.style,
+            y + 950, "right-of-arrow" if outward == 1 else "left-of-arrow",
+        )
+    for i, (name, _ink, protected) in enumerate(text_regions):
+        if any(protected.overlaps(occupied) for occupied in electrical_regions):
+            raise ValueError(f"E3_CONT_TEXT_WIRE_COLLISION: {name}")
+        if any(
+            protected.overlaps(other[2])
+            for j, other in enumerate(text_regions) if j != i
+        ):
+            raise ValueError(f"E3_CONT_TEXT_TEXT_COLLISION: {name}")
+        if review_overlay:
+            _elem(root, "rect", {
+                "x": str(protected.min_x), "y": str(protected.min_y),
+                "width": str(protected.max_x - protected.min_x),
+                "height": str(protected.max_y - protected.min_y),
+                "fill": "none", "stroke": "#009577",
+                "stroke-width": "120", "stroke-dasharray": "600,400",
+                "data-role": "review-text-keepout", "data-owner": name,
+            })
+    return ET.tostring(root, encoding="unicode") + "\n"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--png", action="store_true", help="Create 300-DPI DRAFT PNG")
+    parser.add_argument("--font-file", type=Path, help="Exact OpenGost Type A font")
+    parser.add_argument("--review-overlay", action="store_true")
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     project = specimen()
@@ -158,7 +305,10 @@ def main() -> None:
     (args.output_dir / "two-sheet-ctrl.json").write_text(source, encoding="utf-8")
     for sheet in project.sheets:
         name = f"sheet-{sheet.number}"
-        svg = sheet_svg(project, sheet.id)
+        svg = sheet_svg(
+            project, sheet.id, font_path=args.font_file,
+            review_overlay=args.review_overlay,
+        )
         (args.output_dir / f"{name}.svg").write_text(svg, encoding="utf-8")
         if args.png:
             import resvg_py
