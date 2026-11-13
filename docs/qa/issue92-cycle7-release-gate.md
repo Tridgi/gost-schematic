@@ -7,7 +7,7 @@
 | Проверяемая область | Фиксированная версия реализации | Реальные байты |
 |---|---|---|
 | Интеграционная база | `integration/stage0-12` `578e018f2b0be37b37fa4c8e52692cc1c5f941c5` | настоящий пакет `gost_schematic` в pytest/Actions |
-| ELEKTRIK #87, ИС DA/DD | ветка `parallel/electrical-ic-contract-cycle7`, **`4e6c1235becc4d351760660180ec31fdedc06e40`** | Реальный `IcDeviceDefinition` + `IcSymbolSpec` + `ic_serde`; только synthetic 2/4/8/14/40/64, нет vendor pinout |
+| ELEKTRIK #87, ИС DA/DD | ветка `parallel/electrical-ic-contract-cycle7`, **`0ea5bddbc0de658baefab2bdd8803576c41099ea`** | Реальный `IcDeviceDefinition` + `IcSymbolSpec` + `ic_serde`; только synthetic 2/4/8/14/40/64, нет vendor pinout |
 | PAINT #88 | ветка `parallel/rendering-ic-cycle7` **`f8f9dc4c1fd8266b807dea9d6f268d971bec8d7a`** | `src/.../ic_rectangular.py` blob **`a2077cd21bcd5f497ac3304bf7f9d0d76d6b32bd`**; точная копия `.txt` в тесте с выполнением функций оригинала |
 | YGO 2 #89 | ветка `parallel/catalog-electronic-cycle7` **`ddb7881c52055fe44120a36015a469a847c70c16`** | неизменённые первые 6 реальных catalog JSON blobs, физические паспорта и символы |
 | ELEKTRIK #90, продолжения | ветка `parallel/electrical-netrefs-cycle7`, **`0738059d8d4c0f5b8854a73018501fb16543434b`** | Реальный `NetContinuationProject`, `validate_net_continuations`, строгий `netrefs_serde`, 2 реальных фрагмента CTRL; совместные 1:1 схемные шрифты ещё BLOCKED |
@@ -66,7 +66,7 @@ ESKD #91 подтвердил нормативные **кандидаты**, н�
 
 ## 7. Последующий независимый реальный аудит PR #97 / PR #98
 
-После первоначальных блокировок владельцы подготовили **реальные Draft PR #97** (`4e6c1235becc4d351760660180ec31fdedc06e40`) и **#98** (`0738059d8d4c0f5b8854a73018501fb16543434b`). QA не использует устаревшее предположение об отсутствии классов. `tests/qa_cycle7_electrical_sources.py` фиксирует точные Git blob SHA, временно загружает владельческие `ic.py`, `ic_serde.py`, `netrefs.py`, `netrefs_serde.py` и **настоящие примеры владельцев**, без подмены production-моделей. 
+После первоначальных блокировок владельцы подготовили **реальные Draft PR #97** (`0ea5bddbc0de658baefab2bdd8803576c41099ea`) и **#98** (`0738059d8d4c0f5b8854a73018501fb16543434b`). QA не использует устаревшее предположение об отсутствии классов. `tests/qa_cycle7_electrical_sources.py` фиксирует точные Git blob SHA, временно загружает владельческие `ic.py`, `ic_serde.py`, `netrefs.py`, `netrefs_serde.py` и **настоящие примеры владельцев**, без подмены production-моделей. 
 
 **PASS на собственном реальном owner-коде:** 12 synthetic analog/digital корпусов (2/4/8/14/40/64) с настоящими типизированными `IcPhysicalPin`, отдельными `IcUnit`, единственным физическим `DA1`/`DD1`, `PinRef`, уникальными координатами и lossless JSON. Отрицательные тесты: повтор физического номера, исчезновение non-NC pin, неправильный view unit, физический `NC` под Net → `IC_NC_CONNECTED`, несоответствие внешнего якоря; 8 поворотов/отражений сохраняют идентичности. **Ограничение:** примеры явно `TEST_IC_*`, **не** datasheet/реальный корпус.
 
@@ -83,3 +83,23 @@ ESKD #91 подтвердил нормативные **кандидаты**, н�
 **Ранее FAIL (исходный HEAD `cd004f626...`):** в `sheet_svg` возникал повтор `xmlns` при глобальном `ET.register_namespace`. Это было подтверждено независимым реальным `pytest` без xfail на 3.12 и 3.13.
 
 **НОВЫЙ точный HEAD владельца `0738059d8d4c0f5b8854a73018501fb16543434b`** устранил повтор `xmlns`, вызывает `ET.register_namespace("", SVG_NS)`, задаёт namespaced SVG root **без** вручную дублированного `xmlns`. QA перепривязала fixture к точному Git blob **`21e76f0ab779cbc13eeeffdd1e0273fa38869e8f`** и сохранила **тот же strict тест** с предварительной регистрацией namespace, не отключая его. Это полноценная регрессия на предыдущий дефект; новый статус PASS должен подтверждаться **последним полным CI именно на перепривязанном QA HEAD**. Не интерпретировать старую красную CI #43525050784 как дефект нового #98.
+
+
+## 8. QA 2 — актуализация исходников и интеграционный gate (14.11.2026)
+
+Актуальный ELEKTRIK IC PR #97: `0ea5bddbc0de658baefab2bdd8803576c41099ea`, реальный Git blob `ic.py` `cd93b1f993a53d684d4830c2cee77126e96b06ce`. QA fixture заменён байт-в-байт; независимая функция `verified()` продолжает проверять Git blob SHA-1, а регрессии NC/split проверяют именно новую реализацию `IC_UNSAFE_LEGACY_ADAPTER`. ELEKTRIK netrefs PR #98: `0738059d8d4c0f5b8854a73018501fb16543434b`; blob `netrefs.py` `a8c13dba69479e31ed02c91567b564f860b5d5f6`; owner demo blob `21e76f0ab779cbc13eeeffdd1e0273fa38869e8f`. Ошибка namespace проверяется без xfail.
+
+### Межкомандная совместимость — точный объём доказательств
+
+| Взаимодействие | Статус | Ограничение |
+|---|---|---|
+| #97 typed physical `PinRef` → #93 `ResolvedIcPin.anchor`, простая synthetic 2-pin | **PASS (test-only handoff)** | Оба реальных исходника выполняются вместе, координаты не меняются; перевод роли явный и существует только в QA |
+| #97 ↔ #93 полный 8/14/40/64 с Type A и D4 | **BLOCKED** | Нет принятого production-адаптера, который согласует измеренный PAINT размер, `visual_row`, абсолютный anchor и все электрические роли без потерь |
+| #97 split/NC → прежний `PartDefinition` | **PASS (expected hard rejection)** | Актуальный `to_legacy_part` отвергает NC и multi-unit; обходить это запрещено |
+| #96 ProjectService ↔ #97 IcDeviceDefinition/split `PinRef` | **BLOCKED** | #96 сохраняет legacy `PartDefinition`/`SymbolDefinition` из установленного каталога; отсутствует типизированная сериализация `IcDeviceDefinition`, единый package ID и многие-to-one mapping unit→physical component |
+| #96 standalone E3 проект (6 интегрированных компонентов, 16 проводов, 3 узла) | **PASS owner-CI only** | Доказано на собственной ветке #96, но это не интеграционный тест с новыми IC/discrete/netrefs |
+| #98 logical `Circuit.Net` + 2 continuation + SVG XML | **PASS ограниченно** | Только реальный пример 2 листов, имена/адреса и строгий XML; нет общего layer/router и измеренного Type A для всех листов |
+| #94 потенциометр / trimmer / FU | **PASS DRAFT gallery** | Только три новые пары; не подтверждает BJT/MOSFET/Schottky/XP/XS |
+| #95 нормативные 107 карточек | **PASS provenance, BLOCKED symbol approval** | Нулевое число APPROVED; внешняя ручная проверка 1:1 остаётся обязательной |
+
+**Решение QA 2:** все текущие PR #93–98 допускаются максимум к *ограниченному рассмотрению DRAFT отдельных модулей*. Ни один не обосновывает утверждение о готовности сквозного E3 проекта с физическими многочастными ИС; **NO-GO полного Cycle 7**. Перед технической интеграцией #97↔#93↔#96 требуется отдельный executable end-to-end контрактный тест с холодным reopen и проверкой каждого `PinRef`, а не только успешные CI на отдельных ветках.

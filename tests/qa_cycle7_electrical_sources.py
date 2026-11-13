@@ -16,7 +16,7 @@ import gost_schematic
 
 ROOT = Path(__file__).resolve().parent / "fixtures"
 SOURCE_COMMITS = {
-    "ic": "4e6c1235becc4d351760660180ec31fdedc06e40",
+    "ic": "0ea5bddbc0de658baefab2bdd8803576c41099ea",
     "net": "0738059d8d4c0f5b8854a73018501fb16543434b",
 }
 BLOBS = {
@@ -25,7 +25,7 @@ BLOBS = {
     "qa_cycle7_electric87/electrical/contacts.txt":
         "4ab990f956e001d1ab87566d34f7f2176951226b",
     "qa_cycle7_electric87/electrical/ic.txt":
-        "2d95f9cd499472c63c3dc2d12811a9712d4a7dbc",
+        "cd93b1f993a53d684d4830c2cee77126e96b06ce",
     "qa_cycle7_electric87/electrical/ic_serde.txt":
         "3fa52e136983ffefc7cd77ec16d53ec7eb480b6f",
     "qa_cycle7_electric87/review_ic_cycle7.txt":

@@ -297,3 +297,66 @@ def test_net_continuation_real_d4_keeps_net_membership(actual, rotation, mirror)
     assert changed.circuit is original.circuit
     assert changed.nets == original.nets
     assert {x.net_id for x in changed.endpoints} == {"N-CTRL-001"}
+
+
+def test_current_ic_legacy_bridge_fails_closed_on_nc_and_split(actual):
+    _ic, _serde, example, _net, _netserde, _netexample = actual
+    for size in (8, 14, 40, 64):
+        device = example.synthetic_ic(size).device
+        with pytest.raises(ValueError, match="IC_UNSAFE_LEGACY_ADAPTER"):
+            device.to_legacy_part("DRAFT_ONLY")
+    device = example.synthetic_ic(2).device
+    part = device.to_legacy_part("DRAFT_ONLY")
+    assert tuple(p.number for p in part.pins) == ("1", "2")
+    assert tuple(p.electrical_type.value for p in part.pins) == (
+        "input", "output"
+    )
+
+
+def test_cycle7_cross_owner_actual_pinref_handoff_requires_translation(actual):
+    """Execute real #97 and #93 types together; no pretend production bridge.
+
+    Only the simple synthetic 2-pin case has an explicit TEST-ONLY role mapping.
+    This proves world anchor identity at the seam, NOT integrated drawing,
+    catalog persistence, OpenGost size resolution, or multi-unit compatibility.
+    """
+    from qa_cycle7_support import owner_renderer
+
+    ic, _serde, example, _net, _netserde, _netexample = actual
+    paint = owner_renderer()
+    record = example.synthetic_ic(2, ic.IcKind.DIGITAL)
+    spec, placement = record.specs[0], record.placements[0]
+    positions = ic.resolve_ic_pin_positions(
+        record.device, record.specs, record.placements
+    )
+    owner_roles = {ic.IcPinType.INPUT: "in", ic.IcPinType.OUTPUT: "out"}
+    pins = tuple(
+        paint.ResolvedIcPin(
+            pin_id=f"{placement.component_ref}.{row.number}",
+            number=row.number,
+            label=row.label,
+            side=row.side,
+            row=row.visual_row,
+            anchor=positions[PinRef(placement.component_ref, row.number)],
+            role=owner_roles[record.device.pin_map[row.number].electrical_type],
+            row_key=row.row_key,
+        ) for row in spec.rows
+    )
+    view = paint.IcResolvedUnit(
+        placement.component_ref, spec.body, pins,
+        paint.IcFieldContent(spec.main_field),
+        placement.origin, placement.transform,
+    )
+    assert {
+        PinRef(placement.component_ref, p.number): p.anchor
+        for p in view.pins
+    } == positions
+    assert len(view.pins) == len(record.device.pins) == 2
+    # Raw owner electrical role != PAINT's graphical role: a reviewed
+    # explicit semantic adapter is indispensable for full IC integration.
+    with pytest.raises(ValueError, match="IC_PIN_ROLE_INVALID"):
+        paint.ResolvedIcPin(
+            "DD1.1", "1", "IN", spec.rows[0].side, 1,
+            positions[PinRef("DD1", "1")],
+            role=record.device.pin_map["1"].electrical_type.value,
+        )
