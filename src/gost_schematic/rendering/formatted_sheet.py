@@ -127,10 +127,10 @@ def _line(parent: ET.Element, x1: int, y1: int, x2: int, y2: int,
 
 
 def _text(parent: ET.Element, x: int, y: int, value: str,
-          *, field: str = "") -> None:
+          *, field: str = "", font_size_mm: str = "2.2") -> None:
     node = ET.SubElement(parent, _SVG + "text", {
         "x": format_mm(x), "y": format_mm(y),
-        "font-size": "2.2",
+        "font-size": font_size_mm,
         "font-family": "OpenGost Type A",
         "stroke": "none",
         "fill": "#000000",
@@ -210,8 +210,10 @@ def _form_one(parent: ET.Element, bounds: Box) -> None:
     for index, caption in enumerate(
         ("Разраб.", "Пров.", "Т. контр.", "Н. контр.", "Утв.")
     ):
+        # These names live in the narrow 7-mm author column: never let
+        # `Т. контр.` or `Н. контр.` run through the neighbouring rule.
         _text(labels, x + 500, y + 33000 + index * 5000, caption,
-              field="10" if index == 3 else "")
+              field="10" if index == 3 else "", font_size_mm="1.6")
 
 
 def _parse_source(source: ExternalWireSheet) -> tuple[ET.Element, Box]:
