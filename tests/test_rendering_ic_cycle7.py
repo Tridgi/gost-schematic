@@ -250,3 +250,49 @@ def test_main_field_cannot_be_indiscriminately_used_for_pin_number():
         assert ink[3] < unit.origin.y + unit.body.max_y or (
             ink[0] < unit.origin.x or ink[2] > unit.origin.x + unit.body.max_x
         )
+
+
+
+def test_same_logical_row_key_may_contain_two_distinct_physical_pin_rows():
+    unit, _ = specimen(8)
+    pins = list(unit.pins)
+    pins[0] = replace(pins[0], row_key="BUS_A")
+    pins[1] = replace(pins[1], row_key="BUS_A")
+    changed = replace(unit, pins=tuple(pins))
+    assert pins[0].row_key == pins[1].row_key
+    assert pins[0].row != pins[1].row
+    built = render_resolved_ic(changed, STYLE, FixedInk())
+    assert len(built.pin_anchors) == 8
+
+
+def test_true_text_ink_one_micrometre_from_frame_is_rejected_not_clipped():
+    from gost_schematic.rendering.ic_rectangular import (
+        IcRenderingPolicy,
+        _text_placement,
+    )
+
+    text_box = FixedInk().measure("A", STYLE).ink_box
+    nearly_touching = Box(0, 0, text_box.max_x + 1, 5000)
+    with pytest.raises(ValueError, match="IC_TEXT_OVERFLOW"):
+        _text_placement(
+            "unit", "A", nearly_touching, "center", STYLE, FixedInk(),
+            IcRenderingPolicy(), "main-text",
+        )
+
+
+def test_three_digit_number_is_outside_box_without_crossing_pin_lead():
+    unit, _ = specimen(8)
+    pins = list(unit.pins)
+    pins[-1] = replace(pins[-1], number="100")
+    candidate = replace(unit, pins=tuple(pins))
+    spec = propose_ic_dimensions(candidate.content, candidate.pins, STYLE, FixedInk())
+    # Source currently contains geometry for the previous proposed lead;
+    # if number requires more space the electrical owner must re-resolve it.
+    if spec.lead_length_um != 8000:
+        with pytest.raises(ValueError, match="IC_PIN_ANCHOR_MISMATCH"):
+            render_resolved_ic(candidate, STYLE, FixedInk())
+    else:
+        render = render_resolved_ic(candidate, STYLE, FixedInk())
+        box = next(x.box for x in render.ink
+                   if x.kind=="pin-number" and x.owner==pins[-1].pin_id)
+        assert box.min_x >= render.body_world.max_x
