@@ -28,7 +28,7 @@ def run(dest):
     dest.mkdir(parents=True, exist_ok=True)
     files = {}
     with real_electrical_sources() as (
-        ic, ic_serde, demo_ic, net, net_serde, demo_net,
+        ic, ic_serde, demo_ic, _net, net_serde, demo_net,
     ):
         types = []
         for kind in (ic.IcKind.ANALOG, ic.IcKind.DIGITAL):
