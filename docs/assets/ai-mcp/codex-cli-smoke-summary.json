@@ -1,0 +1,587 @@
+{
+  "source": "artifacts\\ai-mcp\\codex-cli-smoke.jsonl",
+  "completed_turns": 1,
+  "mcp_calls": [
+    {
+      "tool": "schematic_list_views",
+      "status": "completed",
+      "args": {},
+      "has_error": false,
+      "project_revision": "03c624ec68760a31b5b7f48d1cfcfffe1fb3e293fb616f2b03127cdd2ed1ddf9",
+      "content_types": [
+        "text"
+      ]
+    },
+    {
+      "tool": "schematic_get_diagnostics",
+      "status": "completed",
+      "args": {
+        "project_ref": "six-part"
+      },
+      "has_error": false,
+      "project_revision": "03c624ec68760a31b5b7f48d1cfcfffe1fb3e293fb616f2b03127cdd2ed1ddf9",
+      "content_types": [
+        "text"
+      ]
+    },
+    {
+      "tool": "schematic_render_overview",
+      "status": "completed",
+      "args": {
+        "project_ref": "six-part",
+        "mode": "diagnostic",
+        "max_px": 1800
+      },
+      "has_error": false,
+      "project_revision": "03c624ec68760a31b5b7f48d1cfcfffe1fb3e293fb616f2b03127cdd2ed1ddf9",
+      "content_types": [
+        "image",
+        "text"
+      ]
+    },
+    {
+      "tool": "schematic_inspect_component",
+      "status": "completed",
+      "args": {
+        "project_ref": "six-part",
+        "reference": "R1",
+        "mode": "diagnostic",
+        "target_dpi": 160
+      },
+      "has_error": false,
+      "project_revision": "03c624ec68760a31b5b7f48d1cfcfffe1fb3e293fb616f2b03127cdd2ed1ddf9",
+      "component": {
+        "graphics_primitive_count": 3,
+        "origin_mm": [
+          "20",
+          "20"
+        ],
+        "part_id": "resistor.fixed",
+        "physical_pins": [
+          {
+            "name": "A",
+            "number": "1",
+            "polarity": "none",
+            "position_mm": [
+              "12",
+              "20"
+            ]
+          },
+          {
+            "name": "B",
+            "number": "2",
+            "polarity": "none",
+            "position_mm": [
+              "28",
+              "20"
+            ]
+          }
+        ],
+        "reference": "R1",
+        "symbol_id": "resistor.fixed",
+        "symbol_revision": 1,
+        "symbol_status": "draft"
+      },
+      "content_types": [
+        "image",
+        "text"
+      ]
+    },
+    {
+      "tool": "schematic_inspect_component",
+      "status": "completed",
+      "args": {
+        "project_ref": "six-part",
+        "reference": "R2",
+        "mode": "diagnostic",
+        "target_dpi": 160
+      },
+      "has_error": false,
+      "project_revision": "03c624ec68760a31b5b7f48d1cfcfffe1fb3e293fb616f2b03127cdd2ed1ddf9",
+      "component": {
+        "graphics_primitive_count": 3,
+        "origin_mm": [
+          "20",
+          "60"
+        ],
+        "part_id": "resistor.fixed",
+        "physical_pins": [
+          {
+            "name": "A",
+            "number": "1",
+            "polarity": "none",
+            "position_mm": [
+              "12",
+              "60"
+            ]
+          },
+          {
+            "name": "B",
+            "number": "2",
+            "polarity": "none",
+            "position_mm": [
+              "28",
+              "60"
+            ]
+          }
+        ],
+        "reference": "R2",
+        "symbol_id": "resistor.fixed",
+        "symbol_revision": 1,
+        "symbol_status": "draft"
+      },
+      "content_types": [
+        "image",
+        "text"
+      ]
+    },
+    {
+      "tool": "schematic_inspect_component",
+      "status": "completed",
+      "args": {
+        "project_ref": "six-part",
+        "reference": "C1",
+        "mode": "diagnostic",
+        "target_dpi": 160
+      },
+      "has_error": false,
+      "project_revision": "03c624ec68760a31b5b7f48d1cfcfffe1fb3e293fb616f2b03127cdd2ed1ddf9",
+      "component": {
+        "graphics_primitive_count": 4,
+        "origin_mm": [
+          "60",
+          "20"
+        ],
+        "part_id": "capacitor.fixed",
+        "physical_pins": [
+          {
+            "name": "A",
+            "number": "1",
+            "polarity": "none",
+            "position_mm": [
+              "52",
+              "20"
+            ]
+          },
+          {
+            "name": "B",
+            "number": "2",
+            "polarity": "none",
+            "position_mm": [
+              "68",
+              "20"
+            ]
+          }
+        ],
+        "reference": "C1",
+        "symbol_id": "capacitor.fixed",
+        "symbol_revision": 1,
+        "symbol_status": "draft"
+      },
+      "content_types": [
+        "image",
+        "text"
+      ]
+    },
+    {
+      "tool": "schematic_inspect_component",
+      "status": "completed",
+      "args": {
+        "project_ref": "six-part",
+        "reference": "L1",
+        "mode": "diagnostic",
+        "target_dpi": 160
+      },
+      "has_error": false,
+      "project_revision": "03c624ec68760a31b5b7f48d1cfcfffe1fb3e293fb616f2b03127cdd2ed1ddf9",
+      "component": {
+        "graphics_primitive_count": 7,
+        "origin_mm": [
+          "100",
+          "40"
+        ],
+        "part_id": "inductor.tapped",
+        "physical_pins": [
+          {
+            "name": "START",
+            "number": "1",
+            "polarity": "none",
+            "position_mm": [
+              "88",
+              "40"
+            ]
+          },
+          {
+            "name": "END",
+            "number": "2",
+            "polarity": "none",
+            "position_mm": [
+              "112",
+              "40"
+            ]
+          },
+          {
+            "name": "TAP1",
+            "number": "3",
+            "polarity": "none",
+            "position_mm": [
+              "98",
+              "31"
+            ]
+          }
+        ],
+        "reference": "L1",
+        "symbol_id": "inductor.tapped",
+        "symbol_revision": 1,
+        "symbol_status": "draft"
+      },
+      "content_types": [
+        "image",
+        "text"
+      ]
+    },
+    {
+      "tool": "schematic_inspect_component",
+      "status": "completed",
+      "args": {
+        "project_ref": "six-part",
+        "reference": "C2",
+        "mode": "diagnostic",
+        "target_dpi": 160
+      },
+      "has_error": false,
+      "project_revision": "03c624ec68760a31b5b7f48d1cfcfffe1fb3e293fb616f2b03127cdd2ed1ddf9",
+      "component": {
+        "graphics_primitive_count": 6,
+        "origin_mm": [
+          "60",
+          "60"
+        ],
+        "part_id": "capacitor.polarized",
+        "physical_pins": [
+          {
+            "name": "PLUS",
+            "number": "1",
+            "polarity": "positive",
+            "position_mm": [
+              "52",
+              "60"
+            ]
+          },
+          {
+            "name": "MINUS",
+            "number": "2",
+            "polarity": "negative",
+            "position_mm": [
+              "68",
+              "60"
+            ]
+          }
+        ],
+        "reference": "C2",
+        "symbol_id": "capacitor.polarized",
+        "symbol_revision": 1,
+        "symbol_status": "draft"
+      },
+      "content_types": [
+        "image",
+        "text"
+      ]
+    },
+    {
+      "tool": "schematic_inspect_component",
+      "status": "completed",
+      "args": {
+        "project_ref": "six-part",
+        "reference": "C3",
+        "mode": "diagnostic",
+        "target_dpi": 160
+      },
+      "has_error": false,
+      "project_revision": "03c624ec68760a31b5b7f48d1cfcfffe1fb3e293fb616f2b03127cdd2ed1ddf9",
+      "component": {
+        "graphics_primitive_count": 12,
+        "origin_mm": [
+          "100",
+          "80"
+        ],
+        "part_id": "capacitor.electrolytic",
+        "physical_pins": [
+          {
+            "name": "PLUS",
+            "number": "1",
+            "polarity": "positive",
+            "position_mm": [
+              "91",
+              "80"
+            ]
+          },
+          {
+            "name": "MINUS",
+            "number": "2",
+            "polarity": "negative",
+            "position_mm": [
+              "109",
+              "80"
+            ]
+          }
+        ],
+        "reference": "C3",
+        "symbol_id": "capacitor.electrolytic",
+        "symbol_revision": 1,
+        "symbol_status": "draft"
+      },
+      "content_types": [
+        "image",
+        "text"
+      ]
+    },
+    {
+      "tool": "schematic_inspect_connection",
+      "status": "failed",
+      "args": {
+        "project_ref": "six-part",
+        "a": {
+          "reference": "C1",
+          "pin": "2"
+        },
+        "b": {
+          "reference": "L1",
+          "pin": "3"
+        },
+        "mode": "diagnostic"
+      },
+      "has_error": true,
+      "content_types": [
+        "text"
+      ]
+    },
+    {
+      "tool": "schematic_inspect_connection",
+      "status": "completed",
+      "args": {
+        "project_ref": "six-part",
+        "a": {
+          "component": "R1",
+          "number": "1"
+        },
+        "b": {
+          "component": "R2",
+          "number": "1"
+        },
+        "mode": "diagnostic",
+        "target_dpi": 120
+      },
+      "has_error": false,
+      "project_revision": "03c624ec68760a31b5b7f48d1cfcfffe1fb3e293fb616f2b03127cdd2ed1ddf9",
+      "content_types": [
+        "image",
+        "text"
+      ]
+    },
+    {
+      "tool": "schematic_inspect_connection",
+      "status": "completed",
+      "args": {
+        "project_ref": "six-part",
+        "a": {
+          "component": "C1",
+          "number": "2"
+        },
+        "b": {
+          "component": "L1",
+          "number": "3"
+        },
+        "mode": "diagnostic",
+        "target_dpi": 120
+      },
+      "has_error": false,
+      "project_revision": "03c624ec68760a31b5b7f48d1cfcfffe1fb3e293fb616f2b03127cdd2ed1ddf9",
+      "content_types": [
+        "image",
+        "text"
+      ]
+    },
+    {
+      "tool": "schematic_inspect_connection",
+      "status": "completed",
+      "args": {
+        "project_ref": "six-part",
+        "a": {
+          "component": "R2",
+          "number": "2"
+        },
+        "b": {
+          "component": "C2",
+          "number": "1"
+        },
+        "mode": "diagnostic",
+        "target_dpi": 120
+      },
+      "has_error": false,
+      "project_revision": "03c624ec68760a31b5b7f48d1cfcfffe1fb3e293fb616f2b03127cdd2ed1ddf9",
+      "content_types": [
+        "image",
+        "text"
+      ]
+    },
+    {
+      "tool": "schematic_inspect_connection",
+      "status": "completed",
+      "args": {
+        "project_ref": "six-part",
+        "a": {
+          "component": "R1",
+          "number": "2"
+        },
+        "b": {
+          "component": "L1",
+          "number": "1"
+        },
+        "mode": "diagnostic",
+        "target_dpi": 120
+      },
+      "has_error": false,
+      "project_revision": "03c624ec68760a31b5b7f48d1cfcfffe1fb3e293fb616f2b03127cdd2ed1ddf9",
+      "content_types": [
+        "image",
+        "text"
+      ]
+    },
+    {
+      "tool": "schematic_inspect_connection",
+      "status": "completed",
+      "args": {
+        "project_ref": "six-part",
+        "a": {
+          "component": "C2",
+          "number": "2"
+        },
+        "b": {
+          "component": "C3",
+          "number": "2"
+        },
+        "mode": "diagnostic",
+        "target_dpi": 120
+      },
+      "has_error": false,
+      "project_revision": "03c624ec68760a31b5b7f48d1cfcfffe1fb3e293fb616f2b03127cdd2ed1ddf9",
+      "content_types": [
+        "image",
+        "text"
+      ]
+    }
+  ],
+  "images": [
+    {
+      "tool": "schematic_render_overview",
+      "mime_type": "image/png",
+      "valid_png_magic": true,
+      "sha256": "c815c2f8f91752218c81cd2744249a3a2e3492478d005273bbeadadadc7884f8",
+      "byte_count": 41127
+    },
+    {
+      "tool": "schematic_inspect_component",
+      "mime_type": "image/png",
+      "valid_png_magic": true,
+      "sha256": "fc5b84e5fc0539e580c4693c7dfacc1325a05f05b63849982fe9e7b8187c560e",
+      "byte_count": 1960
+    },
+    {
+      "tool": "schematic_inspect_component",
+      "mime_type": "image/png",
+      "valid_png_magic": true,
+      "sha256": "42c05a449ba851be38b9c00b1b4a0555b1e98d9f860a5fd0060f331017b1ed83",
+      "byte_count": 2126
+    },
+    {
+      "tool": "schematic_inspect_component",
+      "mime_type": "image/png",
+      "valid_png_magic": true,
+      "sha256": "070abc2d50b67686c501d8b13ccad3afd5e9ff652e12dd222ffe0fcdcea6558a",
+      "byte_count": 2098
+    },
+    {
+      "tool": "schematic_inspect_component",
+      "mime_type": "image/png",
+      "valid_png_magic": true,
+      "sha256": "72957c557a04cd84be3a798426f1254004b54cf9da612e3b81e51156ab134e3d",
+      "byte_count": 4157
+    },
+    {
+      "tool": "schematic_inspect_component",
+      "mime_type": "image/png",
+      "valid_png_magic": true,
+      "sha256": "5fed7c7e333317c5e3c7fd2fa4477f6a5ccf0dc65afdbdab39f3e6c41f75e6c5",
+      "byte_count": 2596
+    },
+    {
+      "tool": "schematic_inspect_component",
+      "mime_type": "image/png",
+      "valid_png_magic": true,
+      "sha256": "a38e0030eaaf3bf0ca58fd3b74bda34d11996a041657a79b43b96c8d0df69a07",
+      "byte_count": 2937
+    },
+    {
+      "tool": "schematic_inspect_connection",
+      "mime_type": "image/png",
+      "valid_png_magic": true,
+      "sha256": "509de2c2f9782635eada198bd65d0b840a5c527e9bd257de6bcb305615c995b2",
+      "byte_count": 1550
+    },
+    {
+      "tool": "schematic_inspect_connection",
+      "mime_type": "image/png",
+      "valid_png_magic": true,
+      "sha256": "ff6f6063dddcc3ca99f94181d3ea494dac7ad0bfba390220042e1382d60da3b4",
+      "byte_count": 2052
+    },
+    {
+      "tool": "schematic_inspect_connection",
+      "mime_type": "image/png",
+      "valid_png_magic": true,
+      "sha256": "30ca2d71627659aba57ea4e0a9e4d49f9335122243212c0dc36ec7db2249c6ca",
+      "byte_count": 1929
+    },
+    {
+      "tool": "schematic_inspect_connection",
+      "mime_type": "image/png",
+      "valid_png_magic": true,
+      "sha256": "346690587813481912209ce1527046f81a7ead761a0bf82555e9558a0c58fb71",
+      "byte_count": 9100
+    },
+    {
+      "tool": "schematic_inspect_connection",
+      "mime_type": "image/png",
+      "valid_png_magic": true,
+      "sha256": "c2490d422774ebb76efa5612b68dac48cb02bd38454a3c735ee07648b159e76e",
+      "byte_count": 7620
+    }
+  ],
+  "errors": [
+    {
+      "tool": "schematic_inspect_connection",
+      "status": "failed",
+      "args": {
+        "project_ref": "six-part",
+        "a": {
+          "reference": "C1",
+          "pin": "2"
+        },
+        "b": {
+          "reference": "L1",
+          "pin": "3"
+        },
+        "mode": "diagnostic"
+      },
+      "has_error": true,
+      "content_types": [
+        "text"
+      ]
+    }
+  ],
+  "agent_messages": [
+    "I’ll use only the read-only gost_schematic_vision MCP tools to inspect the available schematic and its diagnostics.",
+    "Audited `six-part`, revision `03c624ec6876`, using only gost_schematic_vision MCP tools. No terminal commands or edits.\n\n- **Diagnostics:** Six `UNAPPROVED_SYMBOL` warnings, covering R1, R2, C1, C2, C3 and L1. All symbols remain draft.\n- **Connections:** Representative pairs on LEFT, TOP, BOTTOM, TAP and RIGHT each returned no connection diagnostics. Their related segment counts total all 16 authored wire segments.\n- **Presentation:** Diagnostic net labels overlap near the TOP/BOTTOM crossing. Automated label checking is not implemented.\n- **Standards status:** The project is explicitly experimental and not ESKD-approved. Label fonts are sans-serif; OpenGost Type A is unverified.\n- **Engineering limits:** C2 and C3 have defined positive/negative pins, but correct operating polarity and circuit performance are not established by these results.\n\nNo electrical errors were reported by the available diagnostics. This does **not** establish ГОСТ conformity or functional correctness."
+  ]
+}
