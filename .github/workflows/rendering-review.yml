@@ -234,12 +234,19 @@ jobs:
               "form-one-title-closeup": (2232, 756),
           }
           for name, dims in expected.items():
-              with Image.open(folder / f"{name}-300dpi.png") as picture:
+              filename = folder / f"{name}-300dpi.png"
+              with Image.open(filename) as picture:
                   actual = picture.size
                   assert all(abs(a-b) <= 1 for a, b in zip(actual, dims)), (
                       name, actual, dims,
                   )
-          print("Real SVG physical-mm rasterization at 300dpi verified")
+                  # librsvg respects pixel dimensions but may not persist pHYs.
+                  # Store explicit physical 300-DPI metadata, without rescaling.
+                  picture.save(filename, dpi=(300, 300))
+              with Image.open(filename) as picture:
+                  assert all(abs(value - 300) < .2
+                             for value in picture.info["dpi"])
+          print("300 DPI physical raster dimensions AND PNG metadata verified")
           PY
           for CASE in archived-issue35 current; do
             for VIEW in clean diagnostic; do
