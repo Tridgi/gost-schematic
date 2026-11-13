@@ -5,6 +5,7 @@ from xml.etree import ElementTree as ET
 import pytest
 
 from examples.review_end_to_end_circuit import authored_specimen, definitions
+from examples.review_formatted_sheet import parse_title_fields
 from gost_schematic.core.geometry import Box, Point
 from gost_schematic.core.units import format_mm, mm
 from gost_schematic.model.annotations import MeasuredText, TextStyle
@@ -57,6 +58,31 @@ def root(sheet):
         (20, 5, 292, 415), (107, 360, 292, 415),
     ),
 ))
+def test_explicit_title_cli_parser_keeps_values_and_rejects_duplicate_inputs():
+    assert parse_title_fields([]) == {}
+    assert parse_title_fields(["designation=A-123", "name=Схема электрическая"]) == {
+        "designation": "A-123", "name": "Схема электрическая",
+    }
+    assert parse_title_fields(["name="]) == {"name": ""}
+    for malformed in ("name", "=value", " "):
+        with pytest.raises(ValueError, match="KEY=VALUE"):
+            parse_title_fields([malformed])
+    with pytest.raises(ValueError, match="Duplicate --title-field"):
+        parse_title_fields(["name=A", "name=B"])
+
+
+def test_default_form_is_blank_and_explicit_title_mode_checks_access():
+    source, *_ = specimen()
+    plain = root(compose_formatted_sheet(source, PageProfile()))
+    assert not plain.findall(f".//{SVG}g[@data-layer='title-block-fields']")
+    with pytest.raises(ValueError, match="require"):
+        compose_formatted_sheet(
+            source, PageProfile(mode="electronic_layout"),
+            title_values={"designation": "A-123"},
+            title_text_style=STYLE, title_measurer=FixedTitleInk(),
+        )
+
+
 def test_paper_dimensions_margins_form_one_and_no_overlap(
     profile, dimensions, frame, title,
 ):
