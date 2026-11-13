@@ -1,7 +1,7 @@
 """Issue #71: standalone non-electrical Э1 graphic-contract fixtures and negatives."""
 
-from copy import deepcopy
 import json
+from copy import deepcopy
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
