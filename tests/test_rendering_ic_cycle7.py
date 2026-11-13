@@ -10,6 +10,7 @@ from gost_schematic.core.units import format_mm
 from gost_schematic.model.annotations import MeasuredText, TextStyle
 from gost_schematic.rendering.ic_rectangular import (
     IcFieldContent,
+    IcOrientation,
     IcRenderingPolicy,
     IcResolvedUnit,
     ResolvedIcPin,
@@ -320,3 +321,110 @@ def test_function_and_side_fields_preserve_all_stress_special_unicode():
     assert "RG/≤64×16" in out.svg
     assert "ДЛИННОЕ_ИМЯ_" in out.svg
     assert not any("ellipsis" in x or "textLength=" in x for x in (out.svg,))
+
+
+def vertical_specimen(
+    count: int, *,
+    transform: Transform | None = None,
+    function_rotation: int = 90,
+    field_rotation: int = 90,
+):
+    """Real TOP/BOTTOM source port labels/Points; no D4-only shortcut."""
+    source, _ = specimen(count, function="&")
+    candidates = tuple(
+        replace(p, side=Side.TOP if p.side is Side.LEFT else Side.BOTTOM)
+        for p in source.pins
+    )
+    policy = IcRenderingPolicy()
+    plan = propose_ic_dimensions(
+        source.content, candidates, STYLE, FixedInk(), policy,
+        orientation=IcOrientation.TOP_BOTTOM,
+    )
+    pose = transform or Transform()
+    body = Box(0, 0, plan.width_um, plan.height_um)
+    maxcol = max(p.row for p in candidates)
+    real = []
+    for p in candidates:
+        virtual_row = maxcol + 1 - p.row
+        x = plan.width_um - (virtual_row * plan.row_pitch_um
+                             + plan.row_pitch_um // 2)
+        y = 0 if p.side is Side.TOP else plan.height_um
+        direction = SIDE_VECTORS[p.side]
+        local = Point(x + direction.x * plan.lead_length_um,
+                      y + direction.y * plan.lead_length_um)
+        real.append(replace(
+            p, anchor=pose.apply(local) + Point(100000, 90000),
+        ))
+    return IcResolvedUnit(
+        "DD1", body, tuple(real), source.content,
+        Point(100000, 90000), pose,
+        IcOrientation.TOP_BOTTOM, function_rotation, field_rotation,
+    ), plan
+
+
+@pytest.mark.parametrize("count", (4, 14, 40, 64))
+@pytest.mark.parametrize("rotation,mirror", (
+    (0,False), (90,False), (180,False), (270,False),
+    (0,True), (90,True), (180,True), (270,True),
+))
+def test_true_top_bottom_8_d4_source_ports_no_physical_delta(
+    count, rotation, mirror,
+):
+    unit, plan = vertical_specimen(count, transform=Transform(rotation,mirror))
+    drawn = render_resolved_ic(unit, STYLE, FixedInk())
+    assert drawn.proposed.width_um == plan.width_um
+    assert drawn.proposed.height_um == plan.height_um
+    assert drawn.pin_anchors == tuple((p.pin_id,p.anchor) for p in unit.pins)
+    root = ET.fromstring(drawn.svg)
+    assert root.get("data-orientation") == "top_bottom"
+    lines = root.findall(f".//{NS}line[@data-pin-id]")
+    assert len(lines)==count
+    for lead, pin in zip(lines, unit.pins, strict=True):
+        assert (lead.get("x2"),lead.get("y2")) == (
+            format_mm(pin.anchor.x),format_mm(pin.anchor.y),
+        )
+    assert root.findall(f".//{NS}text[@data-kind='function']")
+    assert any(n.get("transform","").startswith("matrix(")
+               for n in root.findall(f".//{NS}text"))
+
+
+def test_true_top_bottom_does_not_reinterpret_1um_external_pin():
+    unit,_ = vertical_specimen(14)
+    p = list(unit.pins)
+    p[0] = replace(p[0], anchor=p[0].anchor+Point(1,0))
+    with pytest.raises(ValueError,match="IC_PIN_ANCHOR_MISMATCH"):
+        render_resolved_ic(replace(unit,pins=tuple(p)),STYLE,FixedInk())
+
+
+def test_vertical_function_upright_independent_of_rotated_fields():
+    unit,_ = vertical_specimen(4,function_rotation=0,field_rotation=90)
+    drawn=render_resolved_ic(unit,STYLE,FixedInk())
+    root=ET.fromstring(drawn.svg)
+    function=root.find(f".//{NS}text[@data-kind='function']")
+    assert function is not None
+    assert "transform" not in function.attrib
+    labels=root.findall(f".//{NS}text[@data-kind='pin-label']")
+    assert labels and all("matrix(" in l.attrib.get("transform","") for l in labels)
+
+
+def test_vertical_no_silent_270_function_rotation_without_eskd_profile():
+    unit,_=vertical_specimen(4)
+    with pytest.raises(ValueError,match="IC_TEXT_ROTATION_UNVERIFIED"):
+        replace(unit,function_rotation=270)
+
+
+def test_mixed_source_sides_no_fictitious_normalization():
+    unit,_=vertical_specimen(4)
+    p=list(unit.pins)
+    p[-1]=replace(p[-1],side=Side.RIGHT,role="passive")
+    with pytest.raises(ValueError,match="IC_MIXED_SIDE_PROFILE"):
+        replace(unit,pins=tuple(p))
+
+
+def test_svg_namespace_import_does_not_change_global_elementtree_state():
+    # Importing ic_rectangular must NOT call global ET.register_namespace.
+    root=ET.fromstring(render_resolved_ic(*(
+        lambda u: (u,STYLE,FixedInk())
+    )(vertical_specimen(4)[0])).svg)
+    assert root.tag == f"{NS}svg"
+    assert b"xmlns" in ET.tostring(root)
