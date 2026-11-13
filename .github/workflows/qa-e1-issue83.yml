@@ -25,6 +25,22 @@ jobs:
         run: ruff check tests/qa_e1_integration_support.py tests/qa_e1_integration_test.py scripts/qa_e1_evidence.py
       - name: Generate genuine renderer SVG, 300 DPI PNG, QA-only semantic image and exact measurement JSON
         run: python scripts/qa_e1_evidence.py --output-dir output/qa-e1-issue83
+      - name: Install genuine external OpenGost Type A, not a DejaVu fallback
+        shell: bash
+        run: |
+          python scripts/install_opengost_type_a.py --directory "$HOME/.local/share/fonts"
+          fc-cache -f
+          FONT_FILE="$(find "$HOME/.local/share/fonts" -type f \\
+            \\( -iname '*TypeA*.ttf' -o -iname '*TypeA*.otf' \\) | head -1)"
+          test -n "$FONT_FILE" && test -f "$FONT_FILE"
+          VIEWER_FONT="$(fc-match -f '%{file}' 'OpenGost Type A')"
+          test "$(realpath "$FONT_FILE")" = "$(realpath "$VIEWER_FONT")"
+          echo "E1_TEST_FONT=$FONT_FILE" >> "$GITHUB_ENV"
+      - name: Render NEW PR78 real typed seven blocks with real PR80 18 PortRefs and measure all SVG paths
+        run: |
+          python scripts/qa_e1_current_render.py \\
+            --output-dir output/qa-e1-issue83 \\
+            --font-file "$E1_TEST_FONT"
       - name: Upload reproducible image and source-provenance evidence
         if: always()
         uses: actions/upload-artifact@v4
