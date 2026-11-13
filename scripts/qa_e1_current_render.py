@@ -16,7 +16,7 @@ from xml.etree import ElementTree as ET
 
 HERE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(HERE / "tests"))
-from qa_e1_integration_support import (  # noqa: TID251
+from qa_e1_integration_support import (
     CURRENT_BLOBS,
     CURRENT_SHAS,
     real_current_sources,
