@@ -195,6 +195,10 @@ class IcResolvedUnit:
         allowed = ({Side.LEFT, Side.RIGHT} if self.orientation is IcOrientation.LEFT_RIGHT
                    else {Side.TOP, Side.BOTTOM})
         if any(p.side not in allowed for p in self.pins):
+            if self.orientation is IcOrientation.LEFT_RIGHT:
+                raise ValueError(
+                    "IC_UNSUPPORTED_VERTICAL_PORT: choose explicit TOP_BOTTOM profile"
+                )
             raise ValueError("IC_MIXED_SIDE_PROFILE: requires source-specific ESKD card")
 
 
