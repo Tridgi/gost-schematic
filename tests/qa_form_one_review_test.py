@@ -89,7 +89,14 @@ def _render(form_one, fields=None, captions=True):
         key: value for key, value in form_one.CAPTIONS.items()
         if key != "norm_control"
     }
-    with patch.object(form_one, "CAPTIONS", short_roles):
+    # Also suppress narrow 7mm "Изм." revision captions for this
+    # DejaVu-only *role ink* probe: they have independent fail-closed
+    # overflow under this nonapproved face. Source caption omissions are
+    # verified against the full original CAPTION_TEXT constants below.
+    with (
+        patch.object(form_one, "CAPTIONS", short_roles),
+        patch.object(form_one, "CAPTION_TEXT", {}),
+    ):
         placed = form_one.write_form_one_fields(
             parent, bounds, fields or {}, style, measurer,
             cap_height_um=2500, padding_um=400, captions=captions,
@@ -194,6 +201,7 @@ def test_pr59_service_cells_and_dashed_graph30_are_absent_as_documented(
     parent, placed = _render(form_one)
     captions = {entry.text for entry in placed}
     assert not captions.intersection(REQUIRED_SERVICE)
+    assert not set(form_one.CAPTION_TEXT.values()).intersection(REQUIRED_SERVICE)
     namespace = "{http://www.w3.org/2000/svg}"
     lines = parent.findall(f".//{namespace}line")
     assert len(lines) == 25
