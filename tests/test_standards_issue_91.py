@@ -138,6 +138,18 @@ def test_rheostat_wiper_and_functional_pot_size_have_distinct_scope():
     )
 
 
+def test_variable_resistor_and_trimmer_use_correct_table1_rows():
+    cards = catalog()
+    assert "табл.1 поз.4" in cards["resistor.variable"]["clause_and_figure"]
+    assert "табл.1 поз.9" in cards["resistor.trimmer"]["clause_and_figure"]
+    assert "табл.1 поз.6" in cards[
+        "resistor.variable_dual_wiper"
+    ]["clause_and_figure"]
+    assert "табл.6 поз.3" in cards[
+        "resistor.rheostat_two_terminal_usage"
+    ]["clause_and_figure"]
+
+
 def test_fuse_position_two_not_spark_arrester_one():
     cards = catalog()
     assert "табл.3 поз.2" in cards["fuse.general"]["clause_and_figure"]
