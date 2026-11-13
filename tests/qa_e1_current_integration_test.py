@@ -15,8 +15,12 @@ import pytest
 from qa_e1_integration_support import (
     CURRENT_BLOBS,
     CURRENT_SHAS,
+    DISPLAY_ONLY,
     blob_hash,
+    convert_previous_to_model_data,
     current_shared_visual_seed,
+    materialize_previous,
+    previous_32,
     real_current_sources,
 )
 
@@ -255,3 +259,56 @@ def test_new_ygo_standalone_projection_now_roundtrips_without_adapter(latest):
     projected = viewer.semantic_projection(authored.ygo2_visual_seed())
     assert projected["diagram_type"] == "E1"
     assert model.structural_from_json(json.dumps(projected)) == authored.specimen()
+
+
+CURRENT_MODEL_CASES = tuple(
+    c for c in previous_32() if c["category"] not in DISPLAY_ONLY
+)
+
+
+@pytest.mark.parametrize(
+    "case",
+    CURRENT_MODEL_CASES,
+    ids=[c["id"] for c in CURRENT_MODEL_CASES],
+)
+def test_all_24_original_pr77_semantic_mutations_replayed_on_current_pr80(
+    latest, case,
+):
+    """Not fixture sanity: actual current PR80 decoder + graph validation."""
+    model, _authored, _viewer, _typed = latest
+    legacy = materialize_previous(case)
+    payload = convert_previous_to_model_data(legacy)
+    raw = json.dumps(payload, ensure_ascii=False)
+    if case["expected"] == "REJECT":
+        with pytest.raises((ValueError, TypeError)):
+            model.structural_from_json(raw)
+    elif case["expected"] == "ACCEPT":
+        decoded = model.structural_from_json(raw)
+        assert model.validate_structural_diagram(decoded) == ()
+    else:
+        pytest.fail(
+            f"New PR80 has unreviewed contract for {case['id']} "
+            f"{case['category']}: {case['expected']}"
+        )
+
+
+def test_current_explicit_visual_crossing_not_an_electrical_connection(latest):
+    """Render 2 actual directed links with X; model chord policy remains separate."""
+    model, _author, viewer, _typed = latest
+    from qa_e1_integration_test import _crossing_view
+
+    visual = _crossing_view()
+    view = viewer.validate_design(visual)
+    assert len(view["links"]) == 2
+    assert view["electrical_nets"] is None
+    doc = ET.fromstring(viewer.render_svg(visual, diagnostic=True))
+    assert len(doc.findall(
+        f".//{SVG}path[@data-role='functional-link']"
+    )) == 2
+    assert not doc.findall(f".//{SVG}circle[@data-role='junction']")
+    projected = viewer.semantic_projection(visual)
+    assert projected["diagram_type"] == "E1"
+    with pytest.raises(ValueError, match="E1_LINK_CROSSING"):
+        model.structural_from_json(json.dumps(projected, ensure_ascii=False))
+    # This is an unresolved inspection-chord vs routed-view policy mismatch,
+    # NOT evidence of an E3 electrical short.
