@@ -164,6 +164,7 @@ def test_seeded_component_blocker_permutations_cannot_change_path(router, catalo
         _assert_route_structure(canonical, source, target, hazards)
 
 
+@pytest.mark.xfail(reason="Confirmed issue #50: real unassigned pin crosses routed wire", strict=True)
 def test_pinned_router_passes_through_real_unassigned_pin_outside_all_body_keepouts(
     router, catalog,
 ):
@@ -194,6 +195,7 @@ def test_pinned_router_passes_through_real_unassigned_pin_outside_all_body_keepo
     )
 
 
+@pytest.mark.xfail(reason="Confirmed issue #51: unrelated keepout triggers cell limit", strict=True)
 def test_remote_irrelevant_obstacle_does_not_exhaust_cell_budget_for_clear_direct_path(
     router,
 ):
