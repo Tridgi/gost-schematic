@@ -281,14 +281,14 @@ def test_true_text_ink_one_micrometre_from_frame_is_rejected_not_clipped():
 
 
 def test_three_digit_number_is_outside_box_without_crossing_pin_lead():
-    unit, _ = specimen(8)
+    unit, original_plan = specimen(8)
     pins = list(unit.pins)
     pins[-1] = replace(pins[-1], number="100")
     candidate = replace(unit, pins=tuple(pins))
     spec = propose_ic_dimensions(candidate.content, candidate.pins, STYLE, FixedInk())
     # Source currently contains geometry for the previous proposed lead;
     # if number requires more space the electrical owner must re-resolve it.
-    if spec.lead_length_um != 8000:
+    if spec.lead_length_um != original_plan.lead_length_um:
         with pytest.raises(ValueError, match="IC_PIN_ANCHOR_MISMATCH"):
             render_resolved_ic(candidate, STYLE, FixedInk())
     else:
