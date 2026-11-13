@@ -47,5 +47,5 @@ def load_pr39_router() -> ModuleType:
     module.__file__ = f"git:{ROUTER_COMMIT}:{ROUTER_PATH}"
     module.__package__ = "gost_schematic.engines.routing"
     sys.modules[module_name] = module
-    exec(compile(raw.decode("utf-8"), module.__file__, "exec"), module.__dict__)
+    exec(compile(raw.decode("utf-8"), module.__file__, "exec"), module.__dict__)  # noqa: S102
     return module
