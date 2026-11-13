@@ -12,7 +12,7 @@ from qa_e1_integration_support import (
     DISPLAY_ONLY,
     graphic_source,
     previous_32,
-    real_sources,
+    real_current_sources,
 )
 from qa_e1_integration_test import _crossing_view
 
@@ -21,8 +21,8 @@ from gost_schematic.core.geometry import Point, Side
 
 @pytest.fixture(scope="module")
 def upstream():
-    with real_sources() as sources:
-        yield sources
+    with real_current_sources() as (model, example, visual, _typed):
+        yield model, example, visual
 
 
 def _graphic_id(dataset, value):
