@@ -12,8 +12,12 @@ from pathlib import Path
 from gost_schematic.core.geometry import Box, Point, Side
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.rendering.ic_rectangular import (
-    IcFieldContent, IcRenderingPolicy, IcResolvedUnit, ResolvedIcPin,
-    propose_ic_dimensions, render_resolved_ic,
+    IcFieldContent,
+    IcRenderingPolicy,
+    IcResolvedUnit,
+    ResolvedIcPin,
+    propose_ic_dimensions,
+    render_resolved_ic,
 )
 from gost_schematic.standards.type_a_font import inspect_type_a_font
 
