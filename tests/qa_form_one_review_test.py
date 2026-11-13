@@ -13,6 +13,7 @@ from hashlib import sha1
 from importlib.machinery import SourceFileLoader
 from importlib.util import module_from_spec, spec_from_loader
 from pathlib import Path
+from unittest.mock import patch
 from xml.etree import ElementTree as ET
 
 import pytest
@@ -79,10 +80,19 @@ def _render(form_one, fields=None, captions=True):
     parent = ET.Element("svg")
     bounds = Box(0, 0, 185000, 55000)
     form_one.draw_form_one_geometry(parent, bounds)
-    placed = form_one.write_form_one_fields(
-        parent, bounds, fields or {}, style, measurer,
-        cap_height_um=2500, padding_um=400, captions=captions,
-    )
+    # DejaVu Sans is a real measured fallback, NOT the verified OpenGost A.
+    # Its longest role "Н. контр." exceeds the 17mm cell at h=2.5mm.
+    # Render the other four actual labels for ink-alignment diagnostics.
+    # The full-font failure is asserted in a separate fail-closed test below.
+    short_roles = {
+        key: value for key, value in form_one.CAPTIONS.items()
+        if key != "norm_control"
+    }
+    with patch.object(form_one, "CAPTIONS", short_roles):
+        placed = form_one.write_form_one_fields(
+            parent, bounds, fields or {}, style, measurer,
+            cap_height_um=2500, padding_um=400, captions=captions,
+        )
     return parent, placed
 
 
@@ -132,7 +142,7 @@ def test_pr59_real_freetype_role_ink_is_centered_not_shared_left_x(
 ):
     _, placed = _render(form_one)
     roles = {entry.key: entry for entry in placed if entry.key in ROLE_NAMES}
-    assert set(roles) == set(ROLE_NAMES)
+    assert set(roles) == set(ROLE_NAMES) - {"norm_control"}
     # Independent ink measurement detects the current center policy.
     lefts = {entry.ink.min_x - entry.cell.min_x for entry in roles.values()}
     assert len(lefts) > 1, "Pinned legacy roles unexpectedly left-aligned"
@@ -142,7 +152,7 @@ def test_pr59_real_freetype_role_ink_is_centered_not_shared_left_x(
         for entry in roles.values()
     )
     assert {entry.text for entry in roles.values()} == {
-        "Разраб.", "Пров.", "Т. контр.", "Н. контр.", "Утв."
+        "Разраб.", "Пров.", "Т. контр.", "Утв."
     }
     assert all(
         entry.ink.max_y - entry.ink.min_y > 2200
@@ -186,3 +196,15 @@ def test_pr59_service_cells_and_dashed_graph30_are_absent_as_documented(
 def test_empty_pr59_form_one_does_not_invent_people_or_approval(form_one):
     _parent, placed = _render(form_one, captions=False)
     assert placed == ()
+
+
+def test_nonapproved_sans_serif_fallback_overflows_long_role_not_autoshrunk(
+    form_one,
+):
+    """Independent UI warning: cap-matched DejaVu ≠ approved OpenGost A."""
+    measurer, style = _font_and_style()
+    with pytest.raises(ValueError, match="TITLE_FIELD_OVERFLOW: norm_control"):
+        form_one.write_form_one_fields(
+            ET.Element("svg"), Box(0, 0, 185000, 55000),
+            {}, style, measurer, captions=True, cap_height_um=2500,
+        )
