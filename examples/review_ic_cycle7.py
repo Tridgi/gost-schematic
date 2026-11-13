@@ -9,7 +9,7 @@ import json
 from dataclasses import replace
 from pathlib import Path
 
-from gost_schematic.core.geometry import Box, Point, Side
+from gost_schematic.core.geometry import SIDE_VECTORS, Box, Point, Side
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.rendering.ic_rectangular import (
     IcFieldContent,
@@ -59,13 +59,20 @@ def _fixture(count, kind, style, measurer):
     )
     plan = propose_ic_dimensions(content, tuple(sample), style, measurer)
     origin = Point(30000, 20000)
-    resolved = tuple(replace(
-        p,
-        anchor=Point(
+    resolved = []
+    for p in sample:
+        frame = Point(
             origin.x + (0 if p.side == Side.LEFT else plan.width_um),
             origin.y + p.row * plan.row_pitch_um + plan.row_pitch_um // 2,
-        ),
-    ) for p in sample)
+        )
+        outward = SIDE_VECTORS[p.side]
+        resolved.append(replace(
+            p, anchor=Point(
+                frame.x + outward.x * plan.lead_length_um,
+                frame.y + outward.y * plan.lead_length_um,
+            ),
+        ))
+    resolved = tuple(resolved)
     unit = IcResolvedUnit(
         "DA1" if kind == "analog" else "DD1",
         Box(0, 0, plan.width_um, plan.height_um),
