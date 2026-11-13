@@ -17,6 +17,9 @@ _SYMBOLS = {
     "catalog/symbols/capacitors/electrolytic.json",
     "catalog/symbols/diodes/general.json",
     "catalog/symbols/diodes/zener.json",
+    "catalog/symbols/resistors/variable.json",
+    "catalog/symbols/resistors/trimmer.json",
+    "catalog/symbols/fuses/general.json",
 }
 _PARTS = {
     "catalog/parts/resistors/fixed.json",
@@ -25,6 +28,9 @@ _PARTS = {
     "catalog/parts/capacitors/electrolytic.json",
     "catalog/parts/diodes/general.json",
     "catalog/parts/diodes/zener.json",
+    "catalog/parts/resistors/variable.json",
+    "catalog/parts/resistors/trimmer.json",
+    "catalog/parts/fuses/general.json",
 }
 _REQUIREMENTS = "standards/requirements_2026_ru.json"
 
