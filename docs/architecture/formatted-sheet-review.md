@@ -22,6 +22,17 @@ python -m examples.review_formatted_sheet --font-file /path/OpenGostTypeA.ttf \
   --output-dir output/formatted-sheet-review
 ```
 
+For genuine field filling, the operator must separately pass
+`--title-field designation=...` and/or `--title-field name=...` together
+with `--mode a4|a3|all`. The same selected format receives a
+`<format>-explicit-fields.svg` file, while the normal `<format>-clean.svg`
+**remains completely blank** in its title table. Unknown keys, duplicate
+assignments, incorrect font metrics and fields that exceed available space
+fail closed; nothing is auto-shrunk or fabricated. The CI deliberately does
+not emit any pretend legal signatories, part numbers, organization names,
+document names or approvals. Generated manifest lists the originating
+C3 version and still marks all outputs DRAFT.
+
 The comparison and title zoom are clearly marked DRAFT. The currently accepted
 source `examples/review_end_to_end_circuit.py::authored_specimen()` is unchanged.
 
