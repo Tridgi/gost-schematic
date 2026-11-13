@@ -149,7 +149,7 @@ def test_recipient_addresses_not_just_sheet_coordinate_strings():
     assert d["NET-SHEETZONE-ONLY"]["status"] == "BLOCKED"
     assert "A7:X16" in d["NET-ADDRESS-RECIPROCAL"]["acceptance_or_negative"]
     assert "arrow" in d["NET-BREAK-X"]["observed_source_rule"]
-    assert "arrow" in d["NET-NAME-LOCATION"]["acceptance_or_negative"] is False
+    assert "arrow" not in d["NET-NAME-LOCATION"]["acceptance_or_negative"]
 
 
 def test_green_ui_does_not_appear_as_gost_printed_circuit_marking():
