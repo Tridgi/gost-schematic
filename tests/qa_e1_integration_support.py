@@ -253,3 +253,100 @@ DISPLAY_ONLY = frozenset({
     "MULTIPLE_LINKS_ON_ONE_PORT",
     "INVALID_TRANSFORM",
 })
+
+
+# Two *separate* concurrent owner updates after the initial snapshot:
+# PR80 9c7f.. -> 82d400..; PR78 c49b.. -> b7fa..
+CURRENT_SHAS = {
+    "model": "82d400d2472a0a546dafcbf18f70d581642ca284",
+    "graphics": "b7fa2138e84d5279ef0b894cb4ca56b32732b11b",
+}
+CURRENT_BLOBS = {
+    "qa_e1_current80/validation.txt":
+        "a73dfd1f454031e65142dc91e01f87748b842001",
+    "qa_e1_current80/review_structural_e1.txt":
+        "40a7c8362d67aa65b9941a0c01934d78ac8f6f5d",
+    "qa_e1_current80/verify_structural_e1_ygo2.txt":
+        "3667f86a56ea68813df9b13b71417bae8a15bf42",
+    "qa_e1_current80/ygo2-seven-view.json":
+        "9ddb28d6d0aa42e2d29544020c97b88c6f8650fd",
+    "qa_e1_current78/review_structural_e1_design.txt":
+        "a4355f76daa5a586f4058bd9f4df26c4acc6634b",
+    "qa_e1_current78/review_structural_e1_model.txt":
+        "a4c8f7d563fd883c7affede1d0dd067ed258d141",
+    "qa_e1_current78/verify_structural_e1_model_render.txt":
+        "0802828c688e929dc3ac4f850ff42ab686c85d7e",
+}
+
+
+def current_shared_visual_seed():
+    return json.loads(
+        (FIXTURES / "qa_e1_current80/ygo2-seven-view.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+
+@contextmanager
+def real_current_sources():
+    """Run genuine latest owner code: PR80 82d400 + PR78 b7fa in isolation.
+
+    Files use the exact original Git blob content. The common model __init__,
+    model and serialization modules did NOT change after old 9c7f, so they
+    remain identical source blobs; validation and example changed and are
+    loaded from the current separately hashed snapshots.
+    """
+    verify_exact_source_files()
+    for path, sha in CURRENT_BLOBS.items():
+        assert blob_hash((FIXTURES / path).read_bytes()) == sha, path
+    assert "gost_schematic.structural" not in sys.modules
+    with tempfile.TemporaryDirectory(prefix="qa-e1-current-") as directory:
+        work = Path(directory)
+        pack = work / "gost_schematic" / "structural"
+        pack.mkdir(parents=True)
+        for part in ("__init__", "model", "serialization"):
+            (pack / (part + ".py")).write_bytes(
+                (MODEL_ROOT / "gost_schematic" / "structural"
+                 / (part + ".txt")).read_bytes()
+            )
+        (pack / "validation.py").write_bytes(
+            (FIXTURES / "qa_e1_current80/validation.txt").read_bytes()
+        )
+        sources = {
+            "_qa_current80_example":
+                "qa_e1_current80/review_structural_e1.txt",
+            "_qa_current78_design":
+                "qa_e1_current78/review_structural_e1_design.txt",
+            "_qa_current78_model_svg":
+                "qa_e1_current78/review_structural_e1_model.txt",
+            "_qa_current80_verify_legacy":
+                "qa_e1_current80/verify_structural_e1_ygo2.txt",
+        }
+        module_paths = {}
+        for name, relative in sources.items():
+            target = work / (name + ".py")
+            target.write_bytes((FIXTURES / relative).read_bytes())
+            module_paths[name] = target
+        package_path = gost_schematic.__path__
+        package_path.append(str(work / "gost_schematic"))
+        try:
+            model = import_module("gost_schematic.structural")
+            demo = _load_standalone(
+                "_qa_current80_example", module_paths["_qa_current80_example"]
+            )
+            legacy = _load_standalone(
+                "_qa_current78_design", module_paths["_qa_current78_design"]
+            )
+            svg = _load_standalone(
+                "_qa_current78_model_svg", module_paths["_qa_current78_model_svg"]
+            )
+            yield model, demo, legacy, svg
+        finally:
+            package_path.remove(str(work / "gost_schematic"))
+            for name in sources:
+                sys.modules.pop(name, None)
+            for name in tuple(sys.modules):
+                if name == "gost_schematic.structural" or name.startswith(
+                    "gost_schematic.structural."
+                ):
+                    del sys.modules[name]
