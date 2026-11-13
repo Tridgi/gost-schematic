@@ -233,3 +233,92 @@ def test_explicit_protection_of_extra_physical_pin_prevents_accidental_tie(
     )
     _assert_route_structure(result, source, target, hazards)
     assert not any(_contains_point(edge, unwanted) for edge in _edges(result))
+
+
+def test_real_blocker_forms_a_no_path_wall_only_inside_constrained_sheet(router, catalog):
+    """Negative scenario: one real resistor body spans entire fixed routing window."""
+    first = ComponentInstance("R1", "resistor.fixed", Point(-8000, 0))
+    last = ComponentInstance("R2", "resistor.fixed", Point(28000, 0))
+    blocker = ComponentInstance("R3", "resistor.fixed", Point(10000, 0))
+    source = _pins(catalog, first)["2"]
+    target = _pins(catalog, last)["1"]
+    assert (source, target) == (Point(0, 0), Point(20000, 0))
+    keepouts = _keepouts(catalog, first, blocker, last)
+    blocked = router.route_two_pins(
+        source, target, keepouts=keepouts,
+        bounds=Box(0, -2000, 20000, 2000), max_cells=5000,
+    )
+    assert not blocked.ok and not blocked.points
+    assert {issue.code for issue in blocked.diagnostics} == {"ROUTE_NO_PATH"}
+    with pytest.raises(ValueError):
+        blocked.external_graph("LINK")
+
+    wider = router.route_two_pins(
+        source, target, keepouts=keepouts,
+        bounds=Box(0, -4000, 20000, 4000), max_cells=5000,
+    )
+    _assert_route_structure(wider, source, target, keepouts)
+
+
+def test_real_obstacle_blocking_one_endpoint_fails_without_changing_identity(router, catalog):
+    first = ComponentInstance("R1", "resistor.fixed", Point(0, 0))
+    last = ComponentInstance("R2", "resistor.fixed", Point(60000, 0))
+    hazard = ComponentInstance("R3", "resistor.fixed", Point(8000, 0))
+    start = _pins(catalog, first)["2"]
+    end = _pins(catalog, last)["1"]
+    assert _keepouts(catalog, hazard)[0].includes(start)
+    result = router.route_two_pins(
+        start, end, keepouts=_keepouts(catalog, first, hazard, last),
+    )
+    assert not result.points and not result.ok
+    assert {item.code for item in result.diagnostics} == {"ROUTE_PORT_BLOCKED"}
+
+
+def test_real_component_origin_one_um_off_grid_fails_instead_of_snapping(router, catalog):
+    first = ComponentInstance("R1", "resistor.fixed", Point(1, 0))
+    last = ComponentInstance("R2", "resistor.fixed", Point(60000, 0))
+    start = _pins(catalog, first)["2"]
+    end = _pins(catalog, last)["1"]
+    assert start.x % 1000 == 1
+    route = router.route_two_pins(
+        start, end, keepouts=_keepouts(catalog, first, last)
+    )
+    assert {item.code for item in route.diagnostics} == {"ROUTE_OFF_GRID"}
+    assert not route.ok and route.points == ()
+
+
+def test_mixed_existing_wire_stroke_must_respect_actual_printed_clearance(router):
+    """PR39 WireSegment loses existing stroke width; fixed-width assumption is unsafe."""
+    source, target = Point(0, 0), Point(10000, 0)
+    old = WireSegment(Point(5000, -1000), Point(5000, 1000), "FOREIGN")
+    clearance, new_stroke, foreign_stroke = 400, 300, 1000
+    route = router.route_two_pins(
+        source, target, existing_wires=(old,),
+        grid_um=100, clearance_um=clearance, stroke_um=new_stroke,
+        max_cells=10000,
+    )
+    _assert_route_structure(route, source, target)
+    # Actual foreign printed line can be 1 mm wide, but WireSegment has NO width.
+    # Edge-box clearance: centerline must avoid foreign stroke HALF-WIDTH,
+    # new stroke HALF-WIDTH, plus requested 400-um clear gap.
+    required_margin = (
+        clearance + (foreign_stroke + 1) // 2 + (new_stroke + 1) // 2
+    )
+    actual_ink_hazard = Box(5000, -1000, 5001, 1001).expanded(required_margin)
+    assert not any(
+        segment_intersects_box(edge, actual_ink_hazard)
+        for edge in _edges(route)
+    ), "Router route violates clearance when existing and new strokes differ"
+
+
+def test_mixed_stroke_preexpanded_foreign_ink_can_be_protected_by_callers(router):
+    """Control: a correctly padded foreign stroke AABB avoids the unsafe region."""
+    source, target = Point(0, 0), Point(10000, 0)
+    old = WireSegment(Point(5000, -1000), Point(5000, 1000), "FOREIGN")
+    # Provide the already-known foreign ink half-width as an explicit keepout.
+    ink_box = Box(4500, -1500, 5500, 1500)
+    result = router.route_two_pins(
+        source, target, existing_wires=(old,), keepouts=(ink_box,),
+        grid_um=100, clearance_um=400, stroke_um=300, max_cells=10000,
+    )
+    _assert_route_structure(result, source, target, (ink_box,), margin=550)
