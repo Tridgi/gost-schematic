@@ -1,0 +1,305 @@
+{
+  "blocks": [
+    {
+      "height_um": 12000,
+      "id": "POWER",
+      "name": "Питание",
+      "origin_um": [
+        0,
+        0
+      ],
+      "width_um": 20000
+    },
+    {
+      "height_um": 12000,
+      "id": "ENTRY",
+      "name": "Ввод команд",
+      "origin_um": [
+        40000,
+        0
+      ],
+      "width_um": 20000
+    },
+    {
+      "height_um": 12000,
+      "id": "CTRL",
+      "name": "Контроллер",
+      "origin_um": [
+        80000,
+        0
+      ],
+      "width_um": 20000
+    },
+    {
+      "height_um": 12000,
+      "id": "SENSOR",
+      "name": "Датчик",
+      "origin_um": [
+        0,
+        30000
+      ],
+      "width_um": 20000
+    },
+    {
+      "height_um": 12000,
+      "id": "ADAPT",
+      "name": "Согласование",
+      "origin_um": [
+        40000,
+        30000
+      ],
+      "width_um": 20000
+    },
+    {
+      "height_um": 12000,
+      "id": "ACT",
+      "name": "Исполнитель",
+      "origin_um": [
+        80000,
+        30000
+      ],
+      "width_um": 20000
+    },
+    {
+      "height_um": 12000,
+      "id": "DISPLAY",
+      "name": "Индикация",
+      "origin_um": [
+        120000,
+        0
+      ],
+      "width_um": 20000
+    }
+  ],
+  "diagram_type": "E1",
+  "links": [
+    {
+      "id": "L01",
+      "source": {
+        "block_id": "POWER",
+        "port_id": "feed"
+      },
+      "target": {
+        "block_id": "ENTRY",
+        "port_id": "supply"
+      }
+    },
+    {
+      "id": "L02",
+      "source": {
+        "block_id": "ENTRY",
+        "port_id": "cmd1"
+      },
+      "target": {
+        "block_id": "CTRL",
+        "port_id": "cmd1"
+      }
+    },
+    {
+      "id": "L03",
+      "source": {
+        "block_id": "ENTRY",
+        "port_id": "cmd2"
+      },
+      "target": {
+        "block_id": "CTRL",
+        "port_id": "cmd2"
+      }
+    },
+    {
+      "id": "L04",
+      "source": {
+        "block_id": "SENSOR",
+        "port_id": "measurement"
+      },
+      "target": {
+        "block_id": "ADAPT",
+        "port_id": "sensor"
+      }
+    },
+    {
+      "id": "L05",
+      "source": {
+        "block_id": "ADAPT",
+        "port_id": "actuate"
+      },
+      "target": {
+        "block_id": "ACT",
+        "port_id": "command"
+      }
+    },
+    {
+      "id": "L06",
+      "source": {
+        "block_id": "CTRL",
+        "port_id": "display"
+      },
+      "target": {
+        "block_id": "DISPLAY",
+        "port_id": "status"
+      }
+    },
+    {
+      "id": "L07",
+      "source": {
+        "block_id": "CTRL",
+        "port_id": "actuate"
+      },
+      "target": {
+        "block_id": "ACT",
+        "port_id": "control"
+      }
+    },
+    {
+      "id": "L08",
+      "source": {
+        "block_id": "ADAPT",
+        "port_id": "feedback"
+      },
+      "target": {
+        "block_id": "ENTRY",
+        "port_id": "feedback"
+      }
+    },
+    {
+      "id": "L09",
+      "source": {
+        "block_id": "ACT",
+        "port_id": "state"
+      },
+      "target": {
+        "block_id": "DISPLAY",
+        "port_id": "alarm"
+      }
+    }
+  ],
+  "ports": [
+    {
+      "block_id": "POWER",
+      "direction": "output",
+      "id": "feed",
+      "position": null,
+      "side": "right"
+    },
+    {
+      "block_id": "ENTRY",
+      "direction": "input",
+      "id": "supply",
+      "position": null,
+      "side": "left"
+    },
+    {
+      "block_id": "ENTRY",
+      "direction": "output",
+      "id": "cmd1",
+      "position": null,
+      "side": "right"
+    },
+    {
+      "block_id": "ENTRY",
+      "direction": "output",
+      "id": "cmd2",
+      "position": null,
+      "side": "right"
+    },
+    {
+      "block_id": "ENTRY",
+      "direction": "input",
+      "id": "feedback",
+      "position": null,
+      "side": "bottom"
+    },
+    {
+      "block_id": "CTRL",
+      "direction": "input",
+      "id": "cmd1",
+      "position": null,
+      "side": "left"
+    },
+    {
+      "block_id": "CTRL",
+      "direction": "input",
+      "id": "cmd2",
+      "position": null,
+      "side": "left"
+    },
+    {
+      "block_id": "CTRL",
+      "direction": "output",
+      "id": "display",
+      "position": null,
+      "side": "right"
+    },
+    {
+      "block_id": "CTRL",
+      "direction": "output",
+      "id": "actuate",
+      "position": null,
+      "side": "bottom"
+    },
+    {
+      "block_id": "SENSOR",
+      "direction": "output",
+      "id": "measurement",
+      "position": null,
+      "side": "right"
+    },
+    {
+      "block_id": "ADAPT",
+      "direction": "input",
+      "id": "sensor",
+      "position": null,
+      "side": "left"
+    },
+    {
+      "block_id": "ADAPT",
+      "direction": "output",
+      "id": "actuate",
+      "position": null,
+      "side": "right"
+    },
+    {
+      "block_id": "ADAPT",
+      "direction": "output",
+      "id": "feedback",
+      "position": null,
+      "side": "top"
+    },
+    {
+      "block_id": "ACT",
+      "direction": "input",
+      "id": "command",
+      "position": null,
+      "side": "left"
+    },
+    {
+      "block_id": "ACT",
+      "direction": "input",
+      "id": "control",
+      "position": null,
+      "side": "top"
+    },
+    {
+      "block_id": "ACT",
+      "direction": "output",
+      "id": "state",
+      "position": null,
+      "side": "right"
+    },
+    {
+      "block_id": "DISPLAY",
+      "direction": "input",
+      "id": "status",
+      "position": null,
+      "side": "left"
+    },
+    {
+      "block_id": "DISPLAY",
+      "direction": "input",
+      "id": "alarm",
+      "position": null,
+      "side": "bottom"
+    }
+  ],
+  "schema_version": 1
+}
