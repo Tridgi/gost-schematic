@@ -1,0 +1,767 @@
+{
+  "schema_version": 1,
+  "issue": 69,
+  "document_type": "Э1",
+  "branch": "parallel/standards-structural-e1",
+  "baseline_sha": "e2b280d91957ff678c90b792e2c94fa9e73e27ae",
+  "review_date": "2026-11-13",
+  "source_policy": {
+    "normative_only": [
+      "g2702",
+      "g2701",
+      "g2304",
+      "g2721",
+      "g2710"
+    ],
+    "secondary_example": "https://habr.com/ru/articles/451158/",
+    "secondary_is_normative": false,
+    "quote": "Основной source-backed текст пункта 5.1 подтверждён оригинальным ГОСТ, Habr используется только для иллюстрации различий Э1/Э2/Э3."
+  },
+  "standards": {
+    "g2702": {
+      "designation": "ГОСТ 2.702-2011",
+      "official": "https://protect.gost.ru/gost/details/d9c1c334-2a90-45cb-ac00-c31da92d706b",
+      "pdf": "https://www.elec.ru/files/2019/03/25/gost_2.702-2011.pdf#page=6",
+      "status": "Действует"
+    },
+    "g2701": {
+      "designation": "ГОСТ 2.701-2008",
+      "official": "https://protect.gost.ru/gost/details/87f1f382-a055-48b7-ae80-f359ff5e1f4e",
+      "pdf": "https://rosgosts.ru/file/gost/01/100/gost_2.701-2008.pdf",
+      "status": "Действует"
+    },
+    "g2304": {
+      "designation": "ГОСТ 2.304-81",
+      "official": "https://protect.gost.ru/gost/details/2acb3258-c28c-4e4a-b7ac-208043f2d95e",
+      "pdf": "https://www.it-mda.ru/standards/docs/GOST/GOST_2.304-81.pdf#page=3",
+      "status": "Действует"
+    },
+    "g2721": {
+      "designation": "ГОСТ 2.721-74",
+      "official": "https://protect.gost.ru/gost/details/c153a749-14f2-49e8-8544-acc32ab35406",
+      "pdf": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf",
+      "status": "Действует"
+    },
+    "g2710": {
+      "designation": "ГОСТ 2.710-81",
+      "official": "https://protect.gost.ru/gost/details/ce868f06-c5a9-4bcb-a0d8-344bd17f57e0",
+      "status": "traceability_reference_verify_page"
+    }
+  },
+  "approval": "DRAFT_NOT_FORMALLY_APPROVED",
+  "all_rules_status": "DRAFT",
+  "cards": [
+    {
+      "id": "E1-01",
+      "subject": "type_code",
+      "source_standard": "g2701",
+      "source_clause": "4.2–4.4; табл. 1–2",
+      "normative_force": "MUST",
+      "evidence": "source_confirmed",
+      "rule": "При электрическом структурном виде/типе код Э1 (буква Э+цифра 1).",
+      "positive_case": "Чертёж промаркирован Э1.",
+      "negative_case": "Называть функциональную Э2 или принципиальную Э3 без соответствующей семантики.",
+      "owner": "ELEKTRIK",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-02",
+      "subject": "inventory",
+      "source_standard": "g2702",
+      "source_clause": "5.1.1",
+      "normative_force": "MUST",
+      "evidence": "source_confirmed",
+      "rule": "Изображать все основные функциональные части изделия.",
+      "positive_case": "Все существенные блоки устройства видны, скрытое обосновано.",
+      "negative_case": "Пропущен обязательный функциональный модуль.",
+      "owner": "ELEKTRIK",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-03",
+      "subject": "relations",
+      "source_standard": "g2702",
+      "source_clause": "5.1.1",
+      "normative_force": "MUST",
+      "evidence": "source_confirmed",
+      "rule": "Показаны основные взаимосвязи функциональных частей.",
+      "positive_case": "Каждая существенная функция связана с нужным источником/приёмником.",
+      "negative_case": "Нужная связь между управляющим и исполнительным блоками отсутствует.",
+      "owner": "ELEKTRIK",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-04",
+      "subject": "representation",
+      "source_standard": "g2702",
+      "source_clause": "5.1.2",
+      "normative_force": "PERMITTED_ALTERNATIVES",
+      "evidence": "source_confirmed",
+      "rule": "Изображать функцию прямоугольником или применимым УГО.",
+      "positive_case": "Семь прямоугольников с именами; специальное УГО только по выбранному паспорту.",
+      "negative_case": "Выдуманный нестандартный знак объявлен гостовским без легенды.",
+      "owner": "YGO2",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-05",
+      "subject": "block_name",
+      "source_standard": "g2702",
+      "source_clause": "5.1.4 абз.1",
+      "normative_force": "MUST",
+      "evidence": "source_confirmed",
+      "rule": "Если выбран прямоугольник — имя функциональной части обязательно.",
+      "positive_case": "Видимое имя у каждого из семи прямоугольников.",
+      "negative_case": "Пустой безымянный прямоугольник без допустимой нумерации/таблицы.",
+      "owner": "YGO2",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-06",
+      "subject": "inside_name",
+      "source_standard": "g2702",
+      "source_clause": "5.1.4 абз.3",
+      "normative_force": "RECOMMENDED",
+      "evidence": "source_confirmed",
+      "rule": "Наименование, тип, обозначение рекомендуется вписывать внутрь прямоугольника.",
+      "positive_case": "«Контроллер» вписано внутрь читаемо.",
+      "negative_case": "Текст внутри пересекает рамку: нарушение читаемости, но не отсутствие имени при наружной подписи.",
+      "owner": "YGO2",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-07",
+      "subject": "type_and_doc",
+      "source_standard": "g2702",
+      "source_clause": "5.1.4 абз.2",
+      "normative_force": "OPTIONAL",
+      "evidence": "source_confirmed",
+      "rule": "Тип и обозначение документа допускаются дополнительно; не обязательны у всех блоков.",
+      "positive_case": "У указанного устройства добавлен тип по подтверждённой документации.",
+      "negative_case": "Принудительно выдуман тип/ГОСТ/обозначение для каждого блока.",
+      "owner": "YGO2",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-08",
+      "subject": "many_blocks_numbering",
+      "source_standard": "g2702",
+      "source_clause": "5.1.5",
+      "normative_force": "CONDITIONAL_MUST",
+      "evidence": "source_confirmed",
+      "rule": "При большом числе частей можно заменить имена порядковыми номерами, но тогда имена/типы/обозначения указываются в таблице на поле схемы.",
+      "positive_case": "Номера 1–20 и полная таблица соответствий.",
+      "negative_case": "Номера без таблицы расшифровки.",
+      "owner": "YGO2",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-09",
+      "subject": "number_placement",
+      "source_standard": "g2702",
+      "source_clause": "5.1.5",
+      "normative_force": "RECOMMENDED",
+      "evidence": "source_confirmed",
+      "rule": "При замене имен номерами их располагают справа или над изображением, как правило сверху вниз слева направо.",
+      "positive_case": "Упорядоченные номера справа от блоков.",
+      "negative_case": "Нечитаемая или неоднозначная нумерация: нарушение качества, не обязательно буквального запрета варианта слева.",
+      "owner": "YGO2",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-10",
+      "subject": "interaction_order",
+      "source_standard": "g2702",
+      "source_clause": "5.1.3 первое предложение",
+      "normative_force": "MUST_QUALITATIVE",
+      "evidence": "source_confirmed",
+      "rule": "Графическое построение должно наглядно отображать последовательность взаимодействий.",
+      "positive_case": "Вход→контроллер→исполнитель ясно читается.",
+      "negative_case": "Случайное расположение закрывает основной порядок процессов.",
+      "owner": "ELEKTRIK",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-11",
+      "subject": "process_arrows",
+      "source_standard": "g2702",
+      "source_clause": "5.1.3 второе предложение",
+      "normative_force": "RECOMMENDED",
+      "evidence": "source_confirmed",
+      "rule": "Направление процессов на связях рекомендуется отмечать стрелками.",
+      "positive_case": "Связи B1→B3→B5 направлены к получателю.",
+      "negative_case": "Полное отсутствие стрелок само по себе не формальный FAIL; следует отметить как рекомендацию.",
+      "owner": "ELEKTRIK",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-12",
+      "subject": "signal_arrow_semantics",
+      "source_standard": "g2721",
+      "source_clause": "п.2, табл.1 поз.1а–в",
+      "normative_force": "CONDITIONAL_MUST",
+      "evidence": "source_confirmed",
+      "rule": "Если изображается именно распространение сигнала/информации/энергии стандартным УГО, использовать соответствующую форму направления и различать режимы двухсторонней передачи.",
+      "positive_case": "Односторонняя связь со стрелкой по направлению передачи.",
+      "negative_case": "Одновременно двунаправленный процесс выдан за строго односторонний.",
+      "owner": "ELEKTRIK",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-13",
+      "subject": "one_side_centre",
+      "source_standard": "g2702",
+      "source_clause": "5.1.1–5.1.5 — точка привязки не определена",
+      "normative_force": "EDITORIAL_DEFAULT",
+      "evidence": "explicit_absence",
+      "rule": "ГОСТ НЕ предписывает центр стороны: проектный default — середина выбранной стороны при единственном подключении.",
+      "positive_case": "Один ввод в центр левой стороны; атрибут source=editorial.",
+      "negative_case": "Схема объявлена нарушением ГОСТ только за смещение ввода с геометрического центра.",
+      "owner": "ELEKTRIK",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-14",
+      "subject": "multiple_port_spread",
+      "source_standard": "g2702",
+      "source_clause": "5.1.1–5.1.5 — шаг портов не нормирован",
+      "normative_force": "EDITORIAL_DEFAULT",
+      "evidence": "not_specified",
+      "rule": "Если на стороне несколько логических портов — распределить вдоль стороны, проверить просветы; численный шаг выводить из толщины и безопасной зоны, не выдавать за ГОСТ.",
+      "positive_case": "Два выхода B2 справа на y75/80, разных ID.",
+      "negative_case": "Два порта помещены в идентичную точку и ошибочно слиты, либо назван обязательным шаг 5 мм.",
+      "owner": "ELEKTRIK",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-15",
+      "subject": "port_side_semantics",
+      "source_standard": "g2702",
+      "source_clause": "5.1.1–5.1.5 — сторона не нормирована",
+      "normative_force": "EDITORIAL_DEFAULT",
+      "evidence": "not_specified",
+      "rule": "Вход слева/сверху, выход справа/снизу — UX-политика; обратные и двусторонние связи возможны, если направление понятно.",
+      "positive_case": "Порт ввода слева и второй сверху, без изменения назначения.",
+      "negative_case": "Отклонять вход сверху как якобы запрещённый ГОСТ.",
+      "owner": "ELEKTRIK",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-16",
+      "subject": "port_count",
+      "source_standard": "g2702",
+      "source_clause": "5.1.1–5.1.5 — количество не нормировано",
+      "normative_force": "NOT_SPECIFIED",
+      "evidence": "not_specified",
+      "rule": "Стандарт не назначает максимум портов блока и фиксированное число входов или выходов.",
+      "positive_case": "B4 имеет две входные и две выходные функциональные связи.",
+      "negative_case": "Навязать максимум один вход по ГОСТ или неограниченное совпадение портов.",
+      "owner": "ELEKTRIK",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-17",
+      "subject": "port_legend",
+      "source_standard": "g2701",
+      "source_clause": "5.3.2 и 5.6.2",
+      "normative_force": "EDITORIAL_SAFETY",
+      "evidence": "source_dependent_policy",
+      "rule": "При использовании многопортовых блоков назначения портов должны оставаться различимы; точный формат ID и подписи — политика проекта.",
+      "positive_case": "Порты с уникальными смысловыми идентификаторами, тип link=logical.",
+      "negative_case": "Несколько разных логических процессов слиты в один порт без осмысленного определения.",
+      "owner": "ELEKTRIK",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-18",
+      "subject": "orthogonal_links",
+      "source_standard": "g2701",
+      "source_clause": "5.5.2",
+      "normative_force": "MUST_WITH_EXCEPTION",
+      "evidence": "source_confirmed",
+      "rule": "Линии взаимосвязи преимущественно горизонтальные и вертикальные, с минимальным числом изгибов и пересечений.",
+      "positive_case": "9 связей ортогональны; кратчайшие прямые для простых соседей.",
+      "negative_case": "Без нужды проведены диагональные линии со множественными пересечениями.",
+      "owner": "ELEKTRIK",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-19",
+      "subject": "diagonal_exception",
+      "source_standard": "g2701",
+      "source_clause": "5.5.2, примечание",
+      "normative_force": "CONDITIONAL_ALLOWED",
+      "evidence": "source_confirmed",
+      "rule": "Наклонные участки допускаются в отдельных случаях, длину по возможности ограничивать.",
+      "positive_case": "Короткая наклонная обводка с обоснованием читаемости.",
+      "negative_case": "Признать все диагонали запрещёнными либо любое длинное диагональное хаотичное соединение нормой.",
+      "owner": "ELEKTRIK",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-20",
+      "subject": "line_weight_range",
+      "source_standard": "g2701",
+      "source_clause": "5.5.1",
+      "normative_force": "MUST",
+      "evidence": "source_confirmed",
+      "rule": "Толщина линий взаимосвязей 0.2–1.0 мм.",
+      "positive_case": "0.35 мм связь Э1.",
+      "negative_case": "0.15 мм или 1.2 мм линия взаимосвязи.",
+      "owner": "ELEKTRIK",
+      "dimensions_mm": {
+        "min": 0.2,
+        "max": 1,
+        "unit": "mm"
+      },
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-21",
+      "subject": "line_weight_recommendation",
+      "source_standard": "g2701",
+      "source_clause": "5.5.1",
+      "normative_force": "RECOMMENDED",
+      "evidence": "source_confirmed",
+      "rule": "Предпочтительна толщина линии 0.3–0.4 мм, внутри нормативного диапазона 0.2–1.0.",
+      "positive_case": "0.35 мм.",
+      "negative_case": "0.5 мм не автоматический FAIL, если 0.2–1.0.",
+      "owner": "YGO2",
+      "dimensions_mm": {
+        "recommended_min": 0.3,
+        "recommended_max": 0.4,
+        "unit": "mm"
+      },
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-22",
+      "subject": "ugo_line_weight",
+      "source_standard": "g2701",
+      "source_clause": "5.4.3",
+      "normative_force": "CONDITIONAL_MUST",
+      "evidence": "source_confirmed",
+      "rule": "Если используются собственно УГО, их линии должны быть той же толщины, что связи; не приписывать дословно всем текстовым рамкам без анализа 5.3.5/5.3.6.",
+      "positive_case": "УГО 0.35 и линия 0.35 мм.",
+      "negative_case": "УГО 0.9 и связь 0.3 мм без иной нормы/исключения.",
+      "owner": "YGO2",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-23",
+      "subject": "figure_device_line",
+      "source_standard": "g2701",
+      "source_clause": "5.3.5–5.3.6, примечание",
+      "normative_force": "CONDITIONAL_MUST",
+      "evidence": "source_confirmed",
+      "rule": "Контур устройства с самостоятельной принципиальной схемой — сплошной; устройства/группы без собственной принципиальной — контур штрихпунктирный при применении именно этой условной фигуры. Нельзя автоматически объявлять ВСЕ функциональные прямоугольники Э1 штрихпунктирными.",
+      "positive_case": "Отдельная semantic kind для outline-device vs generic functional rectangle.",
+      "negative_case": "Подменить смысл конкретного контура типовым прямоугольником и объявить обязательной пунктирность всех Э1.",
+      "owner": "YGO2",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-24",
+      "subject": "ugo_clearance",
+      "source_standard": "g2701",
+      "source_clause": "5.3.4",
+      "normative_force": "MUST_FOR_UGO",
+      "evidence": "source_confirmed",
+      "rule": "Просвет между отдельными УГО >=2 мм; для generic функциональных прямоугольников такой же предел выбран как консервативная политика компоновки.",
+      "positive_case": "Между функциональными коробками ≥2 мм; между УГО ≥2 мм.",
+      "negative_case": "Соседние стандартные УГО почти соприкасаются: 1 мм вместо 2 мм.",
+      "owner": "YGO2",
+      "dimensions_mm": {
+        "min": 2,
+        "unit": "mm",
+        "measurement": "ink-to-ink",
+        "scope": "separate UGO"
+      },
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-25",
+      "subject": "parallel_links_clearance",
+      "source_standard": "g2701",
+      "source_clause": "5.3.4",
+      "normative_force": "MUST",
+      "evidence": "source_confirmed",
+      "rule": "Между соседними параллельными линиями взаимосвязи фактический просвет >=3 мм; при одинаковом штрихе 0.35 мм межосевой интервал >=3.35 мм.",
+      "positive_case": "Параллельные выходы y75/80: межось 5 мм, просвет 4.65 мм.",
+      "negative_case": "Два горизонтальных тракта y75 и y78 при штрихе 0.35: просвет 2.65 мм.",
+      "owner": "ELEKTRIK",
+      "dimensions_mm": {
+        "ink_clearance_min": 3,
+        "centerline_min_for_equal_stroke_0_35": 3.35,
+        "unit": "mm"
+      },
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-26",
+      "subject": "ugo_internal_lines",
+      "source_standard": "g2701",
+      "source_clause": "5.3.4",
+      "normative_force": "MUST_FOR_UGO",
+      "evidence": "source_confirmed",
+      "rule": "Между соседними внутренними линиями УГО >=1 мм. Не называть этим числом обязательный зазор текст->рамка функционального прямоугольника.",
+      "positive_case": "УГО с внутренними штрихами и просветом 1.2 мм.",
+      "negative_case": "Стандартный УГО с 0.4 мм межштриховым просветом.",
+      "owner": "YGO2",
+      "dimensions_mm": {
+        "min": 1,
+        "unit": "mm",
+        "scope": "adjacent UGO lines"
+      },
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-27",
+      "subject": "font_cap_height",
+      "source_standard": "g2304",
+      "source_clause": "1.1–1.2, 2.1, табл.1/2",
+      "normative_force": "MUST_FOR_LETTERING",
+      "evidence": "source_confirmed",
+      "rule": "Шрифт по ГОСТ определяется фактической высотой прописной буквы h, а не CSS em; формат Type A d=h/14. Для этого профиля выбирать размер h=3.5 мм — редакторская настройка из допустимого ряда.",
+      "positive_case": "Реальное h(Н)=3.5 мм по замерам при 1:1.",
+      "negative_case": "font-size=3.5 CSS без измерения h объявлен соответствующим ГОСТ.",
+      "owner": "YGO2",
+      "dimensions_mm": {
+        "project_default_cap_height": 3.5,
+        "allowed_series_example": [
+          2.5,
+          3.5,
+          5
+        ],
+        "unit": "mm"
+      },
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-28",
+      "subject": "text_ink_alignment",
+      "source_standard": "g2702",
+      "source_clause": "5.1.4; ГОСТ 2.304-81 п.1.1",
+      "normative_force": "EDITORIAL_DEFAULT",
+      "evidence": "not_specified",
+      "rule": "Центрировать реальные границы глифов внутри блока, предложенный padding=2 мм проектный, не нормативный ГОСТ; отказ при переполнении без самовольного shrink.",
+      "positive_case": "«Контроллер» читаем по центру с ink box не заходящим на границу.",
+      "negative_case": "Подпись сдвинута и пересекает рамку, либо искусственно shrink ниже заявленного h.",
+      "owner": "YGO2",
+      "dimensions_mm": {
+        "project_padding": 2,
+        "unit": "mm"
+      },
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-29",
+      "subject": "text_brevity",
+      "source_standard": "g2701",
+      "source_clause": "5.6.2",
+      "normative_force": "MUST",
+      "evidence": "source_confirmed",
+      "rule": "Текст краток и точен, без произвольных аббревиатур (кроме общепринятых и установленных).",
+      "positive_case": "«Блок питания» в одной строке.",
+      "negative_case": "Непонятные непроверенные сокращения «БПЗПР?» без легенды.",
+      "owner": "YGO2",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-30",
+      "subject": "link_label_rotation",
+      "source_standard": "g2701",
+      "source_clause": "5.6.2–5.6.3",
+      "normative_force": "MUST_WITH_EXCEPTION",
+      "evidence": "source_confirmed",
+      "rule": "Текст, относящийся к линии, как правило ориентирован параллельно горизонтальному участку; при большой плотности допустим вертикальный.",
+      "positive_case": "Подпись «данные» горизонтально над своим трактом.",
+      "negative_case": "Диагональная/перевёрнутая нечитаемая надпись без необходимости.",
+      "owner": "YGO2",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-31",
+      "subject": "draw_links_full",
+      "source_standard": "g2701",
+      "source_clause": "5.5.4",
+      "normative_force": "MUST_WITH_EXCEPTION",
+      "evidence": "source_confirmed",
+      "rule": "Линии взаимосвязи показывают, как правило, полностью; разрывы на одном листе при перегрузке допускаются, с указанием места соответствия и стрелками.",
+      "positive_case": "Полная связь B3→B5.",
+      "negative_case": "Разрыв незаметно удалил связь между модулями.",
+      "owner": "ELEKTRIK",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-32",
+      "subject": "cross_sheet_link",
+      "source_standard": "g2701",
+      "source_clause": "5.5.3",
+      "normative_force": "CONDITIONAL_MUST",
+      "evidence": "source_confirmed",
+      "rule": "Линии, переходящие на другой лист/в другой документ, обрывают ЗА ПРЕДЕЛАМИ изображения схемы БЕЗ стрелок, но подписывают обозначение и лист/зону или документ. Не путать стрелку процесса с маркером перехода.",
+      "positive_case": "Окончание с надписью (2,А1) без стрелки перехода.",
+      "negative_case": "При межлистовом разрыве нарисована только стрелка без адреса.",
+      "owner": "ELEKTRIK",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-33",
+      "subject": "one_sheet_cut",
+      "source_standard": "g2701",
+      "source_clause": "5.5.4, примечание",
+      "normative_force": "CONDITIONAL_ALLOWED",
+      "evidence": "source_confirmed",
+      "rule": "Разрыв в пределах одного листа при сложном чтении заканчивается стрелкой и указанием связи/характеристик. Это не то же, что стрелки процесса по 5.1.3.",
+      "positive_case": "Два matched именованных разрыва с arrow на одном листе.",
+      "negative_case": "Стрелка разрыва без пары/идентификатора трактуется как самостоятельный процесс.",
+      "owner": "ELEKTRIK",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-34",
+      "subject": "crossing_graph_semantics",
+      "source_standard": "g2721",
+      "source_clause": "п.7, табл.6в поз.5 — электросвязи; g2702 5.1.1",
+      "normative_force": "EDITORIAL_SEMANTICS",
+      "evidence": "scope_limited",
+      "rule": "Геометрическое X логических Э1 связей НЕ создаёт автоматически физическую электрическую сеть/соединение; при физических электролиниях правила 2.721 табл.6в применяются по своим условиям.",
+      "positive_case": "X при (84,27) и (112,115) остаются двумя разными link ID.",
+      "negative_case": "Любая точка пересечения без метаданных автоматически сливает пути и PinRef.",
+      "owner": "ELEKTRIK",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-35",
+      "subject": "branch_logical_node",
+      "source_standard": "g2721",
+      "source_clause": "табл.6в поз.6, примечание2 — только физические электросвязи; g2702 5.1.1",
+      "normative_force": "EDITORIAL_SEMANTICS",
+      "evidence": "scope_limited",
+      "rule": "Разветвление логического процесса — явный directed fan-out с проверенной семантикой; shape/radius junction не установлен в §5.1, правило 2.721 про один T без точки нельзя безусловно переносить на нефизический link.",
+      "positive_case": "E2 B2→B4 плюс E9 B2→B7 используют явный branch at (72,80).",
+      "negative_case": "Случайное T от чужого link создаёт третьего получателя или двойную сеть.",
+      "owner": "ELEKTRIK",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-36",
+      "subject": "cycles",
+      "source_standard": "g2702",
+      "source_clause": "5.1.1–5.1.5",
+      "normative_force": "EDITORIAL_SAFETY",
+      "evidence": "not_specified",
+      "rule": "Цикл обратной связи в Э1 не запрещён; routing/arrow-check должен поддерживать directed cycles по explicit link IDs, не навязывать DAG по ГОСТ.",
+      "positive_case": "Feedback B7→B3 отмечена как отдельная дуга и читается.",
+      "negative_case": "Отклонить любое кольцо как «ГОСТ запрещает циклы», либо спрятать обратную связь.",
+      "owner": "ELEKTRIK",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-37",
+      "subject": "physical_vs_functional",
+      "source_standard": "g2702",
+      "source_clause": "5.1.1 и 5.1.2; отличие от 5.3/5.4",
+      "normative_force": "EDITORIAL_SAFETY",
+      "evidence": "source_dependent_policy",
+      "rule": "Набор Э1 хранит semantic functional blocks и process links; не копировать автоматически физические контакты, номера выводов, ERC/netlist типа Э3.",
+      "positive_case": "Link B3→B5 имеет directional process и не объявляет электрический узел.",
+      "negative_case": "Порт виртуального блока без физического паспорта превращён в PinRef конкретного сопротивления.",
+      "owner": "ELEKTRIK",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-38",
+      "subject": "real_ugo_catalog",
+      "source_standard": "g2701",
+      "source_clause": "5.4.1–5.4.4",
+      "normative_force": "CONDITIONAL_MUST",
+      "evidence": "source_confirmed",
+      "rule": "При выборе УГО вместо прямоугольника используется его нормативный паспорт, размеры/форма/положение, альтернатива согласована внутри комплекта; нестандартное УГО поясняется.",
+      "positive_case": "УГО YGO2 допускается только по отдельной принятой карточке.",
+      "negative_case": "Округлый произвольный значок объявлен ГОСТ, хотя выбран no-legend.",
+      "owner": "YGO2",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-39",
+      "subject": "block_dimensions",
+      "source_standard": "g2702",
+      "source_clause": "5.1.2; ГОСТ 2.701 5.3.1",
+      "normative_force": "NOT_SPECIFIED",
+      "evidence": "explicit_absence",
+      "rule": "Общих обязательных W/H прямоугольного функционального блока в §5.1 нет; конкретные 48×24 мм в учебном образце — проектные.",
+      "positive_case": "Разные ширины 48/52/51 мм при сохранении читаемости.",
+      "negative_case": "Размер 48×24 мм объявлен обязательным согласно 2.702.",
+      "owner": "YGO2",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-40",
+      "subject": "label_crossing",
+      "source_standard": "g2701",
+      "source_clause": "5.3.2, 5.6.2",
+      "normative_force": "EDITORIAL_SAFETY",
+      "evidence": "source_dependent_policy",
+      "rule": "Текст не должен перекрывать чужие линии и засорять последовательность; численный ink padding относительно линии — проектный валидатор.",
+      "positive_case": "Подписи внутри своих блоков, линии обходят текст.",
+      "negative_case": "Стрелка или связь проходит через слово внутри блока без утверждённого входного символа.",
+      "owner": "YGO2",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-41",
+      "subject": "readability_with_flow",
+      "source_standard": "g2701",
+      "source_clause": "5.3.2; 5.5.2",
+      "normative_force": "MUST_QUALITATIVE",
+      "evidence": "source_confirmed",
+      "rule": "Расположение блоков и связей должно обеспечивать удобство чтения структуры; минимизировать накладывания и неоправданные повороты.",
+      "positive_case": "Последовательность от ввода к исполнению видима, петли выделены.",
+      "negative_case": "Граф компоновки со скрытыми именами или произвольным порядком.",
+      "owner": "ELEKTRIK",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    },
+    {
+      "id": "E1-42",
+      "subject": "separate_ugo_and_rect",
+      "source_standard": "g2701",
+      "source_clause": "5.4.1, 5.3.5–5.3.6",
+      "normative_force": "CONDITIONAL_MUST",
+      "evidence": "source_confirmed",
+      "rule": "Прямоугольник структурной функциональной части не следует автоматически приравнивать к графическому контуру физического устройства, которому по §5.3.5/5.3.6 задан собственный вид линий.",
+      "positive_case": "Редактор хранит kind=functional_rectangle и kind=device_contour отдельно.",
+      "negative_case": "Все функциональные прямоугольники без разбора переведены на штрихпунктир.",
+      "owner": "YGO2",
+      "dimensions_mm": null,
+      "status": "DRAFT_FOR_IMPLEMENTATION"
+    }
+  ],
+  "editor_defaults": {
+    "single_port": "midpoint of selected side; not prescribed by GOST",
+    "multiple_ports": "stable distributed positions; avoid exact endpoint overlap; calculate min separation using link strokes/clearances",
+    "preferred_incoming": [
+      "left",
+      "top"
+    ],
+    "preferred_outgoing": [
+      "right",
+      "bottom"
+    ],
+    "arrow_flow": "directed-process when semantic process is known",
+    "stroke_mm": 0.35,
+    "block_example_size_mm": [
+      48,
+      24
+    ],
+    "block_text_h_mm": 3.5,
+    "block_padding_mm": 2,
+    "text_align": "ink-centered",
+    "avoid_physical_pin_refs": true,
+    "intersection": "explicit logical graph, never based on coincident geometry",
+    "cycles": "allowed when explicitly authored"
+  },
+  "example": {
+    "file": "docs/standards/evidence/issue69-seven-block-e1.svg",
+    "status": "DRAFT_ILLUSTRATIVE_NOT_CERTIFIED",
+    "rectangles": 7,
+    "directed_edges": 9,
+    "real_branch": [
+      72,
+      80
+    ],
+    "unjoined_crossings": [
+      [
+        84,
+        27
+      ],
+      [
+        112,
+        115
+      ]
+    ],
+    "traceability_json": "docs/standards/issue-69-e1-example.json"
+  },
+  "acceptance_policy": {
+    "hard_gates": [
+      "MUST",
+      "MUST_QUALITATIVE",
+      "MUST_WITH_EXCEPTION",
+      "MUST_FOR_UGO"
+    ],
+    "recommendations": [
+      "RECOMMENDED"
+    ],
+    "conditional": [
+      "CONDITIONAL_MUST",
+      "CONDITIONAL_ALLOWED"
+    ],
+    "editorial": [
+      "EDITORIAL_DEFAULT",
+      "EDITORIAL_SAFETY",
+      "EDITORIAL_SEMANTICS"
+    ],
+    "undefined": [
+      "NOT_SPECIFIED"
+    ],
+    "gost_approval_on_green_ci": false
+  },
+  "handoff": {
+    "ELEKTRIK": [
+      "separate directed functional E1 graph from electrical netlist",
+      "attach lines to border chosen side, prevent false crosses/branches",
+      "respect actual stroke clearances and minimize bends",
+      "encode process direction/branch explicit in data, cycles supported"
+    ],
+    "YGO2": [
+      "rectangle is normative alternative, not new electrotechnical UGO",
+      "names mandatory for rectangles unless 5.1.5 number+table",
+      "true cap-height and ink-based label placement",
+      "conditional device contours/UGO types, independent DRAFT review"
+    ],
+    "prohibited_changes": [
+      "src/",
+      "examples/",
+      "tests/fixtures/electrical-cycle3/",
+      "tests/fixtures/electrical-layout44/",
+      "main",
+      "parallel/catalog-cycle4",
+      "parallel/rendering-sheet-cycle5"
+    ]
+  }
+}
