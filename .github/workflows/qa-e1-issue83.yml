@@ -1,0 +1,35 @@
+name: QA E1 independent visual evidence (PR78 + PR80)
+
+on:
+  push:
+    branches: ["parallel/qa-e1-integration-gate"]
+  pull_request:
+    branches: ["integration/stage0-12"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  genuine-e1-artifacts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test and rasterization dependencies
+        run: python -m pip install -e ".[dev]" cairosvg
+      - name: Lint only QA-authored executable code
+        run: ruff check tests/qa_e1_integration_support.py tests/qa_e1_integration_test.py scripts/qa_e1_evidence.py
+      - name: Generate genuine renderer SVG, 300 DPI PNG, QA-only semantic image and exact measurement JSON
+        run: python scripts/qa_e1_evidence.py --output-dir output/qa-e1-issue83
+      - name: Upload reproducible image and source-provenance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-issue83-e1-pr78-pr80-images
+          path: output/qa-e1-issue83/
+          retention-days: 30
+          if-no-files-found: warn
