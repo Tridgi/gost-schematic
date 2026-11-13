@@ -12,8 +12,6 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
-pytest.importorskip("gost_schematic.rendering.ic_rectangular")
-
 from examples.review_ic_cycle7 import synthetic_ic
 from gost_schematic.core.geometry import Point
 from gost_schematic.core.units import format_mm
@@ -27,8 +25,10 @@ from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
 from gost_schematic.electrical.ic_serde import IcLibraryRecord, ic_from_json, ic_to_json
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
-from gost_schematic.rendering.ic_rectangular import render_resolved_ic
 from gost_schematic.standards.type_a_font import inspect_type_a_font
+
+PAINT = pytest.importorskip("gost_schematic.rendering.ic_rectangular")
+render_resolved_ic = PAINT.render_resolved_ic
 
 SVG = "{http://www.w3.org/2000/svg}"
 
