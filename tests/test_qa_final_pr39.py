@@ -332,8 +332,12 @@ def test_58_foreign_net_touching_already_assigned_terminal_is_blocked_before_erc
     graph = ExternalWireGraph((
         WireSegment(a0, a1, "A"), WireSegment(b0, b1, "B"),
     ))
-    # Existing issue #58: validator currently misses this malformed input.
-    assert validate_external_wires(circuit, graph, parts, symbols) == ()
+    # Current #58 may miss the contact. It must not infer a false short.
+    assert "WIRE_NET_SHORT" not in {
+        item.code for item in validate_external_wires(
+            circuit, graph, parts, symbols
+        )
+    }
     unsafe_foreign = WireObstacle(
         "bad-B", Line(b0, b1), stroke_um=300, net_name="B",
     )
@@ -393,3 +397,39 @@ def test_stable_output_under_randomized_hazard_order_and_repeat_calls(engine):
         assert low.route_two_pins(
             start, end, keepouts=hazards[::-1], max_cells=25000,
         ) == first
+
+
+@pytest.mark.xfail(
+    reason="Issue #58 remains a CURRENT integrated-validator defect, not PR39",
+    strict=True,
+)
+def test_58_independent_existing_validator_rejects_already_wired_pin_hit(
+    catalog,
+):
+    """A legal A endpoint and unmarked B interior meet at physical R1.1."""
+    positions = (
+        ("R1", _point(0, 0), Transform()),
+        ("R2", _point(-20000, 0), Transform(180)),
+        ("R3", _point(0, -10000), Transform(270)),
+        ("R4", _point(0, 10000), Transform(90)),
+    )
+    components = tuple(
+        _place(catalog, ref, "resistor.fixed", "1", position, tx)
+        for ref, position, tx in positions
+    )
+    circuit = Circuit(
+        components,
+        (
+            Net("A", (PinRef("R1", "1"), PinRef("R2", "1"))),
+            Net("B", (PinRef("R3", "1"), PinRef("R4", "1"))),
+        ),
+    )
+    graph = ExternalWireGraph((
+        WireSegment(_point(-20000, 0), _point(0, 0), "A"),
+        WireSegment(_point(0, -10000), _point(0, 10000), "B"),
+    ))
+    parts, symbols = _parts(catalog, circuit)
+    diagnostics = validate_external_wires(circuit, graph, parts, symbols)
+    assert "WIRE_PIN_CONTACT_UNDECLARED" in {
+        item.code for item in diagnostics
+    }
