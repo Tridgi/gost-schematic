@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "id": "structural-e1-visual-proposal-v1",
+  "approval": "DRAFT",
+  "not_electrical": true,
+  "standards": [
+    {
+      "designation": "ГОСТ 2.702-2011",
+      "clauses": [
+        "5.1.1",
+        "5.1.2",
+        "5.1.3",
+        "5.1.4",
+        "5.1.5"
+      ],
+      "source": "https://protect.gost.ru/gost/details/d9c1c334-2a90-45cb-ac00-c31da92d706b"
+    },
+    {
+      "designation": "ГОСТ 2.701-2008",
+      "clauses": [
+        "5.3.1",
+        "5.3.4",
+        "5.3.5",
+        "5.3.6",
+        "5.5.1",
+        "5.5.2",
+        "5.5.3",
+        "5.5.4"
+      ],
+      "source": "https://protect.gost.ru/gost/details/87f1f382-a055-48b7-ae80-f359ff5e1f4e"
+    }
+  ],
+  "verified_limits": [
+    {
+      "id": "line_width",
+      "min_um": 200,
+      "max_um": 1000,
+      "recommended_min_um": 300,
+      "recommended_max_um": 400,
+      "source_clause": "ГОСТ 2.701-2008 §5.5.1"
+    },
+    {
+      "id": "parallel_links",
+      "min_clear_um": 3000,
+      "source_clause": "ГОСТ 2.701-2008 §5.3.4"
+    },
+    {
+      "id": "symbol_gap",
+      "min_clear_um": 2000,
+      "source_clause": "ГОСТ 2.701-2008 §5.3.4"
+    },
+    {
+      "id": "ugo_strokes",
+      "min_clear_um": 1000,
+      "source_clause": "ГОСТ 2.701-2008 §5.3.4"
+    }
+  ],
+  "editorial_profile": {
+    "typical_block_width_um": 56000,
+    "typical_block_height_um": 36000,
+    "minimum_port_edge_inset_um": 5000,
+    "minimum_port_pitch_um": 6000,
+    "minimum_text_inset_um": 3000,
+    "title_preview_font_um": 3500,
+    "title_leading_um": 5000,
+    "code_preview_font_um": 2500,
+    "line_stroke_um": 350,
+    "arrow_length_um": 3500,
+    "arrow_halfwidth_um": 1500,
+    "default_single_port_t": "0.5",
+    "n_ports_positions": "t_i=(i+1)/(N+1) as Fraction; round final absolute model Point ONCE signed half-away, never round a local offset",
+    "font_metric_status": "standalone 6-block preview rough only; seven-block PR80 view measures real external OpenGost Type A h=2500 ink; neither implies normative face approval",
+    "note": "none of the specific block dimensions, port distribution formulas or title placements above are prescribed by these GOST sections",
+    "model_seam": "Typed model owns final Point via resolve_port_positions; SVG consumes exactly that Point, no independent quantization. View rotation/scale transforms this resolved point explicitly.",
+    "two_named_profiles": {
+      "spacious_legacy_preview": {
+        "min_corner_um": 5000,
+        "min_port_pitch_um": 6000,
+        "text_inset_um": 3000,
+        "typical_size_um": [
+          56000,
+          36000
+        ],
+        "status": "EDITORIAL, six-block sketch"
+      },
+      "compact_real_pr80_view": {
+        "min_corner_um": 2000,
+        "min_port_pitch_um": 3350,
+        "text_inset_um": 1200,
+        "font_cap_height_um": 2500,
+        "arrow_length_um": 2200,
+        "arrow_halfwidth_um": 950,
+        "status": "EDITORIAL, measured 7/18/9 PR80 rendering"
+      }
+    }
+  },
+  "contract": {
+    "diagram_type": "E1",
+    "block": {
+      "id": "string",
+      "title_lines": "nonempty array of nonempty strings",
+      "code": "string|null",
+      "center_um": "[int,int]",
+      "size_um": "[int,int]",
+      "rotation": "0|90|180|270",
+      "mirror_x": "boolean",
+      "scale": "positive decimal string",
+      "outline": "functional|device_with_schematic|group_without_schematic",
+      "ports": "array BlockPort",
+      "name": "semantic exact name; view title fragments CONCATENATE to name; code view-only"
+    },
+    "port": {
+      "id": "unique per block string",
+      "side": "LEFT|RIGHT|TOP|BOTTOM",
+      "relative_position": "canonical decimal string in (0,1)",
+      "direction": "input|output|bidirectional"
+    },
+    "link": {
+      "id": "string",
+      "source": "{block_id,port_id}",
+      "target": "{block_id,port_id}",
+      "arrow_at": "target|none; visual marker independent from directed semantic source->target; reverse/both deferred",
+      "via_um": "optional array of [int,int]"
+    },
+    "electrical_fields_forbidden": [
+      "PartDefinition",
+      "PinRef",
+      "Circuit",
+      "nets",
+      "part_id",
+      "physical_pins",
+      "conducting_indices",
+      "net_id"
+    ]
+  },
+  "known_deferred": [
+    "final ELEKTRIK schema acceptance in Issue #70",
+    "functional graph cycle semantics",
+    "non-orthogonal process arrows",
+    "page break markers",
+    "full 1:1 normative manual sign-off",
+    "visual arrow_at=source/both needs explicit independent graphics decision; cannot reverse semantic link",
+    "normative approval of the measured OpenGost Type A outlines and any E1 compact layout profile"
+  ],
+  "model_anchor_policy": {
+    "source": "ELEKTRIK PR80 resolve_port_positions(diagram)",
+    "quantization": "ONE round-half-away from zero of FINAL absolute Fraction Point",
+    "integer_um": true,
+    "no_svg_rounding": true,
+    "collision_after_rounding": "E1_PORT_COLLISION",
+    "scope": "provisional private experimental model, coordinator and QA signoff pending"
+  }
+}
