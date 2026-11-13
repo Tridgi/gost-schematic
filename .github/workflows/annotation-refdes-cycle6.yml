@@ -66,7 +66,7 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
-          from PIL import Image, ImageDraw
+          from PIL import Image, ImageDraw, ImageFont
           from xml.etree import ElementTree as ET
           root=Path("output/refdes-cycle6")
           report=json.loads((root/"refdes-distance-report.json").read_text())
@@ -86,17 +86,55 @@ jobs:
                       assert svg.get("data-approval")=="DRAFT"
                       assert len(svg.findall(f".//{tag}circle[@data-kind='authored-junction']"))==3
                       assert len(svg.findall(f".//{tag}line[@data-layer='wires']"))==16
-          before=Image.open(root/"refdes-before-l1-clean.png").convert("RGB")
-          after=Image.open(root/"refdes-after-l1-clean.png").convert("RGB")
-          assert before.size==after.size
-          margin,top=30,80
-          out=Image.new("RGB",(before.width*2+3*margin,before.height+top+margin),"white")
-          out.paste(before,(margin,top))
-          out.paste(after,(before.width+2*margin,top))
-          drawer=ImageDraw.Draw(out)
-          drawer.text((margin,23),f"BEFORE keepout gap: {old:.3f} mm",fill="black")
-          drawer.text((before.width+2*margin,23),f"AFTER visible gap: {new:.3f} mm",fill="black")
-          out.save(root/"refdes-L1-before-after-comparison.png")
+          # Confirm actual graphical strokes, wires and junction dots are
+          # byte-identical across the two label-only previews (not only counts).
+          for view in ("clean","diagnostic"):
+              left=ET.fromstring((root/f"refdes-before-{view}.svg").read_text())
+              right=ET.fromstring((root/f"refdes-after-{view}.svg").read_text())
+              for tagname, predicate in (
+                  ("g","symbols"),
+                  ("line","wires"),
+              ):
+                  a=left.findall(f".//{tag}{tagname}[@data-layer='{predicate}']")
+                  b=right.findall(f".//{tag}{tagname}[@data-layer='{predicate}']")
+                  assert [ET.tostring(x) for x in a] == [ET.tostring(x) for x in b]
+              da=left.findall(f".//{tag}circle[@data-kind='authored-junction']")
+              db=right.findall(f".//{tag}circle[@data-kind='authored-junction']")
+              assert [ET.tostring(x) for x in da] == [ET.tostring(x) for x in db]
+          for ref in ("R1","R2","C1","C2","C3"):
+              item=report["components"][ref]
+              assert item["proposed_ink_to_visual_mm"] <= (
+                  item["legacy_ink_to_visual_mm"] + .001
+              ), (ref,item)
+          font=ImageFont.truetype("DejaVuSans.ttf",42)
+          for scope, suffix in (("sheet",""), ("L1","-l1")):
+              for view in ("clean","diagnostic"):
+                  before=Image.open(
+                      root/f"refdes-before{suffix}-{view}.png"
+                  ).convert("RGB")
+                  after=Image.open(
+                      root/f"refdes-after{suffix}-{view}.png"
+                  ).convert("RGB")
+                  assert before.width == after.width
+                  margin,header=36,128
+                  out=Image.new(
+                      "RGB",
+                      (before.width+after.width+3*margin,
+                       max(before.height,after.height)+header+margin),
+                      "white",
+                  )
+                  out.paste(before,(margin,header))
+                  out.paste(after,(before.width+2*margin,header))
+                  draw=ImageDraw.Draw(out)
+                  draw.text((margin,28),
+                            f"BEFORE: L1 -> coil {old:.3f} mm",font=font,fill="black")
+                  draw.text((before.width+2*margin,28),
+                            f"AFTER: L1 -> coil {new:.3f} mm",font=font,fill="black")
+                  name=(f"refdes-{scope}-before-after-comparison"
+                        + ("-diagnostic" if view=="diagnostic" else "")+".png")
+                  out.save(root/name, dpi=(300,300))
+          assert (root/"refdes-sheet-before-after-comparison.png").is_file()
+          assert (root/"refdes-L1-before-after-comparison.png").is_file()
           print(f"Verified same 16 wires, 3 junctions; L1 measured ink gap {old:.3f} -> {new:.3f} mm")
           PY
       - name: Upload independent Issue 68 SVG, PNG and measurement manifest
