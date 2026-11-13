@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from examples.review_ic_cycle7 import synthetic_ic
-from gost_schematic.core.geometry import Point, Side
+from gost_schematic.core.geometry import Box, Point, Side
 from gost_schematic.core.transforms import Transform
 from gost_schematic.electrical.contacts import (
     ContactInventory,
@@ -16,6 +16,7 @@ from gost_schematic.electrical.contacts import (
 )
 from gost_schematic.electrical.ic import (
     IcField,
+    IcPinType,
     IcKind,
     IcPackage,
     IcPinRow,
@@ -26,6 +27,7 @@ from gost_schematic.electrical.ic import (
     validate_ic_circuit,
 )
 from gost_schematic.electrical.ic_serde import (
+    IcLibraryRecord,
     ic_from_json,
     ic_to_json,
 )
@@ -337,3 +339,91 @@ def test_mutation_does_not_rewrite_old_circuit_api_or_imply_svg_junction():
     assert not hasattr(record.device, "electrical_nets")
     assert not hasattr(record, "junctions")
     assert all(p.pin_numbers for p in record.device.units)
+
+
+@pytest.mark.parametrize("kind", (IcKind.DIGITAL, IcKind.ANALOG))
+@pytest.mark.parametrize("count", (8, 14, 40, 64))
+@pytest.mark.parametrize("rotation", (0, 90, 180, 270))
+@pytest.mark.parametrize("mirrored", (False, True))
+def test_explicit_vertical_physical_pinrefs_are_exact_model_only(
+    kind, count, rotation, mirrored,
+):
+    """TOP/BOTTOM is valid physical identity; ESKD ink is separately BLOCKED."""
+    source = synthetic_ic(count, kind)
+    specs = []
+    for spec in source.specs:
+        # This is an explicit physical-model demonstration with a 5mm row
+        # pitch, NOT an ESKD-approved top/bottom graphical layout.
+        width = max(60000, (len(spec.rows) + 2) * 5000)
+        new_body = Box(
+            spec.body.min_x, spec.body.min_y,
+            spec.body.min_x + width, spec.body.max_y,
+        )
+        rows = []
+        for index, row in enumerate(spec.rows):
+            role = source.device.pin_map[row.number].electrical_type
+            side = Side.TOP if role in (
+                IcPinType.INPUT, IcPinType.POWER_INPUT,
+            ) else Side.BOTTOM
+            rows.append(replace(
+                row, side=side,
+                anchor=Point(
+                    new_body.min_x + (index + 1) * 5000,
+                    new_body.min_y - 10000 if side is Side.TOP
+                    else new_body.max_y + 10000,
+                ),
+            ))
+        specs.append(replace(
+            spec, body=new_body, rows=tuple(rows),
+            revision=spec.revision + 1,
+        ))
+    placements = tuple(replace(
+        placement, transform=Transform(rotation, mirrored),
+    ) for placement in source.placements)
+    vertical = IcLibraryRecord(source.device, tuple(specs), placements)
+    restored = ic_from_json(ic_to_json(vertical))
+    assert restored == vertical
+    endpoints = resolve_ic_pin_positions(
+        vertical.device, vertical.specs, vertical.placements,
+    )
+    sides = resolve_ic_port_sides(
+        vertical.device, vertical.specs, vertical.placements,
+    )
+    assert len(endpoints) == count
+    assert set(endpoints) == {
+        PinRef(kind.reference_prefix + "1", str(number))
+        for number in range(1, count + 1)
+    }
+    for spec, placement in zip(
+        vertical.specs, vertical.placements, strict=True,
+    ):
+        for row in spec.rows:
+            ref = PinRef(placement.component_ref, row.number)
+            assert endpoints[ref] == (
+                placement.transform.apply(row.anchor) + placement.origin
+            )
+            assert sides[ref] == placement.transform.side(row.side)
+            assert row.side in (Side.TOP, Side.BOTTOM)
+            assert row.anchor.x != spec.body.min_x
+            assert row.anchor.x != spec.body.max_x
+    physical = ComponentInstance(
+        kind.reference_prefix + "1", source.device.identifier,
+    )
+    net = Net("NET_A", (PinRef(physical.reference, "1"),))
+    circuit = Circuit((physical,), (net,))
+    validate_ic_circuit(vertical.device, circuit, physical.reference)
+    assert circuit.nets == (net,)
+    assert circuit.components == (physical,)
+
+
+def test_vertical_physical_port_at_frame_corner_fails_closed():
+    source = synthetic_ic(8)
+    spec = source.specs[0]
+    with pytest.raises(ValueError, match="IC_ANCHOR_INSIDE"):
+        replace(spec, rows=(
+            replace(
+                spec.rows[0], side=Side.TOP,
+                anchor=Point(spec.body.min_x, -4000),
+            ),
+            *spec.rows[1:],
+        ))
