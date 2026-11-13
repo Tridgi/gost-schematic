@@ -15,7 +15,7 @@
     "blocks": [
       {
         "id": "B1",
-        "name": "Датчики\\nвходные данные",
+        "name": "Датчики\nвходные данные",
         "x_um": 0,
         "y_um": 0,
         "width_um": 30000,
@@ -450,7 +450,7 @@
         {
           "op": "replace",
           "path": "/blocks/0/name",
-          "value": "Очень длинное имя\\nвторая строка"
+          "value": "Очень длинное имя\nвторая строка"
         }
       ],
       "expected_diagnostic_family": "E1_TEXT_INK_OVERFLOW",
@@ -467,7 +467,7 @@
         {
           "op": "replace",
           "path": "/blocks/0/name",
-          "value": "Управление\\nВторая строка\\nТретья строка"
+          "value": "Управление\nВторая строка\nТретья строка"
         },
         {
           "op": "replace",
@@ -556,7 +556,7 @@
       "mutations": [
         {
           "op": "add",
-          "path": "/graphics",
+          "path": "/graphics/-",
           "value": {
             "kind": "crossing",
             "links": [
@@ -584,7 +584,7 @@
       "mutations": [
         {
           "op": "add",
-          "path": "/graphics",
+          "path": "/graphics/-",
           "value": {
             "kind": "crossing",
             "links": [
@@ -641,7 +641,7 @@
       "mutations": [
         {
           "op": "add",
-          "path": "/graphics",
+          "path": "/graphics/-",
           "value": {
             "kind": "arrowhead",
             "link_id": "F1",
