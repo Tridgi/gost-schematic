@@ -323,3 +323,44 @@ def test_mixed_stroke_preexpanded_foreign_ink_can_be_protected_by_callers(router
         grid_um=100, clearance_um=400, stroke_um=300, max_cells=10000,
     )
     _assert_route_structure(result, source, target, (ink_box,), margin=550)
+
+
+def test_two_real_nets_remain_electrically_separate_around_a_foreign_live_wire(
+    router, catalog,
+):
+    """A newly routed real net must not short an existing unrelated real net."""
+    r1 = ComponentInstance("R1", "resistor.fixed", Point(-8000, 0))
+    r2 = ComponentInstance("R2", "resistor.fixed", Point(28000, 0))
+    r3 = ComponentInstance("R3", "resistor.fixed", Point(2000, -5000))
+    r4 = ComponentInstance("R4", "resistor.fixed", Point(18000, 5000))
+    circuit = Circuit(
+        (r1, r2, r3, r4),
+        (
+            Net("LINK", (PinRef("R1", "2"), PinRef("R2", "1"))),
+            Net("FOREIGN", (PinRef("R3", "2"), PinRef("R4", "1"))),
+        ),
+    )
+    source = _pins(catalog, r1)["2"]
+    target = _pins(catalog, r2)["1"]
+    foreign_start = _pins(catalog, r3)["2"]
+    foreign_end = _pins(catalog, r4)["1"]
+    assert (source, target) == (Point(0, 0), Point(20000, 0))
+    assert (foreign_start, foreign_end) == (Point(10000, -5000), Point(10000, 5000))
+    foreign = WireSegment(foreign_start, foreign_end, "FOREIGN")
+    hazards = _keepouts(catalog, *circuit.components)
+    route = router.route_two_pins(
+        source, target, keepouts=hazards, existing_wires=(foreign,),
+        max_cells=10000,
+    )
+    _assert_route_structure(route, source, target, hazards)
+    foreign_box = Box(10000, -5000, 10001, 5001).expanded(700)
+    assert all(
+        not segment_intersects_box(edge, foreign_box)
+        for edge in _edges(route)
+    )
+    actual_graph = route.external_graph("LINK")
+    from gost_schematic.validation.external_wire_checks import ExternalWireGraph
+
+    combined = ExternalWireGraph((*actual_graph.segments, foreign))
+    parts, graphics = _parts(catalog, *circuit.components)
+    assert validate_external_wires(circuit, combined, parts, graphics) == ()
