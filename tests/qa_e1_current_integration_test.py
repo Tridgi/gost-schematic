@@ -312,3 +312,43 @@ def test_current_explicit_visual_crossing_not_an_electrical_connection(latest):
         model.structural_from_json(json.dumps(projected, ensure_ascii=False))
     # This is an unresolved inspection-chord vs routed-view policy mismatch,
     # NOT evidence of an E3 electrical short.
+
+
+def test_current_legacy_decimal_projection_still_changes_exact_3_over_7(
+    latest,
+):
+    """Real CURRENT PR78 visual string seam is not full rational JSON transport.
+
+    Geometry can round to the SAME µm while semantic Fraction is different.
+    New typed renderer avoids this by never translating original PortRef.
+    """
+    model, _demo, viewer, _typed = latest
+    visual = {
+        "schema_version": 1, "diagram_type": "E1", "status": "DRAFT",
+        "blocks": [{
+            "id": "X", "name": "БЛОК", "title_lines": ["БЛОК"],
+            "code": None, "center_um": [28000, 35000],
+            "size_um": [56000, 70000],
+            "ports": [{
+                "id": "out", "side": "RIGHT", "direction": "output",
+                "relative_position":
+                    "0.428571428571428571428571428571429",
+            }],
+        }],
+        "links": [],
+    }
+    observed = viewer.validate_design(visual)
+    assert observed["blocks"][0]["ports"]["out"]["point_um"] == (
+        56000, 30000
+    )
+    projection = viewer.semantic_projection(visual)
+    assert projection["diagram_type"] == "E1"
+    actual_fraction = Fraction(*projection["ports"][0]["position"])
+    assert actual_fraction != Fraction(3, 7)
+    returned = model.structural_from_json(
+        json.dumps(projection, ensure_ascii=False)
+    )
+    assert model.resolve_port_positions(returned)[
+        model.PortRef("X", "out")
+    ] == Point(56000, 30000)
+    assert returned.ports[0].position != Fraction(3, 7)
