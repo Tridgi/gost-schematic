@@ -214,16 +214,15 @@ def test_real_paint_d4_split_identity_and_fail_closed_views(
 
 
 def test_undeclared_top_bottom_mix_is_rejected_before_paint(typography):
-    style, measurer = typography
     source = synthetic_ic(2)
     spec = source.specs[0]
     top_row = replace(
         spec.rows[0], side=Side.TOP, anchor=Point(5000, -4000),
     )
-    new_spec = replace(spec, rows=(top_row, spec.rows[1]))
-    top_view = IcLibraryRecord(source.device, (new_spec,), source.placements)
+    # Fail immediately at the authoritative model boundary. A mixed-side
+    # view without an explicit TOP_BOTTOM profile must never reach PAINT.
     with pytest.raises(ValueError, match="IC_PORT_LAYOUT_MISMATCH"):
-        propose_ic_paint_binding(top_view, style, measurer)
+        replace(spec, rows=(top_row, spec.rows[1]))
 
 
 def test_source_side_reflow_is_explicit_not_hidden_or_physical(typography):
