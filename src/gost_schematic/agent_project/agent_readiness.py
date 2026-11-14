@@ -113,10 +113,11 @@ def _validate_inventory(request: dict[str, Any], catalog: CatalogResolver,
             _identifier(part_id, _PART, "INVALID_CATALOG_SELECTOR")
             require_sha(item["part_sha256"], name="part_sha256")
             require_sha(item["symbol_sha256"], name="symbol_sha256")
-            if tl494 and ref in TL494_REQUIRED_PARTS:
-                if part_id != TL494_REQUIRED_PARTS[ref]:
-                    raise ProjectError("SOURCE_UGO_VARIANT_MISMATCH",
-                                       "Frozen TL494 profile requires an exact UGO")
+            if tl494 and ref in TL494_REQUIRED_PARTS and (
+                part_id != TL494_REQUIRED_PARTS[ref]
+            ):
+                raise ProjectError("SOURCE_UGO_VARIANT_MISMATCH",
+                                   "Frozen TL494 profile requires an exact UGO")
             if tl494 and ref not in TL494_REQUIRED_PARTS:
                 raise ProjectError("SOURCE_UNVERIFIED_PART", "No source-locked choice for ref")
             lock = catalog.lock(part_id)
