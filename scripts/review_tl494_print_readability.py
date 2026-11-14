@@ -83,6 +83,50 @@ def _svg_lines(group, inherited=0.3):
     return result
 
 
+def _svg_circles(group):
+    result = []
+    stroke = _stroke(group)
+    for node in group.iter():
+        if node.tag == SVG+"circle":
+            result.append((
+                (_value(node, "cx"), _value(node, "cy")),
+                _value(node, "r"), _stroke(node, stroke),
+            ))
+    return result
+
+
+def _segment_circle_gap(segment, circle):
+    (start, end, wire_stroke) = segment
+    center, radius, circle_stroke = circle
+    closest = _distance_point_to_segment(center, start, end)
+    farthest = max(hypot(center[0]-p[0], center[1]-p[1])
+                   for p in (start, end))
+    radial = (
+        0 if closest <= radius <= farthest
+        else min(abs(closest-radius), abs(farthest-radius))
+    )
+    return radial - (wire_stroke+circle_stroke)/2
+
+
+def _circle_circle_gap(a, b):
+    center_a, ra, wa = a
+    center_b, rb, wb = b
+    d = hypot(center_a[0]-center_b[0], center_a[1]-center_b[1])
+    if abs(ra-rb) <= d <= ra+rb:
+        return -(wa+wb)/2
+    return min(abs(d-(ra+rb)), abs(d-abs(ra-rb))) - (wa+wb)/2
+
+
+def _symbol_gap(axes_a, circles_a, axes_b, circles_b):
+    distances = (
+        [_segment_gap(a, b) for a in axes_a for b in axes_b]
+        + [_segment_circle_gap(a, c) for a in axes_a for c in circles_b]
+        + [_segment_circle_gap(b, c) for b in axes_b for c in circles_a]
+        + [_circle_circle_gap(a, b) for a in circles_a for b in circles_b]
+    )
+    return min(distances) if distances else None
+
+
 def _all_wires(root):
     wires = []
     for node in root.findall(f".//{SVG}line[@data-layer='wires']"):
@@ -152,12 +196,20 @@ def audit_strokes(root):
         if not name.startswith(("VD", "VT", "C")):
             continue
         axes = _svg_lines(group)
-        if not axes:
+        circles = _svg_circles(group)
+        if not (axes or circles):
             raise ValueError(f"TL494_SYMBOL_STROKES_UNMEASURABLE: {name}")
-        for wire in wires:
-            nearest = min(
-                _segment_gap(wire["geometry"], axis) for axis in axes
+        if any(node.tag == SVG+"path" for node in group.iter()):
+            raise ValueError(
+                f"TL494_COMPLEX_PATH_NEEDS_STROKE_PATH_PARSER: {name}"
             )
+        for wire in wires:
+            distances = (
+                [_segment_gap(wire["geometry"], axis) for axis in axes]
+                + [_segment_circle_gap(wire["geometry"], circle)
+                   for circle in circles]
+            )
+            nearest = min(distances)
             if nearest < 1.0:
                 symbol_alerts.append({
                     "code": "WIRE_SYMBOL_STROKE_PROXIMITY_REVIEW",
@@ -166,6 +218,21 @@ def audit_strokes(root):
                     "net": wire["net"],
                     "minimum_stroke_gap_mm": round(nearest, 4),
                     "pin_net_exemption_verified": False,
+                })
+    symbol_pair_alerts = []
+    measured = [
+        (group.get("data-reference"), _svg_lines(group), _svg_circles(group))
+        for group in symbols
+        if group.get("data-reference", "").startswith(("VD", "VT", "C"))
+    ]
+    for i, (ref1, axes1, dots1) in enumerate(measured):
+        for ref2, axes2, dots2 in measured[i+1:]:
+            distance = _symbol_gap(axes1, dots1, axes2, dots2)
+            if distance is not None and distance < 2.0:
+                symbol_pair_alerts.append({
+                    "code": "SYMBOL_OUTER_STROKE_GAP_LT_2MM_REVIEW",
+                    "symbols": [ref1, ref2],
+                    "actual_stroke_gap_mm": round(distance, 4),
                 })
     return {
         "source_segments": len(wires),
@@ -182,7 +249,12 @@ def audit_strokes(root):
         "parallel_wire_examples": alerts[:35],
         "symbol_wire_proximity_candidate_count": len(symbol_alerts),
         "symbol_wire_examples": symbol_alerts[:35],
-        "circular_and_arc_strokes": "REQUIRES_GEOMETRIC_PATH_REVIEW",
+        "symbol_symbol_under_2mm_count": len(symbol_pair_alerts),
+        "symbol_symbol_examples": symbol_pair_alerts[:35],
+        "real_circle_stroke_geometry": "MEASURED_EXACT_RADIUS_AND_STROKE",
+        "target_vd_vt_cap_paths": "FAIL_CLOSED_IF_COMPLEX_UNMEASURED",
+        "inductor_arc_paths": "BLOCKED_SEPARATE_ARC_STROKE_AUDIT",
+        "text_glyph_vs_wire": "BLOCKED_FOR_FULL_SHEET_PENDING_TYPE_A_RUN_INK",
         "electrical_net_deductions": "NONE",
         "print_release": "BLOCKED_UNTIL_ISSUE108_ROUTING_AND_91_ESKD",
     }
