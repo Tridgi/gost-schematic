@@ -146,7 +146,7 @@ def test_legacy_id_is_not_implicitly_equivalent_to_ti_manufacturer():
     "moved_record_one_um", "missing_component", "missing_pinref",
     "foreign_pinref", "duplicate_pinref", "renamed_net",
     "changed_nominal", "missing_catalog", "spoofed_catalog",
-    "forged_vendor",
+    "mixed_label_namespace", "swapped_physical_net", "forged_vendor",
 ))
 def test_real_115_source_changes_fail_closed(kind):
     native = compact_source_assembly()
@@ -192,6 +192,20 @@ def test_real_115_source_changes_fail_closed(kind):
             name="UNTRUSTED_NET" if kind == "renamed_net" else target.name,
         )
         circuit = replace(circuit, nets=(new_net, *circuit.nets[1:]))
+    elif kind == "mixed_label_namespace":
+        circuit = replace(circuit, nets=tuple(
+            replace(n, name="a_INPUT_PLUS") if n.name == "INPUT_POS" else n
+            for n in circuit.nets
+        ))
+    elif kind == "swapped_physical_net":
+        target = next(n for n in circuit.nets if n.name == "FEEDBACK")
+        circuit = replace(circuit, nets=tuple(
+            replace(n, members=tuple(
+                PinRef("DA1", "4") if p == PinRef("DA1", "3") else p
+                for p in n.members
+            )) if n == target else n
+            for n in circuit.nets
+        ))
     elif kind == "missing_catalog":
         catalog.pop("resistor.fixed")
     elif kind == "spoofed_catalog":
@@ -199,9 +213,13 @@ def test_real_115_source_changes_fail_closed(kind):
             catalog["resistor.fixed"], identifier="foreign.resistor",
         )
     else:
-        record = replace(
-            record, device=replace(record.device, identifier="foreign.vendor"),
-        )
+        # The record itself rejects this forged device/spec before binding.
+        with pytest.raises(ValueError, match="Unknown or invalid IC symbol"):
+            replace(
+                record,
+                device=replace(record.device, identifier="foreign.vendor"),
+            )
+        return
     with pytest.raises((TypeError, ValueError), match=(
         "TL494_PHOTO_REBIND_|IC_ADAPTER_|TL494_|IC_"
     )):
