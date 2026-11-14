@@ -30,7 +30,7 @@ def verified_type_a_from_archive(payload: bytes) -> tuple[str, bytes]:
     with archive:
         faces = [
             member for member in archive.infolist()
-            if member.is_dir() is False
+            if not member.is_dir()
             and "typea" in Path(member.filename).name.lower().replace(
                 "-", "").replace("_", "").replace(" ", "")
             and Path(member.filename).suffix.lower() in (".ttf", ".otf")
