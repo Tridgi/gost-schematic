@@ -517,3 +517,142 @@ def test_vertical_function_rotated_glyph_boxes_stay_on_frame_clearance():
     )]
     assert all(not function.box.expanded(1000).overlaps(x.box) for x in strokes)
     assert result.proposed.vertical_field_heights_um[1] > 0
+
+
+# Independent center-function rotation — source L/R pins and physical nets
+# are not re-resolved by PAINT. This is a DRAFT rendering candidate.
+@pytest.mark.parametrize("count", (8, 14, 40, 64))
+def test_lr_function_rotation_90_to_0_only_changes_function_ink(count):
+    from gost_schematic.rendering.ic_rectangular import IcTypographyProfile
+
+    initial, _ = specimen(count, function="PWM")
+    portrait = replace(
+        initial,
+        typography_profile=IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT,
+    )
+    assert portrait.function_rotation == 90
+    upright = replace(portrait, function_rotation=0)
+    vertical = render_resolved_ic(portrait, STYLE, FixedInk())
+    horizontal = render_resolved_ic(upright, STYLE, FixedInk())
+    assert vertical.pin_anchors == horizontal.pin_anchors
+    assert vertical.body_world == horizontal.body_world
+    assert len(vertical.pin_anchors) == count
+    r90, r0 = ET.fromstring(vertical.svg), ET.fromstring(horizontal.svg)
+    assert r90.get("data-typography-profile") == "portrait_function_v2_draft"
+    assert r0.get("data-typography-profile") == "portrait_function_v2_draft"
+    assert r90.get("data-function-rotation-deg") == "90"
+    assert r0.get("data-function-rotation-deg") is None
+    f90 = r90.find(f".//{NS}text[@data-kind='function']")
+    f0 = r0.find(f".//{NS}text[@data-kind='function']")
+    assert f90 is not None and f0 is not None
+    assert f90.text == f0.text == "PWM"
+    assert f90.get("transform", "").startswith("matrix(0 1 -1 0")
+    assert "transform" not in f0.attrib
+    for layer in ("ic-outline", "ic-physical-pin-leads"):
+        a = r90.find(f".//{NS}g[@data-layer='{layer}']")
+        b = r0.find(f".//{NS}g[@data-layer='{layer}']")
+        assert a is not None and b is not None
+        assert ET.tostring(a) == ET.tostring(b)
+    assert not any("editor-connection-targets" in svg for svg in
+                   (horizontal.svg, vertical.svg))
+
+
+def test_legacy_svg_profile_preserves_horizontal_function_default():
+    from gost_schematic.rendering.ic_rectangular import IcTypographyProfile
+
+    unit, plan = specimen(14, function="PWM")
+    assert unit.typography_profile is IcTypographyProfile.LEGACY_V1
+    assert unit.function_rotation == 0
+    output = render_resolved_ic(unit, STYLE, FixedInk())
+    assert output.proposed == plan
+    assert "data-typography-profile" not in output.svg
+    assert "data-function-rotation-deg" not in output.svg
+    node = ET.fromstring(output.svg).find(f".//{NS}text[@data-kind='function']")
+    assert node is not None and "transform" not in node.attrib
+
+
+def test_vertical_word_reserves_multiple_real_rows_before_other_main_text():
+    from gost_schematic.rendering.ic_rectangular import IcTypographyProfile
+
+    unit, _ = specimen(
+        64, function="МОДУЛЬ_УПРАВЛЕНИЯ_PWM",
+        extra_rows=("FIRST", "SECOND"),
+    )
+    portrait = replace(
+        unit, typography_profile=IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT,
+    )
+    sized = propose_ic_dimensions(
+        unit.content, unit.pins, STYLE, FixedInk(), function_rotation=90,
+    )
+    assert sized.function_row_span >= 2
+    drawn = render_resolved_ic(portrait, STYLE, FixedInk())
+    function = next(i for i in drawn.ink if i.kind == "function")
+    row1 = next(i for i in drawn.ink if i.owner == "main.1")
+    row2 = next(i for i in drawn.ink if i.owner == "main.2")
+    assert function.box.max_y + 1000 < row1.box.min_y < row2.box.min_y
+    assert drawn.pin_anchors == tuple((p.pin_id, p.anchor) for p in unit.pins)
+
+
+def test_rotation_requires_owner_revision_not_pin_move_when_body_too_short():
+    unit, _ = specimen(
+        4, function="ФУНКЦИОНАЛЬНАЯ_НАДПИСЬ_НЕ_ВЛЕЗАЕТ",
+    )
+    # Old 4-pin physical frame anchors remain authoritative, so drawing
+    # cannot silently stretch a body or rewire the pins.
+    with pytest.raises(ValueError, match="IC_TEXT_OVERFLOW"):
+        render_resolved_ic(
+            replace(unit, function_rotation=90), STYLE, FixedInk(),
+        )
+
+
+def test_portrait_version_explicit_and_never_inferred_from_port_directions():
+    from gost_schematic.rendering.ic_rectangular import IcTypographyProfile
+
+    unit, _ = specimen(4, long_name=True, function="PWM")
+    with pytest.raises(ValueError, match="IC_PORTRAIT_BODY_REQUIRED"):
+        render_resolved_ic(
+            replace(unit,
+                    typography_profile=IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT),
+            STYLE, FixedInk(),
+        )
+    with pytest.raises(ValueError, match="IC_FIELD_ROTATION_REQUIRES_TOP_BOTTOM"):
+        replace(unit, field_text_rotation=90)
+
+
+@pytest.mark.parametrize("angle,mirror", [
+    (0, False), (90, False), (180, False), (270, False),
+    (0, True), (90, True), (180, True), (270, True),
+])
+def test_d4_independent_function_turn_preserves_all_physical_leads(angle, mirror):
+    from gost_schematic.rendering.ic_rectangular import IcTypographyProfile
+
+    unit, _ = specimen(8, transform=Transform(angle, mirror), function="PWM")
+    a = replace(
+        unit, typography_profile=IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT,
+    )
+    turned = render_resolved_ic(a, STYLE, FixedInk())
+    straight = render_resolved_ic(replace(a, function_rotation=0),
+                                  STYLE, FixedInk())
+    assert turned.pin_anchors == straight.pin_anchors
+    assert turned.body_world == straight.body_world
+    rotated_node = ET.fromstring(turned.svg).find(
+        f".//{NS}text[@data-kind='function']",
+    )
+    assert rotated_node is not None
+    assert rotated_node.text == "PWM"
+    assert rotated_node.get("transform", "").startswith("matrix(")
+
+
+def test_independent_rotation_1um_guard_and_actual_transform_bounds():
+    from gost_schematic.rendering.ic_rectangular import (
+        _rotated_function_placement,
+    )
+
+    ink = FixedInk().measure("A", STYLE).ink_box
+    # 90-degree run size is 3501 x 650 um, allow <1000um on either
+    # horizontal edge so no invisible tolerance may let the glyph through.
+    too_narrow = Box(0, 0, (ink.max_y - ink.min_y) + 1999, 7500)
+    with pytest.raises(ValueError, match="IC_TEXT_OVERFLOW"):
+        _rotated_function_placement(
+            "main.0", "A", too_narrow, STYLE, FixedInk(), IcRenderingPolicy(),
+        )
