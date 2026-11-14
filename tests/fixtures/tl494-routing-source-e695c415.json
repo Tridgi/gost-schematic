@@ -1,0 +1,1586 @@
+{
+  "schema_version": 1,
+  "source_branch": "reference/tl494-native-rework-20261114",
+  "source_head_sha": "e695c415fdced164b0e0c39c5249d030795a0aa6",
+  "source_script": "examples/tl494_named_photo_sheet.py",
+  "source_svg": "examples/tl494_named_truth_output/TL494_named_photo_clean.svg",
+  "source_svg_blob_sha": "69fa5d18f0844b080d8f1574c686e5c1156ae1f9",
+  "approval": "DRAFT_REFERENCE_FREEZE_NOT_CERTIFIED",
+  "part_refs": [
+    "C1",
+    "C2",
+    "C3",
+    "C4",
+    "C5",
+    "C6",
+    "C7",
+    "DA1",
+    "FU1",
+    "L1",
+    "L2",
+    "R1",
+    "R2",
+    "R3",
+    "R4",
+    "R5",
+    "R6",
+    "R7",
+    "R8",
+    "VD1",
+    "VT1",
+    "X1",
+    "X2"
+  ],
+  "net_members": {
+    "INPUT_POS": [
+      "X1.1",
+      "L1.1",
+      "DA1.12",
+      "DA1.8",
+      "DA1.11"
+    ],
+    "COMMON": [
+      "X1.2",
+      "X2.2",
+      "VT1.3",
+      "VD1.2",
+      "C5.1",
+      "C6.1",
+      "DA1.7",
+      "DA1.1",
+      "DA1.16",
+      "DA1.13",
+      "R6.2",
+      "R7.2",
+      "R8.2",
+      "C7.2"
+    ],
+    "SWITCH": [
+      "L1.2",
+      "VT1.2",
+      "C1.1",
+      "C2.1"
+    ],
+    "ENERGY_TRANSFER": [
+      "C1.2",
+      "C2.2",
+      "VD1.1",
+      "L2.1"
+    ],
+    "OUT_BEFORE_FUSE": [
+      "L2.2",
+      "FU1.1",
+      "C5.2",
+      "C6.2"
+    ],
+    "OUTPUT_NEG": [
+      "FU1.2",
+      "X2.1",
+      "R5.2"
+    ],
+    "CONTROL_REFERENCE": [
+      "DA1.14",
+      "DA1.15",
+      "R1.1",
+      "R2.1",
+      "C3.1"
+    ],
+    "SOFT_START": [
+      "DA1.4",
+      "R1.2",
+      "C3.2",
+      "R6.1"
+    ],
+    "ERROR_INPUT": [
+      "DA1.2",
+      "R2.2",
+      "R4.1",
+      "C4.1"
+    ],
+    "RC_CORRECTION": [
+      "C4.2",
+      "R3.1"
+    ],
+    "FEEDBACK": [
+      "R3.2",
+      "DA1.3"
+    ],
+    "ADJUSTED_DIVIDER": [
+      "R4.2",
+      "R5.1",
+      "R5.3"
+    ],
+    "OSCILLATOR_CT": [
+      "C7.1",
+      "DA1.5"
+    ],
+    "OSCILLATOR_RT": [
+      "R7.1",
+      "DA1.6"
+    ],
+    "GATE_DRIVE": [
+      "DA1.9",
+      "DA1.10",
+      "R8.1",
+      "VT1.1"
+    ]
+  },
+  "expected_physical_DA1_pins": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "11",
+    "12",
+    "13",
+    "14",
+    "15",
+    "16"
+  ],
+  "junctions_um": [
+    [
+      -135000,
+      176000
+    ],
+    [
+      -126000,
+      125000
+    ],
+    [
+      -105000,
+      117000
+    ],
+    [
+      -95000,
+      86000
+    ],
+    [
+      -95000,
+      117000
+    ],
+    [
+      -85000,
+      212000
+    ],
+    [
+      -85000,
+      220000
+    ],
+    [
+      -55000,
+      86000
+    ],
+    [
+      -55000,
+      125000
+    ],
+    [
+      -40000,
+      220000
+    ],
+    [
+      0,
+      220000
+    ],
+    [
+      30000,
+      220000
+    ],
+    [
+      42000,
+      143250
+    ],
+    [
+      42000,
+      150750
+    ],
+    [
+      42000,
+      220000
+    ],
+    [
+      50000,
+      45000
+    ],
+    [
+      140000,
+      105750
+    ],
+    [
+      145000,
+      98250
+    ],
+    [
+      145000,
+      128250
+    ],
+    [
+      150000,
+      143250
+    ],
+    [
+      150000,
+      150750
+    ],
+    [
+      150000,
+      220000
+    ],
+    [
+      170000,
+      45000
+    ],
+    [
+      170000,
+      220000
+    ],
+    [
+      200000,
+      29000
+    ],
+    [
+      200000,
+      45000
+    ],
+    [
+      200000,
+      65000
+    ],
+    [
+      250000,
+      29000
+    ],
+    [
+      250000,
+      45000
+    ],
+    [
+      250000,
+      65000
+    ],
+    [
+      270000,
+      45000
+    ],
+    [
+      270000,
+      220000
+    ],
+    [
+      345000,
+      45000
+    ],
+    [
+      345000,
+      220000
+    ],
+    [
+      385000,
+      45000
+    ],
+    [
+      385000,
+      220000
+    ],
+    [
+      455000,
+      220000
+    ]
+  ],
+  "wires": [
+    {
+      "id": "SRC-W000",
+      "index": 0,
+      "net": "INPUT_POS",
+      "start_um": [
+        30000,
+        45000
+      ],
+      "end_um": [
+        103000,
+        45000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W001",
+      "index": 1,
+      "net": "COMMON",
+      "start_um": [
+        30000,
+        60000
+      ],
+      "end_um": [
+        30000,
+        220000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W002",
+      "index": 2,
+      "net": "COMMON",
+      "start_um": [
+        30000,
+        220000
+      ],
+      "end_um": [
+        455000,
+        220000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W003",
+      "index": 3,
+      "net": "COMMON",
+      "start_um": [
+        170000,
+        146000
+      ],
+      "end_um": [
+        170000,
+        220000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W004",
+      "index": 4,
+      "net": "COMMON",
+      "start_um": [
+        270000,
+        140000
+      ],
+      "end_um": [
+        270000,
+        220000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W005",
+      "index": 5,
+      "net": "COMMON",
+      "start_um": [
+        345000,
+        153000
+      ],
+      "end_um": [
+        345000,
+        220000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W006",
+      "index": 6,
+      "net": "COMMON",
+      "start_um": [
+        385000,
+        153000
+      ],
+      "end_um": [
+        385000,
+        220000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W007",
+      "index": 7,
+      "net": "COMMON",
+      "start_um": [
+        455000,
+        220000
+      ],
+      "end_um": [
+        455000,
+        60000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W008",
+      "index": 8,
+      "net": "COMMON",
+      "start_um": [
+        455000,
+        60000
+      ],
+      "end_um": [
+        460000,
+        60000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W009",
+      "index": 9,
+      "net": "SWITCH",
+      "start_um": [
+        127000,
+        45000
+      ],
+      "end_um": [
+        170000,
+        45000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W010",
+      "index": 10,
+      "net": "SWITCH",
+      "start_um": [
+        170000,
+        45000
+      ],
+      "end_um": [
+        200000,
+        45000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W011",
+      "index": 11,
+      "net": "SWITCH",
+      "start_um": [
+        170000,
+        45000
+      ],
+      "end_um": [
+        170000,
+        117000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W012",
+      "index": 12,
+      "net": "SWITCH",
+      "start_um": [
+        200000,
+        29000
+      ],
+      "end_um": [
+        200000,
+        65000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W013",
+      "index": 13,
+      "net": "SWITCH",
+      "start_um": [
+        200000,
+        45000
+      ],
+      "end_um": [
+        200000,
+        29000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W014",
+      "index": 14,
+      "net": "SWITCH",
+      "start_um": [
+        200000,
+        29000
+      ],
+      "end_um": [
+        217000,
+        29000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W015",
+      "index": 15,
+      "net": "SWITCH",
+      "start_um": [
+        200000,
+        65000
+      ],
+      "end_um": [
+        217000,
+        65000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W016",
+      "index": 16,
+      "net": "ENERGY_TRANSFER",
+      "start_um": [
+        233000,
+        29000
+      ],
+      "end_um": [
+        250000,
+        29000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W017",
+      "index": 17,
+      "net": "ENERGY_TRANSFER",
+      "start_um": [
+        250000,
+        29000
+      ],
+      "end_um": [
+        250000,
+        65000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W018",
+      "index": 18,
+      "net": "ENERGY_TRANSFER",
+      "start_um": [
+        233000,
+        65000
+      ],
+      "end_um": [
+        250000,
+        65000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W019",
+      "index": 19,
+      "net": "ENERGY_TRANSFER",
+      "start_um": [
+        250000,
+        45000
+      ],
+      "end_um": [
+        270000,
+        45000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W020",
+      "index": 20,
+      "net": "ENERGY_TRANSFER",
+      "start_um": [
+        270000,
+        45000
+      ],
+      "end_um": [
+        303000,
+        45000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W021",
+      "index": 21,
+      "net": "ENERGY_TRANSFER",
+      "start_um": [
+        270000,
+        45000
+      ],
+      "end_um": [
+        270000,
+        120000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W022",
+      "index": 22,
+      "net": "OUT_BEFORE_FUSE",
+      "start_um": [
+        327000,
+        45000
+      ],
+      "end_um": [
+        402000,
+        45000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W023",
+      "index": 23,
+      "net": "OUT_BEFORE_FUSE",
+      "start_um": [
+        345000,
+        45000
+      ],
+      "end_um": [
+        345000,
+        137000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W024",
+      "index": 24,
+      "net": "OUT_BEFORE_FUSE",
+      "start_um": [
+        385000,
+        45000
+      ],
+      "end_um": [
+        385000,
+        137000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W025",
+      "index": 25,
+      "net": "OUTPUT_NEG",
+      "start_um": [
+        420000,
+        45000
+      ],
+      "end_um": [
+        460000,
+        45000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W026",
+      "index": 26,
+      "net": "COMMON",
+      "start_um": [
+        55000,
+        135750
+      ],
+      "end_um": [
+        42000,
+        135750
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W027",
+      "index": 27,
+      "net": "COMMON",
+      "start_um": [
+        55000,
+        143250
+      ],
+      "end_um": [
+        42000,
+        143250
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W028",
+      "index": 28,
+      "net": "COMMON",
+      "start_um": [
+        55000,
+        150750
+      ],
+      "end_um": [
+        42000,
+        150750
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W029",
+      "index": 29,
+      "net": "COMMON",
+      "start_um": [
+        42000,
+        135750
+      ],
+      "end_um": [
+        42000,
+        220000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W030",
+      "index": 30,
+      "net": "COMMON",
+      "start_um": [
+        150000,
+        191000
+      ],
+      "end_um": [
+        150000,
+        220000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W031",
+      "index": 31,
+      "net": "GATE_DRIVE",
+      "start_um": [
+        135000,
+        143250
+      ],
+      "end_um": [
+        150000,
+        143250
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W032",
+      "index": 32,
+      "net": "GATE_DRIVE",
+      "start_um": [
+        135000,
+        150750
+      ],
+      "end_um": [
+        150000,
+        150750
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W033",
+      "index": 33,
+      "net": "GATE_DRIVE",
+      "start_um": [
+        159000,
+        135000
+      ],
+      "end_um": [
+        150000,
+        135000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W034",
+      "index": 34,
+      "net": "GATE_DRIVE",
+      "start_um": [
+        150000,
+        135000
+      ],
+      "end_um": [
+        150000,
+        175000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W035",
+      "index": 35,
+      "net": "INPUT_POS",
+      "start_um": [
+        50000,
+        45000
+      ],
+      "end_um": [
+        50000,
+        75000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W036",
+      "index": 36,
+      "net": "INPUT_POS",
+      "start_um": [
+        50000,
+        75000
+      ],
+      "end_um": [
+        145000,
+        75000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W037",
+      "index": 37,
+      "net": "INPUT_POS",
+      "start_um": [
+        145000,
+        75000
+      ],
+      "end_um": [
+        145000,
+        135750
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W038",
+      "index": 38,
+      "net": "INPUT_POS",
+      "start_um": [
+        135000,
+        98250
+      ],
+      "end_um": [
+        145000,
+        98250
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W039",
+      "index": 39,
+      "net": "INPUT_POS",
+      "start_um": [
+        135000,
+        128250
+      ],
+      "end_um": [
+        145000,
+        128250
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W040",
+      "index": 40,
+      "net": "INPUT_POS",
+      "start_um": [
+        135000,
+        135750
+      ],
+      "end_um": [
+        145000,
+        135750
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W041",
+      "index": 41,
+      "net": "CONTROL_REFERENCE",
+      "start_um": [
+        -135000,
+        86000
+      ],
+      "end_um": [
+        140000,
+        86000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W042",
+      "index": 42,
+      "net": "CONTROL_REFERENCE",
+      "start_um": [
+        140000,
+        86000
+      ],
+      "end_um": [
+        140000,
+        113250
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W043",
+      "index": 43,
+      "net": "CONTROL_REFERENCE",
+      "start_um": [
+        135000,
+        113250
+      ],
+      "end_um": [
+        140000,
+        113250
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W044",
+      "index": 44,
+      "net": "CONTROL_REFERENCE",
+      "start_um": [
+        135000,
+        105750
+      ],
+      "end_um": [
+        140000,
+        105750
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W045",
+      "index": 45,
+      "net": "CONTROL_REFERENCE",
+      "start_um": [
+        -135000,
+        97000
+      ],
+      "end_um": [
+        -135000,
+        86000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W046",
+      "index": 46,
+      "net": "CONTROL_REFERENCE",
+      "start_um": [
+        -95000,
+        97000
+      ],
+      "end_um": [
+        -95000,
+        86000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W047",
+      "index": 47,
+      "net": "CONTROL_REFERENCE",
+      "start_um": [
+        -55000,
+        97000
+      ],
+      "end_um": [
+        -55000,
+        86000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W048",
+      "index": 48,
+      "net": "SOFT_START",
+      "start_um": [
+        -135000,
+        113000
+      ],
+      "end_um": [
+        -135000,
+        117000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W049",
+      "index": 49,
+      "net": "SOFT_START",
+      "start_um": [
+        -135000,
+        117000
+      ],
+      "end_um": [
+        51000,
+        117000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W050",
+      "index": 50,
+      "net": "SOFT_START",
+      "start_um": [
+        -95000,
+        113000
+      ],
+      "end_um": [
+        -95000,
+        117000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W051",
+      "index": 51,
+      "net": "SOFT_START",
+      "start_um": [
+        -85000,
+        175000
+      ],
+      "end_um": [
+        -105000,
+        175000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W052",
+      "index": 52,
+      "net": "SOFT_START",
+      "start_um": [
+        -105000,
+        175000
+      ],
+      "end_um": [
+        -105000,
+        117000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W053",
+      "index": 53,
+      "net": "SOFT_START",
+      "start_um": [
+        55000,
+        105750
+      ],
+      "end_um": [
+        51000,
+        105750
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W054",
+      "index": 54,
+      "net": "SOFT_START",
+      "start_um": [
+        51000,
+        105750
+      ],
+      "end_um": [
+        51000,
+        117000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W055",
+      "index": 55,
+      "net": "ERROR_INPUT",
+      "start_um": [
+        -135000,
+        125000
+      ],
+      "end_um": [
+        45000,
+        125000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W056",
+      "index": 56,
+      "net": "ERROR_INPUT",
+      "start_um": [
+        45000,
+        125000
+      ],
+      "end_um": [
+        45000,
+        98250
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W057",
+      "index": 57,
+      "net": "ERROR_INPUT",
+      "start_um": [
+        45000,
+        98250
+      ],
+      "end_um": [
+        55000,
+        98250
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W058",
+      "index": 58,
+      "net": "ERROR_INPUT",
+      "start_um": [
+        -55000,
+        113000
+      ],
+      "end_um": [
+        -55000,
+        125000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W059",
+      "index": 59,
+      "net": "ERROR_INPUT",
+      "start_um": [
+        -135000,
+        153000
+      ],
+      "end_um": [
+        -135000,
+        125000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W060",
+      "index": 60,
+      "net": "ERROR_INPUT",
+      "start_um": [
+        -126000,
+        141000
+      ],
+      "end_um": [
+        -126000,
+        125000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W061",
+      "index": 61,
+      "net": "RC_CORRECTION",
+      "start_um": [
+        -110000,
+        141000
+      ],
+      "end_um": [
+        -93000,
+        141000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W062",
+      "index": 62,
+      "net": "FEEDBACK",
+      "start_um": [
+        -77000,
+        141000
+      ],
+      "end_um": [
+        53000,
+        141000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W063",
+      "index": 63,
+      "net": "FEEDBACK",
+      "start_um": [
+        53000,
+        141000
+      ],
+      "end_um": [
+        53000,
+        113250
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W064",
+      "index": 64,
+      "net": "FEEDBACK",
+      "start_um": [
+        53000,
+        113250
+      ],
+      "end_um": [
+        55000,
+        113250
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W065",
+      "index": 65,
+      "net": "ADJUSTED_DIVIDER",
+      "start_um": [
+        -135000,
+        169000
+      ],
+      "end_um": [
+        -135000,
+        184000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W066",
+      "index": 66,
+      "net": "ADJUSTED_DIVIDER",
+      "start_um": [
+        -135000,
+        184000
+      ],
+      "end_um": [
+        -135000,
+        176000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W067",
+      "index": 67,
+      "net": "ADJUSTED_DIVIDER",
+      "start_um": [
+        -135000,
+        176000
+      ],
+      "end_um": [
+        -105000,
+        176000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W068",
+      "index": 68,
+      "net": "ADJUSTED_DIVIDER",
+      "start_um": [
+        -105000,
+        176000
+      ],
+      "end_um": [
+        -105000,
+        193000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W069",
+      "index": 69,
+      "net": "ADJUSTED_DIVIDER",
+      "start_um": [
+        -105000,
+        193000
+      ],
+      "end_um": [
+        -126000,
+        193000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W070",
+      "index": 70,
+      "net": "OSCILLATOR_CT",
+      "start_um": [
+        -40000,
+        175000
+      ],
+      "end_um": [
+        -40000,
+        149000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W071",
+      "index": 71,
+      "net": "OSCILLATOR_CT",
+      "start_um": [
+        -40000,
+        149000
+      ],
+      "end_um": [
+        46000,
+        149000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W072",
+      "index": 72,
+      "net": "OSCILLATOR_CT",
+      "start_um": [
+        46000,
+        149000
+      ],
+      "end_um": [
+        46000,
+        120750
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W073",
+      "index": 73,
+      "net": "OSCILLATOR_CT",
+      "start_um": [
+        46000,
+        120750
+      ],
+      "end_um": [
+        55000,
+        120750
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W074",
+      "index": 74,
+      "net": "OSCILLATOR_RT",
+      "start_um": [
+        0,
+        175000
+      ],
+      "end_um": [
+        0,
+        169000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W075",
+      "index": 75,
+      "net": "OSCILLATOR_RT",
+      "start_um": [
+        0,
+        169000
+      ],
+      "end_um": [
+        -5000,
+        169000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W076",
+      "index": 76,
+      "net": "OSCILLATOR_RT",
+      "start_um": [
+        -5000,
+        169000
+      ],
+      "end_um": [
+        -5000,
+        55000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W077",
+      "index": 77,
+      "net": "OSCILLATOR_RT",
+      "start_um": [
+        -5000,
+        55000
+      ],
+      "end_um": [
+        59000,
+        55000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W078",
+      "index": 78,
+      "net": "OSCILLATOR_RT",
+      "start_um": [
+        59000,
+        55000
+      ],
+      "end_um": [
+        59000,
+        128250
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W079",
+      "index": 79,
+      "net": "OSCILLATOR_RT",
+      "start_um": [
+        59000,
+        128250
+      ],
+      "end_um": [
+        55000,
+        128250
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W080",
+      "index": 80,
+      "net": "COMMON",
+      "start_um": [
+        -85000,
+        220000
+      ],
+      "end_um": [
+        30000,
+        220000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W081",
+      "index": 81,
+      "net": "COMMON",
+      "start_um": [
+        -85000,
+        191000
+      ],
+      "end_um": [
+        -85000,
+        220000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W082",
+      "index": 82,
+      "net": "COMMON",
+      "start_um": [
+        -40000,
+        191000
+      ],
+      "end_um": [
+        -40000,
+        220000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W083",
+      "index": 83,
+      "net": "COMMON",
+      "start_um": [
+        0,
+        191000
+      ],
+      "end_um": [
+        0,
+        220000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W084",
+      "index": 84,
+      "net": "COMMON",
+      "start_um": [
+        135000,
+        120750
+      ],
+      "end_um": [
+        138000,
+        120750
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W085",
+      "index": 85,
+      "net": "COMMON",
+      "start_um": [
+        138000,
+        120750
+      ],
+      "end_um": [
+        138000,
+        82000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W086",
+      "index": 86,
+      "net": "COMMON",
+      "start_um": [
+        138000,
+        82000
+      ],
+      "end_um": [
+        -185000,
+        82000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W087",
+      "index": 87,
+      "net": "COMMON",
+      "start_um": [
+        -185000,
+        82000
+      ],
+      "end_um": [
+        -185000,
+        212000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W088",
+      "index": 88,
+      "net": "COMMON",
+      "start_um": [
+        -185000,
+        212000
+      ],
+      "end_um": [
+        -85000,
+        212000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W089",
+      "index": 89,
+      "net": "COMMON",
+      "start_um": [
+        -85000,
+        212000
+      ],
+      "end_um": [
+        -85000,
+        220000
+      ],
+      "stroke_um": 300
+    },
+    {
+      "id": "SRC-W090",
+      "index": 90,
+      "net": "OUTPUT_NEG",
+      "start_um": [
+        -135000,
+        202000
+      ],
+      "end_um": [
+        -135000,
+        214000
+      ],
+      "stroke_um": 300
+    }
+  ],
+  "original_svg": {
+    "width_mm": 679.3,
+    "height_mm": 220.051,
+    "view_box_mm": [
+      -194.15,
+      9.1,
+      679.3,
+      220.051
+    ]
+  },
+  "known_raw_continuation_b": [
+    "WIRE_NET_DISCONNECTED:OUTPUT_NEG",
+    "WIRE_DANGLING_END:wire90"
+  ]
+}
