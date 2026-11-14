@@ -115,6 +115,8 @@ jobs:
               "render_tl494_compact_new_router_cycle10.py",
           ):
               stage("paint", "examples/" + name)
+          stage("paint", "examples/render_tl494_full_native_cycle9.py")
+          stage("paint", "tests/test_full_native_cycle9.py")
           stage("paint", "tests/test_routed_native_sheet_cycle10.py")
           stage("catalog", "tests/test_tl494_source_footprints.py")
           stage("catalog", "examples/review_tl494_ugo_source_cycle9.py")
