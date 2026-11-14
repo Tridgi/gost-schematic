@@ -1,4 +1,4 @@
-name: TL494 23-part compact A3 real Ink/PinRef route review
+name: TL494 23-part compact A3/A2 real Ink/PinRef route review
 
 on:
   push:
@@ -16,13 +16,21 @@ permissions:
 
 jobs:
   compact-a3:
-    name: 23/15 real A3 + 72 measured glyph guards (${{ matrix.python-version }})
+    name: 23/15 real ${{ matrix.paper }} + 72 measured glyph guards (${{ matrix.python-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 27
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.12", "3.13"]
+        include:
+          - python-version: "3.12"
+            paper: A3
+          - python-version: "3.13"
+            paper: A3
+          - python-version: "3.13"
+            paper: A2
+    env:
+      PAPER: ${{ matrix.paper }}
     steps:
       - name: Checkout exact routed PR #114
         uses: actions/checkout@v4
@@ -100,28 +108,35 @@ jobs:
             --directory "$HOME/.local/share/fonts" \
             --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a
           fc-cache -f
-      - name: Route A3 actual 23-part native model with zero Net changes
+      - name: Route actual 23-part A3/A2; A2 tests paper, not changed Net
         run: |
           set -euo pipefail
-          mkdir -p output/compact-A3
+          OUT="output/compact-$PAPER"
+          mkdir -p "$OUT"
           FONT="$(find "$HOME/.local/share/fonts" -name '*TypeA*' -type f -print -quit)"
           test -f "$FONT"
+          TRIALS=2
+          if [ "$PAPER" = "A2" ]; then TRIALS=1; fi
           python -m examples.review_tl494_compact_cycle9 \
             --font-file "$FONT" \
             --owner-sha "$GITHUB_SHA" \
             --reference-sha e56397300875ac155a316a9bfebe2601358a4147 \
             --max-nodes 25000 \
-            --output output/compact-A3 \
-            2>&1 | tee output/compact-A3/owner-route-trace.log
+            --page-format "$PAPER" \
+            --priority-trials "$TRIALS" \
+            --output "$OUT" \
+            2>&1 | tee "$OUT/owner-route-trace.log"
       - name: Check actual 23/15/16/62 and blocked-safe native SVG
         run: |
           python - <<'PY'
           import json
+          import os
           from pathlib import Path
           from xml.etree import ElementTree as ET
 
-          out = Path("output/compact-A3")
-          data = json.loads((out / "TL494-compact-A3-route-drc.json").read_text())
+          paper = os.environ["PAPER"]
+          out = Path(f"output/compact-{paper}")
+          data = json.loads((out / f"TL494-compact-{paper}-route-drc.json").read_text())
           assert (data["source_components"], data["source_nets"],
                   data["physical_DA1_pin_count"],
                   data["all_Circuit_PinRef_memberships"]) == (23, 15, 16, 62)
@@ -136,7 +151,8 @@ jobs:
           assert data["print_pass"] is False
           S = "{http://www.w3.org/2000/svg}"
           for name in ("clean", "diagnostic"):
-              root = ET.parse(out / f"TL494-compact-A3-{name}.svg").getroot()
+              root = ET.parse(out / f"TL494-compact-{paper}-{name}.svg").getroot()
+              assert root.get("data-draft-paper") == paper
               assert root.get("data-owner-router-sha") == data["owner_router_sha"]
               assert root.get("data-physical-net-diff") == "ZERO"
               assert len(root.findall(
@@ -165,23 +181,25 @@ jobs:
                   assert targets.get("data-physical-print") == "false"
           if data["routed_nets"] < 15 or not data["geom_drc_pass"]:
               assert data["status"] == "BLOCKED_PARTIAL_NOT_PRINTABLE"
-          print("ACTUAL A3 source 23/15/16/62 and unapproved print blocked",
+          print("ACTUAL", paper, "source 23/15/16/62 and unapproved print",
                 data["routed_nets"], data["new_after_drc"]["error_count"])
           PY
-      - name: Real 300 DPI native A3 draft diagnostic raster
+      - name: Real 300 DPI native A3/A2 DRAFT preview raster
         run: |
           for MODE in clean diagnostic; do
             rsvg-convert --background-color white --dpi-x 300 --dpi-y 300 \
-              --output "output/compact-A3/TL494-compact-A3-$MODE-300dpi.png" \
-              "output/compact-A3/TL494-compact-A3-$MODE.svg"
+              --output "output/compact-$PAPER/TL494-compact-$PAPER-$MODE-300dpi.png" \
+              "output/compact-$PAPER/TL494-compact-$PAPER-$MODE.svg"
           done
           python - <<'PY'
+          import os
           from pathlib import Path
           from xml.etree import ElementTree as ET
           from PIL import Image
 
           for mode in ("clean", "diagnostic"):
-              prefix = Path(f"output/compact-A3/TL494-compact-A3-{mode}")
+              paper = os.environ["PAPER"]
+              prefix = Path(f"output/compact-{paper}/TL494-compact-{paper}-{mode}")
               svg = ET.parse(prefix.with_suffix(".svg")).getroot()
               width, height = (svg.get("width"), svg.get("height"))
               assert width.endswith("mm") and height.endswith("mm")
@@ -203,6 +221,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: owner-114-compact-A3-source-23net-${{ matrix.python-version }}
-          path: output/compact-A3/
+          name: owner-114-compact-${{ matrix.paper }}-source-23net-${{ matrix.python-version }}
+          path: output/compact-${{ matrix.paper }}/
           if-no-files-found: warn
