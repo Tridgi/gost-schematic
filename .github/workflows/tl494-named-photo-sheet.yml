@@ -50,7 +50,7 @@ jobs:
         run: |
           set +e
           mkdir -p examples/tl494_named_photo_output
-          PYTHONPATH=src python -m examples.tl494_full_photo_sheet \
+          PYTHONPATH=src python -m examples.tl494_named_photo_sheet \
             --font-file "$HOME/.local/share/fonts/OpenGostTypeA-Regular.ttf" \
             --output examples/tl494_named_photo_output --strict \
             > examples/tl494_named_photo_output/build_log.txt 2>&1
