@@ -34,7 +34,8 @@ LEFT = ("2", "4", "3", "5", "6", "7", "1", "16")
 RIGHT = ("12", "15", "14", "13", "8", "11", "9", "10")
 
 
-def specimen(style, measure, pose: Transform = Transform()):
+def specimen(style, measure, pose: Transform | None = None):
+    pose = pose if pose is not None else Transform()
     policy = IcRenderingPolicy()
     preliminary = []
     for side, numbers in ((Side.LEFT, LEFT), (Side.RIGHT, RIGHT)):
