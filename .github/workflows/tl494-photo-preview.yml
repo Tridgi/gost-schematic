@@ -1,0 +1,63 @@
+name: TL494 reference DRAFT raster preview
+
+on:
+  push:
+    branches:
+      - reference/tl494-photo-reconstruction-20261114
+    paths:
+      - examples/tl494_photo_reference/**
+      - .github/workflows/tl494-photo-preview.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  render-draft-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: reference/tl494-photo-reconstruction-20261114
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install rasterization dependencies
+        run: python -m pip install --disable-pip-version-check cairosvg pillow
+      - name: Validate SVG and create 300 DPI PNG
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          import cairosvg
+          from PIL import Image
+          folder=Path('examples/tl494_photo_reference')
+          clean=folder/'TL494_E3_clean.svg'
+          diag=folder/'TL494_E3_diagnostic.svg'
+          ET.parse(clean)
+          ET.parse(diag)
+          assert 'physical-pin-diagnostics' not in clean.read_text(encoding='utf-8')
+          assert 'physical-pin-diagnostics' in diag.read_text(encoding='utf-8')
+          target=folder/'TL494_E3_preview.png'
+          cairosvg.svg2png(url=str(clean), write_to=str(target),
+                           output_width=2800, output_height=1600)
+          image=Image.open(target)
+          image.save(target, dpi=(300,300))
+          assert Image.open(target).info['dpi'][0]>299
+          print(target,'OK 2800x1600 300 DPI')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TL494_DRAFT_reference_preview
+          path: examples/tl494_photo_reference/TL494_E3_preview.png
+      - name: Commit generated preview to this reference branch
+        continue-on-error: true
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add examples/tl494_photo_reference/TL494_E3_preview.png
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m 'docs(reference): add rendered TL494 300 DPI PNG'
+          git push origin HEAD:reference/tl494-photo-reconstruction-20261114
