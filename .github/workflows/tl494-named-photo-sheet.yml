@@ -49,20 +49,20 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          mkdir -p examples/tl494_named_photo_output
+          mkdir -p examples/tl494_named_truth_output
           PYTHONPATH=src python -m examples.tl494_named_photo_sheet \
             --font-file "$HOME/.local/share/fonts/OpenGostTypeA-Regular.ttf" \
-            --output examples/tl494_named_photo_output --strict \
-            > examples/tl494_named_photo_output/build_log.txt 2>&1
+            --output examples/tl494_named_truth_output --strict \
+            > examples/tl494_named_truth_output/build_log.txt 2>&1
           CODE=$?
-          echo "BUILD_EXIT_CODE=$CODE" >> examples/tl494_named_photo_output/build_log.txt
-          cat examples/tl494_named_photo_output/build_log.txt
+          echo "BUILD_EXIT_CODE=$CODE" >> examples/tl494_named_truth_output/build_log.txt
+          cat examples/tl494_named_truth_output/build_log.txt
           if [ "$CODE" -ne 0 ]; then exit 1; fi
           python - <<'PY'
           from pathlib import Path
           import cairosvg
           from PIL import Image
-          folder=Path('examples/tl494_named_photo_output')
+          folder=Path('examples/tl494_named_truth_output')
           for svg in folder.glob('*.svg'):
               target=svg.with_suffix('.png')
               cairosvg.svg2png(url=str(svg),write_to=str(target),dpi=300,
@@ -76,7 +76,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -f examples/tl494_named_photo_output/
+          git add -f examples/tl494_named_truth_output/
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "build(reference): save 23-part full photo-traced TL494 engine output"
           git fetch origin reference/tl494-native-rework-20261114
