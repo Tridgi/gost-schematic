@@ -8,12 +8,14 @@ but will NEVER label that partial image PRINT PASS.
 """
 import argparse
 import json
+from dataclasses import asdict
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
 from gost_schematic.core.geometry import Box
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.engines.multiterminal_router import route_circuit_net_trees
+from gost_schematic.engines.orthogonal_route_planner import evaluate_placement
 from gost_schematic.engines.sheet_layout import layout_sheet
 from gost_schematic.rendering.external_wire_sheet import (
     build_external_wire_obstacles,
@@ -125,6 +127,7 @@ def generate(
     }
     if page not in page_boxes:
         raise ValueError("ROUTER_UNSUPPORTED_SOURCE_SHEET")
+    placement = evaluate_placement(circuit, by_part, page=page)
     empty_annotations = layout_sheet(
         circuit, by_part, style, measurer, wires=(),
     )
@@ -169,7 +172,7 @@ def generate(
         complete and after_errors == 0
         and after.checked_symbol_geometry and after.checked_measured_text
         and after_layout.valid and not planned.diagnostics
-        and planned.print_pass
+        and planned.print_pass and placement.feasible
     )
     output.mkdir(parents=True, exist_ok=True)
     before_svg = render_external_wire_sheet(
@@ -255,6 +258,12 @@ def generate(
         "model_nets": len(circuit.nets),
         "model_DA1_physical_pin_count": 16,
         "current_page": page,
+        "original_placement": {
+            **asdict(placement),
+            "feasible": placement.feasible,
+            "owner_source_positions_modified": False,
+            "page_capacity_only_not_normative_sheet": True,
+        },
         "source_net_diff": exact_net_diff,
         "source_net_members": source_net_map,
         "attempt_net_members": net_map,
