@@ -888,22 +888,32 @@ def route_circuit_net_trees(
         )
         if not tree.complete and max_order_restarts:
             positions = _pin_catalog(circuit, known[name], parts, symbols)
-            alternate_orders = (
-                tuple(sorted(known[name].members, key=lambda p: (
-                    positions[p][0].x, positions[p][0].y,
-                    p.reference, p.number,
-                ))),
-                tuple(sorted(known[name].members, key=lambda p: (
-                    positions[p][0].y, positions[p][0].x,
-                    p.reference, p.number,
-                ))),
-                tuple(reversed(known[name].members)),
+            sorted_x = tuple(sorted(known[name].members, key=lambda p: (
+                positions[p][0].x, positions[p][0].y,
+                p.reference, p.number,
+            )))
+            sorted_y = tuple(sorted(known[name].members, key=lambda p: (
+                positions[p][0].y, positions[p][0].x,
+                p.reference, p.number,
+            )))
+            # The previous restart loop SKIPPED an unchanged pin ordering.
+            # Consequently a two-terminal route could never retry its legal
+            # original outward corridor with a larger detour, even when a
+            # nearby ink/annotation obstacle required just such a turn.
+            # First retry the SAME sourced PinRef order at a larger bounded
+            # detour, then independently reverse its physical root; only
+            # later try geometric terminal orders and coarser search.
+            retries = (
+                (None, 5000, 1.6),
+                (tuple(reversed(known[name].members)), 5000, 2.0),
+                (sorted_x, 5000, 2.0),
+                (sorted_y, 10000, 2.0),
             )
             attempts = 0
-            for order in alternate_orders:
+            for order, grid, scale in retries:
                 if attempts >= max_order_restarts:
                     break
-                if order == known[name].members:
+                if order == known[name].members and attempts != 0:
                     continue
                 attempts += 1
                 other = route_multi_terminal_net(
@@ -911,8 +921,8 @@ def route_circuit_net_trees(
                     page_box=page_box, occupied_graph=graph,
                     annotation_placements=annotation_placements,
                     stroke_um=stroke_um, search_node_cap=search_node_cap,
-                    max_detour_ratio=min(max_detour_ratio * 1.6, 6.0),
-                    grid_um=5000 if attempts == 1 else 10000,
+                    max_detour_ratio=min(max_detour_ratio * scale, 6.0),
+                    grid_um=grid,
                     terminal_order=order,
                 )
                 if (other.complete or
