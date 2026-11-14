@@ -15,15 +15,19 @@ from examples.render_tl494_full_native_cycle9 import (
     construct_native_paint,
 )
 from gost_schematic.core.geometry import SIDE_VECTORS, Box, Point, Rectangle, Side
-from gost_schematic.model.annotations import MeasuredText, TextStyle
 from gost_schematic.core.transforms import Transform
+from gost_schematic.model.annotations import MeasuredText, TextStyle
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
 from gost_schematic.model.pins import GraphicPin
 from gost_schematic.model.symbol import SymbolDefinition, SymbolStatus
 from gost_schematic.rendering.ic_hotspots import IcConnectionTarget
 from gost_schematic.rendering.ic_rectangular import (
-    IcFieldContent, IcFunctionReading, IcResolvedUnit, ResolvedIcPin,
-    propose_ic_dimensions, render_resolved_ic,
+    IcFieldContent,
+    IcFunctionReading,
+    IcResolvedUnit,
+    ResolvedIcPin,
+    propose_ic_dimensions,
+    render_resolved_ic,
 )
 from gost_schematic.rendering.ic_sheet_composition import (
     compose_authoritative_ic_layers,
