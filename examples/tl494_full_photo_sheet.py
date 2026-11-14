@@ -159,7 +159,7 @@ def compose_circuit(font_file:Path):
     d4=pin("DA1","4")
     route("SOFT_START",pin("C3","2"),q(-135,117),q(51,117))
     route("SOFT_START",pin("R1","2"),q(-95,117))
-    route("SOFT_START",pin("R6","1"),q(-70,175),q(-70,117))
+    route("SOFT_START",pin("R6","1"),q(-105,175),q(-105,117))
     route("SOFT_START",d4,Point(51000,d4.y),q(51,117))
 
     # First error amplifier: R2 bottom / C4 left / R4 top / DA1.2.
@@ -174,8 +174,8 @@ def compose_circuit(font_file:Path):
     d3=pin("DA1","3")
     route("FEEDBACK",pin("R3","2"),q(53,141),Point(53000,d3.y),d3)
     route("ADJUSTED_DIVIDER",pin("R4","2"),pin("R5","1"))
-    route("ADJUSTED_DIVIDER",pin("R5","1"),q(-120,184),q(-120,193),
-          pin("R5","3"))
+    route("ADJUSTED_DIVIDER",pin("R5","1"),q(-135,176),
+          q(-105,176),q(-105,193),pin("R5","3"))
 
     # Two independent timing networks, one end grounded.
     d5=pin("DA1","5")
