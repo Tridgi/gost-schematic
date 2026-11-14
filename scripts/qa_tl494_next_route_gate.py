@@ -10,7 +10,6 @@ from __future__ import annotations
 import argparse
 import json
 import subprocess
-from collections import Counter
 from copy import deepcopy
 from pathlib import Path
 
