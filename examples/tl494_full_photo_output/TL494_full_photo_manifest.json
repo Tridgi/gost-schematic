@@ -1,0 +1,386 @@
+{
+  "TL494_connected_physical_pins": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "11",
+    "12",
+    "13",
+    "14",
+    "15",
+    "16"
+  ],
+  "erc_diagnostics": [
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol reference.connector.x1 is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol inductor.ferromagnetic is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol transistor.mosfet_n_enh is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol capacitor.polarized is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol capacitor.polarized is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol diode.schottky is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol inductor.ferromagnetic is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol capacitor.polarized is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol capacitor.polarized is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol fuse.general is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol reference.connector.x2 is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol reference.tl494cn is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol resistor.fixed is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol capacitor.polarized is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol resistor.fixed is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol resistor.fixed is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol resistor.fixed is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol resistor.fixed is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol resistor.variable is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol resistor.fixed is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol resistor.fixed is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol capacitor.fixed is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol capacitor.fixed is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "POLARITY_UNVERIFIABLE",
+      "message": "C1 (1:+ on SWITCH, 2:- on ENERGY_TRANSFER): Both terminals are connected, but no potentials were supplied",
+      "severity": "warning"
+    },
+    {
+      "code": "POLARITY_UNVERIFIABLE",
+      "message": "C2 (1:+ on SWITCH, 2:- on ENERGY_TRANSFER): Both terminals are connected, but no potentials were supplied",
+      "severity": "warning"
+    },
+    {
+      "code": "POLARITY_UNVERIFIABLE",
+      "message": "C5 (1:+ on COMMON, 2:- on OUT_BEFORE_FUSE): Both terminals are connected, but no potentials were supplied",
+      "severity": "warning"
+    },
+    {
+      "code": "POLARITY_UNVERIFIABLE",
+      "message": "C6 (1:+ on COMMON, 2:- on OUT_BEFORE_FUSE): Both terminals are connected, but no potentials were supplied",
+      "severity": "warning"
+    },
+    {
+      "code": "POLARITY_UNVERIFIABLE",
+      "message": "C3 (1:+ on CONTROL_REFERENCE, 2:- on SOFT_START): Both terminals are connected, but no potentials were supplied",
+      "severity": "warning"
+    }
+  ],
+  "font_name": "OpenGost Type A TT",
+  "font_sha256": "f5c539d432e2fceae137ad746d4acfdcca941d2c7349f013a5bf60231d3e6d01",
+  "junctions_um": [
+    [
+      -126000,
+      125000
+    ],
+    [
+      -95000,
+      86000
+    ],
+    [
+      -95000,
+      117000
+    ],
+    [
+      -85000,
+      212000
+    ],
+    [
+      -85000,
+      220000
+    ],
+    [
+      -70000,
+      117000
+    ],
+    [
+      -55000,
+      86000
+    ],
+    [
+      -55000,
+      125000
+    ],
+    [
+      -40000,
+      220000
+    ],
+    [
+      0,
+      220000
+    ],
+    [
+      30000,
+      220000
+    ],
+    [
+      42000,
+      143250
+    ],
+    [
+      42000,
+      150750
+    ],
+    [
+      42000,
+      220000
+    ],
+    [
+      50000,
+      45000
+    ],
+    [
+      140000,
+      105750
+    ],
+    [
+      145000,
+      98250
+    ],
+    [
+      145000,
+      128250
+    ],
+    [
+      150000,
+      143250
+    ],
+    [
+      150000,
+      150750
+    ],
+    [
+      150000,
+      220000
+    ],
+    [
+      170000,
+      45000
+    ],
+    [
+      170000,
+      220000
+    ],
+    [
+      200000,
+      29000
+    ],
+    [
+      200000,
+      45000
+    ],
+    [
+      200000,
+      65000
+    ],
+    [
+      250000,
+      29000
+    ],
+    [
+      250000,
+      45000
+    ],
+    [
+      250000,
+      65000
+    ],
+    [
+      270000,
+      45000
+    ],
+    [
+      270000,
+      220000
+    ],
+    [
+      345000,
+      45000
+    ],
+    [
+      345000,
+      220000
+    ],
+    [
+      385000,
+      45000
+    ],
+    [
+      385000,
+      220000
+    ],
+    [
+      440000,
+      45000
+    ],
+    [
+      455000,
+      220000
+    ]
+  ],
+  "long_b_jumper_not_photo_ink": true,
+  "not_approved": true,
+  "not_electrically_verified": true,
+  "photo_component_count": 23,
+  "photo_net_count": 15,
+  "source_a": [
+    "X1.1",
+    "DA1.12",
+    "DA1.8",
+    "DA1.11"
+  ],
+  "source_b": [
+    "FU1.2",
+    "X2.1",
+    "R5.2"
+  ],
+  "source_photo_crossovers_are_NOT_solder_junctions": true,
+  "status": "DRAFT_FULL_PHOTO_RECONSTRUCTION_NOT_APPROVED",
+  "variants": {
+    "clean": {
+      "layout_diagnostics": [
+        {
+          "code": "NOMINAL_COMPACT_UNSUPPORTED",
+          "message": "ГОСТ 2.702-2011 §5.3.20 has no defined shortened format for inductance=0.000100 (SI units)",
+          "severity": "warning"
+        },
+        {
+          "code": "NOMINAL_COMPACT_UNSUPPORTED",
+          "message": "ГОСТ 2.702-2011 §5.3.20 has no defined shortened format for inductance=0.000100 (SI units)",
+          "severity": "warning"
+        },
+        {
+          "code": "ANNOTATION_UNPLACEABLE",
+          "message": "No collision-free position for R5.refdes: graphic:R5.graphic.1, pin_escape:R5.pin.1, wire:external-65, wire:external-66, wire:external-67",
+          "severity": "error"
+        },
+        {
+          "code": "ANNOTATION_UNPLACEABLE",
+          "message": "No collision-free position for R6.refdes: graphic:R6.graphic.1, pin_escape:R6.pin.1, wire:external-51",
+          "severity": "error"
+        }
+      ],
+      "layout_valid": false
+    },
+    "diagnostic": {
+      "layout_diagnostics": [
+        {
+          "code": "NOMINAL_COMPACT_UNSUPPORTED",
+          "message": "ГОСТ 2.702-2011 §5.3.20 has no defined shortened format for inductance=0.000100 (SI units)",
+          "severity": "warning"
+        },
+        {
+          "code": "NOMINAL_COMPACT_UNSUPPORTED",
+          "message": "ГОСТ 2.702-2011 §5.3.20 has no defined shortened format for inductance=0.000100 (SI units)",
+          "severity": "warning"
+        },
+        {
+          "code": "ANNOTATION_UNPLACEABLE",
+          "message": "No collision-free position for R5.refdes: graphic:R5.graphic.1, pin_escape:R5.pin.1, wire:external-65, wire:external-66, wire:external-67",
+          "severity": "error"
+        },
+        {
+          "code": "ANNOTATION_UNPLACEABLE",
+          "message": "No collision-free position for R6.refdes: graphic:R6.graphic.1, pin_escape:R6.pin.1, wire:external-51",
+          "severity": "error"
+        }
+      ],
+      "layout_valid": false
+    }
+  },
+  "wire_count": 94,
+  "wire_diagnostics": []
+}
