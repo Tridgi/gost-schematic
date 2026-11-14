@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from copy import deepcopy
 from dataclasses import replace
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -120,6 +121,15 @@ def test_cli_position_only_mm_grid_parsing_and_negative_tampering():
     assert parse_candidate_moves(("DA1:-10:0", "VT1:5:0")) == (
         ("DA1", -10, 0), ("VT1", 5, 0),
     )
+    assert parse_candidate_moves(("DA1:2.5:-2.5",)) == (
+        ("DA1", Decimal("2.5"), Decimal("-2.5")),
+    )
+    half = position_only_move(
+        compact_source_assembly(), parse_candidate_moves(("DA1:2.5:-2.5",)),
+    )
+    assert half.owner_ic_record.placements[0].origin.x == 137500
+    assert half.owner_ic_record.placements[0].origin.y == 87500
+    half.verify()
     for invalid in (
         ("DA1:1:0",), ("DA1:35:0",),
         ("FOREIGN:5:0",), ("DA1:0:3.1",),
