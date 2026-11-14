@@ -1025,13 +1025,37 @@ def current_full_native_23_owner_sheet(font, destination):
         check(len(markers) == (16 if diagnostic else 0),
               "CURRENT_PAINT_GREEN_HOTSPOT_POLICY")
         if diagnostic:
+            real_net_names = {
+                f"{pin.reference}.{pin.number}": net.name
+                for net in circuit.nets for pin in net.members
+            }
             for marker in markers:
                 number = marker.attrib["data-pin-number"]
+                px, py = pin_points[number]
+                attrs = marker.attrib
                 check((
-                    int(marker.attrib["data-external-anchor-x-um"]),
-                    int(marker.attrib["data-external-anchor-y-um"]),
-                ) == pin_points[number],
-                      "CURRENT_PAINT_GREEN_MARKER_NOT_AT_REAL_LEAD_END")
+                    int(attrs["data-external-anchor-x-um"]),
+                    int(attrs["data-external-anchor-y-um"]),
+                ) == (px, py),
+                      "CURRENT_PAINT_GREEN_MARKER_METADATA_WRONG")
+                width_um = round(float(attrs["width"]) * 1000)
+                height_um = round(float(attrs["height"]) * 1000)
+                check(width_um == height_um == 700,
+                      "CURRENT_PAINT_NOT_PHYSICAL_SQUARE")
+                check(round(float(attrs["x"]) * 1000) * 2 +
+                      width_um == px * 2 and
+                      round(float(attrs["y"]) * 1000) * 2 +
+                      height_um == py * 2,
+                      "CURRENT_PAINT_GREEN_RECT_VISIBLE_CENTER_NOT_PIN")
+                ref = f"DA1.{number}"
+                check(
+                    attrs["data-pin-ref"] == ref and
+                    attrs["data-pin-id"] == f"DA1.P{number}" and
+                    attrs["data-net-id"] == real_net_names[ref] and
+                    attrs["data-connectable"] == "true" and
+                    attrs["fill"].lower() == "#148645",
+                    "CURRENT_PAINT_DEBUG_ROLE_NET_COLOR_FORGED",
+                )
         labels = body.findall(f".//{NS}text[@data-kind='pin-label']")
         names = {l.attrib["data-physical-pin-number"]: l.text for l in labels}
         check(len(names) == 16 and names["3"] == "FB" and
