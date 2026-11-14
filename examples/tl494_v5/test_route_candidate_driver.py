@@ -12,7 +12,6 @@ from examples.tl494_v5.compact_layout import compact_source_assembly
 from examples.tl494_v5.route_candidate_driver import (
     ORIGINAL_BAD_DRC,
     REAL_SOURCE_NAMES,
-    Candidate,
     candidate_priority,
     drive_candidates,
     load_original_owner_fixture,
@@ -43,9 +42,9 @@ def test_exact_frozen_owner_netnames_and_all_62_pinrefs():
     assert "b_NEGATIVE_OUTPUT" in {net.name for net in restored.nets}
     assert "TRANSFER" in {net.name for net in restored.nets}
     assert "PE" not in {net.name for net in restored.nets}
-    assert len(set(
+    assert len({
         pin for net in restored.nets for pin in net.members
-    )) == 62
+    }) == 62
 
 
 def test_source_alias_pin_swap_rejected_even_when_count_unchanged():
@@ -157,7 +156,7 @@ def test_negative_source_fixture_integration_does_not_write_outputs(tmp_path: Pa
 
 
 def test_candidate_driver_real_owners_diagnostics_only(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
 ):
     # A real 15-Net owner route; 1000 search nodes bounds CI time. It may
     # complete in the future, but QA/ESKD always remains an independent gate.
