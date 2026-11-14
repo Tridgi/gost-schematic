@@ -59,10 +59,17 @@ def _inverse(transform: Transform, p: Point) -> Point:
 
 
 class IcOrientation(str, Enum):
-    """Separate semantic view from the arbitrary D4 placement transform."""
+    """Physical port-side profile, independent of text rotation and body ratio."""
 
     LEFT_RIGHT = "left_right"
     TOP_BOTTOM = "top_bottom"  # ГОСТ 2.743-91 fig.3 / 2.759-82 §1.8
+
+
+class IcTypographyProfile(str, Enum):
+    """Explicitly versioned, non-normative renderer presentation profiles."""
+
+    LEGACY_V1 = "legacy_v1"
+    PORTRAIT_FUNCTION_V2_DRAFT = "portrait_function_v2_draft"
 
 
 @dataclass(frozen=True, slots=True)
@@ -146,6 +153,7 @@ class IcProposedSize:
     module_um: int
     body_width_um: int | None = None
     vertical_field_heights_um: tuple[int, int, int] = (0, 0, 0)
+    function_row_span: int = 1
 
     @property
     def width_um(self) -> int:
@@ -162,18 +170,28 @@ class IcResolvedUnit:
     origin: Point = field(default_factory=lambda: Point(0, 0))
     transform: Transform = field(default_factory=Transform)
     orientation: IcOrientation = IcOrientation.LEFT_RIGHT
-    function_rotation: int = 0
+    function_rotation: int | None = None
     field_text_rotation: int = 0
+    typography_profile: IcTypographyProfile = IcTypographyProfile.LEGACY_V1
 
     def __post_init__(self) -> None:
         if not isinstance(self.orientation, IcOrientation):
             raise TypeError("IC_ORIENTATION_TYPED_REQUIRED")
-        if self.function_rotation not in (0, 90) or self.field_text_rotation not in (0, 90):
-            raise ValueError("IC_TEXT_ROTATION_UNVERIFIED: only 0/90 fig.3")
-        if self.orientation is IcOrientation.LEFT_RIGHT and (
-            self.function_rotation or self.field_text_rotation
-        ):
-            raise ValueError("IC_TEXT_ROTATION_REQUIRES_TOP_BOTTOM_PROFILE")
+        if not isinstance(self.typography_profile, IcTypographyProfile):
+            raise TypeError("IC_TYPOGRAPHY_PROFILE_TYPED_REQUIRED")
+        if self.function_rotation is None:
+            default_rotation = (
+                90 if self.typography_profile is
+                IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT else 0
+            )
+            object.__setattr__(self, "function_rotation", default_rotation)
+        if (type(self.function_rotation) is not int
+                or self.function_rotation not in (0, 90)
+                or type(self.field_text_rotation) is not int
+                or self.field_text_rotation not in (0, 90)):
+            raise ValueError("IC_TEXT_ROTATION_UNVERIFIED: only 0/90")
+        if self.orientation is IcOrientation.LEFT_RIGHT and self.field_text_rotation:
+            raise ValueError("IC_FIELD_ROTATION_REQUIRES_TOP_BOTTOM_PROFILE")
         if not self.reference:
             raise ValueError("IC_REFERENCE_REQUIRED")
         if len({p.pin_id for p in self.pins}) != len(self.pins):
@@ -287,12 +305,15 @@ def propose_ic_dimensions(
     policy: IcRenderingPolicy = IcRenderingPolicy(),
     *,
     orientation: IcOrientation = IcOrientation.LEFT_RIGHT,
+    function_rotation: int = 0,
 ) -> IcProposedSize:
     """Minimum grid-rounded box computed exclusively from real glyph ink.
 
     Pins are examined for text/row demands, but their anchor Point is NEVER
     altered or inferred by this sizing pass.
     """
+    if function_rotation not in (0, 90):
+        raise ValueError("IC_TEXT_ROTATION_UNVERIFIED")
     if orientation is IcOrientation.TOP_BOTTOM:
         from gost_schematic.rendering.ic_orientation import vertical_proposal
 
@@ -313,18 +334,43 @@ def propose_ic_dimensions(
     main = (content.function, *content.main_rows)
     nonempty = tuple(x for x in (*main, *left, *right) if x)
     dimensions = tuple(_measure(x, style, measurer) for x in nonempty)
-    tallest = max(_height(b) for b in dimensions)
+    function_ink = _measure(content.function, style, measurer)
+    # A 90-degree word consumes vertical rows, NOT a huge single row pitch.
+    horizontal_inks = (
+        dimensions[1:] if function_rotation == 90 else dimensions
+    )
+    tallest = max(
+        (_height(b) for b in horizontal_inks),
+        default=_height(function_ink),
+    )
     pitch = _round_grid(max(
         policy.module_um * policy.pitch_modules,
         tallest + 2 * policy.ink_padding_um + policy.line_width_um,
     ), policy.module_um)
+    function_span = (
+        max(1, ceil((_width(function_ink) + 2 * policy.ink_padding_um
+                     + policy.line_width_um) / pitch))
+        if function_rotation == 90 else 1
+    )
     max_row = max((p.row for p in pins), default=0)
-    nrows = max(2, len(main), len(left), len(right), max_row + 1)
+    nrows = max(
+        2, function_span + len(content.main_rows), len(left), len(right),
+        max_row + 1,
+    )
     def width(strings: tuple[str, ...], mandatory: bool = False) -> int:
         occupied = tuple(t for t in strings if t)
         if not occupied and not mandatory:
             return 0
-        maxink = max((_width(_measure(t, style, measurer)) for t in occupied), default=0)
+        widths = (
+            _height(function_ink) if function_rotation == 90 else
+            _width(function_ink),
+        ) if mandatory else ()
+        maxink = max((
+            *widths, *(
+                _width(_measure(t, style, measurer))
+                for t in (strings[1:] if mandatory else strings) if t
+            ),
+        ), default=0)
         minimum = policy.main_min_width_um if mandatory else policy.module_um
         return _round_grid(
             max(minimum, maxink + 2 * policy.ink_padding_um + policy.line_width_um),
@@ -340,6 +386,7 @@ def propose_ic_dimensions(
     return IcProposedSize(
         width(main, True), width(left), width(right),
         nrows * pitch, pitch, nrows, leads, policy.module_um,
+        function_row_span=function_span,
     )
 
 
@@ -366,6 +413,33 @@ def _text_placement(
         raise ValueError(f"IC_TEXT_OVERFLOW: {owner} {kind} text={text!r}")
     return IcInkBox(owner, kind, ink, text), Point(
         left - bounds.min_x, top - bounds.min_y,
+    )
+
+
+def _rotated_function_placement(
+    owner: str, text: str, cell: Box, style: TextStyle,
+    measurer: TextMeasurer, policy: IcRenderingPolicy,
+) -> tuple[IcInkBox, Point]:
+    """Rotate the WHOLE measured word around its baseline, then fit its ink.
+
+    The returned baseline is in local micrometres; no individual letters are
+    reflowed. Stroke spacing is checked against the transformed word bounds.
+    """
+    rotated = Transform(90).box(_measure(text, style, measurer))
+    left = (cell.min_x + cell.max_x - _width(rotated)) // 2
+    top = (cell.min_y + cell.max_y - _height(rotated)) // 2
+    ink = Box(left, top, left + _width(rotated), top + _height(rotated))
+    p = policy.ink_padding_um
+    if not (
+        cell.min_x + p <= ink.min_x and ink.max_x <= cell.max_x - p
+        and cell.min_y + p <= ink.min_y and ink.max_y <= cell.max_y - p
+    ):
+        raise ValueError(
+            f"IC_TEXT_OVERFLOW: {owner} rotated function {text!r}; "
+            "request a NEW authoritative IcSymbolSpec revision from ELEKTRIK"
+        )
+    return IcInkBox(owner, "function", ink, text), Point(
+        left - rotated.min_x, top - rotated.min_y,
     )
 
 
@@ -448,8 +522,15 @@ def render_resolved_ic(
         return replace(result, proposed=vertical_proposal(canon))
     proposed = propose_ic_dimensions(
         unit.content, unit.pins, style, measurer, policy,
+        function_rotation=unit.function_rotation,
     )
     body = unit.body
+    if (unit.typography_profile is IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT
+            and _height(body) <= _width(body)):
+        raise ValueError(
+            f"IC_PORTRAIT_BODY_REQUIRED: {unit.reference} needs height > width; "
+            "request an explicit revised geometry from ELEKTRIK"
+        )
     if _width(body) < proposed.width_um or _height(body) < proposed.height_um:
         raise ValueError(
             f"IC_TEXT_OVERFLOW: {unit.reference} body "
@@ -547,6 +628,7 @@ def render_resolved_ic(
     # Third field is an optional SVG matrix for ink rotated with the symbol.
     # External physical numbers and the reference ALWAYS stay upright.
     texts: list[tuple[IcInkBox, Point, str | None]] = []
+    rotated_function_baselines: dict[str, Point] = {}
     matrix = _svg_orthogonal_matrix(unit.transform, unit.origin)
 
     def add(text: str, cell: Box, owner: str, kind: str,
@@ -556,7 +638,21 @@ def render_resolved_ic(
         follow = (
             _rotate_function if kind == "function" else _rotate_fields
         )
-        if follow:
+        if (kind == "function" and unit.function_rotation == 90
+                and not _vertical_internal):
+            from gost_schematic.rendering.ic_orientation import compose_transforms
+
+            local, baseline = _rotated_function_placement(
+                owner, text, cell, style, measurer, policy,
+            )
+            rotated_function_baselines[owner] = baseline
+            word_pose = compose_transforms(unit.transform, Transform(90))
+            texts.append((
+                IcInkBox(owner, kind, worldbox(local.box), text),
+                Point(0, 0),
+                _svg_orthogonal_matrix(word_pose, world(baseline)),
+            ))
+        elif follow:
             local, local_baseline = _text_placement(
                 owner, text, cell, align, style, measurer, policy, kind,
             )
@@ -573,11 +669,18 @@ def render_resolved_ic(
     def row_box(fieldbox: Box, index: int) -> Box:
         return Box(fieldbox.min_x, body.min_y + index * pitch,
                    fieldbox.max_x, body.min_y + (index + 1) * pitch)
-    for index, line in enumerate(
-        (unit.content.function, *unit.content.main_rows)
-    ):
-        add(line, row_box(ranges["main"], index),
-            f"main.{index}", "function" if index == 0 else "main-text")
+    add(
+        unit.content.function,
+        Box(
+            ranges["main"].min_x, body.min_y, ranges["main"].max_x,
+            body.min_y + proposed.function_row_span * pitch,
+        ),
+        "main.0", "function",
+    )
+    for index, line in enumerate(unit.content.main_rows):
+        visual_row = proposed.function_row_span + index
+        add(line, row_box(ranges["main"], visual_row),
+            f"main.{index + 1}", "main-text")
     for side, raw in (
         (Side.LEFT, unit.content.left_rows),
         (Side.RIGHT, unit.content.right_rows),
@@ -680,10 +783,16 @@ def render_resolved_ic(
             for glyph in _true_glyph_boxes(
                 parent.owner, parent.text, baseline, style,
             ):
-                candidate = (
-                    worldbox(glyph.ink)
-                    if matrix_token is not None else glyph.ink
-                )
+                if parent.owner in rotated_function_baselines:
+                    rotated_local = Transform(90).box(glyph.ink).translated(
+                        rotated_function_baselines[parent.owner]
+                    )
+                    candidate = worldbox(rotated_local)
+                else:
+                    candidate = (
+                        worldbox(glyph.ink)
+                        if matrix_token is not None else glyph.ink
+                    )
                 x1 = max(candidate.min_x, parent.box.min_x)
                 y1 = max(candidate.min_y, parent.box.min_y)
                 x2 = min(candidate.max_x, parent.box.max_x)
@@ -736,6 +845,10 @@ def render_resolved_ic(
         "data-function-text-with-symbol": str(_rotate_function).lower(),
         "data-field-text-with-symbol": str(_rotate_fields).lower(),
     })
+    if unit.typography_profile is not IcTypographyProfile.LEGACY_V1:
+        svg.set("data-typography-profile", unit.typography_profile.value)
+    if (unit.function_rotation == 90 and not _vertical_internal):
+        svg.set("data-function-rotation-deg", "90")
     ET.SubElement(svg, S + "title").text = (
         f"DRAFT physical E3 IC {unit.reference}; no electrical net inference"
     )
