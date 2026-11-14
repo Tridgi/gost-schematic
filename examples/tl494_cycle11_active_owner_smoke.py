@@ -12,7 +12,46 @@ from dataclasses import replace
 from importlib import import_module
 from pathlib import Path
 
-from gost_schematic.model.circuit import Circuit, PinRef
+from gost_schematic.model.circuit import Circuit, Net, PinRef
+
+
+def _source_named_circuit(circuit: Circuit) -> Circuit:
+    """Reversible ONLY the 3 published source-to-RECON electrical Net IDs.
+
+    IC #97 validates the immutable photo's source IDs (a_INPUT_PLUS,
+    b_NEGATIVE_OUTPUT, TRANSFER). RECON #115 intentionally uses
+    INPUT_POS/OUTPUT_NEG/ENERGY_TRANSFER. Preserve each exact original
+    member tuple, component, pose, nominal and immutable Circuit object.
+    """
+    from examples.tl494_v5.native_circuit import NET_RENAMES
+
+    prescribed = {
+        "a_INPUT_PLUS": "INPUT_POS",
+        "b_NEGATIVE_OUTPUT": "OUTPUT_NEG",
+        "TRANSFER": "ENERGY_TRANSFER",
+    }
+    if NET_RENAMES != prescribed:
+        raise ValueError("C11_UNAUTHORIZED_SOURCE_NET_ALIAS_TABLE_DRIFT")
+    inverse = {value: key for key, value in prescribed.items()}
+    names = {net.name for net in circuit.nets}
+    if (
+        len(names) != len(circuit.nets)
+        or not set(inverse) <= names
+        or set(prescribed) & names
+    ):
+        raise ValueError("C11_SOURCE_NET_NAMES_AMBIGUOUS_OR_MISSING")
+    renamed = tuple(
+        Net(inverse.get(net.name, net.name), net.members)
+        for net in circuit.nets
+    )
+    if (
+        len({net.name for net in renamed}) != len(renamed)
+        or {prescribed.get(net.name, net.name): net.members
+            for net in renamed}
+        != {net.name: net.members for net in circuit.nets}
+    ):
+        raise ValueError("C11_REVERSIBLE_SOURCE_NET_ALIAS_IDENTITY_FAILURE")
+    return Circuit(circuit.components, renamed)
 
 
 def check_active_owners(out: Path, *, owner_heads: dict[str, str]) -> dict:
@@ -33,7 +72,18 @@ def check_active_owners(out: Path, *, owner_heads: dict[str, str]) -> dict:
         raise ValueError("C11_SOURCE_23_15_62_DRIFT")
     from examples.tl494_cycle9_circuit_integration import (
         bind_positioned_photo_circuit_from_catalog,
+        load_frozen_source,
     )
+    historical = load_frozen_source()
+    source_named = _source_named_circuit(circuit)
+    if {
+        net.name: tuple(
+            f"{pin.reference}.{pin.number}" for pin in net.members
+        ) for net in source_named.nets
+    } != {
+        name: tuple(members) for name, members in historical["nets"].items()
+    }:
+        raise ValueError("C11_CROSS_OWNER_ALIAS_DID_NOT_MATCH_SOURCE_FIXTURE")
     from gost_schematic.electrical.ic_circuit_adapter import (
         IcCircuitBinding,
     )
@@ -43,14 +93,21 @@ def check_active_owners(out: Path, *, owner_heads: dict[str, str]) -> dict:
     )
 
     bound = bind_positioned_photo_circuit_from_catalog(
-        circuit, source.owner_ic_record, source.parts,
+        source_named, source.owner_ic_record, source.parts,
         aliases=source.owner_aliases,
     )
     if not isinstance(bound, IcCircuitBinding):
         raise TypeError("C11_IC_BRIDGE_NOT_OWNER_TYPED_BINDING")
-    if bound.circuit.nets is not circuit.nets:
+    if bound.circuit.nets is not source_named.nets:
         raise ValueError("C11_OWNER_ADAPTER_CLONED_OR_REWROTE_NETS")
-    if before != {n.name: n.members for n in bound.circuit.nets}:
+    if before != {
+        {
+            "a_INPUT_PLUS": "INPUT_POS",
+            "b_NEGATIVE_OUTPUT": "OUTPUT_NEG",
+            "TRANSFER": "ENERGY_TRANSFER",
+        }.get(n.name, n.name): n.members
+        for n in bound.circuit.nets
+    }:
         raise ValueError("C11_OWNER_ADAPTER_CHANGED_PHYSICAL_PINREFS")
     old = {c.reference: c for c in circuit.components}
     new = {c.reference: c for c in bound.circuit.components}
@@ -133,7 +190,8 @@ def check_active_owners(out: Path, *, owner_heads: dict[str, str]) -> dict:
     for label, forged in malformed:
         try:
             bind_positioned_photo_circuit_from_catalog(
-                forged, source.owner_ic_record, source.parts,
+                _source_named_circuit(forged),
+                source.owner_ic_record, source.parts,
                 aliases=source.owner_aliases,
             )
         except (TypeError, ValueError) as exc:
@@ -159,6 +217,12 @@ def check_active_owners(out: Path, *, owner_heads: dict[str, str]) -> dict:
         "real_components": 23, "real_nets": 15,
         "real_physical_memberships": 62, "real_DA1_pins": 16,
         "source_net_diff": {"added": [], "removed": [], "modified": []},
+        "reversible_net_name_views": {
+            "a_INPUT_PLUS": "INPUT_POS",
+            "b_NEGATIVE_OUTPUT": "OUTPUT_NEG",
+            "TRANSFER": "ENERGY_TRANSFER",
+        },
+        "original_RECON_net_tuple_left_unmodified": True,
         "before_part_id": old["DA1"].part_id,
         "after_part_id": new["DA1"].part_id,
         "pose_unchanged": True,
