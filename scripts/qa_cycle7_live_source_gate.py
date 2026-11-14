@@ -269,7 +269,6 @@ def ic_text_gallery(output, font):
     from examples.review_ic_cycle7 import synthetic_ic
     from gost_schematic.electrical.ic import IcKind, IcTextAngle
     from gost_schematic.electrical.ic_graphic_revision import revise_ic_text_orientation
-
     from gost_schematic.rendering import ic_rectangular as paint
 
     face = inspect_type_a_font(font, h_um=2500)
