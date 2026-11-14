@@ -167,6 +167,7 @@ def generate(output:Path,font_file:Path):
         segments=(*original.segments,*copper),
         junctions=(*original.junctions,
             Point(common_x,common_y),
+            *(Point(common_x,p.y) for p in groundpins[1:]),
             Point(pt("R8","2").x,common_y),
             Point(gate_x,E1.y),Point(gate_x,E2.y),
         ),
