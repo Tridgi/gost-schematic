@@ -10,13 +10,14 @@ import json
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-from examples.tl494_v5.native_circuit import assemble_native_v5
-from gost_schematic.core.units import format_mm
 from gost_schematic.electrical.ic import resolve_ic_pin_positions
 from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
+from gost_schematic.rendering.ic_rectangular import render_resolved_ic
+
+from examples.tl494_v5.native_circuit import assemble_native_v5
+from gost_schematic.core.units import format_mm
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.model.circuit import PinRef
-from gost_schematic.rendering.ic_rectangular import render_resolved_ic
 from gost_schematic.standards.type_a_font import inspect_type_a_font
 
 S = "{http://www.w3.org/2000/svg}"
