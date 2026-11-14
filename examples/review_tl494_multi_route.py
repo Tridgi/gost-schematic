@@ -292,7 +292,7 @@ def generate(
     ):
         (output / filename).write_text(
             json.dumps(payload, sort_keys=True, ensure_ascii=False, indent=2)
-            + "\\n", encoding="utf-8",
+            + "\n", encoding="utf-8",
         )
     print(json.dumps({
         "status": report["release"],
