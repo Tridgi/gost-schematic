@@ -205,7 +205,8 @@ class IcTextAngle(int, Enum):
     """DRAFT display angle in untransformed local coordinates (degrees)."""
 
     HORIZONTAL = 0
-    VERTICAL = 90
+    VERTICAL = 90  # SVG y-positive DOWN: top-to-bottom text
+    BOTTOM_TO_TOP = 270  # signed CCW word, independent of physical pins
 
 
 @dataclass(frozen=True, slots=True)
