@@ -10,7 +10,6 @@ Run:
   python -m examples.agent_project_p11 --workspace output/agent-project-p11
 """
 import argparse
-import builtins
 import json
 import subprocess
 import sys
