@@ -202,9 +202,56 @@ def compare_native_paint_symbols() -> dict:
     }
 
 
+def compare_native_ic_typed_source() -> dict:
+    """Verify actual IC owner frozen 23/15/62/16 without reinterpreting it."""
+    from gost_schematic.model.circuit import PinRef
+
+    owner = importlib.import_module("examples.tl494_cycle9_circuit_integration")
+    binding, source = owner.build_frozen_photo_23()
+    owner.assert_frozen_photo_topology(binding, source)
+    actual = binding.circuit
+    assert len(actual.components) == 23
+    assert len(actual.nets) == 15
+    assert sum(len(net.members) for net in actual.nets) == 62
+    assert len(binding.contacts) == 16
+    assert {p.number for n in actual.nets for p in n.members
+            if p.reference == "DA1"} == {str(x) for x in range(1, 17)}
+    assert binding.contact(PinRef("DA1", "3")).electrical_type.value == "input"
+    assert binding.contact(PinRef("DA1", "13")).electrical_type.value == "input"
+    before = actual.nets
+    parts, symbols, _ = _source_data()
+    selected = bind_tl494_source(
+        actual.components, parts, symbols, allow_relayout=True,
+    )
+    assert len(selected) == 13
+    assert sum(len(p.pin_refs) for p in selected) == 28
+    originals = {
+        p.reference: p for p in selected
+    }
+    for item in actual.nets:
+        for member in item.members:
+            if member.reference in originals:
+                assert member in originals[member.reference].pin_refs
+    for item in selected:
+        footprint = source_footprint(item)
+        assert len(footprint_record(footprint)["footprint_sha256"]) == 64
+    if actual.nets is not before:
+        raise AssertionError("YGO source ink probe altered owner Circuit.Net")
+    return {
+        "consumer": "ELEKTRIK_IC_PR97_FROZEN_TYPED_PHOTO_CIRCUIT",
+        "source_profiles": 13,
+        "real_components": 23,
+        "real_nets": 15,
+        "real_net_PinRef_memberships": 62,
+        "physical_DA1_pins": 16,
+        "source_selected_physical_leads": 28,
+        "status": "PASS_PHYSICAL_TYPE_BINDING_NOT_FULL_ROUTE_OR_PRINT",
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--owner", choices=("net", "paint"), required=True)
+    parser.add_argument("--owner", choices=("net", "paint", "ic"), required=True)
     parser.add_argument("--owner-sha", required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
@@ -217,10 +264,12 @@ def main():
         )
     if len(args.owner_sha) != 40:
         raise ValueError("OWNER_COMMIT_SHA_MUST_BE_PINNED")
-    report = (
-        compare_native_net_strokes() if args.owner == "net"
-        else compare_native_paint_symbols()
-    )
+    if args.owner == "net":
+        report = compare_native_net_strokes()
+    elif args.owner == "paint":
+        report = compare_native_paint_symbols()
+    else:
+        report = compare_native_ic_typed_source()
     report.update({
         "owner_sha": actual_sha,
         "source_sha": PINNED_REFERENCE_SHA,

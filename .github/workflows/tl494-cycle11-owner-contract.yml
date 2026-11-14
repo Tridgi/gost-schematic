@@ -43,6 +43,12 @@ jobs:
           - owner: paint
             python-version: "3.13"
             owner_sha: "dea3b4564fa32ef3ff040f1ffdd9aa47ab480d2d"
+          - owner: ic
+            python-version: "3.12"
+            owner_sha: "9242fa83606a881b8ff277ff051c7b46a5b63a22"
+          - owner: ic
+            python-version: "3.13"
+            owner_sha: "9242fa83606a881b8ff277ff051c7b46a5b63a22"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
