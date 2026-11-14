@@ -21,7 +21,11 @@ from examples.tl494_v5.compact_layout import (
     actual_component_occupied_mm,
     compact_source_assembly,
 )
-from examples.tl494_v5.native_circuit import NET_RENAMES, NativeV5Assembly
+from examples.tl494_v5.native_circuit import (
+    NET_RENAMES,
+    NativeV5Assembly,
+    assemble_native_v5,
+)
 from examples.tl494_v5.route_preflight import (
     MeasuredInkGuard,
     _owner_ic_obstacle,
@@ -394,6 +398,13 @@ def run_candidate(
             for tree in report["net_trees"]
         },
         "accepted_graph_nonprintable": {
+            "total_segment_count": len(result.graph.segments),
+            "total_manhattan_length_mm": round(sum(
+                abs(w.start.x - w.end.x) + abs(w.start.y - w.end.y)
+                for w in result.graph.segments
+            ) / 1000, 3),
+            "source_original_wire_count": 91,
+            "historical_negative_not_overwritten": True,
             "segments_um": [
                 {
                     "net": wire.net_name,
@@ -419,6 +430,11 @@ def drive_candidates(
     if not variants or len(variants) > 3 or len(set(variants)) != len(variants):
         raise ValueError("V5_CANDIDATE_INVALID_VARIANT_SET")
     frozen, owner_binding = load_original_owner_fixture()
+    original = assemble_native_v5()
+    original.verify()
+    before_ink = _build_obstacles(
+        original, original.circuit, font_file
+    )[3]
     trials = [
         run_candidate(
             font_file, Candidate(key, candidate_priority(frozen, key)),
@@ -450,6 +466,26 @@ def drive_candidates(
         "original_net_names": list(frozen["nets"]),
         "internal_aliases_reverse": NET_RENAMES,
         "original_nets_SHA256": _digest(source_nets),
+        "source_BOM": frozen["components"],
+        "source_BOM_SHA256": _digest(frozen["components"]),
+        "original_Netlist": frozen["nets"],
+        "before_after_UGO_footprints": {
+            "metric": "actual_symbol_stroked_component_envelopes_only",
+            "excludes": "wire and sheet-border extents, text/photo overlay",
+            "source_original": before_ink,
+            "compact_candidate": best["a3"],
+            "saved_width_mm": round(
+                before_ink["width_mm"] - best["a3"]["width_mm"], 3
+            ),
+            "all_UGO_unscaled": True,
+        },
+        "source_photo_comparison": {
+            "physical_BOM_refs": "EXACT_23_FROM_BYTE_PINNED_FIXTURE",
+            "physical_Pins_and_Nets": "EXACT_62_IN_15_ORIGINAL_NAMED_NETS",
+            "photographic_pixel_alignment": "NOT_AVAILABLE_UNVERIFIED",
+            "actual_functional_behavior": "NOT_SIMULATED_OR_CERTIFIED",
+            "symbol_GOST_approval": "DRAFT_NOT_APPROVED",
+        },
         "negative_original_DRC_expected": ORIGINAL_BAD_DRC,
         "paper": "A3 landscape 420x297mm; 10mm margins; DRAFT",
         "candidates": trials,
