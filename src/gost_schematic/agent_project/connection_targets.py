@@ -8,6 +8,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
 
+from gost_schematic.electrical.netrefs import NetIdentity
 from gost_schematic.model.circuit import PinRef
 
 from .catalog import CatalogResolver, ProjectError
@@ -19,17 +20,6 @@ _NO_CONNECT = frozenset({"NC", "NO_CONNECT", "NOT_CONNECTED"})
 _UNVERIFIED = frozenset({"UNSPECIFIED", "UNKNOWN"})
 _POWER = frozenset({"POWER_INPUT", "POWER_OUTPUT"})
 _DRIVERS = frozenset({"OUTPUT", "POWER_OUTPUT"})
-
-
-@dataclass(frozen=True, slots=True)
-class NetIdentity:
-    """Stable electrical net identity; its printed name is NOT an alias key."""
-
-    id: str
-    name: str
-
-    def to_record(self) -> dict[str, str]:
-        return {"id": self.id, "name": self.name}
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,9 +58,14 @@ class ConnectionTarget:
             "electrical_role": self.electrical_role,
             "pin_function": self.pin_function,
             "polarity": self.polarity,
-            "net_identity": (
-                self.net_identity.to_record() if self.net_identity else None
-            ),
+            "net_identity": None if self.net_identity is None else {
+                "id": self.net_identity.id,
+                "name": self.net_identity.net_name,
+                "members": [
+                    {"reference": pin.reference, "number": pin.number}
+                    for pin in self.net_identity.members
+                ],
+            },
             "wire_segment_id": self.wire_segment_id,
             "wire_end": self.wire_end,
         }
@@ -133,7 +128,7 @@ def build_connection_targets(
         project.component_ids, strict=True,
     ))
     nets = {
-        net.name: NetIdentity(net_id, net.name)
+        net.name: NetIdentity(net_id, net.name, net.members)
         for net, net_id in zip(project.circuit.nets, project.net_ids, strict=True)
     }
     pin_nets: dict[PinRef, NetIdentity] = {}
