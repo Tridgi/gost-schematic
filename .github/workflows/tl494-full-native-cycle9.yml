@@ -1,0 +1,131 @@
+name: PAINT TL494 Cycle9 full native 23-component model integration
+
+on:
+  pull_request:
+    branches: [integration/stage0-12]
+    paths:
+      - "src/gost_schematic/rendering/ic_sheet_composition.py"
+      - "src/gost_schematic/rendering/external_wire_sheet.py"
+      - "examples/render_tl494_full_native_cycle9.py"
+      - "tests/test_full_native_cycle9.py"
+      - ".github/workflows/tl494-full-native-cycle9.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-full-sheet:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    runs-on: ubuntu-latest
+    env:
+      SOURCE_SHA: e695c415fdced164b0e0c39c5249d030795a0aa6
+      IC_SHA: 6161e9102cbc0c9e0491fb27ed7a496dc0b274bc
+      CATALOG_SHA: edc71a48035723d48a203ae2ea12588701f68ba8
+      PAINT_PINNED_NATIVE_REQUIRED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Real pinned reference python model and owner source snapshots
+        run: |
+          git fetch --no-tags --depth=1 origin "$SOURCE_SHA"
+          git fetch --no-tags --depth=1 origin "$IC_SHA"
+          git fetch --no-tags --depth=1 origin "$CATALOG_SHA"
+          for p in \
+            examples/tl494_named_photo_sheet.py \
+            examples/tl494_connected_native.py \
+            examples/tl494_native_rework.py \
+            examples/tl494_full_native_model.py \
+            examples/tl494_ic_paint_reference.py; do
+            git show "$SOURCE_SHA:$p" > "$p"
+          done
+          for p in $(git ls-tree -r --name-only "$IC_SHA" src/gost_schematic/electrical); do
+            mkdir -p "$(dirname "$p")"
+            git show "$IC_SHA:$p" > "$p"
+          done
+          for p in \
+            src/gost_schematic/catalog/source_profiles.py \
+            src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json; do
+            mkdir -p "$(dirname "$p")"
+            git show "$CATALOG_SHA:$p" > "$p"
+          done
+          test "$(git rev-parse "$SOURCE_SHA")" = "$SOURCE_SHA"
+          test "$(git rev-parse "$IC_SHA")" = "$IC_SHA"
+          test "$(git rev-parse "$CATALOG_SHA")" = "$CATALOG_SHA"
+          test -f src/gost_schematic/electrical/tl494cn.py
+          test -f src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json
+      - name: Real OpenGost Type A font and real SVG rasterizer
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python -m pip install -e ".[dev]"
+          python scripts/install_opengost_type_a.py \
+            --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a \
+            --directory "$HOME/.local/share/fonts"
+          fc-cache -f
+          FONT_FILE="$(find "$HOME/.local/share/fonts" -type f \( -iname '*TypeA*.ttf' -o -iname '*TypeA*.otf' \) | head -1)"
+          test -f "$FONT_FILE"
+          echo "REVIEW_FONT=$FONT_FILE" >> "$GITHUB_ENV"
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+      - name: Source-model and endpoint strict-negative tests
+        run: |
+          ruff check src/gost_schematic/rendering/ic_sheet_composition.py \
+            src/gost_schematic/rendering/external_wire_sheet.py \
+            examples/render_tl494_full_native_cycle9.py \
+            tests/test_full_native_cycle9.py
+          pytest -q tests/test_full_native_cycle9.py
+      - name: Render COMPLETE new native 23/15/16/91 before-after from source Circuit
+        run: |
+          python -m examples.render_tl494_full_native_cycle9 \
+            --font-file "$REVIEW_FONT" \
+            --output output/tl494-full-native-cycle9
+      - name: Raster original FULL native 23-part clean/diagnostic 300 DPI
+        run: |
+          for f in output/tl494-full-native-cycle9/*.svg; do
+            rsvg-convert --background-color white --dpi-x 300 --dpi-y 300 \
+              --output "${f%.svg}-300dpi.png" "$f"
+          done
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from PIL import Image, ImageChops
+          from xml.etree import ElementTree as ET
+          folder=Path("output/tl494-full-native-cycle9")
+          proof=json.loads((folder/"TL494_full_native_23_engine_manifest.json").read_text())
+          assert proof["components"]==23 and proof["Nets"]==15
+          assert proof["wires"]==91 and proof["explicit_junctions"]==37
+          assert proof["actual_ti_pin3_electrical"]=="input"
+          assert proof["actual_ti_pin13_electrical"]=="input"
+          assert len(proof["catalog_ugo_bindings"])==13
+          assert len(proof["variants"])==6
+          assert proof["font_sha256"]=="f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a"
+          pictures=list(folder.glob("*-300dpi.png"))
+          assert len(pictures)>=7
+          for svg in folder.glob("*.svg"):
+              root=ET.fromstring(svg.read_text())
+              assert len(root.findall("./{http://www.w3.org/2000/svg}g[@data-layer='symbols']"))==23
+              assert len(root.findall(".//{http://www.w3.org/2000/svg}line[@data-layer='wires']"))==91
+              png=folder/(svg.stem+"-300dpi.png")
+              with Image.open(png) as im:
+                  width=float(root.get("width").removesuffix("mm"))
+                  expected=round(width*300/25.4)
+                  assert abs(im.width-expected)<=1, (svg.name,im.width,expected)
+                  if svg.stem.endswith("_clean"):
+                      rr,gg,bb=im.convert("RGB").split()
+                      assert ImageChops.difference(rr,gg).getbbox() is None
+                      assert ImageChops.difference(rr,bb).getbbox() is None
+                  im.save(png,dpi=(300,300))
+          print("PASS full 23 native sheet actual SVG and PNG 300DPI",
+                len(proof["variants"]),"mode variants")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tl494-FULL-native-23-TypeA-${{ matrix.python-version }}
+          path: output/tl494-full-native-cycle9/*
+          if-no-files-found: error
