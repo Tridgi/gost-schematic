@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "id": "connector.socket_contact",
+  "revision": 1,
+  "status": "draft",
+  "standard_refs": [
+    "ГОСТ 2.755-87 (1998 reproduction), таблица 5 позиция 1(1): гнездо разъёмного соединения; https://eelib.narod.ru/eskd/GOST_2.755-87.pdf#page=9",
+    "SOURCE_FIGURE_INSPECTED_ONLY: printed outline/topology traced by drawing family; no independent scale-calibrated 1:1 geometry approval",
+    "EDITORIAL_ASSUMPTION: lead length, row pitch 8mm, contact body/fork size, 0.3mm stroke, annotation positions and keepout are CAD prototype dimensions, NOT numeric GOST dimensions",
+    "PHYSICAL_CONTRACT: abstract catalogue contact numbers are NOT a manufacturer datasheet pinout; contacts are separate disconnected conductor islands; mating requires explicit Circuit.Net and mate-state model; #90 net continuation is NOT a physical connector"
+  ],
+  "line_width_mm": 0.3,
+  "body_keepout_mm": [
+    -4,
+    -2,
+    1,
+    2
+  ],
+  "geometry": {
+    "rectangles": [],
+    "lines": [
+      [
+        [
+          0,
+          0
+        ],
+        [
+          11,
+          0
+        ]
+      ],
+      [
+        [
+          -4,
+          -2
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      [
+        [
+          -4,
+          2
+        ],
+        [
+          0,
+          0
+        ]
+      ]
+    ],
+    "circles": []
+  },
+  "pins": [
+    {
+      "number": "1",
+      "at_mm": [
+        11,
+        0
+      ],
+      "side": "right",
+      "label": "1"
+    }
+  ],
+  "annotations": [
+    {
+      "key": "refdes",
+      "role": "refdes",
+      "required": true,
+      "candidates": [
+        {
+          "at_mm": [
+            -1,
+            -7
+          ],
+          "horizontal": "center",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            16,
+            0
+          ],
+          "horizontal": "left",
+          "vertical": "bottom"
+        }
+      ]
+    },
+    {
+      "key": "value",
+      "role": "value",
+      "required": false,
+      "candidates": [
+        {
+          "at_mm": [
+            -1,
+            7
+          ],
+          "horizontal": "center",
+          "vertical": "top"
+        }
+      ]
+    }
+  ],
+  "conductor_topology": {
+    "indices": [
+      0,
+      1,
+      2
+    ],
+    "junctions_mm": [],
+    "pin_groups": [
+      [
+        "1"
+      ]
+    ]
+  }
+}

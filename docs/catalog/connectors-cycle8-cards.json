@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "cycle": 8,
+  "issue": 89,
+  "baseline_sha": "1cdd11a3e72e467573d5d660db923b201be21df9",
+  "old_catalog_preserved": 36,
+  "new_catalog_profiles": 4,
+  "expected_total": 40,
+  "expected_approved": 0,
+  "status": "DRAFT",
+  "cards": [
+    {
+      "id": "connector.plug_contact",
+      "reference_prefix": "XP",
+      "physical_pin_numbers": [
+        "1"
+      ],
+      "physical_count": 1,
+      "status": "DRAFT",
+      "approval": "BLOCKED_ESKD_SOURCE_1TO1_OVERLAY_AND_VENDOR_PINOUT",
+      "normative": {
+        "standard": "ГОСТ 2.755-87",
+        "table": "5/1(1)",
+        "pdf": "https://eelib.narod.ru/eskd/GOST_2.755-87.pdf",
+        "pdf_page_zero_based": 8
+      },
+      "source_figure_status": "SOURCE_VISUALLY_INSPECTED_NOT_SIGNED",
+      "abstract_pinmap_only": true,
+      "conductor_islands": [
+        [
+          "1"
+        ]
+      ],
+      "mating": "ONLY_EXPLICIT_CIRCUIT_NET_NO_AUTOMATIC_MATING",
+      "editor_targets": "PhysicalPin.number -> GraphicPin.at after D4, debug only",
+      "geometry_dimensions": "EDITORIAL CAD PROTOTYPE NOT GOST ABSOLUTE_MM"
+    },
+    {
+      "id": "connector.socket_contact",
+      "reference_prefix": "XS",
+      "physical_pin_numbers": [
+        "1"
+      ],
+      "physical_count": 1,
+      "status": "DRAFT",
+      "approval": "BLOCKED_ESKD_SOURCE_1TO1_OVERLAY_AND_VENDOR_PINOUT",
+      "normative": {
+        "standard": "ГОСТ 2.755-87",
+        "table": "5/1(1)",
+        "pdf": "https://eelib.narod.ru/eskd/GOST_2.755-87.pdf",
+        "pdf_page_zero_based": 8
+      },
+      "source_figure_status": "SOURCE_VISUALLY_INSPECTED_NOT_SIGNED",
+      "abstract_pinmap_only": true,
+      "conductor_islands": [
+        [
+          "1"
+        ]
+      ],
+      "mating": "ONLY_EXPLICIT_CIRCUIT_NET_NO_AUTOMATIC_MATING",
+      "editor_targets": "PhysicalPin.number -> GraphicPin.at after D4, debug only",
+      "geometry_dimensions": "EDITORIAL CAD PROTOTYPE NOT GOST ABSOLUTE_MM"
+    },
+    {
+      "id": "connector.plug_4",
+      "reference_prefix": "XP",
+      "physical_pin_numbers": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "physical_count": 4,
+      "status": "DRAFT",
+      "approval": "BLOCKED_ESKD_SOURCE_1TO1_OVERLAY_AND_VENDOR_PINOUT",
+      "normative": {
+        "standard": "ГОСТ 2.755-87",
+        "table": "6/3",
+        "pdf": "https://eelib.narod.ru/eskd/GOST_2.755-87.pdf",
+        "pdf_page_zero_based": 9
+      },
+      "source_figure_status": "SOURCE_VISUALLY_INSPECTED_NOT_SIGNED",
+      "abstract_pinmap_only": true,
+      "conductor_islands": [
+        [
+          "1"
+        ],
+        [
+          "2"
+        ],
+        [
+          "3"
+        ],
+        [
+          "4"
+        ]
+      ],
+      "mating": "ONLY_EXPLICIT_CIRCUIT_NET_NO_AUTOMATIC_MATING",
+      "editor_targets": "PhysicalPin.number -> GraphicPin.at after D4, debug only",
+      "geometry_dimensions": "EDITORIAL CAD PROTOTYPE NOT GOST ABSOLUTE_MM"
+    },
+    {
+      "id": "connector.socket_4",
+      "reference_prefix": "XS",
+      "physical_pin_numbers": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "physical_count": 4,
+      "status": "DRAFT",
+      "approval": "BLOCKED_ESKD_SOURCE_1TO1_OVERLAY_AND_VENDOR_PINOUT",
+      "normative": {
+        "standard": "ГОСТ 2.755-87",
+        "table": "6/4",
+        "pdf": "https://eelib.narod.ru/eskd/GOST_2.755-87.pdf",
+        "pdf_page_zero_based": 9
+      },
+      "source_figure_status": "SOURCE_VISUALLY_INSPECTED_NOT_SIGNED",
+      "abstract_pinmap_only": true,
+      "conductor_islands": [
+        [
+          "1"
+        ],
+        [
+          "2"
+        ],
+        [
+          "3"
+        ],
+        [
+          "4"
+        ]
+      ],
+      "mating": "ONLY_EXPLICIT_CIRCUIT_NET_NO_AUTOMATIC_MATING",
+      "editor_targets": "PhysicalPin.number -> GraphicPin.at after D4, debug only",
+      "geometry_dimensions": "EDITORIAL CAD PROTOTYPE NOT GOST ABSOLUTE_MM"
+    }
+  ]
+}

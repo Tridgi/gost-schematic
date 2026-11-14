@@ -178,7 +178,17 @@ def build_catalog_review_scene(
     references: set[str] = set()
     counters: dict[str, int] = {}
     frames: list[tuple[str, ReviewCatalogEntry, Transform, Box]] = []
+    # Give existing catalogue symbols their old D4 poses even after XP/XS
+    # additions, to preserve validated text clearance and manual comparisons.
+    legacy_index = 0
+    connector_index = 0
     for index, entry in enumerate(entries):
+        is_connector = entry.symbol.identifier.startswith("connector.")
+        pose_index = connector_index if is_connector else legacy_index
+        if is_connector:
+            connector_index += 1
+        else:
+            legacy_index += 1
         prefix = entry.part.reference_prefix
         number = counters.get(prefix, 0)
         while True:
@@ -188,7 +198,7 @@ def build_catalog_review_scene(
                 break
         counters[prefix] = number
         references.add(reference)
-        transform = Transform(rotation=(index % 4) * 90, mirror_x=index % 5 == 4)
+        transform = Transform(rotation=(pose_index % 4) * 90, mirror_x=(not is_connector and pose_index % 5 == 4))
         originless = ComponentInstance(
             reference, entry.part.identifier, Point(0, 0), transform,
         )

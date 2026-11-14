@@ -32,6 +32,10 @@ _SYMBOLS = {
     "catalog/symbols/diodes/led.json",
     "catalog/symbols/diodes/photodiode.json",
     "catalog/symbols/diodes/varicap.json",
+    "catalog/symbols/connectors/plug_contact.json",
+    "catalog/symbols/connectors/socket_contact.json",
+    "catalog/symbols/connectors/plug_4.json",
+    "catalog/symbols/connectors/socket_4.json",
 }
 _PARTS = {
     "catalog/parts/resistors/fixed.json",
@@ -55,6 +59,10 @@ _PARTS = {
     "catalog/parts/diodes/led.json",
     "catalog/parts/diodes/photodiode.json",
     "catalog/parts/diodes/varicap.json",
+    "catalog/parts/connectors/plug_contact.json",
+    "catalog/parts/connectors/socket_contact.json",
+    "catalog/parts/connectors/plug_4.json",
+    "catalog/parts/connectors/socket_4.json",
 }
 _REQUIREMENTS = "standards/requirements_2026_ru.json"
 
