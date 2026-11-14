@@ -23,6 +23,7 @@ from gost_schematic.agent_project.design_assistant import (
     TL494_REQUIRED_PARTS,
 )
 from gost_schematic.agent_project.trusted_import import import_six_part
+from gost_schematic.agent_project.owner_source_contract import verify_frozen_owner_fixture
 
 PID = "96bc492b-1635-493c-855e-3f6470a57548"
 KEY = "75c5b15e-7053-49e8-a059-4ffdf0a8760a"
@@ -54,42 +55,36 @@ def _reject(obj, code):
 
 
 def _source_candidate():
-    """Artificial *negative* contract fixture, NEVER called original source."""
+    """Full real source fixture, immutable IC97 Git blob: NOT a fabricated Net."""
+    from importlib.resources import files
+
     catalog = CatalogResolver()
-    refs = sorted({ref for group in TL494_GROUPS.values() for ref in group})
-    components = []
-    pins = []
-    for ref in refs:
-        part_id = TL494_REQUIRED_PARTS.get(ref)
-        lock = catalog.lock(part_id) if part_id else None
-        components.append({
-            "reference": ref, "part_id": part_id,
-            "part_sha256": lock["part_sha256"] if lock else None,
-            "symbol_sha256": lock["symbol_sha256"] if lock else None,
-        })
-        if part_id:
-            part, _ = catalog.resolve(part_id)
-            pins.extend({"reference": ref, "number": p.number} for p in part.pins)
-        elif ref == "DA1":
-            pins.extend({"reference": ref, "number": str(n)} for n in range(1, 17))
-        else:
-            pins.extend({"reference": ref, "number": str(n)} for n in range(1, 8))
-    pins = pins[:62]
-    assert len(pins) == 62
+    raw = files("gost_schematic").joinpath(
+        "agent_project", "data", "tl494_ic97_frozen_source.json"
+    ).read_bytes()
+    source = verify_frozen_owner_fixture(raw, catalog)
     return {
         "schema_version": 1, "intent": "tl494_reconstruction",
         "source_sha": TL494_FROZEN_SOURCE_SHA,
         "project_id": None, "expected_revision": None, "expected_generation": None,
-        "components": components,
+        "components": [
+            {"reference": c["reference"],
+             "part_id": c["part_id"] if c["reference"] in TL494_REQUIRED_PARTS else None,
+             "part_sha256": (source["installed_part_locks"][c["reference"]]["part_sha256"]
+                             if c["reference"] in TL494_REQUIRED_PARTS else None),
+             "symbol_sha256": (source["installed_part_locks"][c["reference"]]["symbol_sha256"]
+                               if c["reference"] in TL494_REQUIRED_PARTS else None)}
+            for c in source["source_components"]
+        ],
         "nets": [
-            {"name": f"NET_{i+1:02d}",
-             "members": [p for j, p in enumerate(pins) if j % 15 == i]}
-            for i in range(15)
+            {"name": name, "members": [
+                {"reference": contact.rsplit(".", 1)[0],
+                 "number": contact.rsplit(".", 1)[1]}
+                for contact in members
+            ]} for name, members in source["source_nets"].items()
         ],
-        "outputs": [
-            "bom", "netlist", "drc",
-            "svg_clean", "svg_diagnostic", "png_300dpi",
-        ],
+        "outputs": ["bom", "netlist", "drc", "svg_clean",
+                    "svg_diagnostic", "png_300dpi"],
         "max_route_attempts": 3,
     }
 
