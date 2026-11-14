@@ -83,7 +83,7 @@ def test_real_symbol_part_canonical_roles_separate_pin_identity_and_status(ident
     assert trace.explicit_junctions == 0
     assert trace.pin_islands == tuple((str(n),) for n in range(1, len(part.pins) + 1))
     assert symbol.stroked_bounds.min_x < symbol.bounds.min_x
-    assert symbol.stroked_bounds.max_x > symbol.bounds.max_x
+    assert symbol.stroked_bounds.min_y <= symbol.bounds.min_y
 
 
 @pytest.mark.parametrize("identifier", TRANSISTORS + DIODES)

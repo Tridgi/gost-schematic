@@ -118,8 +118,8 @@
       "candidates": [
         {
           "at_mm": [
-            13,
-            -12
+            17,
+            0
           ],
           "horizontal": "left",
           "vertical": "bottom"
@@ -127,9 +127,17 @@
         {
           "at_mm": [
             0,
-            -14
+            -19
           ],
           "horizontal": "center",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            -18,
+            -17
+          ],
+          "horizontal": "right",
           "vertical": "bottom"
         }
       ]
