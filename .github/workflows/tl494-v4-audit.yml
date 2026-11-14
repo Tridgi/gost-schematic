@@ -28,7 +28,7 @@ jobs:
         run: |
           set -eux
           SHA=79ddb2ae57efd9ea621d64914a324988b343061d
-          git fetch origin refs/heads/parallel/rendering-ic-cycle7
+          git fetch origin "$SHA"
           test "$(git rev-parse FETCH_HEAD)" = "$SHA"
           for name in ic_rectangular.py ic_hotspots.py ic_orientation.py ic_power_profiles.py; do
             git show "$SHA:src/gost_schematic/rendering/$name" > "src/gost_schematic/rendering/$name"
@@ -84,6 +84,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if [ ! -d examples/tl494_v4/evidence ]; then exit 0; fi
           git add -f examples/tl494_v4/evidence
           if git diff --cached --quiet; then exit 0; fi
           git commit -m 'test(tl494-v4): capture source/model and paper-space DRC evidence'
