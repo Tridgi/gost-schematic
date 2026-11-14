@@ -55,6 +55,21 @@ jobs:
           done
           test -s src/gost_schematic/agent_project/catalog.py
           test -s src/gost_schematic/agent_project/__init__.py
+          # IMPORTANT: detached PAINT PR has only 18 catalog paths, while
+          # source e695c415 requires 52. Its old test passed against a
+          # different merged checkout; in this honest exact-HEAD worktree
+          # install ALL genuine source JSON symbols/parts/coil profiles.
+          # Never synthesize or alter production symbol JSON in our PR.
+          for p in $(git ls-tree -r --name-only "$SOURCE_SHA" \
+            src/gost_schematic/catalog/symbols \
+            src/gost_schematic/catalog/parts \
+            src/gost_schematic/catalog/inductors); do
+            mkdir -p "$(dirname "$p")"
+            git show "$SOURCE_SHA:$p" > "$p"
+          done
+          test -s src/gost_schematic/catalog/symbols/transistors/mosfet_n_enh.json
+          test -s src/gost_schematic/catalog/parts/transistors/mosfet_n_enh.json
+          test -s src/gost_schematic/catalog/symbols/diodes/schottky.json
           for p in $(git ls-tree -r --name-only "$IC_SHA" src/gost_schematic/electrical); do
             mkdir -p "$(dirname "$p")"
             git show "$IC_SHA:$p" > "$p"
@@ -84,6 +99,13 @@ jobs:
           import inspect
           from examples.tl494_named_photo_sheet import compose_circuit
           from gost_schematic.agent_project.catalog import CatalogResolver
+          resolver = CatalogResolver()
+          for symbol_id in (
+              "transistor.mosfet_n_enh", "diode.schottky",
+              "capacitor.polarized", "capacitor.fixed",
+              "inductor.ferromagnetic", "resistor.variable", "fuse.general",
+          ):
+              assert symbol_id in resolver.symbols, symbol_id
           from gost_schematic.catalog.source_profiles import PINNED_REFERENCE_SHA
           from gost_schematic.electrical.tl494cn import tl494cn_device
           from gost_schematic.electrical.netrefs import NetContinuationProject
