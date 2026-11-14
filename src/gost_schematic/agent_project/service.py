@@ -138,7 +138,11 @@ class ProjectService:
             raise ProjectError("REVISION_REQUIRED", "Exact saved revision SHA required")
         snapshot = self.open_project(project_id, revision)
         result = preflight_project(snapshot.project, self.catalog, profile=profile)
-        return {**result, "generation": snapshot.head.generation}
+        return {
+            **result,
+            "generation": snapshot.head.generation,
+            "electrical_erc": self._report(snapshot.project, snapshot.head.generation),
+        }
 
     def render_project(
         self, project_id: str, revision: str, *, mode: str = "clean",
