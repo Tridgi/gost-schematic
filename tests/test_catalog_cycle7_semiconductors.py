@@ -5,6 +5,7 @@ No NPN three-pin template is claimed to be ГОСТ 2.730 tab 7 pos 1б:
 that row explicitly adds an internal shield terminal.
 """
 
+import hashlib
 import json
 from dataclasses import replace
 from importlib.resources import files
@@ -265,6 +266,23 @@ def test_single_combined_gallery_exactly_matches_15_real_physical_roles(tmp_path
     first = generate(tmp_path)
     before = {name: (tmp_path / name).read_bytes() for name in first["files"]}
     assert first["physical_ugo_count"] == len(IDS) == 15
+    assert len(first["files"]) == 2 + 2 * len(IDS)
+    for identifier in IDS:
+        for kind in ("clean", "diagnostic"):
+            path = tmp_path / f"{identifier}-{kind}.svg"
+            root = ET.fromstring(path.read_bytes())
+            assert root.attrib["data-approval"] == "DRAFT"
+            assert root.attrib["data-view"] == kind
+            assert root.attrib["data-symbol-id"] == identifier
+            assert root.attrib["width"].endswith("mm")
+            assert root.attrib["height"].endswith("mm")
+            assert len(root.findall(f"./{SVG}circle")) == (
+                len(first["symbols"][identifier]["physical_pin_role"])
+                if kind == "diagnostic" else 0
+            )
+            assert first["symbols"][identifier]["closeup_svg_sha256"][kind] == (
+                hashlib.sha256(path.read_bytes()).hexdigest()
+            )
     assert len(FIRST_IDS) == 3 and len(TRANSISTORS) == 8 and len(DIODES) == 4
     assert first["approved_count"] == 0
     assert set(first["symbols"]) == set(IDS)

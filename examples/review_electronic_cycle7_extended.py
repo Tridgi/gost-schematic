@@ -136,6 +136,31 @@ def generate(directory: Path) -> dict:
             ET.tostring(root, encoding="unicode") + "\n", encoding="utf-8",
         )
         files_written.append(name)
+    # Every DRAFT PartDefinition also gets its OWN 300-DPI-capable SVG pair,
+    # preserving native metric dimensions and exact graphical pin coordinates.
+    for identifier in IDS:
+        symbol = scene_data[identifier]
+        digests = {}
+        for kind in ("clean", "diagnostic"):
+            closeup = ET.fromstring(
+                render_symbol_svg(symbol, review_overlay=(kind == "diagnostic"))
+            )
+            closeup.set("data-symbol-id", identifier)
+            closeup.set("data-approval", "DRAFT")
+            closeup.set("data-view", kind)
+            closeup.set("data-pin-numbers", ",".join(
+                p.number for p in symbol.pins
+            ))
+            closeup.set("data-physical-roles", ",".join(
+                all_records[identifier]["physical_pin_role"][p.number]
+                for p in symbol.pins
+            ))
+            filename = f"{identifier}-{kind}.svg"
+            content = ET.tostring(closeup, encoding="unicode") + "\n"
+            (directory / filename).write_text(content, encoding="utf-8")
+            digests[kind] = hashlib.sha256(content.encode("utf-8")).hexdigest()
+            files_written.append(filename)
+        all_records[identifier]["closeup_svg_sha256"] = digests
     result = {
         "issue": 89, "epic": 86, "status": "DRAFT", "approved_count": 0,
         "physical_ugo_count": len(IDS), "starting_baseline_new_count": len(FIRST_IDS),
