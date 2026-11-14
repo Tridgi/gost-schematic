@@ -10,6 +10,7 @@ import argparse
 import hashlib
 import json
 import subprocess
+from collections import Counter
 from copy import deepcopy
 from pathlib import Path
 
@@ -82,11 +83,48 @@ def check_graph(graph: dict, trees: dict, expected: dict) -> dict:
                 all(type(n) is int for n in a + b) and
                 a != b and (a[0] == b[0] or a[1] == b[1]),
                 "QA_RECON_NONPHYSICAL_OR_ZERO_WIRE")
+    counted = Counter(wire["net"] for wire in wires)
+    for tree in trees.get("net_trees", ()):
+        name = tree.get("net")
+        if tree.get("complete"):
+            require(counted[name] == tree.get("segments"),
+                    "QA_RECON_ACCEPTED_GRAPH_DIFFERS_FROM_COMPLETED_TREE")
+        else:
+            require(counted[name] == 0,
+                    "QA_RECON_UNSAFE_PARTIAL_TREE_WIRES_SILENTLY_ACCEPTED")
+    coords = [
+        (tuple(wire["start"]), tuple(wire["end"]), wire["net"])
+        for wire in wires
+    ]
+
+    def on_segment(start, end, point):
+        dx, dy = end[0] - start[0], end[1] - start[1]
+        return (
+            dx * (point[1] - start[1]) ==
+            dy * (point[0] - start[0]) and
+            min(start[0], end[0]) <= point[0] <= max(start[0], end[0]) and
+            min(start[1], end[1]) <= point[1] <= max(start[1], end[1])
+        )
+
+    seen = set()
     for point in junctions:
         require(isinstance(point, list) and len(point) == 2 and
                 all(type(n) is int for n in point),
                 "QA_RECON_FORGED_JUNCTION_COORDINATE")
-    return {"wires": len(wires), "junctions": len(junctions)}
+        loc = tuple(point)
+        require(loc not in seen, "QA_RECON_DUPLICATED_AUTHORED_JUNCTION")
+        seen.add(loc)
+        touched = [
+            net for start, end, net in coords
+            if on_segment(start, end, loc)
+        ]
+        require(len(touched) >= 2 and len(set(touched)) == 1,
+                "QA_RECON_FOREIGN_NET_OR_DANGLING_JUNCTION_DOT")
+    return {
+        "wires": len(wires), "junctions": len(junctions),
+        "complete_net_wire_counts_attested": True,
+        "explicit_junction_net_identity_checked": True,
+    }
 
 
 def inspect_candidate_driver(
