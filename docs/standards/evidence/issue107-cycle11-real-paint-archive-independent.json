@@ -114,10 +114,39 @@
     "source_91_wire_parallel_3mm": "FAIL",
     "unmodified_original_9_error_32_warning": "KNOWN_NEGATIVE_NOT_RECOMPUTED_HERE",
     "new_15_of_15_routed_print": "BLOCKED_NOT_IN_THIS_ARCHIVE",
-    "true_62_PinRef_model_inventory": "BLOCKED_NOT_EXPOSED_IN_THIS_ARCHIVE_SEPARATE_CI_ADDED",
+    "true_62_PinRef_model_inventory": "PASS_FROZEN_SOURCE_EXACT_62; CURRENT_OWNER_RUNNER_CI_PENDING",
     "physical_1_and_2_mm_full_symbol_ink": "BLOCKED_NO_FULL_FIGURE_CALIBRATION",
     "original_user_bitmap_and_GOST_figure_1to1": "BLOCKED_NO_INDEPENDENT_ORIGINAL_RASTER",
     "source_draft_UGO_approval": "DRAFT_0_APPROVED"
   },
-  "notes": "Actual artifacts independently inspected from GitHub Actions archive. This is old source 91-wire print with real known FAIL, not a freshly rerouted A3 15Net candidate. For 62 PinRef original Circuit evidence use new independent ESKD typed-inventory workflow after it finishes. This record does not alter catalog, source, PNG, or owner PR."
+  "notes": "Actual artifacts independently inspected from GitHub Actions archive. This is old source 91-wire print with real known FAIL, not a freshly rerouted A3 15Net candidate. For 62 PinRef original Circuit evidence use new independent ESKD typed-inventory workflow after it finishes. This record does not alter catalog, source, PNG, or owner PR.",
+  "independent_frozen_typed_circuit_source": {
+    "source_path": "examples/tl494_full_native_model.py",
+    "source_git_blob_sha1": "049c32ff6e3bf2c839641d0102e3a63fcb86caaf",
+    "source_commit": "e695c415fdced164b0e0c39c5249d030795a0aa6",
+    "proof_method": "independent read of immutable TRACED_NETS literal; count physical (reference,pin-number) tuples and their unique membership; no SVG or owner manifest inferred Net",
+    "net_count": 15,
+    "PinRef_memberships": 62,
+    "unique_PinRef_memberships": 62,
+    "DA1_memberships": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16
+    ],
+    "COMMON_net_separate_from_PE": true,
+    "status": "PASS_FROZEN_ELECTRICAL_TOPOLOGY_SOURCE_ONLY_NOT_NEW_ROUTING"
+  }
 }
