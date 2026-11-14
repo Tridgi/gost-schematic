@@ -17,9 +17,9 @@ from gost_schematic.rendering.ic_hotspots import IcConnectionTarget
 from gost_schematic.rendering.ic_rectangular import (
     IcFieldContent,
     IcOrientation,
-    IcTypographyProfile,
     IcRenderingPolicy,
     IcResolvedUnit,
+    IcTypographyProfile,
     ResolvedIcPin,
     propose_ic_dimensions,
     render_resolved_ic,
