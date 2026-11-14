@@ -200,6 +200,25 @@ jobs:
           PYTHONPATH=src:. python scripts/qa_tl494_current_editor_cycle10.py \
             --cycle11 --font-file "$QA_C11_GOST_FONT" \
             --output "../../output/qa92-cycle11-${{ matrix.python-version }}/independent-TI-editor-matrix.json"
+      - name: Genuine PAINT current HEAD 23-part new compact A3 routed native SVG, not old 91-wire redraw
+        shell: bash
+        if: always()
+        run: |
+          set -euo pipefail
+          cd _qa_sources/recon
+          PYTHONPATH=src:. python -m examples.render_tl494_compact_new_router_cycle10 \
+            --font-file "$QA_C11_GOST_FONT" \
+            --output "../../output/qa92-cycle11-${{ matrix.python-version }}/paint-new-native" \
+            --node-cap 5000
+      - name: Independent QA source-faithful clean/debug SVG plus actual 300 DPI PNG
+        shell: bash
+        if: always()
+        run: |
+          set -euo pipefail
+          ruff check scripts/qa_tl494_cycle11_native_300dpi.py
+          python scripts/qa_tl494_cycle11_native_300dpi.py \
+            --source-dir "output/qa92-cycle11-${{ matrix.python-version }}/paint-new-native" \
+            --output-dir "output/qa92-cycle11-${{ matrix.python-version }}/native-300dpi"
       - name: Exact-HEAD evidence including full run blockers, no fake PRINT PASS
         uses: actions/upload-artifact@v4
         if: always()
