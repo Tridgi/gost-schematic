@@ -65,7 +65,7 @@ def photo_nets():
         "TRANSFER":"ENERGY_TRANSFER",
     }
     result=tuple(Net(rename.get(name,name),tuple(
-        PinRef(ref,num) for ref,num in members,
+        PinRef(ref,num) for ref,num in members
     )) for name,members in TRACED_NETS.items())
     if len(result)!=15:
         raise AssertionError("Source photo full network count changed")
