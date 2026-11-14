@@ -10,9 +10,11 @@ import hashlib
 import json
 from dataclasses import replace
 from pathlib import Path
+from xml.etree import ElementTree as ET
 
 from examples.review_ic_cycle7 import synthetic_ic
 from gost_schematic.core.geometry import Box, Point, Side
+from gost_schematic.core.units import format_mm
 from gost_schematic.electrical.ic import (
     IcBodyAxis,
     IcKind,
@@ -176,6 +178,26 @@ def generate(output_dir: Path, font_file: Path) -> dict:
                         rendered = render_resolved_ic(
                             unit, style, measurer, glyph_detail=True,
                         )
+                        assert {n: p for n, p in rendered.pin_anchors} == {
+                            p.number: p.anchor for p in unit.pins
+                        }
+                        root = ET.fromstring(rendered.svg)
+                        lines = root.findall(
+                            ".//{http://www.w3.org/2000/svg}"
+                            "g[@data-layer='ic-physical-pin-leads']/"
+                            "{http://www.w3.org/2000/svg}line"
+                        )
+                        assert len(lines) == len(unit.pins)
+                        seen = set()
+                        physical_ref = original.placements[0].component_ref
+                        for line in lines:
+                            number = line.get("data-pin-number")
+                            assert number is not None and number not in seen
+                            seen.add(number)
+                            expected = original_points[PinRef(physical_ref, number)]
+                            assert line.get("x2") == format_mm(expected.x)
+                            assert line.get("y2") == format_mm(expected.y)
+                        assert seen == {p.number for p in unit.pins}
                         filename = (
                             f"{name}-{layout}-function{angle}-unit{index}.svg"
                         )
