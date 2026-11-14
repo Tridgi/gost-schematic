@@ -1,0 +1,390 @@
+{
+  "schema_version": 1,
+  "issue": 91,
+  "review_date": "2026-11-14",
+  "integration_base": "8bc768c72bad85b128f28311a316f25c8bb97807",
+  "historical_merged_pr95_unchanged": true,
+  "owner_pins": {
+    "pr94": "47b0589ffa048c0801b6b8604582efd62a63acc9",
+    "pr98": "77463052796e315dfee4d4859695cdb00beeb74d"
+  },
+  "standard_source_matrix": {
+    "digital": {
+      "standard": "ГОСТ 2.743-91",
+      "edition": "official 2003 reprint",
+      "pdf": "https://lepton.ru/GOST/Data/190/19085.pdf"
+    },
+    "analog": {
+      "standard": "ГОСТ 2.759-82",
+      "edition": "with amendment 1",
+      "pdf": "https://files.stroyinf.ru/Data2/1/4294849/4294849490.pdf"
+    },
+    "semi": {
+      "standard": "ГОСТ 2.730-73",
+      "edition": "May 2002 amendments 1–4",
+      "pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf"
+    },
+    "net": {
+      "standard": "ГОСТ 2.721-74",
+      "edition": "2008 reprint including amendment 4",
+      "pdf": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf"
+    },
+    "address": {
+      "standard": "ГОСТ 2.709-89",
+      "edition": "Nov 2007 reprint",
+      "pdf": "https://files.stroyinf.ru/Data/194/19467.pdf"
+    },
+    "connector": {
+      "standard": "ГОСТ 2.755-87",
+      "edition": "1998 reprint",
+      "pdf": "https://eelib.narod.ru/eskd/GOST_2.755-87.pdf"
+    }
+  },
+  "pr94_candidate_15_manifest": "docs/standards/issue91-pr94-15-ugo-visual-metric-review.json",
+  "zero_new_approved_symbols": true,
+  "case_policies": [
+    {
+      "id": "PWM-FIXED-VERTICAL-BODY-FUNCTION-0",
+      "status": "PASS_CONDITIONAL",
+      "source": {
+        "standard": "ГОСТ 2.743-91",
+        "edition": "official 2003 reprint",
+        "pdf": "https://lepton.ru/GOST/Data/190/19085.pdf"
+      },
+      "clause": "§§2.1.2,2.1.4,2.1.7,2.1.9; analog ГОСТ 2.759 §§1.2–1.4",
+      "mandatory_dimensions": [
+        "W/H from rows/pins/font, NOT fixed aspect ratio",
+        "first main field row function"
+      ],
+      "allowed_source_variants": [
+        "body H>W with LEFT inputs/RIGHT outputs"
+      ],
+      "editorial_settings": [
+        "aspect ratio, text center, CSS em, pixel fit"
+      ],
+      "positive": "PWM horizontal, real font, correct field and unmodified actual pins",
+      "negative": "word placed in wrong field, labels clipped or pin swapped",
+      "blocking_proof": [
+        "PWM is unlisted in table2; §2.2.6 requires explanation on drawing"
+      ],
+      "physical_component_approved": false
+    },
+    {
+      "id": "PWM-FIXED-VERTICAL-BODY-FUNCTION-90",
+      "status": "BLOCKED",
+      "source": {
+        "standard": "ГОСТ 2.743-91",
+        "edition": "official 2003 reprint",
+        "pdf": "https://lepton.ru/GOST/Data/190/19085.pdf"
+      },
+      "clause": "§2.1.6 figure3 (only source-fig orientation), §2.1.2",
+      "mandatory_dimensions": [
+        "none proving independent 90° word-only text"
+      ],
+      "allowed_source_variants": [
+        "figure3 matched TOP inputs/BOTTOM outputs with source-matched overall field and text configuration"
+      ],
+      "editorial_settings": [
+        "rotate_function_text_only(90) in unchanged LEFT/RIGHT body"
+      ],
+      "positive": "separately tagged DRAFT preview, original physical anchors immutable",
+      "negative": "claim universal GOST approval of 90° PWM-only rotation",
+      "blocking_proof": [
+        "source-controlled 1:1 exact fig3 profile for this unchanged layout absent"
+      ],
+      "physical_component_approved": false
+    },
+    {
+      "id": "PWM-FIXED-VERTICAL-BODY-FUNCTION-270",
+      "status": "BLOCKED",
+      "source": {
+        "standard": "ГОСТ 2.743-91",
+        "edition": "official 2003 reprint",
+        "pdf": "https://lepton.ru/GOST/Data/190/19085.pdf"
+      },
+      "clause": "§2.1.6 figures3/4; §2.1.9",
+      "mandatory_dimensions": [
+        "none proving word-only 270°"
+      ],
+      "allowed_source_variants": [
+        "no independent full source matched 270° case confirmed"
+      ],
+      "editorial_settings": [
+        "rotate_function_text_only(270) in same body"
+      ],
+      "positive": "DRAFT diagnostic preview preserving pins and visible description",
+      "negative": "claim 270° orientation is mandatory or universally permitted by typography",
+      "blocking_proof": [
+        "normative 270° profile absent"
+      ],
+      "physical_component_approved": false
+    },
+    {
+      "id": "PWM-FIG3-TOP-BOTTOM-VERTICAL-PROFILE",
+      "status": "PASS_CONDITIONAL",
+      "source": {
+        "standard": "ГОСТ 2.743-91",
+        "edition": "official 2003 reprint",
+        "pdf": "https://lepton.ru/GOST/Data/190/19085.pdf"
+      },
+      "clause": "§2.1.6 fig3",
+      "mandatory_dimensions": [
+        "input TOP output BOTTOM for this particular orientation"
+      ],
+      "allowed_source_variants": [
+        "fig3 upright horizontal word or fig3 vertical field arrangement"
+      ],
+      "editorial_settings": [
+        "chosen internal text mode only inside fig3 matching source geometry"
+      ],
+      "positive": "full fig3 profile with coherent fields and pin groups",
+      "negative": "moving only text in fixed left/right layout and citing fig3",
+      "blocking_proof": [
+        "full-scale glyph, pin position and lead numbering overlay"
+      ],
+      "physical_component_approved": false
+    },
+    {
+      "id": "PWM-FIG4-REVERSED-FLOW",
+      "status": "PASS_CONDITIONAL",
+      "source": {
+        "standard": "ГОСТ 2.743-91",
+        "edition": "official 2003 reprint",
+        "pdf": "https://lepton.ru/GOST/Data/190/19085.pdf"
+      },
+      "clause": "§2.1.6 fig4 and note",
+      "mandatory_dimensions": [
+        "directional arrows on leads",
+        "function corresponds to indicated flow"
+      ],
+      "allowed_source_variants": [
+        "reverse information direction when arrows and semantics are correct"
+      ],
+      "editorial_settings": [
+        "marker width and arrowhead length"
+      ],
+      "positive": "explicit arrow and function semantics correct",
+      "negative": "reversing pins without arrows or preserving wrong sum function",
+      "blocking_proof": [
+        "source figure matching for rotated aliases"
+      ],
+      "physical_component_approved": false
+    },
+    {
+      "id": "PWM-UNLISTED-FUNCTION-NAME",
+      "status": "BLOCKED",
+      "source": {
+        "standard": "ГОСТ 2.743-91",
+        "edition": "official 2003 reprint",
+        "pdf": "https://lepton.ru/GOST/Data/190/19085.pdf"
+      },
+      "clause": "§2.2.6 and table2",
+      "mandatory_dimensions": [
+        "non-listed function explained on drawing"
+      ],
+      "allowed_source_variants": [
+        "user-defined PWM if meaning explicitly explained"
+      ],
+      "editorial_settings": [
+        "editorial PWM shorthand and name policy"
+      ],
+      "positive": "PWM clearly explained on same sheet with real device meaning",
+      "negative": "claim PWM is printed standardized code from table2 without citation",
+      "blocking_proof": [
+        "separately verified use of PWM versus standardized generator/modulator function code"
+      ],
+      "physical_component_approved": false
+    },
+    {
+      "id": "PWM-ANALOG-TEXT",
+      "status": "BLOCKED",
+      "source": {
+        "standard": "ГОСТ 2.759-82",
+        "edition": "with amendment 1",
+        "pdf": "https://files.stroyinf.ru/Data2/1/4294849/4294849490.pdf"
+      },
+      "clause": "§§1.1–1.4,1.8",
+      "mandatory_dimensions": [
+        "main function first row, inputs LEFT/outputs RIGHT or alternative TOP/BOTTOM"
+      ],
+      "allowed_source_variants": [
+        "DA analog independent functions as specified in table3"
+      ],
+      "editorial_settings": [
+        "analog font and internal orientation proposed"
+      ],
+      "positive": "horizontal appropriate DA function and measured font",
+      "negative": "DA user PWM 90/270 automatically presumed allowed by 1.8",
+      "blocking_proof": [
+        "source graphical proof for text-only orientation absent"
+      ],
+      "physical_component_approved": false
+    },
+    {
+      "id": "NET-ARROW-BREAK-ITEM8",
+      "status": "PASS",
+      "source": {
+        "standard": "ГОСТ 2.721-74",
+        "edition": "2008 reprint including amendment 4",
+        "pdf": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf"
+      },
+      "clause": "табл.6в поз.8, printed p12 PDF index12",
+      "mandatory_dimensions": [
+        "X placeholder replaced with necessary continuation data"
+      ],
+      "allowed_source_variants": [
+        "two left/right break arrow examples"
+      ],
+      "editorial_settings": [
+        "arrow tips/stroke from PR98 not source calibrated"
+      ],
+      "positive": "visible true break with data on local wire",
+      "negative": "arrow put on uninterrupted label claiming mandatory GOST",
+      "blocking_proof": [
+        "actual 1:1 PR98 chevron != source arrow verified no"
+      ],
+      "physical_component_approved": false
+    },
+    {
+      "id": "NET-BREAK-ARROWLESS-ITEM35-NOTE3",
+      "status": "PASS",
+      "source": {
+        "standard": "ГОСТ 2.721-74",
+        "edition": "2008 reprint including amendment 4",
+        "pdf": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf"
+      },
+      "clause": "табл.6в поз.35, прим.3, printed p27 PDF index27, amendments 1/2/4",
+      "mandatory_dimensions": [
+        "continuation information as needed"
+      ],
+      "allowed_source_variants": [
+        "simplified break with no arrow explicitly allowed"
+      ],
+      "editorial_settings": [
+        "selection of arrowless UI/print profile"
+      ],
+      "positive": "graphical break of circuit with continuation X and no arrow",
+      "negative": "require arrow for every break against explicit note3",
+      "blocking_proof": [],
+      "physical_component_approved": false
+    },
+    {
+      "id": "NET-NAME-LOCATION",
+      "status": "PASS",
+      "source": {
+        "standard": "ГОСТ 2.709-89",
+        "edition": "Nov 2007 reprint",
+        "pdf": "https://files.stroyinf.ru/Data/194/19467.pdf"
+      },
+      "clause": "§5.13 fig9, PDF index6",
+      "mandatory_dimensions": [
+        "horizontal wire name above, vertical wire label left; documented exception"
+      ],
+      "allowed_source_variants": [
+        "name near end or midpoint"
+      ],
+      "editorial_settings": [
+        "letter padding and font h"
+      ],
+      "positive": "CTRL above horizontal 20mm line",
+      "negative": "text label itself creates electrical join",
+      "blocking_proof": [
+        "PR98 CTRL source name role can be source-scoped PASS"
+      ],
+      "physical_component_approved": false
+    },
+    {
+      "id": "NET-RECIPROCAL-ELEMENT-ADDRESS",
+      "status": "BLOCKED",
+      "source": {
+        "standard": "ГОСТ 2.709-89",
+        "edition": "Nov 2007 reprint",
+        "pdf": "https://files.stroyinf.ru/Data/194/19467.pdf"
+      },
+      "clause": "§5.14, fig10–12, PDF index6",
+      "mandatory_dimensions": [
+        "at start address of end, at end address of start",
+        "element/device/functional group address per 2.710"
+      ],
+      "allowed_source_variants": [
+        "mutual R1/C3, component:contact, mixed circuit name+addresses"
+      ],
+      "editorial_settings": [
+        "1/D4 and 2/B7 supplementary page-zone navigation"
+      ],
+      "positive": "DD1.5 and VT1.G as real opposite terminals with proper formal notation",
+      "negative": "treat solely 1/D4 ↔ 2/B7 as prescribed §5.14 contact-address standard",
+      "blocking_proof": [
+        "source-specific full print drawing of real physical attachment labels"
+      ],
+      "physical_component_approved": false
+    },
+    {
+      "id": "NET-PR98-TWO-SHEET",
+      "status": "PASS_EDITORIAL_ONLY",
+      "source": {
+        "standard": "ГОСТ 2.721-74",
+        "edition": "2008 reprint including amendment 4",
+        "pdf": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf"
+      },
+      "clause": "табл.6в поз.8/35 and 2.709 §5.14",
+      "mandatory_dimensions": [
+        "one true Net ID and visible local conductor stubs"
+      ],
+      "allowed_source_variants": [
+        "two mutually linked project markers"
+      ],
+      "editorial_settings": [
+        "sheet1 1/D4, sheet2 2/B7, 0.3mm stroke, chevron x±1mm y±2mm, glyph sizes"
+      ],
+      "positive": "N-CTRL-001 shared DD1.5 / VT1.G, no hidden or phantom conductor",
+      "negative": "name matching short-circuits two typed Nets or XP/XS invented",
+      "blocking_proof": [
+        "actual GOST source exact marker, 1:1 print, real manufacturer parts"
+      ],
+      "physical_component_approved": false
+    },
+    {
+      "id": "CONNECTOR-XP-XS-OUTSTANDING",
+      "status": "BLOCKED",
+      "source": {
+        "standard": "ГОСТ 2.755-87",
+        "edition": "1998 reprint",
+        "pdf": "https://eelib.narod.ru/eskd/GOST_2.755-87.pdf"
+      },
+      "clause": "табл.5 поз.1(1), табл.6 поз.1–5, PDF p8–9",
+      "mandatory_dimensions": [
+        "real contact pins, mating state, physical part"
+      ],
+      "allowed_source_variants": [
+        "pin / socket schematic variants, multi-contact pairs"
+      ],
+      "editorial_settings": [
+        "part pin numbering from manufacturer"
+      ],
+      "positive": "separate plug and receptacle with manufacturer IDs",
+      "negative": "PR94 15 symbols already contain source-approved real XP1/XS1 (false: zero implemented)",
+      "blocking_proof": [
+        "PR94 15 lacks connector.plug and connector.socket"
+      ],
+      "physical_component_approved": false
+    }
+  ],
+  "acceptance_criteria": {
+    "PASS": "source-scope criterion verified only, full actual UGO remains DRAFT",
+    "PASS_CONDITIONAL": "concrete source-conforming profile only",
+    "PASS_EDITORIAL_ONLY": "project data matches declared behavior but GOST printing rule still blocked",
+    "BLOCKED": "missing normative source permission, full 1:1 overlay, or physical identity; no certificate"
+  },
+  "negative_scenarios": [
+    "0/90/270 independent text override must not move outer anchors",
+    "PWM must be explained per digital §2.2.6",
+    "original NPN tab7/1b shield may not certify plain NPN 3 pin",
+    "Schottky cathode loops may not be replaced by Zener",
+    "optical arrows not counted conductive",
+    "arrowless break allowed per 2.721 table6в pos35 note3",
+    "sheet zone reciprocal not §5.14 real endpoint address",
+    "no physical XP/XS in 15 PR94 symbol list",
+    "no 1:1 signed source overlay and real vendor pinout"
+  ]
+}

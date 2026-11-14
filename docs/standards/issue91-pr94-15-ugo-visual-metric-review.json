@@ -1,0 +1,1386 @@
+{
+  "schema_version": 1,
+  "issue": 91,
+  "base_sha": "8bc768c72bad85b128f28311a316f25c8bb97807",
+  "pr94_head": "47b0589ffa048c0801b6b8604582efd62a63acc9",
+  "count": 15,
+  "visual": "docs/standards/evidence/issue91-cycle7-pr94-15-ugo-1to1-project-geometry.svg",
+  "scope": "EXACT_PROJECT_1TO1_MM + SOURCE_RASTER_VISUAL_INSPECTION; absolute source overlay not calibrated and cannot grant approval",
+  "implemented_real_connector_ugo": 0,
+  "missing": [
+    "connector.plug",
+    "connector.socket"
+  ],
+  "cards": [
+    {
+      "id": "resistor.variable",
+      "path": "src/gost_schematic/catalog/symbols/resistors/variable.json",
+      "blob_sha": "3f0d4c2f2a8ff0a85cf33f80e25862cf168d43db",
+      "figure": "2.728-74 табл.1 поз.4; табл.6 поз.3",
+      "source_feature": "independent W physical contact shown, unused wire may be omitted in applicable schematic variant",
+      "observed_1to1_json": {
+        "stroke_mm": 0.3,
+        "body_keepout_mm": [
+          -5,
+          -2,
+          5,
+          2
+        ],
+        "bbox_mm": [
+          -9,
+          -9,
+          9,
+          2
+        ],
+        "rectangles": [
+          [
+            -5,
+            -2,
+            5,
+            2
+          ]
+        ],
+        "circles": [],
+        "line_count": 5,
+        "pins": [
+          {
+            "number": "1",
+            "at_mm": [
+              -9,
+              0
+            ],
+            "side": "left",
+            "label": "A"
+          },
+          {
+            "number": "2",
+            "at_mm": [
+              9,
+              0
+            ],
+            "side": "right",
+            "label": "B"
+          },
+          {
+            "number": "3",
+            "at_mm": [
+              0,
+              -9
+            ],
+            "side": "top",
+            "label": "W"
+          }
+        ]
+      },
+      "source_feature_status": "PASS_BOUNDED_TO_FIGURE_TYPE",
+      "full_ugo_source_1to1": "BLOCKED_NO_CALIBRATED_STANDARD_OVERLAY",
+      "physical_part_signoff": "BLOCKED_NO_REAL_MANUFACTURER_PINOUT",
+      "status": "DRAFT",
+      "negative": [
+        "any physical A/K or B/C/E/D/G/S swapping under D4",
+        "any invented manufacturer numbering",
+        "any real mm claim from scan pixels",
+        "case circle treated as PCB footprint",
+        "wrong optical direction or gate contact when applicable"
+      ],
+      "paired_part_file": "src/gost_schematic/catalog/parts/resistors/variable.json",
+      "paired_part_blob_sha": "f7f8dc1e2c76e870733c9f087c2f6d5dc8dffbc9",
+      "paired_part_symbol_id": "resistor.variable",
+      "paired_part_pin_manifest": [
+        {
+          "number": "1",
+          "name": "A",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        },
+        {
+          "number": "2",
+          "name": "B",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        },
+        {
+          "number": "3",
+          "name": "W",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        }
+      ],
+      "paired_part_number_to_graphic_role_verified": true,
+      "paired_part_note": "Abstract pin identities and generic passive electrical type; not an authenticated manufacturer pinout, not an SOT/TO footprint approval."
+    },
+    {
+      "id": "resistor.trimmer",
+      "path": "src/gost_schematic/catalog/symbols/resistors/trimmer.json",
+      "blob_sha": "9cec48262339658a7cb5794dc8ea05637978ef8d",
+      "figure": "2.728-74 табл.1 поз.9; табл.6 поз.5",
+      "source_feature": "trimmer stepped W electrode graphic, not fourth mechanical pin",
+      "observed_1to1_json": {
+        "stroke_mm": 0.3,
+        "body_keepout_mm": [
+          -5,
+          -9,
+          5,
+          2
+        ],
+        "bbox_mm": [
+          -9,
+          -5,
+          9,
+          2
+        ],
+        "rectangles": [
+          [
+            -5,
+            -2,
+            5,
+            2
+          ]
+        ],
+        "circles": [],
+        "line_count": 4,
+        "pins": [
+          {
+            "number": "1",
+            "at_mm": [
+              -9,
+              0
+            ],
+            "side": "left",
+            "label": "A"
+          },
+          {
+            "number": "2",
+            "at_mm": [
+              9,
+              0
+            ],
+            "side": "right",
+            "label": "B"
+          },
+          {
+            "number": "3",
+            "at_mm": [
+              9,
+              -5
+            ],
+            "side": "right",
+            "label": "W"
+          }
+        ]
+      },
+      "source_feature_status": "PASS_BOUNDED_TO_FIGURE_TYPE",
+      "full_ugo_source_1to1": "BLOCKED_NO_CALIBRATED_STANDARD_OVERLAY",
+      "physical_part_signoff": "BLOCKED_NO_REAL_MANUFACTURER_PINOUT",
+      "status": "DRAFT",
+      "negative": [
+        "any physical A/K or B/C/E/D/G/S swapping under D4",
+        "any invented manufacturer numbering",
+        "any real mm claim from scan pixels",
+        "case circle treated as PCB footprint",
+        "wrong optical direction or gate contact when applicable"
+      ],
+      "paired_part_file": "src/gost_schematic/catalog/parts/resistors/trimmer.json",
+      "paired_part_blob_sha": "93859282dddaa77f11d35202a644d8f159919ab1",
+      "paired_part_symbol_id": "resistor.trimmer",
+      "paired_part_pin_manifest": [
+        {
+          "number": "1",
+          "name": "A",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        },
+        {
+          "number": "2",
+          "name": "B",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        },
+        {
+          "number": "3",
+          "name": "W",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        }
+      ],
+      "paired_part_number_to_graphic_role_verified": true,
+      "paired_part_note": "Abstract pin identities and generic passive electrical type; not an authenticated manufacturer pinout, not an SOT/TO footprint approval."
+    },
+    {
+      "id": "fuse.general",
+      "path": "src/gost_schematic/catalog/symbols/fuses/general.json",
+      "blob_sha": "6af105eb850211b0f86e5fc7df59da28719d2e76",
+      "figure": "2.727-68 табл.3 поз.2",
+      "source_feature": "fuse rectangle and axial stroke; no extra physical net",
+      "observed_1to1_json": {
+        "stroke_mm": 0.3,
+        "body_keepout_mm": [
+          -4,
+          -2,
+          4,
+          2
+        ],
+        "bbox_mm": [
+          -9,
+          -2,
+          9,
+          2
+        ],
+        "rectangles": [
+          [
+            -4,
+            -2,
+            4,
+            2
+          ]
+        ],
+        "circles": [],
+        "line_count": 3,
+        "pins": [
+          {
+            "number": "1",
+            "at_mm": [
+              -9,
+              0
+            ],
+            "side": "left",
+            "label": "A"
+          },
+          {
+            "number": "2",
+            "at_mm": [
+              9,
+              0
+            ],
+            "side": "right",
+            "label": "B"
+          }
+        ]
+      },
+      "source_feature_status": "PASS_BOUNDED_TO_FIGURE_TYPE",
+      "full_ugo_source_1to1": "BLOCKED_NO_CALIBRATED_STANDARD_OVERLAY",
+      "physical_part_signoff": "BLOCKED_NO_REAL_MANUFACTURER_PINOUT",
+      "status": "DRAFT",
+      "negative": [
+        "any physical A/K or B/C/E/D/G/S swapping under D4",
+        "any invented manufacturer numbering",
+        "any real mm claim from scan pixels",
+        "case circle treated as PCB footprint",
+        "wrong optical direction or gate contact when applicable"
+      ],
+      "paired_part_file": "src/gost_schematic/catalog/parts/fuses/general.json",
+      "paired_part_blob_sha": "a0ec7cc01b22c26506ce581376c5d9925f8e9890",
+      "paired_part_symbol_id": "fuse.general",
+      "paired_part_pin_manifest": [
+        {
+          "number": "1",
+          "name": "A",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        },
+        {
+          "number": "2",
+          "name": "B",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        }
+      ],
+      "paired_part_number_to_graphic_role_verified": true,
+      "paired_part_note": "Abstract pin identities and generic passive electrical type; not an authenticated manufacturer pinout, not an SOT/TO footprint approval."
+    },
+    {
+      "id": "diode.schottky",
+      "path": "src/gost_schematic/catalog/symbols/diodes/schottky.json",
+      "blob_sha": "38cf0cd20b111719cb2b9b3147397346e455b231",
+      "figure": "2.730-73 табл.5 поз.9",
+      "source_feature": "two oppositely stepped Schottky cathode hooks distinct from Zener",
+      "observed_1to1_json": {
+        "stroke_mm": 0.3,
+        "body_keepout_mm": [
+          -4,
+          -5.3,
+          5,
+          5.5
+        ],
+        "bbox_mm": [
+          -10,
+          -3.3,
+          10,
+          4.8
+        ],
+        "rectangles": [],
+        "circles": [],
+        "line_count": 10,
+        "pins": [
+          {
+            "number": "1",
+            "at_mm": [
+              -10,
+              0
+            ],
+            "side": "left",
+            "label": "A"
+          },
+          {
+            "number": "2",
+            "at_mm": [
+              10,
+              0
+            ],
+            "side": "right",
+            "label": "K"
+          }
+        ]
+      },
+      "source_feature_status": "PASS_BOUNDED_TO_FIGURE_TYPE",
+      "full_ugo_source_1to1": "BLOCKED_NO_CALIBRATED_STANDARD_OVERLAY",
+      "physical_part_signoff": "BLOCKED_NO_REAL_MANUFACTURER_PINOUT",
+      "status": "DRAFT",
+      "negative": [
+        "any physical A/K or B/C/E/D/G/S swapping under D4",
+        "any invented manufacturer numbering",
+        "any real mm claim from scan pixels",
+        "case circle treated as PCB footprint",
+        "wrong optical direction or gate contact when applicable"
+      ],
+      "paired_part_file": "src/gost_schematic/catalog/parts/diodes/schottky.json",
+      "paired_part_blob_sha": "f50d435e8804ebe02e0a7cebfd6668973b3c98ea",
+      "paired_part_symbol_id": "diode.schottky",
+      "paired_part_pin_manifest": [
+        {
+          "number": "1",
+          "name": "A",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        },
+        {
+          "number": "2",
+          "name": "K",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        }
+      ],
+      "paired_part_number_to_graphic_role_verified": true,
+      "paired_part_note": "Abstract pin identities and generic passive electrical type; not an authenticated manufacturer pinout, not an SOT/TO footprint approval."
+    },
+    {
+      "id": "diode.led",
+      "path": "src/gost_schematic/catalog/symbols/diodes/led.json",
+      "blob_sha": "5b66242f9240dde16e11653114fb3050eabab096",
+      "figure": "2.730-73 табл.5 поз.10",
+      "source_feature": "two outward nonconductive light arrows",
+      "observed_1to1_json": {
+        "stroke_mm": 0.3,
+        "body_keepout_mm": [
+          -4,
+          -12,
+          9,
+          4.5
+        ],
+        "bbox_mm": [
+          -10,
+          -10,
+          10,
+          3.3
+        ],
+        "rectangles": [],
+        "circles": [],
+        "line_count": 12,
+        "pins": [
+          {
+            "number": "1",
+            "at_mm": [
+              -10,
+              0
+            ],
+            "side": "left",
+            "label": "A"
+          },
+          {
+            "number": "2",
+            "at_mm": [
+              10,
+              0
+            ],
+            "side": "right",
+            "label": "K"
+          }
+        ]
+      },
+      "source_feature_status": "PASS_BOUNDED_TO_FIGURE_TYPE",
+      "full_ugo_source_1to1": "BLOCKED_NO_CALIBRATED_STANDARD_OVERLAY",
+      "physical_part_signoff": "BLOCKED_NO_REAL_MANUFACTURER_PINOUT",
+      "status": "DRAFT",
+      "negative": [
+        "any physical A/K or B/C/E/D/G/S swapping under D4",
+        "any invented manufacturer numbering",
+        "any real mm claim from scan pixels",
+        "case circle treated as PCB footprint",
+        "wrong optical direction or gate contact when applicable"
+      ],
+      "paired_part_file": "src/gost_schematic/catalog/parts/diodes/led.json",
+      "paired_part_blob_sha": "59441cfc63af7d0b25a78a5d59f089b03c9a29df",
+      "paired_part_symbol_id": "diode.led",
+      "paired_part_pin_manifest": [
+        {
+          "number": "1",
+          "name": "A",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        },
+        {
+          "number": "2",
+          "name": "K",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        }
+      ],
+      "paired_part_number_to_graphic_role_verified": true,
+      "paired_part_note": "Abstract pin identities and generic passive electrical type; not an authenticated manufacturer pinout, not an SOT/TO footprint approval."
+    },
+    {
+      "id": "diode.photodiode",
+      "path": "src/gost_schematic/catalog/symbols/diodes/photodiode.json",
+      "blob_sha": "981bcd34df25f93582aa4713600e9c1a5ae53b46",
+      "figure": "2.730-73 табл.9 поз.2",
+      "source_feature": "two inward nonconductive light arrows",
+      "observed_1to1_json": {
+        "stroke_mm": 0.3,
+        "body_keepout_mm": [
+          -8,
+          -13,
+          5,
+          4.5
+        ],
+        "bbox_mm": [
+          -10,
+          -12,
+          10,
+          3.3
+        ],
+        "rectangles": [],
+        "circles": [],
+        "line_count": 12,
+        "pins": [
+          {
+            "number": "1",
+            "at_mm": [
+              -10,
+              0
+            ],
+            "side": "left",
+            "label": "A"
+          },
+          {
+            "number": "2",
+            "at_mm": [
+              10,
+              0
+            ],
+            "side": "right",
+            "label": "K"
+          }
+        ]
+      },
+      "source_feature_status": "PASS_BOUNDED_TO_FIGURE_TYPE",
+      "full_ugo_source_1to1": "BLOCKED_NO_CALIBRATED_STANDARD_OVERLAY",
+      "physical_part_signoff": "BLOCKED_NO_REAL_MANUFACTURER_PINOUT",
+      "status": "DRAFT",
+      "negative": [
+        "any physical A/K or B/C/E/D/G/S swapping under D4",
+        "any invented manufacturer numbering",
+        "any real mm claim from scan pixels",
+        "case circle treated as PCB footprint",
+        "wrong optical direction or gate contact when applicable"
+      ],
+      "paired_part_file": "src/gost_schematic/catalog/parts/diodes/photodiode.json",
+      "paired_part_blob_sha": "d9d8ef4e7a1ad2380850b98341ea555b1a5de82e",
+      "paired_part_symbol_id": "diode.photodiode",
+      "paired_part_pin_manifest": [
+        {
+          "number": "1",
+          "name": "A",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        },
+        {
+          "number": "2",
+          "name": "K",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        }
+      ],
+      "paired_part_number_to_graphic_role_verified": true,
+      "paired_part_note": "Abstract pin identities and generic passive electrical type; not an authenticated manufacturer pinout, not an SOT/TO footprint approval."
+    },
+    {
+      "id": "diode.varicap",
+      "path": "src/gost_schematic/catalog/symbols/diodes/varicap.json",
+      "blob_sha": "46db55717d139dd36bebfa324e1b830e6ef3e42c",
+      "figure": "2.730-73 табл.5 поз.6",
+      "source_feature": "added independent capacitance plate and two A/K electrodes",
+      "observed_1to1_json": {
+        "stroke_mm": 0.3,
+        "body_keepout_mm": [
+          -4,
+          -4.5,
+          6,
+          4.5
+        ],
+        "bbox_mm": [
+          -10,
+          -3.3,
+          10,
+          3.3
+        ],
+        "rectangles": [],
+        "circles": [],
+        "line_count": 7,
+        "pins": [
+          {
+            "number": "1",
+            "at_mm": [
+              -10,
+              0
+            ],
+            "side": "left",
+            "label": "A"
+          },
+          {
+            "number": "2",
+            "at_mm": [
+              10,
+              0
+            ],
+            "side": "right",
+            "label": "K"
+          }
+        ]
+      },
+      "source_feature_status": "PASS_BOUNDED_TO_FIGURE_TYPE",
+      "full_ugo_source_1to1": "BLOCKED_NO_CALIBRATED_STANDARD_OVERLAY",
+      "physical_part_signoff": "BLOCKED_NO_REAL_MANUFACTURER_PINOUT",
+      "status": "DRAFT",
+      "negative": [
+        "any physical A/K or B/C/E/D/G/S swapping under D4",
+        "any invented manufacturer numbering",
+        "any real mm claim from scan pixels",
+        "case circle treated as PCB footprint",
+        "wrong optical direction or gate contact when applicable"
+      ],
+      "paired_part_file": "src/gost_schematic/catalog/parts/diodes/varicap.json",
+      "paired_part_blob_sha": "b47e027d20577ad67bbf319c7e93a4ef0833d20e",
+      "paired_part_symbol_id": "diode.varicap",
+      "paired_part_pin_manifest": [
+        {
+          "number": "1",
+          "name": "A",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        },
+        {
+          "number": "2",
+          "name": "K",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        }
+      ],
+      "paired_part_number_to_graphic_role_verified": true,
+      "paired_part_note": "Abstract pin identities and generic passive electrical type; not an authenticated manufacturer pinout, not an SOT/TO footprint approval."
+    },
+    {
+      "id": "transistor.bjt_pnp",
+      "path": "src/gost_schematic/catalog/symbols/transistors/bjt_pnp.json",
+      "blob_sha": "9243b2b4d5018102fab41129b497e89bfa7c139d",
+      "figure": "2.730-73 табл.7 поз.1а",
+      "source_feature": "emitter arrow towards B, plain PNP source",
+      "observed_1to1_json": {
+        "stroke_mm": 0.3,
+        "body_keepout_mm": [
+          -4,
+          -13,
+          5,
+          6
+        ],
+        "bbox_mm": [
+          -11,
+          -10,
+          9,
+          10
+        ],
+        "rectangles": [],
+        "circles": [],
+        "line_count": 6,
+        "pins": [
+          {
+            "number": "1",
+            "at_mm": [
+              -11,
+              0
+            ],
+            "side": "left",
+            "label": "B"
+          },
+          {
+            "number": "2",
+            "at_mm": [
+              9,
+              -10
+            ],
+            "side": "right",
+            "label": "C"
+          },
+          {
+            "number": "3",
+            "at_mm": [
+              9,
+              10
+            ],
+            "side": "right",
+            "label": "E"
+          }
+        ]
+      },
+      "source_feature_status": "PASS_BOUNDED_TO_FIGURE_TYPE",
+      "full_ugo_source_1to1": "BLOCKED_NO_CALIBRATED_STANDARD_OVERLAY",
+      "physical_part_signoff": "BLOCKED_NO_REAL_MANUFACTURER_PINOUT",
+      "status": "DRAFT",
+      "negative": [
+        "any physical A/K or B/C/E/D/G/S swapping under D4",
+        "any invented manufacturer numbering",
+        "any real mm claim from scan pixels",
+        "case circle treated as PCB footprint",
+        "wrong optical direction or gate contact when applicable"
+      ],
+      "paired_part_file": "src/gost_schematic/catalog/parts/transistors/bjt_pnp.json",
+      "paired_part_blob_sha": "5f56ce4b6056def1658150e53c4c96cef9511dc2",
+      "paired_part_symbol_id": "transistor.bjt_pnp",
+      "paired_part_pin_manifest": [
+        {
+          "number": "1",
+          "name": "B",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        },
+        {
+          "number": "2",
+          "name": "C",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        },
+        {
+          "number": "3",
+          "name": "E",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        }
+      ],
+      "paired_part_number_to_graphic_role_verified": true,
+      "paired_part_note": "Abstract pin identities and generic passive electrical type; not an authenticated manufacturer pinout, not an SOT/TO footprint approval."
+    },
+    {
+      "id": "transistor.bjt_npn",
+      "path": "src/gost_schematic/catalog/symbols/transistors/bjt_npn.json",
+      "blob_sha": "219b123fbdcd87964e91df37db8ca4420744059a",
+      "figure": "2.730-73 табл.7 поз.1б SHIELDED, generic NPN derived",
+      "source_feature": "outward emitter arrow derived; standard table7/1б actually shielded NPN",
+      "observed_1to1_json": {
+        "stroke_mm": 0.3,
+        "body_keepout_mm": [
+          -4,
+          -13,
+          5,
+          6
+        ],
+        "bbox_mm": [
+          -11,
+          -10,
+          9,
+          10
+        ],
+        "rectangles": [],
+        "circles": [],
+        "line_count": 6,
+        "pins": [
+          {
+            "number": "1",
+            "at_mm": [
+              -11,
+              0
+            ],
+            "side": "left",
+            "label": "B"
+          },
+          {
+            "number": "2",
+            "at_mm": [
+              9,
+              -10
+            ],
+            "side": "right",
+            "label": "C"
+          },
+          {
+            "number": "3",
+            "at_mm": [
+              9,
+              10
+            ],
+            "side": "right",
+            "label": "E"
+          }
+        ]
+      },
+      "source_feature_status": "BLOCKED_DERIVED_NPN",
+      "full_ugo_source_1to1": "BLOCKED_NO_CALIBRATED_STANDARD_OVERLAY",
+      "physical_part_signoff": "BLOCKED_NO_REAL_MANUFACTURER_PINOUT",
+      "status": "DRAFT",
+      "negative": [
+        "any physical A/K or B/C/E/D/G/S swapping under D4",
+        "any invented manufacturer numbering",
+        "any real mm claim from scan pixels",
+        "case circle treated as PCB footprint",
+        "wrong optical direction or gate contact when applicable"
+      ],
+      "paired_part_file": "src/gost_schematic/catalog/parts/transistors/bjt_npn.json",
+      "paired_part_blob_sha": "bd506ae6a890a3e49c6f7aa99a2f4c52ce2ea099",
+      "paired_part_symbol_id": "transistor.bjt_npn",
+      "paired_part_pin_manifest": [
+        {
+          "number": "1",
+          "name": "B",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        },
+        {
+          "number": "2",
+          "name": "C",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        },
+        {
+          "number": "3",
+          "name": "E",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        }
+      ],
+      "paired_part_number_to_graphic_role_verified": true,
+      "paired_part_note": "Abstract pin identities and generic passive electrical type; not an authenticated manufacturer pinout, not an SOT/TO footprint approval."
+    },
+    {
+      "id": "transistor.bjt_pnp.with_case",
+      "path": "src/gost_schematic/catalog/symbols/transistors/bjt_pnp_with_case.json",
+      "blob_sha": "b7508ace5af3f49aaba5cf7efbe6375a096569ed",
+      "figure": "2.730-73 табл.7 поз.1а + optional circle note",
+      "source_feature": "PNP with optional SCHEMATIC case circle, not package",
+      "observed_1to1_json": {
+        "stroke_mm": 0.3,
+        "body_keepout_mm": [
+          -8,
+          -13,
+          8,
+          8
+        ],
+        "bbox_mm": [
+          -11,
+          -10,
+          9,
+          10
+        ],
+        "rectangles": [],
+        "circles": [
+          {
+            "center_mm": [
+              0,
+              0
+            ],
+            "radius_mm": 8
+          }
+        ],
+        "line_count": 6,
+        "pins": [
+          {
+            "number": "1",
+            "at_mm": [
+              -11,
+              0
+            ],
+            "side": "left",
+            "label": "B"
+          },
+          {
+            "number": "2",
+            "at_mm": [
+              9,
+              -10
+            ],
+            "side": "right",
+            "label": "C"
+          },
+          {
+            "number": "3",
+            "at_mm": [
+              9,
+              10
+            ],
+            "side": "right",
+            "label": "E"
+          }
+        ]
+      },
+      "source_feature_status": "PASS_BOUNDED_TO_FIGURE_TYPE",
+      "full_ugo_source_1to1": "BLOCKED_NO_CALIBRATED_STANDARD_OVERLAY",
+      "physical_part_signoff": "BLOCKED_NO_REAL_MANUFACTURER_PINOUT",
+      "status": "DRAFT",
+      "negative": [
+        "any physical A/K or B/C/E/D/G/S swapping under D4",
+        "any invented manufacturer numbering",
+        "any real mm claim from scan pixels",
+        "case circle treated as PCB footprint",
+        "wrong optical direction or gate contact when applicable"
+      ],
+      "paired_part_file": "src/gost_schematic/catalog/parts/transistors/bjt_pnp_with_case.json",
+      "paired_part_blob_sha": "ef59a288fce2fe52d142cbf36cc9f1c38585ca78",
+      "paired_part_symbol_id": "transistor.bjt_pnp.with_case",
+      "paired_part_pin_manifest": [
+        {
+          "number": "1",
+          "name": "B",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        },
+        {
+          "number": "2",
+          "name": "C",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        },
+        {
+          "number": "3",
+          "name": "E",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        }
+      ],
+      "paired_part_number_to_graphic_role_verified": true,
+      "paired_part_note": "Abstract pin identities and generic passive electrical type; not an authenticated manufacturer pinout, not an SOT/TO footprint approval."
+    },
+    {
+      "id": "transistor.bjt_npn.with_case",
+      "path": "src/gost_schematic/catalog/symbols/transistors/bjt_npn_with_case.json",
+      "blob_sha": "2660d1089698c9d201d32b320f86a924dded85ea",
+      "figure": "2.730-73 табл.7 поз.1б SHIELDED + optional circle note",
+      "source_feature": "generic NPN derived and case optional; shield original invalid for plain 3pin",
+      "observed_1to1_json": {
+        "stroke_mm": 0.3,
+        "body_keepout_mm": [
+          -8,
+          -13,
+          8,
+          8
+        ],
+        "bbox_mm": [
+          -11,
+          -10,
+          9,
+          10
+        ],
+        "rectangles": [],
+        "circles": [
+          {
+            "center_mm": [
+              0,
+              0
+            ],
+            "radius_mm": 8
+          }
+        ],
+        "line_count": 6,
+        "pins": [
+          {
+            "number": "1",
+            "at_mm": [
+              -11,
+              0
+            ],
+            "side": "left",
+            "label": "B"
+          },
+          {
+            "number": "2",
+            "at_mm": [
+              9,
+              -10
+            ],
+            "side": "right",
+            "label": "C"
+          },
+          {
+            "number": "3",
+            "at_mm": [
+              9,
+              10
+            ],
+            "side": "right",
+            "label": "E"
+          }
+        ]
+      },
+      "source_feature_status": "BLOCKED_DERIVED_NPN",
+      "full_ugo_source_1to1": "BLOCKED_NO_CALIBRATED_STANDARD_OVERLAY",
+      "physical_part_signoff": "BLOCKED_NO_REAL_MANUFACTURER_PINOUT",
+      "status": "DRAFT",
+      "negative": [
+        "any physical A/K or B/C/E/D/G/S swapping under D4",
+        "any invented manufacturer numbering",
+        "any real mm claim from scan pixels",
+        "case circle treated as PCB footprint",
+        "wrong optical direction or gate contact when applicable"
+      ],
+      "paired_part_file": "src/gost_schematic/catalog/parts/transistors/bjt_npn_with_case.json",
+      "paired_part_blob_sha": "ba9a96c87e93b49d943be19ad2d8a49673278419",
+      "paired_part_symbol_id": "transistor.bjt_npn.with_case",
+      "paired_part_pin_manifest": [
+        {
+          "number": "1",
+          "name": "B",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        },
+        {
+          "number": "2",
+          "name": "C",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        },
+        {
+          "number": "3",
+          "name": "E",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        }
+      ],
+      "paired_part_number_to_graphic_role_verified": true,
+      "paired_part_note": "Abstract pin identities and generic passive electrical type; not an authenticated manufacturer pinout, not an SOT/TO footprint approval."
+    },
+    {
+      "id": "transistor.mosfet_p_enh",
+      "path": "src/gost_schematic/catalog/symbols/transistors/mosfet_p_enh.json",
+      "blob_sha": "9a9b654e9818adb91c07b72d4f2a5ec3862d8e14",
+      "figure": "2.730-73 табл.8 поз.3а",
+      "source_feature": "P-channel enhancement, isolated gate, segmented channel",
+      "observed_1to1_json": {
+        "stroke_mm": 0.3,
+        "body_keepout_mm": [
+          -5,
+          -14,
+          5,
+          6
+        ],
+        "bbox_mm": [
+          -11,
+          -18,
+          4,
+          11
+        ],
+        "rectangles": [],
+        "circles": [],
+        "line_count": 9,
+        "pins": [
+          {
+            "number": "1",
+            "at_mm": [
+              -11,
+              0
+            ],
+            "side": "left",
+            "label": "G"
+          },
+          {
+            "number": "2",
+            "at_mm": [
+              0,
+              -18
+            ],
+            "side": "top",
+            "label": "D"
+          },
+          {
+            "number": "3",
+            "at_mm": [
+              0,
+              11
+            ],
+            "side": "bottom",
+            "label": "S"
+          }
+        ]
+      },
+      "source_feature_status": "PASS_BOUNDED_TO_FIGURE_TYPE",
+      "full_ugo_source_1to1": "BLOCKED_NO_CALIBRATED_STANDARD_OVERLAY",
+      "physical_part_signoff": "BLOCKED_NO_REAL_MANUFACTURER_PINOUT",
+      "status": "DRAFT",
+      "negative": [
+        "any physical A/K or B/C/E/D/G/S swapping under D4",
+        "any invented manufacturer numbering",
+        "any real mm claim from scan pixels",
+        "case circle treated as PCB footprint",
+        "wrong optical direction or gate contact when applicable"
+      ],
+      "paired_part_file": "src/gost_schematic/catalog/parts/transistors/mosfet_p_enh.json",
+      "paired_part_blob_sha": "8f74705c37ab5a259e9b85fab54b7a851936e097",
+      "paired_part_symbol_id": "transistor.mosfet_p_enh",
+      "paired_part_pin_manifest": [
+        {
+          "number": "1",
+          "name": "G",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        },
+        {
+          "number": "2",
+          "name": "D",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        },
+        {
+          "number": "3",
+          "name": "S",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        }
+      ],
+      "paired_part_number_to_graphic_role_verified": true,
+      "paired_part_note": "Abstract pin identities and generic passive electrical type; not an authenticated manufacturer pinout, not an SOT/TO footprint approval."
+    },
+    {
+      "id": "transistor.mosfet_n_enh",
+      "path": "src/gost_schematic/catalog/symbols/transistors/mosfet_n_enh.json",
+      "blob_sha": "0ca4a854d72ba314aca897b067477c2aca621ab5",
+      "figure": "2.730-73 табл.8 поз.3б",
+      "source_feature": "N-channel enhancement, isolated gate, segmented channel",
+      "observed_1to1_json": {
+        "stroke_mm": 0.3,
+        "body_keepout_mm": [
+          -5,
+          -14,
+          5,
+          6
+        ],
+        "bbox_mm": [
+          -11,
+          -18,
+          4,
+          11
+        ],
+        "rectangles": [],
+        "circles": [],
+        "line_count": 9,
+        "pins": [
+          {
+            "number": "1",
+            "at_mm": [
+              -11,
+              0
+            ],
+            "side": "left",
+            "label": "G"
+          },
+          {
+            "number": "2",
+            "at_mm": [
+              0,
+              -18
+            ],
+            "side": "top",
+            "label": "D"
+          },
+          {
+            "number": "3",
+            "at_mm": [
+              0,
+              11
+            ],
+            "side": "bottom",
+            "label": "S"
+          }
+        ]
+      },
+      "source_feature_status": "PASS_BOUNDED_TO_FIGURE_TYPE",
+      "full_ugo_source_1to1": "BLOCKED_NO_CALIBRATED_STANDARD_OVERLAY",
+      "physical_part_signoff": "BLOCKED_NO_REAL_MANUFACTURER_PINOUT",
+      "status": "DRAFT",
+      "negative": [
+        "any physical A/K or B/C/E/D/G/S swapping under D4",
+        "any invented manufacturer numbering",
+        "any real mm claim from scan pixels",
+        "case circle treated as PCB footprint",
+        "wrong optical direction or gate contact when applicable"
+      ],
+      "paired_part_file": "src/gost_schematic/catalog/parts/transistors/mosfet_n_enh.json",
+      "paired_part_blob_sha": "cb5ef551957a64e99e7cef49ef63c1ae821d716d",
+      "paired_part_symbol_id": "transistor.mosfet_n_enh",
+      "paired_part_pin_manifest": [
+        {
+          "number": "1",
+          "name": "G",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        },
+        {
+          "number": "2",
+          "name": "D",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        },
+        {
+          "number": "3",
+          "name": "S",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        }
+      ],
+      "paired_part_number_to_graphic_role_verified": true,
+      "paired_part_note": "Abstract pin identities and generic passive electrical type; not an authenticated manufacturer pinout, not an SOT/TO footprint approval."
+    },
+    {
+      "id": "transistor.mosfet_p_enh.with_case",
+      "path": "src/gost_schematic/catalog/symbols/transistors/mosfet_p_enh_with_case.json",
+      "blob_sha": "bb01d3166d9bd51ce7b72068415d27da52b0a227",
+      "figure": "2.730-73 табл.8 поз.3а + case circle note",
+      "source_feature": "P-channel enhancement plus optional case, no external B pin inferred",
+      "observed_1to1_json": {
+        "stroke_mm": 0.3,
+        "body_keepout_mm": [
+          -8,
+          -14,
+          8,
+          8
+        ],
+        "bbox_mm": [
+          -11,
+          -18,
+          4,
+          11
+        ],
+        "rectangles": [],
+        "circles": [
+          {
+            "center_mm": [
+              0,
+              0
+            ],
+            "radius_mm": 8
+          }
+        ],
+        "line_count": 9,
+        "pins": [
+          {
+            "number": "1",
+            "at_mm": [
+              -11,
+              0
+            ],
+            "side": "left",
+            "label": "G"
+          },
+          {
+            "number": "2",
+            "at_mm": [
+              0,
+              -18
+            ],
+            "side": "top",
+            "label": "D"
+          },
+          {
+            "number": "3",
+            "at_mm": [
+              0,
+              11
+            ],
+            "side": "bottom",
+            "label": "S"
+          }
+        ]
+      },
+      "source_feature_status": "PASS_BOUNDED_TO_FIGURE_TYPE",
+      "full_ugo_source_1to1": "BLOCKED_NO_CALIBRATED_STANDARD_OVERLAY",
+      "physical_part_signoff": "BLOCKED_NO_REAL_MANUFACTURER_PINOUT",
+      "status": "DRAFT",
+      "negative": [
+        "any physical A/K or B/C/E/D/G/S swapping under D4",
+        "any invented manufacturer numbering",
+        "any real mm claim from scan pixels",
+        "case circle treated as PCB footprint",
+        "wrong optical direction or gate contact when applicable"
+      ],
+      "paired_part_file": "src/gost_schematic/catalog/parts/transistors/mosfet_p_enh_with_case.json",
+      "paired_part_blob_sha": "e1673cf380ea7a6aba418e00aa42da87585dcd7b",
+      "paired_part_symbol_id": "transistor.mosfet_p_enh.with_case",
+      "paired_part_pin_manifest": [
+        {
+          "number": "1",
+          "name": "G",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        },
+        {
+          "number": "2",
+          "name": "D",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        },
+        {
+          "number": "3",
+          "name": "S",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        }
+      ],
+      "paired_part_number_to_graphic_role_verified": true,
+      "paired_part_note": "Abstract pin identities and generic passive electrical type; not an authenticated manufacturer pinout, not an SOT/TO footprint approval."
+    },
+    {
+      "id": "transistor.mosfet_n_enh.with_case",
+      "path": "src/gost_schematic/catalog/symbols/transistors/mosfet_n_enh_with_case.json",
+      "blob_sha": "feb5a8c3fd53f44c541f8216ec48238294195a10",
+      "figure": "2.730-73 табл.8 поз.3б + case circle note",
+      "source_feature": "N-channel enhancement plus optional case, no external B pin inferred",
+      "observed_1to1_json": {
+        "stroke_mm": 0.3,
+        "body_keepout_mm": [
+          -8,
+          -14,
+          8,
+          8
+        ],
+        "bbox_mm": [
+          -11,
+          -18,
+          4,
+          11
+        ],
+        "rectangles": [],
+        "circles": [
+          {
+            "center_mm": [
+              0,
+              0
+            ],
+            "radius_mm": 8
+          }
+        ],
+        "line_count": 9,
+        "pins": [
+          {
+            "number": "1",
+            "at_mm": [
+              -11,
+              0
+            ],
+            "side": "left",
+            "label": "G"
+          },
+          {
+            "number": "2",
+            "at_mm": [
+              0,
+              -18
+            ],
+            "side": "top",
+            "label": "D"
+          },
+          {
+            "number": "3",
+            "at_mm": [
+              0,
+              11
+            ],
+            "side": "bottom",
+            "label": "S"
+          }
+        ]
+      },
+      "source_feature_status": "PASS_BOUNDED_TO_FIGURE_TYPE",
+      "full_ugo_source_1to1": "BLOCKED_NO_CALIBRATED_STANDARD_OVERLAY",
+      "physical_part_signoff": "BLOCKED_NO_REAL_MANUFACTURER_PINOUT",
+      "status": "DRAFT",
+      "negative": [
+        "any physical A/K or B/C/E/D/G/S swapping under D4",
+        "any invented manufacturer numbering",
+        "any real mm claim from scan pixels",
+        "case circle treated as PCB footprint",
+        "wrong optical direction or gate contact when applicable"
+      ],
+      "paired_part_file": "src/gost_schematic/catalog/parts/transistors/mosfet_n_enh_with_case.json",
+      "paired_part_blob_sha": "4deae83b86e2dd4f342d475802c030cdec767782",
+      "paired_part_symbol_id": "transistor.mosfet_n_enh.with_case",
+      "paired_part_pin_manifest": [
+        {
+          "number": "1",
+          "name": "G",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        },
+        {
+          "number": "2",
+          "name": "D",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        },
+        {
+          "number": "3",
+          "name": "S",
+          "electrical_type": "passive",
+          "polarity": "none",
+          "function": "general"
+        }
+      ],
+      "paired_part_number_to_graphic_role_verified": true,
+      "paired_part_note": "Abstract pin identities and generic passive electrical type; not an authenticated manufacturer pinout, not an SOT/TO footprint approval."
+    }
+  ],
+  "paired_owner_parts_verified": 15,
+  "paired_parts_source": "15 paired PR94 catalogue/parts JSON files at same pinned owner HEAD; exact git blob SHAs; matched physical number and terminal name to symbol GraphicPin. Full terminal product/IEC function category not accepted."
+}
