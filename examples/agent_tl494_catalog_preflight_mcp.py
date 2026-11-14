@@ -81,8 +81,13 @@ async def run_native_client(workspace: Path, project_id: str, revision: str) -> 
                 ))
                 if [x["part_id"] for x in search["candidates"]] != [part_id]:
                     raise AssertionError("Unexpected exact symbol variant")
+                matching = search["candidates"][0]
                 reply = await client.call_tool(
-                    "schematic_catalog_preview", {"part_id": part_id},
+                    "schematic_catalog_preview", {
+                        "part_id": part_id,
+                        "part_sha256": matching["part_sha256"],
+                        "symbol_sha256": matching["symbol_sha256"],
+                    },
                 )
                 if reply.isError:
                     raise AssertionError("Failed genuine installed symbol preview")
@@ -91,6 +96,8 @@ async def run_native_client(workspace: Path, project_id: str, revision: str) -> 
                 if len(pictures) != 1 or len(texts) != 2:
                     raise AssertionError("Missing native PNG/SVG for catalog glyph")
                 meta = json.loads(texts[0].text)
+                if meta["preview_lock_status"] != "EXACT_CATALOG_LOCK_MATCH":
+                    raise AssertionError("Expected immutable dual-SHA preview")
                 png = base64.b64decode(pictures[0].data, validate=True)
                 svg = texts[1].text
                 if (hashlib.sha256(png).hexdigest() != meta["png_sha256"]
