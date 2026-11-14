@@ -81,6 +81,8 @@ def validate_reference_markers(
     identities = {b.id: b for b in nets}
     if len(identities) != len(nets):
         raise ValueError("REFERENCE_MARKER_NET_ID_DUPLICATE")
+    if len({b.net_name for b in nets}) != len(nets):
+        raise ValueError("REFERENCE_MARKER_MULTIPLE_IDS_FOR_ONE_REAL_NET")
     for b in nets:
         real = by_name.get(b.net_name)
         if real is None or b.members != real.members:
@@ -100,6 +102,15 @@ def validate_reference_markers(
             ReferenceRole.CHASSIS, ReferenceRole.PROTECTIVE_EARTH
         ) and net.net_name in ("COMMON", "0V", "GND", "SIGNAL_GND"):
             raise ValueError("REFERENCE_MARKER_NO_IMPLICIT_PE_TO_COMMON")
+        # An arbitrary signal/rail cannot become a chassis/PE domain through
+        # decorative paint. Explicit source-designated electrical domains
+        # must exist as actual distinct Circuit.Net records first.
+        if (marker.role is ReferenceRole.CHASSIS and net.net_name not in
+                ("CHASSIS", "FRAME", "CHASSIS_GND")):
+            raise ValueError("REFERENCE_MARKER_CHASSIS_DOMAIN_NOT_DECLARED")
+        if (marker.role is ReferenceRole.PROTECTIVE_EARTH and net.net_name not in
+                ("PE", "PROTECTIVE_EARTH", "EARTH_PE")):
+            raise ValueError("REFERENCE_MARKER_PE_DOMAIN_NOT_DECLARED")
         prior = same_net_roles.setdefault(marker.net_id, marker.role)
         if prior != marker.role:
             raise ValueError("REFERENCE_MARKER_INCOMPATIBLE_ROLES_ON_ONE_NET")
