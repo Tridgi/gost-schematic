@@ -30,7 +30,7 @@ jobs:
       - name: Checkout exact ELEKTRIK IC #97
         uses: actions/checkout@v4
         with:
-          ref: e65ee3f220084ee32ef8f71a48274ce39e933bf2
+          ref: 16e689dfe3ad4b4a9dd17974f4d4f9b8f30c86fa
           path: _qa_sources/ic
           persist-credentials: false
       - name: Checkout exact ELEKTRIK NET #98
@@ -62,7 +62,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C _qa_sources/paint rev-parse HEAD)" = 165017630dc911c3006eda35424d8293498db100
-          test "$(git -C _qa_sources/ic rev-parse HEAD)" = e65ee3f220084ee32ef8f71a48274ce39e933bf2
+          test "$(git -C _qa_sources/ic rev-parse HEAD)" = 16e689dfe3ad4b4a9dd17974f4d4f9b8f30c86fa
           test "$(git -C _qa_sources/net rev-parse HEAD)" = 8ab0778a67c2e56be4be9cd0297e454413f56028
           test "$(git -C _qa_sources/catalog rev-parse HEAD)" = 37f7c5e58938db1d5bcf308ff04e740356afc0e4
           test "$(git -C _qa_sources/project rev-parse HEAD)" = a58ecd388a7cf99fe6cc2f7340d39403b0fa9abf
@@ -128,7 +128,7 @@ jobs:
           fc-cache -f
       - name: Independent real 15 UGO + portrait D4 + netrefs + P1.1 gate and 300 DPI
         run: |
-          python scripts/qa_cycle7_live_source_gate.py --font-file "$CYCLE7_QA_FONT" --output-dir "output/qa-cycle7-live-py${{ matrix.python-version }}"
+          python -m scripts.qa_cycle7_live_source_gate --font-file "$CYCLE7_QA_FONT" --output-dir "output/qa-cycle7-live-py${{ matrix.python-version }}"
       - name: Verify real wheel contains 36 symbols and physical parts
         shell: bash
         run: |

@@ -31,7 +31,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SVG = "{http://www.w3.org/2000/svg}"
 OWNER = {
     "paint": "165017630dc911c3006eda35424d8293498db100",
-    "ic": "e65ee3f220084ee32ef8f71a48274ce39e933bf2",
+    "ic": "16e689dfe3ad4b4a9dd17974f4d4f9b8f30c86fa",
     "net": "8ab0778a67c2e56be4be9cd0297e454413f56028",
     "catalog": "37f7c5e58938db1d5bcf308ff04e740356afc0e4",
     "project": "a58ecd388a7cf99fe6cc2f7340d39403b0fa9abf",
@@ -41,7 +41,7 @@ SOURCE_BLOBS = {
     "src/gost_schematic/rendering/ic_rectangular.py": "bff0caf982a14ebd2bacda15b419f9b4bcc16f70",
     "src/gost_schematic/electrical/ic.py": "879ced36cd11c2607bcac1db345bd75cae06e54a",
     "src/gost_schematic/electrical/netrefs.py": "729a53b4ea19d68b0be1372e745863a11eb83d07",
-    "src/gost_schematic/electrical/ic_paint_bridge.py": "99148380fe6b44c0458cb519dbc1d461de886e7c",
+    "src/gost_schematic/electrical/ic_paint_bridge.py": "edf70d41f2833f8a9504d20632398eb8294ad2ea",
     "src/gost_schematic/agent_project/service.py": "6d20a3020e30c114d9e9931e5e4762b1c3cb9489",
     "docs/standards/issue-91-deep-source-audit.json": "07b2ab53b64fe40fe35750f0a21b52db8ca66c30",
     "docs/catalog/electronic-cycle7-second-batch-cards.json": "19e0b0ad1c8d88819bf8a6e46511c386b30f7899",
