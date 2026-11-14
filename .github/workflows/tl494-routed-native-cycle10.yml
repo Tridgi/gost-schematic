@@ -1,0 +1,156 @@
+name: PAINT C10 new owner NET114 graph native TL494 full 23 print-blocking render
+
+on:
+  pull_request:
+    branches: [integration/stage0-12]
+    paths:
+      - "src/gost_schematic/rendering/routed_native_sheet.py"
+      - "src/gost_schematic/rendering/external_wire_sheet.py"
+      - "examples/render_tl494_new_router_cycle10.py"
+      - "tests/test_routed_native_sheet_cycle10.py"
+      - ".github/workflows/tl494-routed-native-cycle10.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verified-new-routed-circuit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    env:
+      SOURCE_SHA: e695c415fdced164b0e0c39c5249d030795a0aa6
+      IC_SHA: b28428d94218cac777a28897ce9176285d0fab0b
+      YGO_SHA: edc71a48035723d48a203ae2ea12588701f68ba8
+      NET_SHA: b3a8263944c5a687492a49555d8149e538f0902b
+      PAINT_PINNED_NATIVE_REQUIRED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Stage EXACT source and latest complete TI/NET/YGO owner HEADs
+        run: |
+          set -euo pipefail
+          for ref in "$SOURCE_SHA" "$IC_SHA" "$YGO_SHA" "$NET_SHA"; do
+            git fetch --no-tags --depth=1 origin "$ref"
+            test "$(git rev-parse "$ref")" = "$ref"
+          done
+          for p in \
+            examples/tl494_named_photo_sheet.py \
+            examples/tl494_connected_native.py \
+            examples/tl494_native_rework.py \
+            examples/tl494_full_native_model.py \
+            examples/tl494_ic_paint_reference.py; do
+            git show "$SOURCE_SHA:$p" > "$p"
+          done
+          for p in $(git ls-tree -r --name-only "$IC_SHA" src/gost_schematic/electrical); do
+            mkdir -p "$(dirname "$p")"
+            git show "$IC_SHA:$p" > "$p"
+          done
+          for p in \
+            src/gost_schematic/catalog/source_profiles.py \
+            src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json; do
+            mkdir -p "$(dirname "$p")"
+            git show "$YGO_SHA:$p" > "$p"
+          done
+          for p in \
+            src/gost_schematic/validation/route_drc.py \
+            src/gost_schematic/engines/orthogonal_route_planner.py \
+            src/gost_schematic/engines/multiterminal_router.py; do
+            mkdir -p "$(dirname "$p")"
+            git show "$NET_SHA:$p" > "$p"
+          done
+          test -f src/gost_schematic/electrical/ic_circuit_adapter.py
+          test -f src/gost_schematic/engines/multiterminal_router.py
+      - name: Real Type A 3500um, pinned face, librsvg 300DPI
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python -m pip install -e ".[dev]"
+          python scripts/install_opengost_type_a.py \
+            --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a \
+            --directory "$HOME/.local/share/fonts"
+          fc-cache -f
+          FONT_FILE="$(find "$HOME/.local/share/fonts" -type f \( -iname '*TypeA*.ttf' -o -iname '*TypeA*.otf' \) | head -1)"
+          test -f "$FONT_FILE"
+          echo "REVIEW_FONT=$FONT_FILE" >> "$GITHUB_ENV"
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+      - name: Ruff plus 9 owner-agnostic hostile new route print cases
+        run: |
+          ruff check src/gost_schematic/rendering/routed_native_sheet.py \
+            examples/render_tl494_new_router_cycle10.py \
+            tests/test_routed_native_sheet_cycle10.py
+          pytest -q tests/test_routed_native_sheet_cycle10.py
+      - name: Genuine new NET114 graph -> PAINT full native engine, no old 91 wire reuse
+        run: |
+          python -m examples.render_tl494_new_router_cycle10 \
+            --font-file "$REVIEW_FONT" \
+            --output output/tl494-C10-new-net114-owner-graph \
+            --node-cap 25000
+      - name: Real SVG and true PNG at 300 DPI
+        run: |
+          for f in output/tl494-C10-new-net114-owner-graph/*.svg; do
+            rsvg-convert --background-color white --dpi-x 300 --dpi-y 300 \
+              --output "${f%.svg}-300dpi.png" "$f"
+          done
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from PIL import Image, ImageChops
+          from xml.etree import ElementTree as ET
+
+          d=Path("output/tl494-C10-new-net114-owner-graph")
+          proof=json.loads((d/"TL494_NEW_NET114_vs_source_print_evidence.json").read_text())
+          assert (proof["source_components"],proof["source_nets"],
+                  proof["source_net_pinrefs"]) == (23,15,62)
+          assert proof["original_negative_wires"]==91
+          assert proof["new_graph_not_source_91_frozen"]
+          assert not proof["printable_candidate"] if "printable_candidate" in proof else proof["blocked_release"]
+          assert proof["blocked_release"]
+          assert not proof["owner_preview_complete"]
+          assert "ROUTER_INCOMPLETE_OR_UNVERIFIED_15_NETS" in proof["blockers"]
+          assert proof["native_post_render_route_drc"] is not None
+          assert proof["native_post_render_route_drc"]["checked_symbol_geometry"]
+          assert proof["native_post_render_route_drc"]["checked_measured_text"]
+          for mode in ("clean","diagnostic"):
+              stem=f"TL494_NEW_NET114_candidate_BLOCKED_{mode}"
+              root=ET.fromstring((d/(stem+".svg")).read_text())
+              assert root.get("data-release")=="BLOCKED_INCOMPLETE_OR_PRINT_DRC"
+              assert root.get("data-route-graph-sha256")==proof["graph_sha256"]
+              assert len(root.findall(
+                  ".//{http://www.w3.org/2000/svg}g[@data-layer='symbols']"))==23
+              assert len(root.findall(
+                  ".//{http://www.w3.org/2000/svg}line[@data-layer='wires']"))==proof["route_segments"]
+              markers=root.findall(
+                  ".//{http://www.w3.org/2000/svg}g[@data-layer='editor-connection-targets']/{http://www.w3.org/2000/svg}rect")
+              assert len(markers)==(0 if mode=="clean" else 16)
+              with Image.open(d/(stem+"-300dpi.png")) as image:
+                  assert image.format=="PNG"
+                  physical_mm=float(root.get("width").removesuffix("mm"))
+                  assert abs(image.width-round(physical_mm*300/25.4))<=1
+                  rgb=image.convert("RGB")
+                  if mode=="clean":
+                      red,green,blue=rgb.split()
+                      assert ImageChops.difference(red,green).getbbox() is None
+                      assert ImageChops.difference(red,blue).getbbox() is None
+                  else:
+                      view=[float(v) for v in root.get("viewBox").split()]
+                      for marker in markers:
+                          x=round((float(marker.get("x"))+0.35-view[0])*300/25.4)
+                          y=round((float(marker.get("y"))+0.35-view[1])*300/25.4)
+                          r,g,b=rgb.getpixel((x,y))
+                          assert g>r+35 and g>b+20, (marker.get("data-pin-ref"),r,g,b)
+                  image.save(d/(stem+"-300dpi.png"),dpi=(300,300))
+          print("PASS new router typed source=23/15/16/62, real new partial graph BLOCKED; 16 true green and pure clean 300 DPI")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TL494-PROOF-real-NEW-router-graph-NOT-printable-${{ matrix.python-version }}
+          path: output/tl494-C10-new-net114-owner-graph/*
+          if-no-files-found: error
