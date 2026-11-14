@@ -215,6 +215,33 @@ def load_original_owner_fixture() -> tuple[dict, object]:
     return frozen, binding
 
 
+def parse_candidate_moves(values: tuple[str, ...]) -> tuple[tuple[str, int, int], ...]:
+    """Parse REF:dx_mm:dy_mm without implicit circuit/topology changes."""
+    result = []
+    seen = set()
+    for value in values:
+        if type(value) is not str:
+            raise ValueError("V5_CANDIDATE_MOVE_MUST_BE_TEXT")
+        fields = value.split(":")
+        if len(fields) != 3 or not fields[0]:
+            raise ValueError("V5_CANDIDATE_MOVE_REF_DX_DY_REQUIRED")
+        ref, dx_raw, dy_raw = fields
+        if ref in seen:
+            raise ValueError("V5_CANDIDATE_DUPLICATE_MOVE")
+        seen.add(ref)
+        try:
+            dx, dy = int(dx_raw), int(dy_raw)
+        except ValueError as exc:
+            raise ValueError("V5_CANDIDATE_INTEGER_MM_MOVE_REQUIRED") from exc
+        if (
+            ref not in COMPACT_A3_MM or abs(dx) > 30 or abs(dy) > 30
+            or dx * 1000 % 2500 or dy * 1000 % 2500
+        ):
+            raise ValueError("V5_CANDIDATE_MOVE_MUST_BE_SOURCED_2P5MM_GRID")
+        result.append((ref, dx, dy))
+    return tuple(result)
+
+
 def candidate_priority(frozen: dict, key: str) -> tuple[str, ...]:
     raw = frozen["nets"]
     if key == "source":
@@ -429,6 +456,7 @@ def drive_candidates(
     font_file: Path, output_file: Path, *,
     variants: tuple[str, ...] = ("source",),
     node_cap: int = 25000,
+    move_mm: tuple[tuple[str, int, int], ...] = (),
 ) -> dict:
     """Current owner trial/snapshot + best partial evidence, no success fiction."""
     if not variants or len(variants) > 3 or len(set(variants)) != len(variants):
@@ -441,7 +469,7 @@ def drive_candidates(
     )[3]
     trials = [
         run_candidate(
-            font_file, Candidate(key, candidate_priority(frozen, key)),
+            font_file, Candidate(key, candidate_priority(frozen, key), move_mm),
             node_cap=node_cap, frozen=frozen, owner_binding=owner_binding,
         )
         for key in variants
@@ -497,6 +525,7 @@ def drive_candidates(
         },
         "negative_original_DRC_expected": ORIGINAL_BAD_DRC,
         "paper": "A3 landscape 420x297mm; 10mm margins; DRAFT",
+        "source_position_only_moves_mm": [list(item) for item in move_mm],
         "candidates": trials,
         "best_evidence_variant": best["key"],
         "best_completed_nets": best["routed_net_count"],
@@ -521,6 +550,11 @@ def main() -> None:
     parser.add_argument("--output-file", type=Path, required=True)
     parser.add_argument("--node-cap", type=int, default=25000)
     parser.add_argument(
+        "--move", action="append", default=[], metavar="REF:DX_MM:DY_MM",
+        help="Move existing source ref by 2.5 mm grid (e.g. DA1:-10:0);"
+             " never rewrites Net/PinRef or scales UGO",
+    )
+    parser.add_argument(
         "--variants", nargs="+", choices=("source", "short-first", "control-first"),
         default=("source",),
     )
@@ -528,6 +562,7 @@ def main() -> None:
     evidence = drive_candidates(
         args.font_file, args.output_file,
         variants=tuple(args.variants), node_cap=args.node_cap,
+        move_mm=parse_candidate_moves(tuple(args.move)),
     )
     print(json.dumps({
         "HEAD_owner_shas": evidence["owner_exact_SHAs"],
