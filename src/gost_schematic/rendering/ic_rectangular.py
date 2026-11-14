@@ -717,7 +717,12 @@ def render_resolved_ic(
     # Refdes is separate from actual IC rectangle; fail on collision rather
     # than silently moving a component or shrinking the font.
     label = _measure(unit.reference, style, measurer)
-    if _vertical_internal:
+    if (_vertical_internal or (
+        unit.orientation is IcOrientation.LEFT_RIGHT
+        and unit.function_rotation == 90
+    )):
+        # Rotated function and D4 poses require reference placement on an
+        # actually free WORLD perimeter side, never across the pin corridors.
         # Candidate sides must be in the same WORLD frame as transformed
         # physical leads. Never assume that paper "left" is a free side after
         # a D4 transform, and do not change any connection point to fit DA1.
