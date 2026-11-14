@@ -147,10 +147,21 @@ jobs:
                      (base / "gost_schematic/catalog/symbols").rglob("*.json")}
           parts = {str(p.relative_to(base)) for p in
                    (base / "gost_schematic/catalog/parts").rglob("*.json")}
-          assert len(symbols) == 36, (len(symbols), sorted(symbols))
+          # 21 static symbol JSON plus 15 parametric winding definitions
+          # constitute 36 catalog UGO; inductors are not symbols/*.json.
+          inductors = {
+              p.name for p in (base / "gost_schematic/catalog/inductors").rglob("*.json")
+          }
+          assert len(symbols) == 21, (len(symbols), sorted(symbols))
+          assert len(parts) == 21, (len(parts), sorted(parts))
+          assert len(inductors) == 15, (len(inductors), sorted(inductors))
           assert symbols <= names, sorted(symbols - names)
           assert parts <= names, sorted(parts - names)
-          print("WHEEL_INDEPENDENT_36_UGO_PASS", len(symbols), len(parts))
+          assert {
+              "gost_schematic/catalog/inductors/" + name for name in inductors
+          } <= names
+          print("WHEEL_INDEPENDENT_36_UGO_PASS",
+                len(symbols), len(inductors), len(parts))
           PY
       - name: Ruff on original owner modules (strict release gate, never waived)
         if: always()
