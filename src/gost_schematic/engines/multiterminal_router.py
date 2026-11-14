@@ -484,6 +484,32 @@ def _visibility_path(
     # lattices but do not confuse potential cells with 25k actual visits.
     if len(xs) * len(ys) > search_node_cap * 8:
         return (), "ROUTE_GRID_TOO_DENSE"
+    # Every candidate is strictly horizontal or vertical. A rectangle can
+    # intersect such a candidate only if its perpendicular projection
+    # contains the fixed row/column coordinate (including its boundary).
+    # Hoist this exact necessary test out of the inner Dijkstra edge loop:
+    # PAINT's 16 lead strokes and 72 measured text guards otherwise each
+    # incur tens of thousands of redundant box checks per routed Net.
+    boxes_by_y = {
+        y: tuple(box for box in boxes if box.min_y <= y <= box.max_y)
+        for y in ys
+    }
+    boxes_by_x = {
+        x: tuple(box for box in boxes if box.min_x <= x <= box.max_x)
+        for x in xs
+    }
+    ink_by_y = {
+        y: tuple(ink for ink in ink_obstacles
+                 if ink.collision_bounds.min_y <= y
+                 <= ink.collision_bounds.max_y)
+        for y in ys
+    }
+    ink_by_x = {
+        x: tuple(ink for ink in ink_obstacles
+                 if ink.collision_bounds.min_x <= x
+                 <= ink.collision_bounds.max_x)
+        for x in xs
+    }
     x_idx = {x: i for i, x in enumerate(xs)}
     y_idx = {y: i for i, y in enumerate(ys)}
     start = (x_idx[source.x], y_idx[source.y], -1)
@@ -517,13 +543,20 @@ def _visibility_path(
             if not (0 <= ni < len(xs) and 0 <= nj < len(ys)):
                 continue
             to = Point(xs[ni], ys[nj])
+            axis_boxes = (
+                boxes_by_y[here.y] if ndir == 0 else boxes_by_x[here.x]
+            )
             if not page.includes(to) or any(
-                segment_intersects_box(Line(here, to), box) for box in boxes
+                segment_intersects_box(Line(here, to), box)
+                for box in axis_boxes
             ):
                 continue
+            axis_ink = (
+                ink_by_y[here.y] if ndir == 0 else ink_by_x[here.x]
+            )
             ink_error = _source_ink_collision(
                 WireSegment(here, to, net_name),
-                ink_obstacles, authorized_pins=authorized_pins,
+                axis_ink, authorized_pins=authorized_pins,
             )
             if ink_error is not None:
                 key = (
