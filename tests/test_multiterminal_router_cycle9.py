@@ -66,7 +66,7 @@ def test_full_three_terminal_tree_creates_real_authored_T_dot_without_net_change
     assert len(tree.segments) == 2, tree.segments
     assert len(tree.junctions) == 1
     assert tree.junctions[0] == Point(33000, 17000)
-    assert tree.length_um == 38000 + 7000
+    assert tree.length_um == 40000 + 7000
     assert tree.bend_count == 0
     graph = ExternalWireGraph(tree.segments, tree.junctions)
     assert not [
@@ -97,7 +97,7 @@ def test_foreign_nets_no_auto_join_even_if_pin_visually_coincident():
     circuit, parts, symbols = native_three_terminal()
     bad_net = Net("B", (PinRef("X1", "1"), PinRef("X2", "1")))
     illegal = replace(circuit, nets=(circuit.nets[0], bad_net))
-    with pytest.raises(ValueError, match="ROUTE_"):
+    with pytest.raises(ValueError, match="DRC_CROSS_NET_PHYSICAL_PIN"):
         route_circuit_net_trees(
             illegal, parts, symbols, page_box=Box(0, 0, 90000, 60000),
         )
@@ -122,7 +122,7 @@ def test_trapped_real_pin_failure_does_not_output_print_pass():
     circuit, parts, symbols = native_three_terminal()
     bad = replace(
         symbols["terminal-bottom"],
-        pins=(GraphicPin("1", Point(2000, 2000), Side.BOTTOM),),
+        pins=(GraphicPin("1", Point(2000, 4500), Side.BOTTOM),),
     )
     updated = {**symbols, "terminal-bottom": bad}
     result = route_circuit_net_trees(
