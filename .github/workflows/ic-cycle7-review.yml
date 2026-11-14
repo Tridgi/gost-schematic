@@ -8,6 +8,7 @@ on:
       - "src/gost_schematic/rendering/ic_orientation.py"
       - "src/gost_schematic/rendering/ic_hotspots.py"
       - "examples/review_ic_cycle7.py"
+      - "scripts/verify_ic_debug_gallery.py"
       - "tests/test_rendering_ic_cycle7.py"
       - ".github/workflows/ic-cycle7-review.yml"
   workflow_dispatch:
@@ -26,7 +27,7 @@ jobs:
       - name: Test IC isolated engine
         run: |
           python -m pip install -e ".[dev]"
-          ruff check src/gost_schematic/rendering/ic_rectangular.py src/gost_schematic/rendering/ic_orientation.py src/gost_schematic/rendering/ic_hotspots.py examples/review_ic_cycle7.py tests/test_rendering_ic_cycle7.py
+          ruff check src/gost_schematic/rendering/ic_rectangular.py src/gost_schematic/rendering/ic_orientation.py src/gost_schematic/rendering/ic_hotspots.py examples/review_ic_cycle7.py scripts/verify_ic_debug_gallery.py tests/test_rendering_ic_cycle7.py
           pytest -q tests/test_rendering_ic_cycle7.py
       - name: Install pinned external Type A font
         env:
@@ -47,22 +48,22 @@ jobs:
         run: |
           python -m examples.review_ic_cycle7 --font-file "$REVIEW_FONT" \
             --output-dir output/ic-cycle7
-      - name: Raster all 20 DRAFT SVG variants at physical 300 DPI
+      - name: Raster 200 DRAFT SVG (clean/ink/targets/combined) at 300 DPI
         run: |
-          for INPUT in output/ic-cycle7/ic-*-clean.svg output/ic-cycle7/ic-*-diagnostic.svg; do
+          for INPUT in output/ic-cycle7/ic-*.svg output/ic-cycle7/portrait-*.svg output/ic-cycle7/d4-*.svg; do
             test -f "$INPUT"
             OUTPUT="${INPUT%.svg}-300dpi.png"
             rsvg-convert --background-color white --dpi-x 300 --dpi-y 300 \
               --output "$OUTPUT" "$INPUT"
           done
-          test "$(find output/ic-cycle7 -name 'ic-*-300dpi.png' | wc -l)" -eq 20
-          for INPUT in output/ic-cycle7/portrait-*-clean.svg output/ic-cycle7/portrait-*-diagnostic.svg; do
-            test -f "$INPUT"
-            OUTPUT="${INPUT%.svg}-300dpi.png"
-            rsvg-convert --background-color white --dpi-x 300 --dpi-y 300 \
-              --output "$OUTPUT" "$INPUT"
-          done
-          test "$(find output/ic-cycle7 -name 'portrait-*-300dpi.png' | wc -l)" -eq 16
+          test "$(find output/ic-cycle7 -name '*-300dpi.png' | wc -l)" -eq 200
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          for path in Path("output/ic-cycle7").glob("*-300dpi.png"):
+              with Image.open(path) as image:
+                  image.save(path, dpi=(300, 300))
+          PY
       - name: Verify DPI, text/stroke distances, anchors and create comparison
         run: |
           python - <<'PY'
@@ -229,6 +230,10 @@ jobs:
           overview.save(root/"ic-portrait-function-90-vs-0-4x2-overview.png")
           print("10 measured ICs, 20 x 300DPI PNG, 2 orientations, source pin/ink provenance and real glyph pixels")
           PY
+      - name: Independently verify all 300DPI PinRef-centered colored squares
+        run: |
+          python -m scripts.verify_ic_debug_gallery \
+            --gallery-dir output/ic-cycle7
       - uses: actions/upload-artifact@v4
         with:
           name: draft-e3-ic-cycle7-gallery
