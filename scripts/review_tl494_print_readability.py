@@ -355,13 +355,17 @@ def _view_page(original, min_x, min_y, width, height, *,
     return ET.tostring(root, encoding="unicode") + "\n"
 
 
-def generate(source: Path, output: Path):
+def generate(source: Path, output: Path, *, variant: str = "before"):
+    if variant not in ("before", "after"):
+        raise ValueError("TL494_PRINT_VARIANT_MUST_BE_BEFORE_OR_AFTER")
+    prefix = "tl494" if variant == "before" else "tl494-after"
     original = ET.fromstring(source.read_text(encoding="utf-8"))
     x, y, w, h = (float(a) for a in original.get("viewBox").split())
     assert abs(w - 679.3) < 0.1 and abs(h - 220.051) < 0.1
     assert w > 594.0 and h < 297.0
     output.mkdir(parents=True, exist_ok=True)
     evidence = {
+        "print_variant": variant,
         "source_frozen": source.name,
         "source_viewbox_mm": [x, y, w, h],
         "whole_640px_px_per_mm": 640.0 / w,
@@ -388,7 +392,7 @@ def generate(source: Path, output: Path):
     for number, start in enumerate(starts, 1):
         for diagnostic in (False, True):
             stem = (
-                f"tl494-a3-tile-{number}-"
+                f"{prefix}-a3-tile-{number}-"
                 f"{'diagnostic' if diagnostic else 'clean'}"
             )
             svg = _view_page(
@@ -413,14 +417,19 @@ def generate(source: Path, output: Path):
             35.0, 35.0,
         )
     for tag, (left, top, span_x, span_y) in zones.items():
-        stem = "tl494-detail-"+tag.lower()
+        stem = prefix+"-detail-"+tag.lower()
         view = _view_page(original, left, top, span_x, span_y)
         (output / f"{stem}.svg").write_text(view, encoding="utf-8")
         evidence["images"].append({
             "file": stem+".svg", "size_mm": [220, 155],
             "scale": f"ENLARGED_{round(220/span_x,2)}X_NOT_PRINT",
         })
-    (output / "tl494-true-print-readability-audit.json").write_text(
+    audit_file = (
+        "tl494-true-print-readability-audit.json"
+        if variant == "before" else
+        "tl494-true-print-readability-after-audit.json"
+    )
+    (output / audit_file).write_text(
         json.dumps(evidence, ensure_ascii=False, indent=2, sort_keys=True)+"\n",
         encoding="utf-8",
     )
@@ -438,8 +447,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-svg", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--variant", choices=("before", "after"), default="before")
     args = parser.parse_args()
-    generate(args.source_svg, args.output_dir)
+    generate(args.source_svg, args.output_dir, variant=args.variant)
 
 
 if __name__ == "__main__":
