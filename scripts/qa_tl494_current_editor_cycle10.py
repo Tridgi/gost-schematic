@@ -11,7 +11,6 @@ import json
 from dataclasses import replace
 from pathlib import Path
 
-from gost_schematic.core.geometry import Point
 from gost_schematic.electrical.ic_editor_targets import (
     IcEditorContactManifest,
     make_ic_editor_manifest,
@@ -19,6 +18,8 @@ from gost_schematic.electrical.ic_editor_targets import (
     verify_ic_editor_manifest,
 )
 from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
+
+from gost_schematic.core.geometry import Point
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.model.circuit import PinRef
 from gost_schematic.standards.type_a_font import inspect_type_a_font
@@ -34,8 +35,8 @@ def require(ok, code):
 
 def validate_real_manifest(font: Path) -> dict:
     from examples.tl494_cycle9_circuit_integration import (
-        build_frozen_photo_23,
         assert_frozen_photo_topology,
+        build_frozen_photo_23,
     )
 
     binding, frozen = build_frozen_photo_23()
