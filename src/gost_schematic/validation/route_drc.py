@@ -7,14 +7,12 @@ by proximity or alters an authored ExternalWireGraph. ГОСТ 2.701-2008
 not for every perpendicular X crossing or a legal same-net junction.
 """
 from dataclasses import dataclass
-from decimal import Decimal
 from fractions import Fraction
 from itertools import combinations
 from math import sqrt
 
 from gost_schematic.core.geometry import Box, Line, Point
 from gost_schematic.core.intersections import segment_intersects_box
-from gost_schematic.core.transforms import Transform
 from gost_schematic.model.circuit import Circuit, PinRef
 from gost_schematic.model.symbol import SymbolDefinition
 from gost_schematic.validation.external_wire_checks import ExternalWireGraph, WireSegment
