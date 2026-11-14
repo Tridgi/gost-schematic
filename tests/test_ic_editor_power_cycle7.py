@@ -214,3 +214,218 @@ def _actual_renderer():
 
 @pytest.mark.parametrize("count", SIZES)
 @pytest.mark.parametrize("kind", (IcKind.DIGITAL, IcKind.ANALOG))
+def test_real_editor_complete_targets_and_clean_svg(count, kind):
+    from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
+
+    style, measurer = _actual_renderer()
+    record = _mixed_record(count, kind)
+    binding = propose_ic_paint_binding(record, style, measurer)
+    circuit = _network(binding.record)
+    untouched = circuit.nets
+    manifest = make_ic_editor_manifest(binding, circuit)
+    assert len(manifest.contacts) == count
+    assert len({c.pin_ref for c in manifest.contacts}) == count
+    assert {c.unit_id for c in manifest.contacts} == {
+        u.id for u in binding.record.device.units
+    }
+    verify_ic_editor_manifest(binding, manifest, circuit)
+    targets = make_paint_editor_targets(binding, manifest, circuit)
+    assert sum(len(items) for items in targets) == count
+    nc = next(c for c in manifest.contacts
+              if c.electrical_type is IcPinType.NC)
+    assert not nc.connectable and nc.net_id is None
+    assert nc.reason == "NC_PHYSICAL_PIN"
+    power = next(c for c in manifest.contacts
+                 if c.electrical_type is IcPinType.POWER_INPUT)
+    assert power.connectable and power.net_id == "REAL_POWER"
+    output_supply = next(c for c in manifest.contacts
+                         if c.electrical_type is IcPinType.POWER_OUTPUT)
+    assert output_supply.connectable and output_supply.net_id is None
+    oc = next(c for c in manifest.contacts
+              if c.electrical_type is IcPinType.OPEN_COLLECTOR)
+    assert oc.role == "out" and oc.net_id == "REAL_OC"
+    bidir = next(c for c in manifest.contacts
+                 if c.electrical_type is IcPinType.BIDIRECTIONAL)
+    assert bidir.role == "bidir" and bidir.net_id == "REAL_SIGNAL"
+    labelled_vcc = next(c for c in manifest.contacts
+                        if c.physical_number == "2")
+    assert labelled_vcc.pin_name == "VCC"
+    assert labelled_vcc.electrical_type is IcPinType.INPUT
+    assert labelled_vcc.net_id is None
+
+    diagnostic = render_ic_editor_review(
+        binding, style, measurer, circuit=circuit, diagnostics=True,
+    )
+    clean = render_ic_editor_review(
+        binding, style, measurer, circuit=circuit, diagnostics=False,
+    )
+    assert circuit.nets is untouched
+    refs = {}
+    for preview, no_markup, view in zip(
+        diagnostic, clean, binding.views, strict=True,
+    ):
+        source = ET.fromstring(preview.svg)
+        bare = ET.fromstring(no_markup.svg)
+        markers = [
+            node for node in source.iter()
+            if node.attrib.get("data-layer") == "editor-connection-targets"
+        ]
+        assert len(markers) == 1
+        clean_markers = [
+            node for node in bare.iter()
+            if node.attrib.get("data-layer") == "editor-connection-targets"
+        ]
+        assert not clean_markers
+        visible = [node for node in markers[0] if node.tag.endswith("rect")]
+        assert len(visible) == len(view.pins)
+        for node in visible:
+            name = node.attrib["data-pin-ref"]
+            assert name not in refs
+            refs[name] = node.attrib
+        assert "editor-connection-targets" not in no_markup.svg
+    assert len(refs) == count
+    for contact in manifest.contacts:
+        row = refs[f"{contact.pin_ref.reference}.{contact.pin_ref.number}"]
+        assert row["data-connectable"] == str(contact.connectable).lower()
+        assert row["data-net-id"] == (contact.net_id or "")
+        assert row["data-reason"] == (contact.reason or "")
+        assert row["fill"] == (
+            "#148645" if contact.connectable else "#8b1e27"
+        )
+
+
+@pytest.mark.parametrize("count", SIZES)
+def test_real_editor_rejects_1um_wrong_ref_wrong_unit_duplicates_and_fake_net(count):
+    from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
+
+    style, measurer = _actual_renderer()
+    record = _mixed_record(count)
+    binding = propose_ic_paint_binding(record, style, measurer)
+    circuit = _network(binding.record)
+    original_nets = circuit.nets
+    manifest = make_ic_editor_manifest(binding, circuit)
+    head, tail = manifest.contacts[0], manifest.contacts[1:]
+    bad = replace(head, anchor=Point(head.anchor.x + 1, head.anchor.y))
+    with pytest.raises(ValueError, match="IC_EDITOR_PINREF_ENDPOINT_MISMATCH"):
+        verify_ic_editor_manifest(
+            binding, IcEditorContactManifest((bad, *tail)), circuit,
+        )
+    with pytest.raises(ValueError, match="IC_EDITOR_FOREIGN_PHYSICAL_PINREF"):
+        verify_ic_editor_manifest(
+            binding, IcEditorContactManifest((
+                replace(head, component_ref="DD999",
+                        pin_ref=PinRef("DD999", head.physical_number)),
+                *tail,
+            )), circuit,
+        )
+    with pytest.raises(ValueError, match="IC_EDITOR_WRONG_LOGICAL_UNIT"):
+        verify_ic_editor_manifest(
+            binding, IcEditorContactManifest((
+                replace(head, unit_id="UNRELATED"), *tail,
+            )), circuit,
+        )
+    with pytest.raises(ValueError, match="IC_EDITOR_DUPLICATE_PHYSICAL_CONTACT"):
+        IcEditorContactManifest((head, head, *tail))
+    with pytest.raises(ValueError, match="IC_EDITOR_INCOMPLETE_TARGETS"):
+        verify_ic_editor_manifest(
+            binding, IcEditorContactManifest(tail), circuit,
+        )
+    with pytest.raises(ValueError, match="IC_EDITOR_CONTACT_SEMANTIC_OR_NET_MISMATCH"):
+        verify_ic_editor_manifest(
+            binding, IcEditorContactManifest((
+                replace(head, net_id="INFERRED_VCC_NET"), *tail,
+            )), circuit,
+        )
+    nc = next(c for c in manifest.contacts
+              if c.electrical_type is IcPinType.NC)
+    with pytest.raises(ValueError, match="IC_EDITOR_NC_MUST_BE_DISABLED"):
+        replace(nc, connectable=True)
+    assert circuit.nets is original_nets
+
+
+@pytest.mark.parametrize("rotation", (0, 90, 180, 270))
+@pytest.mark.parametrize("mirrored", (False, True))
+def test_long_pwm_controller_shared_body_two_angles_all_d4(rotation, mirrored):
+    from gost_schematic.electrical.ic_paint_bridge import (
+        bind_ic_paint_text_only,
+        propose_ic_paint_binding,
+    )
+    from gost_schematic.rendering.ic_rectangular import render_resolved_ic
+
+    style, measurer = _actual_renderer()
+    source = _mixed_record(8)
+    placements = tuple(replace(
+        p, transform=Transform(rotation, mirrored),
+    ) for p in source.placements)
+    specs = tuple(replace(
+        spec, body=Box(0, 0, 60000, 300000),
+        main_field="PWM_CONTROLLER",
+        profile=IcGraphicProfile.experimental_portrait_pwm(),
+    ) for spec in source.specs)
+    record = IcLibraryRecord(source.device, specs, placements)
+    proposed = propose_ic_paint_binding(record, style, measurer)
+    network = _network(proposed.record)
+    initial_nets = network.nets
+    turned = revise_ic_text_orientation(
+        proposed.record, IcTextAngle.HORIZONTAL,
+    )
+    diff = validate_ic_graphic_revision(
+        proposed.record, turned, circuit=network,
+    )
+    assert not diff.moved and not diff.connected_moved
+    second = bind_ic_paint_text_only(proposed, turned)
+    assert resolve_ic_pin_positions(
+        proposed.record.device, proposed.record.specs,
+        proposed.record.placements,
+    ) == resolve_ic_pin_positions(
+        second.record.device, second.record.specs,
+        second.record.placements,
+    )
+    for view1, view0 in zip(proposed.views, second.views, strict=True):
+        assert view1.body == view0.body
+        assert view1.pins == view0.pins
+        v = render_resolved_ic(view1, style, measurer)
+        h = render_resolved_ic(view0, style, measurer)
+        assert v.pin_anchors == h.pin_anchors
+        assert v.body_world == h.body_world
+    assert network.nets is initial_nets
+
+
+def test_new_graphic_revision_long_word_requires_explicit_contact_consent():
+    from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
+
+    style, measurer = _actual_renderer()
+    record = _mixed_record(8)
+    long_source = IcLibraryRecord(
+        record.device,
+        tuple(replace(s, main_field="PWM_CONTROLLER",
+                      body=Box(0, 0, 60000, 300000),
+                      profile=IcGraphicProfile.experimental_portrait_pwm())
+              for s in record.specs),
+        record.placements,
+    )
+    proposed = propose_ic_paint_binding(long_source, style, measurer)
+    circuit = _network(long_source)
+    with pytest.raises(ValueError, match="IC_GEOMETRY_REAUTHORIZATION_REQUIRED"):
+        validate_ic_graphic_revision(
+            long_source, proposed.record, circuit=circuit,
+        )
+    before = resolve_ic_pin_positions(
+        long_source.device, long_source.specs, long_source.placements,
+    )
+    after = resolve_ic_pin_positions(
+        proposed.record.device, proposed.record.specs,
+        proposed.record.placements,
+    )
+    moved = tuple(ref for ref in before if before[ref] != after[ref])
+    connected = tuple(ref for ref in moved if any(
+        ref in net.members for net in circuit.nets
+    ))
+    permit = IcGeometryConsent(ic_record_fingerprint(long_source),
+                               moved, connected)
+    accepted = validate_ic_graphic_revision(
+        long_source, proposed.record, circuit=circuit, consent=permit,
+    )
+    assert accepted.moved == moved
+    assert accepted.connected_moved == connected
+    assert circuit.nets == _network(long_source).nets
