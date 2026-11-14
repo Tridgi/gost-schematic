@@ -132,13 +132,35 @@ jobs:
           assert data["new_after_drc"]["checked_symbol_geometry"]
           assert data["new_after_drc"]["checked_measured_text"]
           assert data["print_pass"] is False
+          S = "{http://www.w3.org/2000/svg}"
           for name in ("clean", "diagnostic"):
               root = ET.parse(out / f"TL494-compact-A3-{name}.svg").getroot()
               assert root.get("data-owner-router-sha") == data["owner_router_sha"]
               assert root.get("data-physical-net-diff") == "ZERO"
               assert len(root.findall(
-                  ".//{http://www.w3.org/2000/svg}line[@data-layer='wires']",
+                  f".//{S}line[@data-layer='wires']",
               )) == data["routed_segments"]
+              real_ic = root.find(
+                  f".//{S}g[@data-ink-source='real-native-PAINT-original-16leads']"
+              )
+              assert real_ic is not None
+              assert len(real_ic.findall(
+                  f".//{S}g[@data-layer='ic-physical-pin-leads']/{S}line"
+              )) == 16
+              targets = root.find(
+                  f".//{S}g[@data-layer='editor-connection-targets']"
+              )
+              if name == "clean":
+                  assert targets is None
+              else:
+                  assert targets is not None
+                  squares = targets.findall(f"./{S}rect")
+                  assert len(squares) == 16
+                  assert {x.get("data-pin-ref") for x in squares} == {
+                      f"DA1.{n}" for n in range(1, 17)
+                  }
+                  assert all(x.get("fill") == "#148645" for x in squares)
+                  assert targets.get("data-physical-print") == "false"
           if data["routed_nets"] < 15 or not data["geom_drc_pass"]:
               assert data["status"] == "BLOCKED_PARTIAL_NOT_PRINTABLE"
           print("ACTUAL A3 source 23/15/16/62 and unapproved print blocked",
