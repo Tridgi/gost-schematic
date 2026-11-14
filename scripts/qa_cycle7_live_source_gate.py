@@ -5,6 +5,7 @@ All graphical and normative results are DRAFT; no production source is edited.
 """
 import argparse
 import hashlib
+import importlib
 import json
 import subprocess
 import sys
@@ -269,7 +270,8 @@ def ic_text_gallery(output, font):
     from examples.review_ic_cycle7 import synthetic_ic
     from gost_schematic.electrical.ic import IcKind, IcTextAngle
     from gost_schematic.electrical.ic_graphic_revision import revise_ic_text_orientation
-    from gost_schematic.rendering import ic_rectangular as paint
+
+    paint = importlib.import_module("gost_schematic.rendering.ic_rectangular")
 
     face = inspect_type_a_font(font, h_um=2500)
     measurer = PillowTextMeasurer()
@@ -392,8 +394,6 @@ def ic_text_gallery(output, font):
 
 
 def netref_gallery(output, font):
-    import importlib
-
     from examples.review_net_continuations_cycle7 import (
         sheet_svg,
         specimen,
