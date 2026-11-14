@@ -12,7 +12,10 @@ from dataclasses import replace
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
+from gost_schematic.core.transforms import Transform
 from gost_schematic.model.circuit import Circuit, PinRef
+from gost_schematic.rendering.ic_orientation import compose_transforms
+from gost_schematic.validation.external_wire_checks import ExternalWireGraph
 from gost_schematic.rendering.external_wire_sheet import render_external_wire_sheet
 from gost_schematic.rendering.ic_hotspots import IcConnectionTarget
 from gost_schematic.rendering.ic_rectangular import (
@@ -254,7 +257,60 @@ def _render_variant(
     return composed, rendered
 
 
-def generate(output: Path, font_file: Path):
+def transformed_complete_scene(
+    circuit: Circuit,
+    graph: ExternalWireGraph,
+    unit,
+    pose: Transform,
+):
+    """Exact global D4 for ALL 23 components, 91 wires and the resolved IC.
+
+    A closed orthogonal transform is a REVIEW view: no fixed Net membership
+    change and no rerouting. The source photo's D4 orientation need not be
+    confused with a different manufacturer pinout or a new GOST card.
+    """
+    if not isinstance(pose, Transform):
+        raise TypeError("NATIVE_D4_TRANSFORM_TYPED_REQUIRED")
+    moved_components = tuple(replace(
+        component,
+        origin=pose.apply(component.origin),
+        transform=compose_transforms(pose, component.transform),
+    ) for component in circuit.components)
+    transformed = Circuit(moved_components, circuit.nets)
+    moved_wires = ExternalWireGraph(
+        tuple(replace(
+            wire, start=pose.apply(wire.start), end=pose.apply(wire.end),
+        ) for wire in graph.segments),
+        tuple(pose.apply(point) for point in graph.junctions),
+    )
+    moved_unit = replace(
+        unit,
+        origin=pose.apply(unit.origin),
+        transform=compose_transforms(pose, unit.transform),
+        pins=tuple(replace(
+            pin, anchor=pose.apply(pin.anchor),
+        ) for pin in unit.pins),
+    )
+    if transformed.nets != circuit.nets:
+        raise AssertionError("NATIVE_D4_CHANGED_CIRCUIT_NET")
+    original = {c.reference: c for c in circuit.components}
+    for component in transformed.components:
+        before = original[component.reference]
+        if component.part_id != before.part_id or (
+            component.origin != pose.apply(before.origin)
+        ):
+            raise AssertionError("NATIVE_D4_CHANGED_COMPONENT_IDENTITY")
+    for old, new in zip(graph.segments, moved_wires.segments, strict=True):
+        if (
+            new.net_name != old.net_name
+            or new.start != pose.apply(old.start)
+            or new.end != pose.apply(old.end)
+        ):
+            raise AssertionError("NATIVE_D4_CHANGED_WIRE_IDENTITY")
+    return transformed, moved_wires, moved_unit
+
+
+def generate(output: Path, font_file: Path, *, d4: bool = False):
     info = construct_native_paint(font_file)
     (
         circuit, graph, symbol_map, portrait, original,
@@ -319,6 +375,40 @@ def generate(output: Path, font_file: Path):
                 "source_net_memberships_unchanged": True,
                 "real_type_a_3500um": style.em_height_um == 3500,
             }
+    if d4:
+        for angle in (0, 90, 180, 270):
+            for mirror in (False, True):
+                t = Transform(angle, mirror)
+                transformed, transformed_wires, transformed_ic = (
+                    transformed_complete_scene(
+                        circuit, graph, portrait, t,
+                    )
+                )
+                rendering, painted = _render_variant(
+                    transformed, transformed_wires, symbol_map,
+                    transformed_ic, style, measure, policy,
+                    diagnostic=False,
+                    reading=IcFunctionReading.BOTTOM_TO_TOP,
+                )
+                assert set(
+                    (number, point) for number, point in painted.pin_anchors
+                ) == {
+                    (p.pin_id, t.apply(p.anchor)) for p in portrait.pins
+                }
+                name = (
+                    f"TL494_native_23_D4_{angle}_mirror{int(mirror)}"
+                    "_btt_clean.svg"
+                )
+                (output/name).write_text(rendering.svg, encoding="utf-8")
+                evidence["variants"][name] = {
+                    "function_reading": "bottom_to_top",
+                    "D4": [angle, mirror],
+                    "native_full_sheet": True,
+                    "immutable_Net_memberships": transformed.nets == circuit.nets,
+                    "exact_geometry_isometry": True,
+                    "physical_component_count": 23,
+                    "line_segment_count": 91,
+                }
     (output/"TL494_full_native_23_engine_manifest.json").write_text(
         json.dumps(evidence, ensure_ascii=False, indent=2, sort_keys=True)+"\n",
         encoding="utf-8",
@@ -335,8 +425,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--font-file", type=Path, required=True)
+    parser.add_argument("--d4", action="store_true", help="all eight entire-circuit D4 poses")
     args = parser.parse_args()
-    generate(args.output, args.font_file)
+    generate(args.output, args.font_file, d4=args.d4)
 
 
 if __name__ == "__main__":
