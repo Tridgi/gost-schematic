@@ -30,9 +30,11 @@ from gost_schematic.rendering.external_wire_sheet import (
     build_external_wire_obstacles,
     render_external_wire_sheet,
 )
-from gost_schematic.model.circuit import PinRef
 from gost_schematic.standards.type_a_font import inspect_type_a_font
-from gost_schematic.validation.external_wire_checks import WireSegment, validate_external_wires
+from gost_schematic.validation.external_wire_checks import (
+    WireSegment,
+    validate_external_wires,
+)
 from gost_schematic.validation.route_drc import audit_route_drc
 
 _SVG = "{http://www.w3.org/2000/svg}"
