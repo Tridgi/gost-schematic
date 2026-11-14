@@ -161,18 +161,27 @@ jobs:
               "src/gost_schematic/rendering/$F.py"
           done
           python -m compileall -q examples/review_tl494_multi_route.py examples/tl494_named_photo_sheet.py
-      - name: Install and pin the real OpenGost Type A font
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+      - name: Install EXACT historical OpenGost Type A TT from original reference
         run: |
-          python scripts/install_opengost_type_a.py \
-            --directory "$HOME/.local/share/fonts" \
-            --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a
+          set -euo pipefail
+          sudo apt-get install -y -qq rpm2cpio cpio
+          curl --fail --location --retry 5 \
+            https://fr2.rpmfind.net/linux/opensuse/tumbleweed/repo/oss/noarch/opengost-ttf-fonts-0.3-7.32.noarch.rpm \
+            -o /tmp/cycle9-source-opengost.rpm
+          mkdir -p /tmp/cycle9-source-fonts
+          (cd /tmp/cycle9-source-fonts && rpm2cpio /tmp/cycle9-source-opengost.rpm | cpio -idm --quiet)
+          ORIGINAL_FONT="$(find /tmp/cycle9-source-fonts -name 'OpenGostTypeA-Regular.ttf' -print -quit)"
+          test -f "$ORIGINAL_FONT"
+          printf '%s  %s\n' \
+            'f5c539d432e2fceae137ad746d4acfdcca941d2c7349f013a5bf60231d3e6d01' \
+            "$ORIGINAL_FONT" | sha256sum --check
+          mkdir -p "$HOME/.local/share/fonts"
+          cp "$ORIGINAL_FONT" "$HOME/.local/share/fonts/OpenGostTypeA-Regular.ttf"
           fc-cache -f
-          fc-match 'OpenGost Type A'
+          fc-match 'OpenGost Type A TT'
       - name: Run actual source-native 15-Net global route with fail-closed DRC
         run: |
-          FONT_FILE="$(find "$HOME/.local/share/fonts" -type f -name 'OpenGOST-TypeA-*' | head -n1)"
+          FONT_FILE="$HOME/.local/share/fonts/OpenGostTypeA-Regular.ttf"
           test -f "$FONT_FILE"
           python -m examples.review_tl494_multi_route \
             --font-file "$FONT_FILE" \
