@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from importlib import import_module
 from xml.etree import ElementTree as ET
 
+from gost_schematic.core.geometry import Box
+from gost_schematic.core.units import format_mm
 from gost_schematic.engines.annotation.metrics import TextMeasurer
 from gost_schematic.model.annotations import TextStyle
 from gost_schematic.model.circuit import Circuit
@@ -88,6 +90,7 @@ def render_routed_native_sheet(
     expected_net_count: int | None = None,
     expected_net_pinrefs: int | None = None,
     stroke_um: int = 300,
+    physical_page_box: Box | None = None,
 ) -> RoutedSheetRender:
     """Render genuine NEW route, independently gate print and source identity.
 
@@ -118,6 +121,8 @@ def render_routed_native_sheet(
             raise ValueError("ROUTED_SHEET_CLEAN_DEBUG_PINREF_NET_DRIFT")
     if type(stroke_um) is not int or stroke_um <= 0:
         raise ValueError("ROUTED_SHEET_INVALID_STROKE")
+    if physical_page_box is not None and not isinstance(physical_page_box, Box):
+        raise TypeError("ROUTED_SHEET_TYPED_PAGE_BOX_REQUIRED")
     for label, expected, observed in (
         ("COMPONENTS", expected_component_count, len(circuit.components)),
         ("NETS", expected_net_count, len(circuit.nets)),
@@ -229,6 +234,48 @@ def render_routed_native_sheet(
     # Require source-authoritative continuation data when the caller requested
     # one, but never invent a second nonphysical label for absent source.
     physical_count = len(circuit.components)
+    page_fits = None
+    if physical_page_box is not None:
+        protected_boxes = []
+        for component in circuit.components:
+            symbol = symbols_by_part[component.part_id]
+            protected_boxes.append(component.transform.box(
+                symbol.stroked_bounds,
+            ).translated(component.origin))
+        for region in clean.layout.placements:
+            protected_boxes.append(region.ink_bounds)
+        for region in ic.ink:
+            protected_boxes.append(region.box)
+        # The generated ink footprint also includes every segment endpoint
+        # with real half-stroke. NO raster crop or symbol scale is tolerated.
+        margin = (stroke_um + 1) // 2
+        for wire in graph.segments:
+            protected_boxes.append(Box(
+                min(wire.start.x, wire.end.x)-margin,
+                min(wire.start.y, wire.end.y)-margin,
+                max(wire.start.x, wire.end.x)+margin+1,
+                max(wire.start.y, wire.end.y)+margin+1,
+            ))
+        for point in graph.junctions:
+            protected_boxes.append(Box(
+                point.x-550, point.y-550,
+                point.x+550, point.y+550,
+            ))
+        page_fits = all(
+            physical_page_box.min_x <= box.min_x
+            and physical_page_box.min_y <= box.min_y
+            and box.max_x <= physical_page_box.max_x
+            and box.max_y <= physical_page_box.max_y
+            for box in protected_boxes
+        )
+        if not page_fits:
+            blockers.append("A3_TRUE_1_TO_1_ARTWORK_OUTSIDE_PAPER")
+        if (
+            expected_component_count == 23
+            and expected_net_count == 15
+            and source_continuation_project is None
+        ):
+            blockers.append("A3_SOURCE_CONTINUATION_BINDING_UNRESOLVED")
     full = (
         not blockers
         and drc is not None
@@ -240,6 +287,16 @@ def render_routed_native_sheet(
     result_views = []
     for mode, sheet in (("clean", clean), ("diagnostic", debug)):
         root = ET.fromstring(sheet.svg)
+        if physical_page_box is not None and page_fits:
+            width_um = physical_page_box.max_x - physical_page_box.min_x
+            height_um = physical_page_box.max_y - physical_page_box.min_y
+            root.set("width", format_mm(width_um)+"mm")
+            root.set("height", format_mm(height_um)+"mm")
+            root.set("viewBox", " ".join(format_mm(v) for v in (
+                physical_page_box.min_x, physical_page_box.min_y,
+                width_um, height_um,
+            )))
+            root.set("data-physical-page-size", "EXACT_1_TO_1_NO_SCALING")
         root.set("data-route-graph-sha256", fingerprint)
         root.set("data-source-components", str(physical_count))
         root.set("data-source-nets", str(len(circuit.nets)))
@@ -296,6 +353,13 @@ def render_routed_native_sheet(
         ],
         "native_post_render_route_drc": drc.as_dict() if drc is not None else None,
         "blockers": sorted(set(blockers)),
+        "printable_candidate": full,
+        "physical_page_fits_1_to_1": page_fits,
+        "physical_page_um": (
+            [physical_page_box.min_x, physical_page_box.min_y,
+             physical_page_box.max_x, physical_page_box.max_y]
+            if physical_page_box is not None else None
+        ),
         "gost_approved": False,
         "source_graph_mutated": False,
         "new_route_not_original_91_required": False,
