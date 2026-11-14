@@ -124,7 +124,7 @@ def test_native_compositor_authoritative_pinrefs_and_debug_policy(diagnostic):
     assert circuit.nets == before
     group = root.find(f"./{NS}g[@data-composed-engine='physical-ic-renderer']")
     assert group is not None and group.get("data-physical-pin-count") == "4"
-    squares = group.findall(
+    squares = root.findall(
         f".//{NS}g[@data-layer='editor-connection-targets']/{NS}rect"
     )
     assert len(squares) == (4 if diagnostic else 0)
@@ -253,7 +253,7 @@ def test_real_full_native_clean_vs_diagnostic_no_net_or_ref_mutations():
     assert physical["3"] == "input"
     assert physical["13"] == "input"
     assert physical["12"] == "power_input"
-    markers = native.findall(
+    markers = root_b.findall(
         f".//{NS}g[@data-layer='editor-connection-targets']/{NS}rect"
     )
     assert len(markers) == 16
