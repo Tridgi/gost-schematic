@@ -13,16 +13,15 @@
 - [Manifest проверок](tl494_native_output/TL494_native_power_manifest.json)
 - [Реальный воспроизводимый Python API](tl494_native_rework.py)
 
-Доказано реальным запуском GitHub Actions: **11 физических компонентов, 6 Net, 26 WireSegment, 0 ошибок сети, 0 ошибок ERC, валидный layout, шрифт OpenGost Type A TT с измеренной высотой 3,500 мм**. Пять DRAFT предупреждений формальной проверки — не статус APPROVED.
+Доказано реальным запуском GitHub Actions: **11 физических компонентов, 6 Net, 26 WireSegment, 0 ошибок сети, 0 ошибок ERC, валидный layout, шрифт OpenGost Type A TT с измеренной высотой 3,500 мм**. УГО остаются DRAFT; ERC-проверка без ошибок не равна нормативному утверждению.
 
 Результат **частичный**: отсутствует сам TL494 и цепь управления ключом VT1. Изображение нельзя использовать как законченную рабочую схему.
 
 ## Результат 2 — настоящая 16-выводная TL494 от PAINT #93
 
-<grid>
-<img src="tl494_ic_output/TL494CN_PWM_angle_0_clean.png" alt="PAINT TL494 Type A" width="350"/>
-<img src="tl494_ic_output/TL494CN_PWM_angle_0_diagnostic.png" alt="PAINT TL494 diagnostic" width="350"/>
-</grid>
+![TL494CN — PAINT и реальный OpenGost Type A](tl494_ic_output/TL494CN_PWM_angle_0_clean.png)
+
+![TL494CN — 16 физических точек подключения](tl494_ic_output/TL494CN_PWM_angle_0_diagnostic.png)
 
 - [TL494 обычный PWM, PNG](tl494_ic_output/TL494CN_PWM_angle_0_clean.png)
 - [TL494 вертикальный PWM, PNG](tl494_ic_output/TL494CN_PWM_angle_90_clean.png)
@@ -52,3 +51,7 @@
 **Исходники и CI:** [.github/workflows/tl494-native-rework.yml](../.github/workflows/tl494-native-rework.yml), [.github/workflows/tl494-ic-paint-proof.yml](../.github/workflows/tl494-ic-paint-proof.yml), [.github/workflows/tl494-full-typed-netlist.yml](../.github/workflows/tl494-full-typed-netlist.yml).
 
 Ни один из этих экспериментов не объединён в `main` или `integration/stage0-12`.
+
+## Независимая проверка исходного кода
+
+[7 проверок pytest](tl494_qa_output/pytest.txt): **7 passed**. [Ruff](tl494_qa_output/ruff.txt): **All checks passed** (F/E4/E7/E9). Отдельно проверены точные координаты G/D/S, направленность диода, полярность C5/C6, 23 элемента и отсутствие повторных PinRef.
