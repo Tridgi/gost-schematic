@@ -23,3 +23,8 @@ Run `python -m examples.review_electronic_cycle7 --output-dir output/cycle7-firs
 Prioritized separate packages follow the machine-readable [Cycle7 source cards](electronic-cycle7-first-batch-cards.json): (1) `diode.schottky/led/photodiode/varicap` with distinct cathode and non-conducting optical arrows; (2) `transistor.bjt_pnp/npn`, `mosfet_n_enh/p_enh`, but plain NPN graphic MUST be independently confirmed to avoid confusing table 7/1b **shielded** device from Issue #27; (3) remaining diode/transistor/JFET/SCR/triac/opto variants only after cards; (4) special fuses per table 3/3a–c; (5) physical XP/XS connector pairs only after #91 verification. These steps do not introduce new generic shape primitives or public APIs without an RFC.
 
 **Normative status:** 3 NEW DRAFT, baseline 21 DRAFT = 24 review records after CI. No APPROVED, no E1 changes, no merge.
+
+
+## Дополнение после расширения (Cycle 7)
+
+Первый пакет из трёх УГО остаётся исходным содержимым PR #94, а не отдельной веткой. В сводную галерею включены 15 новых УГО. У `resistor.trimmer` редакторская защита текстовой области расширена до `body_keepout_mm.min_y=-9` мм: реальная геометрия резистора по-прежнему 10×4 мм, движок W остаётся отдельным третьим физическим контактом, а новая охранная область **не является размером корпуса**. Два реостатных подключения через реальные `Circuit.Net` A↔W и B↔W подтверждены регрессионными проверками.
