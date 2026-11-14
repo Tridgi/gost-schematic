@@ -418,6 +418,23 @@ def preflight_project(project: SchematicProject, catalog: CatalogResolver, *,
                     ),
                     "source": "conservative_body_AABB_only",
                 })
+            # Physical strokes are not AABBs. This can only issue a
+            # conservative review warning, never an exact 1mm print PASS.
+            ink_a = placed[left]["stroke"]
+            ink_b = placed[right]["stroke"]
+            ink_dx = max(0, ink_a.min_x - ink_b.max_x, ink_b.min_x - ink_a.max_x)
+            ink_dy = max(0, ink_a.min_y - ink_b.max_y, ink_b.min_y - ink_a.max_y)
+            if ink_dx < 1000 and ink_dy < 1000:
+                diagnostics.append({
+                    "code": "ESKD_GRAPHIC_STROKE_1MM_REVIEW",
+                    "severity": "warning", "subject": f"{left}/{right}",
+                    "message": (
+                        f"{left}/{right}: conservative graphic stroke bounds "
+                        f"separation ({ink_dx},{ink_dy}) µm; exact 1mm "
+                        "primitive-to-primitive print clearance NOT VERIFIED"
+                    ),
+                    "source": "conservative_stroked_AABB_only",
+                })
     all_boxes = [item["stroke"] for item in placed.values()]
     for wire in project.graph.segments:
         all_boxes.append(primitive_bounds(Line(wire.start, wire.end)))
