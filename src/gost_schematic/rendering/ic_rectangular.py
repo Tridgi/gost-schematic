@@ -70,6 +70,23 @@ class IcTypographyProfile(str, Enum):
 
     LEGACY_V1 = "legacy_v1"
     PORTRAIT_FUNCTION_V2_DRAFT = "portrait_function_v2_draft"
+    TL494_PORTRAIT_V3_DRAFT = "tl494_portrait_v3_draft"
+
+
+class IcFunctionReading(str, Enum):
+    """Whole-word text direction in SVG's y-positive-down coordinates."""
+
+    HORIZONTAL = "horizontal"
+    TOP_TO_BOTTOM = "top_to_bottom"
+    BOTTOM_TO_TOP = "bottom_to_top"
+
+    @property
+    def degrees(self) -> int:
+        return {
+            IcFunctionReading.HORIZONTAL: 0,
+            IcFunctionReading.TOP_TO_BOTTOM: 90,
+            IcFunctionReading.BOTTOM_TO_TOP: 270,
+        }[self]
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,6 +125,11 @@ class ResolvedIcPin:
     anchor: Point  # AUTHORITATIVE WORLD external end of physical lead
     role: str = "passive"
     row_key: str | None = None  # shared logical group; not a graphic row index
+    display_alias: str | None = None  # source-authoritative visible name
+
+    @property
+    def visible_label(self) -> str:
+        return self.display_alias if self.display_alias is not None else self.label
 
     def __post_init__(self) -> None:
         if not self.pin_id or not self.number.strip():
@@ -118,6 +140,12 @@ class ResolvedIcPin:
             raise ValueError("IC_PIN_ROW_INVALID: row zero is function-only")
         if self.role not in ("in", "out", "bidir", "passive", "power", "nc"):
             raise ValueError("IC_PIN_ROLE_INVALID")
+        if self.display_alias is not None and (
+            not isinstance(self.display_alias, str)
+            or not self.display_alias.strip()
+            or "\n" in self.display_alias or "\r" in self.display_alias
+        ):
+            raise ValueError("IC_PIN_ALIAS_INVALID")
 
 
 @dataclass(frozen=True, slots=True)
@@ -173,6 +201,7 @@ class IcResolvedUnit:
     function_rotation: int | None = None
     field_text_rotation: int = 0
     typography_profile: IcTypographyProfile = IcTypographyProfile.LEGACY_V1
+    function_text_reading: IcFunctionReading | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.orientation, IcOrientation):
