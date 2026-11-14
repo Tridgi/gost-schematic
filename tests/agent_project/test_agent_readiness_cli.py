@@ -68,6 +68,7 @@ def _source_candidate():
         "project_id": None, "expected_revision": None, "expected_generation": None,
         "components": [
             {"reference": c["reference"],
+             "source_part_id": c["part_id"], "nominal_si": c["nominal_si"],
              "part_id": c["part_id"] if c["reference"] in TL494_REQUIRED_PARTS else None,
              "part_sha256": (source["installed_part_locks"][c["reference"]]["part_sha256"]
                              if c["reference"] in TL494_REQUIRED_PARTS else None),
@@ -143,6 +144,22 @@ def test_tl494_missing_part_and_wrong_ugo_are_rejected():
     r5 = next(r for r in req["components"] if r["reference"] == "R5")
     r5["part_id"] = "resistor.fixed"
     _reject(req, "SOURCE_UGO_VARIANT_MISMATCH")
+
+
+def test_tl494_nominal_or_original_part_id_drift_denied():
+    req = _source_candidate()
+    next(c for c in req["components"] if c["reference"] == "R5")[
+        "nominal_si"
+    ] = "9999"
+    _reject(req, "SOURCE_NOMINAL_MISMATCH")
+    req = _source_candidate()
+    next(c for c in req["components"] if c["reference"] == "DA1")[
+        "source_part_id"
+    ] = "ti.tl494cn.pdip16"
+    _reject(req, "SOURCE_PART_ID_MISMATCH")
+    req = _source_candidate()
+    del req["components"][0]["nominal_si"]
+    _reject(req, "REQUEST_SCHEMA_INVALID")
 
 
 def test_tl494_wrong_source_reference_or_fake_p11_revision_rejected():
