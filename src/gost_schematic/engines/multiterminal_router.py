@@ -5,7 +5,7 @@ T junctions. It is always a read-only preview; no semantic Circuit.Net, componen
 placement, or physical PartDefinition is modified. A failed route returns a
 partial *nonprintable* graph and explicit reason. DO NOT claim ESKD APPROVED.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from heapq import heappop, heappush
 from itertools import pairwise
 
@@ -48,6 +48,7 @@ class NetTreePreview:
     crossing_count: int
     diagnostics: tuple[str, ...]
     completed_pins: tuple[PinRef, ...]
+    search_restarts: int = 0
 
     @property
     def complete(self) -> bool:
@@ -67,6 +68,7 @@ class NetTreePreview:
             "crossings": self.crossing_count,
             "diagnostics": list(self.diagnostics),
             "complete": self.complete,
+            "search_restarts": self.search_restarts,
             "print_pass": False,
         }
 
@@ -394,6 +396,7 @@ def route_multi_terminal_net(
     grid_um: int = 5000,
     search_node_cap: int = 25000,
     max_detour_ratio: float = 3.0,
+    terminal_order: tuple[PinRef, ...] | None = None,
 ) -> NetTreePreview:
     """Route all real pins of ONE declared net to an explicit branched tree."""
     if net not in circuit.nets:
@@ -401,6 +404,9 @@ def route_multi_terminal_net(
     if not 200 <= stroke_um <= 1000 or grid_um <= 0:
         raise ValueError("ROUTE_INVALID_STROKE_OR_GRID")
     pins = net.members
+    order = terminal_order if terminal_order is not None else pins
+    if len(order) != len(pins) or set(order) != set(pins):
+        raise ValueError("ROUTE_TERMINAL_ORDER_MUST_MATCH_REAL_SOURCE_PINREF")
     locations = _pin_catalog(circuit, net, parts, symbols)
     if any(not page_box.includes(point) for point, _ in locations.values()):
         return NetTreePreview(
@@ -417,7 +423,7 @@ def route_multi_terminal_net(
         raise ValueError("ROUTE_EMPTY_NET")
     # Physically anchored root. Route each subsequent terminal to the union
     # of already connected physical contacts and actual conductor segments.
-    root = pins[0]
+    root = order[0]
     connected = [root]
     branches: list[WireSegment] = []
     dots: tuple[Point, ...] = ()
@@ -429,7 +435,7 @@ def route_multi_terminal_net(
         stroke_um=stroke_um, clearance_um=symbol_gap_um,
         annotations=annotation_placements,
     )
-    for pin in pins[1:]:
+    for pin in order[1:]:
         current, outward = locations[pin]
         if branches and _pin_is_attached(current, tuple(branches), dots):
             connected.append(pin)
@@ -471,7 +477,7 @@ def route_multi_terminal_net(
                 sum(abs(w.end.x-w.start.x)+abs(w.end.y-w.start.y)
                     for w in branches), total_crossings,
                 (reason + ":" + pin.reference + "." + pin.number,),
-                tuple(connected),
+                tuple(p for p in pins if p in connected),
             )
         new = tuple(WireSegment(a, b, net.name) for a, b in pairwise(path))
         updated = (*branches, *new)
@@ -510,7 +516,7 @@ def route_multi_terminal_net(
         net.name, pins, tuple(branches), dots, total_bends,
         sum(abs(w.end.x - w.start.x) + abs(w.end.y - w.start.y)
             for w in branches),
-        total_crossings, (), tuple(connected),
+        total_crossings, (), pins,
     )
 
 
@@ -526,6 +532,7 @@ def route_circuit_net_trees(
     search_node_cap: int = 25000,
     max_detour_ratio: float = 3.0,
     stop_on_first_failure: bool = True,
+    max_order_restarts: int = 1,
 ) -> GlobalRoutePreview:
     """Route all original Nets; release only after full DRC+physical connectivity.
 
@@ -535,6 +542,8 @@ def route_circuit_net_trees(
     """
     if len({n.name for n in circuit.nets}) != len(circuit.nets):
         raise ValueError("ROUTE_DUPLICATE_CIRCUIT_NET")
+    if type(max_order_restarts) is not int or not 0 <= max_order_restarts <= 5:
+        raise ValueError("ROUTE_INVALID_MAX_RESTARTS")
     known = {net.name: net for net in circuit.nets}
     names = tuple(x for x in priority if x in known)
     names += tuple(sorted(set(known) - set(names)))
@@ -549,6 +558,41 @@ def route_circuit_net_trees(
             stroke_um=stroke_um, search_node_cap=search_node_cap,
             max_detour_ratio=max_detour_ratio,
         )
+        if not tree.complete and max_order_restarts:
+            positions = _pin_catalog(circuit, known[name], parts, symbols)
+            alternate_orders = (
+                tuple(sorted(known[name].members, key=lambda p: (
+                    positions[p][0].x, positions[p][0].y,
+                    p.reference, p.number,
+                ))),
+                tuple(sorted(known[name].members, key=lambda p: (
+                    positions[p][0].y, positions[p][0].x,
+                    p.reference, p.number,
+                ))),
+                tuple(reversed(known[name].members)),
+            )
+            attempts = 0
+            for order in alternate_orders:
+                if attempts >= max_order_restarts:
+                    break
+                if order == known[name].members:
+                    continue
+                attempts += 1
+                other = route_multi_terminal_net(
+                    circuit, known[name], parts, symbols,
+                    page_box=page_box, occupied_graph=graph,
+                    annotation_placements=annotation_placements,
+                    stroke_um=stroke_um, search_node_cap=search_node_cap,
+                    max_detour_ratio=max_detour_ratio,
+                    grid_um=5000 if attempts == 1 else 10000,
+                    terminal_order=order,
+                )
+                if (other.complete or
+                        len(other.completed_pins) > len(tree.completed_pins)):
+                    tree = other
+                if tree.complete:
+                    break
+            tree = replace(tree, search_restarts=attempts)
         tree_results.append(tree)
         if not tree.complete:
             diagnostics.extend(f"{name}:{d}" for d in tree.diagnostics)
