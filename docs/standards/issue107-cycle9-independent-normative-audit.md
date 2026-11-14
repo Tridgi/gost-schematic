@@ -102,3 +102,17 @@ For normal SVG screen frame, word-only `-90°` means baseline moving bottom-to-t
 **QA expected false negatives (must not be treated as PASS):** glyph shape checks cannot substitute real printed page checks; a page labelled `A3` without correct physical dimension/font/title block is not accepted; an element list with 23 strings but wrong terminals or missing fuse semantics is not correct; and current 91 hand-authored route segments with no wire-to-wire ink DRC cannot be called autorouted or print conformant.
 
 **Primary PDF visual review limitation:** publicly accessible textual clause locations are source-verified, but independent automated vector-to-scanned-figure calibrated 1:1 and complete printed primary-source comparison is still blocked. A PDF fetch/screenshot error is not evidence of an absent rule or a PASS.
+
+
+## 8. **Confirmed source-render defect: actual frozen 'PWM' is TOP→BOTTOM, not BOTTOM→TOP**
+
+This is stronger evidence than a proposed configuration option and must be treated as a **scoped FAIL** of the **current frozen historical print** (not proof that later PAINT patches are wrong).
+
+- Locked reference branch: [`reference/tl494-native-rework-20261114` at `e695c415fdced164b0e0c39c5249d030795a0aa6`](https://github.com/Tridgi/gost-schematic/tree/e695c415fdced164b0e0c39c5249d030795a0aa6).
+- Real source manifest blob `b2375feb43ad18b8a8e5a515bfc007d169b26908`, field `pwm_function_rotation_degrees: 90`: [open](https://github.com/Tridgi/gost-schematic/blob/e695c415fdced164b0e0c39c5249d030795a0aa6/examples/tl494_named_truth_output/TL494_named_photo_manifest.json).
+- Real source script blob `990a1aca651f34dcae991575dddfa28b2acae813` sets `unit=replace(unit,function_rotation=90)`: [open](https://github.com/Tridgi/gost-schematic/blob/e695c415fdced164b0e0c39c5249d030795a0aa6/examples/tl494_named_photo_sheet.py).
+- **Actual** frozen [clean SVG](https://github.com/Tridgi/gost-schematic/blob/e695c415fdced164b0e0c39c5249d030795a0aa6/examples/tl494_named_truth_output/TL494_named_photo_clean.svg) blob `69fa5d18f0844b080d8f1574c686e5c1156ae1f9` contains: `<text data-layer="ic-text" data-kind="function" data-owner="main.0" ... transform="matrix(0 1 -1 0 90.75 90.427)">PWM</text>`.
+- This real SVG linear transform sends local baseline vector `(1,0)` to `(0,+1)` in downward-positive page frame. Thus **printed word reads TOP→BOTTOM**. Requested new portrait position is **BOTTOM→TOP**; for an unreflected page-space transform its baseline must point `(0,-1)`, e.g. `matrix(0 -1 1 0 x y)`.
+- **Verdict for frozen reference:** `FAIL_CURRENT_FROZEN_REFERENCE_NOT_TARGET` for function-text reading direction, and `BLOCKED` for claimed normative legality of independently turning the word. The previous “vertical PWM” was a weaker condition and must not be upgraded to the user’s requested bottom-to-top acceptance.
+- **Fix ownership:** PAINT #93 must generate NEW **actual** SVG/PNG for the full 23-part sheet and demonstrate proper ink reading (not manual SVG edit). QA #99 must inspect both actual clean/debug files and physical 16-pin preservation. ESKD #112 changes **no renderer**, and cannot make the old reference magically pass.
+- Test `test_frozen_actual_pwm_svg_is_detectably_wrong_relative_to_target` preserves source blob/transform/FAIL, so weakening acceptance to “text is vertical” is detected. Never delete this negative.
