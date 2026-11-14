@@ -736,7 +736,9 @@ def render_resolved_ic(
     label = _measure(unit.reference, style, measurer)
     if (_vertical_internal or (
         unit.orientation is IcOrientation.LEFT_RIGHT
-        and unit.function_rotation == 90
+        and (unit.function_rotation == 90 or
+             unit.typography_profile is
+             IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT)
     )):
         # Rotated function and D4 poses require reference placement on an
         # actually free WORLD perimeter side, never across the pin corridors.
