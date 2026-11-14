@@ -14,6 +14,10 @@ from gost_schematic.core.transforms import Transform
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
 from gost_schematic.rendering.ic_hotspots import IcConnectionTarget
+from gost_schematic.rendering.ic_power_profiles import (
+    IcPowerLayout,
+    IcPowerProfile,
+)
 from gost_schematic.rendering.ic_rectangular import (
     IcFieldContent,
     IcOrientation,
@@ -226,9 +230,21 @@ def _write_four_views(folder, key, unit, style, measurer, policy):
     """
     targets, circuit = _declared_synthetic_targets(unit)
     source_nets = circuit.nets
+    side_power = tuple(
+        t.pin_ref for p, t in zip(unit.pins, targets, strict=True)
+        if p.role == "power"
+    )
+    power_profile = (
+        IcPowerProfile(
+            IcPowerLayout.SIDE_PINS, side_power, unit.reference,
+        )
+        if side_power and unit.orientation is IcOrientation.LEFT_RIGHT
+        else None
+    )
     kwargs = {
         "policy": policy, "glyph_detail": True,
         "editor_targets": targets,
+        "power_profile": power_profile,
     }
     variants = {
         "clean": {},
@@ -300,6 +316,16 @@ def generate(folder: Path, font_file: Path):
         "cases": {},
         "portrait_cases": {},
         "d4_cases": {},
+        "power_profiles": {
+            "ordinary_side_pins": "DRAFT_RENDERED_SOURCE_TYPED_LR",
+            "common_control_block_fig6a": "BLOCKED_NEEDS_REAL_CONTROL_CONTOUR",
+            "one_split_unit_fig6b": "DRAFT_SOURCE_UNIT_CONTRACT_TESTED",
+            "separate_power_contour_fig6c": "DRAFT_POWER_ONLY_SOURCE_VIEW_TESTED",
+            "experimental_top_bottom_draft": (
+                "EXPERIMENTAL_NORMATIVE_BLOCKED_SOURCE_SPECIFIC_REVIEW"
+            ),
+            "free_sheet_text_2311": "BLOCKED_AUTHORITATIVE_SHEET_TEXT_NEEDED",
+        },
     }
     for count in (4, 8, 14, 40, 64):
         kind = "analog" if count == 8 else "digital"
