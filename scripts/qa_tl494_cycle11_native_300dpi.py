@@ -39,6 +39,22 @@ def inspect_native(source_dir: Path, destination: Path) -> dict:
         == (ORIGINAL, 23, 15, 62, 16),
         "QA_C11_NATIVE_REAL_SOURCE_23_15_62_16_MISMATCH",
     )
+    source = require.get("source_reference")
+    demand(isinstance(source, dict) and
+           source.get("components") == 23 and
+           len(source.get("BOM", {})) == 23 and
+           len(source.get("nets", {})) == 15 and
+           sum(len(refs) for refs in source["nets"].values()) == 62,
+           "QA_C11_NATIVE_ORIGINAL_BOM_AND_PHYSICAL_NETS_MISSING")
+    real_net_by_pin = {}
+    for net_name, pins in source["nets"].items():
+        for pin in pins:
+            demand(pin not in real_net_by_pin,
+                   "QA_C11_NATIVE_DUPLICATE_PHYSICAL_PINREF")
+            real_net_by_pin[pin] = net_name
+    demand({f"DA1.{number}" for number in range(1, 17)} <=
+           set(real_net_by_pin),
+           "QA_C11_NATIVE_TL494_PIN_NOT_IN_SOURCE_NET")
     route = require.get("router_attempt")
     demand(isinstance(route, dict) and
            len(route.get("net_trees", ())) == 15,
@@ -119,12 +135,41 @@ def inspect_native(source_dir: Path, destination: Path) -> dict:
                "QA_C11_NATIVE_WRONG_DA1_PHYSICAL_NUMBER")
         demand(len(targets) == (0 if name == "clean" else 16),
                "QA_C11_NATIVE_EDITOR_LAYER_POLICY")
+        tips = {}
+        for lead in leads:
+            number = lead.get("data-pin-number")
+            demand(number not in tips,
+                   "QA_C11_NATIVE_DUPLICATE_MANUFACTURER_PIN_NUMBER")
+            x, y = lead.get("x2"), lead.get("y2")
+            demand(x is not None and y is not None,
+                   "QA_C11_NATIVE_UNRESOLVED_PHYSICAL_PIN_POINT")
+            tips[number] = (round(float(x) * 1000), round(float(y) * 1000))
         if name == "diagnostic":
             demand({t.get("data-pin-ref") for t in targets} ==
                    {f"DA1.{n}" for n in range(1, 17)},
                    "QA_C11_NATIVE_DIAGNOSTIC_PHYSICAL_PINREFS_CHANGED")
-            demand(all(t.get("fill") == "#148645" for t in targets),
-                   "QA_C11_NATIVE_NONPHYSICAL_MARKER_COLOR_DRIFT")
+            for marker in targets:
+                number = marker.get("data-pin-number")
+                demand(number in tips and marker.get("data-pin-ref") ==
+                       f"DA1.{number}" and
+                       marker.get("data-net-id") ==
+                       real_net_by_pin[f"DA1.{number}"] and
+                       marker.get("data-connectable") == "true" and
+                       marker.get("fill") == "#148645",
+                       "QA_C11_NATIVE_FOREIGN_PINREF_NET_OR_GREEN_ROLE")
+                ax, ay = tips[number]
+                demand((
+                    marker.get("data-external-anchor-x-um"),
+                    marker.get("data-external-anchor-y-um"),
+                ) == (str(ax), str(ay)),
+                       "QA_C11_NATIVE_MARKER_NOT_ON_ACTUAL_LEAD_TIP")
+                w = round(float(marker.get("width", "0")) * 1000)
+                h = round(float(marker.get("height", "0")) * 1000)
+                x = round(float(marker.get("x", "0")) * 1000)
+                y = round(float(marker.get("y", "0")) * 1000)
+                demand(w == h == 700 and
+                       2*x + w == 2*ax and 2*y + h == 2*ay,
+                       "QA_C11_NATIVE_HOTSPOT_NOT_TRUE_700UM_SQUARE")
         width, height = root.get("width", ""), root.get("height", "")
         demand(width.endswith("mm") and height.endswith("mm"),
                "QA_C11_NATIVE_SVG_HAS_NO_MILLIMETRE_DIMENSIONS")
