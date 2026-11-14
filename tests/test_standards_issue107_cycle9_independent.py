@@ -120,8 +120,8 @@ def test_schottky_8_d4_source_geometry_preserves_A_K_and_hook_chirality():
             new_upper = [transform(p) for p in upper]
             new_lower = [transform(p) for p in lower]
             assert new_a != new_k
-            assert len(set(new_upper)) == len(set(upper)) == 3
-            assert len(set(new_lower)) == len(set(lower)) == 3
+            assert len(set(new_upper)) == len({tuple(p) for p in upper}) == 3
+            assert len(set(new_lower)) == len({tuple(p) for p in lower}) == 3
             # A transform cannot collapse the two distinct asymmetric hook ends.
             assert new_upper[-1] != new_lower[-1]
             poses.append((new_a, new_k, tuple(new_upper), tuple(new_lower)))
