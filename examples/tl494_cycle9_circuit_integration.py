@@ -59,6 +59,39 @@ _NOMINAL_KIND_BY_PART = {
 }
 
 
+# Source-locked, ALL-OR-NOTHING authorial label spellings in actual
+# reconstruction PR #115. A Circuit.Net name is not an alternative conductor.
+# The reversible map is justified ONLY together with full frozen memberships.
+RECON115_NET_LABELS = {
+    "a_INPUT_PLUS": "INPUT_POS",
+    "b_NEGATIVE_OUTPUT": "OUTPUT_NEG",
+    "TRANSFER": "ENERGY_TRANSFER",
+}
+
+
+def _frozen_net_label_mode(
+    actual: Mapping[str, tuple[PinRef, ...]], source: dict,
+) -> str | None:
+    """Accept only entire original or entire #115 vocabulary, exact PinRefs.
+
+    A partial mix, arbitrary synonym, reordered/swapped member or missing
+    physical member is never a trusted source topology.
+    """
+    original = {
+        name: tuple(PinRef(*item.rsplit(".", 1)) for item in members)
+        for name, members in source["nets"].items()
+    }
+    if actual == original:
+        return "frozen-source-labels"
+    reconstructed = {
+        RECON115_NET_LABELS.get(name, name): members
+        for name, members in original.items()
+    }
+    if len(reconstructed) == len(original) and actual == reconstructed:
+        return "recon115-source-verified-labels"
+    return None
+
+
 def load_frozen_source(path: Path = FROZEN_FIXTURE) -> dict:
     data = path.read_bytes()
     # Git's immutable blob ID, pinned OUTSIDE the fixture itself. Reject
@@ -107,12 +140,8 @@ def assert_frozen_photo_topology(
     expected_parts["DA1"] = TI_DEVICE_ID
     if actual_parts != expected_parts:
         raise ValueError("TL494_FROZEN_PHOTO_PART_INVENTORY_DRIFT")
-    expected_nets = {
-        name: tuple(PinRef(*item.rsplit(".", 1)) for item in members)
-        for name, members in source["nets"].items()
-    }
     actual_nets = {net.name: net.members for net in binding.circuit.nets}
-    if actual_nets != expected_nets:
+    if _frozen_net_label_mode(actual_nets, source) is None:
         raise ValueError("TL494_FROZEN_PHOTO_NET_MEMBERSHIP_DRIFT")
     physical = {
         p for net in binding.circuit.nets for p in net.members
@@ -238,11 +267,7 @@ def bind_positioned_photo_circuit_from_catalog(
         ):
             raise ValueError("TL494_PHOTO_REBIND_BOM_NOMINAL_DRIFT")
     mapped = {net.name: net.members for net in original_circuit.nets}
-    expected = {
-        name: tuple(PinRef(*item.rsplit(".", 1)) for item in members)
-        for name, members in source["nets"].items()
-    }
-    if len(mapped) != 15 or mapped != expected:
+    if len(mapped) != 15 or _frozen_net_label_mode(mapped, source) is None:
         raise ValueError("TL494_PHOTO_REBIND_NET_IDENTITY_OR_MEMBERSHIP_CHANGED")
     upgraded = Circuit(tuple(
         replace(comp, part_id=TI_DEVICE_ID)
