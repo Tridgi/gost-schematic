@@ -85,9 +85,14 @@ def test_actual_owner_source_bytes_match_git_blob_snapshots():
         body = path.read_bytes()
         assert _git_blob_sha(body) == s["owner_blob_sha"], s["id"]
         owner = json.loads(body)
-        assert owner["status"] == "draft", s["id"]
-        assert owner["geometry"] == s["geometry"] or not s["geometry"]
-        assert owner["pins"] == s["pins"] or not s["geometry"]
+        if s["geometry"] is not None:
+            assert owner["status"] == "draft", s["id"]
+            assert owner["geometry"] == s["geometry"], s["id"]
+            assert owner["pins"] == s["pins"], s["id"]
+        else:
+            assert owner["core"] == s["coil_profile"]["core"], s["id"]
+            assert owner["turns"] == s["coil_profile"]["turns"], s["id"]
+            assert str(owner["radius_mm"]) == str(s["coil_profile"]["radius_mm"]), s["id"]
 
 
 def test_schottky_8_d4_source_geometry_preserves_A_K_and_hook_chirality():
@@ -106,11 +111,11 @@ def test_schottky_8_d4_source_geometry_preserves_A_K_and_hook_chirality():
     poses = []
     for reflected in (False, True):
         for count in range(4):
-            def transform(point):
+            def transform(point, *, mirror=reflected, quarter_turns=count):
                 x, y = point
-                if reflected:
+                if mirror:
                     x = -x
-                return rotate((x, y), count)
+                return rotate((x, y), quarter_turns)
             new_a, new_k = transform(a), transform(k)
             new_upper = [transform(p) for p in upper]
             new_lower = [transform(p) for p in lower]
@@ -181,7 +186,7 @@ def test_1_2_3_mm_are_separate_categories_and_not_all_crossings():
     assert rules["adjacent_ugo_line_gap"] == 1
     assert rules["distinct_ugo_gap"] == 2
     assert rules["parallel_interconnect_gap"] == 3
-    assert not (rules["adjacent_ugo_line_gap"] == rules["parallel_interconnect_gap"])
+    assert rules["adjacent_ugo_line_gap"] != rules["parallel_interconnect_gap"]
     assert _matrix()["cycle9_independent_audit"]["status"].startswith("DRAFT")
 
 
