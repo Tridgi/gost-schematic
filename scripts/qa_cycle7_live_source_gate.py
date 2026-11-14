@@ -207,7 +207,11 @@ def catalog_gallery(output):
             xml = ET.fromstring(svg)
             if view:
                 circles = xml.findall(f".//{SVG}circle")
-                require(len(circles) == len(part.pins), f"SVG_PINS_{identifier}")
+                require(
+                    len(circles) == len(part.pins) +
+                    sum(isinstance(g, Circle) for g in symbol.graphics),
+                    f"SVG_PINS_{identifier}",
+                )
             result[stem] = {"physical_contacts": list(pin_numbers),
                             "roles": list(expected), "raster_wh": wh,
                             "normative_acceptance": "BLOCKED"}
