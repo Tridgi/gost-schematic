@@ -90,7 +90,7 @@ def test_reject_forged_external_graph_or_evidence(tamper, code):
         circuit=circuit, graph=graph, parts=parts,
         symbols_by_part=symbols, style=STYLE, measurer=FixedInk(),
         physical_ic_renderings_clean={"DD1": clean},
-        physical_ic_renderings_diagnostic={"DD1": diagnostic},
+        physical_ic_renderings_diagnostic={"DD1": diag},
         expected_component_count=1, expected_net_count=2,
         expected_net_pinrefs=4,
     )
