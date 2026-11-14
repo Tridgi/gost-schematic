@@ -317,9 +317,47 @@ def ic_text_gallery(output, font):
                     require(va.attrib.get("transform", "").startswith("matrix(")
                             and not vb.attrib.get("transform"), "TEXT_TOGGLE_ROTATION_WRONG")
                     require(a.glyph_ink and b.glyph_ink, "NO_REAL_GLYPH_INK")
+                    # Real FreeType per-character glyph ink must remain inside
+                    # the run's measured protected function ink, including D4.
+                    function_ink = next(
+                        ink.box for ink in a.ink
+                        if ink.owner == "main.0" and ink.kind == "function"
+                    )
+                    chars = [g for g in a.glyph_ink if g.owner == "main.0"]
+                    require(len(chars) >= 2, "FUNCTION_GLYPHS_NOT_MEASURED")
+                    for glyph in chars:
+                        box = glyph.ink
+                        require(
+                            function_ink.min_x <= box.min_x <= box.max_x
+                            <= function_ink.max_x
+                            and function_ink.min_y <= box.min_y <= box.max_y
+                            <= function_ink.max_y,
+                            "IC_REAL_GLYPH_OUTSIDE_MEASURED_FUNCTION",
+                        )
                     cases[label] = {"function_90": True, "same_pinref": True,
                                     "same_body": True, "d4": [angle, mirror]}
+
                     if angle == 0 and not mirror:
+                        # Both external sheet obstacles and page bounds
+                        # must hard-reject rather than clipping glyphs.
+                        for fail_input, expected_error in (
+                            ({"other_obstacles": (a.body_world,)},
+                             "IC_OBSTACLE_COLLISION"),
+                            ({"page_bounds": Box(0, 0, 1, 1)},
+                             "IC_PAGE_OVERFLOW"),
+                        ):
+                            try:
+                                paint.render_resolved_ic(
+                                    primary, face.style, measurer,
+                                    **fail_input,
+                                )
+                            except ValueError as exc:
+                                require(expected_error in str(exc),
+                                        "IC_NEGATIVE_INK_GUARD_DIAGNOSTIC")
+                            else:
+                                raise AssertionError(
+                                    "IC_NEGATIVE_INK_GUARD_MISSED"
+                                )
                         for tag, rendered in (("portrait-90", a), ("horizontal-0", b)):
                             stem = label + "-" + tag
                             f, wh = _save_svg_png(rendered.svg, output, stem, count=20)
@@ -355,6 +393,14 @@ def ic_text_gallery(output, font):
             propose_ic_paint_binding,
         )
         source_binding = propose_ic_paint_binding(record, face.style, measurer)
+        # Full physical E3 netlist is immutable across text-only revisions.
+        electrical = Circuit(
+            (ComponentInstance("DD1", record.device.identifier),),
+            (Net("CTRL", (PinRef("DD1", "1"), PinRef("DD1", "2"))),),
+        )
+        from gost_schematic.electrical.ic import validate_ic_circuit
+        validate_ic_circuit(record.device, electrical, "DD1")
+        original_nets = electrical.nets
         before_points = resolve_ic_pin_positions(
             source_binding.record.device, source_binding.record.specs,
             source_binding.record.placements,
@@ -372,6 +418,10 @@ def ic_text_gallery(output, font):
             rebound.record.placements,
         )
         require(before_points == after_points, "IC_TYPED_BRIDGE_MOVED_PHYSICAL_PINREF")
+        require(electrical.nets is original_nets
+                and electrical.nets == (Net(
+                    "CTRL", (PinRef("DD1", "1"), PinRef("DD1", "2"))
+                ),), "IC_TEXT_REVISION_MUTATED_REAL_CIRCUIT_NET")
         assert all(a.pin_anchors == b.pin_anchors for a, b in zip(
             (paint.render_resolved_ic(v, face.style, measurer)
              for v in source_binding.views),
