@@ -110,7 +110,7 @@ def test_numpy_free_svg_1to1_mm_and_all_fifteen_frozen_owner_shapes():
     assert svg.get("height") == "267mm"
     assert svg.get("viewBox") == "0 0 315 267"
     assert svg.get("data-approval") == "BLOCKED_SOURCE_1_TO_1"
-    groups = {g.get("data-id"): g for g in svg.findall(NS + "g")
+    groups = {g.get("data-id"): g for g in svg.findall(".//" + NS + "g")
               if g.get("data-id") is not None}
     manifest = symbols()
     assert set(groups) == {c["id"] for c in manifest["cards"]}
