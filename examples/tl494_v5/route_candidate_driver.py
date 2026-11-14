@@ -179,7 +179,10 @@ def position_only_move(
     result = replace(
         base, circuit=Circuit(moved, base.circuit.nets),
         owner_ic_record=ic_record,
-        source_UGO_bindings=tuple(bind(moved, base.parts, base.symbols)),
+        source_UGO_bindings=tuple(bind(
+            moved, base.parts, base.symbols,
+            allow_relayout=True,  # Explicit NEW A3 candidate, not source change
+        )),
     )
     result.verify()
     if result.circuit.nets != base.circuit.nets:
