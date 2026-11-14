@@ -25,7 +25,10 @@ from gost_schematic.electrical.ic_graphic_revision import (
     revise_ic_text_orientation,
     validate_ic_graphic_revision,
 )
-from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
+from gost_schematic.electrical.ic_paint_bridge import (
+    bind_ic_paint_text_only,
+    propose_ic_paint_binding,
+)
 from gost_schematic.electrical.ic_serde import IcLibraryRecord, ic_to_json
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
@@ -91,7 +94,7 @@ def generate(output_dir: Path, font_file: Path) -> dict:
     result = {
         "approval": "DRAFT_NOT_ESKD_APPROVED",
         "font_sha256": style.font_sha256,
-        "paint_sha": "0bc38290db8729c0cd152c0d8d2ed955fae2dd31",
+        "paint_sha": "db53e0ab89bb23f555badc2def41ea9895a5d64c",
         "cases": {},
     }
     for kind, count in (
@@ -158,18 +161,17 @@ def generate(output_dir: Path, font_file: Path) -> dict:
                 try:
                     layout_binding = (
                         measured if angle == 0 else
-                        propose_ic_paint_binding(model, style, measurer)
+                        bind_ic_paint_text_only(measured, model)
                     )
-                    # If PAINT proposes changed geometry even for text-only
-                    # switch, it is not silently accepted as identical pose.
-                    if angle == 90:
-                        same_points = resolve_ic_pin_positions(
-                            layout_binding.record.device,
-                            layout_binding.record.specs,
-                            layout_binding.record.placements,
-                        )
-                        if same_points != original_points:
-                            raise ValueError("IC_TEXT_RENDER_REQUIRES_GEOMETRY_CONSENT")
+                    # Bind the rotated whole word to the *original* body and
+                    # physical lead positions; no dimension reproposal.
+                    same_points = resolve_ic_pin_positions(
+                        layout_binding.record.device,
+                        layout_binding.record.specs,
+                        layout_binding.record.placements,
+                    )
+                    if same_points != original_points:
+                        raise ValueError("IC_TEXT_RENDER_MOVED_PHYSICAL_PINREF")
                     for index, unit in enumerate(layout_binding.views, 1):
                         rendered = render_resolved_ic(
                             unit, style, measurer, glyph_detail=True,
