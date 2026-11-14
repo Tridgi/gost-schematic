@@ -40,6 +40,37 @@ def run(font_file:Path,output:Path) -> dict:
         raise AssertionError("P0: baseline Net or PinRef inventory changed")
     report=analyze_wire_graph(graph)
     _write(output/"baseline_geometric_drc.json",report)
+
+    # P7: import the pinned actual owner #108 DRC when available. Run with
+    # real SymbolDefinition strokes and measured OpenGost annotation placements.
+    # This is a read-only model audit: no output SVG is edited or generated.
+    from gost_schematic.validation.route_drc import audit_route_drc
+    from gost_schematic.engines.sheet_layout import layout_sheet
+    from gost_schematic.rendering.external_wire_sheet import (
+        build_external_wire_obstacles,
+    )
+    native_symbols={
+        part_id:symbols[part.symbol_id] for part_id,part in parts.items()
+    }
+    from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
+    from gost_schematic.standards.type_a_font import inspect_type_a_font
+    profile=inspect_type_a_font(
+        font_file,h_um=3500,family="OpenGost Type A TT",
+        require_family_match=True,
+    )
+    labels=layout_sheet(
+        circuit,native_symbols,profile.style,PillowTextMeasurer(),
+        wires=build_external_wire_obstacles(graph),
+    )
+    full=audit_route_drc(
+        circuit,graph,stroke_um=300,symbols_by_part=native_symbols,
+        annotation_placements=labels.placements,
+    ).as_dict()
+    full["source_sha"]="e695c415fdced164b0e0c39c5249d030795a0aa6"
+    full["owner_route_drc_pin"]="9b0511303af806575040d6e48c87c0ed66236a90"
+    full["label_layout_valid"]=labels.valid
+    full["acceptance"]="BLOCKED until full global reroute and ESKD owner source signoff"
+    _write(output/"full_stroke_and_text_drc.json",full)
     power,source_parts,source_symbols,positions=build_power_v4()
     if source_symbols["transistor.mosfet_n_enh"].identifier!=(
         "transistor.mosfet_n_enh"
@@ -99,6 +130,11 @@ def run(font_file:Path,output:Path) -> dict:
         "raw_wire_drc":{
             "parallel_violations":report["parallel_violation_count"],
             "unmarked_crossings":report["distinct_net_x_crossings"],
+            "owner_full_stroke_drc_errors":full["error_count"],
+            "owner_full_stroke_drc_warnings":full["warning_count"],
+            "source_UGO_and_text_covered":(
+                full["checked_symbol_geometry"] and full["checked_measured_text"]
+            ),
         },
         "do_not_claim":"No SVG/PNG v4 until full source/UGO/DRC gates pass",
     }
@@ -109,6 +145,7 @@ def run(font_file:Path,output:Path) -> dict:
         "baseline_segments":len(graph.segments),
         "baseline_crossings":report["distinct_net_x_crossings"],
         "baseline_parallel_failures":report["parallel_violation_count"],
+        "full_stroke_drc_errors":full["error_count"],
         "PWM_physical_anchors":16,
         "model_gate":"PASSED",
         "print_gate":"BLOCKED",
