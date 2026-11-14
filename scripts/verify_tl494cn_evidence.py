@@ -30,7 +30,7 @@ def verify(folder: Path) -> dict:
     for name in manifest["variants"]:
         if name not in {
             f"TL494CN_PWM_{angle}_{layer}"
-            for angle in ("bottom_to_top_90", "horizontal_0")
+            for angle in ("bottom_to_top_270", "horizontal_0")
             for layer in ("diagnostic", "clean")
         }:
             raise ValueError("TL494_UNEXPECTED_EXPORT_NAME")
