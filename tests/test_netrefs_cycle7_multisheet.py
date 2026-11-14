@@ -164,8 +164,13 @@ def test_v2_json_rejects_silent_field_loss_or_legacy_unversioned_migration():
     with pytest.raises(ValueError, match="exact JSON keys"):
         netrefs_from_json(json.dumps(parsed), project.circuit)
     parsed["schema_version"] = 1
-    with pytest.raises(ValueError, match="exact JSON keys"):
-        netrefs_from_json(json.dumps(parsed), project.circuit)
+    # This now looks like legitimate legacy v1; ProjectService must supply
+    # its previously persisted expected version to prevent a downgrade.
+    assert netrefs_from_json(json.dumps(parsed), project.circuit).schema_version == 1
+    with pytest.raises(ValueError, match="E3_CONT_SCHEMA_VERSION_MISMATCH"):
+        netrefs_from_json(
+            json.dumps(parsed), project.circuit, expected_schema_version=2,
+        )
     with pytest.raises(ValueError, match="provenance requires explicit schema v2"):
         replace(project, schema_version=1)
 
