@@ -109,3 +109,104 @@ physical pin/catalog lock, unmarked crossing and failed import rollback.
 CI acceptance: Python 3.12 and 3.13 pytest, Ruff, dynamic DRAFT catalog
 audit and wheel payload. The number 21 is Cycle 7's baseline, not a
 permanent hard-coded target.
+
+
+## Post-audit P1.1 hardening and independently reproducible agent pilot
+
+The repository now has a **second engineering experiment independent of the
+fixed six-part fixture**: `python -m examples.agent_project_p11
+--workspace output/agent-project-p11`. It constructs R1/R2/C1 from the
+**installed physical catalog**, looks up the exact real PinRef anchors,
+and declares a two-contact `Circuit.Net("SIGNAL")`.
+
+A first **unsaved** candidate accidentally places unconnected C1 on R2.
+The script detects its real translated `body_keepout` overlap and
+relocates **only the unconnected C1** before initial import, preserving
+net membership. It requests a genuine two-pin route through the existing
+`route_circuit_two_pins` (physical-pin-aware safe adapter), then imports
+the resulting real `Circuit` and `ExternalWireGraph` via ProjectService.
+No connected component is moved, no unsupported TOP/RIGHT branch router
+is invoked and **no save-time mutation command** is implied.
+
+ProjectService produces revision-bound SVG/PNG, while a fresh Python
+interpreter reopens only the saved file, explicitly forbids any
+`examples.*` import and produces a second SVG/PNG. The experiment
+compares source/cold **complete serialized engineering model** plus
+catalog lock and independently resolved physical pin positions, their
+actual geometry, diagnostic revision SHA, source SVG SHA and PNG SHA.
+The command prints a JSON evidence report; image paths derive exclusively
+from ProjectService's trusted store and have no arbitrary output argument.
+
+The source and new-process `model_manifest` in
+`src/gost_schematic/agent_project/evidence.py` explicitly includes
+the typed `SchematicProject.to_record()` and a separate
+catalog-resolved list of every physical pin with its `number`,
+`name`, `electrical_type`, `function`, `polarity` and
+**exact integer-µm world coordinate**. A matching image alone is
+insufficient for acceptance.
+
+### Post-audit corrections
+
+- The original local CLI wrote `output/artifacts/*` directly rather
+  than through ProjectService. This was a boundary violation.
+  `ProjectService.export_project_view()` now delegates artifact
+  publication to scoped `LocalProjectStore.write_view()`. Files are
+  staged and published under controlled
+  `artifacts/<project-id>/<revision>/<view-id>/view.svg|view.png`;
+  symlinks/junctions or mismatching replays refuse.
+- The stored JSON parser now rejects duplicate object keys, binary
+  floats, NaN and Infinity; reopens continue to require canonical bytes,
+  SHA and schema, independently checked original-domain pin/net data.
+- Workspace and project directories check for symlinks and Windows
+  junctions before scoped lookup and artifact publication.
+- A parameterized synthetic single-device 40/64-physical-pin test
+  demonstrates serializable pin inventory, **not** vendor-source package
+  integration. PR #97's independent `IcDeviceDefinition/IcPackage/IcUnit`
+  DRAFT and its NC/multiunit constraints **cannot** be downcast into
+  legacy PartDefinition without data loss; a reviewed kind-specific
+  adapter and versioned schema migration are prerequisites.
+
+### Exact native MCP inventory
+
+The currently integrated MCP P0 stdio server registers **six** working
+read-only tools, each against the **fixed** `project_ref="six-part"`,
+not against a P1.1 `SchematicProject` UUID:
+
+| Tool | Availability / data |
+| --- | --- |
+| `schematic_render_overview` | working fixed six-part ImageContent |
+| `schematic_inspect_region` | working fixed six-part SVG-derived region |
+| `schematic_inspect_component` | working fixed physical symbol/pin crop |
+| `schematic_inspect_connection` | working declared fixed net crop |
+| `schematic_get_diagnostics` | working fixed Circuit/ExternalWireGraph ERC |
+| `schematic_list_views` | working available fixed view metadata |
+
+Python `ProjectService.import_circuit/open_project/get_snapshot/
+validate_project/render_project/export_project_view` are **working
+trusted in-process/CLI methods**, not MCP endpoints. The actual saved-
+project catalog list/describe/pinout/preview and saved-UUID open/render
+MCP facades are planned, **not** implemented. All `schematic_add_component`,
+`schematic_move_component`, `schematic_connect_pins`,
+`schematic_attach_net_continuation`, `schematic_apply_transaction`
+remain BLOCKED by future CAS and routing review.
+
+### Codex CLI verification boundary
+
+A previous real Codex CLI smoke for P0 MCP PR #73 verified
+ImageContent and model-requested crops **for the fixed six-part specimen**.
+This P1.1 update does not claim a fresh actual Codex CLI call without a
+logged execution. The Python script above is an **agent-equivalent API
+experiment**, not proof that Codex autonomously authored these nodes
+or that its MCP tools can write to a saved project. A future Codex
+smoke must log exact CLI version, MCP tool calls, image blocks,
+SHA-bound P1.1 views and model-selected next steps after an approved
+read-only ProjectService adapter exists.
+
+### Interactive editor Issue #100
+
+See [the proposed editor-only hotspot contract](../architecture/issue-100-editor-projectservice-contract.md).
+Hover is a pixel-space preview over authoritative real PinRefs/wire
+endpoints, not a ГОСТ graphic or a mutation. An actual connection
+requires future typed ProjectService transaction with expected revision,
+CAS, rollback, independent ERC, and branch-aware safe routing. This
+feature remains **not implemented** in P1.1.
