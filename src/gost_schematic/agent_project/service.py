@@ -123,6 +123,27 @@ class ProjectService:
         manifest = model_manifest(snapshot.project, self.catalog)
         return {**self._summary(snapshot), "model": manifest}
 
+    def preflight_design(
+        self, project_id: str, revision: str, *, profile: str = "none",
+    ) -> dict[str, Any]:
+        """Read-only physical/printing subset before any E3 SVG rendering.
+
+        A complete source photo, route optimizer, sheet format, font-ink
+        and full wire-to-graphic DRC are not implemented; never return a
+        print-approved PASS from these partial model-derived checks.
+        """
+        from .design_assistant import preflight_project
+
+        if type(revision) is not str or len(revision) != 64:
+            raise ProjectError("REVISION_REQUIRED", "Exact saved revision SHA required")
+        snapshot = self.open_project(project_id, revision)
+        result = preflight_project(snapshot.project, self.catalog, profile=profile)
+        return {
+            **result,
+            "generation": snapshot.head.generation,
+            "electrical_erc": self._report(snapshot.project, snapshot.head.generation),
+        }
+
     def render_project(
         self, project_id: str, revision: str, *, mode: str = "clean",
         reference: str | None = None, target_dpi: int = 500,
