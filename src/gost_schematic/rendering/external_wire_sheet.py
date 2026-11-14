@@ -116,6 +116,7 @@ def render_external_wire_sheet(
     root = ET.fromstring(render_sheet_svg(
         circuit, symbols_by_part, layout,
         wires=wires, review_overlay=diagnostic,
+        review_pin_markers=physical_ic_renderings is None,
     ))
     if physical_ic_renderings is not None:
         compose_authoritative_ic_layers(
