@@ -330,9 +330,9 @@ def audit_route_drc(
                           "Same-net authored T requires a visible junction dot",
                           point=point)
             # Adjacent same-net noncollinear segment ends can form a legal bend.
-            if same and set((a.start, a.end)) & set((b.start, b.end)):
-                if _cross(*_direction(a), *_direction(b)):
-                    bends += 1
+            if (same and {a.start, a.end} & {b.start, b.end}
+                    and _cross(*_direction(a), *_direction(b))):
+                bends += 1
             if not _parallel_overlap(a, b):
                 continue
             dist = _parallel_squared(a, b)
