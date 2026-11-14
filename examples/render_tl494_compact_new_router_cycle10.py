@@ -39,15 +39,12 @@ def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 2500
     # Resolve at use site to pass Ruff in both base and cross-owner checkouts.
     from dataclasses import replace
 
-    from examples.tl494_cycle9_circuit_integration import (
-        bind_positioned_photo_circuit_from_catalog,
-    )
+    from examples.tl494_v5.cycle11_ti_bridge import bind_verified_compact_ti
     from examples.tl494_v5.route_candidate_driver import (
         load_original_owner_fixture,
         restore_original_named_nets,
     )
     from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
-    from gost_schematic.electrical.tl494cn import TI_DEVICE_ID
 
     assembly = compact_source_assembly()
     assembly.verify()
@@ -56,15 +53,10 @@ def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 2500
     # to the actual photographed a_INPUT_PLUS/b_NEGATIVE_OUTPUT/TRANSFER.
     # Never issue a new full-sheet drawing with only the convenient aliases.
     original_named = restore_original_named_nets(assembly, frozen_source)
-    legacy_ic = assembly.parts["reference.tl494cn"]
-    manufacturer = replace(legacy_ic, identifier=TI_DEVICE_ID)
-    canonical_parts = {**assembly.parts, TI_DEVICE_ID: manufacturer}
-    verified = bind_positioned_photo_circuit_from_catalog(
-        original_named, assembly.owner_ic_record, canonical_parts,
-        aliases=assembly.owner_aliases,
-    )
-    verified.validate()
-    circuit = verified.circuit
+    signed = bind_verified_compact_ti(assembly, original_named)
+    signed.verify()
+    canonical_parts = {**assembly.parts, signed.part.identifier: signed.part}
+    circuit = signed.signed.circuit
     if circuit.nets != original_named.nets or (
         circuit.components != tuple(
             replace(component, part_id=TI_DEVICE_ID)
@@ -114,7 +106,9 @@ def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 2500
     }
     ic_obstacle = _owner_ic_obstacle(view, clean.svg, da)
     by_part["reference.tl494cn"] = ic_obstacle
-    by_part[TI_DEVICE_ID] = ic_obstacle
+    by_part[signed.part.identifier] = replace(
+        ic_obstacle, identifier=signed.part.symbol_id,
+    )
     if any(c.part_id not in by_part for c in circuit.components):
         raise ValueError("COMPACT_CATALOG_SYMBOL_NOT_RESOLVED")
     footprint = actual_component_occupied_mm(assembly, by_part)
@@ -180,7 +174,7 @@ def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 2500
         "original_named_nets_verified": [
             net.name for net in original_named.nets
         ],
-        "canonical_ti_part_id_verified": TI_DEVICE_ID,
+        "canonical_ti_part_id_verified": signed.part.identifier,
         "legacy_part_id_preserved_only_in_frozen_fixture": True,
         "trusted_97_part_rebinding": True,
         "router_attempt": route.as_dict(),
