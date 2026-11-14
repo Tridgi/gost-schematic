@@ -78,7 +78,7 @@ def test_fig6_a_b_c_and_document_set_policy_not_arbitrary():
     cards = _cards()
     assert cards["P06-COMMON-CONTROL"]["status"] == "PASS"
     assert cards["P10-FIG6-MIX-UNRESTRICTED"]["status"] == "FAIL"
-    assert "6а+6б" in cards["P08-SPLIT-ONE-UNIT"]["mandatory"][0]
+    assert "6a+6b" in cards["P08-SPLIT-ONE-UNIT"]["mandatory"][0]
     assert "6a+6v" in cards["P07-SEPARATE-CONTOUR"]["mandatory"][0]
     assert "6б" in cards["P10-FIG6-MIX-UNRESTRICTED"][
         "negative_example"
