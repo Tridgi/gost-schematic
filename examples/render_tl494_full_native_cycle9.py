@@ -235,6 +235,7 @@ def _render_variant(
     diagnostic: bool,
     reading: IcFunctionReading,
     original_full_labels: bool = False,
+    continuation_project=None,
 ):
     model = visible.select_function_text_reading(reading)
     net_map = _net_pin_id_map(circuit)
@@ -253,6 +254,7 @@ def _render_variant(
         circuit, graph, symbols, style, measure,
         diagnostic=diagnostic, strict_layout=False,
         physical_ic_renderings={"DA1": rendered},
+        source_continuation_project=continuation_project,
     )
     root = ET.fromstring(composed.svg)
     native = root.find(
@@ -357,7 +359,7 @@ def generate(output: Path, font_file: Path, *, d4: bool = False):
     before = _render_variant(
         circuit, graph, symbol_map, original, style, measure, policy,
         diagnostic=False, reading=IcFunctionReading.TOP_TO_BOTTOM,
-        original_full_labels=True,
+        original_full_labels=True, continuation_project=pair,
     )
     before_file = "TL494_native_23_BEFORE_old_pwm_top_to_bottom.svg"
     (output/before_file).write_text(before[0].svg, encoding="utf-8")
@@ -373,6 +375,8 @@ def generate(output: Path, font_file: Path, *, d4: bool = False):
         "original_b_continuations": [
             e.id for e in pair.endpoints
         ],
+        "native_b_graphics_from_typed_project": True,
+        "fake_a_marker_created": False,
         "catalog_ugo_bindings": [b.reference for b in bindings],
         "tl494_manufacturer": record.device.package.manufacturer,
         "actual_ti_pin3_electrical": record.device.pin_map["3"].electrical_type.value,
@@ -397,6 +401,7 @@ def generate(output: Path, font_file: Path, *, d4: bool = False):
             composed, paint = _render_variant(
                 circuit, graph, symbol_map, portrait, style, measure,
                 policy, diagnostic=diagnostic, reading=reading,
+                continuation_project=pair,
             )
             mode = "diagnostic" if diagnostic else "clean"
             file = f"TL494_native_23_{reading.value}_{mode}.svg"
