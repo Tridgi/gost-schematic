@@ -140,7 +140,8 @@ def build():
     )
     circuit=Circuit(tuple(components),nets)
     names={component.reference for component in circuit.components}
-    if len(names)!=23:raise AssertionError("Not all 23 source items modeled")
+    if len(names) != 23:
+        raise AssertionError("Not all 23 source items modeled")
     seen={}
     for net in nets:
         for pin in net.members:
@@ -153,7 +154,8 @@ def build():
                 raise AssertionError(f"Part/pin mismatch: {pin.reference}")
             if pin.number not in {p.number for p in part.pins}:
                 raise AssertionError(f"Invalid physical pin: {pin}")
-            if pin in seen:raise AssertionError(f"{pin} in both {seen[pin]} and {net.name}")
+            if pin in seen:
+                raise AssertionError(f"{pin} in both {seen[pin]} and {net.name}")
             seen[pin]=net.name
     return circuit,parts,symbols,seen
 
