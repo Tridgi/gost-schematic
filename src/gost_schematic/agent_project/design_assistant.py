@@ -48,7 +48,7 @@ SEMANTIC_QUERY_TERMS = {
     "катушка с сердечником": "inductor",
     "ferromagnetic inductor": "inductor.ferromagnetic",
     "катушка с ферромагнитным сердечником": "inductor.ferromagnetic",
-    "mosfet": "transistor",
+    "mosfet": "transistor.mosfet",
     "n channel enhancement mosfet": "transistor.mosfet_n_enh",
     "diode": "diode",
     "диод": "diode",
@@ -66,6 +66,13 @@ TL494_GROUPS = {
     "mosfet_drive": ("R8", "VT1", "VD1"),
     "output_and_L2": ("C1", "C2", "L2", "C5", "C6", "FU1", "X2"),
 }
+# Closed vocabulary based on the actual installed parametric core kinds.
+CORE_BEARING_INDUCTOR_IDS = frozenset({
+    "inductor.ferromagnetic", "inductor.ferrite",
+    "inductor.gapped_core", "inductor.magnetodielectric",
+    "inductor.trim_magnetodielectric",
+})
+
 _D4 = tuple(
     {"rotation": deg, "mirror_x": mirror}
     for mirror in (False, True) for deg in (0, 90, 180, 270)
@@ -122,6 +129,8 @@ def catalog_search(catalog: CatalogResolver, query: str) -> dict[str, Any]:
     else:
         ids = [key for key in sorted(catalog.parts)
                if key.startswith(group + ".")]
+    if word == "катушка с сердечником":
+        ids = [key for key in ids if key in CORE_BEARING_INDUCTOR_IDS]
     if len(ids) > 64:
         raise ProjectError("CATALOG_QUERY_TOO_BROAD", "Refine to a specific category")
     if not ids:
@@ -147,8 +156,9 @@ def catalog_preview(catalog: CatalogResolver, part_id: str) -> tuple[str, bytes,
     box = symbol.stroked_bounds.expanded(3000)
     width = box.max_x - box.min_x
     height = box.max_y - box.min_y
-    width_px = max(64, 512 * width // max(width, height))
-    height_px = max(64, 512 * height // max(width, height))
+    longest = max(width, height)
+    width_px = max(1, (512 * width + longest // 2) // longest)
+    height_px = max(1, (512 * height + longest // 2) // longest)
     try:
         import resvg_py
         png = resvg_py.svg_to_bytes(
