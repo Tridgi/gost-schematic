@@ -383,7 +383,7 @@ def propose_ic_dimensions(
     Pins are examined for text/row demands, but their anchor Point is NEVER
     altered or inferred by this sizing pass.
     """
-    if function_rotation not in (0, 90):
+    if function_rotation not in (0, 90, 270):
         raise ValueError("IC_TEXT_ROTATION_UNVERIFIED")
     if type(shared_function_envelope) is not bool:
         raise TypeError("IC_SHARED_FUNCTION_ENVELOPE_TYPED_REQUIRED")
@@ -411,7 +411,7 @@ def propose_ic_dimensions(
     # A 90-degree word consumes vertical rows, NOT a huge single row pitch.
     horizontal_inks = (
         dimensions[1:]
-        if function_rotation == 90 or shared_function_envelope
+        if function_rotation in (90, 270) or shared_function_envelope
         else dimensions
     )
     tallest = max(
@@ -429,7 +429,7 @@ def propose_ic_dimensions(
     function_span = (
         max(1, ceil((_width(function_ink) + 2 * policy.ink_padding_um
                      + policy.line_width_um) / pitch))
-        if function_rotation == 90 or shared_function_envelope else 1
+        if function_rotation in (90, 270) or shared_function_envelope else 1
     )
     max_row = max((p.row for p in pins), default=0)
     nrows = max(
@@ -443,7 +443,7 @@ def propose_ic_dimensions(
         widths = (
             max(_height(function_ink), _width(function_ink))
             if shared_function_envelope else
-            _height(function_ink) if function_rotation == 90 else
+            _height(function_ink) if function_rotation in (90, 270) else
             _width(function_ink),
         ) if mandatory else ()
         maxink = max((
@@ -500,13 +500,16 @@ def _text_placement(
 def _rotated_function_placement(
     owner: str, text: str, cell: Box, style: TextStyle,
     measurer: TextMeasurer, policy: IcRenderingPolicy,
+    rotation: int = 90,
 ) -> tuple[IcInkBox, Point]:
     """Rotate the WHOLE measured word around its baseline, then fit its ink.
 
     The returned baseline is in local micrometres; no individual letters are
     reflowed. Stroke spacing is checked against the transformed word bounds.
     """
-    rotated = Transform(90).box(_measure(text, style, measurer))
+    if rotation not in (90, 270):
+        raise ValueError("IC_FUNCTION_ROTATED_DIRECTION_INVALID")
+    rotated = Transform(rotation).box(_measure(text, style, measurer))
     left = (cell.min_x + cell.max_x - _width(rotated)) // 2
     top = (cell.min_y + cell.max_y - _height(rotated)) // 2
     ink = Box(left, top, left + _width(rotated), top + _height(rotated))
@@ -646,13 +649,17 @@ def render_resolved_ic(
         unit.content, unit.pins, style, measurer, policy,
         function_rotation=unit.function_rotation,
         shared_function_envelope=(
-            unit.typography_profile is
-            IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT
+            unit.typography_profile in (
+                IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT,
+                IcTypographyProfile.TL494_PORTRAIT_V3_DRAFT,
+            )
         ),
     )
     body = unit.body
-    if (unit.typography_profile is IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT
-            and _height(body) <= _width(body)):
+    if (unit.typography_profile in (
+            IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT,
+            IcTypographyProfile.TL494_PORTRAIT_V3_DRAFT,
+    ) and _height(body) <= _width(body)):
         raise ValueError(
             f"IC_PORTRAIT_BODY_REQUIRED: {unit.reference} needs height > width; "
             "request an explicit revised geometry from ELEKTRIK"
