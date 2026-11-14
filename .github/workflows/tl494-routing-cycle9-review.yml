@@ -53,8 +53,9 @@ jobs:
           assert (report["component_count"], report["net_count"], report["wire_count"]) == (23, 15, 91)
           assert report["source_revision"] == "e695c415fdced164b0e0c39c5249d030795a0aa6"
           assert report["explicit_junctions"] == 37
-          assert sorted(p.split(".")[1] for n in report["source_pin_inventory"].values()
-                        for p in n if p.startswith("DA1."), key=int) == [str(i) for i in range(1, 17)]
+          physical = [p.split(".")[1] for members in report["source_pin_inventory"].values()
+                      for p in members if p.startswith("DA1.")]
+          assert sorted(physical, key=int) == [str(i) for i in range(1, 17)]
           assert len(report["parallel_measurements"]) > 0
           assert report["error_count"] > 0 and not report["valid"]
           assert not report["checked_symbol_geometry"] and not report["checked_measured_text"]
