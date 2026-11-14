@@ -229,6 +229,10 @@ class IcResolvedUnit:
         if (self.function_text_reading is not None
                 and self.function_text_reading.degrees != self.function_rotation):
             raise ValueError("IC_FUNCTION_READING_ROTATION_CONFLICT")
+        if self.orientation is IcOrientation.TOP_BOTTOM and self.function_rotation == 270:
+            raise ValueError(
+                "IC_TEXT_ROTATION_UNVERIFIED: TOP_BOTTOM source requires ESKD 270 policy"
+            )
         if self.orientation is IcOrientation.LEFT_RIGHT and self.field_text_rotation:
             raise ValueError("IC_FIELD_ROTATION_REQUIRES_TOP_BOTTOM_PROFILE")
         if not self.reference:
