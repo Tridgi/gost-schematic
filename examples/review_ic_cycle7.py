@@ -226,9 +226,10 @@ def _write_four_views(folder, key, unit, style, measurer, policy):
     """
     targets, circuit = _declared_synthetic_targets(unit)
     source_nets = circuit.nets
-    kwargs = dict(
-        policy=policy, glyph_detail=True, editor_targets=targets,
-    )
+    kwargs = {
+        "policy": policy, "glyph_detail": True,
+        "editor_targets": targets,
+    }
     variants = {
         "clean": {},
         "diagnostic-ink": {"review_overlay": True},
