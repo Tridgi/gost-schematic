@@ -98,12 +98,14 @@ def preview_placement(
     }
     changed = proposed_positions != existing_positions
     original_nets = {
-        (ref.reference, ref.number): net.name
-        for net in project.circuit.nets for ref in net.members
+        (ref.reference, ref.number): (net.name, net_id)
+        for net, net_id in zip(project.circuit.nets, project.net_ids, strict=True)
+        for ref in net.members
     }
     attached = [{
         "pin_ref": {"reference": reference, "number": pin.number},
-        "original_net_name": original_nets[(reference, pin.number)],
+        "original_net_name": original_nets[(reference, pin.number)][0],
+        "original_net_id": original_nets[(reference, pin.number)][1],
     } for pin in part.pins if (reference, pin.number) in original_nets]
     conflict = []
     if changed and attached:
