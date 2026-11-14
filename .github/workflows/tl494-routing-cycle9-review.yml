@@ -1,0 +1,109 @@
+name: Cycle9 TL494 E3 geometric DRC and route preview
+
+on:
+  push:
+    branches:
+      - parallel/electrical-routing-drc-tl494-cycle9
+  pull_request:
+    branches:
+      - integration/stage0-12
+    paths:
+      - "src/gost_schematic/validation/route_drc.py"
+      - "src/gost_schematic/engines/orthogonal_route_planner.py"
+      - "src/gost_schematic/electrical/reference_markers.py"
+      - "examples/review_tl494_route_drc.py"
+      - "tests/test_route_drc_cycle9.py"
+      - ".github/workflows/tl494-routing-cycle9-review.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  routing-drc:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install exact project deps
+        run: python -m pip install -e ".[dev,mcp]"
+      - name: Ruff and source-frozen DRC negative tests
+        run: |
+          ruff check src/gost_schematic/validation/route_drc.py src/gost_schematic/engines/orthogonal_route_planner.py src/gost_schematic/electrical/reference_markers.py examples/review_tl494_route_drc.py tests/test_route_drc_cycle9.py
+          pytest -q tests/test_route_drc_cycle9.py
+      - name: Generate source identity and complete numeric spacing audit
+        run: |
+          python -m examples.review_tl494_route_drc \
+            --output-dir output/tl494-routing-cycle9
+      - name: Verify exact source 23/15/16/91 and fail-closed diagnostic output
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+
+          out = Path("output/tl494-routing-cycle9")
+          report = json.loads((out / "TL494-routing-drc.json").read_text("utf-8"))
+          assert (report["component_count"], report["net_count"], report["wire_count"]) == (23, 15, 91)
+          assert report["source_revision"] == "e695c415fdced164b0e0c39c5249d030795a0aa6"
+          assert report["explicit_junctions"] == 37
+          assert sorted(p.split(".")[1] for n in report["source_pin_inventory"].values()
+                        for p in n if p.startswith("DA1."), key=int) == [str(i) for i in range(1, 17)]
+          assert len(report["parallel_measurements"]) > 0
+          assert report["error_count"] > 0 and not report["valid"]
+          assert not report["checked_symbol_geometry"] and not report["checked_measured_text"]
+          assert not report["full_3_2_1mm_sheet_certified"]
+          for view in ("clean", "drc-diagnostic"):
+              text = (out / f"TL494-routing-{view}.svg").read_text("utf-8") if view != "clean" else (
+                  out / "TL494-routing-source-clean.svg"
+              ).read_text("utf-8")
+              root = ET.fromstring(text)
+              uri = "{http://www.w3.org/2000/svg}"
+              assert root.tag == uri + "svg"
+              assert text.count('xmlns="http://www.w3.org/2000/svg"') == 1
+              assert len(root.findall(f".//{uri}line[@data-layer='wires']")) == 91
+              assert ("editor-route-drc" in text) == (view != "clean")
+          print("SOURCE 23/15/16/91 pinned; all wire DRC violations retained, not hidden")
+          PY
+      - name: Install pinned real OpenGost Type A
+        run: |
+          python scripts/install_opengost_type_a.py \
+            --directory "$HOME/.local/share/fonts"
+          fc-cache -f
+          fc-match 'OpenGost Type A'
+      - name: Rasterize actual full source and DRC overlay at 300DPI
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+          for VIEW in source-clean drc-diagnostic; do
+            rsvg-convert --background-color white --dpi-x 300 --dpi-y 300 \
+              --output "output/tl494-routing-cycle9/TL494-routing-$VIEW-300dpi.png" \
+              "output/tl494-routing-cycle9/TL494-routing-$VIEW.svg"
+          done
+      - name: Verify true full-sheet raster dimensions and pure clean
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+
+          out = Path("output/tl494-routing-cycle9")
+          for view in ("source-clean", "drc-diagnostic"):
+              path = out / f"TL494-routing-{view}-300dpi.png"
+              with Image.open(path) as png:
+                  assert png.format == "PNG"
+                  assert 8000 <= png.width <= 8100
+                  assert 2500 <= png.height <= 2700
+                  assert png.width > 420 * 300 / 25.4
+          print("Full 679.3mm drawing rendered at actual 300DPI; A3/A2 width fails")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: draft-tl494-cycle9-${{ matrix.python-version }}
+          path: output/tl494-routing-cycle9/**
+          if-no-files-found: error
