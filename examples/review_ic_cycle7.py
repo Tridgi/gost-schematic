@@ -11,6 +11,8 @@ from pathlib import Path
 
 from gost_schematic.core.geometry import SIDE_VECTORS, Box, Point, Side
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
+from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
+from gost_schematic.rendering.ic_hotspots import IcConnectionTarget
 from gost_schematic.rendering.ic_rectangular import (
     IcFieldContent,
     IcOrientation,
@@ -35,7 +37,9 @@ def _fixture(count, kind, style, measurer):
             "EN" if index == 0 else
             "CLK↑" if index == 1 else
             "NC" if index == 2 else
-            "VCC" if index == count - 1 else
+            ("U" if kind == "analog" else "VCC") if index == count - 1 else
+            ("OV" if kind == "analog" else "GND") if index == count - 2
+            and count >= 8 else
             f"ВХ_{index:02d}" if side == Side.LEFT else f"Q{index-half:02d}"
         )
         if count == 64 and index == half - 1:
@@ -45,7 +49,9 @@ def _fixture(count, kind, style, measurer):
         sample.append(ResolvedIcPin(
             f"TEST_IC_{count}.P{index+1}", str(index+1), label,
             side, row, Point(index*100 + 1, index*100 + 2),
-            "in" if side == Side.LEFT else "out",
+            ("nc" if label == "NC" else "power"
+             if index == count - 1 or (index == count - 2 and count >= 8)
+             else "in" if side == Side.LEFT else "out"),
         ))
     extras = (
         ("ТАКТИРОВАНИЕ", "РЕГИСТР_16") if count >= 14
@@ -166,6 +172,94 @@ def _portrait_function_pair(count, kind, style, measurer):
     )
     return portrait, replace(portrait, function_rotation=0)
 
+
+def _declared_synthetic_targets(unit):
+    """Typed, explicit synthetic Circuit Nets; NEVER infer nets from labels.
+
+    This synthetic fixture owns two (three for 8+ pins) named Net memberships.
+    All other terminals are unassigned (net_id=None). True NC is disabled.
+    Real production data must come from verified ELEKTRIK IcPaintBinding.
+    """
+    reference = unit.reference
+    numbered = {pin.number: pin for pin in unit.pins}
+    if len(numbered) != len(unit.pins):
+        raise ValueError("IC_DEMO_DUPLICATE_PHYSICAL_NUMBER")
+    memberships = {
+        "TEST_SIGNAL": PinRef(reference, unit.pins[0].number),
+        "TEST_SUPPLY": PinRef(reference, unit.pins[-1].number),
+    }
+    if len(unit.pins) >= 8:
+        memberships["TEST_COMMON"] = PinRef(
+            reference, unit.pins[-2].number,
+        )
+    circuit = Circuit(
+        (ComponentInstance(reference, f"TEST_IC_{len(unit.pins)}"),),
+        tuple(Net(name, (pinref,)) for name, pinref in memberships.items()),
+    )
+    net_for = {
+        member: net.name for net in circuit.nets for member in net.members
+    }
+    targets = []
+    for pin in unit.pins:
+        physical = PinRef(reference, pin.number)
+        if pin.role == "nc" and physical in net_for:
+            raise AssertionError("IC_DEMO_NC_MUST_NOT_HAVE_NET")
+        targets.append(IcConnectionTarget(
+            pin_id=pin.pin_id,
+            pin_ref=physical,
+            anchor=pin.anchor,
+            connectable=pin.role != "nc",
+            net_id=net_for.get(physical),
+            reason="NC: explicitly unconnected physical contact"
+            if pin.role == "nc" else None,
+        ))
+    return tuple(targets), circuit
+
+
+def _write_four_views(folder, key, unit, style, measurer, policy):
+    """Create clean, ink-only, targets-only and combined diagnostics.
+
+    Only the editor-only SVG group may contain connection-target colors.
+    No screenshot postprocessing or fake pixels are involved.
+    """
+    targets, circuit = _declared_synthetic_targets(unit)
+    source_nets = circuit.nets
+    kwargs = dict(
+        policy=policy, glyph_detail=True, editor_targets=targets,
+    )
+    variants = {
+        "clean": {},
+        "diagnostic-ink": {"review_overlay": True},
+        "diagnostic-pins": {"editor_overlay": True},
+        "diagnostic": {"review_overlay": True, "editor_overlay": True},
+    }
+    results = {}
+    for name, flags in variants.items():
+        drawing = render_resolved_ic(
+            unit, style, measurer, **kwargs, **flags,
+        )
+        if drawing.connection_targets != targets:
+            raise AssertionError("IC_DIAGNOSTIC_TARGETS_NOT_SOURCE_IDENTICAL")
+        if drawing.pin_anchors != tuple(
+            (pin.pin_id, pin.anchor) for pin in unit.pins
+        ):
+            raise AssertionError("IC_DIAGNOSTIC_MOVED_EXTERNAL_POINT")
+        if circuit.nets != source_nets:
+            raise AssertionError("IC_DIAGNOSTIC_MUTATED_NET")
+        has_editor = 'data-layer="editor-connection-targets"' in drawing.svg
+        if has_editor != flags.get("editor_overlay", False):
+            raise AssertionError("IC_DIAGNOSTIC_LAYER_LEAKAGE")
+        if name in ("clean", "diagnostic-ink") and any(
+            color in drawing.svg for color in ("#148645", "#8b1e27")
+        ):
+            raise AssertionError("IC_DIAGNOSTIC_COLOR_LEAK")
+        (folder / f"{key}-{name}.svg").write_text(
+            drawing.svg, encoding="utf-8",
+        )
+        results[name] = drawing
+    return results["clean"], targets, circuit
+
+
 def _bbox_gap(a, b):
     dx = max(b.min_x - a.max_x, a.min_x - b.max_x, 0)
     dy = max(b.min_y - a.max_y, a.min_y - b.max_y, 0)
@@ -212,15 +306,9 @@ def generate(folder: Path, font_file: Path):
             else:
                 unit, plan = _vertical_fixture(count, kind, style, measure)
                 key = f"ic-{count:02d}-vertical"
-            render = render_resolved_ic(
-                unit, style, measure, policy=policy, glyph_detail=True,
+            render, targets, circuit = _write_four_views(
+                folder, key, unit, style, measure, policy,
             )
-            diag = render_resolved_ic(
-                unit, style, measure, policy=policy,
-                review_overlay=True, glyph_detail=True,
-            )
-            (folder / f"{key}-clean.svg").write_text(render.svg, encoding="utf-8")
-            (folder / f"{key}-diagnostic.svg").write_text(diag.svg, encoding="utf-8")
             text_boxes = [x for x in render.ink if x.text]
             protected_strokes = [x for x in render.ink if x.kind in (
                 "outer-stroke", "field-divider", "zone-divider", "pin-lead",
@@ -269,6 +357,14 @@ def generate(folder: Path, font_file: Path):
                     ],
                 } for b in text_boxes],
                 "source_pin_numbers": [p.number for p in unit.pins],
+                "diagnostic_target_count": len(targets),
+                "disabled_nc_count": sum(not t.connectable for t in targets),
+                "synthetic_net_memberships": {
+                    net.name: [
+                        [member.reference, member.number]
+                        for member in net.members
+                    ] for net in circuit.nets
+                },
                 "status": "DRAFT",
             }
 
@@ -279,18 +375,9 @@ def generate(folder: Path, font_file: Path):
         p90, p0 = _portrait_function_pair(count, kind, style, measure)
         pair = {}
         for angle, unit in ((90, p90), (0, p0)):
-            result = render_resolved_ic(
-                unit, style, measure, policy=policy, glyph_detail=True,
-            )
             key = f"portrait-{count:02d}-function-{angle:02d}"
-            (folder / f"{key}-clean.svg").write_text(
-                result.svg, encoding="utf-8",
-            )
-            (folder / f"{key}-diagnostic.svg").write_text(
-                render_resolved_ic(
-                    unit, style, measure, policy=policy,
-                    glyph_detail=True, review_overlay=True,
-                ).svg, encoding="utf-8",
+            result, targets, circuit = _write_four_views(
+                folder, key, unit, style, measure, policy,
             )
             txt = tuple(x for x in result.ink if x.text)
             strokes = tuple(x for x in result.ink if x.kind in (
@@ -307,6 +394,9 @@ def generate(folder: Path, font_file: Path):
             pair[str(angle)] = {
                 "svg": f"{key}-clean.svg",
                 "physical_pin_count": count,
+                "diagnostic_target_count": len(targets),
+                "disabled_nc_count": sum(not target.connectable for target in targets),
+                "synthetic_net_names": [net.name for net in circuit.nets],
                 "body_width_um": unit.body.max_x - unit.body.min_x,
                 "body_height_um": unit.body.max_y - unit.body.min_y,
                 "angle_deg": angle,
