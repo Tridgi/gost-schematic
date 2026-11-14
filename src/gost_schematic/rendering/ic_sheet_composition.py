@@ -145,3 +145,66 @@ def compose_authoritative_ic_layers(
                     and text.get("data-owner") == reference):
                 root.remove(text)
     root.set("data-native-ic-composition", "exact-circuit-pinrefs")
+
+
+def append_verified_sheet_continuations(
+    root: ET.Element,
+    circuit: Circuit,
+    project: object,
+    style,
+    *,
+    diagnostic: bool,
+) -> None:
+    """Paint typed b continuation addresses as nonphysical labels, not pads.
+
+    The caller's NetContinuationProject is source-validated by the electrical
+    owner. Refuse foreign circuit Net membership or invented a indicators.
+    """
+    from gost_schematic.electrical.netrefs import NetContinuationProject
+
+    if not isinstance(project, NetContinuationProject):
+        raise TypeError("SHEET_CONTINUATION_SOURCE_TYPED_PROJECT_REQUIRED")
+    if project.circuit.nets != circuit.nets:
+        raise ValueError("SHEET_CONTINUATION_FOREIGN_CIRCUIT_NETS")
+    if len(project.endpoints) != 2 or {
+        endpoint.id for endpoint in project.endpoints
+    } != {"b-X2", "b-R5"}:
+        raise ValueError("SHEET_CONTINUATION_SOURCE_B_PAIR_MISMATCH")
+    if {endpoint.label for endpoint in project.endpoints} != {"b"}:
+        raise ValueError("SHEET_CONTINUATION_FORGED_A_SOURCE_LABEL")
+    region = ET.SubElement(root, _NS+"g", {
+        "data-layer": "typed-nonphysical-continuations",
+        "data-nonphysical": "true",
+        "data-do-not-infer-net-from-shapes": "true",
+    })
+    for end in project.endpoints:
+        at = end.anchor
+        ET.SubElement(region, _NS+"circle", {
+            "cx": format_mm(at.x), "cy": format_mm(at.y),
+            "r": "0.65", "stroke": "#000000",
+            "stroke-width": "0.3", "fill": "#ffffff",
+            "data-nonphysical-net-continuation": end.id,
+            "data-electrical-junction": "false",
+        })
+        label = ET.SubElement(region, _NS+"text", {
+            "x": format_mm(at.x),
+            "y": format_mm(at.y-4000),
+            "font-family": style.font_family,
+            "font-size": format_mm(style.em_height_um),
+            "text-anchor": "middle", "stroke": "none", "fill": "#000000",
+            "data-source": "typed-net-continuation-v2",
+            "data-nonphysical": "true",
+        })
+        if style.font_sha256 is not None:
+            label.set("data-font-sha256", style.font_sha256)
+        label.text = end.label
+        if diagnostic:
+            ET.SubElement(region, _NS+"rect", {
+                "x": format_mm(at.x-2500), "y": format_mm(at.y-2500),
+                "width": "5", "height": "5", "fill": "none",
+                "stroke": "#be6300", "stroke-width": "0.35",
+                "stroke-dasharray": "1 0.5",
+                "data-layer": "nonphysical-continuation-editor-reading-zone",
+                "data-connectable": "false",
+                "data-not-a-physical-terminal": "true",
+            })
