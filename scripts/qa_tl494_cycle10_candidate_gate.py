@@ -318,6 +318,12 @@ def selftest_tampering(
         "premature_print_release": lambda a: a.update(
             qa_print_release="PASS",
         ),
+        "forged_15_completed_net_counter": lambda a: a["candidates"][0][
+            "owner_router_report"].update(routed_net_count=15),
+        "invented_protective_ground_route": lambda a: a["candidates"][0][
+            "accepted_graph_nonprintable"]["segments_um"].append({
+                "net": "PE", "start": [0, 0], "end": [1000, 0],
+            }),
         **({
             "fake_source_nominal": lambda a: a["source_BOM"][0].update(
                 nominal_si="12345",
