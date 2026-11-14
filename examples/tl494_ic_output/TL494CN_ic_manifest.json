@@ -1,0 +1,145 @@
+{
+  "font_face": [
+    "OpenGost Type A TT",
+    "Regular"
+  ],
+  "font_sha256": "f5c539d432e2fceae137ad746d4acfdcca941d2c7349f013a5bf60231d3e6d01",
+  "hardware": "Texas Instruments TL494CN",
+  "native_paint_head": "79ddb2ae57efd9ea621d64914a324988b343061d",
+  "net_assignment_verified": false,
+  "physical_pin_anchors_um": {
+    "1": [
+      25000,
+      86250
+    ],
+    "10": [
+      105000,
+      93750
+    ],
+    "11": [
+      105000,
+      78750
+    ],
+    "12": [
+      105000,
+      41250
+    ],
+    "13": [
+      105000,
+      63750
+    ],
+    "14": [
+      105000,
+      56250
+    ],
+    "15": [
+      105000,
+      48750
+    ],
+    "16": [
+      25000,
+      93750
+    ],
+    "2": [
+      25000,
+      41250
+    ],
+    "3": [
+      25000,
+      56250
+    ],
+    "4": [
+      25000,
+      48750
+    ],
+    "5": [
+      25000,
+      63750
+    ],
+    "6": [
+      25000,
+      71250
+    ],
+    "7": [
+      25000,
+      78750
+    ],
+    "8": [
+      105000,
+      71250
+    ],
+    "9": [
+      105000,
+      86250
+    ]
+  },
+  "physical_pin_count": 16,
+  "real_pin_names": {
+    "1": "1IN+",
+    "10": "E2",
+    "11": "C2",
+    "12": "VCC",
+    "13": "OUTPUT CTRL",
+    "14": "REF",
+    "15": "2IN−",
+    "16": "2IN+",
+    "2": "1IN−",
+    "3": "FEEDBACK",
+    "4": "DTC",
+    "5": "CT",
+    "6": "RT",
+    "7": "GND",
+    "8": "C1",
+    "9": "E1"
+  },
+  "source_photo_pin_order": {
+    "left": [
+      "2",
+      "4",
+      "3",
+      "5",
+      "6",
+      "7",
+      "1",
+      "16"
+    ],
+    "right": [
+      "12",
+      "15",
+      "14",
+      "13",
+      "8",
+      "11",
+      "9",
+      "10"
+    ]
+  },
+  "status": "DRAFT_REAL_TL494_PHYSICAL_IC_PAINT_PR93",
+  "text_h_um": 3500,
+  "variants": {
+    "PWM_angle_0_clean": {
+      "font": "f5c539d432e2fceae137ad746d4acfdcca941d2c7349f013a5bf60231d3e6d01",
+      "ink_boxes": 56,
+      "real_anchors": 16,
+      "svg": "TL494CN_PWM_angle_0_clean.svg"
+    },
+    "PWM_angle_0_diagnostic": {
+      "font": "f5c539d432e2fceae137ad746d4acfdcca941d2c7349f013a5bf60231d3e6d01",
+      "ink_boxes": 56,
+      "real_anchors": 16,
+      "svg": "TL494CN_PWM_angle_0_diagnostic.svg"
+    },
+    "PWM_angle_90_clean": {
+      "font": "f5c539d432e2fceae137ad746d4acfdcca941d2c7349f013a5bf60231d3e6d01",
+      "ink_boxes": 56,
+      "real_anchors": 16,
+      "svg": "TL494CN_PWM_angle_90_clean.svg"
+    },
+    "PWM_angle_90_diagnostic": {
+      "font": "f5c539d432e2fceae137ad746d4acfdcca941d2c7349f013a5bf60231d3e6d01",
+      "ink_boxes": 56,
+      "real_anchors": 16,
+      "svg": "TL494CN_PWM_angle_90_diagnostic.svg"
+    }
+  }
+}
