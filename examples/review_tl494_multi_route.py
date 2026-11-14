@@ -26,6 +26,7 @@ from gost_schematic.validation.route_drc import audit_route_drc
 _ROOT = Path(__file__).resolve().parents[1]
 _FROZEN = _ROOT / "tests" / "fixtures" / "tl494-routing-source-e695c415.json"
 _KNOWN_BAD = _ROOT / "tests" / "fixtures" / "tl494_cycle9_known_bad_nine_drc.json"
+_IC_ANCHORS = _ROOT / "tests" / "fixtures" / "tl494_cycle9_original_DA1_anchor_sha.json"
 _SOURCE_SHA = "e695c415fdced164b0e0c39c5249d030795a0aa6"
 
 
@@ -89,10 +90,21 @@ def generate(
     original = compose_circuit(font_file)
     circuit, graph, parts, symbols = original[:4]
     _verify_source(circuit, graph, source_revision)
+    pinned_ic = json.loads(_IC_ANCHORS.read_text("utf-8"))
+    if pinned_ic["source_commit"] != source_revision:
+        raise ValueError("ROUTER_HISTORICAL_IC_SOURCE_IDENTITY_MISMATCH")
+    actual_ic_positions = original[4]["DA1"]
+    for number, expected in pinned_ic["physical_DA1_PinRef_points_um"].items():
+        if [actual_ic_positions[number].x, actual_ic_positions[number].y] != expected:
+            raise ValueError(
+                "ROUTER_ORIGINAL_PHYSICAL_DA1_PIN_DRIFT:" + number
+            )
     # Real material symbol catalogue + physical vendor source native
     # reference geometry, not guessed boxes in a synthetic trial.
     by_part = {id_: symbols[part.symbol_id] for id_, part in parts.items()}
     style = original[7]
+    if style.font_sha256 != pinned_ic["font_sha256"]:
+        raise ValueError("ROUTER_SOURCE_TYPE_A_FONT_SHA_MISMATCH")
     measurer = PillowTextMeasurer()
 
     # Use measured annotations anchored to existing parts. Original text
@@ -258,6 +270,10 @@ def generate(
         "model_parts": len(circuit.components),
         "model_nets": len(circuit.nets),
         "model_DA1_physical_pin_count": 16,
+        "pinned_original_DA1_tip_positions_um": (
+            pinned_ic["physical_DA1_PinRef_points_um"]
+        ),
+        "pinned_original_type_a_font_sha256": pinned_ic["font_sha256"],
         "current_page": page,
         "original_placement": {
             **asdict(placement),
