@@ -23,7 +23,7 @@ normative approval. All 36 variants are **DRAFT** at the reviewed base.
 | --- | --- | --- |
 | \`schematic_catalog_search(semantic_query)\` | Exact installed candidates (e.g. generic \`конденсатор\` => fixed, polarized, electrolytic, no implicit choice); part/symbol catalog SHA, 8 D4 *engine* poses, pin numbers/anchor µm/role/polarity, keepout and stroked dimensions, real standard_ref, draft status | No filesystem path, no catalog mutation |
 | \`schematic_catalog_preview(part_id)\` | **ImageContent PNG + TextContent full SVG + metadata** rendered with \`render_symbol_svg\` from actual installed symbol, cryptographic image SHA and exact physical pin map | Not an invented SVG or manually painted image; clean sample, not completed sheet |
-| \`schematic_tl494_selection_profile()\` | Exact source-specific 12-ref matrix, explicit 36-DRAFT status and **missing real TL494CN IC adapter** gate | Editorial requirement, not full vendor pinout |
+| \`schematic_tl494_selection_profile()\` | Exact source-specific 13-ref matrix (including R5 wiper), explicit 36-DRAFT status and **missing real TL494CN IC adapter** gate | Editorial requirement, not full vendor pinout |
 | \`schematic_tl494_pin_alias(full_name)\` | Only dictionary-confirmed \`FEEDBACK→FB\` and \`OUTPUT CTRL→OC\` display labels. Returns true full original name + declared physical numbers 3 and 13. Unknown full name => \`ALIAS_UNVERIFIED\` | Editor text only; never changes a physical \`PinRef\` |
 | \`schematic_preflight_project(project_id,revision,profile)\` | Reopens **actual stored E3** through ProjectService, verifies SHA/catalog lock, enumerates original physical \`Circuit.Net\` and PinRefs, components, symbol transforms/keepouts, group bboxes, authored wire route and independent **subset** of print DRC | Same P1.1 explicit host-enabled workspace and UUID allowlist. Never exports/writes file or connects nets |
 
@@ -60,10 +60,9 @@ UUID allowlist. No caller-supplied paths, project traversal or write tool.
 | VT1 | \`transistor.mosfet_n_enh\` | G/D/S physical pin numbers, source-review arrow and internal dot pending ESKD |
 | VD1 | \`diode.schottky\` | True A/K and Schottky cathode; preserve 90° orientation and original source, validate D4 separately |
 | FU1 | \`fuse.general\` | Fuse, not resistor/block |
+| R5 | \`resistor.variable\` | Three physical terminals A/B/W, not an ordinary two-contact resistor |
   
-R5 is a variable resistor in the source, but **not added as a default**
-to the 12-item user matrix. All other original parts (X1/X2, DA1,
-R1–R8) require independently verified exact source-specific selection.
+R5 is explicitly source-locked as `resistor.variable` with three physical terminals A/B/W, including the wiper. All other original parts (X1/X2, DA1 and remaining resistors) require independently verified exact source-specific selection.
 
 The full TL494CN is **NOT** installed as an approved \`PartDefinition\`
 for P1.1 persistence. The standalone reference
@@ -108,7 +107,7 @@ independent PAINT/ESKD/QA release gates exist.
    The service also includes the full original `electrical_erc` (independent
    `validate_circuit` and `validate_external_wires`) at that exact revision.
    A clean ERC never implies that all print-layout checks have passed.
-2. Source-pinned TL494 12-reference matrix compared with the **actual**
+2. Source-pinned TL494 13-reference matrix compared with the **actual**
    saved component \`part_id\`, reporting
    \`TL494_REQUIRED_COMPONENT_MISSING\` or
    \`TL494_UGO_VARIANT_MISMATCH\`; no silent symbol replacement.
@@ -185,3 +184,34 @@ is claimed. The catalog tool never writes files.
 Independent GitHub CI tests Python 3.12/3.13, Ruff, wheel and
 full background repository tests; hold Draft PR until MAIN 2,
 ESKD, YGO/PAINT and independent QA have reviewed the changes.
+
+
+## Cycle9 MAIN 3 — SHA-locked AI read-only continuation
+
+The updated v2 source profile has **13 exact references**, including
+`R5 = resistor.variable` and its physical A/B/W wiper. The frozen
+original source commit is `e695c415fdced164b0e0c39c5249d030795a0aa6`;
+its manifest Git blob is `b2375feb43ad18b8a8e5a515bfc007d169b26908`.
+Model reference counts 23/15/91/37 are **unchanged**, not a claim
+that the full original has been persisted in P1.1.
+
+Two new actual read-only MCP tools: `schematic_catalog_select`
+requires exactly verified `part_id`, `part_sha256` and
+`symbol_sha256` before selection (real catalog pin *templates*,
+not invented placed PinRefs). `schematic_preview_placement`
+proposes a change for an **existing** saved E3 component, preserving
+all original PinRef/Net identities, comparing physical world-µm
+anchors, and **blocking** movement of connected physical terminals
+without an approved multi-Net router. It returns no user-editable
+Circuit, no new SVG image and no transaction. Both tools forbid writes.
+
+The SVG/PNG preview now optionally accepts **both SHA** as an exact
+read-only provenance lock. A missing half-lock fails with
+`CATALOG_LOCK_REQUIRED`, a stale lock with
+`CATALOG_REVISION_MISMATCH`. A preview without SHAs is explicitly
+an `UNPINNED_CATALOG_SAMPLE`, not suitable as immutable selection.
+Unsupported API versions are refused with `API_VERSION_UNSUPPORTED`.
+
+Full design, threat model and P1.2 CAS/rollback gates:
+[Cycle9 agent selection contract](cycle9-ai-agent-selection-and-transaction-gates.md).
+No new write MCP tools. No normative approval from a green CI.
