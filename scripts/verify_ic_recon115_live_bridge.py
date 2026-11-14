@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from dataclasses import replace
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -254,8 +255,8 @@ def _expected_marker_count(svg):
     ])
 
 
-def test_real_115_paint_seal_clean_vs_diagnostic(monkeypatch):
-    font = Path(__import__("os").environ["IC_TYPE_A_FONT_PATH"])
+def test_real_115_paint_seal_clean_vs_diagnostic():
+    font = Path(os.environ["IC_TYPE_A_FONT_PATH"])
     native, physical, paint, verified, style, measurer = live_paint(font)
     clean = verified.render(
         physical, paint, style, measurer, diagnostics=False,
@@ -269,11 +270,10 @@ def test_real_115_paint_seal_clean_vs_diagnostic(monkeypatch):
     assert all(c.net_id for c in verified.manifest.contacts)
     assert physical.circuit.nets is native.circuit.nets
     _checks(physical)
-    monkeypatch.setattr(verified, "verify_against", verified.verify_against, raising=False)
 
 
 def test_real_115_paint_text_only_toggle_keeps_trusted_physical_points():
-    font = Path(__import__("os").environ["IC_TYPE_A_FONT_PATH"])
+    font = Path(os.environ["IC_TYPE_A_FONT_PATH"])
     native, physical, paint, _, style, measure = live_paint(font)
     original_endpoints = {c.pin_ref: c.world_anchor for c in physical.contacts}
     for angle in (IcTextAngle.HORIZONTAL, IcTextAngle.BOTTOM_TO_TOP):
