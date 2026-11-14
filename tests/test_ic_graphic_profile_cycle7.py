@@ -142,7 +142,7 @@ def test_independent_top_bottom_profile_preserves_physical_graph(count, kind):
     ).moved == ()
     assert ic_from_json(ic_to_json(rotated)) == rotated
     assert len(points) == count
-    assert set(p.number for p in vertical.device.pins) == {
+    assert {p.number for p in vertical.device.pins} == {
         str(i) for i in range(1, count + 1)
     }
 
