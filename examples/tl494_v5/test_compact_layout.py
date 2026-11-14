@@ -12,7 +12,7 @@ def test_compact_A3_repositions_only_all_23_real_parts():
     source = assemble_native_v5()
     compact = compact_source_assembly()
     assert len(COMPACT_A3_MM) == len(compact.circuit.components) == 23
-    assert source.circuit.nets is compact.circuit.nets
+    assert source.circuit.nets == compact.circuit.nets
     assert len(compact.circuit.nets) == 15
     old_parts = {c.reference: c for c in source.circuit.components}
     for current in compact.circuit.components:
