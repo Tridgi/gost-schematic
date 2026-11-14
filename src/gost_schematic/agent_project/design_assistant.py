@@ -5,6 +5,7 @@ a manufacturer-verified TL494 IC catalog adapter. All E3 references and
 connections are loaded from the exact immutable ProjectService revision.
 """
 from typing import Any
+from xml.etree import ElementTree as ET
 
 from gost_schematic.core.geometry import Line, enclosing_box, primitive_bounds
 from gost_schematic.core.transforms import Transform
@@ -161,13 +162,21 @@ def catalog_preview(catalog: CatalogResolver, part_id: str) -> tuple[str, bytes,
     longest = max(width, height)
     width_px = max(1, (512 * width + longest // 2) // longest)
     height_px = max(1, (512 * height + longest // 2) // longest)
+    # resvg_py needs a pixel-valued viewport; the source inspection SVG
+    # intentionally remains a truthful mm/viewBox document for clients.
+    raster_root = ET.fromstring(svg)
+    raster_root.set("width", str(width_px))
+    raster_root.set("height", str(height_px))
     try:
         import resvg_py
         png = resvg_py.svg_to_bytes(
-            svg_string=svg, width=width_px, height=height_px,
+            svg_string=ET.tostring(raster_root, encoding="unicode"),
+            width=width_px, height=height_px,
         )
     except ImportError as exc:
         raise ProjectError("RASTERIZER_UNAVAILABLE", "Install mcp extra") from exc
+    except Exception as exc:
+        raise ProjectError("RASTERIZATION_FAILED", type(exc).__name__) from exc
     if not png.startswith(b"\x89PNG\r\n\x1a\n") or len(png) > 2_000_000:
         raise ProjectError("RASTERIZATION_FAILED", "Catalog PNG preview invalid")
     import hashlib
