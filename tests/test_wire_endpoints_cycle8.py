@@ -210,6 +210,27 @@ def test_partial_foreign_net_collinear_overlap_fails_closed():
         )
 
 
+@pytest.mark.parametrize("physical_point", (
+    Point(50000, 40000),  # Same-net wire interior, not an authored contact.
+    Point(65000, 70000),  # Foreign-net X, still no actual physical junction.
+))
+def test_physical_pin_on_unmarked_wire_interior_is_not_eligible(physical_point):
+    circuit, graph, nets, ids, parts, symbols, _, _ = data()
+    altered = dict(symbols)
+    vt = altered["synthetic.vt.symbol"]
+    relative = physical_point - Point(110000, 40000)
+    altered["synthetic.vt.symbol"] = replace(
+        vt, pins=(replace(vt.pins[0], at=relative),),
+    )
+    shot = collect_wire_endpoints(circuit, graph, nets, ids, parts, altered)
+    pin = next(c for c in shot.physical_contacts if c.pin == PinRef("VT1", "G"))
+    assert pin.point == physical_point
+    assert pin.state is TargetState.BLOCKED
+    assert not pin.can_accept_connection
+    assert pin.reason_code == "UNMARKED_PIN_WIRE_INTERIOR"
+    assert shot.circuit.nets == circuit.nets
+
+
 def test_stale_duplicate_id_and_incomplete_physical_map_fail_closed():
     circuit, graph, nets, ids, parts, symbols, _, _ = data()
     with pytest.raises(ValueError, match="WIRE_END_WIRE_IDS_DUPLICATE_OR_INVALID"):
