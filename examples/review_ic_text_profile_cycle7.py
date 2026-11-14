@@ -178,8 +178,8 @@ def generate(output_dir: Path, font_file: Path) -> dict:
                         rendered = render_resolved_ic(
                             unit, style, measurer, glyph_detail=True,
                         )
-                        assert {n: p for n, p in rendered.pin_anchors} == {
-                            p.number: p.anchor for p in unit.pins
+                        assert {n: point for n, point in rendered.pin_anchors} == {
+                            pin.pin_id: pin.anchor for pin in unit.pins
                         }
                         root = ET.fromstring(rendered.svg)
                         lines = root.findall(
