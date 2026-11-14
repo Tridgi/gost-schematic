@@ -13,7 +13,11 @@ from importlib import import_module
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-from examples.tl494_v5.native_circuit import assemble_native_v5
+from examples.tl494_v5.compact_layout import (
+    A3_LANDSCAPE_UM,
+    actual_component_occupied_mm,
+    compact_source_assembly,
+)
 from gost_schematic.core.geometry import Box, Line, Point, Rectangle
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.model.pins import GraphicPin
@@ -103,7 +107,7 @@ def audit_source_route(font_file: Path, output: Path, *, node_cap=5000) -> dict:
     Any partial route is always a nonprintable report. Fail closed on pin move,
     source identity change, unknown runtime owner, DRC or incompleteness.
     """
-    source = assemble_native_v5()
+    source = compact_source_assembly()
     source.verify()
     typography = inspect_type_a_font(
         font_file, h_um=3500, family="OpenGOST type A",
@@ -143,9 +147,8 @@ def audit_source_route(font_file: Path, output: Path, *, node_cap=5000) -> dict:
     owner_router = import_module(
         "gost_schematic.engines.multiterminal_router"
     ).route_circuit_net_trees
-    # The original 679mm reference is larger than A3. This roomy route
-    # viewport is for diagnosis only, NOT a claimed A3 printable sheet.
-    page = Box(-230000, -50000, 540000, 310000)
+    # New type-locked A3 paper; old 679.3mm source remains immutable.
+    page = Box(0, 0, *A3_LANDSCAPE_UM)
     result = owner_router(
         source.circuit, source.parts, symbols, page_box=page,
         annotation_placements=guards,
@@ -172,7 +175,9 @@ def audit_source_route(font_file: Path, output: Path, *, node_cap=5000) -> dict:
         d.code for d in label_layout.diagnostics
         if d.severity.value == "error"
     ]
-    record["a3_print_fit"] = False
+    measured = actual_component_occupied_mm(source, symbols)
+    record["compact_A3"] = measured
+    record["a3_print_fit"] = measured["A3_capacity_fit"]
     record["print_after_released"] = bool(
         result.print_pass and label_layout.valid and record["a3_print_fit"]
     )
