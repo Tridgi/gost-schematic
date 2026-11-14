@@ -243,7 +243,10 @@ Every target is derived from a previously verified immutable E3
   "electrical_role": "POWER_INPUT",
   "pin_function": "general",
   "polarity": "none",
-  "net_identity": {"id": "authoritative-net-uuid", "name": "VCC"},
+  "net_identity": {
+    "id": "authoritative-net-uuid", "name": "VCC",
+    "members": [{"reference": "DD1", "number": "27"}]
+  },
   "wire_segment_id": null,
   "wire_end": null,
   "world_um": [102000, 64000],
@@ -266,6 +269,12 @@ An authored wire endpoint uses \`kind="wire_endpoint"\`,
 and **null** \`pin_ref\`, \`component_id\`, \`physical_number\`, etc.
 Its \`net_identity\` comes from the wire's declared Net UUID, not nearby
 ink. No UI "pseudo-pin" is created at a body edge or text field.
+
+The implementation must reuse the existing
+\`gost_schematic.electrical.netrefs.NetIdentity\` from Issue #90,
+retaining its exact physical \`members: tuple[PinRef,...]\` and
+stable Net ID. This read-only projection exposes \`net_name\` as
+\`name\` for display; neither name nor raster ink establishes identity.
 
 The returned \`net_identity.id\` is authoritative; \`name\` is only a
 display string, **never a same-Net proof**, even for VCC/GND. A
