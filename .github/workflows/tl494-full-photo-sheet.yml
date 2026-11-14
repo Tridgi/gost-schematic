@@ -5,7 +5,7 @@ on:
     branches: [reference/tl494-native-rework-20261114]
     paths:
       - examples/tl494_full_photo_sheet.py
-      - .github/workflows/tl494-connected-native.yml
+      - .github/workflows/tl494-full-photo-sheet.yml
   workflow_dispatch:
 
 permissions:
