@@ -103,10 +103,21 @@ def _validate_inventory(request: dict[str, Any], catalog: CatalogResolver,
                                                   dict[str, set[tuple[str, str]]]]:
     references: dict[str, dict[str, Any]] = {}
     for row in _entries(request["components"], _MAX_COMPONENTS):
-        item = _fields(row, {"reference", "part_id", "part_sha256", "symbol_sha256"})
+        required = {"reference", "part_id", "part_sha256", "symbol_sha256"}
+        if tl494:
+            required |= {"source_part_id", "nominal_si"}
+        item = _fields(row, required)
         ref = _identifier(item["reference"], _REF, "INVALID_COMPONENT_REFERENCE")
         if ref in references:
             raise ProjectError("REQUEST_DUPLICATE_COMPONENT", "Repeated BOM reference")
+        if tl494:
+            _identifier(item["source_part_id"], _PART, "SOURCE_PART_ID_INVALID")
+            nominal = item["nominal_si"]
+            if nominal is not None and (
+                type(nominal) is not str or not 1 <= len(nominal) <= 60
+            ):
+                raise ProjectError("SOURCE_NOMINAL_INVALID",
+                                   "Source value must be exact bounded literal")
         part_id = item["part_id"]
         if part_id is None and tl494 and ref not in TL494_REQUIRED_PARTS:
             if item["part_sha256"] is not None or item["symbol_sha256"] is not None:
@@ -234,6 +245,26 @@ def review_request(request: dict[str, Any],
                 "SOURCE_NET_MEMBERSHIP_MISMATCH",
                 "TL494 source Net/PinRef members differ from immutable original",
             )
+        source_inventory = {
+            row["reference"]: row
+            for row in frozen["source_components"]
+        }
+        if any(
+            refs[ref]["source_part_id"] != row["part_id"]
+            for ref, row in source_inventory.items()
+        ):
+            raise ProjectError(
+                "SOURCE_PART_ID_MISMATCH",
+                "Physical source part ID differs from frozen original BOM",
+            )
+        if any(
+            refs[ref]["nominal_si"] != row["nominal_si"]
+            for ref, row in source_inventory.items()
+        ):
+            raise ProjectError(
+                "SOURCE_NOMINAL_MISMATCH",
+                "Exact source nominal literal differs from frozen original BOM",
+            )
         return {
             "schema_version": 1, "intent": request["intent"],
             "status": "BLOCKED_SOURCE_NOT_IMPORTABLE",
@@ -243,6 +274,8 @@ def review_request(request: dict[str, Any],
             "submitted_pinref_count": sum(len(x) for x in nets.values()),
             "source_membership_verified": False,
             "frozen_original_pinref_membership_verified": True,
+            "frozen_original_bom_part_ids_verified": True,
+            "frozen_original_nominals_verified": True,
             "frozen_source_typed_manifest_sha256": frozen[
                 "source_typed_manifest_sha256"
             ],
