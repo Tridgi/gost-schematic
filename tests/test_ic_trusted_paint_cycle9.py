@@ -403,7 +403,9 @@ def test_no_implicit_authority_when_circuit_or_paint_snapshot_is_modified(
         ),
     )
     forged_physical = replace(physical, circuit=corrupt)
-    with pytest.raises(ValueError, match="IC_ADAPTER_INTEGRITY_MISMATCH"):
+    with pytest.raises(
+        ValueError, match="IC_TRUSTED_OVERLAY_PROVENANCE_OR_TARGET_MISMATCH",
+    ):
         snapshot.verify_against(forged_physical, paint)
     with pytest.raises(ValueError, match="IC_ADAPTER_INTEGRITY_MISMATCH"):
         snapshot.verify_against(
