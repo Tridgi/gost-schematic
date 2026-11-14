@@ -44,7 +44,7 @@ SOURCE_LEFT = ("2","4","3","5","6","7","1","16")
 SOURCE_RIGHT = ("12","15","14","13","8","11","9","10")
 
 SPEC = {
-    **{f"C{x}": ("capacitor.electrolytic","220" if x in (1,2) else "47" if x==3 else "1000", Unit.MICROFARAD)
+    **{f"C{x}": ("capacitor.polarized","220" if x in (1,2) else "47" if x==3 else "1000", Unit.MICROFARAD)
        for x in (1,2,3,5,6)},
     "C4":("capacitor.fixed","10",Unit.NANOFARAD),
     "C7":("capacitor.fixed","1",Unit.NANOFARAD),
