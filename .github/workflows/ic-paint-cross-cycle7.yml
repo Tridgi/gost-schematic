@@ -29,13 +29,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Tridgi/gost-schematic
-          ref: 0bc38290db8729c0cd152c0d8d2ed955fae2dd31
+          ref: db53e0ab89bb23f555badc2def41ea9895a5d64c
           path: _paint_review_snapshot
           persist-credentials: false
       - name: Verify exact PAINT revision, load complete renderer dependencies for CI only
         shell: bash
         run: |
-          test "$(git -C _paint_review_snapshot rev-parse HEAD)" = '0bc38290db8729c0cd152c0d8d2ed955fae2dd31'
+          test "$(git -C _paint_review_snapshot rev-parse HEAD)" = 'db53e0ab89bb23f555badc2def41ea9895a5d64c'
           for part in ic_rectangular ic_orientation ic_hotspots; do
             test ! -e "src/gost_schematic/rendering/$part.py"
             cp "_paint_review_snapshot/src/gost_schematic/rendering/$part.py" "src/gost_schematic/rendering/$part.py"
