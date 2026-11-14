@@ -10,6 +10,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+from dataclasses import replace
+from collections.abc import Mapping
 from decimal import Decimal
 from pathlib import Path
 
@@ -17,6 +19,7 @@ from gost_schematic.core.geometry import Point
 from gost_schematic.electrical.ic_circuit_adapter import (
     IcCircuitBinding,
     bind_ic_circuit,
+    bind_ic_circuit_from_catalog,
 )
 from gost_schematic.electrical.tl494cn import (
     TI_DEVICE_ID,
@@ -24,6 +27,7 @@ from gost_schematic.electrical.tl494cn import (
     verify_tl494cn_ti_pinout,
 )
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
+from gost_schematic.model.part import PartDefinition
 from gost_schematic.model.quantities import Quantity, QuantityKind
 
 FROZEN_SOURCE_COMMIT = "e695c415fdced164b0e0c39c5249d030795a0aa6"
@@ -168,6 +172,93 @@ def build_frozen_photo_23() -> tuple[IcCircuitBinding, dict]:
     )
     assert_frozen_photo_topology(binding, source)
     return binding, source
+
+
+def bind_positioned_photo_circuit_from_catalog(
+    original_circuit: Circuit,
+    record,
+    parts_by_id: Mapping[str, PartDefinition],
+    *,
+    aliases=None,
+) -> IcCircuitBinding:
+    """Safe #115 A3 upgrade: old DA1 part_id -> true TI ID, unchanged Nets.
+
+    The original photo source is verified by *pinned fixture Git blob SHA1*
+    before any conversion. The whole existing positioned Circuit is checked,
+    not just its 16 IC pins: all 23 reference names, 15 source Net names,
+    exact 62 (ref, number) tuples, all other original part IDs and actual SI
+    nominal values. Only a NEW in-memory Circuit is returned; the source is
+    never edited, even if its historical DA1 part type is wrong.
+    """
+    from gost_schematic.electrical.ic_serde import IcLibraryRecord
+
+    if not isinstance(original_circuit, Circuit) or not isinstance(
+        record, IcLibraryRecord,
+    ):
+        raise TypeError("TL494_PHOTO_REBIND_TYPED_CIRCUIT_AND_RECORD_REQUIRED")
+    if record.device.identifier != TI_DEVICE_ID:
+        raise ValueError("TL494_PHOTO_REBIND_TI_SOURCE_DEVICE_REQUIRED")
+    verify_tl494cn_ti_pinout(record.device)
+    source = load_frozen_source()
+    if len(record.placements) != 1 or len(record.specs) != 1:
+        raise ValueError("TL494_PHOTO_REBIND_EXACT_ONE_DA1_UNIT_REQUIRED")
+    placement = record.placements[0]
+    if placement.component_ref != "DA1":
+        raise ValueError("TL494_PHOTO_REBIND_WRONG_PHYSICAL_REFERENCE")
+    if (
+        len(original_circuit.components) != 23
+        or len(original_circuit.nets) != 15
+        or sum(len(net.members) for net in original_circuit.nets) != 62
+    ):
+        raise ValueError("TL494_PHOTO_REBIND_23_15_62_SOURCE_MISMATCH")
+    actual = {comp.reference: comp for comp in original_circuit.components}
+    known = {row["ref"]: row for row in source["components"]}
+    if len(actual) != 23 or set(actual) != set(known):
+        raise ValueError("TL494_PHOTO_REBIND_COMPONENT_IDENTITY_MISMATCH")
+    for reference, component in actual.items():
+        original = known[reference]
+        if (
+            reference != "DA1"
+            and component.part_id != original["part_id"]
+        ):
+            raise ValueError("TL494_PHOTO_REBIND_NON_IC_PART_CHANGED")
+        if reference == "DA1":
+            if (
+                original["part_id"] != "reference.tl494cn"
+                or component.part_id not in ("reference.tl494cn", TI_DEVICE_ID)
+                or component.origin != placement.origin
+                or component.transform != placement.transform
+            ):
+                raise ValueError("TL494_PHOTO_REBIND_DA1_PART_OR_POSE_MISMATCH")
+        if original["nominal_si"] is None:
+            if component.nominal is not None:
+                raise ValueError("TL494_PHOTO_REBIND_UNSOURCED_NOMINAL")
+        elif (
+            component.nominal is None
+            or component.nominal.si_value != Decimal(original["nominal_si"])
+        ):
+            raise ValueError("TL494_PHOTO_REBIND_BOM_NOMINAL_DRIFT")
+    mapped = {net.name: net.members for net in original_circuit.nets}
+    expected = {
+        name: tuple(PinRef(*item.rsplit(".", 1)) for item in members)
+        for name, members in source["nets"].items()
+    }
+    if len(mapped) != 15 or mapped != expected:
+        raise ValueError("TL494_PHOTO_REBIND_NET_IDENTITY_OR_MEMBERSHIP_CHANGED")
+    upgraded = Circuit(tuple(
+        replace(comp, part_id=TI_DEVICE_ID)
+        if comp.reference == "DA1" else comp
+        for comp in original_circuit.components
+    ), original_circuit.nets)
+    if upgraded.nets is not original_circuit.nets:
+        raise ValueError("TL494_PHOTO_REBIND_NET_TUPLE_MUTATED")
+    result = bind_ic_circuit_from_catalog(
+        record, upgraded, parts_by_id, aliases=aliases,
+    )
+    assert_frozen_photo_topology(result, source)
+    if result.circuit.nets != original_circuit.nets:
+        raise ValueError("TL494_PHOTO_REBIND_UNAUTHORIZED_NET_REWRITE")
+    return result
 
 
 def main() -> None:
