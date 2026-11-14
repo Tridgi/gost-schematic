@@ -455,7 +455,7 @@ def route_multi_terminal_net(
                 sum(abs(w.end.x-w.start.x)+abs(w.end.y-w.start.y)
                     for w in branches), total_crossings,
                 ("ROUTE_PIN_TRAPPED_BY_SYMBOL_OR_TEXT:" + pin.reference
-                 + "." + pin.number,), tuple(connected),
+                 + "." + pin.number,), tuple(p for p in pins if p in connected),
             )
         path, reason = _visibility_path(
             current, outward, goals, net_name=net.name,
@@ -500,7 +500,7 @@ def route_multi_terminal_net(
                 sum(abs(w.end.x-w.start.x)+abs(w.end.y-w.start.y)
                     for w in branches), total_crossings,
                 ("ROUTE_POST_DRC_ERROR:" + ",".join(reasons),),
-                tuple(connected),
+                tuple(p for p in pins if p in connected),
             )
         total_bends += max(0, len(path) - 2)
         total_crossings += sum(
