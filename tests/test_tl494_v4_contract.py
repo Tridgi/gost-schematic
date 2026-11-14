@@ -87,7 +87,8 @@ def test_orthogonal_distinct_net_x_never_silently_merged():
 
 
 def test_foreign_net_crossing_at_explicit_junction_is_hard_error():
-    a=h(0,"a");b=v(5000,"b")
+    a=h(0,"a")
+    b=v(5000,"b")
     d=analyze_wire_graph(ExternalWireGraph((a,b),(p(5000,0),)))
     assert "UNAUTHORIZED_CROSS_NET_JUNCTION" in {v["code"] for v in d["violations"]}
 
