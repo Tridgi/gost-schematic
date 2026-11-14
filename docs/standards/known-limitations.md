@@ -84,7 +84,7 @@
 
 ## TL494 E3 / Issue #107: source screenshot comparison and numeric DRC blockers (2026-11-14)
 
-[Source-backed карточки](issue107-ugo-normative-matrix.json), [отчёт](issue107-tl494-normative-review.md), [Schottky D4 1:1 project evidence](evidence/issue107-schottky-d4-owner-1to1.svg). Каталог сохраняет **DRAFT** и не имеет утверждения оригинал↔рендер 1:1 по ГОСТ. В частности:
+[Source-backed карточки](issue107-ugo-normative-matrix.json), [отчёт](issue107-tl494-normative-review.md), [Schottky D4 1:1 project evidence](evidence/issue107-schottky-d4-owner-1to1.svg). [Шесть явно разных source-linked земля/PE/chassis/common marker sketches](evidence/issue107-ground-marker-source-classes-draft.svg) имеют только EDITORIAL-миллиметры и не создают новых Nets. Каталог сохраняет **DRAFT** и не имеет утверждения оригинал↔рендер 1:1 по ГОСТ. В частности:
 - `diode.schottky` катод asym top hook right/bottom hook left по ГОСТ 2.730 табл5 поз9; не симметризовать; только цельные D4 с A/K. 90° в TL494 нужен **A TOP/K BOTTOM**, электрическая работоспособность не подтверждена.
 - `capacitor.polarized` (тонкие пластины с +) и `capacitor.electrolytic` (толстые), оба ГОСТ 2.728 табл4, но source photo выбор нельзя заменять по удобству: C1/C2/C3/C5/C6 тонкий, C4/C7 обычный.
 - ГОСТ 2.723 табл1/2 L1/L2 ferromagnetic **SOLID** bar; магнитодиэлектрический DASHED не аналог.
