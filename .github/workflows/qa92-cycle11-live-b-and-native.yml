@@ -1,0 +1,192 @@
+name: QA92 Cycle11 latest real TI signed b-X2 b-R5 and native 300DPI integration
+
+on:
+  push:
+    branches: [parallel/qa-electronic-cycle7]
+  pull_request:
+    branches: [integration/stage0-12]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  actual-b-signatures-and-native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    env:
+      SOURCE_SHA: e695c415fdced164b0e0c39c5249d030795a0aa6
+      RECON_SHA: 65b68cdd89ac0c2ae0b137228da61a17ac78d339
+      IC_SHA: c8991bf232428645cad6e8b402d70abccf12a546
+      PAINT_SHA: df49c16fb082ee98213299358f374894fe1da220
+      NET_SHA: e2f6710b0f6d2f970f3353fb3171644c85d2ac75
+      YGO_SHA: 2dae5306c0690f2fc2d402bb4b65266dabd778b8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: e695c415fdced164b0e0c39c5249d030795a0aa6
+          path: _qa_sources/source
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 65b68cdd89ac0c2ae0b137228da61a17ac78d339
+          path: _qa_sources/recon
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: c8991bf232428645cad6e8b402d70abccf12a546
+          path: _qa_sources/ic
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: df49c16fb082ee98213299358f374894fe1da220
+          path: _qa_sources/paint
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: e2f6710b0f6d2f970f3353fb3171644c85d2ac75
+          path: _qa_sources/net
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 2dae5306c0690f2fc2d402bb4b65266dabd778b8
+          path: _qa_sources/catalog
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Hash attest and stage ACTUAL source+owner production in disposable RECON checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C _qa_sources/source rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$(git -C _qa_sources/recon rev-parse HEAD)" = "$RECON_SHA"
+          test "$(git -C _qa_sources/ic rev-parse HEAD)" = "$IC_SHA"
+          test "$(git -C _qa_sources/paint rev-parse HEAD)" = "$PAINT_SHA"
+          test "$(git -C _qa_sources/net rev-parse HEAD)" = "$NET_SHA"
+          test "$(git -C _qa_sources/catalog rev-parse HEAD)" = "$YGO_SHA"
+          python - <<'PY'
+          from pathlib import Path
+          from shutil import copy2
+
+          root = Path("_qa_sources/recon")
+          def stage(owner, path):
+              upstream = Path("_qa_sources") / owner / path
+              assert upstream.is_file(), upstream
+              target = root / path
+              target.parent.mkdir(parents=True, exist_ok=True)
+              copy2(upstream, target)
+
+          for name in ("tl494_named_photo_sheet.py", "tl494_native_rework.py",
+                       "tl494_connected_native.py", "tl494_full_native_model.py",
+                       "tl494_ic_paint_reference.py"):
+              stage("source", "examples/" + name)
+          for name in ("ic.py", "tl494cn.py", "ic_pin_alias.py",
+                       "ic_serde.py", "ic_paint_bridge.py",
+                       "ic_graphic_revision.py", "ic_circuit_adapter.py",
+                       "ic_editor_targets.py"):
+              stage("ic", "src/gost_schematic/electrical/" + name)
+          stage("ic", "examples/tl494_cycle9_circuit_integration.py")
+          stage("ic", "tests/fixtures/tl494_photo_23_frozen_cycle9.json")
+          for name in ("ic_rectangular.py", "ic_hotspots.py",
+                       "ic_orientation.py", "ic_power_profiles.py",
+                       "ic_tl494_profile.py", "ic_electrical_binding.py",
+                       "ic_sheet_composition.py", "sheet_svg.py",
+                       "external_wire_sheet.py", "native_sheet_ink_audit.py",
+                       "routed_native_sheet.py"):
+              stage("paint", "src/gost_schematic/rendering/" + name)
+          stage("paint", "examples/render_tl494_compact_new_router_cycle10.py")
+          stage("paint", "examples/render_tl494_full_native_cycle9.py")
+          stage("paint", "tests/test_routed_native_sheet_cycle10.py")
+          stage("paint", "tests/test_full_native_cycle9.py")
+          for name in ("source_profiles.py", "source_footprints.py"):
+              stage("catalog", "src/gost_schematic/catalog/" + name)
+          stage("catalog",
+                "src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json")
+          stage("catalog",
+                "src/gost_schematic/catalog/source_profiles/tl494_figure_comparisons_20261115.json")
+          for name in ("orthogonal_route_planner.py", "multiterminal_router.py"):
+              stage("net", "src/gost_schematic/engines/" + name)
+          stage("net", "src/gost_schematic/validation/route_drc.py")
+          PY
+      - name: True Type A face, checksum and offline spoof/release regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install -e "./_qa_sources/recon[dev,mcp,fonts]" cairosvg
+          ruff check scripts/qa_install_opengost_release.py \
+            scripts/qa_tl494_cycle11_b_binding_gate.py \
+            scripts/qa_tl494_cycle11_native_300dpi.py \
+            tests/test_qa_font_direct_release.py
+          python -m pytest -q tests/test_qa_font_direct_release.py
+          python scripts/qa_install_opengost_release.py \
+            --directory "$HOME/.local/share/fonts"
+          fc-cache -f
+          FONT="$(find "$HOME/.local/share/fonts" -iname '*TypeA*.ttf' -type f | head -1)"
+          test -f "$FONT"
+          echo "TL494_TYPE_A_FONT=$FONT" >> "$GITHUB_ENV"
+          echo "QA_B_TYPE_A_FONT=$FONT" >> "$GITHUB_ENV"
+      - name: Genuine current RECON b/Part-ID owner positive negative corner pytest
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd _qa_sources/recon
+          PYTHONPATH=src:. python -m pytest -q \
+            examples/tl494_v5/test_cycle11_ti_bridge.py \
+            examples/tl494_v5/test_cycle11_b_continuation.py \
+            examples/tl494_v5/test_routed_graph_contract.py
+      - name: Genuine owner RECON original signed b-X2 and b-R5 compact source data
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "output/qa92-cycle11-b-${{ matrix.python-version }}"
+          cd _qa_sources/recon
+          PYTHONPATH=src:. python -m examples.tl494_v5.cycle11_binding_preflight \
+            --font-file "$QA_B_TYPE_A_FONT" \
+            --output-file "../../output/qa92-cycle11-b-${{ matrix.python-version }}/real-owner-two-b-markers.json"
+      - name: Independent immutable source vector and actual X2 R5 PinRef validation, 12 hostile variants
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd _qa_sources/recon
+          PYTHONPATH=src:. python ../../scripts/qa_tl494_cycle11_b_binding_gate.py \
+            --source-root ../source \
+            --recon-root . \
+            --font-file "$QA_B_TYPE_A_FONT" \
+            --evidence "../../output/qa92-cycle11-b-${{ matrix.python-version }}/real-owner-two-b-markers.json" \
+            --output "../../output/qa92-cycle11-b-${{ matrix.python-version }}/qa-frozen-original-b-vectors-and-12-negatives.json"
+      - name: Genuine PAINT HEAD full new routed A3 physical source output, not manually changed original
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd _qa_sources/recon
+          PYTHONPATH=src:. python -m examples.render_tl494_compact_new_router_cycle10 \
+            --font-file "$QA_B_TYPE_A_FONT" \
+            --node-cap 5000 \
+            --output "../../output/qa92-cycle11-b-${{ matrix.python-version }}/paint-owner-native"
+      - name: Independent black and white clean versus 16 green diagnostic, physical 300 DPI NO-GO
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/qa_tl494_cycle11_native_300dpi.py \
+            --source-dir "output/qa92-cycle11-b-${{ matrix.python-version }}/paint-owner-native" \
+            --output-dir "output/qa92-cycle11-b-${{ matrix.python-version }}/qa-native-300dpi"
+      - name: Keep authentic source/PART/Net/INK evidence even on owner fail
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qa92-actual-C11-b-source-part-native-${{ matrix.python-version }}
+          path: output/qa92-cycle11-b-${{ matrix.python-version }}/
+          retention-days: 30
+          if-no-files-found: warn
