@@ -202,7 +202,7 @@ def test_sheet_continuation_standard_2701_has_different_arrow_policy():
     b = c["net-continuation.same-sheet"]
     assert a["source_clauses"].startswith("ГОСТ 2.701 §5.5.3")
     assert b["source_clauses"].startswith("ГОСТ 2.701 §5.5.4")
-    assert "without arrows" in a["positive_test"]
+    assert "no arrow" in a["positive_test"]
     assert "arrow" in b["positive_test"]
     assert "sheet,zone" in a["positive_test"]
 
@@ -263,7 +263,7 @@ def test_all_candidate_glyphs_in_original_svg_gallery_are_source_pinned():
 def test_report_explicitly_denies_unsigned_rotations_and_auto_pe_bonds():
     text = REPORT.read_text(encoding="utf-8")
     for tok in [
-        "R90_screen_clockwise", "Schottky", "BODY", "PE",
+        "R90_screen_clockwise", "Schottky", "body", "PE",
         "ГОСТ 2.701", "5.5.3", "5.5.4", "FB", "OC",
         "DRAFT", "BLOCKED", "300DPI", "2.723-68",
         "2.728-74", "2.721-74", "2.730-73",
