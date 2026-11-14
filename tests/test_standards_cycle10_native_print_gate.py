@@ -241,7 +241,10 @@ def test_diagnostic_foreground_only_true_pinref_endpoints(case, error):
     elif case == "wrong_anchor":
         layer[0].set("data-external-anchor-x-um", "9999")
     else:
-        ET.SubElement(root, SRC + "line", {"data-layer": "wires"})
+        # Keep 91 real wires but deliberately paint one AFTER green targets.
+        wire = root.find(f"{SRC}line[@data-layer='wires']")
+        root.remove(wire)
+        root.append(wire)
     with pytest.raises(gate.PrintEvidenceError, match=error):
         gate._check_physical_svg(root, _fake_owner_manifest(), True)
 
