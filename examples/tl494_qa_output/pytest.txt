@@ -1,3 +1,14 @@
-.......                                                                  [100%]
-7 passed in 0.13s
-PYTEST_EXIT_CODE=0
+.F.....                                                                  [100%]
+=================================== FAILURES ===================================
+______________________ test_authoritative_diode_direction ______________________
+
+    def test_authoritative_diode_direction():
+        _, _, _, coords = build_power()
+>       assert coords["VD1"]["2"][1] < coords["VD1"]["1"][1]
+E       assert 140 < 120
+
+tests/test_tl494_reference_native.py:28: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_tl494_reference_native.py::test_authoritative_diode_direction - assert 140 < 120
+1 failed, 6 passed in 0.14s
+PYTEST_EXIT_CODE=1
