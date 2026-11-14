@@ -106,6 +106,11 @@ def _typed_source_62(inventory: dict) -> dict:
     _insist(len(nets) == 15
             and len({n.get("name") for n in nets}) == 15,
             "TYPED_SOURCE_NOT_15_UNIQUE_NETS")
+    names = {net["name"] for net in nets}
+    _insist("COMMON" in names
+            and not names.intersection({"PE", "CHASSIS", "EARTH",
+                                        "PROTECTIVE_EARTH"}),
+            "TYPED_COMMON_0V_NOT_A_CHASSIS_PE_CROSS_NET")
     members = [ref for net in nets for ref in net.get("members", [])]
     _insist(len(members) == 62 and len(set(members)) == 62,
             "TYPED_SOURCE_62_UNIQUE_PINREFS_REQUIRED")
