@@ -127,7 +127,6 @@ def test_negative_swapped_signed_ic_circuit_is_not_reversible():
 
 
 def test_real_16_pin_signed_paint_overlay_and_wrong_record_fails(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ):
     from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
     from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
@@ -147,8 +146,9 @@ def test_real_16_pin_signed_paint_overlay_and_wrong_record_fails(
     paint = propose_ic_paint_binding(
         assembly.owner_ic_record, style, PillowTextMeasurer(),
     )
-    witness = verified.seal_paint(paint)
-    witness.verify_against(verified.signed, paint)
+    signed_paint, witness = verified.seal_paint(paint)
+    witness.verify_against(signed_paint, paint)
+    assert signed_paint.circuit is verified.signed.circuit
     assert len(witness.per_unit_targets) == 1
     assert len(witness.per_unit_targets[0]) == 16
     targets = {t.pin_ref: t for t in witness.per_unit_targets[0]}
