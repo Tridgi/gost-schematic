@@ -68,15 +68,17 @@ integration or frozen commit mutation.
 
 | Module | Pinned owner SHA used by new specialized 3.12/3.13 CI |
 |---|---|
-| IC #97 | \`9242fa83606a881b8ff277ff051c7b46a5b63a22\` |
-| PAINT #93 | \`b182d5f089a9b5a1a4234b000a3caa39169dede8\` |
-| YGO2 #113 | \`1b0439315a4d534983684e4654830b2f7c367f1a\` |
-| NET #114 | \`e38628244e5819c904ab21e9645450d5fd232d0f\` |
+| IC #97 | \`c8991bf232428645cad6e8b402d70abccf12a546\` |
+| PAINT #93 | \`df49c16fb082ee98213299358f374894fe1da220\` |
+| YGO2 #113 | \`2dae5306c0690f2fc2d402bb4b65266dabd778b8\` |
+| NET #114 | \`e604ab355f1f704aa11f5545d048a0087c97e39a\` |
 
-Subsequent owner HEADs changed in their own workflow/example/test scripts;
-GitHub compare showed **no changes to source module APIs targeted by this
-specialized integration overlay** at the checkpoint. New moves still need
-new exact-owner SHA integration CI verification before acceptance.
+GitHub compare on this exact-owner snapshot shows IC/PAINT/YGO2 modified
+only their runner, documentation or CI workflows; the NET owner also changed
+`multiterminal_router.py` internally while preserving the public route API.
+The new NET implementation is pinned for fresh 3.12/3.13 revalidation,
+not assumed behaviorally identical. Further owner HEAD movement needs a new
+explicit exact SHA check.
 
 ## Evidence and honest CI status
 
