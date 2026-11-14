@@ -207,6 +207,26 @@ jobs:
                                row*panel[1]+90))
               draw.text((col*panel[0]+20,row*panel[1]+18),title,font=font,fill="black")
           sheet.save(root/"ic-horizontal-vs-vertical-5x2-overview.png")
+          # Supplemental visual comparison; individual rasters remain physical
+          # 300-DPI vector-derived proofs and are NOT scaled for printing.
+          panel2=(930,1250)
+          overview=Image.new("RGB",(panel2[0]*4,panel2[1]*2),"white")
+          overlay=ImageDraw.Draw(overview)
+          for index,angle in enumerate((90,0)):
+              for column,count in enumerate((8,14,40,64)):
+                  fname=root/f"portrait-{count:02d}-function-{angle:02d}-clean-300dpi.png"
+                  with Image.open(fname) as source:
+                      img=source.convert("RGB")
+                  img.thumbnail((panel2[0]-55,panel2[1]-135))
+                  left=column*panel2[0]+(panel2[0]-img.width)//2
+                  top=index*panel2[1]+95
+                  overview.paste(img,(left,top))
+                  overlay.text(
+                      (column*panel2[0]+20,index*panel2[1]+18),
+                      f"{count} physical pins | PWM/ADC {angle} degrees",
+                      font=font,fill="black",
+                  )
+          overview.save(root/"ic-portrait-function-90-vs-0-4x2-overview.png")
           print("10 measured ICs, 20 x 300DPI PNG, 2 orientations, source pin/ink provenance and real glyph pixels")
           PY
       - uses: actions/upload-artifact@v4
