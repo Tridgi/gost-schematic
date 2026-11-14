@@ -6,12 +6,13 @@
   "standard_refs": [
     "ГОСТ 2.730-73, май 2002, изменения №1–4; https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf; §2 табл.1 поз.2 электроды; §8 табл.7 поз.1а PNP; примечание табл.7: зеркальная графика и изображение корпуса",
     "EXPERIMENTAL_DERIVED_NOT_SOURCE_FIGURE: ordinary three-terminal NPN arrow-out derived from table1 N-emitter; table7/1б HAS EXTRA SHIELD and must not be cited as ordinary NPN",
-    "EDITORIAL_ASSUMPTION: schematic case circle=false; coordinates, arrow, stroke 0.3mm, numbers 1=B/2=C/3=E abstract; NOT manufacturer footprint; no approved absolute mm"
+    "EDITORIAL_ASSUMPTION: schematic case circle=false; coordinates, arrow, stroke 0.3mm, numbers 1=B/2=C/3=E abstract; NOT manufacturer footprint; no approved absolute mm",
+    "EDITORIAL_SHEET_LABEL_CLEARANCE: body_keepout top expanded to -13mm (not physical case radius) to reserve legible global refdes above collector lead y=-10mm under all D4 poses."
   ],
   "line_width_mm": 0.3,
   "body_keepout_mm": [
     -4,
-    -6,
+    -13,
     5,
     6
   ],

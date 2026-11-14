@@ -198,6 +198,9 @@ def test_mos_gate_is_separated_from_broken_enhancement_channel(n_channel, with_c
     symbol, part = _pair(identifier)
     assert tuple(p.name for p in part.pins) == ("G", "D", "S")
     assert symbol.graphics[0] == Line(Point(-11000, 0), Point(-4000, 0))
+    assert symbol.graphics[1] == Line(Point(0, -18000), Point(0, -5000))
+    assert symbol.pins[1].at == Point(0, -18000)
+    assert symbol.body_keepout.min_y == -14000
     assert symbol.graphics[3] == Line(Point(-4000, -3000), Point(-4000, 3000))
     assert symbol.graphics[4] == Line(Point(0, -5000), Point(0, -1000))
     assert symbol.graphics[5] == Line(Point(0, 1000), Point(0, 5000))

@@ -6,12 +6,13 @@
   "standard_refs": [
     "ГОСТ 2.730-73, май 2002, изменения №1–4; https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf; §9 табл.8 поз.3б, N-channel insulated-gate enhancement without body contact; PDF page=6",
     "ГОСТ 2.730-73, табл.1 поз.4/9/10: enhancement channel, isolated gate, source/drain; примечание табл.8: schematic case is permitted",
-    "EDITORIAL_ASSUMPTION: schematic case circle=false, isolated gate gap, three G/D/S pins, channel orientation arrows, 0.3mm stroke, abstract pin numbers; not verified package/layout"
+    "EDITORIAL_ASSUMPTION: schematic case circle=false, isolated gate gap, three G/D/S pins, channel orientation arrows, 0.3mm stroke, abstract pin numbers; not verified package/layout",
+    "EDITORIAL_SHEET_LABEL_CLEARANCE: D lead extended from -11 to -18mm and top body text keepout min_y=-14mm to keep global refdes to the right clear of real D conductor and 1.8mm pin escape; N/P/isolated gate unchanged."
   ],
   "line_width_mm": 0.3,
   "body_keepout_mm": [
     -5,
-    -6,
+    -14,
     5,
     6
   ],
@@ -31,7 +32,7 @@
       [
         [
           0,
-          -11
+          -18
         ],
         [
           0,
@@ -125,7 +126,7 @@
       "number": "2",
       "at_mm": [
         0,
-        -11
+        -18
       ],
       "side": "top",
       "label": "D"
