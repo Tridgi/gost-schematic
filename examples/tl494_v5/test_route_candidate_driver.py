@@ -187,5 +187,5 @@ def test_candidate_driver_real_owners_diagnostics_only(
     assert record["layout_valid"] is True
     assert record["a3"]["A3_capacity_fit"] is True
     assert result["negative_original_DRC_expected"] == ORIGINAL_BAD_DRC
-    assert json.loads(output.read_text(encoding="utf-8")) == result
+    assert json.loads(output.read_text(encoding="utf-8")) == json.loads(\n        json.dumps(result, ensure_ascii=False)\n    )
     assert [file.name for file in tmp_path.iterdir()] == ["source-all15.json"]
