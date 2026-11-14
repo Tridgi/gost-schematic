@@ -142,6 +142,18 @@ jobs:
             examples/tl494_v5/test_cycle11_ti_bridge.py \
             examples/tl494_v5/test_cycle11_b_continuation.py \
             examples/tl494_v5/test_routed_graph_contract.py
+      - name: Independent REAL RECON b-binding production API with scoped signed Type A font and 3 hostile physical mutants
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "output/qa92-cycle11-b-${{ matrix.python-version }}"
+          cd _qa_sources/recon
+          PYTHONPATH=src:. python ../../scripts/qa_tl494_cycle11_b_binding_gate.py \
+            --direct-only --source-root ../source \
+            --recon-root . \
+            --font-file "$QA_B_TYPE_A_FONT" \
+            --output "../../output/qa92-cycle11-b-${{ matrix.python-version }}/qa-direct-actual-b-source-and-3-negatives.json"
       - name: Genuine owner RECON original signed b-X2 and b-R5 compact source data
         if: always()
         shell: bash
