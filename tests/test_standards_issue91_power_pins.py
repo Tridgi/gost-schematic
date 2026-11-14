@@ -135,12 +135,14 @@ def test_origin_figures_exact_pages_and_separate_editorial_redraw():
 
 def test_clean_and_editor_examples_keep_identical_real_ink_and_pinrefs():
     clean, diagnostic = _svg("clean"), _svg("diagnostic")
-    find = lambda root: next(
-        x for x in root.findall(".//" + SVG + "g")
-        if x.get("data-layer") == "physical-symbol-and-wires"
-    )
-    original_ink = ET.tostring(find(clean), encoding="unicode")
-    reviewed_ink = ET.tostring(find(diagnostic), encoding="unicode")
+    def physical_group(root):
+        return next(
+            x for x in root.findall(".//" + SVG + "g")
+            if x.get("data-layer") == "physical-symbol-and-wires"
+        )
+
+    original_ink = ET.tostring(physical_group(clean), encoding="unicode")
+    reviewed_ink = ET.tostring(physical_group(diagnostic), encoding="unicode")
     assert original_ink == reviewed_ink
     for root in (clean, diagnostic):
         assert root.get("data-physical-pinrefs") == "DD1.14 DD1.7"
