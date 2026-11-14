@@ -7,6 +7,8 @@ on:
       - 'src/gost_schematic/electrical/**'
       - 'examples/tl494_cycle9_circuit_integration.py'
       - 'scripts/verify_ic_recon115_live_bridge.py'
+      - 'tests/test_ic_circuit_adapter_cycle9.py'
+      - 'docs/rfc/cycle11-recon115-ic97-trusted-source-bridge.md'
       - 'tests/fixtures/tl494_photo_23_frozen_cycle9.json'
       - '.github/workflows/ic-recon115-live-cycle11.yml'
   workflow_dispatch:
