@@ -242,3 +242,116 @@ def verify_owner_reversible_display(source: dict[str, Any],
         "display_net_names": sorted(rendered),
         "no_net_union": True,
     }
+
+
+def _owner_ast(raw: bytes) -> ast.Module:
+    """Inspect unmerged Python as AST only; never import or execute it."""
+    if type(raw) is not bytes or not 0 < len(raw) < 256_000:
+        _source_error("OWNER_MODULE_INVALID")
+    try:
+        return ast.parse(raw.decode("utf-8", errors="strict"))
+    except (UnicodeError, SyntaxError, ValueError) as exc:
+        raise ProjectError("OWNER_MODULE_INVALID", "Unparseable owner module") from exc
+
+
+def _static_pinref(node: ast.AST) -> str:
+    if not (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "PinRef"
+        and len(node.args) == 2
+        and not node.keywords
+        and all(isinstance(a, ast.Constant) and type(a.value) is str
+                for a in node.args)
+    ):
+        _source_error("OWNER_PINREF_STATIC_CONTRACT_UNVERIFIED")
+    return f"{node.args[0].value}.{node.args[1].value}"
+
+
+def _assigned(tree: ast.Module, name: str) -> ast.AST:
+    found = [
+        item.value for item in tree.body
+        if isinstance(item, ast.Assign)
+        and len(item.targets) == 1
+        and isinstance(item.targets[0], ast.Name)
+        and item.targets[0].id == name
+    ]
+    if len(found) != 1:
+        _source_error("OWNER_CONTRACT_MISSING_OR_AMBIGUOUS")
+    return found[0]
+
+
+def verify_cycle11_owner_bridge_surfaces(
+    ic_integration_py: bytes, recon_ti_bridge_py: bytes,
+    recon_b_continuation_py: bytes, authentic_source: dict[str, Any],
+) -> dict[str, Any]:
+    """Prove current owner *interface shape*, NOT executable joint approval.
+
+    Read safe literal and def names from pinned HEAD source files as AST;
+    no import-time effects, phantom pins, or silent b-Net aliases.
+    """
+    ic_tree = _owner_ast(ic_integration_py)
+    ti_tree = _owner_ast(recon_ti_bridge_py)
+    b_tree = _owner_ast(recon_b_continuation_py)
+    ic_functions = {row.name for row in ic_tree.body
+                    if isinstance(row, (ast.FunctionDef, ast.AsyncFunctionDef))}
+    ti_functions = {row.name for row in ti_tree.body
+                    if isinstance(row, (ast.FunctionDef, ast.AsyncFunctionDef))}
+    b_functions = {row.name for row in b_tree.body
+                   if isinstance(row, (ast.FunctionDef, ast.AsyncFunctionDef))}
+    if "bind_positioned_photo_circuit_from_catalog" not in ic_functions:
+        _source_error("OWNER_IC_TYPED_BINDING_API_MISSING")
+    if "bind_verified_compact_ti" not in ti_functions:
+        _source_error("OWNER_RECON_SIGNED_TI_BRIDGE_MISSING")
+    if "rebind_true_source_b" not in b_functions:
+        _source_error("OWNER_RECON_TRUE_B_REBIND_MISSING")
+    if (
+        ast.literal_eval(_assigned(ti_tree, "SOURCE_PART_ID")) != SOURCE_DEVICE_ALIAS
+        or ast.literal_eval(_assigned(ti_tree, "PHYSICAL_REF")) != "DA1"
+        or ast.literal_eval(_assigned(b_tree, "OLD_B_NAME")) != "OUTPUT_NEG"
+        or ast.literal_eval(_assigned(b_tree, "SOURCE_B_NAME")) != "b_NEGATIVE_OUTPUT"
+    ):
+        _source_error("OWNER_IC_B_PHYSICAL_SOURCE_NAMES_CHANGED")
+
+    pins = _assigned(b_tree, "B_PHYSICAL")
+    if not (
+        isinstance(pins, ast.Call)
+        and isinstance(pins.func, ast.Name)
+        and pins.func.id == "frozenset"
+        and len(pins.args) == 1
+        and isinstance(pins.args[0], ast.Set)
+        and not pins.keywords
+    ):
+        _source_error("OWNER_B_PHYSICAL_SET_UNVERIFIED")
+    physical_b = {_static_pinref(node) for node in pins.args[0].elts}
+    required_b = {"FU1.2", "X2.1", "R5.2"}
+    if physical_b != required_b or set(
+        authentic_source["source_nets"]["b_NEGATIVE_OUTPUT"]
+    ) != required_b:
+        _source_error("OWNER_B_PHYSICAL_THREE_TERMINALS_DRIFT")
+
+    markers = _assigned(b_tree, "SOURCE_B_STUBS")
+    if not isinstance(markers, ast.Dict):
+        _source_error("OWNER_B_TWO_SOURCE_MARKERS_UNVERIFIED")
+    stub_map = {}
+    for key, value in zip(markers.keys, markers.values, strict=True):
+        if not isinstance(key, ast.Constant) or type(key.value) is not str:
+            _source_error("OWNER_B_SOURCE_MARKER_ID_UNVERIFIED")
+        if key.value in stub_map:
+            _source_error("OWNER_B_DUPLICATE_MARKER")
+        stub_map[key.value] = _static_pinref(value)
+    if stub_map != {"b-X2": "X2.1", "b-R5": "R5.2"}:
+        _source_error("OWNER_B_TWO_SOURCE_MARKERS_CHANGED")
+    return {
+        "status": "PINNED_OWNER_AST_INTERFACES_MATCH",
+        "read_only": True,
+        "owner_code_imported_or_executed": False,
+        "owner_cross_branch_runtime_import_verified": False,
+        "manufacturer_typed_bind_api": "bind_positioned_photo_circuit_from_catalog",
+        "recon_typed_adapter_api": "bind_verified_compact_ti",
+        "recon_b_rebind_api": "rebind_true_source_b",
+        "b_source_name": "b_NEGATIVE_OUTPUT",
+        "b_physical_pins": sorted(physical_b),
+        "source_b_nonphysical_marker_bindings": stub_map,
+        "source_15_net_62_pin_memberships_preserved": True,
+    }
