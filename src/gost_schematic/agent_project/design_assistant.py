@@ -119,8 +119,10 @@ def catalog_search(catalog: CatalogResolver, query: str) -> dict[str, Any]:
     if type(query) is not str or not 1 <= len(query) <= 64:
         raise ProjectError("INVALID_SEMANTIC_QUERY", "Expected a bounded category or part ID")
     word = query.strip().lower()
-    if word != query.lower() or not word or any(
-        char not in "abcdefghijklmnopqrstuvwxyz0123456789._- " for char in word
+    if word != query.lower() or not word or (
+        word not in SEMANTIC_QUERY_TERMS and any(
+            char not in "abcdefghijklmnopqrstuvwxyz0123456789._- " for char in word
+        )
     ):
         raise ProjectError("INVALID_SEMANTIC_QUERY", "Use a canonical catalog category/ID")
     group = SEMANTIC_QUERY_TERMS.get(word, word)
