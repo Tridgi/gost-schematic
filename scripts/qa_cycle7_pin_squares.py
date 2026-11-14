@@ -17,6 +17,7 @@ from xml.etree import ElementTree as ET
 
 import cairosvg
 import fitz
+import numpy as np
 from gost_schematic.rendering.ic_electrical_binding import (
     render_verified_ic_paint_binding,
 )
@@ -86,16 +87,21 @@ def _lines(root):
 
 def _colored(image, kind):
     # PAINT authoritative RGB: green #148645, red NC #8b1e27.
-    img = image.convert("RGB")
+    # Large 64-pin 300-DPI pages can exceed 20 million real pixels.
+    # Vectorize the exact RGB mask; do not reduce resolution or invent ink.
+    rgb = np.asarray(image.convert("RGB"))
+    r = rgb[:, :, 0].astype(np.int16)
+    g = rgb[:, :, 1].astype(np.int16)
+    b = rgb[:, :, 2].astype(np.int16)
     if kind == "green":
-        return sum(
-            r < 75 and 80 < g < 190 and b < 125 and g > r and g > b
-            for r, g, b in img.getdata()
-        )
-    return sum(
-        95 < r < 200 and g < 90 and b < 90 and r > g * 1.4
-        for r, g, b in img.getdata()
-    )
+        return int(np.count_nonzero(
+            (r < 75) & (g > 80) & (g < 190) & (b < 125)
+            & (g > r) & (g > b)
+        ))
+    return int(np.count_nonzero(
+        (r > 95) & (r < 200) & (g < 90) & (b < 90)
+        & (r * 10 > g * 14)
+    ))
 
 
 def _png(svg, destination):
