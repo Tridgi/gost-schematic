@@ -13,6 +13,9 @@ on:
       - "src/gost_schematic/electrical/reference_markers.py"
       - "examples/review_tl494_route_drc.py"
       - "tests/test_route_drc_cycle9.py"
+      - "tests/test_route_candidate_clearance_cycle9.py"
+      - "tests/test_multiterminal_router_cycle9.py"
+      - "src/gost_schematic/engines/multiterminal_router.py"
       - ".github/workflows/tl494-routing-cycle9-review.yml"
   workflow_dispatch:
 
@@ -35,8 +38,8 @@ jobs:
         run: python -m pip install -e ".[dev,mcp]"
       - name: Ruff and source-frozen DRC negative tests
         run: |
-          ruff check src/gost_schematic/validation/route_drc.py src/gost_schematic/engines/orthogonal_route_planner.py src/gost_schematic/electrical/reference_markers.py examples/review_tl494_route_drc.py tests/test_route_drc_cycle9.py
-          pytest -q tests/test_route_drc_cycle9.py
+          ruff check src/gost_schematic/validation/route_drc.py src/gost_schematic/engines/orthogonal_route_planner.py src/gost_schematic/engines/multiterminal_router.py src/gost_schematic/electrical/reference_markers.py examples/review_tl494_route_drc.py tests/test_route_drc_cycle9.py tests/test_route_candidate_clearance_cycle9.py tests/test_multiterminal_router_cycle9.py
+          pytest -q tests/test_route_drc_cycle9.py tests/test_route_candidate_clearance_cycle9.py tests/test_multiterminal_router_cycle9.py
       - name: Generate source identity and complete numeric spacing audit
         run: |
           python -m examples.review_tl494_route_drc \
