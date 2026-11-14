@@ -5,9 +5,7 @@ specialized workflow runs this same validator on PAINT owner-created *real* SVGs
 """
 from __future__ import annotations
 
-import copy
 import json
-from pathlib import Path
 from xml.etree import ElementTree as ET
 
 import pytest
