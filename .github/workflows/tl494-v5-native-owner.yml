@@ -1,0 +1,93 @@
+name: TL494 V5 exact owner Circuit + PAINT isolated source gate
+on:
+  push:
+    branches: [reference/tl494-audit-v4-20261114]
+    paths:
+      - examples/tl494_v5/**
+      - .github/workflows/tl494-v5-native-owner.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  owner-gate:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.12','3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Fetch exact nonmerged owner source, without changing repository
+        run: |
+          set -euxo pipefail
+          IC_SHA=6161e9102cbc0c9e0491fb27ed7a496dc0b274bc
+          CATALOG_SHA=edc71a48035723d48a203ae2ea12588701f68ba8
+          PAINT_SHA=e3ea841dbe087952577121d5690fe41e9a9a5c83
+          for SHA in "$IC_SHA" "$CATALOG_SHA" "$PAINT_SHA"; do
+            git fetch origin "$SHA"
+            test "$(git rev-parse FETCH_HEAD)" = "$SHA"
+          done
+          for file in tl494cn.py ic_pin_alias.py ic_serde.py ic_paint_bridge.py ic_graphic_revision.py; do
+            git show "$IC_SHA:src/gost_schematic/electrical/$file" > "src/gost_schematic/electrical/$file"
+          done
+          mkdir -p src/gost_schematic/catalog/source_profiles
+          git show "$CATALOG_SHA:src/gost_schematic/catalog/source_profiles.py" > src/gost_schematic/catalog/source_profiles.py
+          git show "$CATALOG_SHA:src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json" > src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json
+          for file in ic_rectangular.py ic_hotspots.py ic_orientation.py ic_power_profiles.py ic_tl494_profile.py ic_electrical_binding.py; do
+            git show "$PAINT_SHA:src/gost_schematic/rendering/$file" > "src/gost_schematic/rendering/$file"
+          done
+          echo "ISOLATED_OWNERS IC=$IC_SHA YGO=$CATALOG_SHA PAINT=$PAINT_SHA"
+      - name: Install local test/runtime dependencies and real Type A font
+        run: |
+          set -euxo pipefail
+          python -m pip install -e ".[dev,mcp]"
+          python scripts/install_opengost_type_a.py --directory "$HOME/.local/share/fonts"
+          fc-cache -f
+          FONT="$(find "$HOME/.local/share/fonts" -name '*TypeA*.ttf' | head -1)"
+          test -n "$FONT"
+          echo "TL494_TYPE_A_FONT=$FONT" >> "$GITHUB_ENV"
+      - name: Real source Circuit/BOM/Netlist and negatives
+        run: |
+          set -euxo pipefail
+          ruff check examples/tl494_v5/
+          PYTHONPATH=src python -m pytest -q examples/tl494_v5/test_native_circuit.py
+          mkdir -p output/tl494-v5
+          PYTHONPATH=src python -c 'from pathlib import Path; from examples.tl494_v5.native_circuit import export_source_manifest; m=export_source_manifest(Path("output/tl494-v5/23part-15net-source.json")); print("V5",m["components"],len(m["nets"]),m["physical_DA1_pins"])'
+      - name: Real PAINT #93 preview, 16 source PinRefs and SVG glyph ink
+        run: |
+          set -euxo pipefail
+          PYTHONPATH=src python -m examples.tl494_v5.owner_paint_smoke \
+            --font-file "$TL494_TYPE_A_FONT" \
+            --output-dir output/tl494-v5
+      - name: Rasterize DA1-only DRAFT files at real 300DPI
+        run: |
+          set -euxo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+          for view in clean diagnostic; do
+            rsvg-convert --background-color white --dpi-x 300 --dpi-y 300 \
+              --output "output/tl494-v5/DA1-owner-$view-300dpi.png" \
+              "output/tl494-v5/DA1-owner-$view.svg"
+          done
+      - name: Verify source identity and old negative DRC unchanged
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          source=json.loads(Path("output/tl494-v5/23part-15net-source.json").read_text())
+          assert (source["components"],len(source["nets"]),source["physical_DA1_pins"])==(23,15,16)
+          pinrefs={p for points in source["nets"].values() for p in points}
+          assert {f"DA1.{i}" for i in range(1,17)} <= pinrefs
+          report=json.loads(Path("examples/tl494_v4/evidence_runs/43608095630-1/full_stroke_and_text_drc.json").read_text())
+          assert (report["error_count"],report["warning_count"],report["wire_count"],report["explicit_junctions"])==(9,32,91,37)
+          print("V5_SOURCE_PASS 23/15/16; OLD_BAD_DRC_PRESERVED 9/32/91/37")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tl494-v5-owner-model-${{ matrix.python-version }}
+          path: output/tl494-v5/**
+          if-no-files-found: warn
