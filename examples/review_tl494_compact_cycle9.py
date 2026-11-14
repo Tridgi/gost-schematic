@@ -18,6 +18,7 @@ from examples.tl494_v5.compact_layout import (
     compact_source_assembly,
 )
 from examples.tl494_v5.route_preflight import _owner_ic_obstacle
+
 from gost_schematic.core.geometry import Box, Point
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.engines.multiterminal_router import (
