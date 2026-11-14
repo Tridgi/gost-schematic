@@ -1,9 +1,9 @@
 # Cycle 7 / Epic #86 — agent-facing E3 catalog and named net contract
 
-**Status:** DESIGN / NOT IMPLEMENTED as MCP tools. Issue #74 track.
-Production P1.1 provides a trusted ProjectService (save/cold open/render/validate)
-and installed CatalogResolver; these are in-process APIs. This document
-authorizes **no** new component, topology, or routing mutations.
+**Status:** Future catalog/editing commands remain DESIGN/BLOCKED. Issue #74.
+P1.1 now also registers five **default-denied host-scoped read-only MCP tools**
+that call the real typed ProjectService; live stdio ClientSession tests prove
+their behavior. No component, topology or routing mutations are authorized.
 
 ## Access matrix (explicit implemented vs future)
 
@@ -13,19 +13,26 @@ authorizes **no** new component, topology, or routing mutations.
 | schematic_describe_part | future read-only P1.2 | part_id plus exact lock digest; PartDefinition, related SymbolDefinition and DRAFT status, nominal kinds and provenance |
 | schematic_get_pinout | future read-only P1.2 | part_id + catalog SHA; all PhysicalPin number/name/type/polarity/function plus distinct graphical GraphicPin positions; no image OCR |
 | schematic_preview_symbol | future read-only P1.2 | exact symbol ID+revision, declared transform, image bounded DPI, real SVG/PNG and explicit DRAFT warnings |
-| schematic_open_project | future read-only MCP facade | UUID + optional exact SHA; delegate to implemented ProjectService.open_project |
-| schematic_get_snapshot | future read-only MCP facade | UUID + revision; return exact typed Circuit.Net and ExternalWireGraph records, pinned catalog |
-| schematic_validate_project | implemented as Python ProjectService.validate_project; MCP future read-only | independent full-model ERC/geometry by revision SHA, NOT_IMPLEMENTED for absent checks |
-| schematic_render_project | implemented as Python ProjectService.render_project; MCP future read-only | revision-pinned real SVG/PNG and metadata, no bitmap edits |
+| schematic_list_projects | **implemented read-only MCP**; default DENY | explicit host enable + absolute trusted workspace + canonical UUID allowlist, max 32; never scans foreign IDs |
+| schematic_open_project | **implemented read-only MCP**; default DENY | UUID + optional exact SHA; typed physical Circuit restored and independently validated |
+| schematic_describe_project | **implemented read-only MCP**; default DENY | full canonical saved E3 and physical PinRef/name/type/functions/coordinates, Net membership, actual authored wire/junction geometry, 700 KB bound |
+| schematic_get_snapshot | future separate MCP facade; existing describe exposes typed v1 record | UUID + exact revision; no raw JSON patch |
+| schematic_validate_project | **implemented read-only MCP**; default DENY | independent full-model ERC/geometry by revision SHA; absent checks reported NOT_IMPLEMENTED |
+| schematic_render_project | **implemented read-only MCP**; default DENY | revision-pinned real PNG ImageContent, metadata and optional exact SVG TextContent, no bitmap edits or filesystem writes |
 | schematic_add_component | **BLOCKED until write transaction gate** | part_id+version + explicit UUID/refdes/position/transform; no guessed pinout |
 | schematic_connect_pins | **BLOCKED until write transaction gate** | exact two physical PinRefs, explicit target Net ID, expected revision/generation and idempotency key; no hidden net merge |
 | schematic_attach_net_continuation | **BLOCKED until topology+presentation gate** | existing Net ID + document/sheet/view anchor; no new physical contact, no Net union |
 | schematic_move_component / disconnect_pins / route_connection | **BLOCKED until independent gate** | coordinated safe route adapter; complete atomic rollback on failure |
 
-**P0 MCP Vision** (merged PR #73) does expose read-only fixed six-part
-schematic_render_overview, schematic_inspect_region, schematic_inspect_component
-and schematic_get_diagnostics. Those existing tools do NOT operate on
-P1.1 stored project UUIDs yet and must not be advertised as if they did.
+**P0 MCP Vision** (merged PR #73) remains read-only against the fixed six-part
+specimen only: render_overview, inspect_region, inspect_component,
+inspect_connection, get_diagnostics, list_views. The **new five P1.1
+saved-project MCP reads** operate on exact stored project UUID+SHA through
+ProjectService, with independent explicit host allowlist; these do NOT
+make fixed P0 tools able to edit or inspect arbitrary stored UUIDs.
+The actual list/open/describe/validate/render behavior is covered by native
+mcp.ClientSession stdio tests in tests/agent_project/test_mcp_saved_stdio.py.
+No write tools exist.
 
 ## Catalog list and describe contracts
 
