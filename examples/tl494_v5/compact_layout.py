@@ -67,7 +67,8 @@ def compact_source_assembly() -> NativeV5Assembly:
     source_nets = original.circuit.nets  # EXACT objects, no Net remapping.
     revised_circuit = Circuit(components, source_nets)
     revised_glyphs = bind_tl494_source(
-        components, original.parts, original.symbols
+        components, original.parts, original.symbols,
+        allow_relayout=True,  # Explicit NEW A3 position-only drawing
     )
     result = replace(
         original,
