@@ -5,6 +5,8 @@ on:
     branches: [integration/stage0-12]
     paths:
       - "src/gost_schematic/rendering/ic_sheet_composition.py"
+      - "src/gost_schematic/rendering/sheet_svg.py"
+      - "src/gost_schematic/rendering/ic_rectangular.py"
       - "src/gost_schematic/rendering/external_wire_sheet.py"
       - "examples/render_tl494_full_native_cycle9.py"
       - "src/gost_schematic/rendering/native_sheet_ink_audit.py"
@@ -79,6 +81,8 @@ jobs:
         run: |
           ruff check src/gost_schematic/rendering/ic_sheet_composition.py \
             src/gost_schematic/rendering/external_wire_sheet.py \
+            src/gost_schematic/rendering/sheet_svg.py \
+            src/gost_schematic/rendering/ic_rectangular.py \
             examples/render_tl494_full_native_cycle9.py \
             src/gost_schematic/rendering/native_sheet_ink_audit.py \
             scripts/emit_tl494_native_print_crops.py \
