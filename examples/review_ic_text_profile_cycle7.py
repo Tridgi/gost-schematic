@@ -208,6 +208,16 @@ def main() -> None:
     print(json.dumps({
         "approval": cases["approval"],
         "cases": list(cases["cases"]),
+        "render_matrix": {
+            name: {
+                layout: {
+                    angle: value["per_unit_render"]
+                    for angle, value in layout_value["angles"].items()
+                }
+                for layout, layout_value in profiles.items()
+            }
+            for name, profiles in cases["cases"].items()
+        },
     }, ensure_ascii=False, sort_keys=True))
 
 
