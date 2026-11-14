@@ -254,7 +254,7 @@ def test_catalog_audit_reports_21_independent_draft_ugo_and_both_real_diode_part
         row["id"]: row for row in report["entries"]
         if row["id"].startswith("diode.")
     }
-    assert set(diode_entries) == set(IDS)
+    assert set(IDS).issubset(diode_entries)  # retain both original diodes as catalog grows
     for entry in diode_entries.values():
         assert entry["approval"] == "draft"
         assert entry["physical_part_mapped"] is True
