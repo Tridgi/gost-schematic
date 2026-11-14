@@ -212,3 +212,162 @@ ConnectPins or AttachNetContinuation with full independent QA.
 
 This proposal must not be merged into production or interpreted as
 implementation authorization without MAIN 2 acceptance.
+
+
+## 7. Issue #100: real editor target → safe prospective transaction bridge
+
+**Status: normative design only in this RFC.** The independent
+[read-only Draft PR #103](https://github.com/Tridgi/gost-schematic/pull/103)
+proposes an executable bounded query, but it is not part of a committed
+writer, not a rendered green hotspot UI and not permission to create Nets.
+This section is a P1.2 **contract** layered over already merged P1.1.
+
+### Authoritative target record (schema v1 read-only projection)
+
+Every target is derived from a previously verified immutable E3
+\`SchematicProject\`: exact catalog-locked \`PhysicalPin\` and transformed
+\`GraphicPin\`, or an authored \`ExternalWireGraph.WireSegment.start/end\`,
+**never from SVG pixels, OCR, text labels or a mouse click**.
+
+~~~json
+{
+  "schema_version": 1,
+  "project_id": "canonical-project-uuid",
+  "project_revision": "sha256-of-immutable-project",
+  "target_id": "stable-target-uuid",
+  "kind": "physical_pin",
+  "component_id": "canonical-component-uuid",
+  "pin_ref": {"reference": "DD1", "number": "27"},
+  "physical_number": "27",
+  "pin_name": "actual-installed-catalog-pin-name",
+  "electrical_role": "POWER_INPUT",
+  "pin_function": "general",
+  "polarity": "none",
+  "net_identity": {"id": "authoritative-net-uuid", "name": "VCC"},
+  "wire_segment_id": null,
+  "wire_end": null,
+  "world_um": [102000, 64000],
+  "selection_allowed": true,
+  "preview_candidate_allowed": false,
+  "connection_allowed": false,
+  "reason_code": "SOURCE_REQUIRED",
+  "commit_blocker": "WRITE_TRANSACTION_NOT_IMPLEMENTED",
+  "coincident_target_ids": [],
+  "requires_disambiguation": false
+}
+~~~
+
+The above is **illustrative**, not an actual DD1/27 manufacturer package
+assignment. The coordinate is exact integer µm; the physical pin number
+is from a pinned **real** catalog part, never row order. The graphic
+position and physical reference are paired but conceptually distinct.
+An authored wire endpoint uses \`kind="wire_endpoint"\`,
+\`wire_segment_id=<immutable UUID>\`, \`wire_end="start"|"end"\`,
+and **null** \`pin_ref\`, \`component_id\`, \`physical_number\`, etc.
+Its \`net_identity\` comes from the wire's declared Net UUID, not nearby
+ink. No UI "pseudo-pin" is created at a body edge or text field.
+
+The returned \`net_identity.id\` is authoritative; \`name\` is only a
+display string, **never a same-Net proof**, even for VCC/GND. A
+source-target pair with distinct assigned Net UUIDs must yield
+\`NET_MERGE_DENIED\` until a separate, explicitly authorized semantic
+Net merge exists. \`PinRef\` and owner component UUID are stable;
+the returned SHA guards against stale pointer coordinates after future
+view/layout edits.
+
+The **three independent booleans** must not be conflated:
+
+- \`selection_allowed\`: editor can focus/select a model-proven endpoint.
+  Does not imply an electrical change.
+- \`preview_candidate_allowed\`: current *pair* is provisionally
+  admissible as a proposed route candidate, subject to all electrical
+  type/Net gates; no routing computation is guaranteed.
+- \`connection_allowed\`: false until a separately accepted
+  \`ValidateTransaction\` + \`CommitTransaction\` performs authoritative
+  full-domain ERC, route and CAS validation. Read-only MCP **always false**.
+
+\`source_target_id\` is optional. With no selected source, the API must
+return \`SOURCE_REQUIRED\` for ordinary targets, and explicit BLOCKED
+reasons for NC/unverified roles. With a source, the policy is evaluated
+again against its exact physical role and NetIdentity.
+
+### Electrical role matrix / no inferred source
+
+| Physical role | Discovery / pairing policy before write gate |
+| --- | --- |
+| PASSIVE | Candidate may be previewed with separately selected compatible source; not an approved connection |
+| INPUT / OUTPUT | Candidate may be inspected; OUTPUT→OUTPUT needs independent driver conflict review |
+| BIDIRECTIONAL | Block a proposed join pending bidirectional/driver policy review; role may be selected for inspection |
+| POWER_INPUT | Selectable physical target; pair BLOCKED until power direction/source check |
+| POWER_OUTPUT | Selectable physical target; pair BLOCKED until supply/driver check; two drivers never auto-approved |
+| NC / NO_CONNECT | Not selectable as electrical connection target; never part of a Net; fail closed |
+| UNSPECIFIED / UNKNOWN | Block until physical catalog role verified, not guessed from a printed name |
+| CONDUCTOR (wire endpoint) | Selectable real authored endpoint, existing Net UUID; not a physical pin or new Net |
+
+Current ordinary \`PhysicalPin.ElectricalType\` has no \`NC\` enum
+variant. The draft IC model on #87/#97 has independent NC semantics.
+**No claim is made that the merged v1 part catalog can load NC**
+or vendor-verified 40/64 pinouts yet. The policy reserves NC handling
+for a future approved lossless IC adapter; until then unsupported IC
+records must fail closed rather than become "passive" fabricated pins.
+
+### Editor interaction and nonprinting hit-zone design
+
+1. Open project by UUID and revision SHA; verify project is explicitly
+   authorized to the **host-scoped** local MCP reader.
+2. Request \`get_connection_targets\` at that exact immutable SHA; return
+   all exact \`world_um\` targets, stable IDs and explicit NetIdentity.
+3. Transform world µm → screen CSS px using **camera zoom and pan**;
+   distinguish \`devicePixelRatio\` for canvas backing-store rasterization.
+   A provisional 8–12 CSS-px pointer hit radius is a UX parameter,
+   **not schematic mm nor ГОСТ geometry**.
+4. For dense 40/64-pin units and coincident terminal+wire endpoints,
+   resolve \`coincident_target_ids\` through keyboard focus/cycling
+   or an explicit popup listing *physical number, pin role, Net*.
+   Never choose an arbitrary nearest terminal silently.
+5. With no source, use selection/hover indication; after selecting a
+   source, requery pair policy by source target ID. **Green** shows only
+   a selectable/provisional preview target, while rejected targets
+   show reason text and a non-color-only indicator.
+6. Requested orthogonal dashed route is a **future** independently
+   reviewed route-preview engine. Merely having candidate eligibility
+   is NOT proof that a physically valid route was found; do not
+   paint a misleading safe route. No changes in Circuit/Net on hover.
+7. Future ValidateTransaction must verify both PinRefs, source +
+   candidate exact positions, unchanged source revision, complete
+   physical Net-member sets, every T/X crossing, foreign-Net clearance
+   and electrical roles. Return typed diagnostics without side effects.
+8. Future CommitTransaction requires exact expected_revision and
+   expected_generation CAS, durable idempotency, atomic new HEAD and
+   rollback, producing a **new** revision. UI discards old target IDs/
+   coordinates after commit and reloads from the new SHA.
+
+**No green zones, translucent hover hit areas, proposed route dashes,
+RGB status colors or diagnostic rectangles in normative CLEAN SVG/PDF.**
+The existing P1.1 \`schematic_render_project(mode="diagnostic")\`
+is a static diagnostic SVG/PNG, **not** a fully interactive editor.
+An opt-in editor-only display layer can be defined later; it must be
+nonprinting and must not affect electrical topology.
+
+### Fail-closed practical QA checks
+
+- Return original six-part **6 components / 5 real Net / 16 authored
+  segments / 3 junctions**, 32 wire **endpoint identities** and actual
+  physical C3 pin 1 PLUS at (91000,80000)µm and pin 2 MINUS at
+  (109000,80000)µm from the *restored model*.
+- Native MCP stdio ClientSession opens the saved revision, enumerates
+  targets, receives independent diagnostics, authentic SVG and PNG,
+  and compares their SHA. No mock or hand-painted output.
+- Different C3 NetIdentity UUIDs => NET_MERGE_DENIED. Printed
+  matching VCC/GND never changes that outcome.
+- NC, UNVERIFIED, POWER_INPUT, POWER_OUTPUT, BIDIRECTIONAL,
+  OUTPUT/OUTPUT and cross-net pairs fail closed; PASSIVE only
+  provisionally previewable, **never** approved for commit.
+- Unauthorized UUID, path traversal, stale SHA, redirected workspace,
+  modified catalog lock, oversized result and duplicate target ID
+  fail closed and reveal no other user's project paths.
+- Assert the full persisted \`.gseproj\` and HEAD bytes are identical
+  before/after *every* read-only operation, with no generated editor
+  SVG layer in CLEAN export.
+- The P1.2 writer remains **BLOCKED** pending a separate independent
+  MAIN 2/QA approval and crash-safe multi-generation CAS tests.
