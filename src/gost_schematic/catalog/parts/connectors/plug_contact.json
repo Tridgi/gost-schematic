@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "id": "connector.plug_contact",
+  "reference_prefix": "XP",
+  "symbol_id": "connector.plug_contact",
+  "nominal_kind": null,
+  "voltage_orientation_rule": "none",
+  "pins": [
+    {
+      "number": "1",
+      "name": "CONTACT_1",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    }
+  ]
+}

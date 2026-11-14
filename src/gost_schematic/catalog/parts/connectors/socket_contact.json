@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "id": "connector.socket_contact",
+  "reference_prefix": "XS",
+  "symbol_id": "connector.socket_contact",
+  "nominal_kind": null,
+  "voltage_orientation_rule": "none",
+  "pins": [
+    {
+      "number": "1",
+      "name": "CONTACT_1",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    }
+  ]
+}
