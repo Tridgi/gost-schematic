@@ -7,7 +7,6 @@ placement and explicit branch routing after independent QA acceptance.
 """
 from dataclasses import dataclass
 from heapq import heappop, heappush
-from math import isqrt
 
 from gost_schematic.core.geometry import Box, Line, Point, SIDE_VECTORS
 from gost_schematic.core.intersections import segment_intersects_box
@@ -21,7 +20,6 @@ from gost_schematic.validation.external_wire_checks import (
 from gost_schematic.validation.route_drc import (
     _seg_distance_sq,
     _symbol_boxes,
-    audit_route_drc,
 )
 
 PAGES = (
@@ -216,7 +214,7 @@ def _legality(
     # Distances are exact squared Fractions from authored source lines;
     # no drawing intersection may silently become a real T or junction.
     threshold = wire_radius_um * 2 + 500
-    return all(4 * _seg_distance_sq(candidate, other) >= threshold ** 2
+    return all(_seg_distance_sq(candidate, other) >= threshold ** 2
                for other in graph.segments)
 
 
