@@ -42,7 +42,8 @@ def _render(
 ):
     return render_routed_native_sheet(
         circuit, graph, parts, symbols, STYLE, FixedInk(),
-        physical_ic_renderings={"DD1": clean},
+        physical_ic_renderings_clean={"DD1": clean},
+        physical_ic_renderings_diagnostic={"DD1": diagnostic},
         expected_component_count=1,
         expected_net_count=expected_net_count,
         expected_net_pinrefs=4,
@@ -88,7 +89,8 @@ def test_reject_forged_external_graph_or_evidence(tamper, code):
     kwargs = dict(
         circuit=circuit, graph=graph, parts=parts,
         symbols_by_part=symbols, style=STYLE, measurer=FixedInk(),
-        physical_ic_renderings={"DD1": clean},
+        physical_ic_renderings_clean={"DD1": clean},
+        physical_ic_renderings_diagnostic={"DD1": diagnostic},
         expected_component_count=1, expected_net_count=2,
         expected_net_pinrefs=4,
     )
@@ -105,7 +107,7 @@ def test_reject_forged_external_graph_or_evidence(tamper, code):
             WireSegment(Point(0, -1000), Point(0, 1000), "B"),
         ), (Point(0, 0),))
     elif tamper == "no_ic":
-        kwargs["physical_ic_renderings"] = {}
+        kwargs["physical_ic_renderings_clean"] = {}
     elif tamper == "owner":
         kwargs["route_preview"] = object()
     with pytest.raises((ValueError, TypeError, RuntimeError), match=code):
@@ -130,7 +132,8 @@ def test_debug_layer_is_truly_foreground_after_all_new_wire_and_junction_ink():
     circuit, graph, parts, symbols, clean, diagnostic = _case()
     result = render_routed_native_sheet(
         circuit, graph, parts, symbols, STYLE, FixedInk(),
-        physical_ic_renderings={"DD1": diagnostic},
+        physical_ic_renderings_clean={"DD1": clean},
+        physical_ic_renderings_diagnostic={"DD1": diagnostic},
     )
     root = ET.fromstring(result.diagnostic_svg)
     layer = root.findall(
