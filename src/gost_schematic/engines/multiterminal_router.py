@@ -238,6 +238,7 @@ def _visibility_path(
     occupied: ExternalWireGraph,
     tree: tuple[WireSegment, ...],
     existing_dots: tuple[Point, ...],
+    goal_pin_normals: dict[Point, Point],
     boxes: tuple[Box, ...],
     page: Box,
     stroke_um: int,
@@ -314,6 +315,13 @@ def _visibility_path(
             ):
                 continue
             is_goal = to in targets
+            if is_goal and to in goal_pin_normals:
+                outward = goal_pin_normals[to]
+                if ((here.x - to.x) * outward.x
+                        + (here.y - to.y) * outward.y <= 0):
+                    # Last segment must reach a REAL physical pin from
+                    # outside its own graphics, never through the body.
+                    continue
             key = (here, to, is_goal)
             saved = cache.get(key)
             if saved is None:
@@ -446,7 +454,13 @@ def route_multi_terminal_net(
         path, reason = _visibility_path(
             current, outward, goals, net_name=net.name,
             occupied=occupied, tree=tuple(branches),
-            existing_dots=dots, boxes=boxes, page=page_box,
+            existing_dots=dots,
+            goal_pin_normals={
+                at: normal for ref in connected
+                for at, normal in (locations[ref],)
+                if at in goals
+            },
+            boxes=boxes, page=page_box,
             stroke_um=stroke_um, grid_um=grid_um,
             search_node_cap=search_node_cap,
             max_detour_ratio=max_detour_ratio,
