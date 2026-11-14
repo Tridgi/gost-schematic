@@ -116,7 +116,13 @@ def audit_strokes(root):
     wires = _all_wires(root)
     assert len(wires) == 91, "TL494_SOURCE_WIRE_COUNT_CHANGED"
     symbols = root.findall(f".//{SVG}g[@data-layer='symbols']")
-    assert len(symbols) == 23, "TL494_SOURCE_BOM_GROUP_COUNT_CHANGED"
+    # 22 native component groups + one physical DA1 painted as its own
+    # source-authoritative IC layer, never count its internals twice.
+    painted_ic = root.findall(f".//{SVG}g[@data-owner='DA1']")
+    assert len(symbols) == 22 and len(painted_ic) == 1, (
+        "TL494_SOURCE_BOM_GROUP_COUNT_CHANGED"
+    )
+    assert painted_ic[0].get("data-physical-pin-count") == "16"
     symbol_types = {
         kind: [
             el for group in symbols if group.get("data-reference", "").startswith(kind)
@@ -163,7 +169,7 @@ def audit_strokes(root):
                 })
     return {
         "source_segments": len(wires),
-        "source_symbol_groups": len(symbols),
+        "source_symbol_groups": len(symbols) + len(painted_ic),
         "source_symbols_with_strokes": {
             "diode": len(symbol_types["VD"]),
             "mosfet": len(symbol_types["VT"]),
