@@ -32,13 +32,13 @@ jobs:
       - name: Checkout real current PAINT #93 HEAD, not the historical owner snapshot
         uses: actions/checkout@v4
         with:
-          ref: 79ddb2ae57efd9ea621d64914a324988b343061d
+          ref: 8623d2c9ea11963ed0d795575e4e95666ab69f7a
           path: _qa_sources/paint
           persist-credentials: false
       - name: Checkout real current ELEKTRIK IC #97 HEAD, not historical source
         uses: actions/checkout@v4
         with:
-          ref: 66458de0e56474800e70f5d4fd1fd88b16b210f9
+          ref: 8451a87bfa17344670017a6a07b460b8b4cf4835
           path: _qa_sources/ic
           persist-credentials: false
       - name: Verify all three commits, stage real owner source ONLY in disposable runner
@@ -46,8 +46,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C _qa_sources/reference rev-parse HEAD)" = e695c415fdced164b0e0c39c5249d030795a0aa6
-          test "$(git -C _qa_sources/paint rev-parse HEAD)" = 79ddb2ae57efd9ea621d64914a324988b343061d
-          test "$(git -C _qa_sources/ic rev-parse HEAD)" = 66458de0e56474800e70f5d4fd1fd88b16b210f9
+          test "$(git -C _qa_sources/paint rev-parse HEAD)" = 8623d2c9ea11963ed0d795575e4e95666ab69f7a
+          test "$(git -C _qa_sources/ic rev-parse HEAD)" = 8451a87bfa17344670017a6a07b460b8b4cf4835
           cp scripts/qa_tl494_current_reference.py _qa_sources/reference/scripts/qa_tl494_current_reference.py
           for file in _qa_sources/paint/src/gost_schematic/rendering/ic_*.py; do
             cp "$file" _qa_sources/reference/src/gost_schematic/rendering/
