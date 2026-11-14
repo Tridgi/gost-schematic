@@ -17,10 +17,10 @@ from gost_schematic.electrical.contacts import (
 from gost_schematic.electrical.ic import (
     IcField,
     IcKind,
-    IcPortLayout,
     IcPackage,
     IcPinRow,
     IcPinType,
+    IcPortLayout,
     IcUnit,
     PinoutOrigin,
     resolve_ic_pin_positions,
