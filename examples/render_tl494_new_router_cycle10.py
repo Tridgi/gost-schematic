@@ -30,8 +30,8 @@ from gost_schematic.rendering.routed_native_sheet import (
 )
 
 SOURCE_SHA = "e695c415fdced164b0e0c39c5249d030795a0aa6"
-IC97_SHA = "b28428d94218cac777a28897ce9176285d0fab0b"
-NET114_SHA = "b3a8263944c5a687492a49555d8149e538f0902b"
+IC97_SHA = "809616e6ab58b80b6386c664405cdb8ef6a99196"
+NET114_SHA = "2c4596e3e2897c5a34618169e4cfa5c3b8c38b43"
 
 
 def render_new_owner_route(
