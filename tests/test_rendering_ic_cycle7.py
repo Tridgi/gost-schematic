@@ -500,7 +500,7 @@ def test_vertical_64_pin_a4_page_zone_fails_instead_of_auto_scaling():
         )
     result = render_resolved_ic(
         unit, STYLE, FixedInk(),
-        page_bounds=Box(20000, 5000, 312000, 200000),
+        page_bounds=Box(20000, 5000, 412000, 290000),
     )
     assert len(result.pin_anchors) == 64
     assert result.proposed.width_um > 200000
