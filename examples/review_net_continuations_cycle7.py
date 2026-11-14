@@ -354,8 +354,8 @@ def _measured_sheet_svg(
         # Review-only solid arrow; final GOST proportions need ESKD approval.
         back = x - outward * 2000
         _elem(root, "path", {
-            "d": f"M {back} {y-1100} L {x} {y} L {back} {y+1100} Z",
-            "fill": "black", "stroke": "black", "stroke-width": "150",
+            "d": f"M {back} {y-1100} L {x} {y} L {back} {y+1100}",
+            "fill": "none", "stroke": "black", "stroke-width": "150",
             "data-role": "DRAFT-visual-continuation-marker",
             "data-marker-id": marker.id, "data-net-id": marker.net_id,
         })
