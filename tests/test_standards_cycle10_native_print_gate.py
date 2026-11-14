@@ -443,7 +443,7 @@ def _synthetic_source_62():
         "source_sha": gate.FROZEN_SOURCE,
         "components": sorted(REFERENCES),
         "nets": [
-            {"name": f"TEST_NET_{i}",
+            {"name": "COMMON" if i == 0 else f"TEST_NET_{i}",
              "members": [ref for j, ref in enumerate(refs) if j % 15 == i]}
             for i in range(15)
         ],
@@ -469,6 +469,7 @@ def test_true_typed_source_contract_requires_23_15_62_and_all_16():
     ("falsify_full_route", "ORIGINAL_91_CANNOT_CLAIM_NEW_FULL_ROUTE"),
     ("change_frozen_source", "SOURCE_SHA_MISMATCH"),
     ("drop_b", "B_GRAPHIC_NOT_PHYSICAL"),
+    ("rename_common_to_PE", "COMMON_0V_NOT_A_CHASSIS_PE_CROSS_NET"),
 ])
 def test_typed_source_adversarial_inventory(change, code):
     facts = _synthetic_source_62()
@@ -494,5 +495,7 @@ def test_typed_source_adversarial_inventory(change, code):
         facts["source_sha"] = "0" * 40
     elif change == "drop_b":
         facts["nonphysical_b"] = ["b-X2"]
+    elif change == "rename_common_to_PE":
+        facts["nets"][0]["name"] = "PE"
     with pytest.raises(gate.PrintEvidenceError, match=code):
         gate._typed_source_62(facts)
