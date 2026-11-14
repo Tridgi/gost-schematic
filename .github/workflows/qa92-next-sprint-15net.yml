@@ -223,3 +223,65 @@ jobs:
           path: output/qa92-next-route-${{ matrix.python-version }}/
           if-no-files-found: warn
           retention-days: 30
+
+  current-ti16-real-editor-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 3c2121ad918e4a877c031d47853f2ba9e74e7a24
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 161c31bd0b538c6e827341ae465c3b3a59f6637d
+          path: _qa_sources/paint
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: _qa_sources/qa
+          persist-credentials: false
+      - name: Exact IC, PAINT and independent QA SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = 3c2121ad918e4a877c031d47853f2ba9e74e7a24
+          test "$(git -C _qa_sources/paint rev-parse HEAD)" = 161c31bd0b538c6e827341ae465c3b3a59f6637d
+          cp _qa_sources/qa/scripts/qa_tl494_current_editor_cycle10.py scripts/
+          for src in _qa_sources/paint/src/gost_schematic/rendering/ic_*.py; do
+            cp "$src" src/gost_schematic/rendering/
+          done
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install true physical IC model, renderer, QA and OpenGost Type A
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install -e ".[dev,mcp,fonts]"
+          ruff check scripts/qa_tl494_current_editor_cycle10.py
+          python scripts/install_opengost_type_a.py \
+            --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a \
+            --directory "$HOME/.local/share/fonts"
+          fc-cache -f
+          FONT_FILE="$(find "$HOME/.local/share/fonts" -type f -iname '*TypeA*.ttf' | head -1)"
+          test -f "$FONT_FILE"
+          echo "QA92_REAL_EDITOR_FONT=$FONT_FILE" >> "$GITHUB_ENV"
+      - name: Real 23-part Circuit exact 16 physical PinRef and eight typed editor fraud negatives
+        run: |
+          mkdir -p output
+          PYTHONPATH=src:. python scripts/qa_tl494_current_editor_cycle10.py \
+            --font-file "$QA92_REAL_EDITOR_FONT" \
+            --output "output/qa92-new-owner-editor-${{ matrix.python-version }}.json"
+      - name: Record output as independent source-pinned artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qa92-current-ic-editor-py${{ matrix.python-version }}
+          path: output/qa92-new-owner-editor-${{ matrix.python-version }}.json
+          if-no-files-found: warn
