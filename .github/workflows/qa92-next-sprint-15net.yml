@@ -127,7 +127,8 @@ jobs:
               copy2(source, target)
 
           for name in ("ic.py", "tl494cn.py", "ic_pin_alias.py",
-                       "ic_serde.py", "ic_paint_bridge.py", "ic_graphic_revision.py"):
+                       "ic_serde.py", "ic_paint_bridge.py",
+                       "ic_graphic_revision.py", "ic_circuit_adapter.py"):
               stage("ic", "src/gost_schematic/electrical/" + name,
                     "src/gost_schematic/electrical/" + name)
           stage("ic", "examples/tl494_cycle9_circuit_integration.py",
