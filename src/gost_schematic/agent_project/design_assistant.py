@@ -10,7 +10,9 @@ from gost_schematic.core.geometry import Line, enclosing_box, primitive_bounds
 from gost_schematic.core.transforms import Transform
 from gost_schematic.model.obstacles import WireObstacle
 from gost_schematic.rendering.svg import render_symbol_svg
-from gost_schematic.validation.dimensional_checks import check_verified_dimensions
+from gost_schematic.validation.dimensional_checks import (
+    check_verified_dimensions, load_requirements,
+)
 from gost_schematic.validation.sheet_wire_rules import validate_sheet_wire_rules
 
 from .catalog import CatalogResolver, ProjectError
@@ -225,6 +227,72 @@ def _placed_boxes(project: SchematicProject, catalog: CatalogResolver):
     return byref, parts, symbols
 
 
+def _measured_parallel_wire_gaps(
+    wires: tuple[WireObstacle, ...], project: SchematicProject,
+    placed: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Exact stroke-edge gaps for overlapping distinct H/V parallel wires.
+
+    This is a *subset* of physical print checks, not a router or false
+    junction detector. Use the existing rule engine for final codes.
+    """
+    rule = load_requirements()["layout_rules"][
+        "min_clearance_parallel_connection_lines_um"
+    ]
+    anchors: dict[tuple[int, int], list[str]] = {}
+    for ref, data in placed.items():
+        for number, point in data["pins"].items():
+            anchors.setdefault((point.x, point.y), []).append(f"{ref}.{number}")
+    results = []
+    for i, left in enumerate(wires):
+        horizontal = left.line.start.y == left.line.end.y
+        vertical = left.line.start.x == left.line.end.x
+        if not (horizontal or vertical):
+            continue
+        for right in wires[i+1:]:
+            other_h = right.line.start.y == right.line.end.y
+            other_v = right.line.start.x == right.line.end.x
+            if (horizontal and not other_h) or (vertical and not other_v):
+                continue
+            p1 = (left.line.start.x, left.line.end.x) if horizontal else (
+                left.line.start.y, left.line.end.y
+            )
+            p2 = (right.line.start.x, right.line.end.x) if horizontal else (
+                right.line.start.y, right.line.end.y
+            )
+            overlap = min(max(p1), max(p2)) - max(min(p1), min(p2))
+            if overlap <= 0:
+                continue
+            axis1 = left.line.start.y if horizontal else left.line.start.x
+            axis2 = right.line.start.y if horizontal else right.line.start.x
+            if axis1 == axis2:
+                continue  # handled by the existing collinear identity check
+            clearance_twice_um = (
+                2 * abs(axis1 - axis2) - left.stroke_um - right.stroke_um
+            )
+            if clearance_twice_um >= 2 * rule:
+                continue
+            hits = set()
+            for wire in (left, right):
+                for point in (wire.line.start, wire.line.end):
+                    hits.update(anchors.get((point.x, point.y), []))
+            results.append({
+                "code": "ESKD_PARALLEL_WIRE_CLEARANCE",
+                "wire_ids": [left.identifier, right.identifier],
+                "wire_nets": [left.net_name, right.net_name],
+                "nearby_true_pinrefs_at_endpoints": sorted(hits),
+                "overlapping_projection_um": overlap,
+                "printed_edge_gap_twice_um": clearance_twice_um,
+                "required_edge_gap_twice_um": 2 * rule,
+                "reason": (
+                    f"authored parallel wires {left.identifier} and "
+                    f"{right.identifier}: actual printed edge gap is "
+                    f"{clearance_twice_um}/2 um, required >= {rule} um"
+                ),
+            })
+    return results
+
+
 def preflight_project(project: SchematicProject, catalog: CatalogResolver, *,
                       profile: str = "none") -> dict[str, Any]:
     """Physical model based pre-render evidence; never claim full printable DRC."""
@@ -285,6 +353,7 @@ def preflight_project(project: SchematicProject, catalog: CatalogResolver, *,
             project.graph.segments, project.wire_ids, strict=True
         ))
     )
+    measured_parallel_gaps = _measured_parallel_wire_gaps(wires, project, placed)
     for d in validate_sheet_wire_rules(wires):
         diagnostics.append({"code": d.code, "severity": d.severity.value,
                             "subject": d.subject, "message": d.message,
@@ -319,7 +388,8 @@ def preflight_project(project: SchematicProject, catalog: CatalogResolver, *,
             for pin in row["members"]
         ],
     } for row in record["nets"]]
-    route_stats = {"authored_segment_count": len(project.graph.segments),
+    route_stats = {"measured_parallel_conflicts": measured_parallel_gaps,
+                   "authored_segment_count": len(project.graph.segments),
                    "explicit_junction_count": len(project.graph.junctions),
                    "route_planner": "NOT_IMPLEMENTED",
                    "route_conflict_checks": [
