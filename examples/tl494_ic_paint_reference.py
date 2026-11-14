@@ -15,7 +15,7 @@ from xml.etree import ElementTree as ET
 
 from gost_schematic.core.geometry import Box, Point, Side, SIDE_VECTORS
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
-from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
+from gost_schematic.model.circuit import Circuit, ComponentInstance, PinRef
 from gost_schematic.model.part import PartDefinition
 from gost_schematic.model.pins import PhysicalPin, ElectricalType
 from gost_schematic.rendering.ic_rectangular import (
@@ -67,7 +67,7 @@ def build(font_file: Path):
             # The PHOTO places some logical inputs on the right.
             # Label physical electrical type separately from the E3 presentation role.
             role="power" if num in ("7","12","14") else (
-                "in" if side is Side.LEFT else "out"
+                "passive" if num == "3" else "in" if side is Side.LEFT else "out"
                 if num in ("3","8","9","10","11") else "passive"
             )
             template.append(ResolvedIcPin(
@@ -140,7 +140,6 @@ def generate(output: Path,font_file: Path):
         "source_photo_pin_order":{"left":SOURCE_PHOTO_LEFT,"right":SOURCE_PHOTO_RIGHT},
         "variants":{},
     }
-    baseline=None
     for deg in (0,90):
         unit=replace(base,function_rotation=deg)
         for diagnostic in (False,True):
