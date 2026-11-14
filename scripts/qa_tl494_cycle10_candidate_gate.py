@@ -408,6 +408,17 @@ def main() -> None:
             )
         ),
     }
+    if report["runtime_differs_from_embedded_snapshot"]:
+        report["release_provenance"] = (
+            "BLOCKED_OWNER_EMBEDDED_SHA_DOES_NOT_MATCH_LIVE_EXECUTED_CODE"
+        )
+    else:
+        report["release_provenance"] = (
+            "EXACT_OWNER_SHA_METADATA_ATTESTED_NONPRINTABLE_CANDIDATE"
+        )
+    report["release_decision"] = (
+        "NO_GO_UNTIL_ALL_15_ROUTED_AND_PRINT_DRC_UGO_B_PHOTO_REVIEW"
+    )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
         json.dumps(report, indent=2, ensure_ascii=False,
