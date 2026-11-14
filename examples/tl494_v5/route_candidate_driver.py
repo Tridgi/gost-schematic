@@ -16,6 +16,7 @@ from decimal import Decimal, InvalidOperation
 from importlib import import_module
 from pathlib import Path
 
+from examples.tl494_v5.cycle11_ti_bridge import bind_verified_compact_ti
 from examples.tl494_v5.compact_layout import (
     A3_LANDSCAPE_UM,
     COMPACT_A3_MM,
@@ -273,7 +274,7 @@ def candidate_priority(frozen: dict, key: str) -> tuple[str, ...]:
     return tuple(priority)
 
 
-def _build_obstacles(assembly, net_circuit, font_file):
+def _build_obstacles(assembly, net_circuit, font_file, verified_ti=None):
     inspection = inspect_type_a_font(
         font_file, h_um=3500, family="OpenGOST type A",
         require_family_match=True,
@@ -286,6 +287,10 @@ def _build_obstacles(assembly, net_circuit, font_file):
         assembly.owner_ic_record, style, measurer
     )
     bridge.verify_endpoints()
+    if verified_ti is not None:
+        # A cosmetic raw PinRef hotspot is never a signed physical source.
+        # #97 checks all 16 manufacturer roles, anchors, exact Net ownership.
+        verified_ti.seal_paint(bridge)
     render = import_module(
         "gost_schematic.rendering.ic_rectangular"
     ).render_resolved_ic(
@@ -295,6 +300,27 @@ def _build_obstacles(assembly, net_circuit, font_file):
     symbol = _owner_ic_obstacle(bridge.views[0], render.svg, da1)
     symbols = dict(assembly.symbols)
     symbols["reference.tl494cn"] = symbol
+    if verified_ti is not None:
+        # The real manufacturer PartDefinition refers to its catalog
+        # surrogate ID. The GRAPHIC remains genuine PAINT 16-lead geometry:
+        # a surrogate is used for routing bounds only, never as final artwork.
+        manufacturer_symbol = replace(
+            symbol, identifier=verified_ti.part.symbol_id,
+        )
+        symbols[verified_ti.part.symbol_id] = manufacturer_symbol
+        symbols[verified_ti.signed_part_id] = manufacturer_symbol
+        da1_world = next(
+            c for c in verified_ti.signed.circuit.components
+            if c.reference == "DA1"
+        ).pin_positions(manufacturer_symbol)
+        if any(
+            da1_world[number] != verified_ti.signed.contact(
+                PinRef("DA1", number),
+            ).world_anchor
+            for number in (str(p) for p in range(1, 17))
+        ):
+            raise ValueError("V5_C11_SIGNED_DA1_PHYSICAL_ROUTE_ANCHOR_DRIFT")
+        net_circuit = verified_ti.signed.circuit
     exact_pa_int = tuple(
         MeasuredInkGuard(ink.owner, ink.box.expanded(500))
         for ink in render.ink
@@ -344,8 +370,12 @@ def run_candidate(
     typed_owner = _pins(owner_binding.circuit.nets)
     if source_named != typed_owner:
         raise ValueError("V5_CANDIDATE_REAL_IC_OWNER_NET_MISMATCH")
+    # Strict reversible owner #97 binding: preserve the exact source tuple,
+    # then route the *verified* TI manufacturer part, not a legacy look-alike.
+    verified_ti = bind_verified_compact_ti(positioned, net_circuit)
+    signed_circuit = verified_ti.signed.circuit
     symbols, guards, layout, footprint, style = _build_obstacles(
-        positioned, net_circuit, font_file
+        positioned, net_circuit, font_file, verified_ti=verified_ti,
     )
     reason = None
     if not layout.valid:
@@ -374,8 +404,9 @@ def run_candidate(
     router = import_module(
         "gost_schematic.engines.multiterminal_router"
     ).route_circuit_net_trees
+    parts = {**positioned.parts, verified_ti.signed_part_id: verified_ti.part}
     result = router(
-        net_circuit, positioned.parts, symbols,
+        signed_circuit, parts, symbols,
         page_box=Box(0, 0, *A3_LANDSCAPE_UM),
         annotation_placements=guards, priority=config.priority,
         search_node_cap=node_cap, stop_on_first_failure=False,
@@ -416,6 +447,15 @@ def run_candidate(
             "BLOCKED_PARTIAL_ROUTING_NO_PRINT"
         ),
         "owner_router_report": report,
+        "manufacturer_binding": {
+            "source_part": verified_ti.source_part_id,
+            "verified_part": verified_ti.signed_part_id,
+            "verified_physical_pin_count": len(verified_ti.signed.contacts),
+            "source_original_15_Net_tuple_preserved": (
+                verified_ti.signed.circuit.nets is net_circuit.nets
+            ),
+            "PAINT_trusted_all16_targets_verified": True,
+        },
         "priority": list(config.priority),
         "moves_mm": [
             [ref, str(dx), str(dy)] for ref, dx, dy in config.move_mm
