@@ -5,6 +5,7 @@ on:
     paths:
       - examples/tl494_v5/cycle11_ti_bridge.py
       - examples/tl494_v5/test_cycle11_ti_bridge.py
+      - examples/tl494_v5/cycle11_binding_preflight.py
       - examples/tl494_v5/cycle11_b_continuation.py
       - examples/tl494_v5/test_cycle11_b_continuation.py
       - examples/tl494_v5/route_candidate_driver.py
@@ -82,6 +83,33 @@ jobs:
             examples/tl494_v5/test_routed_graph_contract.py \
             examples/tl494_v5/test_cycle11_ti_bridge.py \
             examples/tl494_v5/test_cycle11_b_continuation.py
+      - name: Produce C11 signed TI plus true b marker source proof independently of routing
+        run: |
+          set -euxo pipefail
+          mkdir -p output/tl494-v5-current
+          PYTHONPATH=src python -m examples.tl494_v5.cycle11_binding_preflight \
+            --font-file "$TL494_TYPE_A_FONT" \
+            --output-file output/tl494-v5-current/C11_SIGNED_REAL_SOURCE_B_PROOF.json
+          PYTHONPATH=src python - <<'PY'
+          import json
+          from pathlib import Path
+          m = json.loads(Path(
+              "output/tl494-v5-current/C11_SIGNED_REAL_SOURCE_B_PROOF.json"
+          ).read_text(encoding="utf-8"))
+          assert m["frozen_source_components"] == 23
+          assert m["frozen_source_Net_count"] == 15
+          assert m["frozen_source_physical_memberships"] == 62
+          assert m["signed_source_Circuit_Nets_identical"]
+          assert m["manufacturer_DA1_physical_pin_count"] == 16
+          assert len(m["source_b_marker_um"]) == 2
+          assert set(m["source_b_marker_um"]) == {"b-X2", "b-R5"}
+          assert m["source_b_nonphysical_Net"] == "b_NEGATIVE_OUTPUT"
+          assert set(m["source_b_physical_members"]) == {
+              "FU1.2", "X2.1", "R5.2"
+          }
+          assert not m["full_clean_SVG_or_300DPI_PNG_released"]
+          assert m["full_A3_print_and_photo_1_to_1"] == "BLOCKED"
+          PY
       - name: Compare original source 23/15/62 and run two order candidates
         run: |
           set -euxo pipefail
