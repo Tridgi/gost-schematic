@@ -152,11 +152,11 @@ def inspect_route(
             "QA_ROUTE_PREVIEW_NOT_AN_APPROVED_PRINT_ARTIFACT")
     reasons = []
     if len(trees) != 15:
-        reasons.append("ONLY_%d_OF_15_NET_TREE_RECORDS" % len(trees))
+        reasons.append(f"ONLY_{len(trees)}_OF_15_NET_TREE_RECORDS")
     if complete != 15:
-        reasons.append("ONLY_%d_OF_15_NETS_COMPLETE" % complete)
+        reasons.append(f"ONLY_{complete}_OF_15_NETS_COMPLETE")
     if actual_errors:
-        reasons.append("NEW_ROUTE_DRC_%d_ERRORS" % actual_errors)
+        reasons.append(f"NEW_ROUTE_DRC_{actual_errors}_ERRORS")
     if not drc["checked_symbol_geometry"]:
         reasons.append("SYMBOL_GEOMETRY_UNCHECKED")
     if not drc["checked_measured_text"]:
