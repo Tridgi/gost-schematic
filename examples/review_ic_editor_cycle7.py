@@ -115,6 +115,31 @@ def generate(output_dir: Path, font: Path) -> dict:
                     raise ValueError("IC_EDITOR_INCOMPLETE_HOTSPOT_INK")
                 if "editor-connection-targets" in clean_svg.svg:
                     raise ValueError("IC_EDITOR_PRINT_LAYER_LEAK")
+                for original_svg in (clean_svg.svg, diag_svg.svg):
+                    parsed = ET.fromstring(original_svg)
+                    lead_layers = [
+                        node for node in parsed.iter()
+                        if node.attrib.get("data-layer")
+                        == "ic-physical-pin-leads"
+                    ]
+                    if len(lead_layers) != 1:
+                        raise ValueError("IC_EDITOR_REAL_LEAD_LAYER_MISSING")
+                    lead_map = {
+                        n.attrib["data-pin-number"]: n.attrib
+                        for n in lead_layers[0] if n.tag.endswith("line")
+                    }
+                    if len(lead_map) != len(real):
+                        raise ValueError("IC_EDITOR_REAL_PHYSICAL_LEAD_COVERAGE")
+                    for contact in real:
+                        line = lead_map[contact.physical_number]
+                        if (
+                            line.get("x2") != format_mm(contact.anchor.x)
+                            or line.get("y2") != format_mm(contact.anchor.y)
+                            or line.get("data-real-anchor") != "true"
+                        ):
+                            raise ValueError(
+                                "IC_EDITOR_PHYSICAL_LEAD_1UM_MISMATCH"
+                            )
                 found = {node.attrib["data-pin-ref"]: node for node in rects}
                 if len(found) != len(real):
                     raise ValueError("IC_EDITOR_DUPLICATE_XML_MARKER")
