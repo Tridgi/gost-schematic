@@ -237,18 +237,33 @@ def _source_ink_collision(
                 continue
         if (
             ink.permitted_pin in authorized_pins
-            and ink.contact in (candidate.start, candidate.end)
+            and ink.contact is not None
             and ink.normal is not None
         ):
-            other = (
-                candidate.end if candidate.start == ink.contact
-                else candidate.start
+            # A legal outward pin escape can be split by the visibility
+            # lattice inside the *same real stroke cap*. The second small
+            # segment no longer contains the PinRef coordinate; requiring
+            # endpoint == contact here would wrongly forbid the same physical
+            # continuous conductor solely because a grid knot was inserted.
+            #
+            # Permit ONLY the one-dimensional exterior ray of THAT exact
+            # physical contact, including its subsegments; never permit a
+            # move behind the tip into the IC lead forest or any off-axis
+            # crossing of another lead. All wire-to-wire and DRC checks
+            # still run afterwards, and this does not author a junction.
+            tangent = lambda p: (
+                (p.x - ink.contact.x) * ink.normal.y
+                - (p.y - ink.contact.y) * ink.normal.x
+            )
+            outward = lambda p: (
+                (p.x - ink.contact.x) * ink.normal.x
+                + (p.y - ink.contact.y) * ink.normal.y
             )
             if (
-                (other.x - ink.contact.x) * ink.normal.x
-                + (other.y - ink.contact.y) * ink.normal.y > 0
+                tangent(candidate.start) == tangent(candidate.end) == 0
+                and outward(candidate.start) >= 0
+                and outward(candidate.end) >= 0
             ):
-                # Only direct pin exit may overlap its own terminal cap.
                 continue
         return ink
     return None
