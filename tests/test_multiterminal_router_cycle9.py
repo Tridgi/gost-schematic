@@ -6,6 +6,8 @@ import pytest
 from gost_schematic.core.geometry import Box, Line, Point, Rectangle, Side
 from gost_schematic.core.transforms import Transform
 from gost_schematic.engines.multiterminal_router import (
+    _source_ink_collision,
+    _source_ink_obstacles,
     route_circuit_net_trees,
     route_multi_terminal_net,
 )
@@ -15,6 +17,7 @@ from gost_schematic.model.pins import ElectricalType, GraphicPin, PhysicalPin
 from gost_schematic.model.symbol import SymbolDefinition
 from gost_schematic.validation.external_wire_checks import (
     ExternalWireGraph,
+    WireSegment,
     validate_external_wires,
 )
 from gost_schematic.validation.route_drc import audit_route_drc
@@ -211,6 +214,125 @@ def test_grid_overflow_and_invalid_sheet_are_typed_fail_closed():
     )
     assert not result.complete and not result.print_pass
     assert "ROUTE_GRID_TOO_DENSE" in " ".join(result.diagnostics)
+
+
+def _mock_real_tl494_lead_forest():
+    """Pin 12 world at real compact A3 (205000, 138750) µm."""
+    symbol = SymbolDefinition(
+        "mock.paint.leads", 1,
+        (
+            Rectangle(Box(0, 0, 8000, 40000)),
+            Line(Point(8000, 5000), Point(18000, 5000)),
+            Line(Point(8000, 13000), Point(18000, 13000)),
+            Line(Point(8000, 21000), Point(18000, 21000)),
+        ),
+        (
+            GraphicPin("12", Point(18000, 5000), Side.RIGHT),
+            GraphicPin("8", Point(18000, 13000), Side.RIGHT),
+            GraphicPin("11", Point(18000, 21000), Side.RIGHT),
+        ),
+        Box(0, 0, 8000, 40000), 300,
+    )
+    part = PartDefinition(
+        "mock.paint.leads", "DA", "mock.paint.leads",
+        (
+            PhysicalPin("12", "VCC", ElectricalType.POWER_INPUT),
+            PhysicalPin("8", "C1", ElectricalType.OPEN_COLLECTOR),
+            PhysicalPin("11", "C2", ElectricalType.OPEN_COLLECTOR),
+        ),
+    )
+    net = Net("INPUT_POS", (PinRef("DA1", "12"),))
+    circuit = Circuit(
+        (ComponentInstance("DA1", part.identifier, Point(187000, 133750)),),
+        (net,),
+    )
+    return circuit, {part.identifier: part}, {symbol.identifier: symbol}
+
+
+def test_real_DA1_failed_x203460_vertical_cannot_cross_other_leads():
+    circuit, _, symbols = _mock_real_tl494_lead_forest()
+    ink = _source_ink_obstacles(circuit, symbols, stroke_um=300)
+    old_rejected = WireSegment(
+        Point(203460, 138750), Point(203460, 43201), "INPUT_POS",
+    )
+    collision = _source_ink_collision(
+        old_rejected, ink,
+        authorized_pins=frozenset({PinRef("DA1", "12")}),
+    )
+    assert collision is not None
+    assert collision.owner == "DA1"
+    assert collision.primitive_kind == "Line"
+    assert collision.permitted_pin is not None
+    assert collision.permitted_pin.reference == "DA1"
+
+
+def test_real_DA1_exterior_x208150_lane_and_pin_12_exit_are_legal():
+    circuit, _, symbols = _mock_real_tl494_lead_forest()
+    ink = _source_ink_obstacles(circuit, symbols, stroke_um=300)
+    pins = frozenset({PinRef("DA1", "12")})
+    source = Point(205000, 138750)
+    assert _source_ink_collision(
+        WireSegment(source, Point(208150, source.y), "INPUT_POS"),
+        ink, authorized_pins=pins,
+    ) is None
+    assert _source_ink_collision(
+        WireSegment(Point(208150, 138750), Point(208150, 43201),
+                    "INPUT_POS"), ink, authorized_pins=pins,
+    ) is None
+    forbidden = _source_ink_collision(
+        WireSegment(source, Point(190000, source.y), "INPUT_POS"),
+        ink, authorized_pins=pins,
+    )
+    assert forbidden is not None
+
+
+def test_lead_exemption_requires_exact_authorized_PinRef_not_same_owner():
+    circuit, _, symbols = _mock_real_tl494_lead_forest()
+    ink = _source_ink_obstacles(circuit, symbols, stroke_um=300)
+    lead_8 = WireSegment(
+        Point(205000, 146750), Point(208150, 146750), "INPUT_POS",
+    )
+    blocked = _source_ink_collision(
+        lead_8, ink,
+        authorized_pins=frozenset({PinRef("DA1", "12")}),
+    )
+    assert blocked is not None
+    assert blocked.permitted_pin == PinRef("DA1", "8")
+    allowed = _source_ink_collision(
+        lead_8, ink,
+        authorized_pins=frozenset({PinRef("DA1", "8")}),
+    )
+    assert allowed is None
+
+
+@pytest.mark.parametrize("rotation", (0, 90, 180, 270))
+@pytest.mark.parametrize("mirror", (False, True))
+def test_IC_fanout_primitive_D4_preserves_per_pin_exemption(rotation, mirror):
+    circuit, _, symbols = _mock_real_tl494_lead_forest()
+    tx = Transform(rotation, mirror)
+    instance = circuit.components[0]
+    transformed = replace(
+        circuit, components=(replace(
+            instance, transform=tx, origin=tx.apply(instance.origin),
+        ),),
+    )
+    ink = _source_ink_obstacles(transformed, symbols, stroke_um=300)
+    p = tx.apply(Point(205000, 138750))
+    out = tx.apply(Point(208150, 138750))
+    valid = _source_ink_collision(
+        WireSegment(p, out, "INPUT_POS"), ink,
+        authorized_pins=frozenset({PinRef("DA1", "12")}),
+    )
+    assert valid is None
+    # The same sourced pin may NOT authorize a separate physical lead.
+    q = tx.apply(Point(205000, 146750))
+    r = tx.apply(Point(208150, 146750))
+    invalid = _source_ink_collision(
+        WireSegment(q, r, "INPUT_POS"), ink,
+        authorized_pins=frozenset({PinRef("DA1", "12")}),
+    )
+    assert invalid is not None
+    assert invalid.permitted_pin == PinRef("DA1", "8")
 
 
 def test_actual_source_negative_baseline_is_never_print_pass():
