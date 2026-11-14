@@ -7,16 +7,25 @@ on:
       - "skills/gost-schematic/SKILL.md"
       - "src/gost_schematic/agent_project/design_assistant.py"
       - "src/gost_schematic/agent_project/agent_readiness.py"
+      - "src/gost_schematic/agent_project/owner_source_contract.py"
+      - "src/gost_schematic/agent_project/data/tl494_ic97_frozen_source.json"
+      - "pyproject.toml"
+      - "scripts/verify_wheel_payload.py"
       - "src/gost_schematic/agent_project/service.py"
       - "src/gost_schematic/mcp_server/saved_projects.py"
       - "tests/agent_project/test_tl494_catalog_preflight*.py"
       - "tests/agent_project/test_tl494_ai_selection_cycle9.py"
       - "tests/agent_project/test_agent_readiness_cli.py"
+      - "tests/agent_project/test_tl494_owner_contract_cycle11.py"
+      - "tests/agent_project/test_tl494_owner_pipeline_cycle11.py"
+      - "tests/fixtures/ai_tl494_ic97_pinned_source.json"
       - "tests/agent_project/test_agent_guidance_contract.py"
       - "examples/agent_tl494_catalog_preflight_mcp.py"
       - "examples/agent_readiness_readonly.py"
+      - "examples/agent_tl494_cycle11_pipeline.py"
       - "docs/ai-integration/tl494-catalog-and-preflight-issue107.md"
       - "docs/ai-integration/agent-readiness-cli-v01.md"
+      - "docs/ai-integration/agent-cycle11-source-driven-walkthrough.md"
       - ".github/workflows/ai-tl494-catalog-preflight.yml"
   workflow_dispatch:
 
@@ -45,6 +54,8 @@ jobs:
             tests/agent_project/test_tl494_ai_selection_cycle9.py \
             tests/agent_project/test_agent_readiness_cli.py \
             tests/agent_project/test_agent_guidance_contract.py \
+            tests/agent_project/test_tl494_owner_contract_cycle11.py \
+            tests/agent_project/test_tl494_owner_pipeline_cycle11.py \
             tests/agent_project/test_mcp_saved_stdio.py
       - name: Real native MCP sample gallery and six-part print preflight
         shell: bash
@@ -140,6 +151,77 @@ jobs:
           ]
           print("Typed review/no write project SHA:", report["project_revision"])
           PY
+      - name: Pin actual IC97 and RECON115 owner HEAD source, never execute owner Python
+        shell: bash
+        run: |
+          mkdir -p output/cycle11-owner
+          git fetch --no-tags --depth=1 origin \
+            1e4baf7ea713f649e0dabb4d6119e97281901f03 \
+            c58e224700b318892ee92197f8bfd391807a7325
+          git show 1e4baf7ea713f649e0dabb4d6119e97281901f03:tests/fixtures/tl494_photo_23_frozen_cycle9.json \
+            > output/cycle11-owner/frozen-IC97-source.json
+          git show 1e4baf7ea713f649e0dabb4d6119e97281901f03:src/gost_schematic/electrical/tl494cn.py \
+            > output/cycle11-owner/IC97-tl494cn.py
+          git show c58e224700b318892ee92197f8bfd391807a7325:examples/tl494_v5/native_circuit.py \
+            > output/cycle11-owner/RECON115-native-circuit.py
+          test "$(git hash-object output/cycle11-owner/frozen-IC97-source.json)" = \
+            "a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65"
+          test "$(git hash-object src/gost_schematic/agent_project/data/tl494_ic97_frozen_source.json)" = \
+            "a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65"
+      - name: Real full 23/15/62 source → native MCP choices → strictly BLOCKED typed pipeline
+        shell: bash
+        run: |
+          python -m examples.agent_tl494_cycle11_pipeline \
+            --owner-fixture output/cycle11-owner/frozen-IC97-source.json \
+            --ic-header output/cycle11-owner/IC97-tl494cn.py \
+            --recon-header output/cycle11-owner/RECON115-native-circuit.py \
+            --out output/cycle11-original-source-proof \
+            > output/cycle11-source-pipeline-report.json
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          proof = json.loads(Path("output/cycle11-source-pipeline-report.json").read_text())
+          assert proof["status"] == "BLOCKED_15NET_NOT_ROUTED"
+          assert proof["real_source_23_15_62_verified"] is True
+          assert proof["source_components_count"] == 23
+          assert proof["source_nets_count"] == 15
+          assert proof["source_pinrefs_count"] == 62
+          assert proof["da1_16_contacts"] is True
+          assert proof["typed_readiness"]["status"] == "BLOCKED_SOURCE_NOT_IMPORTABLE"
+          assert proof["typed_readiness"]["frozen_original_pinref_membership_verified"]
+          assert proof["typed_readiness_exit"] == 2
+          assert proof["missing_net_reject_code"] == "SOURCE_NET_INVENTORY_INCOMPLETE"
+          assert proof["missing_net_reject_exit"] == 3
+          assert proof["owner_part_id_bridge"]["reversible"]
+          assert proof["reversible_net_display"][
+              "reversible_to_original_physical_15_net_memberships"
+          ]
+          assert not proof["print_ready"] and not proof["new_print_svg_generated"]
+          assert not proof["new_print_png300dpi_generated"]
+          assert proof["route_completed_nets"] == 0 and not proof["route_tool_called"]
+          assert not proof["mcp_write_tool_enabled"] and not proof["autonomous_codex_model_run"]
+          assert len(proof["real_UGO_samples"]) == 7
+          for part, source in proof["real_UGO_samples"].items():
+              for ext in ("svg", "png"):
+                  raw = (Path("output/cycle11-original-source-proof") / (
+                      part + "." + ext
+                  )).read_bytes()
+                  assert hashlib.sha256(raw).hexdigest() == source[
+                      "real_" + ext + "_sha256"
+                  ]
+          assert json.loads(Path(
+              "output/cycle11-original-source-proof/source-pipeline-report.json"
+          ).read_text()) == proof
+          print("Authentic original physical source Git blob:", proof[
+              "source_fixture_git_blob_sha1"
+          ])
+          print("Immutable original typed manifest SHA:", proof[
+              "source_typed_manifest_sha256"
+          ])
+          print("15/15 route: BLOCKED, no image-only success")
+          PY
       - name: Build wheel and verify package payload
         run: |
           python -m pip wheel . --no-deps --wheel-dir dist
@@ -155,5 +237,8 @@ jobs:
             output/agent-readiness-proof.json
             output/agent-readiness/readiness-client-evidence/
             output/agent-readiness/projects/
+            output/cycle11-owner/
+            output/cycle11-source-pipeline-report.json
+            output/cycle11-original-source-proof/
           if-no-files-found: error
           retention-days: 30
