@@ -117,6 +117,15 @@ jobs:
             --owner-ic ../ic \
             --font-file "$QA_TL494_FONT" \
             --output-dir "../../output/qa92-tl494-py${{ matrix.python-version }}"
+      - name: Independently prove old E695 negative detector, not candidate release
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          ruff check scripts/qa_tl494_source_triage.py
+          python scripts/qa_tl494_source_triage.py \
+            --matrix "output/qa92-tl494-py${{ matrix.python-version }}/qa92-tl494-real-23-part-matrix.json" \
+            --output "output/qa92-tl494-py${{ matrix.python-version }}/qa92-known-bad-detector.json"
       - name: Publish exact committed clean SVG, real regenerated clean/diagnostic PNG, zooms and independent matrix even if red
         if: always()
         uses: actions/upload-artifact@v4
