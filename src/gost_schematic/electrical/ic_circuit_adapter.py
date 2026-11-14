@@ -179,6 +179,95 @@ class IcCircuitContact:
 
 
 @dataclass(frozen=True, slots=True)
+class IcVerifiedPaintSnapshot:
+    """Read-only claim; authority MUST be rechecked against its Circuit.
+
+    The checksum is provenance/audit evidence, NOT a bearer credential.
+    PAINT's standalone IcConnectionTarget permits partial cosmetic overlays;
+    ONLY this checked complete source record may be passed as an authoritative
+    source of editable physical PinRef or Net data.
+    """
+
+    component_ref: str
+    circuit_sha256: str
+    manifest: object
+    per_unit_targets: tuple[tuple[object, ...], ...]
+
+    def verify_against(self, source: IcCircuitBinding, paint_binding) -> None:
+        if not isinstance(source, IcCircuitBinding):
+            raise TypeError("IC_TRUSTED_OVERLAY_REQUIRES_TYPED_CIRCUIT_BINDING")
+        expected = source.seal_paint_overlay(paint_binding)
+        if self != expected:
+            raise ValueError("IC_TRUSTED_OVERLAY_PROVENANCE_OR_TARGET_MISMATCH")
+
+    def render(
+        self, source: IcCircuitBinding, paint_binding, style, measurer, *,
+        diagnostics: bool = False,
+    ) -> tuple[object, ...]:
+        """Render ONLY source-reverified complete targets; never partial UI ink."""
+        from xml.etree import ElementTree as ET
+
+        from gost_schematic.rendering.ic_rectangular import render_resolved_ic
+
+        if type(diagnostics) is not bool:
+            raise TypeError("IC_TRUSTED_OVERLAY_DIAGNOSTICS_TYPED_REQUIRED")
+        self.verify_against(source, paint_binding)
+        rendered = []
+        for uid, view, targets in zip(
+            paint_binding.unit_ids, paint_binding.views,
+            self.per_unit_targets, strict=True,
+        ):
+            source_unit = self.manifest.for_unit(uid)
+            expected = {
+                f"{c.component_ref}.P{c.physical_number}": c.anchor
+                for c in source_unit
+            }
+            if len(targets) != len(source_unit) or len(targets) != len(view.pins):
+                raise ValueError("IC_TRUSTED_OVERLAY_INCOMPLETE_UNIT")
+            actual = render_resolved_ic(
+                view, style, measurer, editor_targets=targets,
+                editor_overlay=diagnostics,
+                review_overlay=diagnostics, glyph_detail=diagnostics,
+            )
+            if dict(actual.pin_anchors) != expected or (
+                actual.connection_targets != targets
+            ):
+                raise ValueError("IC_TRUSTED_OVERLAY_RENDER_DRIFT")
+            root = ET.fromstring(actual.svg)
+            layers = [
+                element for element in root.iter()
+                if element.get("data-layer") == "editor-connection-targets"
+            ]
+            if (len(layers) != (1 if diagnostics else 0)):
+                raise ValueError("IC_TRUSTED_OVERLAY_DEBUG_LAYER_POLICY")
+            if diagnostics:
+                rects = [
+                    item for item in layers[0]
+                    if item.tag.endswith("rect")
+                ]
+                if len(rects) != len(source_unit):
+                    raise ValueError("IC_TRUSTED_OVERLAY_MISSING_PHYSICAL_MARKERS")
+                actual_markers = {
+                    item.get("data-pin-ref"): (
+                        item.get("data-external-anchor-x-um"),
+                        item.get("data-external-anchor-y-um"),
+                        item.get("data-net-id"),
+                        item.get("data-connectable"),
+                    ) for item in rects
+                }
+                expected_markers = {
+                    f"{c.pin_ref.reference}.{c.pin_ref.number}": (
+                        str(c.anchor.x), str(c.anchor.y),
+                        c.net_id or "", str(c.connectable).lower(),
+                    ) for c in source_unit
+                }
+                if actual_markers != expected_markers:
+                    raise ValueError("IC_TRUSTED_OVERLAY_DEBUG_MARKER_DRIFT")
+            rendered.append(actual)
+        return tuple(rendered)
+
+
+@dataclass(frozen=True, slots=True)
 class IcCircuitBinding:
     """One device / ONE Circuit component / N functional graphical units."""
 
@@ -252,6 +341,53 @@ class IcCircuitBinding:
             ):
                 raise ValueError("IC_ADAPTER_PAINT_CONTACT_MISMATCH")
         return manifest
+
+    def seal_paint_overlay(self, paint_binding) -> IcVerifiedPaintSnapshot:
+        """Authenticate complete physical contact, unit, endpoint and Net view.
+
+        Deliberately DOES NOT accept a caller-provided editor-target list.
+        The real manufacturer record and the complete Circuit are checked
+        first. Raw PAINT hotspots without this witness are UNVERIFIED.
+        """
+        from gost_schematic.electrical.ic_editor_targets import (
+            make_paint_editor_targets,
+        )
+
+        self.validate()
+        manifest = self.bind_paint(paint_binding)
+        per_unit = make_paint_editor_targets(
+            paint_binding, manifest, self.circuit,
+        )
+        if len(per_unit) != len(paint_binding.unit_ids):
+            raise ValueError("IC_TRUSTED_OVERLAY_UNIT_COUNT_MISMATCH")
+        if sum(map(len, per_unit)) != len(self.contacts):
+            raise ValueError("IC_TRUSTED_OVERLAY_INCOMPLETE_PACKAGE")
+        by_ref = {c.pin_ref: c for c in manifest.contacts}
+        seen = set()
+        for uid, targets in zip(
+            paint_binding.unit_ids, per_unit, strict=True,
+        ):
+            for target in targets:
+                physical = by_ref.get(target.pin_ref)
+                if physical is None or target.pin_ref in seen or (
+                    physical.unit_id != uid
+                    or target.pin_id != (
+                        f"{physical.component_ref}.P{physical.physical_number}"
+                    )
+                    or target.anchor != physical.anchor
+                    or target.net_id != physical.net_id
+                    or target.connectable != physical.connectable
+                    or target.reason != physical.reason
+                ):
+                    raise ValueError("IC_TRUSTED_OVERLAY_FORGED_CONTACT")
+                seen.add(target.pin_ref)
+        if seen != set(by_ref):
+            raise ValueError("IC_TRUSTED_OVERLAY_MISSING_PHYSICAL_CONTACT")
+        return IcVerifiedPaintSnapshot(
+            self.component_ref,
+            hashlib.sha256(self.to_json().encode("utf-8")).hexdigest(),
+            manifest, per_unit,
+        )
 
     def to_json(self) -> str:
         """Strict schema v1 including full physical IC and real 23-part Circuit."""
