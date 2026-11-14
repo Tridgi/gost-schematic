@@ -18,7 +18,7 @@ from PIL import Image
 
 from gost_schematic.catalog.loader import load_symbol
 from gost_schematic.catalog.part_loader import load_part
-from gost_schematic.core.geometry import Box, Circle, Line, Point, Side, SIDE_VECTORS
+from gost_schematic.core.geometry import SIDE_VECTORS, Box, Circle, Line, Point, Side
 from gost_schematic.core.transforms import Transform
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
@@ -252,10 +252,10 @@ def _port_fixture(paint, count, style, metrics, word, transform):
 
 
 def ic_text_gallery(output, font):
-    from gost_schematic.rendering import ic_rectangular as paint
+    from examples.review_ic_cycle7 import synthetic_ic
     from gost_schematic.electrical.ic import IcKind, IcTextAngle
     from gost_schematic.electrical.ic_graphic_revision import revise_ic_text_orientation
-    from examples.review_ic_cycle7 import synthetic_ic
+    from gost_schematic.rendering import ic_rectangular as paint
 
     face = inspect_type_a_font(font, h_um=2500)
     measurer = PillowTextMeasurer()
@@ -329,11 +329,13 @@ def ic_text_gallery(output, font):
 def netref_gallery(output, font):
     import importlib
 
+    from examples.review_net_continuations_cycle7 import (
+        sheet_svg,
+        specimen,
+        specimen_three_sheet,
+    )
     from gost_schematic.electrical.netrefs import validate_net_continuations
     from gost_schematic.electrical.netrefs_serde import netrefs_from_json, netrefs_to_json
-    from examples.review_net_continuations_cycle7 import (
-        specimen, specimen_three_sheet, sheet_svg,
-    )
 
     importlib.import_module("gost_schematic.rendering.svg")
     files = {}
@@ -355,7 +357,7 @@ def netref_gallery(output, font):
                         "NETREF_FALSE_GOST_APPROVAL")
                 if namespace == "" and len(project.sheets) == 2:
                     stem = f"netrefs-sheet-{sheet.number}"
-                    sha, wh = _save_svg_png(svg, output, stem, count=15)
+                    sha, _wh = _save_svg_png(svg, output, stem, count=15)
                     files.update(sha)
     p = specimen()
     corrupted = replace(p, endpoints=(
@@ -412,7 +414,7 @@ assert s.render_project(sys.argv[2],sys.argv[3]).png[:8]==b'\\x89PNG\\r\\n\\x1a\
 """
         completed = subprocess.run(
             [sys.executable, "-c", code, str(workspace), pid, initial.head.revision],
-            text=True, capture_output=True, timeout=50)
+            check=False, text=True, capture_output=True, timeout=50)
         require(completed.returncode == 0, "PROJECT_COLD_REOPEN_FAIL "+completed.stderr)
     return {"cold_reopen": True, "original_components": 6,
             "physical_nets": 5, "segments": 16, "junctions": 3,
