@@ -12,6 +12,7 @@ Two states:
   are imported and independently approved.
 """
 import json
+from importlib.resources import files
 import re
 import sys
 from typing import Any
@@ -25,6 +26,7 @@ from .design_assistant import (
     TL494_REQUIRED_PARTS,
 )
 from .design_selection import require_api_version, require_sha
+from .owner_source_contract import verify_frozen_owner_fixture
 from .read_access import ReadOnlyProjectAccess
 from .service import ProjectSnapshot
 
@@ -34,7 +36,7 @@ _MAX_NETS = 128
 _MAX_PIN_MEMBERS = 512
 _REF = re.compile(r"[A-Z][A-Z0-9]{0,15}\Z")
 _PIN = re.compile(r"[0-9A-Za-z_]{1,16}\Z")
-_NET_NAME = re.compile(r"[A-Z][A-Z0-9_]{0,63}\Z")
+_NET_NAME = re.compile(r"(?:[A-Z][A-Z0-9_]{0,63}|a_INPUT_PLUS|b_NEGATIVE_OUTPUT)\Z")
 _PART = re.compile(r"[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+\Z")
 _GIT_SHA = re.compile(r"[0-9a-f]{40}\Z")
 _OUTPUTS = (
@@ -214,8 +216,24 @@ def review_request(request: dict[str, Any],
     refs, nets = _validate_inventory(request, catalog, tl494=tl494)
 
     if tl494:
-        # 23/15/62 numerical shape is not source-authentic without the frozen
-        # source's true Net UUID/member tuples, package and full placement.
+        # Original SHA must match actual EMBEDDED immutable IC97 Git blob.
+        # Count-only 23/15/62 requests or renamed 'a/b' continuations must
+        # never obtain a plausible source-preview report.
+        fixture = files("gost_schematic").joinpath(
+            "agent_project", "data", "tl494_ic97_frozen_source.json"
+        ).read_bytes()
+        frozen = verify_frozen_owner_fixture(fixture, catalog)
+        authoritative_nets = {
+            name: {
+                tuple(contact.rsplit(".", 1)) for contact in contacts
+            }
+            for name, contacts in frozen["source_nets"].items()
+        }
+        if nets != authoritative_nets:
+            raise ProjectError(
+                "SOURCE_NET_MEMBERSHIP_MISMATCH",
+                "TL494 source Net/PinRef members differ from immutable original",
+            )
         return {
             "schema_version": 1, "intent": request["intent"],
             "status": "BLOCKED_SOURCE_NOT_IMPORTABLE",
@@ -224,6 +242,10 @@ def review_request(request: dict[str, Any],
             "component_count": len(refs), "net_count": len(nets),
             "submitted_pinref_count": sum(len(x) for x in nets.values()),
             "source_membership_verified": False,
+            "frozen_original_pinref_membership_verified": True,
+            "frozen_source_typed_manifest_sha256": frozen[
+                "source_typed_manifest_sha256"
+            ],
             "reasons": [
                 "TI_TL494_16_PIN_P11_ADAPTER_NOT_INSTALLED",
                 "SOURCE_62_PINREF_MEMBERSHIP_NOT_VERIFIED_IN_P11",
