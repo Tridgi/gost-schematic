@@ -13,12 +13,19 @@ from examples.review_wire_endpoints_cycle8 import fixture, generate
 from gost_schematic.core.geometry import Point
 from gost_schematic.core.transforms import Transform
 from gost_schematic.electrical.netrefs import (
-    ContinuationDirection, ContinuationPair, ContinuationScope,
-    ContinuationSheet, ContinuationStub, NetContinuationEndpoint,
+    ContinuationDirection,
+    ContinuationPair,
+    ContinuationScope,
+    ContinuationSheet,
+    ContinuationStub,
+    NetContinuationEndpoint,
     NetContinuationProject,
 )
 from gost_schematic.electrical.wire_endpoints import (
-    TargetState, WireEndSide, WireTermination, collect_wire_endpoints,
+    TargetState,
+    WireEndSide,
+    WireTermination,
+    collect_wire_endpoints,
     validate_wire_endpoint_snapshot,
 )
 from gost_schematic.model.circuit import PinRef
@@ -129,7 +136,7 @@ def test_graph_presentation_is_readonly_and_exact_source_pins_not_svg_metadata()
     second = collected()
     assert first == second and first.circuit == before[0] and first.graph == before[1]
     clean, _, _ = generate()
-    circuit, graph, nets, ids, parts, symbols, blocked, denied = before
+    _, _, _, _, parts, symbols, blocked, denied = before
     changed = replace(first, wire_endpoints=(
         replace(first.wire_endpoints[0], point=Point(20001, 40000)),
         *first.wire_endpoints[1:],
@@ -166,7 +173,7 @@ def test_one_micrometre_wire_move_changes_view_but_never_snaps_or_mutates_net():
 
 
 def test_unmarked_X_not_a_junction_and_cross_net_T_is_blocked():
-    circuit, graph, nets, ids, parts, symbols, blocked, denied = data()
+    circuit, graph, nets, ids, parts, symbols, _, _ = data()
     assert Point(65000, 70000) not in graph.junctions
     with pytest.raises(ValueError, match="WIRE_END_INVALID_OR_CROSS_NET_JUNCTION"):
         collect_wire_endpoints(
@@ -199,7 +206,7 @@ def test_partial_foreign_net_collinear_overlap_fails_closed():
 
 
 def test_stale_duplicate_id_and_incomplete_physical_map_fail_closed():
-    circuit, graph, nets, ids, parts, symbols, blocked, denied = data()
+    circuit, graph, nets, ids, parts, symbols, _, _ = data()
     with pytest.raises(ValueError, match="WIRE_END_WIRE_IDS_DUPLICATE_OR_INVALID"):
         collect_wire_endpoints(
             circuit, graph, nets, (ids[0], ids[0], *ids[2:]), parts, symbols,
@@ -246,7 +253,7 @@ def test_two_segments_same_net_join_by_authored_common_endpoint_without_green_no
 
 
 def _continuation():
-    circuit, graph, nets, ids, parts, symbols, blocked, denied = data()
+    circuit, graph, nets, _, _, _, _, _ = data()
     endpoints = (
         NetContinuationEndpoint(
             "M1", "N-CTRL", "S1", 1, "1/D4", "2/B7",
@@ -339,8 +346,8 @@ def test_svg_strict_namespace_is_independent_of_module_import_order(order):
 
 
 def test_rasterized_png_has_green_only_in_explicit_review_not_clean():
-    from PIL import Image
     import resvg_py
+    from PIL import Image
 
     clean, reviewed, _ = generate()
     a = resvg_py.svg_to_bytes(svg_string=clean, dpi=300)
