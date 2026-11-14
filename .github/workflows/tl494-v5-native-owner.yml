@@ -30,7 +30,7 @@ jobs:
             git fetch origin "$SHA"
             test "$(git rev-parse FETCH_HEAD)" = "$SHA"
           done
-          for file in tl494cn.py ic_pin_alias.py ic_serde.py ic_paint_bridge.py ic_graphic_revision.py; do
+          for file in ic.py tl494cn.py ic_pin_alias.py ic_serde.py ic_paint_bridge.py ic_graphic_revision.py; do
             git show "$IC_SHA:src/gost_schematic/electrical/$file" > "src/gost_schematic/electrical/$file"
           done
           mkdir -p src/gost_schematic/catalog/source_profiles
