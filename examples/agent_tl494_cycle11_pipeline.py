@@ -158,7 +158,9 @@ def _request(source: dict) -> dict:
         "project_id": None, "expected_revision": None,
         "expected_generation": None,
         "components": [
-            {"reference": c["reference"], "part_id": c["part_id"]
+            {"reference": c["reference"],
+             "source_part_id": c["part_id"], "nominal_si": c["nominal_si"],
+             "part_id": c["part_id"]
              if c["reference"] in TL494_REQUIRED_PARTS else None,
              "part_sha256": (source["installed_part_locks"][c["reference"]]["part_sha256"]
                              if c["reference"] in TL494_REQUIRED_PARTS else None),
@@ -217,7 +219,9 @@ def main(argv: list[str] | None = None) -> int:
     if (code != 2 or report["status"] != "BLOCKED_SOURCE_NOT_IMPORTABLE"
             or report["submitted_pinref_count"] != 62
             or report["component_count"] != 23 or report["net_count"] != 15
-            or report["source_membership_verified"]):
+            or report["source_membership_verified"]
+            or not report["frozen_original_nominals_verified"]
+            or not report["frozen_original_bom_part_ids_verified"]):
         raise AssertionError("Synthetic or incomplete TL494 falsely accepted")
     missing = json.loads(json.dumps(req))
     missing["nets"].pop()
