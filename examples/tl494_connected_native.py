@@ -139,7 +139,7 @@ def generate(output:Path,font_file:Path):
     refground=pt("DA1","7")
     # DA1 left-side pin1, pin16 and GND share ground in the source picture.
     common_x=P(42,0).x
-    common_y=P(220,0).y
+    common_y=P(0,220).y
     groundpins=[pt("DA1",num) for num in ("7","1","16")]
     copper=[]
     for pin in groundpins:
