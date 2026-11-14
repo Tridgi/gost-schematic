@@ -12,7 +12,7 @@ from dataclasses import replace
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-from gost_schematic.model.circuit import Circuit, ComponentInstance, PinRef
+from gost_schematic.model.circuit import Circuit, PinRef
 from gost_schematic.rendering.external_wire_sheet import render_external_wire_sheet
 from gost_schematic.rendering.ic_hotspots import IcConnectionTarget
 from gost_schematic.rendering.ic_rectangular import (
@@ -37,14 +37,22 @@ def _real_dependencies():
             bind_tl494_source,
         )
         from gost_schematic.electrical.ic import (
-            IcBodyAxis, IcGraphicProfile, IcPinRow, IcPortLayout,
-            IcSymbolSpec, IcTextAngle, IcUnitPlacement,
-            resolve_ic_pin_positions, validate_ic_circuit,
+            IcBodyAxis,
+            IcGraphicProfile,
+            IcPinRow,
+            IcPortLayout,
+            IcSymbolSpec,
+            IcTextAngle,
+            IcUnitPlacement,
+            resolve_ic_pin_positions,
+            validate_ic_circuit,
         )
-        from gost_schematic.electrical.ic_serde import IcLibraryRecord
         from gost_schematic.electrical.ic_pin_alias import verify_alias_display
+        from gost_schematic.electrical.ic_serde import IcLibraryRecord
         from gost_schematic.electrical.tl494cn import (
-            tl494cn_alias_profile, tl494cn_device, verify_tl494cn_ti_pinout,
+            tl494cn_alias_profile,
+            tl494cn_device,
+            verify_tl494cn_ti_pinout,
         )
     except ImportError as exc:
         raise RuntimeError(
@@ -96,9 +104,10 @@ def construct_native_paint(font_file: Path):
     deps["device"][1](device)
     alias = deps["aliases"][0]("DA1")
     alias.validate_device(device)
-    IcBodyAxis, IcGraphicProfile, IcPinRow, IcPortLayout, (
-        IcSymbolSpec
-    ), IcTextAngle, IcUnitPlacement = deps["types"]
+    (
+        IcBodyAxis, IcGraphicProfile, IcPinRow, IcPortLayout,
+        IcSymbolSpec, IcTextAngle, IcUnitPlacement,
+    ) = deps["types"]
     resolve, validate, IcLibraryRecord = deps["model"]
     rows = []
     for pin in source_unit.pins:
