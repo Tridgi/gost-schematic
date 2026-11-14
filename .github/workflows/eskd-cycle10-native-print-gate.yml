@@ -148,7 +148,7 @@ jobs:
               str(i) for i in range(1,17)
           }
           path = Path("output/eskd-cycle10-real-paint/TL494_real_source_62_pinrefs.json")
-          path.write_text(json.dumps(facts, indent=2, sort_keys=True)+"\\n")
+          path.write_text(json.dumps(facts, indent=2, sort_keys=True)+"\n")
           print("PASS independent true source: 23 parts, 15 Nets, 62 PinRef, 16 DA1")
           PY
           for mode in clean diagnostic; do
