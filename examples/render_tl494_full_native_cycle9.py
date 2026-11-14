@@ -23,7 +23,10 @@ from gost_schematic.rendering.ic_rectangular import (
     render_resolved_ic,
 )
 from gost_schematic.rendering.ic_tl494_profile import apply_tl494_portrait_profile
-from gost_schematic.rendering.native_sheet_ink_audit import audit_full_native_sheet_ink
+from gost_schematic.rendering.native_sheet_ink_audit import (
+    audit_full_native_sheet_ink,
+    audit_native_parallel_wire_strokes,
+)
 from gost_schematic.validation.external_wire_checks import ExternalWireGraph
 
 FROZEN_SOURCE = "e695c415fdced164b0e0c39c5249d030795a0aa6"
@@ -378,6 +381,11 @@ def generate(output: Path, font_file: Path, *, d4: bool = False):
     before_ink = audit_full_native_sheet_ink(
         circuit, graph, symbol_map, before[0].layout, before[1],
     )
+    parallel_drc = audit_native_parallel_wire_strokes(graph)
+    if len(parallel_drc) != 5:
+        raise ValueError(
+            "NATIVE_SOURCE_5_PARALLEL_WARNINGS_CHANGED_NO_SILENT_ROUTING"
+        )
     before_file = "TL494_native_23_BEFORE_old_pwm_top_to_bottom.svg"
     (output/before_file).write_text(before[0].svg, encoding="utf-8")
     evidence = {
@@ -411,6 +419,10 @@ def generate(output: Path, font_file: Path, *, d4: bool = False):
         "variants": {},
         "legacy_before": before_file,
         "legacy_before_source_ink_findings": len(before_ink),
+        "source_3mm_parallel_wire_failures": len(parallel_drc),
+        "source_3mm_parallel_wire_details": [
+            asdict(finding) for finding in parallel_drc
+        ],
         "legacy_before_source_ink_examples": [
             asdict(finding) for finding in before_ink[:25]
         ],
