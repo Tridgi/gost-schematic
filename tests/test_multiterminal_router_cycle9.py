@@ -158,6 +158,35 @@ def test_route_exits_sourced_pin_normals_and_no_ghost_junction_on_free_end():
     assert Point(57000, 17000) not in result.junctions
 
 
+def test_same_source_two_pin_order_gets_bounded_detour_retry_around_real_UGO():
+    circuit, parts, symbols = native_three_terminal()
+    # X4 is a REAL but electrically unconnected symbol body blocking the
+    # direct X1.1-to-X2.1 line. The frozen A-source membership is unchanged.
+    guarded = replace(
+        circuit,
+        components=(*circuit.components,
+                    ComponentInstance("X4", "terminal-bottom",
+                                      Point(33000, 14000))),
+        nets=(Net("A", (PinRef("X1", "1"), PinRef("X2", "1"))),),
+    )
+    initial = route_circuit_net_trees(
+        guarded, parts, symbols, page_box=Box(0, 0, 90000, 60000),
+        max_detour_ratio=1.05, max_order_restarts=0,
+    )
+    assert not initial.complete and not initial.print_pass
+    assert initial.net_trees[0].diagnostics
+    expanded = route_circuit_net_trees(
+        guarded, parts, symbols, page_box=Box(0, 0, 90000, 60000),
+        max_detour_ratio=1.05, max_order_restarts=1,
+    )
+    assert expanded.complete, expanded.diagnostics
+    assert expanded.net_trees[0].search_restarts == 1
+    assert expanded.net_trees[0].pin_refs == guarded.nets[0].members
+    assert expanded.source_circuit == guarded
+    assert expanded.drc is not None and expanded.drc.valid
+    assert not expanded.print_pass  # no source-measured glyph authority
+
+
 def test_trapped_real_pin_failure_does_not_output_print_pass():
     circuit, parts, symbols = native_three_terminal()
     bad = replace(
