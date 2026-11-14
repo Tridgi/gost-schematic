@@ -194,20 +194,27 @@ def produce(
         for w in route.graph.segments
     )
     frame_errors = tuple(
-        code for code, ok in (
-            ("A3_10MM_COMPONENT_BOUNDS", component_footprint_in_frame),
-            ("A3_10MM_MEASURED_TEXT", protected_labels_in_frame),
-            ("A3_10MM_WIRE_ENDPOINTS", routed_strokes_in_frame),
+        f"{page_format}_10MM_{code}" for code, ok in (
+            ("COMPONENT_BOUNDS", component_footprint_in_frame),
+            ("MEASURED_TEXT", protected_labels_in_frame),
+            ("WIRE_ENDPOINTS", routed_strokes_in_frame),
         ) if not ok
+    )
+    capacity_fits_selected_paper = (
+        occupancy["width_mm"] * 1000 + 2 * margin
+        <= page.max_x - page.min_x
+        and occupancy["height_mm"] * 1000 + 2 * margin
+        <= page.max_y - page.min_y
     )
     geometric_pass = bool(
         route.complete and route.drc is not None
         and route.drc.valid and after_drc.valid
         and source_labels.valid and after_labels.valid
-        and occupancy["A3_capacity_fit"]
+        and capacity_fits_selected_paper
         and not frame_errors and not erc_errors
     )
     output.mkdir(parents=True, exist_ok=True)
+    filename_prefix = f"TL494-compact-{page_format}"
     # Bind PAINT's real physical target IDs and original Circuit.Net names.
     # These editor-only targets do not change topology, PinRef, or Net.
     target_type = import_module(
@@ -308,7 +315,19 @@ def produce(
         root.set("data-owner-router-sha", owner_sha)
         root.set("data-reference-layout-sha", reference_sha)
         root.set("data-physical-net-diff", "ZERO")
-        target = output / f"TL494-compact-A3-{mode}.svg"
+        root.set("data-draft-paper", page_format)
+        root.set("data-page-frame-has-violations", str(bool(
+            frame_errors,
+        )).lower())
+        if not frame_errors:
+            # Physical page setup only: unchanged native 1:1 wire/symbol
+            # coordinates and ink. No post-hoc schematics or image scaling.
+            root.set("width", f"{page.max_x / 1000:g}mm")
+            root.set("height", f"{page.max_y / 1000:g}mm")
+            root.set("viewBox", (
+                f"0 0 {page.max_x / 1000:g} {page.max_y / 1000:g}"
+            ))
+        target = output / f"{filename_prefix}-{mode}.svg"
         target.write_text(
             ET.tostring(root, encoding="unicode") + "\n",
             encoding="utf-8",
@@ -350,7 +369,8 @@ def produce(
             if not geometric_pass else None
         ),
         "occupied_mm": occupancy,
-        "A3_10mm_editorial_frame_violations": frame_errors,
+        "selected_paper_capacity_fit": capacity_fits_selected_paper,
+        "paper_10mm_editorial_frame_violations": frame_errors,
         "A3_10mm_editorial_frame_is_not_normative_claim": True,
         "real_PAINT_leads": 16,
         "DA1_on_sheet_svg_ink": "real-PAINT-16-tips-and-bottom-up-PWM",
@@ -400,7 +420,7 @@ def produce(
     }
     payload = json.dumps(record, ensure_ascii=False, sort_keys=True,
                          indent=2) + "\n"
-    (output / "TL494-compact-A3-route-drc.json").write_text(
+    (output / f"{filename_prefix}-route-drc.json").write_text(
         payload, encoding="utf-8",
     )
     hashes = {
