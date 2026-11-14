@@ -1410,7 +1410,26 @@
       },
       "max_display_characters": 6,
       "maximum_rule": "EDITORIAL_NOT_GOST",
-      "real_pin_count": 16
+      "real_pin_count": 16,
+      "cycle9_reference_print_evidence": {
+        "reference_branch": "reference/tl494-native-rework-20261114",
+        "reference_head": "e695c415fdced164b0e0c39c5249d030795a0aa6",
+        "reference_manifest_path": "examples/tl494_named_truth_output/TL494_named_photo_manifest.json",
+        "reference_manifest_blob": "b2375feb43ad18b8a8e5a515bfc007d169b26908",
+        "reference_manifest_function_rotation_degrees": 90,
+        "reference_renderer_script_path": "examples/tl494_named_photo_sheet.py",
+        "reference_renderer_script_blob": "990a1aca651f34dcae991575dddfa28b2acae813",
+        "reference_svg_path": "examples/tl494_named_truth_output/TL494_named_photo_clean.svg",
+        "reference_svg_blob": "69fa5d18f0844b080d8f1574c686e5c1156ae1f9",
+        "observed_print_svg_function_matrix": "matrix(0 1 -1 0 90.75 90.427)",
+        "observed_baseline_direction": "top_to_bottom",
+        "requested_baseline_direction": "bottom_to_top",
+        "target_local_svg_matrix": "matrix(0 -1 1 0 x y)",
+        "source_target_comparison": "FAIL_CURRENT_FROZEN_REFERENCE_NOT_TARGET",
+        "normative_approval": "BLOCKED",
+        "proof": "Actual frozen source SVG text @ data-layer=ic-text,data-kind=function, data-owner=main.0 contains baseline down; do not equate vertical with bottom-to-top, do not confuse convention +90 with source matrix",
+        "owner_handoff": "PAINT #93 must generate a new production exporter render with -90 effective SVG baseline and verify both clean/debug; retain physical 16 pin identities and all original topology"
+      }
     },
     {
       "id": "drc.clearances",
@@ -1516,6 +1535,7 @@
       "font": "ГОСТ 2.304-81 table1 Type A h=2.5 or 3.5mm -> d=h/14; do not equate CSS font-size with measured glyph ink",
       "fuse": "ГОСТ 2.727-68 §4, table3 pos2. Owner ID fuse.general SHA 6af105eb850211b0f86e5fc7df59da28719d2e76 is DRAFT; not part of original 22-card matrix; source figure print-size comparison BLOCKED"
     },
-    "confidence": "Source location/wording verified from scanned standards; photometric symbol sign-off and production rendering not performed"
+    "confidence": "Source location/wording verified from scanned standards; photometric symbol sign-off and production rendering not performed",
+    "frozen_svg_pwm_source_target_status": "FAIL_CURRENT_FROZEN_REFERENCE_NOT_TARGET"
   }
 }
