@@ -102,6 +102,47 @@ ephemeral runner. It records:
 Historical specialist workflows are intentionally NOT rewritten into
 unconditional success. They exist alongside the new current-owner tests.
 
+## Newer owner Cycle11 b continuation snapshot (independent separate job)
+
+The first table is a reproducible earlier C11 snapshot, **not** permission
+to equate it to active owner HEAD after further commits. A second independent
+CI `.github/workflows/qa92-cycle11-live-b-and-native.yml` was added with:
+
+- RECON `65b68cdd89ac0c2ae0b137228da61a17ac78d339`
+- IC `c8991bf232428645cad6e8b402d70abccf12a546`
+- PAINT `df49c16fb082ee98213299358f374894fe1da220`
+- NET `e2f6710b0f6d2f970f3353fb3171644c85d2ac75`
+- YGO `2dae5306c0690f2fc2d402bb4b65266dabd778b8`.
+
+New RECON code `cycle11_b_continuation.rebind_true_source_b` explicitly
+rebinds the two old typed `b-X2` / `b-R5` markers from genuine source
+stub vectors to present compact X2.1/R5.2 **physical pins**, preserving
+source `b_NEGATIVE_OUTPUT` and FU1.2 as one three-member Net, never
+manufacturing new Net `PE`. New `cycle11_ti_bridge` is the real
+reversible, trusted manufacturer PartID adapter and has separate negative
+tests.
+
+Independent QA `scripts/qa_tl494_cycle11_b_binding_gate.py` re-derives
+the original b vectors from the E695 real source (not a picture), compares
+two exactly repositioned marker coordinates and the actual physical
+wire-stub vectors, verifies the original Net and 16 signed TI pins and
+trials **12 adversarial mutations** against the owner's real JSON evidence.
+An additional `--direct-only` branch invokes the actual current RECON
+rebinder itself and three independent physical-origin hostile source
+mutations (one µm, fake PE, off-page X2), without waiting for the owner's
+optional convenience report to succeed. This source check uses PAINT's
+existing *scoped, self-restoring* genuine OpenGOST Type A font selector;
+it never modifies the frozen E695 original.
+
+Owner-source review exposed two **potential** integration bugs, reported
+to the respective PRs: latest PAINT compact example reads an undefined
+`TI_DEVICE_ID`, and RECON direct original `compose_circuit` still
+requests the obsolete `OpenGost Type A TT` family while pinned
+OpenGOST v0.7 reports `OpenGOST type A`. They require *executed CI*
+confirmation and owner fixes before declaring the owner-generated
+full new A3 SVG/PNG PASS. A partial accepted rebind of nonphysical labels
+is not 15/15 wire routing, normative approval, or photo parity.
+
 ## Final release acceptance (fail closed)
 
 **All** must be proven on an exact snapshot before recommending a merge:
