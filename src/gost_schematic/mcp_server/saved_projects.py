@@ -105,11 +105,24 @@ def register_saved_project_tools(
     @mcp.tool(annotations=read_only)
     def schematic_catalog_preview(
         part_id: str, api_version: int = 1,
+        part_sha256: str | None = None, symbol_sha256: str | None = None,
     ) -> list[ImageContent | TextContent]:
         """Render genuine installed UGO SVG/PNG sample; never fabricate glyph ink."""
         def work() -> list[ImageContent | TextContent]:
             require_api_version(api_version)
-            svg, png, metadata = catalog_preview(CatalogResolver(), part_id)
+            if (part_sha256 is None) != (symbol_sha256 is None):
+                raise ProjectError("CATALOG_LOCK_REQUIRED", "Both part and symbol SHA required")
+            catalog = CatalogResolver()
+            if part_sha256 is not None and symbol_sha256 is not None:
+                select_physical_part(
+                    catalog, part_id, part_sha256=part_sha256,
+                    symbol_sha256=symbol_sha256, api_version=api_version,
+                )
+            svg, png, metadata = catalog_preview(catalog, part_id)
+            metadata["preview_lock_status"] = (
+                "EXACT_CATALOG_LOCK_MATCH" if part_sha256 is not None
+                else "UNPINNED_CATALOG_SAMPLE"
+            )
             return [
                 ImageContent(type="image", mimeType="image/png",
                              data=base64.b64encode(png).decode("ascii")),
@@ -142,9 +155,14 @@ def register_saved_project_tools(
         return _safe_read(work)
 
     @mcp.tool(annotations=read_only)
-    def schematic_tl494_pin_alias(full_name: str) -> dict[str, Any]:
+    def schematic_tl494_pin_alias(
+        full_name: str, api_version: int = 1,
+    ) -> dict[str, Any]:
         """Only editorially pinned full-name to display-alias mapping."""
-        return _safe_read(lambda: tl494_alias(full_name))
+        def work() -> dict[str, Any]:
+            require_api_version(api_version)
+            return tl494_alias(full_name)
+        return _safe_read(work)
 
     @mcp.tool(annotations=read_only)
     def schematic_preflight_project(
