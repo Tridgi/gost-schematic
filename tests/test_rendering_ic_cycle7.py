@@ -737,16 +737,23 @@ def test_long_center_word_common_0_90_envelope_all_d4(count, word, pose, mirror)
 def test_accepted_undersized_long_pwm_d4_must_request_electrik_revision():
     from gost_schematic.rendering.ic_rectangular import IcTypographyProfile
 
-    sample, _ = specimen(
-        8, transform=Transform(90, False), function="PWM_CONTROLLER",
+    sample, plan = specimen(
+        14, transform=Transform(90, False), function="PWM_CONTROLLER",
     )
     portrait = sample.select_typography_profile(
         IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT,
     )
+    # Intentionally reject a newer view that was *not* reauthorized by
+    # ELEKTRIK after reducing the original accepted module-height.
+    short = replace(
+        portrait, body=Box(
+            portrait.body.min_x, portrait.body.min_y,
+            portrait.body.max_x, portrait.body.max_y - plan.row_pitch_um,
+        ),
+        function_rotation=0,
+    )
     with pytest.raises(ValueError, match="IC_TEXT_OVERFLOW"):
-        render_resolved_ic(
-            replace(portrait, function_rotation=0), STYLE, FixedInk(),
-        )
+        render_resolved_ic(short, STYLE, FixedInk())
 
 
 @pytest.mark.parametrize("count", (4, 8, 14, 40, 64))
@@ -822,7 +829,10 @@ def test_hotspot_follows_d4_external_anchor_not_body_boundary(angle, mirror):
 
     from examples.review_ic_cycle7 import _declared_synthetic_targets
 
-    unit, _ = specimen(14, transform=Transform(angle, mirror), function="PWM")
+    unit, _ = specimen(
+        14, transform=Transform(angle, mirror),
+        function="1", labels=False,
+    )
     targets, _ = _declared_synthetic_targets(unit)
     svg = ET.fromstring(render_resolved_ic(
         unit, STYLE, FixedInk(),
