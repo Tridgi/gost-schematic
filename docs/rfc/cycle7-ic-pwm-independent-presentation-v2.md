@@ -2,7 +2,7 @@
 
 **Owner:** Issue #87, existing Draft PR #97, only branch
 `parallel/electrical-ic-contract-cycle7`. Independent PAINT #93 current source
-pin **`0bc38290db8729c0cd152c0d8d2ed955fae2dd31`**.
+pin **`db53e0ab89bb23f555badc2def41ea9895a5d64c`**.
 ESKD #91/source approval and QA #92 acceptance are independent.
 
 ## The actual user contract
@@ -68,36 +68,55 @@ the selected project's **editorial** micrometre padding, not asserted
 GOST universal dimensions. Exact per-lead world `Point` equals its
 source `PinRef` with zero tolerance.
 
-## PAINT compatibility and limitation
+## PAINT compatibility and independent word-only rotation
 
-Actual PAINT PR #93 at pinned source
-`0bc38290db8729c0cd152c0d8d2ed955fae2dd31` supports
-`IcOrientation.LEFT_RIGHT`, `IcOrientation.TOP_BOTTOM`, its own
-`function_rotation` and `field_text_rotation`, and the latter
-TOP_BOTTOM fig.3-like 0/90 ink style.
+Actual PAINT #93 implementation for this integration is pinned at
+`db53e0ab89bb23f555badc2def41ea9895a5d64c` (later PAINT CI-only
+commits retain the same `ic_rectangular.py` source blob). PAINT now
+has independent `IcOrientation.LEFT_RIGHT/TOP_BOTTOM`,
+`IcTypographyProfile.LEGACY_V1/PORTRAIT_FUNCTION_V2_DRAFT`, and
+`IcResolvedUnit.function_rotation=0/90` selected *without changing
+the physical port profile*. 90° rotates the **whole PWM text run**,
+not individual stacked letters. Actual ink bounds follow the explicit
+text transform, protected field and lead strokes, rather than string
+character count or a silently shrunken font.
 
-**Known missing rendering feature:** PAINT currently throws
-`IC_TEXT_ROTATION_REQUIRES_TOP_BOTTOM_PROFILE` for
-LEFT_RIGHT + function_rotation=90. Our bridge deliberately raises the
-more specific `IC_PAINT_LEFT_RIGHT_TEXT_ROTATION_BLOCKED` without
-silently moving pins to TOP/BOTTOM. The **MODEL and lossless v2
-serialization PASS**, actual portrait LEFT_RIGHT + PWM90 **production
-SVG BLOCKED**. The existing renderer's 90-degree follow-symbol text
-mode must not be treated as independent 90-degree local function text.
-Coordinate with PAINT to author a separate function-only rotated glyph
-bbox, center it within a source-backed main function region (possibly
-multiple protected rows), check stroke/zone/page collisions with actual
-OpenGost Type A glyph metrics, preserve all external line ends, and fail
-with `IC_FUNCTION_ROTATED_OVERFLOW` rather than squeezing fonts or
-automatically changing Circuit/Net.
+The owner bridge `propose_ic_paint_binding` passes the measured
+`function_rotation` to PAINT's `propose_ic_dimensions` and records
+`function_row_span` together with main/aux dimension demands. For
+the user's exact case, `bind_ic_paint_text_only(old_binding, new_record)`
+changes the PAINT function rotation in the **same typed original body,
+physical PinRef points and externally resolved leads**. It must pass
+`validate_ic_graphic_revision` with **zero moved pins** before any
+render. It is intentionally not allowed to call PAINT for a new body
+size when toggling 0/90, because that could mutate wired endpoints.
 
-**Genuine TOP_BOTTOM** is now a separate typed owner presentation,
-reflowed by PAINT #93 via `vertical_as_canonical` only after explicit
-source TOP/BOTTOM anchors. TOP/BOTTOM function angle 0/90 can be rendered
-by PAINT's current Draft source subject to individual ink-space
-rejections. §2.743-91 figure 3 cannot be cited to certify
-LEFT_RIGHT + independent 90° function alone. A separate ESKD decision
-is required for actual production export and pin number layout.
+The new E3 opt-in profile is `IcGraphicProfile.experimental_portrait_pwm()`.
+This sources **PORTRAIT + LEFT_RIGHT + word90 + other0**. Historic
+v1 saved records remain AUTO/LEFT_RIGHT/0. In a scene too small for
+the rotated word/other field runs, PAINT may reject with a precise
+`IC_TEXT_OVERFLOW`, `IC_INK_COLLISION` or
+`IC_REFDES_UNPLACEABLE`: a separate new geometry revision and
+explicit `IcGeometryConsent` are required before moving a wired
+pin. A graphical test pass does **not** imply GOST approval for
+the independent LEFT_RIGHT word-only rotation. §2.743-91 fig.3
+alone depicts a *different* TOP/BOTTOM source layout, not this
+unmodified LEFT_RIGHT special case; ESKD #91 must decide
+whether clean production export may enable it.
+
+**Actual pinned two-owner DRAFT gallery:** DA8, DD14, DD40 and
+DD64 each have portrait LEFT_RIGHT function 0° and 90° on the
+same `Circuit`, unchanged local body and same exact world
+`PinRef` contacts. Actual clean SVG and 300DPI PNG outputs
+include 14 rendered unit views in all (1+2+2+2 per angle).
+All images/manifest carry source hashes. An explicitly
+different real `TOP_BOTTOM` typed source is also generated
+for each part and each function angle; currently some of those
+views are fail-closed `IC_TEXT_OVERFLOW` because source-compliant
+orientation of labels and width/height cannot fit together,
+rather than downgrading to fake rotated LEFT_RIGHT or silently
+changing PinRef/Nets. Their release remains BLOCKED until a
+source-backed font/layout solution and independent QA review.
 
 ## Strict persistence and MCP P1.1
 
@@ -128,10 +147,10 @@ MAIN 2 and QA. No edits to PR #96 are performed here.
 
 | Case | Physical source | Text 0/90 identity | PAINT | Normative |
 |---|---|---|---|---|
-| DA8 | One physical 8-pin part | Both v2 same pins/Net | 0° LEFT_RIGHT; 90° blocked | DRAFT |
-| DD14 | One part, two units | Both v2 same pins/Net | 0° LEFT_RIGHT; 90° blocked | DRAFT |
-| DD40 | One part, two units | Both v2 same pins/Net | 0° LEFT_RIGHT; 90° blocked | DRAFT |
-| DD64 | One part, two units | Both v2 same pins/Net | 0° LEFT_RIGHT; 90° blocked | DRAFT |
+| DA8 | One physical 8-pin part | Both v2 same pins/Net | 0° and 90° LEFT_RIGHT DRAFT SVG PASS | DRAFT |
+| DD14 | One part, two units | Both v2 same pins/Net | 0° and 90° LEFT_RIGHT DRAFT SVG PASS | DRAFT |
+| DD40 | One part, two units | Both v2 same pins/Net | 0° and 90° LEFT_RIGHT DRAFT SVG PASS | DRAFT |
+| DD64 | One part, two units | Both v2 same pins/Net | 0° and 90° LEFT_RIGHT DRAFT SVG PASS | DRAFT |
 | True TOP_BOTTOM | Different local source sides | Independent 0/90 function | Separate PAINT mode / ink guards | DRAFT/BLOCKED |
 
 QA is to inspect both retained source profiles, real Circuit membership,
