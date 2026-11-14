@@ -227,3 +227,29 @@ def test_real_full_native_clean_vs_diagnostic_no_net_or_ref_mutations():
         )) == 37
     assert "editor-connection-targets" not in a[0].svg
     assert b[0].svg.count("data-pin-ref") == 16
+    assert root_b.findall(
+        f".//{NS}g[@data-layer='geometry-review']/{NS}circle"
+    ) == []  # Generic green dots cannot impersonate verified green squares.
+    native = root_b.find(
+        f"./{NS}g[@data-composed-engine='physical-ic-renderer']"
+    )
+    assert native is not None
+    leads = native.findall(
+        f".//{NS}g[@data-layer='ic-physical-pin-leads']/{NS}line"
+    )
+    assert len(leads) == 16
+    physical = {
+        line.get("data-pin-number"): line.get(
+            "data-manufacturer-electrical-type"
+        ) for line in leads
+    }
+    assert physical["3"] == "input"
+    assert physical["13"] == "input"
+    assert physical["12"] == "power_input"
+    markers = native.findall(
+        f".//{NS}g[@data-layer='editor-connection-targets']/{NS}rect"
+    )
+    assert len(markers) == 16
+    assert all(m.get("fill") == "#148645" for m in markers)
+    assert all(m.get("data-net-id") for m in markers
+               if m.get("data-pin-number") != "15")
