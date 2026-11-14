@@ -12,6 +12,7 @@ import pytest
 
 from examples.review_ic_cycle7 import synthetic_ic
 from gost_schematic.core.geometry import Box, Point, Side
+from gost_schematic.core.transforms import Transform
 from gost_schematic.electrical.ic import (
     IcBodyAxis,
     IcGraphicProfile,
@@ -540,3 +541,80 @@ def test_real_paint_exports_measured_field_requirements_and_ink_guards(count):
     assert paint.IcOrientation.LEFT_RIGHT.value == (
         measured.views[0].orientation.value
     )
+
+
+@pytest.mark.parametrize("count", COUNTS)
+@pytest.mark.parametrize("rotation", (0, 90, 180, 270))
+@pytest.mark.parametrize("mirrored", (False, True))
+def test_real_font_pwm_d4_text_only_keeps_every_exact_pinref(
+    count, rotation, mirrored,
+):
+    """Source-preserving portrait PWM0/90 across ALL eight D4 poses.
+
+    No arbitrary ink collision is forgiven: expected PAINT rejection must be
+    an explicit named layout gate, never a moved anchor or false electrical net.
+    """
+    paint = pytest.importorskip("gost_schematic.rendering.ic_rectangular")
+    from gost_schematic.electrical.ic_paint_bridge import (
+        bind_ic_paint_text_only,
+        propose_ic_paint_binding,
+    )
+    from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
+    from gost_schematic.standards.type_a_font import inspect_type_a_font
+
+    font = os.environ.get("IC_TYPE_A_FONT_PATH")
+    assert font and Path(font).is_file()
+    style = inspect_type_a_font(Path(font), h_um=3500).style
+    measure = PillowTextMeasurer()
+    source = synthetic_ic(count)
+    placements = tuple(replace(
+        placement, transform=Transform(rotation, mirrored),
+    ) for placement in source.placements)
+    portrait = IcLibraryRecord(
+        source.device,
+        tuple(replace(
+            spec, main_field="PWM", body=Box(0, 0, 60000, 300000),
+            profile=replace(spec.profile, body_axis=IcBodyAxis.PORTRAIT),
+            revision=spec.revision + 1,
+        ) for spec in source.specs),
+        placements,
+    )
+    horizontal = propose_ic_paint_binding(portrait, style, measure)
+    angled = revise_ic_text_orientation(
+        horizontal.record, IcTextAngle.VERTICAL,
+    )
+    vertical = bind_ic_paint_text_only(horizontal, angled)
+    physical = _network(horizontal.record)
+    invariant = resolve_ic_pin_positions(
+        horizontal.record.device, horizontal.record.specs,
+        horizontal.record.placements,
+    )
+    assert invariant == resolve_ic_pin_positions(
+        vertical.record.device, vertical.record.specs,
+        vertical.record.placements,
+    )
+    assert validate_ic_graphic_revision(
+        horizontal.record, vertical.record, circuit=physical,
+    ).moved == ()
+    assert horizontal.record.device == vertical.record.device
+    assert horizontal.record.placements == vertical.record.placements
+    assert physical.nets == _network(vertical.record).nets
+    assert all(a.pins == b.pins and a.body == b.body
+               for a, b in zip(
+                   horizontal.views, vertical.views, strict=True,
+               ))
+    for candidate in (horizontal, vertical):
+        candidate.verify_endpoints()
+        for view in candidate.views:
+            try:
+                real = paint.render_resolved_ic(view, style, measure)
+            except ValueError as error:
+                assert any(code in str(error) for code in (
+                    "IC_TEXT_OVERFLOW", "IC_INK_COLLISION",
+                    "IC_GLYPH_INK_COLLISION", "IC_REFDES_UNPLACEABLE",
+                    "IC_OBSTACLE_COLLISION", "IC_PAGE_OVERFLOW",
+                )), str(error)
+            else:
+                assert dict(real.pin_anchors) == {
+                    pin.pin_id: pin.anchor for pin in view.pins
+                }
