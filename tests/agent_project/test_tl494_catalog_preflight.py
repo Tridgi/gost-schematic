@@ -156,6 +156,12 @@ def test_existing_six_part_model_preflight_is_partial_not_falsely_print_ready(tm
     assert len(report["nets"]) == 5
     assert report["route"]["authored_segment_count"] == 16
     assert report["route"]["explicit_junction_count"] == 3
+    assert report["electrical_erc"]["project_revision"] == created.project.revision
+    assert report["electrical_erc"]["status"] in ("PASS", "WARN")
+    assert not any(
+        item["severity"] == "error"
+        for item in report["electrical_erc"]["diagnostics"]
+    )
     assert report["sheet_format"] == "NOT_PERSISTED_IN_P11"
     assert report["print_drc"] == "PARTIAL_ONLY_NOT_CERTIFIED"
     assert report["print_ready"] is False
