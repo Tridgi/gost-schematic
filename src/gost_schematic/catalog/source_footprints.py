@@ -81,6 +81,10 @@ def source_reference_symbol(symbol, reference: str):
 def source_footprint(binding: SourceGlyphBinding) -> SourceFootprint:
     """Fail closed if any actual physical pin has no exactly attached lead."""
     symbol, part, instance = binding.symbol, binding.part, binding.instance
+    if (binding.reference != instance.reference
+        or instance.part_id != part.identifier
+        or part.symbol_id != symbol.identifier):
+        raise SymbolProfileMismatch("Footprint changed source part/symbol identity")
     check_ink_contract(symbol, part)
     row = next(
         (item for item in read_source_manifest()["profiles"]
@@ -91,10 +95,6 @@ def source_footprint(binding: SourceGlyphBinding) -> SourceFootprint:
         or [p.label for p in symbol.pins] != row["expected_graphic_labels"]):
         raise SymbolProfileMismatch("Footprint violates source-locked ID/roles")
     rendered_symbol = source_reference_symbol(symbol, binding.reference)
-    if (binding.reference != instance.reference
-        or instance.part_id != part.identifier
-        or part.symbol_id != symbol.identifier):
-        raise SymbolProfileMismatch("Footprint changed source part/symbol identity")
     numbers = tuple(pin.number for pin in part.pins)
     if (tuple(ref.number for ref in binding.pin_refs) != numbers
         or any(ref.reference != instance.reference for ref in binding.pin_refs)):
