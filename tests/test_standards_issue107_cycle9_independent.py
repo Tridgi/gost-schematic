@@ -232,3 +232,19 @@ def test_zero_approvals_and_real_print_gates_still_blocked():
     assert all(card["approval"] == "DRAFT" for card in m["cards"])
     assert all(card["status_full_1to1"] == "BLOCKED" for card in m["cards"])
     assert m["reference_head"] == "e695c415fdced164b0e0c39c5249d030795a0aa6"
+
+
+def test_frozen_actual_pwm_svg_is_detectably_wrong_relative_to_target():
+    """Negative regression: historical real print must not be promoted to PASS."""
+    ic = _card("ic.TL494CN")
+    e = ic["cycle9_reference_print_evidence"]
+    assert e["reference_svg_blob"] == "69fa5d18f0844b080d8f1574c686e5c1156ae1f9"
+    assert e["reference_manifest_blob"] == "b2375feb43ad18b8a8e5a515bfc007d169b26908"
+    assert e["reference_manifest_function_rotation_degrees"] == 90
+    assert e["observed_print_svg_function_matrix"].startswith("matrix(0 1 -1 0 ")
+    assert e["observed_baseline_direction"] == "top_to_bottom"
+    assert e["requested_baseline_direction"] == "bottom_to_top"
+    assert e["source_target_comparison"] == "FAIL_CURRENT_FROZEN_REFERENCE_NOT_TARGET"
+    assert e["normative_approval"] == "BLOCKED"
+    # The expected function reading direction needs a new REAL owner output.
+    assert ic["function_text_bottom_to_top"]["svg_local_angle_degrees"] == -90
