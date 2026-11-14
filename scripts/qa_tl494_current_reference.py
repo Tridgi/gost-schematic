@@ -474,6 +474,61 @@ def actual_new_owner_ic_contract():
     }
 
 
+def actual_new_owner_paint_on_original_23_sheet(ctx, output_dir):
+    """Test real PAINT #93 user profile ON SOURCE 23-part DA1, no new fixture."""
+    from gost_schematic.rendering.ic_rectangular import (
+        IcFunctionReading,
+        render_resolved_ic,
+    )
+    from gost_schematic.rendering.ic_tl494_profile import (
+        apply_tl494_portrait_profile,
+    )
+
+    (circuit, graph, parts, symbols, poses, unit, targets, style,
+     measure, policy, inspection, continuation, manufacturer) = ctx
+    before = tuple((p.pin_id, p.number, p.anchor) for p in unit.pins)
+    adjusted = apply_tl494_portrait_profile(unit)
+    after = tuple((p.pin_id, p.number, p.anchor) for p in adjusted.pins)
+    check(before == after, "OWNER_PAINT_MOVED_TRUE_DA1_PHYSICAL_LEADS")
+    check(adjusted.body == unit.body and adjusted.origin == unit.origin,
+          "OWNER_PAINT_CHANGED_REAL_DA1_BODY")
+    check(adjusted.function_text_reading is IcFunctionReading.BOTTOM_TO_TOP,
+          "OWNER_PAINT_FUNCTION_ROTATION_WRONG_DIRECTION")
+    check({p.number: p.visible_label for p in adjusted.pins}["3"] == "FB",
+          "OWNER_PAINT_FB_LABEL_NOT_IN_CURRENT_REAL_23_DA1")
+    check({p.number: p.visible_label for p in adjusted.pins}["13"] == "OC",
+          "OWNER_PAINT_OC_LABEL_NOT_IN_CURRENT_REAL_23_DA1")
+    check(all(len(p.visible_label) <= 6 for p in adjusted.pins),
+          "OWNER_PAINT_SOURCE_DA1_ALIAS_TOO_LONG")
+    produced = render_resolved_ic(
+        adjusted, style, measure,
+        editor_targets=targets,
+        editor_overlay=True,
+    )
+    root = ET.fromstring(produced.svg)
+    text = root.findall(f".//{NS}text[@data-kind='function']")
+    check(len(text) == 1 and text[0].text == "PWM",
+          "OWNER_PAINT_SOURCE_DA1_PWM_MISSING")
+    transform = text[0].attrib.get("transform", "")
+    match = re.search(r"matrix\(\s*([\d.-]+)\s+([\d.-]+)", transform)
+    check(match is not None and float(match.group(2)) < 0,
+          "OWNER_PAINT_SOURCE_DA1_PWM_NOT_BOTTOM_TO_TOP")
+    check(len(root.findall(
+        f".//{NS}g[@data-layer='editor-connection-targets']/{NS}rect"
+    )) == 16, "OWNER_PAINT_REAL_DA1_16_MARKERS_MISSING")
+    destination = output_dir / "actual_current_owner_on_23part_DA1_zoom.svg"
+    destination.write_text(produced.svg, encoding="utf-8")
+    return {
+        "actual_source_da1_physical_pinrefs_invariant": True,
+        "typed_real_owner_labels": {
+            p.number: p.visible_label for p in adjusted.pins
+        },
+        "pwm_transform": transform,
+        "svg": destination.name,
+        "not_equivalent_to_the_unchanged_23part_source": True,
+    }
+
+
 def geometry_gate(ctx, svg):
     circuit, graph, _parts, _symbols, _poses, _unit, *_ = ctx
     lines = svg_lines(svg)
@@ -1006,6 +1061,10 @@ def main():
         svg = ET.parse(clean).getroot()
         gate("P1_REAL_CATALOG_AND_48_D4", lambda: part_gate(typed))
         gate("P2_CURRENT_OWNER_IC_STANDALONE", actual_new_owner_ic_contract)
+        gate("P2_CURRENT_OWNER_PAINT_ON_ACTUAL_DA1",
+             lambda: actual_new_owner_paint_on_original_23_sheet(
+                 typed, args.output_dir
+             ))
         gate("P2_TI_PIN_ALIASES_AND_PWM", lambda: ic_gate(typed, svg))
         gate("P3_STROKE_AWARE_DRC", lambda: geometry_gate(typed, svg))
         gate("P3_SYMBOL_AND_DA1_OBSTACLES", lambda: symbol_and_ic_obstacle_gate(
