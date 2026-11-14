@@ -75,6 +75,75 @@ def specimen() -> NetContinuationProject:
     return project
 
 
+def specimen_three_sheet() -> NetContinuationProject:
+    """Eight local real pin stubs; three nets, four pairs and three sheets.
+
+    CTRL has two independent continuation pairs over all three sheets.
+    All parts/pin numbers are SYNTHETIC; there is no vendor pinout claim.
+    """
+    part_refs = ("DD1", "VT1", "DD3", "DA1", "DA2", "VT2", "DD2", "DA3")
+    parts = tuple(ComponentInstance(ref, "SYNTHETIC_" + ref) for ref in part_refs)
+    physical_nets = (
+        Net("CTRL", (
+            PinRef("DD1", "5"), PinRef("VT1", "G"),
+            PinRef("DD3", "1"), PinRef("DA1", "2"),
+        )),
+        Net("REF", (PinRef("DA2", "3"), PinRef("VT2", "G"))),
+        Net("ENABLE", (PinRef("DD2", "7"), PinRef("DA3", "2"))),
+    )
+    nets = tuple(NetIdentity("N-" + net.name, net.name, net.members)
+                 for net in physical_nets)
+    sheets = tuple(ContinuationSheet("S" + str(n), n) for n in (1, 2, 3))
+    # Explicit, reciprocal continuation addresses: zone-based and real
+    # element/pin address forms coexist; neither can forge Net connectivity.
+    specs = (
+        ("C1-OUT", "CTRL", "S1", 1, "1/D4", "2/B7",
+         80000, 40000, "SOURCE", "DD1", "5", 60000),
+        ("C1-IN", "CTRL", "S2", 2, "2/B7", "1/D4",
+         140000, 40000, "TARGET", "VT1", "G", 160000),
+        ("C2-OUT", "CTRL", "S2", 2, "DD3.1", "DA1.2",
+         80000, 70000, "SOURCE", "DD3", "1", 60000),
+        ("C2-IN", "CTRL", "S3", 3, "DA1.2", "DD3.1",
+         140000, 70000, "TARGET", "DA1", "2", 160000),
+        ("R-OUT", "REF", "S1", 1, "1/A6", "3/F2",
+         80000, 100000, "SOURCE", "DA2", "3", 60000),
+        ("R-IN", "REF", "S3", 3, "3/F2", "1/A6",
+         140000, 100000, "TARGET", "VT2", "G", 160000),
+        ("E-OUT", "ENABLE", "S2", 2, "2/C5", "3/E4",
+         80000, 150000, "SOURCE", "DD2", "7", 60000),
+        ("E-IN", "ENABLE", "S3", 3, "3/E4", "2/C5",
+         140000, 150000, "TARGET", "DA3", "2", 160000),
+    )
+    endpoints = tuple(
+        NetContinuationEndpoint(
+            marker, "N-" + net_name, sheet_id, sheet_num, local, remote,
+            Point(x, y), net_name, ContinuationDirection[direction],
+        )
+        for (marker, net_name, sheet_id, sheet_num, local, remote,
+             x, y, direction, _, _, _) in specs
+    )
+    stubs = tuple(
+        ContinuationStub(
+            "WIRE-" + marker, marker, PinRef(ref, pin),
+            Point(start_x, y), Point(x, y),
+        )
+        for (marker, _, _, _, _, _, x, y, _, ref, pin, start_x) in specs
+    )
+    pairs = (
+        ContinuationPair("PAIR-C1", "C1-OUT", "C1-IN", ContinuationScope.GLOBAL),
+        ContinuationPair("PAIR-C2", "C2-OUT", "C2-IN", ContinuationScope.GLOBAL),
+        ContinuationPair("PAIR-R", "R-OUT", "R-IN", ContinuationScope.GLOBAL),
+        ContinuationPair("PAIR-E", "E-OUT", "E-IN", ContinuationScope.GLOBAL),
+    )
+    project = NetContinuationProject(
+        Circuit(parts, physical_nets), nets, sheets, endpoints, pairs, stubs,
+    )
+    anchors = {stub.pin: stub.start for stub in stubs}
+    if validate_net_continuations(project, physical_pin_anchors=anchors):
+        raise AssertionError("Three-sheet multi-Net demonstration is invalid")
+    return project
+
+
 def _elem(parent: ET.Element, tag: str, attrs: dict[str, str]) -> ET.Element:
     return ET.SubElement(parent, tag, attrs)
 
@@ -349,18 +418,24 @@ def main() -> None:
     parser.add_argument("--png", action="store_true", help="Create 300-DPI DRAFT PNG")
     parser.add_argument("--font-file", type=Path, help="Exact OpenGost Type A font")
     parser.add_argument("--review-overlay", action="store_true")
+    parser.add_argument("--connection-zones", action="store_true",
+                        help="Editor-only review targets, never printed")
+    parser.add_argument("--three-sheet", action="store_true",
+                        help="Three sheets, three real nets, four explicit pairs")
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    project = specimen()
+    project = specimen_three_sheet() if args.three_sheet else specimen()
     source = netrefs_to_json(project)
     if netrefs_to_json(netrefs_from_json(source, project.circuit)) != source:
         raise AssertionError("Continuation JSON failed exact roundtrip")
-    (args.output_dir / "two-sheet-ctrl.json").write_text(source, encoding="utf-8")
+    filename = "three-sheet-nets.json" if args.three_sheet else "two-sheet-ctrl.json"
+    (args.output_dir / filename).write_text(source, encoding="utf-8")
     for sheet in project.sheets:
         name = f"sheet-{sheet.number}"
         svg = sheet_svg(
             project, sheet.id, font_path=args.font_file,
             review_overlay=args.review_overlay,
+            review_connection_zones=args.connection_zones,
         )
         (args.output_dir / f"{name}.svg").write_text(svg, encoding="utf-8")
         if args.png:
@@ -368,7 +443,12 @@ def main() -> None:
 
             image = resvg_py.svg_to_bytes(svg_string=svg, dpi=300)
             (args.output_dir / f"{name}-300dpi.png").write_bytes(image)
-    print("DRAFT CTRL: one physical Circuit.Net, 2 separate visible sheet fragments")
+    print(
+        "DRAFT E3: "
+        f"{len(project.circuit.nets)} real Circuit.Nets, "
+        f"{len(project.pairs)} explicit pairs on {len(project.sheets)} sheets; "
+        "no phantom physical connector or invisible cross-sheet conductor"
+    )
 
 
 if __name__ == "__main__":
