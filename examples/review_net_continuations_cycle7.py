@@ -10,6 +10,8 @@ from xml.etree import ElementTree as ET
 
 from gost_schematic.core.geometry import Box, Point
 from gost_schematic.electrical.netrefs import (
+    ContinuationAddressBinding,
+    ContinuationAddressKind,
     ContinuationDirection,
     ContinuationPair,
     ContinuationScope,
@@ -135,8 +137,20 @@ def specimen_three_sheet() -> NetContinuationProject:
         ContinuationPair("PAIR-R", "R-OUT", "R-IN", ContinuationScope.GLOBAL),
         ContinuationPair("PAIR-E", "E-OUT", "E-IN", ContinuationScope.GLOBAL),
     )
+    address_bindings = tuple(
+        ContinuationAddressBinding(
+            marker,
+            ContinuationAddressKind.ELEMENT_PIN
+            if local in ("DD3.1", "DA1.2")
+            else ContinuationAddressKind.SHEET_ZONE,
+            ref if local in ("DD3.1", "DA1.2") else sheet_id,
+            PinRef(ref, pin) if local in ("DD3.1", "DA1.2") else None,
+        )
+        for (marker, _, sheet_id, _, local, _, _, _, _, ref, pin, _) in specs
+    )
     project = NetContinuationProject(
         Circuit(parts, physical_nets), nets, sheets, endpoints, pairs, stubs,
+        schema_version=2, address_bindings=address_bindings,
     )
     anchors = {stub.pin: stub.start for stub in stubs}
     if validate_net_continuations(project, physical_pin_anchors=anchors):
