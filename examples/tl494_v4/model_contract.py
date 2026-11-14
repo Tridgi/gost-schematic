@@ -4,7 +4,6 @@ Never promote source-photo reading or an ERC success to approved electrical desi
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
 
