@@ -144,6 +144,13 @@ jobs:
               "added": [], "removed": [], "physical_members_changed": [],
           }
           assert data["measured_annotation_guards"] >= 39
+          assert data["real_source_UGO_draft_count"] == 13
+          assert "VT1" in data["actual_source_UGO_authority"]
+          assert all(
+              item["status"] == "draft" and item["figure"]
+              for item in data["actual_source_UGO_authority"].values()
+          )
+          assert data["VT1_source_UGO_normative_approved"] is False
           assert len(data["routing"]["net_trees"]) == 15
           assert data["routed_nets"] <= 15
           assert data["new_after_drc"]["checked_symbol_geometry"]
