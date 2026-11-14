@@ -236,6 +236,32 @@ def test_native_stdio_selection_rbac_negative_version_and_no_writes(tmp_path: Pa
                 ))
                 assert selected["selected_part_id"] == "resistor.variable"
                 assert len(selected["physical_pin_templates"]) == 3
+                locked_preview = await client.call_tool(
+                    "schematic_catalog_preview", {
+                        "part_id": card["part_id"],
+                        "part_sha256": card["part_sha256"],
+                        "symbol_sha256": card["symbol_sha256"],
+                    },
+                )
+                assert not locked_preview.isError
+                _mcp_error(await client.call_tool(
+                    "schematic_catalog_preview", {
+                        "part_id": card["part_id"],
+                        "part_sha256": "0" * 64,
+                        "symbol_sha256": card["symbol_sha256"],
+                    },
+                ), "CATALOG_REVISION_MISMATCH")
+                _mcp_error(await client.call_tool(
+                    "schematic_catalog_preview", {
+                        "part_id": card["part_id"],
+                        "part_sha256": card["part_sha256"],
+                    },
+                ), "CATALOG_LOCK_REQUIRED")
+                _mcp_error(await client.call_tool(
+                    "schematic_tl494_pin_alias", {
+                        "full_name": "FEEDBACK", "api_version": 2,
+                    },
+                ), "API_VERSION_UNSUPPORTED")
                 _mcp_error(await client.call_tool(
                     "schematic_catalog_select", {
                         "part_id": card["part_id"], "part_sha256": "f"*64,
