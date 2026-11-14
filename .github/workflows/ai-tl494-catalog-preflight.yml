@@ -54,6 +54,12 @@ jobs:
           assert report["transport"] == "real stdio MCP ClientSession"
           assert report["codex_cli_used"] is False
           assert report["python_bootstrap_not_mcp_write"] is True
+          assert report["source_locked_reference_count"] == 13
+          assert report["catalog_selection_all_parts_SHA_verified"] is True
+          assert report["placement_proposal"]["commit_authorized"] is False
+          assert report["placement_proposal"]["model_or_head_mutated"] is False
+          assert any(d["code"] == "CONNECTED_PIN_RELOCATION_BLOCKED"
+                     for d in report["placement_proposal"]["diagnostics"])
           assert len(report["tl494_profile"]["required_variants"]) == 13
           assert report["tl494_profile"]["frozen_source_git_commit_sha"] == (
               "e695c415fdced164b0e0c39c5249d030795a0aa6"
