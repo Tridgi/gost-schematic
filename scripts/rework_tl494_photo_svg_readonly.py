@@ -67,7 +67,7 @@ def _source_continuations(root):
     ))
 
 
-def _resolved_source_ic(root):
+def _resolved_source_ic(root, *, alias_view=False):
     owners = [
         n for n in root if n.tag == SVG+"g"
         and n.get("data-owner") == "DA1"
@@ -129,7 +129,11 @@ def _resolved_source_ic(root):
         raise ValueError("TL494_SOURCE_PIN_TEXT_INCOMPLETE")
     for pin in pins:
         owner = f"{pin.side.value}.{pin.row}"
-        if source_by_owner.get(owner) != pin.label:
+        expected_name = (
+            TI_TL494_PIN_NAMES[pin.number][1]
+            if alias_view else pin.label
+        )
+        if source_by_owner.get(owner) != expected_name:
             raise ValueError(
                 f"TL494_SOURCE_PRINTED_LABEL_MISMATCH: {pin.number}"
             )
@@ -191,7 +195,9 @@ def migrate(root, style, measurer, policy, *,
         raise AssertionError("TL494_REPAINT_MUTATED_ANY_JUNCTION")
     if _source_continuations(drawing) != original_continuations:
         raise AssertionError("TL494_REPAINT_MUTATED_CONTINUATION_AB")
-    reprinted, unit_again = _resolved_source_ic(drawing)
+    reprinted, unit_again = _resolved_source_ic(
+        drawing, alias_view=True,
+    )
     assert unit_again.pins == model.pins
     assert reprinted.get("data-owner") == "DA1"
     # 16 original numbered physical lead x2/y2 still physically valid.
