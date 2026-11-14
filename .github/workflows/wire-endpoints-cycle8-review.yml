@@ -1,0 +1,110 @@
+name: Cycle8 E3 source-bound wire endpoint diagnostics
+
+on:
+  push:
+    branches:
+      - parallel/electrical-wire-endpoints-cycle8
+  pull_request:
+    branches:
+      - integration/stage0-12
+    paths:
+      - "src/gost_schematic/electrical/wire_endpoints.py"
+      - "src/gost_schematic/rendering/wire_end_overlay.py"
+      - "examples/review_wire_endpoints_cycle8.py"
+      - "tests/test_wire_endpoints_cycle8.py"
+      - ".github/workflows/wire-endpoints-cycle8-review.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wire-endpoints:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install test, strict SVG and PNG tooling
+        run: python -m pip install -e ".[dev,mcp]"
+      - name: Ruff and wire endpoints negative tests
+        run: |
+          ruff check src/gost_schematic/electrical/wire_endpoints.py src/gost_schematic/rendering/wire_end_overlay.py examples/review_wire_endpoints_cycle8.py tests/test_wire_endpoints_cycle8.py
+          pytest -q tests/test_wire_endpoints_cycle8.py
+      - name: Install pinned real OpenGost Type A
+        run: |
+          python scripts/install_opengost_type_a.py \
+            --directory "$HOME/.local/share/fonts" \
+            --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a
+          fc-cache -f
+          FONT_FILE="$(find "$HOME/.local/share/fonts" -type f \
+            \( -iname '*TypeA*.ttf' -o -iname '*TypeA*.otf' \) | head -1)"
+          test -n "$FONT_FILE"
+          VIEWER_FONT="$(fc-match -f '%{file}' 'OpenGost Type A')"
+          test "$(realpath "$VIEWER_FONT")" = "$(realpath "$FONT_FILE")"
+          echo "GOST_WIRE_FONT=$FONT_FILE" >> "$GITHUB_ENV"
+      - name: Real measured-font clean and diagnostic E3 SVG
+        run: |
+          python -m examples.review_wire_endpoints_cycle8 \
+            --font-file "$GOST_WIRE_FONT" \
+            --output-dir output/wire-endpoints-cycle8
+      - name: Real 300-DPI PNG via pinned SVG viewer
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+          for VIEW in clean diagnostic; do
+            rsvg-convert --background-color white --dpi-x 300 --dpi-y 300 \
+              --output "output/wire-endpoints-cycle8/wire-endpoints-$VIEW-300dpi.png" \
+              "output/wire-endpoints-cycle8/wire-endpoints-$VIEW.svg"
+          done
+      - name: Strict XML, pixels, target counts and no diagnostic leak
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+          from PIL import Image
+          import json
+
+          base = Path("output/wire-endpoints-cycle8")
+          uri = "{http://www.w3.org/2000/svg}"
+          manifest = json.loads((base / "wire-endpoints.json").read_text("utf-8"))
+          assert manifest["wire_count"] == 5
+          assert len(manifest["crossings_without_junction"]) == 1
+          assert manifest["crossings_without_junction"][0]["point_um"] == [65000, 70000]
+          for view in ("clean", "diagnostic"):
+              name = base / f"wire-endpoints-{view}"
+              source = name.with_suffix(".svg").read_text("utf-8")
+              root = ET.fromstring(source)
+              assert root.tag == uri + "svg"
+              assert source.count('xmlns="http://www.w3.org/2000/svg"') == 1
+              assert len(root.findall(f".//{uri}line[@data-layer='wires']")) == 5
+              assert len(root.findall(f".//{uri}circle[@data-kind='authored-junction']")) == 1
+              layers = root.findall(f".//{uri}g[@data-layer='editor-connection-targets']")
+              assert len(layers) == (0 if view == "clean" else 1)
+              if view == "diagnostic":
+                  rects = layers[0].findall(f".//{uri}rect")
+                  assert len(rects) == 5
+                  assert len([r for r in rects if r.get("stroke") == "#008c52"]) == 3
+                  assert len([r for r in rects if r.get("stroke") == "#b34444"]) == 2
+                  assert layers[0].get("data-print") == "false"
+              else:
+                  assert "#008c52" not in source and "#b34444" not in source
+              with Image.open(base / f"wire-endpoints-{view}-300dpi.png") as png:
+                  assert png.format == "PNG"
+                  assert png.width > 500 and png.height > 250
+                  pixels = list(png.convert("RGB").getdata())
+                  green = any(g > r + 45 and g > b + 15 for r, g, b in pixels)
+                  assert green == (view == "diagnostic"), (view, "green", green)
+          print("SUCCESS: real 300 DPI, distinct source-bound targets, strict XML")
+          PY
+      - name: Upload real 300-DPI and strict SVG E3 review evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-wire-endpoints-cycle8-${{ matrix.python-version }}
+          path: output/wire-endpoints-cycle8/**
+          if-no-files-found: error
