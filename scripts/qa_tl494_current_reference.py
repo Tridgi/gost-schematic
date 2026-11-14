@@ -862,6 +862,38 @@ def main():
         write_report(args, result)
         print("QA92_TL494_GATE " + name + " " + result[name]["status"],
               flush=True)
+        if name == "P3_SYMBOL_AND_DA1_OBSTACLES" and "evidence" in result[name]:
+            e = result[name]["evidence"]
+            print("QA92_TL494_OBSTACLE_COUNTS " + json.dumps({
+                "symbol_stroke_hits_lt1mm": e["line_ugo_obstacle_count"],
+                "illegal_stroke_examples": e["line_ugo_obstacle_hits_below_1mm"][:8],
+                "legal_true_pin_connections": e["legal_original_pin_join_count"],
+                "body_crossings": e["DA1_frame_internal_wire_count"],
+                "body_examples": e["DA1_frame_internal_wires"][:8],
+                "real_measured_glyph_boxes": e["true_opengost_measured_text_ink_boxes"],
+                "text_overlap_count": e["ink_wire_intrusion_count"],
+                "text_examples": e["measured_text_ink_wire_intrusions"][:8],
+                "nonlinear_glyphs_unreviewed": e["curves_not_approvable_from_line_only_DRC"],
+            }, ensure_ascii=False, sort_keys=True), flush=True)
+        if name == "P3_STROKE_AWARE_DRC" and "evidence" in result[name]:
+            e = result[name]["evidence"]
+            print("QA92_TL494_GEOMETRY_COUNTS " + json.dumps({
+                "parallel_lt3": e["parallel_violations_count"],
+                "parallel_examples": e["parallel_wire_violations"][:5],
+                "crossings_distinct_net": e["crossing_count"],
+                "near_ends_lt1": e["near_endpoint_below_1mm"][:12],
+                "a_visible": e["a_text_present"],
+                "b_markers": e["b_markers"],
+                "size_mm": e["source_sheet_mm"],
+            }, ensure_ascii=False, sort_keys=True), flush=True)
+        if name == "P2_TI_PIN_ALIASES_AND_PWM" and "evidence" in result[name]:
+            e = result[name]["evidence"]
+            print("QA92_TL494_PIN_TEXT " + json.dumps({
+                "checks": e["checks"],
+                "pin3_types": e["pin3_actual"],
+                "bad_labels": e["oversized_actual_labels"],
+                "pwm_matrix": e["actual_pwm_svg_transform"],
+            }, ensure_ascii=False, sort_keys=True), flush=True)
 
     gate("P0_EXACT_SOURCE_SHA", lambda: provenance(args))
     gate("P0_REAL_23_15_16_91", lambda: truth_circuit(args.font_file)[0])
