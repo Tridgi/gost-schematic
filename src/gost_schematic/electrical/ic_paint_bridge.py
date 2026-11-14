@@ -11,8 +11,8 @@ from gost_schematic.core.geometry import SIDE_VECTORS, Box, Point, Side
 from gost_schematic.electrical.ic import (
     IcField,
     IcKind,
-    IcPortLayout,
     IcPinType,
+    IcPortLayout,
     resolve_ic_pin_positions,
 )
 from gost_schematic.electrical.ic_serde import IcLibraryRecord
