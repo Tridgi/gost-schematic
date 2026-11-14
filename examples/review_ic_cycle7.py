@@ -13,6 +13,7 @@ from gost_schematic.core.geometry import SIDE_VECTORS, Box, Point, Side
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.rendering.ic_rectangular import (
     IcFieldContent,
+    IcOrientation,
     IcRenderingPolicy,
     IcResolvedUnit,
     ResolvedIcPin,
@@ -81,6 +82,41 @@ def _fixture(count, kind, style, measurer):
     return unit, plan
 
 
+def _vertical_fixture(count, kind, style, measurer):
+    """True source TOP/BOTTOM ports from independent typed side annotations."""
+    canonical, _ = _fixture(count, kind, style, measurer)
+    pre = tuple(replace(
+        pin, side=Side.TOP if pin.side is Side.LEFT else Side.BOTTOM,
+    ) for pin in canonical.pins)
+    plan = propose_ic_dimensions(
+        canonical.content, pre, style, measurer,
+        orientation=IcOrientation.TOP_BOTTOM,
+    )
+    max_row = max(p.row for p in pre)
+    origin = Point(35000, 25000)
+    resolved = []
+    for pin in pre:
+        virtual_row = max_row + 1 - pin.row
+        x = plan.width_um - (
+            virtual_row * plan.row_pitch_um + plan.row_pitch_um // 2
+        )
+        y = 0 if pin.side is Side.TOP else plan.height_um
+        outward = SIDE_VECTORS[pin.side]
+        resolved.append(replace(
+            pin, anchor=Point(
+                origin.x + x + outward.x * plan.lead_length_um,
+                origin.y + y + outward.y * plan.lead_length_um,
+            ),
+        ))
+    return IcResolvedUnit(
+        canonical.reference,
+        Box(0, 0, plan.width_um, plan.height_um),
+        tuple(resolved), canonical.content, origin,
+        orientation=IcOrientation.TOP_BOTTOM,
+        function_rotation=90, field_text_rotation=90,
+    ), plan
+
+
 def _bbox_gap(a, b):
     dx = max(b.min_x - a.max_x, a.min_x - b.max_x, 0)
     dy = max(b.min_y - a.max_y, a.min_y - b.max_y, 0)
@@ -119,61 +155,72 @@ def generate(folder: Path, font_file: Path):
     }
     for count in (4, 8, 14, 40, 64):
         kind = "analog" if count == 8 else "digital"
-        unit, plan = _fixture(count, kind, style, measure)
-        render = render_resolved_ic(unit, style, measure, policy=policy,
-                                    glyph_detail=True)
-        diag = render_resolved_ic(unit, style, measure, policy=policy,
-                                  review_overlay=True, glyph_detail=True)
-        key = f"ic-{count:02d}-{kind}"
-        (folder / f"{key}-clean.svg").write_text(render.svg, encoding="utf-8")
-        (folder / f"{key}-diagnostic.svg").write_text(diag.svg, encoding="utf-8")
-        text_boxes = [x for x in render.ink if x.text]
-        protected_strokes = [x for x in render.ink if x.kind in (
-            "outer-stroke", "field-divider", "zone-divider", "pin-lead",
-        )]
-        min_gap = min(
-            _bbox_gap(t.box, edge.box)
-            for t in text_boxes for edge in protected_strokes
-        )
-        assert min_gap >= policy.ink_padding_um, (count, min_gap)
-        assert tuple((p.pin_id, p.anchor) for p in unit.pins) == render.pin_anchors
-        report["cases"][key] = {
-            "physical_pin_count": count,
-            "has_analog_function": kind == "analog",
-            "frame_width_um": plan.width_um,
-            "frame_height_um": plan.height_um,
-            "pitch_um": plan.row_pitch_um,
-            "main_width_um": plan.main_width_um,
-            "left_width_um": plan.left_width_um,
-            "right_width_um": plan.right_width_um,
-            "row_count": plan.row_count,
-            "minimum_text_to_stroke_ink_gap_um": round(min_gap, 3),
-            "text_box_count": len(text_boxes),
-            "visible_glyph_count": len(render.glyph_ink),
-            "glyph_ink_boxes": [{
-                "owner": item.owner,
-                "codepoint_index": item.index,
-                "char": item.char,
-                "ink_um": [
-                    item.ink.min_x, item.ink.min_y,
-                    item.ink.max_x, item.ink.max_y,
-                ],
-            } for item in render.glyph_ink],
-            "pin_source": "DEMONSTRATION_ONLY_NOT_DATASHEET",
-            "pin_anchors": {
-                pin.pin_id: [pin.anchor.x, pin.anchor.y]
-                for pin in unit.pins
-            },
-            "all_measured_text_regions": [{
-                "owner": b.owner, "kind": b.kind,
-                "text": b.text,
-                "ink_um": [
-                    b.box.min_x, b.box.min_y, b.box.max_x, b.box.max_y,
-                ],
-            } for b in text_boxes],
-            "source_pin_numbers": [p.number for p in unit.pins],
-            "status": "DRAFT",
-        }
+        for orientation in ("horizontal", "vertical"):
+            if orientation == "horizontal":
+                unit, plan = _fixture(count, kind, style, measure)
+                key = f"ic-{count:02d}-{kind}"
+            else:
+                unit, plan = _vertical_fixture(count, kind, style, measure)
+                key = f"ic-{count:02d}-vertical"
+            render = render_resolved_ic(
+                unit, style, measure, policy=policy, glyph_detail=True,
+            )
+            diag = render_resolved_ic(
+                unit, style, measure, policy=policy,
+                review_overlay=True, glyph_detail=True,
+            )
+            (folder / f"{key}-clean.svg").write_text(render.svg, encoding="utf-8")
+            (folder / f"{key}-diagnostic.svg").write_text(diag.svg, encoding="utf-8")
+            text_boxes = [x for x in render.ink if x.text]
+            protected_strokes = [x for x in render.ink if x.kind in (
+                "outer-stroke", "field-divider", "zone-divider", "pin-lead",
+            )]
+            min_gap = min(
+                _bbox_gap(t.box, edge.box)
+                for t in text_boxes for edge in protected_strokes
+            )
+            assert min_gap >= policy.ink_padding_um, (count, min_gap)
+            assert tuple((p.pin_id, p.anchor) for p in unit.pins) == render.pin_anchors
+            report["cases"][key] = {
+                "physical_pin_count": count,
+                "has_analog_function": kind == "analog",
+            "orientation": unit.orientation.value,
+            "function_rotation": unit.function_rotation,
+            "field_text_rotation": unit.field_text_rotation,
+                "frame_width_um": plan.width_um,
+                "frame_height_um": plan.height_um,
+                "pitch_um": plan.row_pitch_um,
+                "main_width_um": plan.main_width_um,
+                "left_width_um": plan.left_width_um,
+                "right_width_um": plan.right_width_um,
+                "row_count": plan.row_count,
+                "minimum_text_to_stroke_ink_gap_um": round(min_gap, 3),
+                "text_box_count": len(text_boxes),
+                "visible_glyph_count": len(render.glyph_ink),
+                "glyph_ink_boxes": [{
+                    "owner": item.owner,
+                    "codepoint_index": item.index,
+                    "char": item.char,
+                    "ink_um": [
+                        item.ink.min_x, item.ink.min_y,
+                        item.ink.max_x, item.ink.max_y,
+                    ],
+                } for item in render.glyph_ink],
+                "pin_source": "DEMONSTRATION_ONLY_NOT_DATASHEET",
+                "pin_anchors": {
+                    pin.pin_id: [pin.anchor.x, pin.anchor.y]
+                    for pin in unit.pins
+                },
+                "all_measured_text_regions": [{
+                    "owner": b.owner, "kind": b.kind,
+                    "text": b.text,
+                    "ink_um": [
+                        b.box.min_x, b.box.min_y, b.box.max_x, b.box.max_y,
+                    ],
+                } for b in text_boxes],
+                "source_pin_numbers": [p.number for p in unit.pins],
+                "status": "DRAFT",
+            }
     (folder / "ic-metric-audit.json").write_text(
         json.dumps(report, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
         encoding="utf-8",
