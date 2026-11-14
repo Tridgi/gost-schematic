@@ -362,6 +362,57 @@ def _mock_real_tl494_lead_forest():
     return circuit, {part.identifier: part}, {symbol.identifier: symbol}
 
 
+@pytest.mark.parametrize("rotation", (0, 90, 180, 270))
+@pytest.mark.parametrize("mirror", (False, True))
+def test_source_tip_cap_remains_legal_when_outward_lane_split_by_grid(rotation, mirror):
+    circuit, _, symbols = _mock_real_tl494_lead_forest()
+    tx = Transform(rotation, mirror)
+    part = circuit.components[0]
+    posed = replace(
+        circuit, components=(
+            replace(part, origin=tx.apply(part.origin), transform=tx),
+        ),
+    )
+    ink = _source_ink_obstacles(posed, symbols, stroke_um=300)
+    allowed = frozenset({PinRef("DA1", "12")})
+    tip = Point(205000, 138750)
+
+    def wire(a, b):
+        return WireSegment(tx.apply(a), tx.apply(b), "INPUT_POS")
+
+    # Real 0.300mm printed wire plus 0.300mm physical lead: the 150µm
+    # cap beyond the manufactured tip is a single continuous exposed lane.
+    assert _source_ink_collision(
+        wire(tip, Point(205040, 138750)), ink,
+        authorized_pins=allowed,
+    ) is None
+    assert _source_ink_collision(
+        wire(Point(205040, 138750), Point(205120, 138750)),
+        ink, authorized_pins=allowed,
+    ) is None
+    assert _source_ink_collision(
+        wire(Point(205120, 138750), Point(206000, 138750)),
+        ink, authorized_pins=allowed,
+    ) is None
+    # 50µm behind the physical tip is IN the DA1 pin lead, and cannot be
+    # exempted even if the resulting segment eventually goes outward.
+    assert _source_ink_collision(
+        wire(Point(204950, 138750), Point(205040, 138750)),
+        ink, authorized_pins=allowed,
+    ) is not None
+    # No generic same-owner bypass, even for a segment touching the tip.
+    assert _source_ink_collision(
+        wire(tip, Point(205040, 138750)),
+        ink, authorized_pins=frozenset({PinRef("DA1", "8")}),
+    ) is not None
+    # A diagonal or transverse move inside the pin cap is never its
+    # *sourced* straight physical lead escape.
+    assert _source_ink_collision(
+        wire(Point(205030, 138750), Point(205080, 138780)),
+        ink, authorized_pins=allowed,
+    ) is not None
+
+
 def test_real_DA1_failed_x203460_vertical_cannot_cross_other_leads():
     circuit, _, symbols = _mock_real_tl494_lead_forest()
     ink = _source_ink_obstacles(circuit, symbols, stroke_um=300)
