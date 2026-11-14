@@ -11,6 +11,8 @@ from mcp.types import ImageContent, TextContent, ToolAnnotations
 
 from gost_schematic.agent_api import vision
 
+from .saved_projects import register_saved_project_tools
+
 mcp = FastMCP("gost-schematic-vision", instructions=(
     "Read-only electrical schematic inspection. Images are authentic SVG-derived PNG. "
     "Use returned diagnostics from Circuit and ExternalWireGraph, never infer nets "
@@ -92,6 +94,11 @@ def schematic_list_views(project_ref: str = "six-part") -> dict[str, Any]:
     """Discover available read-only specimen views and current project revision."""
     return vision.list_views(project_ref)
 
+
+
+# Saved-project reads are independently operator-scoped and default-denied;
+# the six existing P0 Vision tools retain their fixed-specimen behavior.
+register_saved_project_tools(mcp, READ_ONLY)
 
 def main() -> None:
     # Never log to stdout: reserved for MCP protocol frames.
