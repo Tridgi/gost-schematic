@@ -13,6 +13,7 @@ from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
 from gost_schematic.rendering.ic_electrical_binding import (
     render_verified_ic_paint_binding,
 )
+from gost_schematic.rendering.ic_rectangular import IcTypographyProfile
 from gost_schematic.standards.type_a_font import inspect_type_a_font
 
 SVG = "{http://www.w3.org/2000/svg}"
@@ -31,7 +32,13 @@ def main():
         "f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a"
     )
     measure = PillowTextMeasurer()
-    result = {"font_sha256": inspection.style.font_sha256, "cases": {}}
+    result = {
+        "font_sha256": inspection.style.font_sha256,
+        "cases": {},
+        "paired_portrait_results": {},
+    }
+    out = Path("output/ic-cycle7-joint")
+    out.mkdir(parents=True, exist_ok=True)
     for count in (2, 4, 8, 14, 40, 64):
         for kind, reference in (("DIGITAL", "DD1"), ("ANALOG", "DA1")):
             path = Path(
@@ -75,6 +82,60 @@ def main():
                         len(binding.views)>1
                     )
             key=f"{kind.lower()}-{count}"
+            # Verify the actual owner-typed model at both visual word angles.
+            # A too-small existing IcSymbolSpec must remain BLOCKED rather than
+            # silently rewriting a physical pin or accepting a collision.
+            try:
+                angle_90 = render_verified_ic_paint_binding(
+                    binding, inspection.style, measure, circuit=circuit,
+                    typography_profile=(
+                        IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT
+                    ),
+                    function_rotation=90,
+                )
+                angle_0 = render_verified_ic_paint_binding(
+                    binding, inspection.style, measure, circuit=circuit,
+                    typography_profile=(
+                        IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT
+                    ),
+                    function_rotation=0,
+                )
+            except ValueError as exc:
+                if not any(code in str(exc) for code in (
+                    "IC_PORTRAIT_BODY_REQUIRED", "IC_TEXT_OVERFLOW",
+                    "IC_INK_COLLISION", "IC_REFDES_UNPLACEABLE",
+                )):
+                    raise
+                result["paired_portrait_results"][key] = {
+                    "status": "BLOCKED_OWNER_GEOMETRY_REVISION",
+                    "diagnostic": str(exc),
+                }
+            else:
+                assert len(angle_0) == len(angle_90)
+                assert all(
+                    a.pin_anchors == b.pin_anchors
+                    and a.body_world == b.body_world
+                    and a.connection_targets == b.connection_targets
+                    for a, b in zip(angle_0, angle_90, strict=True)
+                )
+                for index, (a,b) in enumerate(
+                    zip(angle_0, angle_90, strict=True)
+                ):
+                    (out/f"{key}-typed-{index}-function-0.svg").write_text(
+                        a.svg, encoding="utf-8",
+                    )
+                    (out/f"{key}-typed-{index}-function-90.svg").write_text(
+                        b.svg, encoding="utf-8",
+                    )
+                assert circuit.nets == (Net("TEST_A",(PinRef(reference,"1"),)),)
+                result["paired_portrait_results"][key] = {
+                    "status": "PASS_TYPED_NET_PINREF_SAME",
+                    "physical_pin_count": count,
+                    "unit_count": len(angle_90),
+                    "unchanged_nets": True,
+                    "unchanged_external_points": True,
+                    "version": "portrait_function_v2_draft",
+                }
             result["cases"][key]={
                 "physical_count":count,
                 "unit_count":len(binding.views),
@@ -84,12 +145,11 @@ def main():
                 "all_external_points_equal":True,
                 "font_h_um":inspection.measured_cap_height_um,
             }
-    out = Path("output/ic-cycle7-joint")
-    out.mkdir(parents=True,exist_ok=True)
     (out/"paint-elektrik-typed-proof.json").write_text(
         json.dumps(result,indent=2,sort_keys=True)+"\n",encoding="utf-8",
     )
-    print("PASS real type-A PAINT/ELEKTRIK 12 synthetic package families")
+    print("PASS real type-A PAINT/ELEKTRIK 12 synthetic package families; "
+          "paired portrait results:", result["paired_portrait_results"])
 
 
 if __name__ == "__main__":
