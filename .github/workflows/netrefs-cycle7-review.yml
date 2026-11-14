@@ -1,0 +1,163 @@
+name: Cycle7 E3 Netrefs Type A and SVG integration review
+
+on:
+  push:
+    branches:
+      - parallel/electrical-netrefs-cycle7
+  pull_request:
+    branches:
+      - integration/stage0-12
+    paths:
+      - "src/gost_schematic/electrical/netrefs.py"
+      - "src/gost_schematic/electrical/netrefs_serde.py"
+      - "examples/review_net_continuations_cycle7.py"
+      - "tests/test_netrefs_cycle7*.py"
+      - ".github/workflows/netrefs-cycle7-review.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  measured-netrefs:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install source, tests and PNG renderer
+        run: python -m pip install -e ".[dev,mcp]"
+      - name: Ruff and electrically strict regression suite
+        run: |
+          ruff check src/gost_schematic/electrical/netrefs.py src/gost_schematic/electrical/netrefs_serde.py examples/review_net_continuations_cycle7.py tests/test_netrefs_cycle7.py tests/test_netrefs_cycle7_integration.py tests/test_netrefs_cycle7_multisheet.py
+          pytest -q tests/test_netrefs_cycle7.py tests/test_netrefs_cycle7_multisheet.py
+      - name: Install real pinned OpenGost Type A, no fallback permitted
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/install_opengost_type_a.py \
+            --directory "$HOME/.local/share/fonts" \
+            --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a
+          fc-cache -f
+          FONT_FILE="$(find "$HOME/.local/share/fonts" -type f \
+            \( -iname '*TypeA*.ttf' -o -iname '*TypeA*.otf' \) | head -1)"
+          test -n "$FONT_FILE"
+          VIEWER_FONT="$(fc-match -f '%{file}' 'OpenGost Type A')"
+          test "$(realpath "$VIEWER_FONT")" = "$(realpath "$FONT_FILE")"
+          echo "GOST_NETREF_FONT=$FONT_FILE" >> "$GITHUB_ENV"
+          sha256sum "$FONT_FILE"
+      - name: Strict XML import order, measured real glyph keepouts and 300DPI tests
+        run: pytest -q tests/test_netrefs_cycle7.py tests/test_netrefs_cycle7_integration.py tests/test_netrefs_cycle7_multisheet.py
+      - name: Export exact Type A measured clean and review sheet SVG
+        run: |
+          python -m examples.review_net_continuations_cycle7 \
+            --font-file "$GOST_NETREF_FONT" \
+            --output-dir output/netrefs-cycle7/clean
+          python -m examples.review_net_continuations_cycle7 \
+            --font-file "$GOST_NETREF_FONT" --review-overlay \
+            --output-dir output/netrefs-cycle7/review
+          python -m examples.review_net_continuations_cycle7 \
+            --three-sheet --font-file "$GOST_NETREF_FONT" \
+            --output-dir output/netrefs-cycle7/three-sheet/clean
+          python -m examples.review_net_continuations_cycle7 \
+            --three-sheet --font-file "$GOST_NETREF_FONT" \
+            --review-overlay --connection-zones \
+            --output-dir output/netrefs-cycle7/three-sheet/review
+      - name: Rasterize with verified viewer/font at true 300 DPI
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+          for VIEW in clean review; do
+            for N in 1 2; do
+              rsvg-convert --background-color white --dpi-x 300 --dpi-y 300 \
+                --output "output/netrefs-cycle7/$VIEW/sheet-$N-300dpi.png" \
+                "output/netrefs-cycle7/$VIEW/sheet-$N.svg"
+            done
+          done
+          for VIEW in clean review; do
+            for N in 1 2 3; do
+              rsvg-convert --background-color white --dpi-x 300 --dpi-y 300 \
+                --output "output/netrefs-cycle7/three-sheet/$VIEW/sheet-$N-300dpi.png" \
+                "output/netrefs-cycle7/three-sheet/$VIEW/sheet-$N.svg"
+            done
+          done
+      - name: Verify artifacts from strict XML, true physical A4 dimensions and pixels
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+          from PIL import Image, ImageChops
+
+          base = Path("output/netrefs-cycle7")
+          ns = "{http://www.w3.org/2000/svg}"
+          sha = "f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a"
+          for view in ("clean", "review"):
+              for n in (1, 2):
+                  stem = base / view / f"sheet-{n}"
+                  svg = (stem.with_suffix(".svg")).read_text(encoding="utf-8")
+                  root = ET.fromstring(svg)
+                  assert root.tag == ns + "svg"
+                  assert svg.count('xmlns="http://www.w3.org/2000/svg"') == 1
+                  assert root.attrib["data-font-sha256"] == sha
+                  assert len(root.findall(f".//{ns}line")) == 1
+                  assert len(root.findall(f".//{ns}text")) == 2
+                  assert len(root.findall(f".//{ns}rect")) == (2 if view == "review" else 0)
+                  for t in root.findall(f".//{ns}text"):
+                      assert t.attrib["data-font-sha256"] == sha
+                  img = stem.parent / f"sheet-{n}-300dpi.png"
+                  with Image.open(img) as png:
+                      assert png.size[0] in (2480, 2481), png.size
+                      assert png.size[1] in (3507, 3508, 3509), png.size
+                      black = ImageChops.difference(
+                          png.convert("RGB"), Image.new("RGB", png.size, "white")
+                      )
+                      assert black.getbbox(), "Blank raster despite SVG glyphs"
+          print("PASSED: pinned Type A XML/PNG proof at 300DPI for both sheets")
+          PY
+      - name: Check three-sheet multi-Net XML, editor-only zones and 300-DPI raster
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+          from PIL import Image
+          from examples.review_net_continuations_cycle7 import specimen_three_sheet
+          from gost_schematic.electrical.netrefs_serde import netrefs_from_json
+
+          root = Path("output/netrefs-cycle7/three-sheet")
+          expected = specimen_three_sheet()
+          ns = "{http://www.w3.org/2000/svg}"
+          for view in ("clean", "review"):
+              snapshot = root / view / "three-sheet-nets.json"
+              actual = netrefs_from_json(snapshot.read_text(encoding="utf-8"), expected.circuit)
+              assert actual == expected
+              for n, expected_count in ((1, 2), (2, 3), (3, 3)):
+                  stem = root / view / f"sheet-{n}"
+                  source = stem.with_suffix(".svg").read_text(encoding="utf-8")
+                  svg = ET.fromstring(source)
+                  assert svg.tag == ns + "svg"
+                  assert source.count('xmlns="http://www.w3.org/2000/svg"') == 1
+                  assert len(svg.findall(f".//{ns}line")) == expected_count
+                  assert len(svg.findall(f".//{ns}text")) == expected_count * 2
+                  assert len(svg.findall(f".//{ns}rect")) == (
+                      expected_count * 3 if view == "review" else 0
+                  )
+                  assert svg.attrib["data-font-sha256"] == (
+                      "f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a"
+                  )
+                  with Image.open(root / view / f"sheet-{n}-300dpi.png") as png:
+                      assert png.width in (2480, 2481), png.size
+                      assert png.height in (3507, 3508, 3509), png.size
+          print("SUCCESS: 3 sheets, 3 physical Nets, 4 pairs, 8 stubs, 300 DPI")
+          PY
+      - name: Upload DRAFT Type A physical-sheet proof to QA #92
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-e3-net-continuations-${{ matrix.python-version }}
+          path: output/netrefs-cycle7/**
+          if-no-files-found: error
