@@ -20,8 +20,8 @@ def verify(folder: Path) -> dict:
     assert (proof["source_components"], proof["source_nets"],
             proof["source_net_pinrefs"]) == (23, 15, 62)
     assert proof["model_source"] == "e695c415fdced164b0e0c39c5249d030795a0aa6"
-    assert proof["NET114_owner_sha"] == "b3a8263944c5a687492a49555d8149e538f0902b"
-    assert proof["RECON115_owner_sha"] == "fa36620877c244e24fccaad8d0bb00133bec52ef"
+    assert proof["NET114_owner_sha"] == "2c4596e3e2897c5a34618169e4cfa5c3b8c38b43"
+    assert proof["RECON115_owner_sha"] == "10f22cea8d5908605b52853113b0c75bf91eec75"
     assert proof["A3_true_catalog_bounds"]["A3_capacity_fit"]
     assert proof["status"] == "BLOCKED" and not proof["real_print_release"]
     assert not proof["printable_candidate"]
