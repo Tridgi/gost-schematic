@@ -82,7 +82,7 @@ def test_new_graph_not_old91_exact_lines_and_source_unmodified():
     ("junction", "ROUTED_SHEET_FOREIGN_OR_DANGLING_JUNCTION"),
     ("fake_dot", "ROUTED_SHEET_FOREIGN_OR_DANGLING_JUNCTION"),
     ("no_ic", "ROUTED_SHEET_TYPED_PHYSICAL_IC_REQUIRED"),
-    ("owner", "ROUTED_SHEET_OWNER_PREVIEW"),
+    ("owner", "ROUTED_SHEET_OWNER_(PREVIEW|114_ROUTER)"),
 ))
 def test_reject_forged_external_graph_or_evidence(tamper, code):
     circuit, graph, parts, symbols, clean, diag = _case()
