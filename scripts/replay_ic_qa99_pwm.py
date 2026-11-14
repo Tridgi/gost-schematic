@@ -36,7 +36,9 @@ def replay(qa_source: Path, font_file: Path, output_dir: Path) -> None:
         "Box": Box, "Point": Point, "Side": Side,
         "Transform": Transform, "replace": replace,
     }
-    exec(compile(snippet, str(qa_source), "exec"), names)
+    # The fixture is fetched by immutable Git SHA from QA #99 in CI, not
+    # user input; only the named function is compiled, never the full script.
+    exec(compile(snippet, str(qa_source), "exec"), names)  # noqa: S102
     independent = names["_port_fixture"]
     face = inspect_type_a_font(font_file, h_um=2500)
     metrics = PillowTextMeasurer()
