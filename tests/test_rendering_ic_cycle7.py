@@ -526,9 +526,8 @@ def test_lr_function_rotation_90_to_0_only_changes_function_ink(count):
     from gost_schematic.rendering.ic_rectangular import IcTypographyProfile
 
     initial, _ = specimen(count, function="PWM")
-    portrait = replace(
-        initial,
-        typography_profile=IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT,
+    portrait = initial.select_typography_profile(
+        IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT,
     )
     assert portrait.function_rotation == 90
     upright = replace(portrait, function_rotation=0)
@@ -578,8 +577,8 @@ def test_vertical_word_reserves_multiple_real_rows_before_other_main_text():
         64, function="МОДУЛЬ_УПРАВЛЕНИЯ_PWM",
         extra_rows=("FIRST", "SECOND"),
     )
-    portrait = replace(
-        unit, typography_profile=IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT,
+    portrait = unit.select_typography_profile(
+        IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT,
     )
     sized = propose_ic_dimensions(
         unit.content, unit.pins, STYLE, FixedInk(), function_rotation=90,
@@ -611,8 +610,8 @@ def test_portrait_version_explicit_and_never_inferred_from_port_directions():
     unit, _ = specimen(4, long_name=True, function="PWM")
     with pytest.raises(ValueError, match="IC_PORTRAIT_BODY_REQUIRED"):
         render_resolved_ic(
-            replace(unit,
-                    typography_profile=IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT),
+            unit.select_typography_profile(
+                IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT),
             STYLE, FixedInk(),
         )
     with pytest.raises(ValueError, match="IC_FIELD_ROTATION_REQUIRES_TOP_BOTTOM"):
@@ -627,8 +626,8 @@ def test_d4_independent_function_turn_preserves_all_physical_leads(angle, mirror
     from gost_schematic.rendering.ic_rectangular import IcTypographyProfile
 
     unit, _ = specimen(8, transform=Transform(angle, mirror), function="PWM")
-    a = replace(
-        unit, typography_profile=IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT,
+    a = unit.select_typography_profile(
+        IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT,
     )
     turned = render_resolved_ic(a, STYLE, FixedInk())
     straight = render_resolved_ic(replace(a, function_rotation=0),
