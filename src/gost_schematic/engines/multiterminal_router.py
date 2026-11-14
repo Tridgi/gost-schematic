@@ -544,6 +544,9 @@ def _visibility_path(
     )
     cache: dict[tuple[Point, Point, bool], tuple[bool, int]] = {}
     ink_rejections: dict[tuple[str, int, str], tuple[Point, Point]] = {}
+    wire_rejections: dict[
+        tuple[str, str, Point, Point], tuple[Point, Point]
+    ] = {}
     while heap:
         score, bends, crossings, length, ix, iy, direction = heappop(heap)
         state = (ix, iy, direction)
@@ -615,6 +618,16 @@ def _visibility_path(
                     )
                     if not result.valid:
                         bad = True
+                        # Preserve exact two conductor endpoints and scoped
+                        # 3mm/same-Net T/foreign-Net contact reason. A
+                        # no-route condition is often a WIRE constraint even
+                        # when some other candidate also hit IC lead ink.
+                        for code in result.errors:
+                            witness = (
+                                old.net_name, code, old.start, old.end,
+                            )
+                            if witness not in wire_rejections:
+                                wire_rejections[witness] = (here, to)
                         break
                     seen_crossings += (
                         "DRC_UNMARKED_DIFFERENT_NET_X" in result.warnings
@@ -649,6 +662,18 @@ def _visibility_path(
         reason = "ROUTE_NO_CLEAR_ORTHOGONAL_TREE_PATH"
         if details:
             reason += ":INK_VETO=" + ";".join(details[:6])
+        if wire_rejections:
+            route_evidence = tuple(
+                f"{net}:{code}:existing={a.x},{a.y}->"
+                f"{b.x},{b.y}:trial={p.x},{p.y}->{q.x},{q.y}"
+                for (net, code, a, b), (p, q)
+                in sorted(wire_rejections.items(), key=lambda item: (
+                    item[0][0], item[0][1],
+                    item[0][2].x, item[0][2].y,
+                    item[0][3].x, item[0][3].y,
+                ))
+            )
+            reason += ":WIRE_VETO=" + ";".join(route_evidence[:6])
         return (), reason
     points = []
     state = reached
