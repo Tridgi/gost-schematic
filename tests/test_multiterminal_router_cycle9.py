@@ -3,7 +3,7 @@ from dataclasses import replace
 
 import pytest
 
-from gost_schematic.core.geometry import Box, Line, Point, Rectangle, Side
+from gost_schematic.core.geometry import Box, Line, Point, Rectangle, Side, StyledLine
 from gost_schematic.core.transforms import Transform
 from gost_schematic.engines.multiterminal_router import (
     _nearest_net_order,
@@ -285,6 +285,45 @@ def test_own_lead_ink_guard_rejects_nearby_noncontact_parallel_trunk():
     assert conflict is not None
     assert conflict.primitive_kind == "Line"
     assert conflict.owner == "DA1"
+
+
+@pytest.mark.parametrize("rotation", (0, 90, 180, 270))
+@pytest.mark.parametrize("mirror", (False, True))
+def test_actual_diagonal_stroke_not_false_blocked_by_empty_AABB(rotation, mirror):
+    symbol = SymbolDefinition(
+        "native.diagonal", 1,
+        (StyledLine(Point(0, 0), Point(10000, 10000), 300),),
+        (GraphicPin("1", Point(-5000, 0), Side.LEFT),),
+        Box(0, 0, 3000, 3000), 300,
+    )
+    part = PartDefinition(
+        "native.diagonal", "X", "native.diagonal",
+        (PhysicalPin("1", "P", ElectricalType.PASSIVE),),
+    )
+    tx = Transform(rotation, mirror)
+    circuit = Circuit(
+        (ComponentInstance("X1", part.identifier, Point(0, 0), tx),),
+        (Net("A", (PinRef("X1", "1"),)),),
+    )
+    obstacles = _source_ink_obstacles(
+        circuit, {symbol.identifier: symbol}, stroke_um=300,
+    )
+    clear = WireSegment(
+        tx.apply(Point(1000, 9000)), tx.apply(Point(2000, 9000)), "A",
+    )
+    # The AABB around y=x contains the test segment, but the ink does not.
+    assert _source_ink_collision(
+        clear, obstacles, authorized_pins=frozenset(),
+    ) is None
+    colliding = WireSegment(
+        tx.apply(Point(1000, 100)), tx.apply(Point(2000, 1100)), "A",
+    )
+    hit = _source_ink_collision(
+        colliding, obstacles, authorized_pins=frozenset(),
+    )
+    assert hit is not None
+    assert hit.primitive_kind == "StyledLine"
+    assert hit.owner == "X1"
 
 
 def _mock_real_tl494_lead_forest():
