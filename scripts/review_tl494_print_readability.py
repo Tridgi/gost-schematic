@@ -41,6 +41,19 @@ def _segment_gap(a, b):
     # diagonals. Exact segment intersections have zero distance.
     (ax, ay), (bx, by), aw = a
     (cx, cy), (dx, dy), bw = b
+    # Projection overlap is sufficient for exact perpendicular clearance,
+    # even when neither short segment's endpoint reaches the other. Prior
+    # endpoint-only formula missed three real TL494 3mm wire violations.
+    if ay == by and cy == dy and (
+        max(min(ax, bx), min(cx, dx))
+        <= min(max(ax, bx), max(cx, dx))
+    ):
+        return abs(ay-cy) - (aw+bw)/2
+    if ax == bx and cx == dx and (
+        max(min(ay, by), min(cy, dy))
+        <= min(max(ay, by), max(cy, dy))
+    ):
+        return abs(ax-cx) - (aw+bw)/2
     ux, uy, vx, vy = bx - ax, by - ay, dx - cx, dy - cy
     wx, wy = ax - cx, ay - cy
     denom = ux * ux * (vx * vx + vy * vy) - (ux * vx + uy * vy) ** 2
