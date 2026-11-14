@@ -380,3 +380,71 @@ nonprinting and must not affect electrical topology.
   SVG layer in CLEAN export.
 - The P1.2 writer remains **BLOCKED** pending a separate independent
   MAIN 2/QA approval and crash-safe multi-generation CAS tests.
+
+
+## 8. Issue #107 source-pinned UGO selection and readable-print gate
+
+**Documentation-only next-stage obligation.** The separate
+[AI Draft PR #111](https://github.com/Tridgi/gost-schematic/pull/111)
+contains read-only catalog choice, a real installed-symbol PNG/SVG
+preview, TL494's source-pinned UGO mapping/FB-OC display aliases and
+an *incomplete* printed-wire clearance preflight. These are not
+\`ValidateTransaction\`, \`CommitTransaction\`, a full TL494 device
+catalog adapter, a finished sheet or a source-verified autorouter.
+PR #111 does not grant any write privilege, and its catalog results
+do not authorize manufacturing.
+
+Every future proposed transaction must additionally lock the following
+objects to the same \`expected_revision\` and \`expected_generation\`:
+
+1. Source-design manifest (explicit BOM reference → **exact**
+   installed \`part_id\`, \`part_sha256\`, \`symbol_sha256\`, symbol status
+   and pinned source reason); no "first capacitor"/"air coil" fallback.
+2. Each physical \`PinRef\` number, electrical role, source package
+   identity and complete \`Circuit.Net\` membership **before/after**.
+   Only locked physical numbers may be displayed as contact labels.
+3. Distinct view-only full manufacturer label vs reviewed short
+   editorial display alias; FEEDBACK→FB and OUTPUT CTRL→OC are
+   non-electrical presentation changes only. An unrecognized
+   abbreviation is not auto-generated.
+4. Exact world-µm contact anchors, actual stroke widths, body and
+   typography keepouts and source-validated Schottky/MOSFET
+   orientation. A geometric transform supports a placement
+   operation, but ESKD approval for that transformed glyph requires
+   an independent normative review.
+5. A genuinely authoritative sheet format/profile (A3/A4 etc),
+   project-local route and text style, whole-sheet footprint and
+   approved minimum print clearances for each applicable primitive.
+   P1.1 does not persist sheet format, so a "fits A3" declaration is
+   currently BLOCKED.
+6. Print DRC must cover printed-edge 3mm neighboring H/V conductor
+   separation, **real glyph** UGO/UGO 2mm where applicable, 1mm
+   neighboring graphic strokes, text/font ink, conductor→glyph,
+   crossings/junctions, too many bends, and reference-photo
+   functional group order. Existing \`validate_sheet_wire_rules\`
+   covers only its explicitly documented subset. An incomplete
+   result always returns \`print_ready=false\`, NOT PASS.
+7. \`ValidateTransaction\` must return machine-readable failure codes,
+   true IDs, exact gap values, source-BOM conflict and immutable
+   before/after model digests, with \`mutated=false\`. A **shorter**
+   route is not considered good if it violates source topology or
+   printed ink clearance.
+8. \`CommitTransaction\` must revalidate the **whole** source
+   profile/Net/glyph/layer/sheet and enforce CAS, idempotency,
+   atomic HEAD publication and crash rollback; no raw SVG patch
+   or direct shape manipulation is ever authoritative.
+9. Multi-Net connected autorouting, source-photo reconstruction and
+   vendor-verified TL494CN 16-pin adapter are independently gated
+   P2-level capabilities. They are not implemented by PR #111,
+   and no model-created clean image may bypass these gates.
+
+**Fail-closed demo:** a saved six-component ProjectService specimen with
+\`capacitor.electrolytic\` at C3 must produce
+\`TL494_UGO_VARIANT_MISMATCH\` when checked against the TL494
+\`capacitor.polarized\` selection profile. This does **not** turn
+the six-part sample into a 23-component TL494 project.
+
+MAIN 2 + ESKD + PAINT + ELEKTRIK NET + QA must separately approve
+source and print integrity, multi-generation CAS and no-unapproved-Net
+mutations before enabling any write tool. No write implementation
+or merge is authorized by this document.
