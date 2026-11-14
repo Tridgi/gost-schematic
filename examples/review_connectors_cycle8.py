@@ -26,6 +26,7 @@ IDS = (
     "connector.socket_4",
 )
 SVG = "http://www.w3.org/2000/svg"
+ET.register_namespace("", SVG)
 ROOT = Path(str(files("gost_schematic").joinpath("catalog")))
 SIZE_MM = (220, 175)
 
@@ -109,8 +110,7 @@ def generate(directory: Path) -> dict:
 
     for diagnostic in (False, True):
         kind = "diagnostic" if diagnostic else "clean"
-        root = ET.Element("svg", {
-            "xmlns": SVG,
+        root = ET.Element(f"{{{SVG}}}svg", {
             "width": f"{SIZE_MM[0]}mm", "height": f"{SIZE_MM[1]}mm",
             "viewBox": f"0 0 {SIZE_MM[0]} {SIZE_MM[1]}",
             "data-approval": "DRAFT", "data-kind": kind,
