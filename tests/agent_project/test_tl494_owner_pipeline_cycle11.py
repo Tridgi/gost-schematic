@@ -72,12 +72,9 @@ def test_renamed_and_missing_original_2_continuation_links_denied(real_source):
     req = _request(real_source)
     target = next(n for n in req["nets"] if n["name"] == "b_NEGATIVE_OUTPUT")
     target["name"] = "OUTPUT_NEG"
-    # Same count cannot fake changed identity: current source provider lacks
-    # verified saved P1.1 correspondence; full TL494 remains BLOCKED.
-    assert review_request(req)["status"] == "BLOCKED_SOURCE_NOT_IMPORTABLE"
-    assert "b_NEGATIVE_OUTPUT" not in {
-        n["name"] for n in req["nets"]
-    }
+    # Same 15/62 counts still FAIL: full physical original is Git-locked.
+    with pytest.raises(ProjectError, match="SOURCE_NET_MEMBERSHIP_MISMATCH"):
+        review_request(req)
     req = _request(real_source)
     next(n for n in req["nets"] if n["name"] == "b_NEGATIVE_OUTPUT")[
         "members"
