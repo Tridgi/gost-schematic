@@ -146,6 +146,7 @@ def check_graph(graph: dict, trees: dict, expected: dict) -> dict:
 def inspect_candidate_driver(
     wrapper: dict, source: dict[str, tuple[str, ...]],
     *, owner_shas: dict | None = None, recon_sha: str = RECON_CANDIDATE_SHA,
+    frozen_fixture: dict | None = None,
 ) -> dict:
     require(isinstance(wrapper, dict), "QA_RECON_CANDIDATE_NOT_TYPED_JSON")
     require(wrapper.get("schema") ==
@@ -177,6 +178,23 @@ def inspect_candidate_driver(
         "TRANSFER": "ENERGY_TRANSFER",
         "b_NEGATIVE_OUTPUT": "OUTPUT_NEG",
     }, "QA_RECON_ORIGINAL_SOURCE_ALIAS_MAPPING_CHANGED")
+    if frozen_fixture is not None:
+        require(wrapper.get("source_BOM") == frozen_fixture.get("components"),
+                "QA_CYCLE11_SOURCE_NOMINAL_OR_PART_ID_CHANGED")
+        require(wrapper.get("source_BOM_SHA256") == exact_hash(
+            frozen_fixture["components"]
+        ), "QA_CYCLE11_SOURCE_BOM_HASH_INCORRECT")
+        require(wrapper.get("original_Netlist") == frozen_fixture.get("nets"),
+                "QA_CYCLE11_SOURCE_ORIGINAL_NETLIST_REWRITTEN")
+        require(wrapper.get("source_BOM") and next(
+            item["part_id"] for item in wrapper["source_BOM"]
+            if item["ref"] == "DA1"
+        ) == "reference.tl494cn",
+                "QA_CYCLE11_LEGACY_DA1_SOURCE_PART_ID_LOST")
+        require(set(source["b_NEGATIVE_OUTPUT"]) >= {"X2.1", "R5.2"},
+                "QA_CYCLE11_B_CONTINUATION_PHYSICAL_ENDPOINTS_LOST")
+        require(wrapper.get("actual_full_sheet_svg_or_png_emitted") is False,
+                "QA_CYCLE11_PREMATURE_NATIVE_PRINT_CLAIM")
     trials = wrapper.get("candidates")
     require(isinstance(trials, list) and 1 <= len(trials) <= 3,
             "QA_RECON_MISSING_CANDIDATE_EVIDENCE")
@@ -282,6 +300,7 @@ def inspect_candidate_driver(
 def selftest_tampering(
     real: dict, expected: dict, *, owner_shas: dict | None = None,
     recon_sha: str = RECON_CANDIDATE_SHA,
+    frozen_fixture: dict | None = None,
 ) -> dict:
     cases = {
         "wrong_source_sha": lambda a: a.update(
@@ -299,6 +318,14 @@ def selftest_tampering(
         "premature_print_release": lambda a: a.update(
             qa_print_release="PASS",
         ),
+        **({
+            "fake_source_nominal": lambda a: a["source_BOM"][0].update(
+                nominal_si="12345",
+            ),
+            "fake_b_net_membership": lambda a: a["original_Netlist"][
+                "b_NEGATIVE_OUTPUT"
+            ].append("DA1.999"),
+        } if frozen_fixture is not None else {}),
     }
     results = {}
     for name, change in cases.items():
@@ -308,6 +335,7 @@ def selftest_tampering(
             inspect_candidate_driver(
                 altered, expected,
                 owner_shas=owner_shas, recon_sha=recon_sha,
+                frozen_fixture=frozen_fixture,
             )
         except GateError:
             results[name] = "REJECTED_REAL_OWNER_MUTATION"
@@ -355,12 +383,15 @@ def main() -> None:
             "QA_RECON_ORIGINAL_TI_FIXTURE_BYTES_CHANGED")
     source = original_members()
     raw = json.loads(args.candidate_report.read_text(encoding="utf-8"))
+    fixture = json.loads(args.ic_fixture.read_text(encoding="utf-8"))
     report = {
         "real_candidate": inspect_candidate_driver(
             raw, source, owner_shas=expected_owners, recon_sha=expected_recon,
+            frozen_fixture=fixture if args.cycle11 else None,
         ),
         "negative_adversarial": selftest_tampering(
             raw, source, owner_shas=expected_owners, recon_sha=expected_recon,
+            frozen_fixture=fixture if args.cycle11 else None,
         ),
         "no_print_approval": True,
         "live_runtime_exact_head_SHA": live_provenance,
