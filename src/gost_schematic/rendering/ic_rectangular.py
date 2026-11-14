@@ -317,6 +317,7 @@ def propose_ic_dimensions(
     *,
     orientation: IcOrientation = IcOrientation.LEFT_RIGHT,
     function_rotation: int = 0,
+    shared_function_envelope: bool = False,
 ) -> IcProposedSize:
     """Minimum grid-rounded box computed exclusively from real glyph ink.
 
@@ -325,6 +326,8 @@ def propose_ic_dimensions(
     """
     if function_rotation not in (0, 90):
         raise ValueError("IC_TEXT_ROTATION_UNVERIFIED")
+    if type(shared_function_envelope) is not bool:
+        raise TypeError("IC_SHARED_FUNCTION_ENVELOPE_TYPED_REQUIRED")
     if orientation is IcOrientation.TOP_BOTTOM:
         from gost_schematic.rendering.ic_orientation import vertical_proposal
 
@@ -348,7 +351,9 @@ def propose_ic_dimensions(
     function_ink = _measure(content.function, style, measurer)
     # A 90-degree word consumes vertical rows, NOT a huge single row pitch.
     horizontal_inks = (
-        dimensions[1:] if function_rotation == 90 else dimensions
+        dimensions[1:]
+        if function_rotation == 90 or shared_function_envelope
+        else dimensions
     )
     tallest = max(
         (_height(b) for b in horizontal_inks),
@@ -358,10 +363,14 @@ def propose_ic_dimensions(
         policy.module_um * policy.pitch_modules,
         tallest + 2 * policy.ink_padding_um + policy.line_width_um,
     ), policy.module_um)
+    # In the experimental portrait profile the accepted geometry must hold
+    # both angles at any D4 pose. Under a 90/270 body pose, an upright word
+    # extends along the page's X axis while the function cell spans local Y.
+    # Reserve that span in BOTH render passes; never reposition physical pins.
     function_span = (
         max(1, ceil((_width(function_ink) + 2 * policy.ink_padding_um
                      + policy.line_width_um) / pitch))
-        if function_rotation == 90 else 1
+        if function_rotation == 90 or shared_function_envelope else 1
     )
     max_row = max((p.row for p in pins), default=0)
     nrows = max(
@@ -373,6 +382,8 @@ def propose_ic_dimensions(
         if not occupied and not mandatory:
             return 0
         widths = (
+            max(_height(function_ink), _width(function_ink))
+            if shared_function_envelope else
             _height(function_ink) if function_rotation == 90 else
             _width(function_ink),
         ) if mandatory else ()
@@ -534,6 +545,10 @@ def render_resolved_ic(
     proposed = propose_ic_dimensions(
         unit.content, unit.pins, style, measurer, policy,
         function_rotation=unit.function_rotation,
+        shared_function_envelope=(
+            unit.typography_profile is
+            IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT
+        ),
     )
     body = unit.body
     if (unit.typography_profile is IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT
