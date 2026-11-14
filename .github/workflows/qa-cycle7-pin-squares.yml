@@ -64,6 +64,7 @@ jobs:
                   copy2(original, target)
 
           staged("qa", "scripts/qa_cycle7_pin_squares.py", "scripts")
+          staged("qa", "scripts/qa92_specialist_triage.py", "scripts")
           staged("paint", "src/gost_schematic/rendering/ic_*.py",
                  "src/gost_schematic/rendering")
           staged("paint", "examples/review_ic_cycle7.py", "examples")
@@ -116,6 +117,16 @@ jobs:
       - name: Independent original PAINT gallery, typed PinRef/Point, negative Net, 300DPI PNG and clean PDF
         run: |
           python -m scripts.qa_cycle7_pin_squares --font-file "$QA92_FONT" --output-dir "output/qa92-green-square-py${{ matrix.python-version }}"
+      - name: Source-honest isolation of 10 legacy gaps and 4 actual low-level bypasses
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          ruff check scripts/qa92_specialist_triage.py
+          python scripts/qa92_specialist_triage.py \
+            --kind pins \
+            --matrix "output/qa92-green-square-py${{ matrix.python-version }}/qa92-editor-square-matrix.json" \
+            --output "output/qa92-green-square-py${{ matrix.python-version }}/qa92-original-editor-triage.json"
       - name: Run complete existing merged experimental integration regression suite
         if: always()
         run: |
