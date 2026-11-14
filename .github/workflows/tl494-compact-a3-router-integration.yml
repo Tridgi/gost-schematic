@@ -82,7 +82,7 @@ jobs:
           done
           cp -a _owner_recon/examples/tl494_v4 examples/
           cp -a _owner_recon/examples/tl494_v5 examples/
-          for F in tl494cn ic_pin_alias ic_serde ic_paint_bridge ic_graphic_revision; do
+          for F in contacts ic ic_agent_snapshot ic_editor_targets ic_power_presentation tl494cn ic_pin_alias ic_serde ic_paint_bridge ic_graphic_revision; do
             cp "_owner_ic/src/gost_schematic/electrical/$F.py" "src/gost_schematic/electrical/$F.py"
           done
           mkdir -p src/gost_schematic/catalog/source_profiles
