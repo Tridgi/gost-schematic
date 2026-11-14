@@ -1,0 +1,78 @@
+name: YGO Cycle11 actual NET and PAINT owner source UGO integration
+
+on:
+  push:
+    branches: [parallel/catalog-tl494-source-fidelity-cycle9]
+    paths:
+      - "src/gost_schematic/catalog/source_footprints.py"
+      - "src/gost_schematic/catalog/source_profiles.py"
+      - "src/gost_schematic/catalog/source_profiles/**"
+      - "examples/review_tl494_ugo_source_cycle9.py"
+      - "scripts/verify_tl494_cycle11_owner_strokes.py"
+      - ".github/workflows/tl494-cycle11-owner-contract.yml"
+  pull_request:
+    branches: [integration/stage0-12]
+    paths:
+      - "src/gost_schematic/catalog/source_footprints.py"
+      - "src/gost_schematic/catalog/source_profiles.py"
+      - "src/gost_schematic/catalog/source_profiles/**"
+      - "examples/review_tl494_ugo_source_cycle9.py"
+      - "scripts/verify_tl494_cycle11_owner_strokes.py"
+      - ".github/workflows/tl494-cycle11-owner-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-owner-consumer:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - owner: net
+            python-version: "3.12"
+            owner_sha: "3b0f29cf253e4649179afa879aa1281d982df53b"
+          - owner: net
+            python-version: "3.13"
+            owner_sha: "3b0f29cf253e4649179afa879aa1281d982df53b"
+          - owner: paint
+            python-version: "3.12"
+            owner_sha: "dea3b4564fa32ef3ff040f1ffdd9aa47ab480d2d"
+          - owner: paint
+            python-version: "3.13"
+            owner_sha: "dea3b4564fa32ef3ff040f1ffdd9aa47ab480d2d"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install the same project runtime and test dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Ruff current independent YGO/owner contract source
+        run: ruff check scripts/verify_tl494_cycle11_owner_strokes.py
+      - name: Fetch exact owner HEAD and overlay ONLY read-only YGO modules in temporary worktree
+        env:
+          OWNER_SHA: ${{ matrix.owner_sha }}
+          OWNER: ${{ matrix.owner }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$OWNER_SHA"
+          git worktree add --detach "$RUNNER_TEMP/ygo-owner" "$OWNER_SHA"
+          test "$(git -C "$RUNNER_TEMP/ygo-owner" rev-parse HEAD)" = "$OWNER_SHA"
+          mkdir -p "$RUNNER_TEMP/ygo-owner/src/gost_schematic/catalog/source_profiles"
+          cp src/gost_schematic/catalog/source_footprints.py "$RUNNER_TEMP/ygo-owner/src/gost_schematic/catalog/"
+          cp src/gost_schematic/catalog/source_profiles.py "$RUNNER_TEMP/ygo-owner/src/gost_schematic/catalog/"
+          cp src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json "$RUNNER_TEMP/ygo-owner/src/gost_schematic/catalog/source_profiles/"
+          cp examples/review_tl494_ugo_source_cycle9.py "$RUNNER_TEMP/ygo-owner/examples/"
+          mkdir -p output/cycle11-owners
+          cd "$RUNNER_TEMP/ygo-owner"
+          PYTHONPATH="$PWD/src:$PWD" python "$GITHUB_WORKSPACE/scripts/verify_tl494_cycle11_owner_strokes.py" \
+            --owner "$OWNER" --owner-sha "$OWNER_SHA" \
+            --output "$GITHUB_WORKSPACE/output/cycle11-owners/$OWNER.json"
+      - name: Publish real exact HEAD read-only cross-owner geometry report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ygo-cycle11-${{ matrix.owner }}-py${{ matrix.python-version }}-typed-contract
+          path: output/cycle11-owners/*.json
+          if-no-files-found: error
