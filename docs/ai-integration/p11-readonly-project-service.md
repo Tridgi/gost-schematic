@@ -166,41 +166,87 @@ insufficient for acceptance.
   legacy PartDefinition without data loss; a reviewed kind-specific
   adapter and versioned schema migration are prerequisites.
 
-### Exact native MCP inventory
+### Actual native MCP inventory (P0 + P1.1 read-only)
 
-The currently integrated MCP P0 stdio server registers **six** working
-read-only tools, each against the **fixed** `project_ref="six-part"`,
-not against a P1.1 `SchematicProject` UUID:
+The six existing P0 tools still serve ONLY the fixed six-part specimen:
+**schematic_render_overview**, **schematic_inspect_region**,
+**schematic_inspect_component**, **schematic_inspect_connection**,
+**schematic_get_diagnostics**, and **schematic_list_views**. They are not
+saved-project UUID tools.
 
-| Tool | Availability / data |
+The following five new MCP functions are registered by the P1.1 branch
+via the existing stdio FastMCP server, backed only by typed ProjectService.
+**All five deny access unless the host operator explicitly grants access.**
+
+| Name | Read-only result |
 | --- | --- |
-| `schematic_render_overview` | working fixed six-part ImageContent |
-| `schematic_inspect_region` | working fixed six-part SVG-derived region |
-| `schematic_inspect_component` | working fixed physical symbol/pin crop |
-| `schematic_inspect_connection` | working declared fixed net crop |
-| `schematic_get_diagnostics` | working fixed Circuit/ExternalWireGraph ERC |
-| `schematic_list_views` | working available fixed view metadata |
+| schematic_list_projects | Only already-saved allowed UUIDs (maximum 32), no arbitrary workspace scan |
+| schematic_open_project | Verified project HEAD and exact revision, counts and generation |
+| schematic_describe_project | Full canonical E3 model, physical pins and integer-um positions, actual Net/PinRef/wire/junction geometry and catalog SHA locks, bounded at 700 KB |
+| schematic_validate_project | Actual independent Circuit and ExternalWireGraph diagnostics |
+| schematic_render_project | Real revision-locked image/png ImageContent, SHA metadata, optional full SVG TextContent |
 
-Python `ProjectService.import_circuit/open_project/get_snapshot/
-validate_project/render_project/export_project_view` are **working
-trusted in-process/CLI methods**, not MCP endpoints. The actual saved-
-project catalog list/describe/pinout/preview and saved-UUID open/render
-MCP facades are planned, **not** implemented. All `schematic_add_component`,
-`schematic_move_component`, `schematic_connect_pins`,
-`schematic_attach_net_continuation`, `schematic_apply_transaction`
-remain BLOCKED by future CAS and routing review.
+**Host trust and permissions:** These are disabled by default. Starting a
+private, operator-controlled MCP stdio server requires these settings:
 
-### Codex CLI verification boundary
+- GSE_P11_READONLY_ENABLED = 1
+- GSE_P11_WORKSPACE = absolute path to an existing trusted workspace
+- GSE_P11_ALLOWED_PROJECT_IDS = comma-delimited canonical UUID allowlist
 
-A previous real Codex CLI smoke for P0 MCP PR #73 verified
-ImageContent and model-requested crops **for the fixed six-part specimen**.
-This P1.1 update does not claim a fresh actual Codex CLI call without a
-logged execution. The Python script above is an **agent-equivalent API
-experiment**, not proof that Codex autonomously authored these nodes
-or that its MCP tools can write to a saved project. A future Codex
-smoke must log exact CLI version, MCP tool calls, image blocks,
-SHA-bound P1.1 views and model-selected next steps after an approved
-read-only ProjectService adapter exists.
+The trusted workspace must contain an existing projects directory; redirected
+symlink/junction workspace roots or ancestors are refused. Missing settings,
+invalid UUIDs, unauthorized IDs and explicit relative paths fail closed.
+No MCP argument can select a filesystem path, shell, script or raw JSON patch.
+Unauthorized projects are not enumerated or disclosed as existing/nonexistent.
+The MCP stdio server inherits the host OS identity; it is **not** a multi-user
+authenticated public network service. Run it only from a trusted application.
+
+Windows PowerShell operator example after the fixed six-part import:
+
+~~~powershell
+$env:GSE_P11_READONLY_ENABLED = "1"
+$env:GSE_P11_WORKSPACE = (Resolve-Path .\output\p11-demo).Path
+$env:GSE_P11_ALLOWED_PROJECT_IDS = "00000000-0000-4000-8000-000000000074"
+.\.venv\Scripts\python.exe -m gost_schematic.mcp_server
+~~~
+
+The server speaks MCP over stdio; use a real MCP client to call tools.
+
+**Actual transport tests:** tests/agent_project/test_mcp_saved_stdio.py
+launches a new stdio MCP server through mcp.ClientSession and stdio_client,
+discovers and calls all five saved-project read tools, verifies the
+six-part model (6 components, 5 electrical Nets, 16 authored wires,
+3 explicit junctions, C3 physical PLUS/MINUS contacts), direct-vs-MCP
+SVG/PNG SHA and real image content, unchanged HEAD/blob, inaccessible
+foreign UUID and fail-closed default permissions. It also confirms the
+six original P0 tool names remain available.
+
+**Independent agent-style experiment:** run
+
+~~~powershell
+.\.venv\Scripts\python.exe -m examples.agent_project_p11_mcp --workspace .\output\p11-agent-mcp
+~~~
+
+That program first authors a genuine R1/R2/C1 Circuit, PinRef and
+two-contact Net using **trusted Python APIs**, performs safe *pre-save*
+unconnected-part layout correction and source-backed routing, saves
+an immutable E3 revision, reopens it in a cold process, and then uses a
+real stdio MCP ClientSession to list, open, describe, validate and render
+that stored revision. It checks complete typed physical and geometric
+data, plus byte-identical native SVG and PNG hashes. A separate call
+to the existing fixed P0 schematic_render_overview proves legacy MCP
+Vision still works. It labels codex_cli_used=false: **a live Codex
+model-generated tool call was not run or claimed**.
+
+The existing trusted Python ProjectService import_circuit, open_project,
+validate_project, render_project, export_project_view and related
+operations remain useful, but **there are no MCP write tools**.
+Independent MCP catalog browse/pinout/preview and all typed write
+commands remain BLOCKED until separately accepted.
+
+Real multi-unit IC and central PWM display angle preservation are only
+specified, not enabled for schema v1, in the
+[PR97/PAINT93 lossless design](../architecture/p11-ic-lossless-and-transaction-contract.md).
 
 ### Interactive editor Issue #100
 
