@@ -148,11 +148,12 @@ def render_routed_native_sheet(
     for point in graph.junctions:
         # A printed junction dot must be sourced to a SINGLE named Net;
         # even a close X with different net colors is NEVER an electric node.
-        touched = {
-            wire.net_name for wire in graph.segments
+        incident = tuple(
+            wire for wire in graph.segments
             if _point_on_segment(wire, point)
-        }
-        if len(touched) != 1:
+        )
+        touched = {wire.net_name for wire in incident}
+        if len(incident) < 2 or len(touched) != 1:
             raise ValueError("ROUTED_SHEET_FOREIGN_OR_DANGLING_JUNCTION")
     if route_preview is not None:
         try:
