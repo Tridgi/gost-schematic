@@ -12,6 +12,7 @@ on:
       - "examples/review_ic_cycle7.py"
       - "examples/review_tl494_cycle7.py"
       - "scripts/review_tl494_print_readability.py"
+      - "scripts/verify_tl494_v3_raster.py"
       - "tests/test_rendering_ic_tl494_v3.py"
       - "scripts/verify_ic_debug_gallery.py"
       - "scripts/replay_ic_qa99_pwm.py"
@@ -33,7 +34,7 @@ jobs:
       - name: Test IC isolated engine
         run: |
           python -m pip install -e ".[dev]"
-          ruff check src/gost_schematic/rendering/ic_rectangular.py src/gost_schematic/rendering/ic_orientation.py src/gost_schematic/rendering/ic_hotspots.py src/gost_schematic/rendering/ic_power_profiles.py src/gost_schematic/rendering/ic_tl494_profile.py examples/review_ic_cycle7.py examples/review_tl494_cycle7.py scripts/review_tl494_print_readability.py scripts/verify_ic_debug_gallery.py scripts/replay_ic_qa99_pwm.py tests/test_rendering_ic_cycle7.py tests/test_rendering_ic_tl494_v3.py
+          ruff check src/gost_schematic/rendering/ic_rectangular.py src/gost_schematic/rendering/ic_orientation.py src/gost_schematic/rendering/ic_hotspots.py src/gost_schematic/rendering/ic_power_profiles.py src/gost_schematic/rendering/ic_tl494_profile.py examples/review_ic_cycle7.py examples/review_tl494_cycle7.py scripts/review_tl494_print_readability.py scripts/verify_tl494_v3_raster.py scripts/verify_ic_debug_gallery.py scripts/replay_ic_qa99_pwm.py tests/test_rendering_ic_cycle7.py tests/test_rendering_ic_tl494_v3.py
           pytest -q tests/test_rendering_ic_cycle7.py tests/test_rendering_ic_tl494_v3.py
       - name: Install pinned external Type A font
         env:
@@ -102,6 +103,8 @@ jobs:
           assert sum("a3-tile" in x.name for x in svgs)==4
           print("True A3 print width pixels", round(420*300/25.4))
           PY
+          python -m scripts.verify_tl494_v3_raster \
+            --output-dir output/tl494-readability
       - name: Create 4/8/14/40/64 real OpenGost SVG and metric audit
         run: |
           python -m examples.review_ic_cycle7 --font-file "$REVIEW_FONT" \
