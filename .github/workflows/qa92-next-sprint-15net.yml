@@ -265,7 +265,9 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install -e ".[dev,mcp,fonts]"
-          ruff check scripts/qa_tl494_current_editor_cycle10.py
+          # Lint the same exact QA source against its actual repository config,
+          # rather than reclassifying import groups inside IC owner's tree.
+          (cd _qa_sources/qa && ruff check scripts/qa_tl494_current_editor_cycle10.py)
           python scripts/qa_install_opengost_release.py \
             --directory "$HOME/.local/share/fonts"
           fc-cache -f
