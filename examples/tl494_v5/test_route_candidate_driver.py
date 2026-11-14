@@ -19,6 +19,7 @@ from examples.tl494_v5.route_candidate_driver import (
     restore_original_named_nets,
     score_route,
 )
+from examples.tl494_v5.routed_graph_contract import rehydrate_verified_route_graph
 from gost_schematic.model.circuit import Circuit
 
 
@@ -195,6 +196,15 @@ def test_candidate_driver_real_owners_diagnostics_only(
         for net in record["named_net_status"].values()
     )
     assert record["Net_membership_SHA256"] == result["original_nets_SHA256"]
+    typed_graph = rehydrate_verified_route_graph(
+        record, result["original_Netlist"]
+    )
+    assert len(typed_graph.segments) == record[
+        "accepted_graph_nonprintable"
+    ]["total_segment_count"]
+    assert len(typed_graph.junctions) == record[
+        "owner_router_report"
+    ]["graph_junctions"]
     assert record["layout_valid"] is True
     assert record["a3"]["A3_capacity_fit"] is True
     assert result["negative_original_DRC_expected"] == ORIGINAL_BAD_DRC
