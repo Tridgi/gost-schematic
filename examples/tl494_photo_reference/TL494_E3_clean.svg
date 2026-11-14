@@ -1,0 +1,278 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="350mm" height="200mm" viewBox="0 0 690 395"><title>TL494CN photo reconstruction DRAFT clean</title><rect x="0" y="0" width="690" height="395" fill="#fff"/><g font-family="Arial,DejaVu Sans,sans-serif">
+<text x="30" y="25" text-anchor="start" font-size="14" stroke="none" fill="#132132" font-weight="bold">TL494CN / ИНВЕРТИРУЮЩИЙ ПРЕОБРАЗОВАТЕЛЬ ĆUK</text>
+<text x="30" y="42" text-anchor="start" font-size="8" stroke="none" fill="#132132" >Э3 • реконструкция по исходной фотографии • DRAFT • 14.11.2026</text>
+<line x1="30" y1="53" x2="660" y2="53" stroke="#b4c2d0"/>
+<g transform="translate(25 30)" fill="none" stroke="#162e47" stroke-width="1.3" stroke-linecap="square" stroke-linejoin="round">
+<line x1="22" y1="97" x2="215" y2="97" />
+<line x1="258" y1="97" x2="380" y2="97" />
+<line x1="408" y1="97" x2="481" y2="97" />
+<line x1="517" y1="97" x2="555" y2="97" />
+<line x1="579" y1="97" x2="620" y2="97" />
+<line x1="22" y1="267" x2="620" y2="267" />
+<line x1="215" y1="97" x2="220" y2="97" />
+<line x1="253" y1="97" x2="258" y2="97" />
+<path d="M 220 97 A 4.125 4 0 0 1 228.25 97" fill="none"/>
+<path d="M 228.25 97 A 4.125 4 0 0 1 236.5 97" fill="none"/>
+<path d="M 236.5 97 A 4.125 4 0 0 1 244.75 97" fill="none"/>
+<path d="M 244.75 97 A 4.125 4 0 0 1 253 97" fill="none"/>
+<line x1="219" y1="89" x2="254" y2="89" />
+<text x="236.5" y="85" text-anchor="middle" font-size="7" stroke="none" fill="#132132" >L1</text>
+<line x1="481" y1="97" x2="486" y2="97" />
+<line x1="512" y1="97" x2="517" y2="97" />
+<path d="M 486 97 A 3.25 4 0 0 1 492.5 97" fill="none"/>
+<path d="M 492.5 97 A 3.25 4 0 0 1 499 97" fill="none"/>
+<path d="M 499 97 A 3.25 4 0 0 1 505.5 97" fill="none"/>
+<path d="M 505.5 97 A 3.25 4 0 0 1 512 97" fill="none"/>
+<line x1="485" y1="89" x2="513" y2="89" />
+<text x="499" y="85" text-anchor="middle" font-size="7" stroke="none" fill="#132132" >L2</text>
+<text x="236" y="115" text-anchor="middle" font-size="6" stroke="none" fill="#132132" >100 мкГн</text>
+<text x="498" y="115" text-anchor="middle" font-size="6" stroke="none" fill="#132132" >100 мкГн</text>
+<line x1="380" y1="97" x2="380" y2="82" />
+<line x1="408" y1="97" x2="408" y2="82" />
+<line x1="380" y1="82" x2="391" y2="82" />
+<line x1="391" y1="77" x2="391" y2="87" />
+<line x1="397" y1="77" x2="397" y2="87" />
+<line x1="397" y1="82" x2="408" y2="82" />
+<text x="394" y="70" text-anchor="middle" font-size="7" stroke="none" fill="#132132" >C1</text>
+<text x="379" y="73" text-anchor="middle" font-size="7" stroke="none" fill="#132132" >+</text>
+<text x="394" y="55" text-anchor="middle" font-size="5.7" stroke="none" fill="#132132" >220 мкФ, 100 В</text>
+<line x1="380" y1="97" x2="380" y2="113" />
+<line x1="408" y1="97" x2="408" y2="113" />
+<line x1="380" y1="113" x2="391" y2="113" />
+<line x1="391" y1="108" x2="391" y2="118" />
+<line x1="397" y1="108" x2="397" y2="118" />
+<line x1="397" y1="113" x2="408" y2="113" />
+<text x="394" y="101" text-anchor="middle" font-size="7" stroke="none" fill="#132132" >C2</text>
+<text x="379" y="104" text-anchor="middle" font-size="7" stroke="none" fill="#132132" >+</text>
+<text x="394" y="136" text-anchor="middle" font-size="5.7" stroke="none" fill="#132132" >220 мкФ, 63 В</text>
+<line x1="538" y1="97" x2="538" y2="156" />
+<line x1="538" y1="156" x2="524" y2="156" />
+<line x1="524" y1="156" x2="524" y2="190" />
+<line x1="524" y1="190" x2="524" y2="200" />
+<line x1="519" y1="200" x2="529" y2="200" />
+<line x1="519" y1="208" x2="529" y2="208" />
+<line x1="524" y1="208" x2="524" y2="218" />
+<text x="524" y="192" text-anchor="middle" font-size="7" stroke="none" fill="#132132" >C5</text>
+<text x="515" y="211" text-anchor="middle" font-size="7" stroke="none" fill="#132132" >+</text>
+<line x1="524" y1="218" x2="524" y2="267" />
+<line x1="538" y1="97" x2="538" y2="156" />
+<line x1="538" y1="156" x2="550" y2="156" />
+<line x1="550" y1="156" x2="550" y2="190" />
+<line x1="550" y1="190" x2="550" y2="200" />
+<line x1="545" y1="200" x2="555" y2="200" />
+<line x1="545" y1="208" x2="555" y2="208" />
+<line x1="550" y1="208" x2="550" y2="218" />
+<text x="550" y="192" text-anchor="middle" font-size="7" stroke="none" fill="#132132" >C6</text>
+<text x="541" y="211" text-anchor="middle" font-size="7" stroke="none" fill="#132132" >+</text>
+<line x1="550" y1="218" x2="550" y2="267" />
+<text x="538" y="246" text-anchor="middle" font-size="6" stroke="none" fill="#132132" >C5,C6: 1000 мкФ / 25 В</text>
+<rect x="559" y="94" width="16" height="6" />
+<line x1="559" y1="97" x2="575" y2="97" />
+<text x="567" y="88" text-anchor="middle" font-size="7" stroke="none" fill="#132132" >FU1</text>
+<text x="567" y="113" text-anchor="middle" font-size="6" stroke="none" fill="#132132" >2 А</text>
+<line x1="344" y1="97" x2="344" y2="213" />
+<line x1="344" y1="249" x2="344" y2="267" />
+<line x1="331" y1="230" x2="338" y2="230" />
+<line x1="344" y1="213" x2="344" y2="223" />
+<line x1="344" y1="237" x2="344" y2="249" />
+<line x1="338" y1="220" x2="338" y2="240" />
+<line x1="344" y1="223" x2="344" y2="237" />
+<polyline points="338,226 342,229 338,232" fill="none" />
+<text x="355" y="227" text-anchor="start" font-size="7" stroke="none" fill="#132132" >VT1</text>
+<text x="355" y="237" text-anchor="start" font-size="6" stroke="none" fill="#132132" >IRFZ44N</text>
+<line x1="447" y1="97" x2="447" y2="169" />
+<line x1="447" y1="191" x2="447" y2="267" />
+<polyline points="441,169 453,169 447,184 441,169" fill="none" />
+<line x1="440" y1="169" x2="454" y2="169" />
+<line x1="440" y1="166" x2="440" y2="169" />
+<line x1="454" y1="169" x2="454" y2="172" />
+<text x="459" y="178" text-anchor="start" font-size="7" stroke="none" fill="#132132" >VD1</text>
+<text x="459" y="188" text-anchor="start" font-size="6" stroke="none" fill="#132132" >1N5822</text>
+<polyline points="113,122 310,122 310,190 267,190" fill="none" />
+<line x1="113" y1="122" x2="113" y2="140" />
+<line x1="113" y1="156" x2="135" y2="156" />
+<line x1="113" y1="134" x2="113" y2="144" />
+<line x1="108" y1="144" x2="118" y2="144" />
+<line x1="108" y1="152" x2="118" y2="152" />
+<line x1="113" y1="152" x2="113" y2="162" />
+<text x="113" y="136" text-anchor="middle" font-size="7" stroke="none" fill="#132132" >C3</text>
+<text x="104" y="155" text-anchor="middle" font-size="7" stroke="none" fill="#132132" >+</text>
+<text x="95" y="174" text-anchor="start" font-size="6" stroke="none" fill="#132132" >47 мкФ</text>
+<line x1="135" y1="122" x2="135" y2="132" />
+<line x1="135" y1="131" x2="135" y2="136" />
+<rect x="132" y="136" width="6" height="18" />
+<line x1="135" y1="154" x2="135" y2="159" />
+<text x="143" y="145" text-anchor="start" font-size="7" stroke="none" fill="#132132" >R1</text>
+<line x1="135" y1="158" x2="135" y2="179" />
+<line x1="179" y1="122" x2="179" y2="132" />
+<line x1="179" y1="131" x2="179" y2="136" />
+<rect x="176" y="136" width="6" height="18" />
+<line x1="179" y1="154" x2="179" y2="159" />
+<text x="187" y="145" text-anchor="start" font-size="7" stroke="none" fill="#132132" >R2</text>
+<line x1="179" y1="158" x2="179" y2="170" />
+<line x1="179" y1="170" x2="214" y2="170" />
+<line x1="135" y1="179" x2="214" y2="180" />
+<line x1="135" y1="179" x2="135" y2="228" />
+<line x1="135" y1="228" x2="135" y2="233" />
+<rect x="132" y="233" width="6" height="18" />
+<line x1="135" y1="251" x2="135" y2="256" />
+<text x="143" y="242" text-anchor="start" font-size="7" stroke="none" fill="#132132" >R6</text>
+<line x1="135" y1="256" x2="135" y2="267" />
+<line x1="62" y1="190" x2="62" y2="193" />
+<line x1="62" y1="193" x2="62" y2="198" />
+<rect x="59" y="198" width="6" height="18" />
+<line x1="62" y1="216" x2="62" y2="221" />
+<text x="70" y="207" text-anchor="start" font-size="7" stroke="none" fill="#132132" >R4</text>
+<line x1="62" y1="221" x2="62" y2="222" />
+<line x1="62" y1="222" x2="62" y2="227" />
+<rect x="59" y="227" width="6" height="18" />
+<line x1="62" y1="245" x2="62" y2="250" />
+<text x="70" y="236" text-anchor="start" font-size="7" stroke="none" fill="#132132" >R5</text>
+<line x1="62" y1="250" x2="62" y2="258" />
+<polyline points="62,221 50,221 50,234 62,234" fill="none" />
+<polyline points="50,234 55,230 55,238" fill="none" />
+<polyline points="62,190 66,190" fill="none" />
+<line x1="64" y1="190" x2="75" y2="190" />
+<line x1="75" y1="185" x2="75" y2="195" />
+<line x1="81" y1="185" x2="81" y2="195" />
+<line x1="81" y1="190" x2="92" y2="190" />
+<text x="78" y="178" text-anchor="middle" font-size="7" stroke="none" fill="#132132" >C4</text>
+<polyline points="92,190 96,190" fill="none" />
+<line x1="96" y1="190" x2="101" y2="190" />
+<rect x="101" y="187" width="18" height="6" />
+<line x1="119" y1="190" x2="124" y2="190" />
+<text x="110" y="180" text-anchor="middle" font-size="7" stroke="none" fill="#132132" >R3</text>
+<line x1="124" y1="190" x2="214" y2="190" />
+<line x1="62" y1="190" x2="62" y2="178" />
+<line x1="62" y1="178" x2="135" y2="178" />
+<line x1="157" y1="226" x2="157" y2="236" />
+<line x1="152" y1="236" x2="162" y2="236" />
+<line x1="152" y1="244" x2="162" y2="244" />
+<line x1="157" y1="244" x2="157" y2="254" />
+<text x="157" y="228" text-anchor="middle" font-size="7" stroke="none" fill="#132132" >C7</text>
+<line x1="157" y1="226" x2="157" y2="200" />
+<line x1="157" y1="200" x2="214" y2="200" />
+<line x1="157" y1="254" x2="157" y2="267" />
+<line x1="181" y1="228" x2="181" y2="233" />
+<rect x="178" y="233" width="6" height="18" />
+<line x1="181" y1="251" x2="181" y2="256" />
+<text x="189" y="242" text-anchor="start" font-size="7" stroke="none" fill="#132132" >R7</text>
+<line x1="181" y1="228" x2="181" y2="210" />
+<line x1="181" y1="210" x2="214" y2="210" />
+<line x1="181" y1="256" x2="181" y2="267" />
+<line x1="200" y1="220" x2="214" y2="220" />
+<line x1="200" y1="220" x2="200" y2="267" />
+<line x1="200" y1="230" x2="214" y2="230" />
+<line x1="200" y1="240" x2="214" y2="240" />
+<rect x="214" y="162" width="53" height="84" />
+<line x1="240" y1="162" x2="240" y2="246" />
+<text x="240" y="154" text-anchor="middle" font-size="7.7" stroke="none" fill="#132132" >DA1 / TL494CN</text>
+<line x1="202" y1="170" x2="214" y2="170" />
+<text x="200" y="172" text-anchor="end" font-size="6" stroke="none" fill="#132132" >2</text>
+<text x="218" y="172" text-anchor="start" font-size="5.5" stroke="none" fill="#132132" >1IN−</text>
+<line x1="202" y1="180" x2="214" y2="180" />
+<text x="200" y="182" text-anchor="end" font-size="6" stroke="none" fill="#132132" >4</text>
+<text x="218" y="182" text-anchor="start" font-size="5.5" stroke="none" fill="#132132" >DTC</text>
+<line x1="202" y1="190" x2="214" y2="190" />
+<text x="200" y="192" text-anchor="end" font-size="6" stroke="none" fill="#132132" >3</text>
+<text x="218" y="192" text-anchor="start" font-size="5.5" stroke="none" fill="#132132" >FB</text>
+<line x1="202" y1="200" x2="214" y2="200" />
+<text x="200" y="202" text-anchor="end" font-size="6" stroke="none" fill="#132132" >5</text>
+<text x="218" y="202" text-anchor="start" font-size="5.5" stroke="none" fill="#132132" >CT</text>
+<line x1="202" y1="210" x2="214" y2="210" />
+<text x="200" y="212" text-anchor="end" font-size="6" stroke="none" fill="#132132" >6</text>
+<text x="218" y="212" text-anchor="start" font-size="5.5" stroke="none" fill="#132132" >RT</text>
+<line x1="202" y1="220" x2="214" y2="220" />
+<text x="200" y="222" text-anchor="end" font-size="6" stroke="none" fill="#132132" >7</text>
+<text x="218" y="222" text-anchor="start" font-size="5.5" stroke="none" fill="#132132" >GND</text>
+<line x1="202" y1="230" x2="214" y2="230" />
+<text x="200" y="232" text-anchor="end" font-size="6" stroke="none" fill="#132132" >1</text>
+<text x="218" y="232" text-anchor="start" font-size="5.5" stroke="none" fill="#132132" >1IN+</text>
+<line x1="202" y1="240" x2="214" y2="240" />
+<text x="200" y="242" text-anchor="end" font-size="6" stroke="none" fill="#132132" >16</text>
+<text x="218" y="242" text-anchor="start" font-size="5.5" stroke="none" fill="#132132" >2IN+</text>
+<line x1="267" y1="170" x2="278" y2="170" />
+<text x="264" y="172" text-anchor="end" font-size="5.5" stroke="none" fill="#132132" >VCC</text>
+<text x="280" y="172" text-anchor="start" font-size="6" stroke="none" fill="#132132" >12</text>
+<line x1="267" y1="180" x2="278" y2="180" />
+<text x="264" y="182" text-anchor="end" font-size="5.5" stroke="none" fill="#132132" >2IN−</text>
+<text x="280" y="182" text-anchor="start" font-size="6" stroke="none" fill="#132132" >15</text>
+<line x1="267" y1="190" x2="278" y2="190" />
+<text x="264" y="192" text-anchor="end" font-size="5.5" stroke="none" fill="#132132" >REF</text>
+<text x="280" y="192" text-anchor="start" font-size="6" stroke="none" fill="#132132" >14</text>
+<line x1="267" y1="200" x2="278" y2="200" />
+<text x="264" y="202" text-anchor="end" font-size="5.5" stroke="none" fill="#132132" >OC</text>
+<text x="280" y="202" text-anchor="start" font-size="6" stroke="none" fill="#132132" >13</text>
+<line x1="267" y1="210" x2="278" y2="210" />
+<text x="264" y="212" text-anchor="end" font-size="5.5" stroke="none" fill="#132132" >C1</text>
+<text x="280" y="212" text-anchor="start" font-size="6" stroke="none" fill="#132132" >8</text>
+<line x1="267" y1="220" x2="278" y2="220" />
+<text x="264" y="222" text-anchor="end" font-size="5.5" stroke="none" fill="#132132" >C2</text>
+<text x="280" y="222" text-anchor="start" font-size="6" stroke="none" fill="#132132" >11</text>
+<line x1="267" y1="230" x2="278" y2="230" />
+<text x="264" y="232" text-anchor="end" font-size="5.5" stroke="none" fill="#132132" >E1</text>
+<text x="280" y="232" text-anchor="start" font-size="6" stroke="none" fill="#132132" >9</text>
+<line x1="267" y1="240" x2="278" y2="240" />
+<text x="264" y="242" text-anchor="end" font-size="5.5" stroke="none" fill="#132132" >E2</text>
+<text x="280" y="242" text-anchor="start" font-size="6" stroke="none" fill="#132132" >10</text>
+<line x1="267" y1="170" x2="297" y2="170" />
+<circle cx="297" cy="170" r="2.2" fill="#fff"/>
+<text x="297" y="162" text-anchor="middle" font-size="6" stroke="none" fill="#132132" >a</text>
+<polyline points="267,180 285,180 285,190" fill="none" />
+<line x1="267" y1="190" x2="310" y2="190" />
+<polyline points="267,200 310,200 310,211" fill="none" />
+<line x1="305" y1="211" x2="315" y2="211" />
+<text x="318" y="214" text-anchor="start" font-size="5.8" stroke="none" fill="#132132" >GND</text>
+<polyline points="267,210 288,210 288,220 267,220" fill="none" />
+<line x1="288" y1="210" x2="298" y2="210" />
+<circle cx="298" cy="210" r="2.2" fill="#fff"/>
+<text x="298" y="202" text-anchor="middle" font-size="6" stroke="none" fill="#132132" >a</text>
+<polyline points="267,230 286,230 331,230" fill="none" />
+<polyline points="267,240 286,240 286,230" fill="none" />
+<line x1="286" y1="231" x2="286" y2="236" />
+<rect x="283" y="236" width="6" height="18" />
+<line x1="286" y1="254" x2="286" y2="259" />
+<text x="294" y="245" text-anchor="start" font-size="7" stroke="none" fill="#132132" >R8</text>
+<line x1="286" y1="259" x2="286" y2="267" />
+<circle cx="135" cy="122" r="1.45" fill="#162e47" stroke="none"/>
+<circle cx="179" cy="122" r="1.45" fill="#162e47" stroke="none"/>
+<circle cx="135" cy="156" r="1.45" fill="#162e47" stroke="none"/>
+<circle cx="179" cy="170" r="1.45" fill="#162e47" stroke="none"/>
+<circle cx="135" cy="179" r="1.45" fill="#162e47" stroke="none"/>
+<circle cx="62" cy="190" r="1.45" fill="#162e47" stroke="none"/>
+<circle cx="380" cy="97" r="1.45" fill="#162e47" stroke="none"/>
+<circle cx="408" cy="97" r="1.45" fill="#162e47" stroke="none"/>
+<circle cx="344" cy="97" r="1.45" fill="#162e47" stroke="none"/>
+<circle cx="447" cy="97" r="1.45" fill="#162e47" stroke="none"/>
+<circle cx="538" cy="97" r="1.45" fill="#162e47" stroke="none"/>
+<circle cx="538" cy="156" r="1.45" fill="#162e47" stroke="none"/>
+<circle cx="286" cy="230" r="1.45" fill="#162e47" stroke="none"/>
+<circle cx="286" cy="267" r="1.45" fill="#162e47" stroke="none"/>
+<circle cx="135" cy="267" r="1.45" fill="#162e47" stroke="none"/>
+<circle cx="157" cy="267" r="1.45" fill="#162e47" stroke="none"/>
+<circle cx="181" cy="267" r="1.45" fill="#162e47" stroke="none"/>
+<circle cx="200" cy="267" r="1.45" fill="#162e47" stroke="none"/>
+<circle cx="447" cy="267" r="1.45" fill="#162e47" stroke="none"/>
+<circle cx="344" cy="267" r="1.45" fill="#162e47" stroke="none"/>
+<circle cx="524" cy="267" r="1.45" fill="#162e47" stroke="none"/>
+<circle cx="550" cy="267" r="1.45" fill="#162e47" stroke="none"/>
+<circle cx="22" cy="97" r="2.2" fill="#fff"/>
+<circle cx="22" cy="267" r="2.2" fill="#fff"/>
+<text x="22" y="83" text-anchor="middle" font-size="8" stroke="none" fill="#132132" >X1</text>
+<text x="30" y="104" text-anchor="start" font-size="6" stroke="none" fill="#132132" >1</text>
+<text x="30" y="261" text-anchor="start" font-size="6" stroke="none" fill="#132132" >2</text>
+<circle cx="620" cy="97" r="2.2" fill="#fff"/>
+<circle cx="620" cy="267" r="2.2" fill="#fff"/>
+<text x="620" y="83" text-anchor="middle" font-size="8" stroke="none" fill="#132132" >X2</text>
+<text x="628" y="104" text-anchor="start" font-size="6" stroke="none" fill="#132132" >1</text>
+<text x="628" y="261" text-anchor="start" font-size="6" stroke="none" fill="#132132" >2</text>
+<text x="22" y="288" text-anchor="middle" font-size="7" stroke="none" fill="#132132" >0 В</text>
+<text x="620" y="288" text-anchor="middle" font-size="7" stroke="none" fill="#132132" >0 В</text>
+<text x="24" y="90" text-anchor="start" font-size="6" stroke="none" fill="#132132" >+ вход</text>
+<text x="619" y="89" text-anchor="end" font-size="7" stroke="none" fill="#132132" >−12 В</text>
+</g>
+<line x1="30" y1="340" x2="660" y2="340" stroke="#b4c2d0"/>
+<text x="30" y="356" text-anchor="start" font-size="7" stroke="none" fill="#132132" font-weight="bold">ЧИСТЫЙ ЧЕРТЁЖ: без диагностических цветов</text>
+<text x="30" y="374" text-anchor="start" font-size="7" stroke="none" fill="#132132" >DRAFT: визуальная реконструкция; не результат официальной проверки по ЕСКД.</text>
+<text x="660" y="357" text-anchor="end" font-size="6.5" stroke="none" fill="#132132" >GOST Schematic Engine / исследовательский пример</text>
+</g></svg>
