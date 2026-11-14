@@ -395,3 +395,85 @@ def test_agent_archive_preserves_function_angle_v2_without_legacy_downcast():
     )
     assert json.loads(ic_to_json(loaded.record))["schema_version"] == 2
     assert loaded.record.device.pin_map["14"].electrical_type.value == "nc"
+
+
+@pytest.mark.parametrize("count", COUNTS)
+def test_portrait_left_right_pwm_is_valid_in_model_with_two_text_angles(count):
+    source = synthetic_ic(count)
+    tall = IcLibraryRecord(
+        source.device,
+        tuple(replace(
+            spec,
+            body=Box(0, 0, 60000, 300000),
+            main_field="PWM",
+            profile=replace(spec.profile, body_axis=IcBodyAxis.PORTRAIT),
+            revision=spec.revision + 1,
+        ) for spec in source.specs),
+        source.placements,
+    )
+    circuit = _network(tall)
+    validate_ic_circuit(tall.device, circuit, "DD1")
+    same_pin_refs = resolve_ic_pin_positions(
+        tall.device, tall.specs, tall.placements,
+    )
+    angled = revise_ic_text_orientation(tall, IcTextAngle.VERTICAL)
+    assert validate_ic_graphic_revision(
+        tall, angled, circuit=circuit,
+    ).moved == ()
+    assert resolve_ic_pin_positions(
+        angled.device, angled.specs, angled.placements,
+    ) == same_pin_refs
+    assert all(
+        spec.profile.body_axis is IcBodyAxis.PORTRAIT
+        and spec.profile.port_layout is IcPortLayout.LEFT_RIGHT
+        and spec.profile.function_angle is IcTextAngle.VERTICAL
+        and spec.profile.other_text_angle is IcTextAngle.HORIZONTAL
+        and spec.body.max_y > spec.body.max_x
+        and spec.main_field == "PWM"
+        for spec in angled.specs
+    )
+    assert ic_from_json(ic_to_json(angled)) == angled
+    assert angled.device.pin_map[str(count)].electrical_type.value == "nc"
+
+
+@pytest.mark.parametrize("count", COUNTS)
+def test_portrait_left_right_paint_0_and_90_contract_proof(count):
+    paint = pytest.importorskip("gost_schematic.rendering.ic_rectangular")
+    from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
+    from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
+    from gost_schematic.standards.type_a_font import inspect_type_a_font
+
+    font = os.environ.get("IC_TYPE_A_FONT_PATH")
+    assert font and Path(font).is_file()
+    style = inspect_type_a_font(Path(font), h_um=3500).style
+    measure = PillowTextMeasurer()
+    source = synthetic_ic(count)
+    portrait = IcLibraryRecord(
+        source.device,
+        tuple(replace(
+            spec, main_field="PWM",
+            body=Box(0, 0, 60000, 300000),
+            profile=replace(spec.profile, body_axis=IcBodyAxis.PORTRAIT),
+            revision=spec.revision + 1,
+        ) for spec in source.specs),
+        source.placements,
+    )
+    horizontal = propose_ic_paint_binding(portrait, style, measure)
+    assert all(
+        spec.profile.body_axis is IcBodyAxis.PORTRAIT
+        for spec in horizontal.record.specs
+    )
+    network = _network(horizontal.record)
+    for view in horizontal.views:
+        painted = paint.render_resolved_ic(view, style, measure)
+        assert len(painted.pin_anchors) == len(view.pins)
+    vertical_text = revise_ic_text_orientation(
+        horizontal.record, IcTextAngle.VERTICAL,
+    )
+    assert validate_ic_graphic_revision(
+        horizontal.record, vertical_text, circuit=network,
+    ).moved == ()
+    with pytest.raises(
+        ValueError, match="IC_PAINT_LEFT_RIGHT_TEXT_ROTATION_BLOCKED",
+    ):
+        propose_ic_paint_binding(vertical_text, style, measure)
