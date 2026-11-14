@@ -240,7 +240,7 @@ def test_all_d4_word_only_never_mutates_pinrefs_numbering_net(rotation, mirrored
     before = resolve_ic_pin_positions(record.device, record.specs, record.placements)
     horizontal = revise_ic_text_orientation(record, IcTextAngle.HORIZONTAL)
     vertical = revise_ic_text_orientation(
-        horizontal, IcTextAngle.VERTICAL,
+        horizontal, IcTextAngle.BOTTOM_TO_TOP,
     )
     for candidate in (horizontal, vertical):
         assert resolve_ic_pin_positions(
@@ -256,7 +256,7 @@ def test_bottom_to_top_sign_is_svg_y_up_and_opposite_is_blocked():
     assert IcFunctionReading.BOTTOM_TO_TOP.physical_graphic_angle == (
         IcTextAngle.VERTICAL
     )
-    assert Transform(90).apply(Point(1, 0)) == Point(0, -1)
+    assert Transform(270).apply(Point(1, 0)) == Point(0, -1)
     with pytest.raises(ValueError, match="IC_FUNCTION_WRONG_READING_DIRECTION"):
         _ = IcFunctionReading.TOP_TO_BOTTOM_UNSUPPORTED.physical_graphic_angle
 
