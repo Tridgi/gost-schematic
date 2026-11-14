@@ -22,7 +22,9 @@ def render_verified_ic_paint_binding(
     """
     try:
         from gost_schematic.electrical.ic import (
-            IcPinType, resolve_ic_pin_positions, validate_ic_circuit,
+            IcPinType,
+            resolve_ic_pin_positions,
+            validate_ic_circuit,
         )
         from gost_schematic.electrical.ic_paint_bridge import IcPaintBinding
     except ImportError as exc:
