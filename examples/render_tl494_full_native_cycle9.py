@@ -8,7 +8,7 @@ sheet is composed by the renderer from 23 native components.
 """
 import argparse
 import json
-from dataclasses import replace
+from dataclasses import asdict, replace
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -24,6 +24,7 @@ from gost_schematic.rendering.ic_rectangular import (
     render_resolved_ic,
 )
 from gost_schematic.rendering.ic_tl494_profile import apply_tl494_portrait_profile
+from gost_schematic.rendering.native_sheet_ink_audit import audit_full_native_sheet_ink
 
 FROZEN_SOURCE = "e695c415fdced164b0e0c39c5249d030795a0aa6"
 FROZEN_IC = "6161e9102cbc0c9e0491fb27ed7a496dc0b274bc"
@@ -361,6 +362,9 @@ def generate(output: Path, font_file: Path, *, d4: bool = False):
         diagnostic=False, reading=IcFunctionReading.TOP_TO_BOTTOM,
         original_full_labels=True, continuation_project=pair,
     )
+    before_ink = audit_full_native_sheet_ink(
+        circuit, graph, symbol_map, before[0].layout, before[1],
+    )
     before_file = "TL494_native_23_BEFORE_old_pwm_top_to_bottom.svg"
     (output/before_file).write_text(before[0].svg, encoding="utf-8")
     evidence = {
@@ -392,6 +396,10 @@ def generate(output: Path, font_file: Path, *, d4: bool = False):
         },
         "variants": {},
         "legacy_before": before_file,
+        "legacy_before_source_ink_findings": len(before_ink),
+        "legacy_before_source_ink_examples": [
+            asdict(finding) for finding in before_ink[:25]
+        ],
         "electrical_topology_changed": False,
         "gost_ugo_approved": False,
         "route_drc_pass": False,
@@ -414,11 +422,18 @@ def generate(output: Path, font_file: Path, *, d4: bool = False):
                 for owner, point in paint.pin_anchors
                 for number in [owner.removeprefix("DA1.P")]
             }
+            collisions = audit_full_native_sheet_ink(
+                circuit, graph, symbol_map, composed.layout, paint,
+            )
             evidence["variants"][file] = {
                 "function_reading": reading.value,
                 "diagnostic_only_green_pin_tips": 16 if diagnostic else 0,
                 "native_layout_valid": composed.layout.valid,
                 "full_native_23_source_parts": True,
+                "whole_sheet_text_wire_ugo_collision_count": len(collisions),
+                "whole_sheet_collision_examples": [
+                    asdict(item) for item in collisions[:25]
+                ],
                 "source_net_memberships_unchanged": True,
                 "real_type_a_3500um": True,  # calibration checked above, em is NOT h
             }
@@ -447,8 +462,16 @@ def generate(output: Path, font_file: Path, *, d4: bool = False):
                     "_btt_clean.svg"
                 )
                 (output/name).write_text(rendering.svg, encoding="utf-8")
+                d4_collisions = audit_full_native_sheet_ink(
+                    transformed, transformed_wires,
+                    symbol_map, rendering.layout, painted,
+                )
                 evidence["variants"][name] = {
                     "function_reading": "bottom_to_top",
+                    "text_wire_ugo_collision_count": len(d4_collisions),
+                    "collision_examples": [
+                        asdict(item) for item in d4_collisions[:12]
+                    ],
                     "D4": [angle, mirror],
                     "native_full_sheet": True,
                     "immutable_Net_memberships": transformed.nets == circuit.nets,
