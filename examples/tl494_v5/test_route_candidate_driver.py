@@ -15,6 +15,7 @@ from examples.tl494_v5.route_candidate_driver import (
     candidate_priority,
     drive_candidates,
     load_original_owner_fixture,
+    parse_candidate_moves,
     position_only_move,
     restore_original_named_nets,
     score_route,
@@ -112,6 +113,21 @@ def test_real_position_only_move_preserves_electrical_topology_and_ic_pose():
         original.owner_ic_record.placements[0].origin.y + 5000
     )
     moved.verify()
+
+
+def test_cli_position_only_mm_grid_parsing_and_negative_tampering():
+    assert parse_candidate_moves(()) == ()
+    assert parse_candidate_moves(("DA1:-10:0", "VT1:5:0")) == (
+        ("DA1", -10, 0), ("VT1", 5, 0),
+    )
+    for invalid in (
+        ("DA1:1:0",), ("DA1:35:0",),
+        ("FOREIGN:5:0",), ("DA1:0:3.1",),
+        ("DA1:5",), ("DA1:5:0", "DA1:0:5"),
+        ("DA1:five:0",),
+    ):
+        with pytest.raises(ValueError, match="V5_CANDIDATE"):
+            parse_candidate_moves(invalid)
 
 
 def test_deterministic_15_net_priority_variants_reject_unknown():
