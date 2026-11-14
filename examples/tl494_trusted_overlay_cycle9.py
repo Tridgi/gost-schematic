@@ -31,7 +31,6 @@ from gost_schematic.electrical.ic_paint_bridge import (
     propose_ic_paint_binding,
 )
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
-from gost_schematic.model.circuit import PinRef
 from gost_schematic.standards.type_a_font import inspect_type_a_font
 
 PAINT_COMMIT = "161c31bd0b538c6e827341ae465c3b3a59f6637d"
