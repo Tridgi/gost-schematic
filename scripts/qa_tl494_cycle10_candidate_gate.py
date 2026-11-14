@@ -24,6 +24,22 @@ from scripts.qa_tl494_next_route_gate import (
 )
 
 RECON_CANDIDATE_SHA = "4db3b8bb7b06757602787b48240d0deaaa3dc754"
+CYCLE11_RECON_SHA = "c58e224700b318892ee92197f8bfd391807a7325"
+# Provenance as claimed INSIDE current RECON owner source code, not guessed.
+CYCLE11_RECON_OWNER_SHAS = {
+    "ELEKTRIK_IC_PR97": "19d14c4b660c9ad490a65cd1eab644f1637bc334",
+    "PAINT_PR93": "32f2efb2cdcb561cb2567a54448381de3cb87832",
+    "YGO2_PR113": "eb16121e07efec71de77dfc7b8123bc09f66ddd6",
+    "ELEKTRIK_NET_PR114": "5033659747f01fdc03adc084b846f47b05001963",
+}
+# Latest concurrently retrieved owner HEADs for *execution*, not silently
+# identical to pinned provenance shown in the RECON source report.
+CYCLE11_LIVE_RUNTIME_SHAS = {
+    "ic": "1e4baf7ea713f649e0dabb4d6119e97281901f03",
+    "paint": "f69d891e2f17797878627447eb7f05a66f311ca0",
+    "net": "b5436ecc800bf7c4a99e1d71cce0cb5dc854ed52",
+    "catalog": "eb16121e07efec71de77dfc7b8123bc09f66ddd6",
+}
 FROZEN_IC_BLOB = "a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65"
 OWNER_SHAS = {
     "ELEKTRIK_IC_PR97": "b28428d94218cac777a28897ce9176285d0fab0b",
@@ -129,13 +145,16 @@ def check_graph(graph: dict, trees: dict, expected: dict) -> dict:
 
 def inspect_candidate_driver(
     wrapper: dict, source: dict[str, tuple[str, ...]],
+    *, owner_shas: dict | None = None, recon_sha: str = RECON_CANDIDATE_SHA,
 ) -> dict:
     require(isinstance(wrapper, dict), "QA_RECON_CANDIDATE_NOT_TYPED_JSON")
     require(wrapper.get("schema") ==
             "TL494_23_15_62_SOURCE_LOCKED_ROUTE_CANDIDATES_V1",
             "QA_RECON_CANDIDATE_SCHEMA_UNKNOWN")
     require(wrapper.get("source_reference_sha") == FROZEN_SHA and
-            wrapper.get("owner_exact_SHAs") == OWNER_SHAS,
+            wrapper.get("owner_exact_SHAs") == (
+                owner_shas if owner_shas is not None else OWNER_SHAS
+            ),
             "QA_RECON_STALE_OR_UNTRUSTED_OWNER_SHAS")
     require(wrapper.get("frozen_photo_fixture_git_blob") == FROZEN_IC_BLOB,
             "QA_RECON_UNTRUSTED_23_15_62_PHOTO_FIXTURE")
@@ -205,7 +224,9 @@ def inspect_candidate_driver(
         # Provenance is checked above, never inferred from arbitrary SVG.
         verified.update({
             "source_sha": FROZEN_SHA,
-            "owner_router_sha": OWNER_SHAS["ELEKTRIK_NET_PR114"],
+            "owner_router_sha": (
+                owner_shas if owner_shas is not None else OWNER_SHAS
+            )["ELEKTRIK_NET_PR114"],
             "origin_component_count": 23, "origin_net_count": 15,
             "DA1_real_anchor_count": 16,
             "net_diff": deepcopy(EMPTY_DELTA),
@@ -215,7 +236,9 @@ def inspect_candidate_driver(
         })
         checked = inspect_route(
             verified, normalized(source),
-            exact_router_sha=OWNER_SHAS["ELEKTRIK_NET_PR114"],
+            exact_router_sha=(
+                owner_shas if owner_shas is not None else OWNER_SHAS
+            )["ELEKTRIK_NET_PR114"],
         )
         require(count == checked["routed_nets"],
                 "QA_RECON_CANDIDATE_FAKE_REROUTE_COUNT")
@@ -245,7 +268,7 @@ def inspect_candidate_driver(
             ), "QA_RECON_INFLATED_BEST_VARIANT")
     return {
         "reference_source": FROZEN_SHA,
-        "reference_driver_commit": RECON_CANDIDATE_SHA,
+        "reference_driver_commit": recon_sha,
         "source_photo_fixture_blob": FROZEN_IC_BLOB,
         "verified_real_original_net_names": 15,
         "verified_actual_pinref_memberships": 62,
@@ -256,7 +279,10 @@ def inspect_candidate_driver(
     }
 
 
-def selftest_tampering(real: dict, expected: dict) -> dict:
+def selftest_tampering(
+    real: dict, expected: dict, *, owner_shas: dict | None = None,
+    recon_sha: str = RECON_CANDIDATE_SHA,
+) -> dict:
     cases = {
         "wrong_source_sha": lambda a: a.update(
             source_reference_sha="forged",
@@ -279,7 +305,10 @@ def selftest_tampering(real: dict, expected: dict) -> dict:
         altered = deepcopy(real)
         change(altered)
         try:
-            inspect_candidate_driver(altered, expected)
+            inspect_candidate_driver(
+                altered, expected,
+                owner_shas=owner_shas, recon_sha=recon_sha,
+            )
         except GateError:
             results[name] = "REJECTED_REAL_OWNER_MUTATION"
         else:
@@ -306,18 +335,47 @@ def main() -> None:
     ap.add_argument("--ic-fixture", type=Path, required=True)
     ap.add_argument("--candidate-report", type=Path, required=True)
     ap.add_argument("--output", type=Path, required=True)
+    ap.add_argument("--cycle11", action="store_true")
+    for owner in CYCLE11_LIVE_RUNTIME_SHAS:
+        ap.add_argument("--live-" + owner, type=Path)
     args = ap.parse_args()
+    expected_recon = CYCLE11_RECON_SHA if args.cycle11 else RECON_CANDIDATE_SHA
+    expected_owners = CYCLE11_RECON_OWNER_SHAS if args.cycle11 else OWNER_SHAS
     require(_git_head(args.frozen_root) == FROZEN_SHA and
-            _git_head(args.recon_root) == RECON_CANDIDATE_SHA,
+            _git_head(args.recon_root) == expected_recon,
             "QA_RECON_REAL_COMMIT_NOT_PINNED")
+    live_provenance = {}
+    if args.cycle11:
+        for owner, sha in CYCLE11_LIVE_RUNTIME_SHAS.items():
+            path = getattr(args, "live_" + owner)
+            require(path is not None and _git_head(path) == sha,
+                    "QA_CYCLE11_LIVE_OWNER_HEAD_NOT_ATTESTED:" + owner)
+            live_provenance[owner] = sha
     require(git_blob(args.ic_fixture.read_bytes()) == FROZEN_IC_BLOB,
             "QA_RECON_ORIGINAL_TI_FIXTURE_BYTES_CHANGED")
     source = original_members()
     raw = json.loads(args.candidate_report.read_text(encoding="utf-8"))
     report = {
-        "real_candidate": inspect_candidate_driver(raw, source),
-        "negative_adversarial": selftest_tampering(raw, source),
+        "real_candidate": inspect_candidate_driver(
+            raw, source, owner_shas=expected_owners, recon_sha=expected_recon,
+        ),
+        "negative_adversarial": selftest_tampering(
+            raw, source, owner_shas=expected_owners, recon_sha=expected_recon,
+        ),
         "no_print_approval": True,
+        "live_runtime_exact_head_SHA": live_provenance,
+        "embedded_RECON_owner_snapshots": expected_owners,
+        "runtime_differs_from_embedded_snapshot": (
+            args.cycle11 and any(
+                live_provenance[owner] != expected_owners[lab]
+                for owner, lab in (
+                    ("ic", "ELEKTRIK_IC_PR97"),
+                    ("paint", "PAINT_PR93"),
+                    ("net", "ELEKTRIK_NET_PR114"),
+                    ("catalog", "YGO2_PR113"),
+                )
+            )
+        ),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
