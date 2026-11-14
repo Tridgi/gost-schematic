@@ -1,0 +1,115 @@
+name: TL494 V5 current-owner 23/15/62 all-Net route candidates
+on:
+  push:
+    branches: [reference/tl494-audit-v4-20261114]
+    paths:
+      - examples/tl494_v5/route_candidate_driver.py
+      - examples/tl494_v5/test_route_candidate_driver.py
+      - examples/tl494_v5/native_circuit.py
+      - examples/tl494_v5/compact_layout.py
+      - examples/tl494_v5/route_preflight.py
+      - .github/workflows/tl494-v5-current-owner-candidates.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-all15-source-names:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Pin all four unmerged current-owner source HEADs (never merge)
+        run: |
+          set -euxo pipefail
+          IC=b28428d94218cac777a28897ce9176285d0fab0b
+          PAINT=161c31bd0b538c6e827341ae465c3b3a59f6637d
+          CATALOG=edc71a48035723d48a203ae2ea12588701f68ba8
+          ROUTER=b3a8263944c5a687492a49555d8149e538f0902b
+          SOURCE=e695c415fdced164b0e0c39c5249d030795a0aa6
+          for sha in "$IC" "$PAINT" "$CATALOG" "$ROUTER" "$SOURCE"; do
+            git fetch origin "$sha"
+            test "$(git rev-parse FETCH_HEAD)" = "$sha"
+          done
+          for f in ic.py tl494cn.py ic_pin_alias.py ic_serde.py ic_paint_bridge.py ic_graphic_revision.py ic_circuit_adapter.py; do
+            git show "$IC:src/gost_schematic/electrical/$f" > "src/gost_schematic/electrical/$f"
+          done
+          git show "$IC:examples/tl494_cycle9_circuit_integration.py" > examples/tl494_cycle9_circuit_integration.py
+          mkdir -p tests/fixtures
+          git show "$IC:tests/fixtures/tl494_photo_23_frozen_cycle9.json" > tests/fixtures/tl494_photo_23_frozen_cycle9.json
+          test "$(git hash-object tests/fixtures/tl494_photo_23_frozen_cycle9.json)" = a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65
+          for f in ic_rectangular.py ic_hotspots.py ic_orientation.py ic_power_profiles.py ic_tl494_profile.py ic_electrical_binding.py ic_sheet_composition.py external_wire_sheet.py native_sheet_ink_audit.py; do
+            git show "$PAINT:src/gost_schematic/rendering/$f" > "src/gost_schematic/rendering/$f"
+          done
+          mkdir -p src/gost_schematic/catalog/source_profiles
+          git show "$CATALOG:src/gost_schematic/catalog/source_profiles.py" > src/gost_schematic/catalog/source_profiles.py
+          git show "$CATALOG:src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json" > src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json
+          for f in orthogonal_route_planner.py multiterminal_router.py; do
+            git show "$ROUTER:src/gost_schematic/engines/$f" > "src/gost_schematic/engines/$f"
+          done
+          git show "$ROUTER:src/gost_schematic/validation/route_drc.py" > src/gost_schematic/validation/route_drc.py
+          echo "HEAD=$(git rev-parse HEAD) real 97=$IC paint=$PAINT ygo=$CATALOG net=$ROUTER"
+      - name: Install pinned engine dev and true GOST A Type font
+        run: |
+          set -euxo pipefail
+          python -m pip install -e ".[dev,mcp]"
+          python scripts/install_opengost_type_a.py --directory "$HOME/.local/share/fonts"
+          fc-cache -f
+          FONT="$(find "$HOME/.local/share/fonts" -name '*TypeA*.ttf' | head -1)"
+          test -n "$FONT"
+          echo "TL494_TYPE_A_FONT=$FONT" >> "$GITHUB_ENV"
+      - name: Full v5 Ruff, positive/negative and real 15-Net source tests
+        run: |
+          set -euxo pipefail
+          ruff check examples/tl494_v5/
+          PYTHONPATH=src pytest -q \
+            examples/tl494_v5/test_native_circuit.py \
+            examples/tl494_v5/test_compact_layout.py \
+            examples/tl494_v5/test_route_candidate_driver.py
+      - name: Compare original source 23/15/62 and run two order candidates
+        run: |
+          set -euxo pipefail
+          mkdir -p output/tl494-v5-current
+          PYTHONPATH=src python -m examples.tl494_v5.route_candidate_driver \
+            --font-file "$TL494_TYPE_A_FONT" \
+            --output-file output/tl494-v5-current/all15-candidate-report.json \
+            --variants source short-first --node-cap 3000
+          PYTHONPATH=src python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path("output/tl494-v5-current/all15-candidate-report.json")
+          m = json.loads(path.read_text(encoding="utf-8"))
+          assert m["bom_count"] == 23
+          assert m["net_count"] == 15
+          assert m["physical_net_membership_count"] == 62
+          assert len(m["candidates"]) == 2
+          assert m["qa_print_release"] == "BLOCKED_INDEPENDENT_QA_AND_ESKD"
+          assert not m["actual_full_sheet_svg_or_png_emitted"]
+          for trial in m["candidates"]:
+              assert trial["routes_attempted"] == 15
+              assert trial["source_unchanged"]
+              assert trial["Net_membership_SHA256"] == m["original_nets_SHA256"]
+              assert set(trial["named_net_status"]) == set(m["original_net_names"])
+              assert trial["a3"]["A3_capacity_fit"]
+              assert trial["print_after_released"] is False
+              assert sum(len(x["expected"]) for x in trial["named_net_status"].values()) == 62
+              for net in trial["named_net_status"].values():
+                  assert set(net["connected"]) <= set(net["expected"])
+              if trial["routed_net_count"] != 15:
+                  assert not trial["technical_route_eligible"]
+          print("TRUE_15_NETS_ATTEMPTED", [(c["key"], c["routed_net_count"]) for c in m["candidates"]])
+          print("NO_FAKE_RELEASE_TRUE 23/15/62", m["best_evidence_variant"])
+          PY
+          sha256sum output/tl494-v5-current/all15-candidate-report.json > output/tl494-v5-current/SHA256SUMS.txt
+          git diff --exit-code -- examples/tl494_named_truth_output/ examples/tl494_v4/evidence_runs/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tl494-v5-current-owners-all15-${{ matrix.python-version }}
+          path: output/tl494-v5-current/
+          if-no-files-found: warn
