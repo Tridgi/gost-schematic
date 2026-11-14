@@ -23,52 +23,6 @@ class ProjectHead:
 
 
 class ProjectRepository(Protocol):
-    def write_view(self, project_id: str, revision: str, view_id: str,
-                   svg: str, png: bytes) -> dict[str, str]:
-        """Publish an immutable pair of derived visual files via the trusted store.
-
-        The view is non-authoritative; only the caller's typed ProjectService
-        can request this operation. Never accept an arbitrary output path.
-        """
-        self.read(project_id, revision)
-        if type(view_id) is not str or len(view_id) != 24 or any(
-            char not in "0123456789abcdef" for char in view_id
-        ):
-            raise ProjectError("INVALID_VIEW_ID", "Expected a 24-character hex view ID")
-        if not isinstance(svg, str) or not svg.startswith("<") or not isinstance(png, bytes):
-            raise ProjectError("IMAGE_INVALID", "Expected genuine SVG and PNG bytes")
-        if len(svg.encode("utf-8")) > 4_000_000 or len(png) > 8_000_000 or not (
-            png.startswith(b"\x89PNG\r\n\x1a\n")
-        ):
-            raise ProjectError("IMAGE_INVALID", "Visual evidence exceeds bounds or PNG invalid")
-        artifacts = self.root / "artifacts"
-        _safe_mkdir(artifacts)
-        for name in (project_id, revision):
-            artifacts = artifacts / name
-            _safe_mkdir(artifacts)
-        final = artifacts / view_id
-        if _is_redirect(final):
-            raise ProjectError("WORKSPACE_DENIED", "Redirected view path")
-        svg_bytes = svg.encode("utf-8")
-        if final.exists():
-            if (_read_limited(final / "view.svg", 4_000_000) != svg_bytes
-                    or _read_limited(final / "view.png", 8_000_000) != png):
-                raise ProjectError("ARTIFACT_CONFLICT", "Existing immutable view differs")
-        else:
-            stage = artifacts / (".stage-" + str(uuid.uuid4()))
-            stage.mkdir(mode=0o700)
-            try:
-                _write_sync(stage / "view.svg", svg_bytes)
-                _write_sync(stage / "view.png", png)
-                if final.exists() or _is_redirect(final):
-                    raise ProjectError("ARTIFACT_CONFLICT", "Concurrent view publication")
-                os.rename(stage, final)
-            except Exception:
-                if stage.exists():
-                    shutil.rmtree(stage)
-                raise
-        return {"svg": str(final / "view.svg"), "png": str(final / "view.png")}
-
     def create_initial(self, project: SchematicProject, idempotency_key: str) -> ProjectHead: ...
     def read(self, project_id: str, revision: str | None = None
              ) -> tuple[ProjectHead, dict]: ...
@@ -200,6 +154,52 @@ class LocalProjectStore:
             raise ProjectError("STORAGE_CORRUPT", "Project ID mismatch")
         current = ProjectHead(project_id, head["revision"], head["generation"])
         return current, record
+
+    def write_view(self, project_id: str, revision: str, view_id: str,
+                   svg: str, png: bytes) -> dict[str, str]:
+        """Publish an immutable pair of derived visual files via the trusted store.
+
+        The view is non-authoritative; only the caller's typed ProjectService
+        can request this operation. Never accept an arbitrary output path.
+        """
+        self.read(project_id, revision)
+        if type(view_id) is not str or len(view_id) != 24 or any(
+            char not in "0123456789abcdef" for char in view_id
+        ):
+            raise ProjectError("INVALID_VIEW_ID", "Expected a 24-character hex view ID")
+        if not isinstance(svg, str) or not svg.startswith("<") or not isinstance(png, bytes):
+            raise ProjectError("IMAGE_INVALID", "Expected genuine SVG and PNG bytes")
+        if len(svg.encode("utf-8")) > 4_000_000 or len(png) > 8_000_000 or not (
+            png.startswith(b"\x89PNG\r\n\x1a\n")
+        ):
+            raise ProjectError("IMAGE_INVALID", "Visual evidence exceeds bounds or PNG invalid")
+        artifacts = self.root / "artifacts"
+        _safe_mkdir(artifacts)
+        for name in (project_id, revision):
+            artifacts = artifacts / name
+            _safe_mkdir(artifacts)
+        final = artifacts / view_id
+        if _is_redirect(final):
+            raise ProjectError("WORKSPACE_DENIED", "Redirected view path")
+        svg_bytes = svg.encode("utf-8")
+        if final.exists():
+            if (_read_limited(final / "view.svg", 4_000_000) != svg_bytes
+                    or _read_limited(final / "view.png", 8_000_000) != png):
+                raise ProjectError("ARTIFACT_CONFLICT", "Existing immutable view differs")
+        else:
+            stage = artifacts / (".stage-" + str(uuid.uuid4()))
+            stage.mkdir(mode=0o700)
+            try:
+                _write_sync(stage / "view.svg", svg_bytes)
+                _write_sync(stage / "view.png", png)
+                if final.exists() or _is_redirect(final):
+                    raise ProjectError("ARTIFACT_CONFLICT", "Concurrent view publication")
+                os.rename(stage, final)
+            except Exception:
+                if stage.exists():
+                    shutil.rmtree(stage)
+                raise
+        return {"svg": str(final / "view.svg"), "png": str(final / "view.png")}
 
     def create_initial(self, project: SchematicProject, idempotency_key: str) -> ProjectHead:
         project_uuid(idempotency_key)
