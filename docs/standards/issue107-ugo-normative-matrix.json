@@ -1136,7 +1136,10 @@
       "source_subject": "Circuit common / 0V reference",
       "requires_existing_net": true,
       "marker_may_create_physical_part": false,
-      "editorial_marker_profile": true
+      "editorial_marker_profile": true,
+      "comparison_svg": "docs/standards/evidence/issue107-ground-marker-source-classes-draft.svg",
+      "illustration_geometry_status": "EDITORIAL_NOT_CALIBRATED_SOURCE_MM",
+      "no_implicit_electrical_merge": true
     },
     {
       "id": "net-marker.earth",
@@ -1163,7 +1166,10 @@
       "source_subject": "Earth / ground in general",
       "requires_existing_net": true,
       "marker_may_create_physical_part": false,
-      "editorial_marker_profile": true
+      "editorial_marker_profile": true,
+      "comparison_svg": "docs/standards/evidence/issue107-ground-marker-source-classes-draft.svg",
+      "illustration_geometry_status": "EDITORIAL_NOT_CALIBRATED_SOURCE_MM",
+      "no_implicit_electrical_merge": true
     },
     {
       "id": "net-marker.protective_earth",
@@ -1190,7 +1196,10 @@
       "source_subject": "protective earth (PE) enclosing circle",
       "requires_existing_net": true,
       "marker_may_create_physical_part": false,
-      "editorial_marker_profile": true
+      "editorial_marker_profile": true,
+      "comparison_svg": "docs/standards/evidence/issue107-ground-marker-source-classes-draft.svg",
+      "illustration_geometry_status": "EDITORIAL_NOT_CALIBRATED_SOURCE_MM",
+      "no_implicit_electrical_merge": true
     },
     {
       "id": "net-marker.chassis",
@@ -1217,7 +1226,10 @@
       "source_subject": "electrical connection to chassis/mass",
       "requires_existing_net": true,
       "marker_may_create_physical_part": false,
-      "editorial_marker_profile": true
+      "editorial_marker_profile": true,
+      "comparison_svg": "docs/standards/evidence/issue107-ground-marker-source-classes-draft.svg",
+      "illustration_geometry_status": "EDITORIAL_NOT_CALIBRATED_SOURCE_MM",
+      "no_implicit_electrical_merge": true
     },
     {
       "id": "net-marker.equipotential",
@@ -1244,7 +1256,10 @@
       "source_subject": "equipotential bonding",
       "requires_existing_net": true,
       "marker_may_create_physical_part": false,
-      "editorial_marker_profile": true
+      "editorial_marker_profile": true,
+      "comparison_svg": "docs/standards/evidence/issue107-ground-marker-source-classes-draft.svg",
+      "illustration_geometry_status": "EDITORIAL_NOT_CALIBRATED_SOURCE_MM",
+      "no_implicit_electrical_merge": true
     },
     {
       "id": "net-continuation.other-sheet",
@@ -1381,13 +1396,49 @@
         "wire_stroke_max": 0.4
       },
       "tl494_wire_drc_real_run": "BLOCKED_NOT_YET_SOURCE_MEASURED"
+    },
+    {
+      "id": "net-marker.noiseless",
+      "source": {
+        "standard": "ГОСТ 2.721-74",
+        "edition": "2008 reprint, current changes by 2008",
+        "url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf"
+      },
+      "source_clauses": "ГОСТ 2.721-74 таблица 6б позиция 2; бесшумное (чистое) заземление",
+      "source_figure_url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf#page=10",
+      "source_printed_page_verified": true,
+      "status_source_shape": "PASS",
+      "status_full_1to1": "BLOCKED",
+      "approval": "DRAFT",
+      "real_part_certificate": false,
+      "owner_source_path": null,
+      "owner_blob_sha": null,
+      "owner_exact_project_geometry": null,
+      "owner_profile": null,
+      "owner_line_width_mm": null,
+      "positive_test": "show arc-outlined noiseless earth variant only with source-confirmed quiet earth scheme semantics; no fabricated Net",
+      "negative_test": "use noiseless arc as generic equal symbol for COMMON 0V, PE and chassis, or invent a second Net",
+      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED",
+      "source_subject": "noiseless / clean ground conditional physical earth",
+      "requires_existing_net": true,
+      "marker_may_create_physical_part": false,
+      "editorial_marker_profile": true,
+      "comparison_svg": "docs/standards/evidence/issue107-ground-marker-source-classes-draft.svg",
+      "illustration_geometry_status": "EDITORIAL_NOT_CALIBRATED_SOURCE_MM",
+      "no_implicit_electrical_merge": true
     }
   ],
   "totals_source": {
-    "PASS": 19,
+    "PASS": 20,
     "BLOCKED": 2
   },
   "approved": 0,
   "release_policy": "All candidate UGO remain DRAFT; exact user photo vs original standard vs 300-DPI actual owner raster is NOT source-certified.",
-  "figure_policy": "Link primary original PDF page with exact table/position; do not commit copyrighted scans; source-pinned project SVGs are independent editorial/electrical artifacts."
+  "figure_policy": "Link primary original PDF page with exact table/position; do not commit copyrighted scans; source-pinned project SVGs are independent editorial/electrical artifacts.",
+  "illustration_catalog": {
+    "ground_classes": "docs/standards/evidence/issue107-ground-marker-source-classes-draft.svg",
+    "schottky_d4": "docs/standards/evidence/issue107-schottky-d4-owner-1to1.svg",
+    "twelve_current_ugos": "docs/standards/evidence/issue107-catalog-12-draft-source-gallery.svg",
+    "source_link_copyright_policy": "Only source links to official PDFs; SVGs are separate explicitly editorial constructions."
+  }
 }
