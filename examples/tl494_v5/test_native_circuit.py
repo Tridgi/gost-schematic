@@ -4,14 +4,10 @@ This is a dedicated integration test, not a skip/xfail on missing owner
 implementation. It fails if native YGO glyph choice or physical TI pins drift.
 """
 from dataclasses import replace
+from importlib import import_module
 from pathlib import Path
 
 import pytest
-from gost_schematic.catalog.source_profiles import (
-    SymbolProfileMismatch,
-    bind_tl494_source,
-)
-
 from examples.tl494_v5.native_circuit import assemble_native_v5, export_source_manifest
 from gost_schematic.model.circuit import Circuit, Net, PinRef
 
@@ -83,14 +79,15 @@ def test_wrong_net_or_deleted_ti_contact_fails_closed():
 
 
 def test_wrong_capacitor_symbol_blocked_by_true_owner_selector():
+    profiles = import_module("gost_schematic.catalog.source_profiles")
     assembly = assemble_native_v5()
     changed = tuple(
         replace(p, part_id="capacitor.electrolytic")
         if p.reference == "C1" else p
         for p in assembly.circuit.components
     )
-    with pytest.raises(SymbolProfileMismatch):
-        bind_tl494_source(changed, assembly.parts, assembly.symbols)
+    with pytest.raises(profiles.SymbolProfileMismatch):
+        profiles.bind_tl494_source(changed, assembly.parts, assembly.symbols)
 
 
 def test_model_only_export_produces_no_svg(tmp_path: Path):
