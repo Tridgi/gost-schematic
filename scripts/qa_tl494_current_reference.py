@@ -1023,16 +1023,30 @@ def current_full_native_23_owner_sheet(font, destination):
             check(round(float(lead.attrib["x2"]) * 1000) == x and
                   round(float(lead.attrib["y2"]) * 1000) == y,
                   "CURRENT_PAINT_FULL_SHEET_PINREF_COORDINATE_CHANGED")
-        markers = body.findall(
+        # PAINT's verified compositor intentionally lifts the 16 true
+        # editor targets OUT of the physical IC symbol group into a separate
+        # foreground root layer after the underlying copper. Checking for
+        # them inside DA1 would reject correct visible contact handling.
+        hidden_in_symbol = body.findall(
             f".//{NS}g[@data-layer='editor-connection-targets']/{NS}rect"
         )
-        all_markers = root.findall(
+        overlay_layers = root.findall(
+            f"./{NS}g[@data-layer='editor-connection-targets']"
+        )
+        markers = root.findall(
             f".//{NS}g[@data-layer='editor-connection-targets']/{NS}rect"
         )
-        check(len(markers) == len(all_markers) ==
-              (16 if diagnostic else 0),
+        check(len(hidden_in_symbol) == 0 and
+              len(overlay_layers) == (1 if diagnostic else 0) and
+              len(markers) == (16 if diagnostic else 0),
               "CURRENT_PAINT_GREEN_HOTSPOT_POLICY")
         if diagnostic:
+            layer = overlay_layers[0]
+            check(layer.get("data-reference") == "DA1" and
+                  layer.get("data-layer-order") == "after-all-copper" and
+                  layer.get("data-circuit-provenance") ==
+                  "verified-pinrefs-and-nets",
+                  "CURRENT_PAINT_DIAGNOSTIC_FOREGROUND_OR_PROVENANCE_LOST")
             real_net_names = {
                 f"{pin.reference}.{pin.number}": net.name
                 for net in circuit.nets for pin in net.members
