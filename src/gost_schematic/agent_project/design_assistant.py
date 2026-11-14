@@ -4,13 +4,10 @@ Not a placement optimizer, a complete printed-sheet DRC, a routing engine or
 a manufacturer-verified TL494 IC catalog adapter. All E3 references and
 connections are loaded from the exact immutable ProjectService revision.
 """
-from collections import defaultdict
-from importlib.metadata import version
 from typing import Any
 
-from gost_schematic.core.geometry import Line, enclosing_box
+from gost_schematic.core.geometry import Line, enclosing_box, primitive_bounds
 from gost_schematic.core.transforms import Transform
-from gost_schematic.model.circuit import PinRef
 from gost_schematic.model.obstacles import WireObstacle
 from gost_schematic.rendering.svg import render_symbol_svg
 from gost_schematic.validation.dimensional_checks import check_verified_dimensions
@@ -212,7 +209,6 @@ def preflight_project(project: SchematicProject, catalog: CatalogResolver, *,
     placed, parts, symbols = _placed_boxes(project, catalog)
     record = project.to_record()
     ref_to_id = {c["reference"]: c["id"] for c in record["components"]}
-    net_by_name = {n.name: n for n in project.circuit.nets}
     components = []
     diagnostics = []
     for component in project.circuit.components:
@@ -290,11 +286,7 @@ def preflight_project(project: SchematicProject, catalog: CatalogResolver, *,
                 })
     all_boxes = [item["stroke"] for item in placed.values()]
     for wire in project.graph.segments:
-        all_boxes.append(enclosing_box((
-            # 1µm dimension when an axis is degenerate
-            __import__("gost_schematic.core.geometry", fromlist=["primitive_bounds"])
-            .primitive_bounds(Line(wire.start, wire.end)),
-        )))
+        all_boxes.append(primitive_bounds(Line(wire.start, wire.end)))
     bbox = _bounds(enclosing_box(tuple(all_boxes))) if all_boxes else None
     nets = [{
         "net_id": row["id"], "net_name": row["name"],
