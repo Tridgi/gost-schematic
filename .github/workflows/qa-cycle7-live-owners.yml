@@ -1,0 +1,162 @@
+name: QA Cycle7 live owners independent 15 UGO portrait 90-0
+
+on:
+  push:
+    branches: ["parallel/qa-electronic-cycle7"]
+  pull_request:
+    branches: ["integration/stage0-12"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  current-owner-release-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - name: Checkout existing QA #99
+        uses: actions/checkout@v4
+      - name: Checkout exact PAINT #93
+        uses: actions/checkout@v4
+        with:
+          ref: 03f758ef095913f286c609a715ab76a90180b053
+          path: _qa_sources/paint
+          persist-credentials: false
+      - name: Checkout exact ELEKTRIK IC #97
+        uses: actions/checkout@v4
+        with:
+          ref: 9458c1948ff7b0214af1a693bb73426ae46c8bad
+          path: _qa_sources/ic
+          persist-credentials: false
+      - name: Checkout exact ELEKTRIK NET #98
+        uses: actions/checkout@v4
+        with:
+          ref: 3262cb598cf1451e3b785e02d7f920e4b7d1d135
+          path: _qa_sources/net
+          persist-credentials: false
+      - name: Checkout 15 real YGO #94 pairs
+        uses: actions/checkout@v4
+        with:
+          ref: 47b0589ffa048c0801b6b8604582efd62a63acc9
+          path: _qa_sources/catalog
+          persist-credentials: false
+      - name: Checkout real MCP #96 service
+        uses: actions/checkout@v4
+        with:
+          ref: 343ea6f9c032f803ead851afcd77174bb834a524
+          path: _qa_sources/project
+          persist-credentials: false
+      - name: Checkout ESKD #95 merged official normative sources
+        uses: actions/checkout@v4
+        with:
+          ref: 1e54166304928ba27eaf674d79597e1d527fb3bb
+          path: _qa_sources/standards
+          persist-credentials: false
+      - name: Verify exact owner commits and overlay only inside disposable CI workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C _qa_sources/paint rev-parse HEAD)" = 03f758ef095913f286c609a715ab76a90180b053
+          test "$(git -C _qa_sources/ic rev-parse HEAD)" = 9458c1948ff7b0214af1a693bb73426ae46c8bad
+          test "$(git -C _qa_sources/net rev-parse HEAD)" = 3262cb598cf1451e3b785e02d7f920e4b7d1d135
+          test "$(git -C _qa_sources/catalog rev-parse HEAD)" = 47b0589ffa048c0801b6b8604582efd62a63acc9
+          test "$(git -C _qa_sources/project rev-parse HEAD)" = 343ea6f9c032f803ead851afcd77174bb834a524
+          test "$(git -C _qa_sources/standards rev-parse HEAD)" = 1e54166304928ba27eaf674d79597e1d527fb3bb
+          python - <<'PY'
+          from pathlib import Path
+          from shutil import copy2
+
+          def copy(owner, glob, out):
+              for src in Path("_qa_sources", owner).glob(glob):
+                  if src.is_file():
+                      dest = Path(out) / src.name
+                      dest.parent.mkdir(parents=True, exist_ok=True)
+                      copy2(src, dest)
+
+          copy("paint", "src/gost_schematic/rendering/ic_*.py", "src/gost_schematic/rendering")
+          copy("ic", "src/gost_schematic/electrical/*.py", "src/gost_schematic/electrical")
+          for name in ("netrefs.py", "netrefs_serde.py"):
+              copy("net", "src/gost_schematic/electrical/" + name, "src/gost_schematic/electrical")
+          for kind in ("symbols", "parts"):
+              root = Path("_qa_sources/catalog/src/gost_schematic/catalog", kind)
+              for src in root.rglob("*.json"):
+                  rel = src.relative_to(root)
+                  if rel.parts[0] not in ("resistors", "fuses", "transistors", "diodes"):
+                      continue
+                  if rel.parts[0] == "resistors" and rel.name not in ("variable.json", "trimmer.json"):
+                      continue
+                  if rel.parts[0] == "fuses" and rel.name != "general.json":
+                      continue
+                  if rel.parts[0] == "diodes" and rel.name not in (
+                      "schottky.json", "led.json", "photodiode.json", "varicap.json"
+                  ):
+                      continue
+                  dest = Path("src/gost_schematic/catalog", kind) / rel
+                  dest.parent.mkdir(parents=True, exist_ok=True)
+                  copy2(src, dest)
+          copy("project", "src/gost_schematic/agent_project/*.py", "src/gost_schematic/agent_project")
+          copy("ic", "examples/review_ic_cycle7.py", "examples")
+          copy("net", "examples/review_net_continuations_cycle7.py", "examples")
+          for name in ("electronic-cycle7-first-batch-cards.json",
+                       "electronic-cycle7-second-batch-cards.json"):
+              copy("catalog", "docs/catalog/" + name, "docs/catalog")
+          for name in ("issue-91-deep-source-audit.json",
+                       "issue-91-cycle7-electronics-cards.json"):
+              copy("standards", "docs/standards/" + name, "docs/standards")
+          print("Real production source files staged, no source branch merge")
+          PY
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install real package and independent raster tools
+        run: python -m pip install -e ".[dev,fonts,mcp]" cairosvg
+      - name: Ruff independent gate and original owner modules
+        run: |
+          ruff check scripts/qa_cycle7_live_source_gate.py
+          ruff check src/gost_schematic/electrical src/gost_schematic/rendering/ic_rectangular.py src/gost_schematic/rendering/ic_orientation.py src/gost_schematic/agent_project
+      - name: Install hash-verified real OpenGost Type A outside repository
+        shell: bash
+        run: |
+          python scripts/install_opengost_type_a.py --directory "$HOME/.local/share/fonts" --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a
+          FONT_PATH="$(find "$HOME/.local/share/fonts" -type f \( -iname '*TypeA*.ttf' -o -iname '*TypeA*.otf' \) | head -1)"
+          test -n "$FONT_PATH"
+          echo "CYCLE7_QA_FONT=$FONT_PATH" >> "$GITHUB_ENV"
+          fc-cache -f
+      - name: Independent real 15 UGO + portrait D4 + netrefs + P1.1 gate and 300 DPI
+        run: |
+          python scripts/qa_cycle7_live_source_gate.py --font-file "$CYCLE7_QA_FONT" --output-dir "output/qa-cycle7-live-py${{ matrix.python-version }}"
+      - name: Verify real wheel contains 36 symbols and physical parts
+        shell: bash
+        run: |
+          python -m pip wheel --no-deps . -w output/qa-cycle7-wheels
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          wheels = list(Path("output/qa-cycle7-wheels").glob("*.whl"))
+          assert len(wheels) == 1
+          with ZipFile(wheels[0]) as archive:
+              names = set(archive.namelist())
+          base = Path("src")
+          symbols = {str(p.relative_to(base)) for p in
+                     (base / "gost_schematic/catalog/symbols").rglob("*.json")}
+          parts = {str(p.relative_to(base)) for p in
+                   (base / "gost_schematic/catalog/parts").rglob("*.json")}
+          assert len(symbols) == 36, (len(symbols), sorted(symbols))
+          assert symbols <= names, sorted(symbols - names)
+          assert parts <= names, sorted(parts - names)
+          print("WHEEL_INDEPENDENT_36_UGO_PASS", len(symbols), len(parts))
+          PY
+      - name: Upload real SVG PNG 300 DPI and exact SHA matrix (no fonts)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-cycle7-current-sources-py${{ matrix.python-version }}
+          path: output/qa-cycle7-live-py${{ matrix.python-version }}/
+          retention-days: 30
+          if-no-files-found: warn
