@@ -81,7 +81,7 @@ def test_source_matrix_all_physical_part_sha_and_no_false_approved_ic():
     report = tl494_profile(cat)
     matrix = {row["reference"]: row for row in report["required_variants"]}
     assert set(matrix) == set(TL494_REQUIRED_PARTS)
-    assert len(matrix) == 12
+    assert len(matrix) == 13
     for ref, wanted in TL494_REQUIRED_PARTS.items():
         assert matrix[ref]["required_part_id"] == wanted
         assert matrix[ref]["part_sha256"] == catalog_card(cat, wanted)["part_sha256"]
