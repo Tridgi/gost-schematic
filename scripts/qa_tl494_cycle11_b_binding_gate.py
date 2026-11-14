@@ -13,6 +13,9 @@ import subprocess
 from copy import deepcopy
 from pathlib import Path
 
+from examples.render_tl494_full_native_cycle9 import (
+    _compose_frozen_circuit_with_real_type_a,
+)
 from examples.tl494_named_photo_sheet import compose_circuit
 from examples.tl494_v5.compact_layout import compact_source_assembly
 from examples.tl494_v5.route_candidate_driver import (
@@ -44,7 +47,13 @@ def require(condition: bool, code: str) -> None:
 
 def immutable_expected(font_file: Path) -> dict:
     """Derive source b vectors from E695 native DATA, not a screenshot."""
-    original = compose_circuit(font_file)[-1]
+    # E695's obsolete `OpenGost Type A TT` family selector must be adapted
+    # ONLY at the original source function boundary to genuine verified
+    # OpenGOST type A. PAINT's existing scoped adapter restores the selector
+    # afterwards and never edits original geometry, wires or font bytes.
+    original = _compose_frozen_circuit_with_real_type_a(
+        compose_circuit, font_file,
+    )[-1]
     assembly = compact_source_assembly()
     assembly.verify()
     frozen, _typed_ti = load_original_owner_fixture()
