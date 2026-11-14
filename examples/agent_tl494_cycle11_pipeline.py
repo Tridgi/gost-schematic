@@ -25,7 +25,7 @@ from gost_schematic.agent_project.design_assistant import (
 )
 from gost_schematic.agent_project.owner_source_contract import (
     verify_frozen_owner_fixture,
-    verify_owner_pinned_headers,
+    verify_pinned_owner_headers,
     verify_owner_reversible_display,
 )
 
@@ -202,7 +202,7 @@ def main(argv: list[str] | None = None) -> int:
     source = verify_frozen_owner_fixture(
         _read_trusted(args.owner_fixture), catalog,
     )
-    owner = verify_owner_pinned_headers(
+    owner = verify_pinned_owner_headers(
         _read_trusted(args.ic_header), _read_trusted(args.recon_header),
     )
     display = verify_owner_reversible_display(source, owner)
