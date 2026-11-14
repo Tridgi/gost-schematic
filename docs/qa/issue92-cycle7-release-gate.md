@@ -243,3 +243,100 @@ Root cause: текущий verify_ic_connection_targets допускает по�
 | Общий PR #99 | **NO-GO, KEEP DRAFT** | Не изменять main и production |
 
 Новый независимый скрипт: scripts/qa_cycle7_pin_squares.py. Новый отдельный обязательный workflow: .github/workflows/qa-cycle7-pin-squares.yml. Старые проверки и отчёты сохранены.
+
+## 13. P0–P5: TL494CN — независимый QA на НОВОЙ реальной реконструкции (14.11.2026)
+
+**Релизный результат: NO-GO.** В отличие от предыдущих тестов, новый независимый runner исполняет собственный исходный Python reference, а не «пробную» 13-компонентную схему или вручную созданный SVG.
+
+**Исходная ветка:** `reference/tl494-native-rework-20261114`, **точный commit** `e695c415fdced164b0e0c39c5249d030795a0aa6`. Git blob SHA1:
+- `examples/tl494_named_photo_sheet.py`: `990a1aca651f34dcae991575dddfa28b2acae813`;
+- `examples/tl494_full_native_model.py`: `049c32ff6e3bf2c839641d0102e3a63fcb86caaf`;
+- `examples/tl494_named_truth_output/TL494_named_photo_clean.svg`: `69fa5d18f0844b080d8f1574c686e5c1156ae1f9`;
+- `examples/tl494_named_truth_output/TL494_named_photo_manifest.json`: `b2375feb43ad18b8a8e5a515bfc007d169b26908`.
+
+**Текущие владельцы** исследованы отдельно от исторических QA-пинов: PAINT #93 `e3ea841dbe087952577121d5690fe41e9a9a5c83` (real renderer blob `757404183d155d07800a9c8884a6bd5abd327e42`; TL494 visual-profile blob `d507e8def37bc02c59122dc655cae09905f251ef`), ELEKTRIK IC #97 `6161e9102cbc0c9e0491fb27ed7a496dc0b274bc` (real IC blob `6c768f4d15e27cfffad0864de71861aa3f6fceb4`, TL494 datasheet-based model `80524a5b05e8b2f245911f6699f832e0ee01e31c`, real alias model `e765a6230f4f30d2a22a7b92f2926a15d5a5e2b9`). Более поздние HEAD изменили только docs/workflow/test по сравнению с первыми проверенными source HEAD; production file SHAs остались идентичными. Source is overlaid in **disposable GitHub Actions runner only**. Ни одна чужая production-ветка не редактировалась.
+
+### 13.1. P0 — фактическая схема
+
+Положительный инвариант сверяет одновременно `examples.tl494_full_native_model.build()` и исходный `examples.tl494_named_photo_sheet.compose_circuit()`, реальные `Circuit/ComponentInstance/PinRef/Net/ExternalWireGraph`, а также точные строки реального SVG `data-net,data-wire-index,x1,y1,x2,y2`:
+
+| Поле | Проверено |
+|---|---|
+| Физические экземпляры | **23**, уникальные X1, X2, DA1, VT1, VD1, L1/L2, C1–C7, R1–R8, FU1 |
+| Независимые Net | **15**, уникальная привязка всех физических `PinRef` |
+| DA1 | **16 реальных номеров 1…16**, ни один не продублирован |
+| Физические участки authored wire | **91**, каждый с настоящим Net и фиксированными integer µm endpoint |
+| Модель a/b | `a` — `INPUT_POS`; `b` — `OUTPUT_NEG`, причём `b` использует настоящий same-sheet `NetContinuationProject`, а не фиктивный 700-mm провод |
+| Исходные wire warning | `WIRE_NET_DISCONNECTED`, `WIRE_DANGLING_END` для b — обоснованы парой именованных продолжений; общие ERC/DRC не объявляются автоматически чистыми |
+
+**PASS P0:** все числовые структурные инварианты. **BLOCKED photo provenance:** фотография исходной схемы 640×290 упоминается в комментарии/референсе, но исходный растровый файл отсутствует в зафиксированной ветке; её пиксельный оригинал нельзя подменять графикой движка.
+
+### 13.2. P1 — реальные каталожные УГО
+
+Независимо запрошены **действительные** `PartDefinition + SymbolDefinition`, оригинальные physical pin positions и 48 тестов D4 из настоящих применяемых каталогов:
+
+| Рефы | Используемое УГО / физический контракт | QA |
+|---|---|---|
+| VD1 | `diode.schottky`: два физических `A/K`; источник ГОСТ 2.730-73 §6 табл.5 поз.9 | **PASS DRAFT; нормативный 1:1 BLOCKED** |
+| VT1 | `transistor.mosfet_n_enh`: три физических `G/D/S`, настоящая стрелка и графическая точка диаметром всего 0,5 mm | **PASS DRAFT; точка/стрелка по норме ещё BLOCKED** |
+| C1/C2/C3/C5/C6 | `capacitor.polarized`, по два физ. вывода и полярность `+/-` | **PASS DRAFT; actual потенциалы BLOCKED** |
+| C4/C7 | `capacitor.fixed`, 2 контакта | **PASS DRAFT** |
+| L1/L2 | `inductor.ferromagnetic`, 2 контакта, магнитопровод есть | **PASS DRAFT** |
+| R5 | `resistor.variable`, 3 физических контакта, включая движок | **PASS DRAFT** |
+| FU1 | `fuse.general`, 2 физических контакта | **PASS DRAFT** |
+
+48 реальных D4 сценариев: `VD1,VT1,R5,C1,L1,FU1` × 4 поворота × 2 отражения, с сохранением точного физического номера и `Transform.apply(Point)`, без ложного сокращения набора контактов. Это геометрическое/семантическое PASS, **НЕ сертификат всех нормативных УГО**.
+
+### 13.3. P2 — обязательная типизация TL494 и подписи
+
+**FAIL прямо в pinned source e695**:
+- `MANUFACTURER_PIN_MAP["3"]` в реальном `tl494_full_native_model.py` — **OUTPUT**, а производитель TI SLVS074J указывает **FEEDBACK (pin 3) = INPUT**. В реальном `tl494_ic_paint_reference.PINS["3"]` также **OUTPUT**.
+- Все реальные физические номера 1–16 имеются. Но на printed clean SVG короткие подписи не соблюдены: **`FEEDBACK` (8 символов) и `OUTPUT CTRL` (11 символов)**. Верные отдельные редакторские aliases `FB` и `OC` **не должны уничтожать полные имена производителя** в физической модели.
+- Центральный `PWM` нарисован transform `matrix(0 1 -1 0 90.75 90.427)`, продвижение текста **сверху вниз** (SVG Y растёт вниз), пользователь требует **снизу вверх**, то есть отрицательное Y-направление.
+- Current #97 ELEKTRIK **уже имеет** datasheet-backed независимый TI full 16/16 model с INPUT для pin 3 и alias FB/OC; PAINT #93 имеет новый draft `TL494_PORTRAIT_V3` bottom-to-top и alias. Но исправленные owner libraries **не заменяют автоматически старую модель и маршрутизацию 23-позиционного e695**. Их независимое выполнение проверяется дополнительными P2 owner gates; декларацию PASS целого листа из standalone результата запрещено выводить.
+
+### 13.4. P3 — независимые 100%-масштабные геометрические измерения (не по пикселям)
+
+Авторитет источника — фактические координаты и stroke-width каждого из **91** `<line data-layer="wires">` в **чистом** SVG. Линии имеют точно **0,300 mm** толщины. Для соседних проводников разных Nets вычиталось полсуммы фактических толщин из расстояния осей. При **положительном совпадении проекций** обнаружено **5** соседних пар с просветом меньше **3 mm**:
+
+| Реальные line indices | Различные Net | Истинный просвет |
+|---|---|---:|
+| 56 / 72 | ERROR_INPUT / OSCILLATOR_CT | **0,70 mm** |
+| 28 / 71 | COMMON / OSCILLATOR_CT | **1,45 mm** |
+| 42 / 85 | CONTROL_REFERENCE / COMMON | **1,70 mm** |
+| 54 / 63 | SOFT_START / FEEDBACK | **1,70 mm** |
+| 27 / 62 | COMMON / FEEDBACK | **1,95 mm** |
+
+**Критическое дополнительное сближение R5/R6:** линии **51/67** и **52/68** Net SOFT_START против ADJUSTED_DIVIDER имеют реальные свободные концы с расстоянием между осями **1,0 mm**, а между штрихами **0,70 mm**. Это **не длинный параллельный участок**, поэтому независимый тест относит их к `NEAR_PARALLEL_ENDPOINTS`, а не искусственно выдаёт нормативную 3-mm ошибку. Для краевых значений реализованы отрицательные проверки **2,999 mm FAIL**, **3,000 mm PASS**, смещение **1 μm учитывается**, orthogonal X не создаёт новое Net.
+
+В чистом SVG **32 геометрических пересечения разных Net**; это печатная/трассировочная неоднозначность, но **не доказанное электрическое соединение без реальной точки**. Настоящая сверка `UGO line glyph ↔ external wire` выделяет **47 законных физических соединений к настоящим выводам**, **0 несанкционированных пересечений прямых штрихов УГО**, **0 проводов через внутреннюю часть DA1**. Тем не менее фактические метрические `data-ink-um` из OpenGost выявляют **4 незаконных пересечения печатного текста**:
+- line **78** Net OSCILLATOR_RT пересекает номера DA1 **«2», «4», «6»**;
+- line **86** Net COMMON пересекает позиционное обозначение **«DA1»**.
+Измерено **34** актуальных glyph ink AABB. Для **9 криволинейных/дуговых** примитивов полный line-only проверяющий не вправе объявлять нормативный 1:1 PASS — явно `BLOCKED`.
+
+Лист имеет **679,3 × 220,051 mm**, `viewBox="-194.15 9.1 679.3 220.051"`. Не помещается в A3 420×297 и даже в A2 landscape 594×420. При 640px fit normal 0,3mm stroke даёт лишь **0,283px** на экране. Метка `a` не выведена как отдельный видимый символ (`0`), метка `b` выведена дважды диаметром окружности **1,3 mm ≈ 1,22px** при полном обзоре 640px.
+
+**Следствие: FAIL P3.** Нельзя считать `layout.valid=True` достаточным доказательством соблюдения расстояний по ГОСТ или читаемости.
+
+### 13.5. P4/P5 — настоящие изображения и CI
+
+Новый runner заново запускает реальный код `examples.tl494_named_photo_sheet.generate(...)` на 23 компонентах, без рисования новой схемы вручную. Из исходных SVG строятся настоящие **чистый и диагностический PNG 300 DPI** при масштабе **1:1 физического миллиметра**, с фактической DPI metadata; явно проверяется отсутствие зелёных пикселей в clean и наличие всех **16** физических зелёных editor targets в diagnostic. Создаются увеличения **DA1_TL494, R5_R6, VD1, VT1**, а также HTML сравнения, честно помечающий исходное фото отсутствующим. **Исходная фото vs SVG пиксельная приёмка остаётся BLOCKED, подмена синтетическим изображением запрещена**.
+
+Инварианты PR #99 Cycle7, включая прежний красный PWM_CONTROLLER D4, сохранены. Никаких xfail, исключений у опасных сближений или выключенных проверок. Вывод в два независимых workflow на Python **3.12/3.13**. Операционный source-файл: `scripts/qa_tl494_current_reference.py`; workflow: `.github/workflows/qa92-tl494-native-reference.yml`. GitHub Actions: [воспроизведённый первый полный P0/P1/P2/P3/P4 результат 43607252804](https://github.com/Tridgi/gost-schematic/actions/runs/43607252804), [проверка визуальных физических ink 43608070846](https://github.com/Tridgi/gost-schematic/actions/runs/43608070846), последние повторные запускаются на новых SHA owners.
+
+### 13.6. Итоговая release матрица
+
+| Gate | Результат |
+|---|---|
+| P0 real source 23 / 15 / 16 / 91, истинная topology | **PASS** |
+| P1 реальные физические контакты, тип УГО, 48 D4 | **PASS DRAFT; GOST 1:1 BLOCKED** |
+| P2 исходный TI physical FEEDBACK, 6-символьные aliases, PWM снизу вверх | **FAIL** |
+| P2 самостоятельные fixes current PAINT/IC owners | **SEPARATE OWNER DRAFT; source integration NOT DONE** |
+| P3 5 параллельных просветов, 2 опасных R5/R6, 32 перекрестия, 4 text ink | **FAIL** |
+| P3 реальный 0,3mm stroke, 47 законных pin joins, DA1 body no crossings | **PASS WITHIN THESE BOUNDS** |
+| P3 кривые 1:1 / GOST glyph overlay | **BLOCKED** |
+| P4 real clean/diagnostic raster + 4 реальных crop PNG | **PASS** |
+| P4 pixelwise user source photograph comparison | **BLOCKED — no original photo file** |
+| P5 полная схема release | **NO-GO / KEEP PR #99 Draft** |
+
+Общая интеграция и main/production других агентов не модифицировались; merge не проводился.
