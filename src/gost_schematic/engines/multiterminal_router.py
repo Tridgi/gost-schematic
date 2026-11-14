@@ -87,6 +87,8 @@ class GlobalRoutePreview:
     net_trees: tuple[NetTreePreview, ...]
     diagnostics: tuple[str, ...]
     drc: RouteDRCReport | None
+    routing_strategy: str = "SOURCE_FUNCTIONAL"
+    route_order_trials: tuple[tuple[str, int, int], ...] = ()
 
     @property
     def complete(self) -> bool:
@@ -123,6 +125,12 @@ class GlobalRoutePreview:
             "diagnostics": list(self.diagnostics),
             "drc": self.drc.as_dict() if self.drc else None,
             "blocked_release": not self.print_pass,
+            "routing_strategy": self.routing_strategy,
+            "route_order_trials": [
+                {"strategy": name, "complete_nets": count,
+                 "drc_errors": errors}
+                for name, count, errors in self.route_order_trials
+            ],
             "not_gost_approved": True,
         }
 
@@ -871,4 +879,81 @@ def route_circuit_net_trees(
         diagnostics.append("ROUTE_POST_GLOBAL_DRC_FAIL")
     return GlobalRoutePreview(
         circuit, graph, tuple(tree_results), tuple(diagnostics), full_drc,
+    )
+
+
+def route_circuit_with_order_fallback(
+    circuit: Circuit,
+    parts: dict[str, PartDefinition],
+    symbols: dict[str, SymbolDefinition],
+    *,
+    page_box: Box,
+    annotation_placements: tuple = (),
+    stroke_um: int = 300,
+    search_node_cap: int = 25000,
+    max_detour_ratio: float = 3.0,
+    max_order_restarts: int = 2,
+    try_priorities: int = 3,
+) -> GlobalRoutePreview:
+    """Search independent functional route-order permutations without rewiring.
+
+    Every attempt constructs its graph from EMPTY on the SAME Circuit source;
+    a successful early Net cannot be substituted with a mismatched Net from
+    another attempt. Deterministic ranking prefers more complete Nets, then
+    fewer post-route DRC errors, fewer crossings/bends and shorter length.
+    A partial graph always remains BLOCKED, even if geometric DRC is clean.
+    """
+    if type(try_priorities) is not int or not 1 <= try_priorities <= 3:
+        raise ValueError("ROUTE_INVALID_FUNCTIONAL_ORDER_TRIAL_COUNT")
+    original = SOURCE_TL494_ROUTE_PRIORITY
+    orders = (
+        ("SOURCE_FUNCTIONAL", original),
+        ("COMMON_FIRST", ("COMMON", *(p for p in original if p != "COMMON"))),
+        ("POWER_THEN_COMMON", (
+            "INPUT_POS", "SWITCH", "COMMON",
+            *(p for p in original if p not in
+              {"INPUT_POS", "SWITCH", "COMMON"}),
+        )),
+    )[:try_priorities]
+    history: list[tuple[str, int, int]] = []
+    candidate_results: list[tuple[str, GlobalRoutePreview]] = []
+    for strategy, priority in orders:
+        preview = route_circuit_net_trees(
+            circuit, parts, symbols,
+            page_box=page_box, priority=priority,
+            annotation_placements=annotation_placements,
+            stroke_um=stroke_um, search_node_cap=search_node_cap,
+            max_detour_ratio=max_detour_ratio,
+            stop_on_first_failure=False,
+            max_order_restarts=max_order_restarts,
+        )
+        accepted = sum(tree.complete for tree in preview.net_trees)
+        errors = (
+            sum(f.severity == "error" for f in preview.drc.findings)
+            if preview.drc is not None else 1
+        )
+        history.append((strategy, accepted, errors))
+        candidate_results.append((strategy, preview))
+        if preview.print_pass:
+            break
+
+    def ranking(item: tuple[str, GlobalRoutePreview]) -> tuple:
+        _, draft = item
+        completed = sum(t.complete for t in draft.net_trees)
+        errors = (
+            sum(f.severity == "error" for f in draft.drc.findings)
+            if draft.drc is not None else 1
+        )
+        lengths = sum(t.length_um for t in draft.net_trees)
+        bends = sum(t.bend_count for t in draft.net_trees)
+        crossings = sum(t.crossing_count for t in draft.net_trees)
+        return (
+            -int(draft.print_pass), -completed, errors,
+            crossings, bends, lengths,
+        )
+
+    chosen_strategy, chosen = min(candidate_results, key=ranking)
+    return replace(
+        chosen, routing_strategy=chosen_strategy,
+        route_order_trials=tuple(history),
     )
