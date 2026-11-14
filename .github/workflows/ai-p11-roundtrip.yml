@@ -6,6 +6,7 @@ on:
       - "src/gost_schematic/agent_project/**"
       - "src/gost_schematic/mcp_server/**"
       - "examples/agent_project_p11.py"
+      - "examples/agent_project_p11_mcp.py"
       - "tests/agent_project/**"
       - ".github/workflows/ai-p11-roundtrip.yml"
   workflow_dispatch:
@@ -60,6 +61,29 @@ jobs:
           print("PNG:", evidence["overview_image"]["png_sha256"])
           print("SVG:", evidence["overview_image"]["view_svg_sha256"])
           PY
+      - name: Construct real E3 with Python, then read it using native MCP ClientSession
+        shell: bash
+        run: |
+          python -m examples.agent_project_p11_mcp \
+            --workspace output/agent-p11-mcp-smoke \
+            --project-id "b9fa7db5-539a-42bb-bf7f-ce35a9bd884b" \
+            --idempotency-key "e7f8d1d2-579f-4221-bfc3-fba8fc055574" \
+            > output/p11-mcp-evidence.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          proof = json.loads(Path("output/p11-mcp-evidence.json").read_text())
+          actual = proof["actual_mcp_client"]
+          assert proof["codex_cli_used"] is False
+          assert actual["transport"] == "real MCP stdio ClientSession"
+          assert actual["physical_model_matches_python_api"]
+          assert actual["diagnostics_match_cold_reopen"]
+          assert actual["mcp_mutations_exposed"] == []
+          assert len(actual["read_tools_verified"]) == 6
+          print("MCP read-only saved E3 proven:", actual["project_revision"])
+          print("PNG:", actual["project_mcp_png_sha256"])
+          print("SVG:", actual["project_mcp_svg_sha256"])
+          PY
       - name: Upload real engineering project and native image evidence
         uses: actions/upload-artifact@v4
         with:
@@ -68,5 +92,8 @@ jobs:
             output/p11-evidence.json
             output/agent-p11-smoke/projects/
             output/agent-p11-smoke/artifacts/
+            output/p11-mcp-evidence.json
+            output/agent-p11-mcp-smoke/projects/
+            output/agent-p11-mcp-smoke/artifacts/
           if-no-files-found: error
           retention-days: 30
