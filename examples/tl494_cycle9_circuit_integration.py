@@ -59,7 +59,7 @@ def load_frozen_source(path: Path = FROZEN_FIXTURE) -> dict:
     data = path.read_bytes()
     # Git's immutable blob ID, pinned OUTSIDE the fixture itself. Reject
     # changed same-count/same-Net-count source, not merely missing items.
-    header = b"blob " + str(len(data)).encode("ascii") + b"\\0"
+    header = b"blob " + str(len(data)).encode("ascii") + bytes((0,))
     if hashlib.sha1(header + data).hexdigest() != FROZEN_FIXTURE_GIT_BLOB_SHA1:
         raise ValueError("TL494_FROZEN_PHOTO_FIXTURE_BYTES_CHANGED")
     value = json.loads(data.decode("utf-8"))
