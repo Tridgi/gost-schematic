@@ -502,6 +502,7 @@ def render_resolved_ic(
     _vertical_internal: bool = False,
     editor_targets: tuple[object, ...] = (),
     editor_overlay: bool = False,
+    power_profile: object | None = None,
 ) -> IcRendered:
     """Fail closed if authoritative pin positions differ from the geometry.
 
@@ -510,6 +511,19 @@ def render_resolved_ic(
     from gost_schematic.rendering.ic_hotspots import verify_ic_connection_targets
 
     targets = verify_ic_connection_targets(unit.pins, editor_targets)
+    power_audit = None
+    if power_profile is not None:
+        from gost_schematic.rendering.ic_power_profiles import (
+            IcPowerLayout,
+            verify_ic_power_profile,
+        )
+
+        power_audit = verify_ic_power_profile(unit, power_profile)
+        if power_audit.layout is IcPowerLayout.COMMON_CONTROL_BLOCK:
+            raise ValueError(
+                "IC_POWER_CONTROL_OUTLINE_SOURCE_REQUIRED: "
+                "source-authored fig6a contour is not an ordinary IC box"
+            )
     if editor_overlay and not targets:
         raise ValueError("IC_EDITOR_OVERLAY_REQUIRES_EXPLICIT_TARGET_METADATA")
     if unit.orientation is IcOrientation.TOP_BOTTOM:
@@ -541,6 +555,20 @@ def render_resolved_ic(
             _vertical_internal=True,
             editor_targets=editor_targets, editor_overlay=editor_overlay,
         )
+        # The input has already been source-verified. The private rotated
+        # canonical view may have different local physical power-pin sides;
+        # never try to reclassify electrical PinRefs inside that view.
+        if power_audit is not None:
+            from xml.etree import ElementTree as _ET
+
+            root = _ET.fromstring(result.svg)
+            root.set("data-power-layout", power_audit.layout.value)
+            root.set("data-power-normative", power_audit.normative_status)
+            return replace(
+                result,
+                proposed=vertical_proposal(canon),
+                svg=_ET.tostring(root, encoding="unicode") + "\n",
+            )
         return replace(result, proposed=vertical_proposal(canon))
     proposed = propose_ic_dimensions(
         unit.content, unit.pins, style, measurer, policy,
@@ -886,6 +914,13 @@ def render_resolved_ic(
     })
     if unit.typography_profile is not IcTypographyProfile.LEGACY_V1:
         svg.set("data-typography-profile", unit.typography_profile.value)
+    if power_audit is not None:
+        svg.set("data-power-layout", power_audit.layout.value)
+        svg.set("data-power-normative", power_audit.normative_status)
+        svg.set("data-power-pinrefs", ",".join(
+            f"{ref.reference}.{ref.number}"
+            for ref in power_audit.physical_pinrefs
+        ))
     if (unit.function_rotation == 90 and not _vertical_internal):
         svg.set("data-function-rotation-deg", "90")
     ET.SubElement(svg, S + "title").text = (
