@@ -18,6 +18,10 @@ from gost_schematic.agent_project.design_assistant import (
     tl494_alias,
     tl494_profile,
 )
+from gost_schematic.agent_project.design_selection import (
+    require_api_version,
+    select_physical_part,
+)
 from gost_schematic.agent_project.read_access import ReadOnlyProjectAccess
 
 
@@ -82,13 +86,16 @@ def register_saved_project_tools(
         return _safe_read(work)
 
     @mcp.tool(annotations=read_only)
-    def schematic_catalog_search(semantic_query: str) -> dict[str, Any]:
+    def schematic_catalog_search(
+        semantic_query: str, api_version: int = 1,
+    ) -> dict[str, Any]:
         """Return EXACT installed variants, their physical pins, status and guards.
 
         A broad query returns multiple alternatives and never chooses a
         default capacitor/coil/transistor on the agent's behalf.
         """
         def work() -> dict[str, Any]:
+            require_api_version(api_version)
             result = catalog_search(CatalogResolver(), semantic_query)
             if len(json.dumps(result, ensure_ascii=False).encode("utf-8")) > 700_000:
                 raise ProjectError("CATALOG_RESULT_TOO_LARGE", "Catalog cards exceed read budget")
@@ -96,9 +103,12 @@ def register_saved_project_tools(
         return _safe_read(work)
 
     @mcp.tool(annotations=read_only)
-    def schematic_catalog_preview(part_id: str) -> list[ImageContent | TextContent]:
+    def schematic_catalog_preview(
+        part_id: str, api_version: int = 1,
+    ) -> list[ImageContent | TextContent]:
         """Render genuine installed UGO SVG/PNG sample; never fabricate glyph ink."""
         def work() -> list[ImageContent | TextContent]:
+            require_api_version(api_version)
             svg, png, metadata = catalog_preview(CatalogResolver(), part_id)
             return [
                 ImageContent(type="image", mimeType="image/png",
@@ -111,9 +121,25 @@ def register_saved_project_tools(
         return _safe_read(work)
 
     @mcp.tool(annotations=read_only)
-    def schematic_tl494_selection_profile() -> dict[str, Any]:
+    def schematic_catalog_select(
+        part_id: str, part_sha256: str, symbol_sha256: str,
+        api_version: int = 1,
+    ) -> dict[str, Any]:
+        """Explicit typed resolution of *both* physical part and symbol SHA locks."""
+        def work() -> dict[str, Any]:
+            return select_physical_part(
+                CatalogResolver(), part_id, part_sha256=part_sha256,
+                symbol_sha256=symbol_sha256, api_version=api_version,
+            )
+        return _safe_read(work)
+
+    @mcp.tool(annotations=read_only)
+    def schematic_tl494_selection_profile(api_version: int = 1) -> dict[str, Any]:
         """Exact Issue #107 BOM-to-UGO matrix; DRAFT and missing IC are explicit."""
-        return _safe_read(lambda: tl494_profile(CatalogResolver()))
+        def work() -> dict[str, Any]:
+            require_api_version(api_version)
+            return tl494_profile(CatalogResolver())
+        return _safe_read(work)
 
     @mcp.tool(annotations=read_only)
     def schematic_tl494_pin_alias(full_name: str) -> dict[str, Any]:
@@ -123,18 +149,40 @@ def register_saved_project_tools(
     @mcp.tool(annotations=read_only)
     def schematic_preflight_project(
         project_id: str, revision: str, profile: str = "none",
+        api_version: int = 1,
     ) -> dict[str, Any]:
         """Inspect immutable E3 physical topology and a *partial* print DRC.
 
         A printer-ready approval is never inferred from ERC+wire rules.
         """
         def work() -> dict[str, Any]:
+            require_api_version(api_version)
             scope = ReadOnlyProjectAccess.from_environment()
             scope.require(project_id)
             report = scope.service.preflight_design(project_id, revision, profile=profile)
             if len(json.dumps(report, ensure_ascii=False).encode("utf-8")) > 700_000:
                 raise ProjectError("PREFLIGHT_TOO_LARGE", "Preflight report exceeds MCP read budget")
             return report
+        return _safe_read(work)
+
+    @mcp.tool(annotations=read_only)
+    def schematic_preview_placement(
+        project_id: str, revision: str, reference: str,
+        x_um: int, y_um: int, rotation: int = 0,
+        mirror_x: bool = False, api_version: int = 1,
+    ) -> dict[str, Any]:
+        """Read-only hypothetical existing-instance move, deny connected relocation."""
+        def work() -> dict[str, Any]:
+            require_api_version(api_version)
+            scope = ReadOnlyProjectAccess.from_environment()
+            scope.require(project_id)
+            result = scope.service.preview_placement(
+                project_id, revision, reference=reference, x_um=x_um, y_um=y_um,
+                rotation=rotation, mirror_x=mirror_x, api_version=api_version,
+            )
+            if len(json.dumps(result, ensure_ascii=False).encode("utf-8")) > 700_000:
+                raise ProjectError("PREFLIGHT_TOO_LARGE", "Candidate diagnostic too large")
+            return result
         return _safe_read(work)
 
     @mcp.tool(annotations=read_only)
