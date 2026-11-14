@@ -4,15 +4,22 @@ This module has NO import-time dependency on unmerged PR #97. Calls require
 the real typed implementation to be present in the runtime; fake source
 Points, raw dicts and unverified PinRef/net inference are forbidden.
 """
+from dataclasses import replace
+
 from gost_schematic.model.circuit import Circuit, PinRef
 from gost_schematic.rendering.ic_hotspots import IcConnectionTarget
-from gost_schematic.rendering.ic_rectangular import render_resolved_ic
+from gost_schematic.rendering.ic_rectangular import (
+    IcTypographyProfile,
+    render_resolved_ic,
+)
 
 
 def render_verified_ic_paint_binding(
     binding, style, measurer, *, circuit: Circuit | None = None,
     review_overlay: bool = False, glyph_detail: bool = False,
     editor_overlay: bool = False,
+    typography_profile: IcTypographyProfile | None = None,
+    function_rotation: int | None = None,
 ):
     """Render actual resolved PinRef endpoints, with NO model revision edits.
 
@@ -33,6 +40,9 @@ def render_verified_ic_paint_binding(
         ) from exc
     if not isinstance(binding, IcPaintBinding):
         raise TypeError("IC_VERIFIED_ELECTRICAL_BINDING_REQUIRED")
+    if (typography_profile is not None
+            and not isinstance(typography_profile, IcTypographyProfile)):
+        raise TypeError("IC_TYPOGRAPHY_PROFILE_TYPED_REQUIRED")
     binding.verify_endpoints()
     record = binding.record
     resolved_before = resolve_ic_pin_positions(
@@ -75,8 +85,20 @@ def render_verified_ic_paint_binding(
                 net_id=net_for_pin.get(physical),
                 reason="NC" if nc else None,
             ))
+        # A presentation-only choice. Neither ELEKTRIK's IcSymbolSpec nor
+        # resolved PinRef->Point is altered. If an existing authoritative
+        # body cannot fit the word, PAINT fails and ELEKTRIK must issue a
+        # new explicitly validated model geometry revision.
+        presentation = (
+            view.select_typography_profile(typography_profile)
+            if typography_profile is not None else view
+        )
+        if function_rotation is not None:
+            presentation = replace(
+                presentation, function_rotation=function_rotation,
+            )
         outputs.append(render_resolved_ic(
-            view, style, measurer,
+            presentation, style, measurer,
             review_overlay=review_overlay,
             glyph_detail=glyph_detail,
             editor_targets=tuple(targets),
