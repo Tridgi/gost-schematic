@@ -45,3 +45,33 @@ def test_perpendicular_ungrounded_cross_has_zero_stroke_gap_not_a_net():
     assert _segment_gap(horizontal, vertical) < 0
     # Geometry reports an ink crossing. It MUST NEVER infer circuit Net
     # equality or a physical junction without typed electrical authority.
+
+
+@pytest.mark.parametrize("a,b,expected", (
+    (
+        ((55., 143.25), (42., 143.25), .3),
+        ((-77., 141.), (53., 141.), .3), 1.95,
+    ),
+    (
+        ((55., 150.75), (42., 150.75), .3),
+        ((-40., 149.), (46., 149.), .3), 1.45,
+    ),
+    (
+        ((140., 86.), (140., 113.25), .3),
+        ((138., 120.75), (138., 82.), .3), 1.7,
+    ),
+    (
+        ((51., 105.75), (51., 117.), .3),
+        ((53., 141.), (53., 113.25), .3), 1.7,
+    ),
+    (
+        ((45., 125.), (45., 98.25), .3),
+        ((46., 149.), (46., 120.75), .3), .7,
+    ),
+))
+def test_original_tl494_all_five_short_long_overlap_cases(a, b, expected):
+    # Real source wire pair endpoints with 0.3mm half-thickness accounted.
+    # Prior endpoint-only nearest-segment approach missed three out of five.
+    assert _parallel(a, b)
+    assert _segment_gap(a, b) == pytest.approx(expected)
+    assert _segment_gap(a, b) < 3.0
