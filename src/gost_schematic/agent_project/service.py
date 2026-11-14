@@ -76,6 +76,53 @@ class ProjectService:
         snapshot = self.open_project(project_id, revision)
         return self._report(snapshot.project, snapshot.head.generation)
 
+    @staticmethod
+    def _summary(snapshot: ProjectSnapshot) -> dict[str, Any]:
+        project = snapshot.project
+        return {
+            "schema_version": 1,
+            "project_kind": "E3",
+            "project_id": project.project_id,
+            "project_revision": project.revision,
+            "head_revision": snapshot.head.revision,
+            "generation": snapshot.head.generation,
+            "title": project.title,
+            "component_count": len(project.circuit.components),
+            "net_count": len(project.circuit.nets),
+            "wire_segment_count": len(project.graph.segments),
+            "junction_count": len(project.graph.junctions),
+            "catalog_part_count": len(project.catalog_lock),
+            "read_only": True,
+        }
+
+    def open_project_info(self, project_id: str,
+                          revision: str | None = None) -> dict[str, Any]:
+        """Typed summary; actual model is loaded and independently validated."""
+        return self._summary(self.open_project(project_id, revision))
+
+    def list_projects(self, project_ids: tuple[str, ...]) -> dict[str, Any]:
+        """Discover ONLY operator-allowed UUIDs, never scan workspace files."""
+        if not isinstance(project_ids, tuple) or len(project_ids) > 32:
+            raise ProjectError("PROJECT_ACCESS_DENIED", "Invalid bounded project scope")
+        projects: list[dict[str, Any]] = []
+        for project_id in sorted(set(project_ids)):
+            try:
+                projects.append(self.open_project_info(project_id))
+            except ProjectError as exc:
+                if exc.code != "PROJECT_NOT_FOUND":
+                    raise
+        return {"schema_version": 1, "project_kind": "E3",
+                "read_only": True, "count": len(projects), "projects": projects}
+
+    def describe_project(self, project_id: str,
+                         revision: str | None = None) -> dict[str, Any]:
+        """Exact original model, physical contacts, actual net/wire geometry."""
+        from .evidence import model_manifest
+
+        snapshot = self.open_project(project_id, revision)
+        manifest = model_manifest(snapshot.project, self.catalog)
+        return {**self._summary(snapshot), "model": manifest}
+
     def render_project(
         self, project_id: str, revision: str, *, mode: str = "clean",
         reference: str | None = None, target_dpi: int = 500,
