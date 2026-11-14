@@ -212,7 +212,6 @@ def test_real_paint_cannot_spoof_ti_metadata_with_correct_geometry(
     index = next(
         i for i, pin in enumerate(view.pins) if pin.number == "3"
     )
-    pin = view.pins[index]
     corrupted = {
         "label": "FB",
         "display_alias": "FEEDBACK",
