@@ -986,3 +986,39 @@ def test_power_profile_rejects_duplicate_and_non_power_physical_pinrefs():
                 IcPowerLayout.SIDE_PINS, (PinRef("DD1", "1"),), "DD1",
             ),
         )
+
+
+def test_editor_overlay_rejects_foreign_component_even_same_number_and_point():
+    from gost_schematic.model.circuit import PinRef
+    from gost_schematic.rendering.ic_hotspots import IcConnectionTarget
+
+    unit, _ = specimen(8)
+    physical = unit.pins[0]
+    forged = IcConnectionTarget(
+        physical.pin_id, PinRef("NOT_DD1", physical.number),
+        physical.anchor, True, "FORGED_NET",
+    )
+    with pytest.raises(ValueError, match="IC_EDITOR_PINREF_COMPONENT_MISMATCH"):
+        render_resolved_ic(
+            unit, STYLE, FixedInk(), editor_targets=(forged,),
+            editor_overlay=True,
+        )
+
+
+def test_editor_split_unit_reference_keeps_real_source_pinref():
+    from gost_schematic.model.circuit import PinRef
+    from gost_schematic.rendering.ic_hotspots import IcConnectionTarget
+
+    unit, _ = specimen(8)
+    view = replace(unit, reference="DD1.1")
+    actual = unit.pins[0]
+    valid = IcConnectionTarget(
+        actual.pin_id, PinRef("DD1", actual.number),
+        actual.anchor, True, "SRC_SIGNAL",
+    )
+    rendered = render_resolved_ic(
+        view, STYLE, FixedInk(), editor_targets=(valid,),
+        editor_overlay=True,
+    )
+    assert 'data-pin-ref="DD1.1"' in rendered.svg
+    assert rendered.connection_targets == (valid,)
