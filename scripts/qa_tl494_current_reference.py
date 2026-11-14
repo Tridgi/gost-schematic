@@ -27,8 +27,8 @@ from gost_schematic.model.circuit import PinRef
 
 NS = "{http://www.w3.org/2000/svg}"
 SOURCE_SHA = "e695c415fdced164b0e0c39c5249d030795a0aa6"
-OWNER_PAINT_SHA = "ca3ab815fa5d79756a7f34f06520f760fcb8674d"
-OWNER_ELEKTRIK_SHA = "a9a03b247811019538b731563a32991b30f8c4a2"
+OWNER_PAINT_SHA = "544dbb35f5b8d5a1465269a34271d806653eea96"
+OWNER_ELEKTRIK_SHA = "b28428d94218cac777a28897ce9176285d0fab0b"
 SOURCE_BLOBS = {
     "examples/tl494_named_photo_sheet.py":
         "990a1aca651f34dcae991575dddfa28b2acae813",
@@ -1114,6 +1114,85 @@ def current_full_native_23_owner_sheet(font, destination):
     }
 
 
+
+def current_full_native_d4_owner_sheet(font, destination):
+    """Eight REAL full Circuit D4 poses, original 15 Net authority unchanged."""
+    from examples.render_tl494_full_native_cycle9 import (
+        _render_variant,
+        construct_native_paint,
+        transformed_complete_scene,
+    )
+    from gost_schematic.rendering.ic_rectangular import IcFunctionReading
+
+    (source, graph, symbols, visible, _prior, style, measure,
+     policy, _pair, _record, _catalog) = construct_native_paint(font)
+    before = {c.reference: c.part_id for c in source.components}
+    source_pins = {p.number: p.anchor for p in visible.pins}
+    examined = []
+    for angle in (0, 90, 180, 270):
+        for mirror in (False, True):
+            rotation = Transform(angle, mirror)
+            rotated, route, unit = transformed_complete_scene(
+                source, graph, visible, rotation,
+            )
+            check(rotated.nets == source.nets and
+                  {c.reference: c.part_id for c in rotated.components} ==
+                  before, "CURRENT_OWNER_D4_CHANGED_SOURCE_NET_OR_BOM")
+            check(len(rotated.components) == 23 and
+                  len(rotated.nets) == 15 and
+                  len(route.segments) == 91 and
+                  len(route.junctions) == 37,
+                  "CURRENT_OWNER_D4_CHANGED_PHYSICAL_INVENTORY")
+            check({p.number: p.anchor for p in unit.pins} == {
+                n: rotation.apply(pos) for n, pos in source_pins.items()
+            }, "CURRENT_OWNER_D4_CHANGED_16_TL494_PHYSICAL_TIPS")
+            for old, item in zip(graph.segments, route.segments, strict=True):
+                check(old.net_name == item.net_name and
+                      rotation.apply(old.start) == item.start and
+                      rotation.apply(old.end) == item.end,
+                      "CURRENT_OWNER_D4_SILENT_SOURCE_WIRE_MUTATION")
+            for old, item in zip(graph.junctions, route.junctions, strict=True):
+                check(rotation.apply(old) == item,
+                      "CURRENT_OWNER_D4_CHANGED_EXPLICIT_T_JUNCTION")
+            rendered, ink = _render_variant(
+                rotated, route, symbols, unit, style, measure, policy,
+                diagnostic=False,
+                reading=IcFunctionReading.BOTTOM_TO_TOP,
+            )
+            root = ET.fromstring(rendered.svg)
+            check(len(root.findall(
+                f"./{NS}g[@data-layer='symbols']"
+            )) == 23 and len(svg_lines(root)) == 91,
+                  "CURRENT_OWNER_D4_FULL_SHEET_INK_INVENTORY_LOST")
+            check(len(ink.pin_anchors) == 16 and dict(ink.pin_anchors) == {
+                p.pin_id: p.anchor for p in unit.pins
+            }, "CURRENT_OWNER_D4_REAL_PAINT_PHYSICAL_TIPS_DRIFT")
+            check(not root.findall(
+                f".//{NS}g[@data-layer='editor-connection-targets']"
+            ), "CURRENT_OWNER_D4_CLEAN_HAS_EDITOR_GREEN")
+            name = f"current_real_23_full_D4_{angle}_mirror{int(mirror)}"
+            (destination / (name + ".svg")).write_text(
+                rendered.svg, encoding="utf-8"
+            )
+            examined.append({
+                "rotation": angle,
+                "mirror": mirror,
+                "native_components": 23,
+                "physical_nets": 15,
+                "original_wires": 91,
+                "true_lead_tips": 16,
+                "original_net_delta": 0,
+                "svg": name + ".svg",
+            })
+    return {
+        "status": "PASS_DRAFT_ALL_8_FULL_NATIVE_SCENE_ISOMETRIES",
+        "original_wire_route_DRC": "FAIL_KNOWN_BAD_NOT_REROUTED",
+        "D4_scene_checks": examined,
+        "number_of_D4_orientations": 8,
+        "release": "NO_GO_UNTIL_INDEPENDENT_NEW_ROUTE_DRC",
+    }
+
+
 def write_report(args, results):
     summary = {
         "issue": 92, "epic": 107,
@@ -1228,6 +1307,10 @@ def main():
              ))
         gate("P2_REAL_FULL_NATIVE_OWNER_SHEET", lambda:
              current_full_native_23_owner_sheet(
+                 args.font_file, args.output_dir
+             ))
+        gate("P2_REAL_FULL_NATIVE_8_D4", lambda:
+             current_full_native_d4_owner_sheet(
                  args.font_file, args.output_dir
              ))
         gate("P2_TI_PIN_ALIASES_AND_PWM", lambda: ic_gate(typed, svg))
