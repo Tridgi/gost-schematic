@@ -1012,7 +1012,7 @@
         "url": "https://docs.guap.ru/regdocs/stands/gost_2-723-68_ver-2010.pdf"
       },
       "source_clauses": "§5 table 1 positions 1 and 2а; §6 table 2 position 8",
-      "source_figure_url": "https://docs.guap.ru/regdocs/stands/gost_2-723-68_ver-2010.pdf#page=5",
+      "source_figure_url": "https://docs.guap.ru/regdocs/stands/gost_2-723-68_ver-2010.pdf#page=6",
       "source_printed_page_verified": true,
       "status_source_shape": "PASS",
       "status_full_1to1": "BLOCKED",
@@ -1041,7 +1041,12 @@
         "L1",
         "L2"
       ],
-      "pitch_mm_editorial": 4
+      "pitch_mm_editorial": 4,
+      "cycle9_page_correction": {
+        "previous_page": 5,
+        "verified_page": 6,
+        "evidence": "Direct PDF text position with visual table screenshot; page=1 is first PDF page, not printed standard page"
+      }
     },
     {
       "id": "choke.ferromagnetic",
@@ -1051,7 +1056,7 @@
         "url": "https://docs.guap.ru/regdocs/stands/gost_2-723-68_ver-2010.pdf"
       },
       "source_clauses": "§6 table 2 position 8",
-      "source_figure_url": "https://docs.guap.ru/regdocs/stands/gost_2-723-68_ver-2010.pdf#page=5",
+      "source_figure_url": "https://docs.guap.ru/regdocs/stands/gost_2-723-68_ver-2010.pdf#page=6",
       "source_printed_page_verified": true,
       "status_source_shape": "PASS",
       "status_full_1to1": "BLOCKED",
@@ -1075,7 +1080,12 @@
       "owner_line_width_mm": 0.3,
       "positive_test": "Solid core bar over coil as choke (source-specific variant)",
       "negative_test": "draw magnetodielectric dashed line or no core",
-      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED"
+      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED",
+      "cycle9_page_correction": {
+        "previous_page": 5,
+        "verified_page": 6,
+        "evidence": "Direct PDF text position with visual table screenshot; page=1 is first PDF page, not printed standard page"
+      }
     },
     {
       "id": "inductor.magnetodielectric",
@@ -1085,7 +1095,7 @@
         "url": "https://docs.guap.ru/regdocs/stands/gost_2-723-68_ver-2010.pdf"
       },
       "source_clauses": "§5 table 1 position 2в; §6 table 2 position 5",
-      "source_figure_url": "https://docs.guap.ru/regdocs/stands/gost_2-723-68_ver-2010.pdf#page=4",
+      "source_figure_url": "https://docs.guap.ru/regdocs/stands/gost_2-723-68_ver-2010.pdf#page=6",
       "source_printed_page_verified": true,
       "status_source_shape": "PASS",
       "status_full_1to1": "BLOCKED",
@@ -1109,7 +1119,12 @@
       "owner_line_width_mm": 0.3,
       "positive_test": "Magnetodielectric line is DASHED and must NOT be swapped for ferromagnetic solid",
       "negative_test": "use this for TL494 L1/L2 if photo has solid magnetic core",
-      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED"
+      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED",
+      "cycle9_page_correction": {
+        "previous_page": 4,
+        "verified_page": 6,
+        "evidence": "Direct PDF text position with visual table screenshot; page=1 is first PDF page, not printed standard page"
+      }
     },
     {
       "id": "net-marker.common",
@@ -1119,7 +1134,7 @@
         "url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf"
       },
       "source_clauses": "Table 6б position 1 versus a common named net",
-      "source_figure_url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf#page=10",
+      "source_figure_url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf#page=11",
       "source_printed_page_verified": true,
       "status_source_shape": "BLOCKED",
       "status_full_1to1": "BLOCKED",
@@ -1139,7 +1154,12 @@
       "editorial_marker_profile": true,
       "comparison_svg": "docs/standards/evidence/issue107-ground-marker-source-classes-draft.svg",
       "illustration_geometry_status": "EDITORIAL_NOT_CALIBRATED_SOURCE_MM",
-      "no_implicit_electrical_merge": true
+      "no_implicit_electrical_merge": true,
+      "cycle9_page_correction": {
+        "previous_page": 10,
+        "verified_page": 11,
+        "evidence": "Direct PDF text position with visual table screenshot; page=1 is first PDF page, not printed standard page"
+      }
     },
     {
       "id": "net-marker.earth",
@@ -1149,7 +1169,7 @@
         "url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf"
       },
       "source_clauses": "Table 6б position 1",
-      "source_figure_url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf#page=10",
+      "source_figure_url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf#page=11",
       "source_printed_page_verified": true,
       "status_source_shape": "PASS",
       "status_full_1to1": "BLOCKED",
@@ -1169,7 +1189,12 @@
       "editorial_marker_profile": true,
       "comparison_svg": "docs/standards/evidence/issue107-ground-marker-source-classes-draft.svg",
       "illustration_geometry_status": "EDITORIAL_NOT_CALIBRATED_SOURCE_MM",
-      "no_implicit_electrical_merge": true
+      "no_implicit_electrical_merge": true,
+      "cycle9_page_correction": {
+        "previous_page": 10,
+        "verified_page": 11,
+        "evidence": "Direct PDF text position with visual table screenshot; page=1 is first PDF page, not printed standard page"
+      }
     },
     {
       "id": "net-marker.protective_earth",
@@ -1179,7 +1204,7 @@
         "url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf"
       },
       "source_clauses": "Table 6б position 3",
-      "source_figure_url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf#page=10",
+      "source_figure_url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf#page=11",
       "source_printed_page_verified": true,
       "status_source_shape": "PASS",
       "status_full_1to1": "BLOCKED",
@@ -1199,7 +1224,12 @@
       "editorial_marker_profile": true,
       "comparison_svg": "docs/standards/evidence/issue107-ground-marker-source-classes-draft.svg",
       "illustration_geometry_status": "EDITORIAL_NOT_CALIBRATED_SOURCE_MM",
-      "no_implicit_electrical_merge": true
+      "no_implicit_electrical_merge": true,
+      "cycle9_page_correction": {
+        "previous_page": 10,
+        "verified_page": 11,
+        "evidence": "Direct PDF text position with visual table screenshot; page=1 is first PDF page, not printed standard page"
+      }
     },
     {
       "id": "net-marker.chassis",
@@ -1209,7 +1239,7 @@
         "url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf"
       },
       "source_clauses": "Table 6б position 4",
-      "source_figure_url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf#page=10",
+      "source_figure_url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf#page=11",
       "source_printed_page_verified": true,
       "status_source_shape": "PASS",
       "status_full_1to1": "BLOCKED",
@@ -1229,7 +1259,12 @@
       "editorial_marker_profile": true,
       "comparison_svg": "docs/standards/evidence/issue107-ground-marker-source-classes-draft.svg",
       "illustration_geometry_status": "EDITORIAL_NOT_CALIBRATED_SOURCE_MM",
-      "no_implicit_electrical_merge": true
+      "no_implicit_electrical_merge": true,
+      "cycle9_page_correction": {
+        "previous_page": 10,
+        "verified_page": 11,
+        "evidence": "Direct PDF text position with visual table screenshot; page=1 is first PDF page, not printed standard page"
+      }
     },
     {
       "id": "net-marker.equipotential",
@@ -1239,7 +1274,7 @@
         "url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf"
       },
       "source_clauses": "Table 6б position 5",
-      "source_figure_url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf#page=10",
+      "source_figure_url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf#page=11",
       "source_printed_page_verified": true,
       "status_source_shape": "PASS",
       "status_full_1to1": "BLOCKED",
@@ -1259,7 +1294,12 @@
       "editorial_marker_profile": true,
       "comparison_svg": "docs/standards/evidence/issue107-ground-marker-source-classes-draft.svg",
       "illustration_geometry_status": "EDITORIAL_NOT_CALIBRATED_SOURCE_MM",
-      "no_implicit_electrical_merge": true
+      "no_implicit_electrical_merge": true,
+      "cycle9_page_correction": {
+        "previous_page": 10,
+        "verified_page": 11,
+        "evidence": "Direct PDF text position with visual table screenshot; page=1 is first PDF page, not printed standard page"
+      }
     },
     {
       "id": "net-continuation.other-sheet",
@@ -1269,7 +1309,7 @@
         "url": "https://rosgosts.ru/file/gost/01/100/gost_2.701-2008.pdf"
       },
       "source_clauses": "ГОСТ 2.701 §5.5.3 and ГОСТ 2.721 table6в position 8",
-      "source_figure_url": "https://rosgosts.ru/file/gost/01/100/gost_2.701-2008.pdf#page=7",
+      "source_figure_url": "https://rosgosts.ru/file/gost/01/100/gost_2.701-2008.pdf#page=9",
       "source_printed_page_verified": true,
       "status_source_shape": "PASS",
       "status_full_1to1": "BLOCKED",
@@ -1286,7 +1326,12 @@
       "source_subject": "inter-sheet break without arrows according 2.701",
       "requires_existing_net": true,
       "marker_may_create_physical_part": false,
-      "editorial_marker_profile": true
+      "editorial_marker_profile": true,
+      "cycle9_page_correction": {
+        "previous_page": 7,
+        "verified_page": 9,
+        "evidence": "Direct PDF text position with visual table screenshot; page=1 is first PDF page, not printed standard page"
+      }
     },
     {
       "id": "net-continuation.same-sheet",
@@ -1296,7 +1341,7 @@
         "url": "https://rosgosts.ru/file/gost/01/100/gost_2.701-2008.pdf"
       },
       "source_clauses": "ГОСТ 2.701 §5.5.4 and ГОСТ 2.721 table6в position 8",
-      "source_figure_url": "https://rosgosts.ru/file/gost/01/100/gost_2.701-2008.pdf#page=7",
+      "source_figure_url": "https://rosgosts.ru/file/gost/01/100/gost_2.701-2008.pdf#page=10",
       "source_printed_page_verified": true,
       "status_source_shape": "PASS",
       "status_full_1to1": "BLOCKED",
@@ -1313,7 +1358,12 @@
       "source_subject": "same-sheet graphical interrupted wire",
       "requires_existing_net": true,
       "marker_may_create_physical_part": false,
-      "editorial_marker_profile": true
+      "editorial_marker_profile": true,
+      "cycle9_page_correction": {
+        "previous_page": 7,
+        "verified_page": 10,
+        "evidence": "Direct PDF text position with visual table screenshot; page=1 is first PDF page, not printed standard page"
+      }
     },
     {
       "id": "ic.TL494CN",
@@ -1370,7 +1420,7 @@
         "url": "https://rosgosts.ru/file/gost/01/100/gost_2.701-2008.pdf"
       },
       "source_clauses": "§5.3.4, §5.5.1, §5.5.2, §5.4",
-      "source_figure_url": "https://rosgosts.ru/file/gost/01/100/gost_2.701-2008.pdf#page=7",
+      "source_figure_url": "https://rosgosts.ru/file/gost/01/100/gost_2.701-2008.pdf#page=8",
       "source_printed_page_verified": true,
       "status_source_shape": "PASS",
       "status_full_1to1": "BLOCKED",
@@ -1395,7 +1445,12 @@
         "wire_stroke_min": 0.3,
         "wire_stroke_max": 0.4
       },
-      "tl494_wire_drc_real_run": "BLOCKED_NOT_YET_SOURCE_MEASURED"
+      "tl494_wire_drc_real_run": "BLOCKED_NOT_YET_SOURCE_MEASURED",
+      "cycle9_page_correction": {
+        "previous_page": 7,
+        "verified_page": 8,
+        "evidence": "Direct PDF text position with visual table screenshot; page=1 is first PDF page, not printed standard page"
+      }
     },
     {
       "id": "net-marker.noiseless",
@@ -1405,7 +1460,7 @@
         "url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf"
       },
       "source_clauses": "ГОСТ 2.721-74 таблица 6б позиция 2; бесшумное (чистое) заземление",
-      "source_figure_url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf#page=10",
+      "source_figure_url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf#page=11",
       "source_printed_page_verified": true,
       "status_source_shape": "PASS",
       "status_full_1to1": "BLOCKED",
@@ -1425,7 +1480,12 @@
       "editorial_marker_profile": true,
       "comparison_svg": "docs/standards/evidence/issue107-ground-marker-source-classes-draft.svg",
       "illustration_geometry_status": "EDITORIAL_NOT_CALIBRATED_SOURCE_MM",
-      "no_implicit_electrical_merge": true
+      "no_implicit_electrical_merge": true,
+      "cycle9_page_correction": {
+        "previous_page": 10,
+        "verified_page": 11,
+        "evidence": "Direct PDF text position with visual table screenshot; page=1 is first PDF page, not printed standard page"
+      }
     }
   ],
   "totals_source": {
@@ -1440,5 +1500,22 @@
     "schottky_d4": "docs/standards/evidence/issue107-schottky-d4-owner-1to1.svg",
     "twelve_current_ugos": "docs/standards/evidence/issue107-catalog-12-draft-source-gallery.svg",
     "source_link_copyright_policy": "Only source links to official PDFs; SVGs are separate explicitly editorial constructions."
+  },
+  "cycle9_independent_audit": {
+    "date": "2026-11-15",
+    "reviewer": "ESKD independent MAIN3",
+    "status": "DRAFT_SOURCE_SCOPED_NO_APPROVAL",
+    "reference_sha": "e695c415fdced164b0e0c39c5249d030795a0aa6",
+    "scope": "Fix #page links that previously pointed off the actual figure/clause. Printed page numbers differ from 1-based PDF anchors.",
+    "rules": {
+      "3mm": "ГОСТ 2.701-2008 §5.3.4: neighboring parallel interconnection strokes; requires overlapping projected length and true stroke ink edges, not every X/T",
+      "2mm": "ГОСТ 2.701-2008 §5.3.4: separate UGO minimum blank distance",
+      "1mm": "ГОСТ 2.701-2008 §5.3.4: neighboring lines of same UGO; not universal all-symbol-to-all-wire spacing",
+      "stroke": "ГОСТ 2.701-2008 §§5.4.3,5.5.1: UGO stroke equals interconnect, interconnect 0.2-1.0mm allowed, 0.3-0.4mm recommended",
+      "rotation": "ГОСТ 2.701-2008 §5.4.4 governs rotation of WHOLE UGO containing alphanumerics (counterclockwise 90 or 45 degrees); separate independent -90deg internal PWM remains BLOCKED, apply ГОСТ 2.743 §2.1.6 and 2.759 §1.8 orientation cases",
+      "font": "ГОСТ 2.304-81 table1 Type A h=2.5 or 3.5mm -> d=h/14; do not equate CSS font-size with measured glyph ink",
+      "fuse": "ГОСТ 2.727-68 §4, table3 pos2. Owner ID fuse.general SHA 6af105eb850211b0f86e5fc7df59da28719d2e76 is DRAFT; not part of original 22-card matrix; source figure print-size comparison BLOCKED"
+    },
+    "confidence": "Source location/wording verified from scanned standards; photometric symbol sign-off and production rendering not performed"
   }
 }
