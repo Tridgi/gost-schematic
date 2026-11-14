@@ -5,11 +5,12 @@ from xml.etree import ElementTree as ET
 import pytest
 from test_full_native_cycle9 import STYLE, FixedInk, fixture
 
-from gost_schematic.core.geometry import Point
+from gost_schematic.core.geometry import Box, Point
 from gost_schematic.model.part import PartDefinition
 from gost_schematic.model.pins import ElectricalType, PhysicalPin
 from gost_schematic.rendering.routed_native_sheet import (
     _is_real_branch,
+    _tl494_source_print_proof_blockers,
     render_routed_native_sheet,
 )
 from gost_schematic.validation.external_wire_checks import (
@@ -193,3 +194,34 @@ def test_real_three_arm_t_and_four_arm_x_are_genuine_junction_geometry():
     assert _is_real_branch((straight, branch), at)
     assert _is_real_branch((straight, crossing), at)
     assert not _is_real_branch((straight, straight), at)
+
+
+def test_real_23_15_62_never_claims_print_without_three_source_proofs():
+    blocked = _tl494_source_print_proof_blockers(
+        23, 15, 62,
+        route_preview=None, source_continuation_project=None,
+        physical_page_box=None,
+    )
+    assert set(blocked) == {
+        "TL494_NEW_ROUTER_OWNER_PROVENANCE_MISSING",
+        "A3_SOURCE_CONTINUATION_BINDING_UNRESOLVED",
+        "TL494_PHYSICAL_ONE_TO_ONE_PAGE_NOT_VERIFIED",
+    }
+    # A print page and owner proof do not establish the two nonphysical
+    # source-b addresses. They remain a separate typed integration contract.
+    assert _tl494_source_print_proof_blockers(
+        23, 15, 62,
+        route_preview=object(), source_continuation_project=None,
+        physical_page_box=Box(0, 0, 420000, 297000),
+    ) == ("A3_SOURCE_CONTINUATION_BINDING_UNRESOLVED",)
+
+
+@pytest.mark.parametrize("inventory", (
+    (1, 2, 4), (23, 15, 61), (23, 14, 62), (22, 15, 62),
+))
+def test_generic_or_incomplete_source_inventory_not_mislabeled_as_tl494(inventory):
+    assert not _tl494_source_print_proof_blockers(
+        *inventory,
+        route_preview=None, source_continuation_project=None,
+        physical_page_box=None,
+    )
