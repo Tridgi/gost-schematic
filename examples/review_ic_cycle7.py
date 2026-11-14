@@ -10,12 +10,14 @@ from dataclasses import replace
 from pathlib import Path
 
 from gost_schematic.core.geometry import SIDE_VECTORS, Box, Point, Side
+from gost_schematic.core.transforms import Transform
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
 from gost_schematic.rendering.ic_hotspots import IcConnectionTarget
 from gost_schematic.rendering.ic_rectangular import (
     IcFieldContent,
     IcOrientation,
+    IcTypographyProfile,
     IcRenderingPolicy,
     IcResolvedUnit,
     ResolvedIcPin,
@@ -296,6 +298,7 @@ def generate(folder: Path, font_file: Path):
         },
         "cases": {},
         "portrait_cases": {},
+        "d4_cases": {},
     }
     for count in (4, 8, 14, 40, 64):
         kind = "analog" if count == 8 else "digital"
@@ -445,6 +448,85 @@ def generate(folder: Path, font_file: Path):
                 "A3_landscape": "PASS_NO_RESCALE",
             }
         report["portrait_cases"][str(count)] = pair
+
+    # Long whole-word stress under ALL eight D4 poses. The accepted body
+    # is explicitly dimensioned once for BOTH typography angles before any
+    # resolved world terminals are declared. Nothing is moved on angle toggle.
+    for word in ("PWM_CONTROLLER", "КОНТРОЛЛЕР_ШИМ"):
+        for degrees in (0, 90, 180, 270):
+            for mirrored in (False, True):
+                source, _ = _fixture(8, "digital", style, measure)
+                content = replace(source.content, function=word)
+                required = propose_ic_dimensions(
+                    content, source.pins, style, measure, policy,
+                    function_rotation=90, shared_function_envelope=True,
+                )
+                upright_required = propose_ic_dimensions(
+                    content, source.pins, style, measure, policy,
+                    function_rotation=0, shared_function_envelope=True,
+                )
+                assert required == upright_required
+                pitch = required.row_pitch_um
+                width = required.width_um
+                height = max(required.height_um, width + pitch)
+                height = ((height + pitch - 1) // pitch) * pitch
+                pose = Transform(degrees, mirrored)
+                origin = Point(150000, 140000)
+                pins = []
+                for p in source.pins:
+                    frame = pose.apply(Point(
+                        0 if p.side is Side.LEFT else width,
+                        p.row * pitch + pitch // 2,
+                    )) + origin
+                    normal = SIDE_VECTORS[pose.side(p.side)]
+                    pins.append(replace(p, anchor=Point(
+                        frame.x + normal.x * required.lead_length_um,
+                        frame.y + normal.y * required.lead_length_um,
+                    )))
+                base = IcResolvedUnit(
+                    "DD1", Box(0, 0, width, height), tuple(pins),
+                    content, origin, pose,
+                )
+                portrait = base.select_typography_profile(
+                    IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT,
+                )
+                pair = {}
+                for angle in (90, 0):
+                    unit = replace(portrait, function_rotation=angle)
+                    stem = (
+                        f"d4-{word.replace('_', '-')}-{degrees}"
+                        f"-m{int(mirrored)}-function-{angle:02d}"
+                    )
+                    drawing, targets, circuit = _write_four_views(
+                        folder, stem, unit, style, measure, policy,
+                    )
+                    pair[str(angle)] = {
+                        "stem": stem,
+                        "function_text": word,
+                        "pose": [degrees, mirrored],
+                        "body_um": [
+                            unit.body.max_x, unit.body.max_y,
+                        ],
+                        "pin_anchors": {
+                            p.pin_id: [p.anchor.x, p.anchor.y]
+                            for p in unit.pins
+                        },
+                        "target_count": len(targets),
+                        "circuit_net_count": len(circuit.nets),
+                        "function_run_ink": [
+                            value for ink in drawing.ink
+                            if ink.kind == "function"
+                            for value in (
+                                ink.box.min_x, ink.box.min_y,
+                                ink.box.max_x, ink.box.max_y,
+                            )
+                        ],
+                    }
+                assert pair["90"]["body_um"] == pair["0"]["body_um"]
+                assert pair["90"]["pin_anchors"] == pair["0"]["pin_anchors"]
+                report["d4_cases"][
+                    f"{word}:{degrees}:m{int(mirrored)}"
+                ] = pair
 
     (folder / "ic-metric-audit.json").write_text(
         json.dumps(report, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
