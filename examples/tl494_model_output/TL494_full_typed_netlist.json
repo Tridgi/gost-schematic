@@ -1,0 +1,369 @@
+{
+  "elements": [
+    {
+      "nominal_si": "0.000220",
+      "part_id": "capacitor.electrolytic",
+      "ref": "C1"
+    },
+    {
+      "nominal_si": "0.000220",
+      "part_id": "capacitor.electrolytic",
+      "ref": "C2"
+    },
+    {
+      "nominal_si": "0.000047",
+      "part_id": "capacitor.electrolytic",
+      "ref": "C3"
+    },
+    {
+      "nominal_si": "0.001000",
+      "part_id": "capacitor.electrolytic",
+      "ref": "C5"
+    },
+    {
+      "nominal_si": "0.001000",
+      "part_id": "capacitor.electrolytic",
+      "ref": "C6"
+    },
+    {
+      "nominal_si": "1.0E-8",
+      "part_id": "capacitor.fixed",
+      "ref": "C4"
+    },
+    {
+      "nominal_si": "1E-9",
+      "part_id": "capacitor.fixed",
+      "ref": "C7"
+    },
+    {
+      "nominal_si": "1",
+      "part_id": "resistor.fixed",
+      "ref": "R1"
+    },
+    {
+      "nominal_si": "620",
+      "part_id": "resistor.fixed",
+      "ref": "R2"
+    },
+    {
+      "nominal_si": "10000",
+      "part_id": "resistor.fixed",
+      "ref": "R3"
+    },
+    {
+      "nominal_si": "6800.0",
+      "part_id": "resistor.fixed",
+      "ref": "R4"
+    },
+    {
+      "nominal_si": "1",
+      "part_id": "resistor.fixed",
+      "ref": "R6"
+    },
+    {
+      "nominal_si": "680000",
+      "part_id": "resistor.fixed",
+      "ref": "R7"
+    },
+    {
+      "nominal_si": "10",
+      "part_id": "resistor.fixed",
+      "ref": "R8"
+    },
+    {
+      "nominal_si": "1000",
+      "part_id": "resistor.variable",
+      "ref": "R5"
+    },
+    {
+      "nominal_si": null,
+      "part_id": "transistor.mosfet_n_enh",
+      "ref": "VT1"
+    },
+    {
+      "nominal_si": null,
+      "part_id": "diode.schottky",
+      "ref": "VD1"
+    },
+    {
+      "nominal_si": "0.000100",
+      "part_id": "inductor.air_core",
+      "ref": "L1"
+    },
+    {
+      "nominal_si": "0.000100",
+      "part_id": "inductor.air_core",
+      "ref": "L2"
+    },
+    {
+      "nominal_si": null,
+      "part_id": "fuse.general",
+      "ref": "FU1"
+    },
+    {
+      "nominal_si": null,
+      "part_id": "reference.connector.x1",
+      "ref": "X1"
+    },
+    {
+      "nominal_si": null,
+      "part_id": "reference.connector.x2",
+      "ref": "X2"
+    },
+    {
+      "nominal_si": null,
+      "part_id": "reference.tl494cn",
+      "ref": "DA1"
+    }
+  ],
+  "full_component_count": 23,
+  "native_erc_diagnostics": [
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol capacitor.electrolytic is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol capacitor.electrolytic is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol capacitor.electrolytic is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol capacitor.electrolytic is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol capacitor.electrolytic is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol capacitor.fixed is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol capacitor.fixed is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol resistor.fixed is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol resistor.fixed is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol resistor.fixed is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol resistor.fixed is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol resistor.fixed is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol resistor.fixed is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol resistor.fixed is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol resistor.variable is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol transistor.mosfet_n_enh is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol diode.schottky is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol inductor.air_core is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol inductor.air_core is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol fuse.general is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol reference.connector.x1 is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol reference.connector.x2 is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol reference.tl494cn is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "POLARITY_UNVERIFIABLE",
+      "message": "C1 (1:+ on SWITCH, 2:- on TRANSFER): Both terminals are connected, but no potentials were supplied",
+      "severity": "warning"
+    },
+    {
+      "code": "POLARITY_UNVERIFIABLE",
+      "message": "C2 (1:+ on SWITCH, 2:- on TRANSFER): Both terminals are connected, but no potentials were supplied",
+      "severity": "warning"
+    },
+    {
+      "code": "POLARITY_UNVERIFIABLE",
+      "message": "C3 (1:+ on CONTROL_REFERENCE, 2:- on SOFT_START): Both terminals are connected, but no potentials were supplied",
+      "severity": "warning"
+    },
+    {
+      "code": "POLARITY_UNVERIFIABLE",
+      "message": "C5 (1:+ on COMMON, 2:- on OUT_BEFORE_FUSE): Both terminals are connected, but no potentials were supplied",
+      "severity": "warning"
+    },
+    {
+      "code": "POLARITY_UNVERIFIABLE",
+      "message": "C6 (1:+ on COMMON, 2:- on OUT_BEFORE_FUSE): Both terminals are connected, but no potentials were supplied",
+      "severity": "warning"
+    }
+  ],
+  "net_count": 15,
+  "nets": {
+    "ADJUSTED_DIVIDER": [
+      "R4.2",
+      "R5.1",
+      "R5.3"
+    ],
+    "COMMON": [
+      "X1.2",
+      "X2.2",
+      "VT1.3",
+      "VD1.1",
+      "C5.1",
+      "C6.1",
+      "DA1.7",
+      "DA1.1",
+      "DA1.16",
+      "DA1.13",
+      "R6.2",
+      "R7.2",
+      "R8.2",
+      "C7.2"
+    ],
+    "CONTROL_REFERENCE": [
+      "DA1.14",
+      "DA1.15",
+      "R1.1",
+      "R2.1",
+      "C3.1"
+    ],
+    "ERROR_INPUT": [
+      "DA1.2",
+      "R2.2",
+      "R4.1",
+      "C4.1"
+    ],
+    "FEEDBACK": [
+      "R3.2",
+      "DA1.3"
+    ],
+    "GATE_DRIVE": [
+      "DA1.9",
+      "DA1.10",
+      "R8.1",
+      "VT1.1"
+    ],
+    "OSCILLATOR_CT": [
+      "C7.1",
+      "DA1.5"
+    ],
+    "OSCILLATOR_RT": [
+      "R7.1",
+      "DA1.6"
+    ],
+    "OUT_BEFORE_FUSE": [
+      "L2.2",
+      "FU1.1",
+      "C5.2",
+      "C6.2"
+    ],
+    "RC_CORRECTION": [
+      "C4.2",
+      "R3.1"
+    ],
+    "SOFT_START": [
+      "DA1.4",
+      "R1.2",
+      "C3.2",
+      "R6.1"
+    ],
+    "SWITCH": [
+      "L1.2",
+      "VT1.2",
+      "C1.1",
+      "C2.1"
+    ],
+    "TRANSFER": [
+      "C1.2",
+      "C2.2",
+      "VD1.2",
+      "L2.1"
+    ],
+    "a_INPUT_PLUS": [
+      "X1.1",
+      "L1.1",
+      "DA1.12",
+      "DA1.8",
+      "DA1.11"
+    ],
+    "b_NEGATIVE_OUTPUT": [
+      "FU1.2",
+      "X2.1",
+      "R5.2"
+    ]
+  },
+  "physical_pin_memberships": 62,
+  "physical_type_numbering": "TI TL494CN, IRFZ44N G/D/S 1/2/3, 1N5822 A/K",
+  "rendered_full_e3": false,
+  "routed": false,
+  "source_a_b_labels": "Interpreted a=input plus and b=negative output; confirm source semantics",
+  "source_photo_origin": "uploaded original 640x290",
+  "status": "PHOTO_TRACED_NATIVE_TYPED_MODEL_NOT_APPROVED",
+  "unverified_electrical_claims": [
+    "Control reference and R5 jumper still need source enlargement",
+    "R7=680kΩ and C7=1nF imply oscillator ≈1.47kHz by 1/(R*C), not ~100kHz listed in source BOM",
+    "Schematics show a/b labels; not separately validated net continuation"
+  ]
+}

@@ -1,0 +1,2 @@
+{"real_components": 23, "nets": 15, "duplicate_physical_pins": 0, "erc_errors": 0}
+TYPED_MODEL_EXIT_CODE=0
