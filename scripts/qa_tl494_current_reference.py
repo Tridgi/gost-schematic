@@ -23,7 +23,7 @@ from PIL import Image
 
 from gost_schematic.core.geometry import Point
 from gost_schematic.core.transforms import Transform
-from gost_schematic.model.circuit import ComponentInstance, PinRef
+from gost_schematic.model.circuit import PinRef
 
 NS = "{http://www.w3.org/2000/svg}"
 SOURCE_SHA = "e695c415fdced164b0e0c39c5249d030795a0aa6"
@@ -178,11 +178,14 @@ def provenance(args):
 
 def truth_circuit(font):
     from examples.tl494_full_native_model import (
-        MANUFACTURER_PIN_MAP, SPEC, TRACED_NETS, build,
+        MANUFACTURER_PIN_MAP,
+        SPEC,
+        TRACED_NETS,
+        build,
     )
     from examples.tl494_named_photo_sheet import compose_circuit, photo_nets
 
-    native, native_parts, native_symbols, seen = build()
+    native, _native_parts, _native_symbols, seen = build()
     (circuit, graph, parts, symbols, poses, unit, targets, style, measure,
      policy, inspection, continuation) = compose_circuit(font)
     check(len(native.components) == len(circuit.components) == len(SPEC) == 23,
@@ -222,7 +225,7 @@ def truth_circuit(font):
 
 
 def part_gate(ctx):
-    circuit, graph, parts, symbols, poses, *_ = ctx
+    circuit, _graph, parts, symbols, poses, *_ = ctx
     mapping = {c.reference: c for c in circuit.components}
     actual = {}
     for ref, expected in EXPECTED_SYMBOLS.items():
@@ -340,7 +343,7 @@ def ic_gate(ctx, root):
 
 
 def geometry_gate(ctx, svg):
-    circuit, graph, parts, symbols, poses, unit, *_ = ctx
+    circuit, graph, _parts, _symbols, _poses, _unit, *_ = ctx
     lines = svg_lines(svg)
     check(len(lines) == len(graph.segments) == 91, "TL494_SVG_WIRE_INVENTORY")
     for i, (line, original) in enumerate(zip(lines, graph.segments, strict=True)):
@@ -495,7 +498,7 @@ def visual_gate(ctx, clean_svg, debug_svg, args):
                 "green_pixels": n_green,
                 "sha256": hashlib.sha256(output.read_bytes()).hexdigest(),
             }
-    circuit, graph, parts, symbols, pose, unit, *_ = ctx
+    circuit, _graph, _parts, _symbols, _pose, unit, *_ = ctx
     byref = {c.reference: c for c in circuit.components}
     crops = {
         "DA1_TL494": [
