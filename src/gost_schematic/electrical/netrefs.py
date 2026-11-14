@@ -46,6 +46,14 @@ class ContinuationDirection(str, Enum):
     BIDIRECTIONAL = "bidirectional"
 
 
+class ContinuationAddressKind(str, Enum):
+    """Typed origin of a printed local address (NOT a net merge rule)."""
+    SHEET_ZONE = "sheet_zone"
+    ELEMENT_PIN = "element_pin"
+    DEVICE_CONTACT = "device_contact"
+    FUNCTIONAL_GROUP_CONTACT = "functional_group_contact"
+
+
 @dataclass(frozen=True, slots=True)
 class NetIdentity:
     """Stable project ID and exact physical members for ONE existing Circuit.Net."""
@@ -143,6 +151,30 @@ class ContinuationStub:
 
 
 @dataclass(frozen=True, slots=True)
+class ContinuationAddressBinding:
+    """v2 provenance for a local address; peer displays this reciprocal string.
+
+    SHEET_ZONE is editorial navigation. Other kinds require a real PinRef;
+    device/group owner membership also needs an external authoritative map.
+    """
+    endpoint_id: str
+    kind: ContinuationAddressKind
+    owner_ref: str
+    physical_pin: PinRef | None = None
+
+    def __post_init__(self) -> None:
+        _id(self.endpoint_id, "address binding endpoint")
+        _id(self.owner_ref, "address owner")
+        if not isinstance(self.kind, ContinuationAddressKind):
+            raise TypeError("Address kind must be typed")
+        if self.kind is ContinuationAddressKind.SHEET_ZONE:
+            if self.physical_pin is not None:
+                raise ValueError("Sheet/zone navigation cannot declare a physical pin")
+        elif not isinstance(self.physical_pin, PinRef):
+            raise TypeError("Physical address must cite an actual PinRef")
+
+
+@dataclass(frozen=True, slots=True)
 class NetContinuationProject:
     """A view overlay over an immutable existing Circuit; no new physical parts."""
     circuit: Circuit
@@ -152,18 +184,22 @@ class NetContinuationProject:
     pairs: tuple[ContinuationPair, ...]
     stubs: tuple[ContinuationStub, ...]
     schema_version: int = 1
+    address_bindings: tuple[ContinuationAddressBinding, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.circuit, Circuit):
             raise TypeError("Continuations require an existing Circuit")
-        if type(self.schema_version) is not int or self.schema_version != 1:
+        if type(self.schema_version) is not int or self.schema_version not in (1, 2):
             raise ValueError("Unsupported DRAFT continuation schema")
+        if self.schema_version == 1 and self.address_bindings:
+            raise ValueError("Address provenance requires explicit schema v2")
         for values, item_type, label in (
             (self.nets, NetIdentity, "NetIdentity"),
             (self.sheets, ContinuationSheet, "ContinuationSheet"),
             (self.endpoints, NetContinuationEndpoint, "NetContinuationEndpoint"),
             (self.pairs, ContinuationPair, "ContinuationPair"),
             (self.stubs, ContinuationStub, "ContinuationStub"),
+            (self.address_bindings, ContinuationAddressBinding, "ContinuationAddressBinding"),
         ):
             if not isinstance(values, tuple) or not all(
                 isinstance(item, item_type) for item in values
@@ -179,6 +215,9 @@ def validate_net_continuations(
     project: NetContinuationProject,
     *,
     physical_pin_anchors: dict[PinRef, Point] | None = None,
+    verified_address_owners: dict[
+        tuple[ContinuationAddressKind, str], frozenset[PinRef]
+    ] | None = None,
 ) -> tuple[Diagnostic, ...]:
     """Independent fail-closed semantic and geometrical gate.
 
@@ -195,6 +234,7 @@ def validate_net_continuations(
         ("ENDPOINT_ID", [x.id for x in project.endpoints]),
         ("PAIR_ID", [x.id for x in project.pairs]),
         ("STUB_ID", [x.id for x in project.stubs]),
+        ("ADDRESS_BINDING", [x.endpoint_id for x in project.address_bindings]),
     ):
         if not _unique(keys):
             errors.append(_err("E3_CONT_DUPLICATE_" + group, group, "Duplicate identity"))
@@ -380,6 +420,59 @@ def validate_net_continuations(
         errors.append(_err(
             "E3_CONT_STUB_MISSING", "project", "Every marker needs one explicit local stub",
         ))
+    # New v2 records make address provenance explicit. Old v1 remains readable,
+    # but it is only a labelled navigation draft, not a verified physical address.
+    if project.schema_version == 2:
+        address_ids = {ref.endpoint_id for ref in project.address_bindings}
+        if address_ids != set(endpoints):
+            errors.append(_err(
+                "E3_CONT_ADDRESS_BINDING_INCOMPLETE", "project",
+                "Every marker must have one address evidence record in schema v2",
+            ))
+        stubs_by_marker = {stub.endpoint_id: stub for stub in project.stubs}
+        for ref in project.address_bindings:
+            endpoint = endpoints.get(ref.endpoint_id)
+            stub = stubs_by_marker.get(ref.endpoint_id)
+            if endpoint is None or stub is None:
+                errors.append(_err(
+                    "E3_CONT_ADDRESS_BINDING_UNKNOWN", ref.endpoint_id,
+                    "Address provenance has no actual marker and local stub",
+                ))
+                continue
+            if ref.kind is ContinuationAddressKind.SHEET_ZONE:
+                if ref.owner_ref != endpoint.sheet_id or (
+                    _address_page(endpoint.address) != endpoint.sheet_number
+                ):
+                    errors.append(_err(
+                        "E3_CONT_ADDRESS_ZONE_PROVENANCE", endpoint.id,
+                        "Sheet-zone evidence must resolve to this declared sheet",
+                    ))
+                continue
+            if ref.physical_pin != stub.pin:
+                errors.append(_err(
+                    "E3_CONT_ADDRESS_PIN_PROVENANCE", endpoint.id,
+                    "Physical address must resolve to actual local connected PinRef",
+                ))
+            if ref.kind is ContinuationAddressKind.ELEMENT_PIN:
+                if ref.owner_ref != stub.pin.reference or (
+                    endpoint.address != f"{stub.pin.reference}.{stub.pin.number}"
+                ):
+                    errors.append(_err(
+                        "E3_CONT_ADDRESS_ELEMENT_PROVENANCE", endpoint.id,
+                        "Element address is not this actual component contact",
+                    ))
+            else:
+                # Circuit does not model device or functional-group ownership.
+                # An explicit external ownership inventory is required; never
+                # trust textual A7:X16 aliases as proof of physical connection.
+                owner = (ref.kind, ref.owner_ref)
+                if verified_address_owners is None or (
+                    ref.physical_pin not in verified_address_owners.get(owner, frozenset())
+                ):
+                    errors.append(_err(
+                        "E3_CONT_ADDRESS_OWNER_UNVERIFIED", endpoint.id,
+                        "Device/group membership needs authoritative external inventory",
+                    ))
     return tuple(sorted(
         errors, key=lambda e: (e.code, e.subject or "", e.message),
     ))
