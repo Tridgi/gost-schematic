@@ -32,13 +32,13 @@ jobs:
       - name: Checkout real current PAINT #93 HEAD, not the historical owner snapshot
         uses: actions/checkout@v4
         with:
-          ref: ca3ab815fa5d79756a7f34f06520f760fcb8674d
+          ref: 544dbb35f5b8d5a1465269a34271d806653eea96
           path: _qa_sources/paint
           persist-credentials: false
       - name: Checkout real current ELEKTRIK IC #97 HEAD, not historical source
         uses: actions/checkout@v4
         with:
-          ref: a9a03b247811019538b731563a32991b30f8c4a2
+          ref: b28428d94218cac777a28897ce9176285d0fab0b
           path: _qa_sources/ic
           persist-credentials: false
       - name: Checkout exact independently source-locked catalog profile #113
@@ -52,8 +52,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C _qa_sources/reference rev-parse HEAD)" = e695c415fdced164b0e0c39c5249d030795a0aa6
-          test "$(git -C _qa_sources/paint rev-parse HEAD)" = ca3ab815fa5d79756a7f34f06520f760fcb8674d
-          test "$(git -C _qa_sources/ic rev-parse HEAD)" = a9a03b247811019538b731563a32991b30f8c4a2
+          test "$(git -C _qa_sources/paint rev-parse HEAD)" = 544dbb35f5b8d5a1465269a34271d806653eea96
+          test "$(git -C _qa_sources/ic rev-parse HEAD)" = b28428d94218cac777a28897ce9176285d0fab0b
           test "$(git -C _qa_sources/catalog rev-parse HEAD)" = edc71a48035723d48a203ae2ea12588701f68ba8
           cp scripts/qa_tl494_current_reference.py _qa_sources/reference/scripts/qa_tl494_current_reference.py
           for file in _qa_sources/paint/src/gost_schematic/rendering/ic_*.py; do
@@ -64,6 +64,8 @@ jobs:
             cp "$file" _qa_sources/reference/src/gost_schematic/electrical/
           done
           cp _qa_sources/paint/src/gost_schematic/rendering/external_wire_sheet.py \
+            _qa_sources/reference/src/gost_schematic/rendering/
+          cp _qa_sources/paint/src/gost_schematic/rendering/native_sheet_ink_audit.py \
             _qa_sources/reference/src/gost_schematic/rendering/
           cp _qa_sources/paint/examples/render_tl494_full_native_cycle9.py \
             _qa_sources/reference/examples/
