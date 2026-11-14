@@ -26,10 +26,10 @@ jobs:
         python-version: ["3.12", "3.13"]
     env:
       SOURCE_SHA: e695c415fdced164b0e0c39c5249d030795a0aa6
-      IC_SHA: b28428d94218cac777a28897ce9176285d0fab0b
-      YGO_SHA: edc71a48035723d48a203ae2ea12588701f68ba8
-      NET_SHA: b3a8263944c5a687492a49555d8149e538f0902b
-      RECON_SHA: fa36620877c244e24fccaad8d0bb00133bec52ef
+      IC_SHA: 809616e6ab58b80b6386c664405cdb8ef6a99196
+      YGO_SHA: 779dc0eabbd2d8f2f1ef9289cb683fcab1414bf1
+      NET_SHA: 2c4596e3e2897c5a34618169e4cfa5c3b8c38b43
+      RECON_SHA: 10f22cea8d5908605b52853113b0c75bf91eec75
       PAINT_PINNED_NATIVE_REQUIRED: "1"
     steps:
       - uses: actions/checkout@v4
@@ -74,6 +74,7 @@ jobs:
           done
           test -f examples/tl494_v5/compact_layout.py
           test -f examples/tl494_v5/route_preflight.py
+          test -f src/gost_schematic/electrical/ic_editor_targets.py
           test -f src/gost_schematic/electrical/ic_circuit_adapter.py
           test -f src/gost_schematic/engines/multiterminal_router.py
       - name: Real Type A 3500um, pinned face, librsvg 300DPI
