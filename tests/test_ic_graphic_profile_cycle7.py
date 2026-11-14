@@ -78,6 +78,18 @@ def _vertical_record(record):
     return IcLibraryRecord(record.device, tuple(specs), record.placements)
 
 
+def test_opt_in_new_e3_portrait_pwm_preset_is_independent_and_not_legacy_default():
+    selected = IcGraphicProfile.experimental_portrait_pwm()
+    assert selected.port_layout is IcPortLayout.LEFT_RIGHT
+    assert selected.body_axis is IcBodyAxis.PORTRAIT
+    assert selected.function_angle is IcTextAngle.VERTICAL
+    assert selected.other_text_angle is IcTextAngle.HORIZONTAL
+    historic = IcGraphicProfile()
+    assert historic.body_axis is IcBodyAxis.AUTO
+    assert historic.function_angle is IcTextAngle.HORIZONTAL
+    assert historic != selected
+
+
 @pytest.mark.parametrize("kind", (IcKind.ANALOG, IcKind.DIGITAL))
 @pytest.mark.parametrize("count", COUNTS)
 def test_function_pwm_only_rotates_text_never_ports_or_graph(count, kind):
