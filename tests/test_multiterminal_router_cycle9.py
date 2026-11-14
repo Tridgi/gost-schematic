@@ -9,6 +9,7 @@ from gost_schematic.engines.multiterminal_router import (
     _nearest_net_order,
     _source_ink_collision,
     _source_ink_obstacles,
+    _visibility_path,
     route_circuit_net_trees,
     route_circuit_with_order_fallback,
     route_multi_terminal_net,
@@ -526,6 +527,32 @@ def test_IC_fanout_primitive_D4_preserves_per_pin_exemption(rotation, mirror):
     )
     assert invalid is not None
     assert invalid.permitted_pin == PinRef("DA1", "8")
+
+
+def test_no_path_reports_real_foreign_wire_3mm_and_exact_trial_coordinates():
+    # With detour ratio exactly 1.0, the only shortest route would
+    # longitudinally overprint this real other-Net conductor. It MUST fail
+    # even if that projected wire would have been visually connected.
+    occupied = ExternalWireGraph((
+        WireSegment(Point(15000, 10000), Point(35000, 10000), "B"),
+    ))
+    source, target = Point(5000, 10000), Point(45000, 10000)
+    route, diagnostic = _visibility_path(
+        source, Point(1, 0), (target,),
+        net_name="A", occupied=occupied, tree=(),
+        existing_dots=(), goal_pin_normals={},
+        ink_obstacles=(), authorized_pins=frozenset(),
+        boxes=(), page=Box(0, 0, 50000, 20000),
+        stroke_um=300, search_node_cap=25000,
+        grid_um=5000, max_detour_ratio=1.0,
+    )
+    assert route == ()
+    assert diagnostic is not None
+    assert diagnostic.startswith("ROUTE_NO_CLEAR_ORTHOGONAL_TREE_PATH")
+    assert "WIRE_VETO=B:DRC_PARALLEL_STROKE_CLEARANCE" in diagnostic
+    assert "existing=15000,10000->35000,10000" in diagnostic
+    assert "trial=" in diagnostic
+    assert occupied.segments[0].net_name == "B"
 
 
 def test_actual_source_negative_baseline_is_never_print_pass():
