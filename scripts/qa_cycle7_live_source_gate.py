@@ -269,6 +269,7 @@ def ic_text_gallery(output, font):
     from examples.review_ic_cycle7 import synthetic_ic
     from gost_schematic.electrical.ic import IcKind, IcTextAngle
     from gost_schematic.electrical.ic_graphic_revision import revise_ic_text_orientation
+
     from gost_schematic.rendering import ic_rectangular as paint
 
     face = inspect_type_a_font(font, h_um=2500)
@@ -415,7 +416,15 @@ def netref_gallery(output, font):
                 svg = sheet_svg(project, sheet.id, font_path=font, review_overlay=True)
                 xml = ET.fromstring(svg)
                 require(xml.tag == SVG + "svg", "NETREF_XML_NAMESPACE_INVALID")
-                require(len(project.circuit.nets) == 1, "NETREF_PHANTOM_NET")
+                # Three-sheet production specimen explicitly owns 3 true Nets,
+                # unlike the two-sheet one-Net specimen. Never invent extras.
+                require(len(project.circuit.nets) == len(project.nets),
+                        "NETREF_PHANTOM_NET")
+                require({
+                    (n.name, frozenset(n.members)) for n in project.circuit.nets
+                } == {
+                    (n.net_name, frozenset(n.members)) for n in project.nets
+                }, "NETREF_PHANTOM_NET_MEMBERS")
                 require(not xml.findall(f".//{SVG}circle[@data-role='junction']"),
                         "NETREF_PHANTOM_JUNCTION")
                 require(xml.attrib["data-approval"].startswith("DRAFT_"),
@@ -430,8 +439,9 @@ def netref_gallery(output, font):
     require(any(x.code == "E3_CONT_NET_ID_UNKNOWN" for x in
                 validate_net_continuations(corrupted)),
             "NETREF_UNKNOWN_NET_NOT_REJECTED")
-    return {"source_nets": 1, "artifacts": files,
-            "namespace_aliases": 3, "pairs": "real two- and three-sheet"}
+    return {"source_nets_by_fixture": {"two_sheet": 1, "three_sheet": 3},
+            "artifacts": files, "namespace_aliases": 3,
+            "pairs": "real two- and three-sheet"}
 
 
 def project_cold_reopen():
