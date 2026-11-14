@@ -1,0 +1,98 @@
+{
+  "schema": "cycle9-negative-baseline-v1",
+  "provenance": {
+    "source_head": "e695c415fdced164b0e0c39c5249d030795a0aa6",
+    "source_branch": "reference/tl494-native-rework-20261114",
+    "independent_review_branch": "reference/tl494-audit-v4-20261114",
+    "source_file": "examples/tl494_v4/evidence_runs/43608095630-1/full_stroke_and_text_drc.json",
+    "evidence_blob_sha": "028b7f186fc05978439eac40b9cd92611ec038dc",
+    "note": "Extracted from source-native 23-symbol and measured font DRC; DO NOT make source pass by loosening DRC."
+  },
+  "circuit": {
+    "components": 23,
+    "nets": 15,
+    "DA1_physical_pins": 16,
+    "source_segments": 91,
+    "junctions": 37
+  },
+  "geometric": {
+    "errors": 9,
+    "warnings": 32,
+    "bends": 49,
+    "route_length_mm": 4691.25,
+    "parallel_violations": 5,
+    "hard_failures": [
+      {
+        "code": "DRC_PARALLEL_STROKE_CLEARANCE",
+        "first": "W27",
+        "second": "W62",
+        "measured_edge_um": 1950,
+        "point_um": null
+      },
+      {
+        "code": "DRC_PARALLEL_STROKE_CLEARANCE",
+        "first": "W54",
+        "second": "W63",
+        "measured_edge_um": 1700,
+        "point_um": null
+      },
+      {
+        "code": "DRC_PARALLEL_STROKE_CLEARANCE",
+        "first": "W28",
+        "second": "W71",
+        "measured_edge_um": 1450,
+        "point_um": null
+      },
+      {
+        "code": "DRC_PARALLEL_STROKE_CLEARANCE",
+        "first": "W56",
+        "second": "W72",
+        "measured_edge_um": 700,
+        "point_um": null
+      },
+      {
+        "code": "DRC_PARALLEL_STROKE_CLEARANCE",
+        "first": "W42",
+        "second": "W85",
+        "measured_edge_um": 1700,
+        "point_um": null
+      },
+      {
+        "code": "DRC_SAME_NET_X_NO_JUNCTION",
+        "first": "W1",
+        "second": "W86",
+        "measured_edge_um": null,
+        "point_um": [
+          "30000",
+          "82000"
+        ]
+      },
+      {
+        "code": "DRC_WIRE_SYMBOL_BODY",
+        "first": "W77",
+        "second": "X1",
+        "measured_edge_um": null,
+        "point_um": null
+      },
+      {
+        "code": "DRC_WIRE_SYMBOL_INK",
+        "first": "W77",
+        "second": "X1",
+        "measured_edge_um": null,
+        "point_um": null
+      },
+      {
+        "code": "DRC_WIRE_SYMBOL_INK",
+        "first": "W78",
+        "second": "DA1",
+        "measured_edge_um": null,
+        "point_um": null
+      }
+    ],
+    "checked_symbol_geometry": true,
+    "checked_measured_text": true,
+    "crossing_warnings": 32
+  },
+  "release_status": "NEGATIVE_BASELINE_DO_NOT_PRINT",
+  "expected_print_pass": false
+}
