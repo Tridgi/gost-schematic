@@ -1,0 +1,500 @@
+{
+  "schema_version": 1,
+  "status": "DRAFT_PHOTO_TRACING_NOT_ELECTRICALLY_CERTIFIED",
+  "origin": "User-provided TL494 source schematic and BOM",
+  "topology_hypothesis": "Inverting Cuk-like converter, −12 V output",
+  "physical_pinout": {
+    "DA1": {
+      "1": "1IN+",
+      "2": "1IN−",
+      "3": "FEEDBACK",
+      "4": "DTC",
+      "5": "CT",
+      "6": "RT",
+      "7": "GND",
+      "8": "C1",
+      "9": "E1",
+      "10": "E2",
+      "11": "C2",
+      "12": "VCC",
+      "13": "OUTPUT CTRL",
+      "14": "REF",
+      "15": "2IN−",
+      "16": "2IN+"
+    },
+    "VT1": {
+      "1": "G",
+      "2": "D",
+      "3": "S"
+    },
+    "VD1": {
+      "A": "Anode",
+      "K": "Cathode"
+    }
+  },
+  "components": [
+    {
+      "reference": "C1",
+      "description": "Конденсатор электролитический",
+      "value": "220 мкФ 100 В"
+    },
+    {
+      "reference": "C2",
+      "description": "Конденсатор электролитический",
+      "value": "220 мкФ 63 В"
+    },
+    {
+      "reference": "C3",
+      "description": "Конденсатор электролитический",
+      "value": "47 мкФ"
+    },
+    {
+      "reference": "C4",
+      "description": "Конденсатор керамический",
+      "value": "10 нФ"
+    },
+    {
+      "reference": "C5",
+      "description": "Конденсатор электролитический",
+      "value": "1000 мкФ 25 В"
+    },
+    {
+      "reference": "C6",
+      "description": "Конденсатор электролитический",
+      "value": "1000 мкФ 25 В"
+    },
+    {
+      "reference": "C7",
+      "description": "Конденсатор керамический",
+      "value": "1 нФ"
+    },
+    {
+      "reference": "R1",
+      "description": "Резистор МЛТ",
+      "value": "1 Ом"
+    },
+    {
+      "reference": "R2",
+      "description": "Резистор МЛТ",
+      "value": "620 Ом"
+    },
+    {
+      "reference": "R3",
+      "description": "Резистор МЛТ",
+      "value": "10 кОм"
+    },
+    {
+      "reference": "R4",
+      "description": "Резистор МЛТ",
+      "value": "6,8 кОм"
+    },
+    {
+      "reference": "R5",
+      "description": "Резистор переменный МЛТ",
+      "value": "1 кОм"
+    },
+    {
+      "reference": "R6",
+      "description": "Резистор МЛТ",
+      "value": "1 Ом"
+    },
+    {
+      "reference": "R7",
+      "description": "Резистор МЛТ",
+      "value": "680 кОм"
+    },
+    {
+      "reference": "R8",
+      "description": "Резистор МЛТ",
+      "value": "10 Ом"
+    },
+    {
+      "reference": "VT1",
+      "description": "N-канальный MOSFET",
+      "value": "IRFZ44N"
+    },
+    {
+      "reference": "VD1",
+      "description": "Диод Шоттки",
+      "value": "1N5822"
+    },
+    {
+      "reference": "DA1",
+      "description": "ШИМ-контроллер",
+      "value": "TL494CN"
+    },
+    {
+      "reference": "L1",
+      "description": "Дроссель",
+      "value": "100 мкГн"
+    },
+    {
+      "reference": "L2",
+      "description": "Дроссель",
+      "value": "100 мкГн"
+    },
+    {
+      "reference": "FU1",
+      "description": "Предохранитель",
+      "value": "2 А"
+    },
+    {
+      "reference": "X1",
+      "description": "Двухконтактный разъём",
+      "value": "вход"
+    },
+    {
+      "reference": "X2",
+      "description": "Двухконтактный разъём",
+      "value": "выход −12 В"
+    }
+  ],
+  "nets": [
+    {
+      "name": "INPUT_POS",
+      "members": [
+        {
+          "reference": "X1",
+          "number": "1"
+        },
+        {
+          "reference": "L1",
+          "number": "1"
+        }
+      ]
+    },
+    {
+      "name": "GROUND",
+      "members": [
+        {
+          "reference": "X1",
+          "number": "2"
+        },
+        {
+          "reference": "X2",
+          "number": "2"
+        },
+        {
+          "reference": "VT1",
+          "number": "3"
+        },
+        {
+          "reference": "VD1",
+          "number": "A"
+        },
+        {
+          "reference": "DA1",
+          "number": "1"
+        },
+        {
+          "reference": "DA1",
+          "number": "7"
+        },
+        {
+          "reference": "DA1",
+          "number": "16"
+        },
+        {
+          "reference": "R6",
+          "number": "2"
+        },
+        {
+          "reference": "R7",
+          "number": "2"
+        },
+        {
+          "reference": "R8",
+          "number": "2"
+        },
+        {
+          "reference": "C5",
+          "number": "+"
+        },
+        {
+          "reference": "C6",
+          "number": "+"
+        },
+        {
+          "reference": "C7",
+          "number": "2"
+        }
+      ]
+    },
+    {
+      "name": "SWITCH_NODE",
+      "members": [
+        {
+          "reference": "L1",
+          "number": "2"
+        },
+        {
+          "reference": "VT1",
+          "number": "2"
+        },
+        {
+          "reference": "C1",
+          "number": "+"
+        },
+        {
+          "reference": "C2",
+          "number": "+"
+        }
+      ]
+    },
+    {
+      "name": "TRANSFER_NODE",
+      "members": [
+        {
+          "reference": "C1",
+          "number": "-"
+        },
+        {
+          "reference": "C2",
+          "number": "-"
+        },
+        {
+          "reference": "VD1",
+          "number": "K"
+        },
+        {
+          "reference": "L2",
+          "number": "1"
+        }
+      ]
+    },
+    {
+      "name": "OUTPUT_FILTER_NEG",
+      "members": [
+        {
+          "reference": "L2",
+          "number": "2"
+        },
+        {
+          "reference": "FU1",
+          "number": "1"
+        },
+        {
+          "reference": "C5",
+          "number": "-"
+        },
+        {
+          "reference": "C6",
+          "number": "-"
+        }
+      ]
+    },
+    {
+      "name": "OUTPUT_NEG",
+      "members": [
+        {
+          "reference": "FU1",
+          "number": "2"
+        },
+        {
+          "reference": "X2",
+          "number": "1"
+        }
+      ]
+    },
+    {
+      "name": "REFERENCE_AND_R2_TOP",
+      "members": [
+        {
+          "reference": "C3",
+          "number": "+"
+        },
+        {
+          "reference": "R1",
+          "number": "1"
+        },
+        {
+          "reference": "R2",
+          "number": "1"
+        },
+        {
+          "reference": "DA1",
+          "number": "14"
+        },
+        {
+          "reference": "DA1",
+          "number": "15"
+        }
+      ]
+    },
+    {
+      "name": "START_NODE",
+      "members": [
+        {
+          "reference": "C3",
+          "number": "-"
+        },
+        {
+          "reference": "R1",
+          "number": "2"
+        },
+        {
+          "reference": "R6",
+          "number": "1"
+        },
+        {
+          "reference": "DA1",
+          "number": "4"
+        }
+      ]
+    },
+    {
+      "name": "ERROR_1_IN_MINUS",
+      "members": [
+        {
+          "reference": "R2",
+          "number": "2"
+        },
+        {
+          "reference": "DA1",
+          "number": "2"
+        }
+      ]
+    },
+    {
+      "name": "FB_COMP",
+      "members": [
+        {
+          "reference": "R3",
+          "number": "2"
+        },
+        {
+          "reference": "DA1",
+          "number": "3"
+        }
+      ]
+    },
+    {
+      "name": "RC_INTERMEDIATE",
+      "members": [
+        {
+          "reference": "R3",
+          "number": "1"
+        },
+        {
+          "reference": "C4",
+          "number": "2"
+        }
+      ]
+    },
+    {
+      "name": "R4_TOP",
+      "members": [
+        {
+          "reference": "C4",
+          "number": "1"
+        },
+        {
+          "reference": "R4",
+          "number": "1"
+        }
+      ]
+    },
+    {
+      "name": "CALIBRATION",
+      "members": [
+        {
+          "reference": "R4",
+          "number": "2"
+        },
+        {
+          "reference": "R5",
+          "number": "1"
+        },
+        {
+          "reference": "R5",
+          "number": "3"
+        }
+      ]
+    },
+    {
+      "name": "CT",
+      "members": [
+        {
+          "reference": "DA1",
+          "number": "5"
+        },
+        {
+          "reference": "C7",
+          "number": "1"
+        }
+      ]
+    },
+    {
+      "name": "RT",
+      "members": [
+        {
+          "reference": "DA1",
+          "number": "6"
+        },
+        {
+          "reference": "R7",
+          "number": "1"
+        }
+      ]
+    },
+    {
+      "name": "OUTPUT_CONTROL_GROUND",
+      "members": [
+        {
+          "reference": "DA1",
+          "number": "13"
+        }
+      ]
+    },
+    {
+      "name": "OUTPUT_COLLECTOR_FLOAT",
+      "members": [
+        {
+          "reference": "DA1",
+          "number": "8"
+        },
+        {
+          "reference": "DA1",
+          "number": "11"
+        }
+      ]
+    },
+    {
+      "name": "GATE",
+      "members": [
+        {
+          "reference": "DA1",
+          "number": "9"
+        },
+        {
+          "reference": "DA1",
+          "number": "10"
+        },
+        {
+          "reference": "R8",
+          "number": "1"
+        },
+        {
+          "reference": "VT1",
+          "number": "1"
+        }
+      ]
+    },
+    {
+      "name": "VCC_UNRESOLVED",
+      "members": [
+        {
+          "reference": "DA1",
+          "number": "12"
+        }
+      ]
+    }
+  ],
+  "uncertainties": [
+    "Terminals labeled a/b may be test/open nodes and may not indicate same-net connections",
+    "Low-resolution photograph: orientation and precise point of VD1 should be manually compared",
+    "DA1.12 VCC appears open; do not silently connect it to input",
+    "DA1.8/11 also seem to end at an open testpoint",
+    "Some source paths are drawn crossing without junction dots."
+  ]
+}
