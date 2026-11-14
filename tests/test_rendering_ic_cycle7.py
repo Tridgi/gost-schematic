@@ -845,3 +845,141 @@ def test_hotspot_follows_d4_external_anchor_not_body_boundary(angle, mirror):
     for mark, target in zip(squares, targets, strict=True):
         assert int(Decimal(mark.get("x")) * 1000) + 350 == target.anchor.x
         assert int(Decimal(mark.get("y")) * 1000) + 350 == target.anchor.y
+
+
+# Digital fig.6 a/b/c and analogue supply U/OV remain source-bound DRAFT.
+# Selecting a layout never rewires or renumbers a physical component.
+def test_power_side_profile_digital_vcc_gnd_and_analog_u_ov():
+    from examples.review_ic_cycle7 import _fixture
+    from gost_schematic.model.circuit import PinRef
+    from gost_schematic.rendering.ic_power_profiles import (
+        IcPowerLayout,
+        IcPowerProfile,
+        verify_ic_power_profile,
+    )
+
+    for kind in ("digital", "analog"):
+        unit, _ = _fixture(8, kind, STYLE, FixedInk())
+        power = tuple(p for p in unit.pins if p.role == "power")
+        labels = {p.label for p in power}
+        assert labels == ({"VCC", "GND"} if kind == "digital" else {"U", "OV"})
+        profile = IcPowerProfile(
+            IcPowerLayout.SIDE_PINS,
+            tuple(PinRef(unit.reference, p.number) for p in power),
+            unit.reference,
+        )
+        audit = verify_ic_power_profile(unit, profile)
+        assert len(audit.external_points) == 2
+        result = render_resolved_ic(
+            unit, STYLE, FixedInk(), power_profile=profile,
+        )
+        root = ET.fromstring(result.svg)
+        assert root.get("data-power-layout") == "ordinary_side_pins"
+        assert "DRAFT" in root.get("data-power-normative")
+        assert result.pin_anchors == tuple(
+            (p.pin_id, p.anchor) for p in unit.pins
+        )
+        assert all(p.side in (Side.LEFT, Side.RIGHT) for p in power)
+
+
+def test_power_fig6_one_split_unit_and_separate_outline_preserve_source_pinrefs():
+    from examples.review_ic_cycle7 import _fixture
+    from gost_schematic.model.circuit import PinRef
+    from gost_schematic.rendering.ic_power_profiles import (
+        IcPowerLayout,
+        IcPowerProfile,
+    )
+
+    unit, _ = _fixture(8, "digital", STYLE, FixedInk())
+    physical = tuple(p for p in unit.pins if p.role == "power")
+    refs = tuple(PinRef("DD1", p.number) for p in physical)
+    # One logical unit of a split physical component owns both power pins.
+    split = replace(unit, reference="DD1.1")
+    selection = IcPowerProfile(
+        IcPowerLayout.ONE_SPLIT_UNIT, refs,
+        "DD1.1", related_units=("DD1.2",),
+    )
+    shown = render_resolved_ic(
+        split, STYLE, FixedInk(), power_profile=selection,
+    )
+    assert shown.pin_anchors == tuple(
+        (p.pin_id, p.anchor) for p in unit.pins
+    )
+    assert "one_split_unit_fig6b" in shown.svg
+    # A separate source-owned power view has ONLY actual power contacts.
+    # It does not create an extra physical package or duplicate the nets.
+    dedicated = replace(
+        unit, pins=physical, content=IcFieldContent("PWR"),
+    )
+    profile = IcPowerProfile(
+        IcPowerLayout.SEPARATE_CONTOUR, refs, "DD1",
+    )
+    isolated = render_resolved_ic(
+        dedicated, STYLE, FixedInk(), power_profile=profile,
+    )
+    assert isolated.pin_anchors == tuple(
+        (p.pin_id, p.anchor) for p in physical
+    )
+    assert "separate_power_contour_fig6c" in isolated.svg
+
+
+def test_power_common_block_and_experimental_top_bottom_never_fake_normative():
+    from examples.review_ic_cycle7 import _fixture
+    from gost_schematic.model.circuit import PinRef
+    from gost_schematic.rendering.ic_power_profiles import (
+        IcPowerLayout,
+        IcPowerProfile,
+        verify_ic_power_profile,
+    )
+
+    unit, _ = _fixture(8, "digital", STYLE, FixedInk())
+    refs = tuple(
+        PinRef("DD1", pin.number) for pin in unit.pins
+        if pin.role == "power"
+    )
+    common = IcPowerProfile(
+        IcPowerLayout.COMMON_CONTROL_BLOCK, refs, "DD1",
+    )
+    audit = verify_ic_power_profile(unit, common)
+    assert audit.requires_source_outline
+    with pytest.raises(ValueError, match="IC_POWER_CONTROL_OUTLINE_SOURCE_REQUIRED"):
+        render_resolved_ic(
+            unit, STYLE, FixedInk(), power_profile=common,
+        )
+    proposal = IcPowerProfile(
+        IcPowerLayout.EXPERIMENTAL_TOP_BOTTOM, refs, "DD1",
+    )
+    with pytest.raises(ValueError, match="IC_POWER_TOP_BOTTOM_REQUIRES_TYPED"):
+        render_resolved_ic(
+            unit, STYLE, FixedInk(), power_profile=proposal,
+        )
+    illegitimate = replace(unit.pins[-1], role="out")
+    with pytest.raises(ValueError, match="IC_NONSTANDARD_OUTPUT_SIDE|IC_POWER"):
+        invalid = replace(unit, pins=(*unit.pins[:-1], illegitimate))
+        render_resolved_ic(
+            invalid, STYLE, FixedInk(),
+            power_profile=IcPowerProfile(
+                IcPowerLayout.SIDE_PINS, refs, "DD1",
+            ),
+        )
+
+
+def test_power_profile_rejects_duplicate_and_non_power_physical_pinrefs():
+    from examples.review_ic_cycle7 import _fixture
+    from gost_schematic.model.circuit import PinRef
+    from gost_schematic.rendering.ic_power_profiles import (
+        IcPowerLayout,
+        IcPowerProfile,
+    )
+
+    unit, _ = _fixture(8, "digital", STYLE, FixedInk())
+    first = PinRef("DD1", unit.pins[-1].number)
+    with pytest.raises(ValueError, match="IC_POWER_DUPLICATE_PINREF"):
+        IcPowerProfile(IcPowerLayout.SIDE_PINS, (first, first), "DD1")
+    with pytest.raises(ValueError, match="IC_POWER_PINREF_COVERAGE_MISMATCH"):
+        render_resolved_ic(
+            unit, STYLE, FixedInk(),
+            power_profile=IcPowerProfile(
+                IcPowerLayout.SIDE_PINS, (PinRef("DD1", "1"),), "DD1",
+            ),
+        )
