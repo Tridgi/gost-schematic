@@ -1,0 +1,17 @@
+{
+  "do_not_claim": "No SVG/PNG v4 until full source/UGO/DRC gates pass",
+  "issues": {
+    "107": "Symbol normative review and print-scale image parity pending",
+    "108": "True geometry-aware global router and complete wire-vs-UGO/text DRC absent",
+    "109": "Normative COMMON/PE/chassis typed view marker not yet present in integration",
+    "110": "270 function direction requires isolated PAINT patch, not in integration"
+  },
+  "raw_wire_drc": {
+    "owner_full_stroke_drc_errors": 9,
+    "owner_full_stroke_drc_warnings": 32,
+    "parallel_violations": 5,
+    "source_UGO_and_text_covered": true,
+    "unmarked_crossings": 32
+  },
+  "status": "BLOCKED_PRINT_EXPORT"
+}
