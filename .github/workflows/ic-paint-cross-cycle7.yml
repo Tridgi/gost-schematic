@@ -10,6 +10,9 @@ on:
       - 'tests/test_ic_paint_joint_cycle7.py'
       - 'tests/test_ic_graphic_profile_cycle7.py'
       - 'tests/test_ic_editor_power_cycle7.py'
+      - 'tests/test_tl494cn_issue110.py'
+      - 'examples/tl494_ic_paint_reference.py'
+      - 'scripts/verify_tl494cn_evidence.py'
       - 'examples/review_ic_editor_cycle7.py'
       - 'scripts/verify_ic_editor_raster_cycle7.py'
       - 'scripts/verify_ic_joint_visual_evidence.py'
@@ -60,7 +63,7 @@ jobs:
           echo "IC_TYPE_A_FONT_PATH=$FONT_PATH" >> "$GITHUB_ENV"
           fc-cache -f
       - name: Ruff (owner-owned new files and joint tests)
-        run: ruff check src/gost_schematic/electrical/ic.py src/gost_schematic/electrical/ic_serde.py src/gost_schematic/electrical/ic_graphic_revision.py src/gost_schematic/electrical/ic_agent_snapshot.py src/gost_schematic/electrical/ic_paint_bridge.py src/gost_schematic/electrical/ic_editor_targets.py src/gost_schematic/electrical/ic_power_presentation.py tests/test_ic_paint_joint_cycle7.py tests/test_ic_graphic_profile_cycle7.py tests/test_ic_editor_power_cycle7.py examples/review_ic_paint_joint_cycle7.py examples/review_ic_text_profile_cycle7.py examples/review_ic_editor_cycle7.py scripts/verify_ic_joint_visual_evidence.py scripts/verify_ic_editor_raster_cycle7.py scripts/stamp_ic_joint_300dpi_metadata.py
+        run: ruff check src/gost_schematic/electrical/ic.py src/gost_schematic/electrical/ic_serde.py src/gost_schematic/electrical/ic_graphic_revision.py src/gost_schematic/electrical/ic_agent_snapshot.py src/gost_schematic/electrical/ic_paint_bridge.py src/gost_schematic/electrical/ic_editor_targets.py src/gost_schematic/electrical/ic_power_presentation.py tests/test_ic_paint_joint_cycle7.py tests/test_ic_graphic_profile_cycle7.py tests/test_ic_editor_power_cycle7.py examples/review_ic_paint_joint_cycle7.py examples/review_ic_text_profile_cycle7.py examples/review_ic_editor_cycle7.py scripts/verify_ic_joint_visual_evidence.py scripts/verify_ic_editor_raster_cycle7.py scripts/stamp_ic_joint_300dpi_metadata.py src/gost_schematic/electrical/ic_pin_alias.py src/gost_schematic/electrical/tl494cn.py tests/test_tl494cn_issue110.py examples/tl494_ic_paint_reference.py scripts/verify_tl494cn_evidence.py
       - name: Reproduce joint DA8 and split DD14/DD40/DD64 SVG + physical Circuit QA manifest
         if: matrix.python-version == '3.12'
         run: |
@@ -105,6 +108,24 @@ jobs:
           name: draft-cycle7-real-pinref-editor-green-red-300dpi
           path: output/ic-editor-contacts-cycle7/
           if-no-files-found: error
+      - name: Render true TI TL494CN 16-pin 0/90 portrait clean and diagnostic
+        if: matrix.python-version == '3.12'
+        run: |
+          python -m examples.tl494_ic_paint_reference --font-file "$IC_TYPE_A_FONT_PATH" --output output/tl494cn-ti-real-pinout
+          test "$(find output/tl494cn-ti-real-pinout -maxdepth 1 -name '*.svg' -type f | wc -l)" -eq 4
+          for src in output/tl494cn-ti-real-pinout/*.svg; do
+            rsvg-convert --dpi-x 300 --dpi-y 300 "$src" -o "${src%.svg}.png"
+          done
+          python scripts/stamp_ic_joint_300dpi_metadata.py --output-dir output/tl494cn-ti-real-pinout --expected-count 4
+          python scripts/verify_tl494cn_evidence.py --output-dir output/tl494cn-ti-real-pinout
+          ( cd output/tl494cn-ti-real-pinout && sha256sum *.svg *.png *.json > SHA256SUMS.txt )
+      - name: Upload source-verified TI TL494CN 16-pin E3 print-proof
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-cycle7-tl494cn-ti-16-physical-fb-oc-300dpi
+          path: output/tl494cn-ti-real-pinout/
+          if-no-files-found: error
       - name: Upload paired 0/90 physical-model orientation evidence
         if: matrix.python-version == '3.12'
         uses: actions/upload-artifact@v4
@@ -122,4 +143,4 @@ jobs:
       - name: Assert both packages exist and execute true 1um boundary tests
         run: |
           python -c 'import gost_schematic.electrical.ic_paint_bridge, gost_schematic.rendering.ic_rectangular'
-          pytest -q -ra tests/test_ic_paint_joint_cycle7.py tests/test_ic_graphic_profile_cycle7.py tests/test_ic_editor_power_cycle7.py
+          pytest -q -ra tests/test_ic_paint_joint_cycle7.py tests/test_ic_graphic_profile_cycle7.py tests/test_ic_editor_power_cycle7.py tests/test_tl494cn_issue110.py
