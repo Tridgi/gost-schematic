@@ -7,6 +7,7 @@ electrical connections. Incomplete routing is BLOCKED even if a PNG exists.
 """
 import argparse
 import json
+from importlib import import_module
 from pathlib import Path
 
 from examples.render_tl494_full_native_cycle9 import (
@@ -16,7 +17,6 @@ from examples.render_tl494_full_native_cycle9 import (
     construct_native_paint,
 )
 from gost_schematic.core.geometry import Box
-from gost_schematic.engines.multiterminal_router import route_circuit_net_trees
 from gost_schematic.model.circuit import PinRef
 from gost_schematic.rendering.ic_hotspots import IcConnectionTarget
 from gost_schematic.rendering.ic_rectangular import (
@@ -63,7 +63,9 @@ def render_new_owner_route(
     snap = tuple(circuit.nets)
     # True external route code exactly from isolated NET #114 frozen SHA.
     # This PREVIEW may be incomplete; partial graphs are never a pass.
-    routed = route_circuit_net_trees(
+    routed = import_module(
+        "gost_schematic.engines.multiterminal_router"
+    ).route_circuit_net_trees(
         circuit, parts, symbols,
         page_box=Box(-205000, 0, 636000, 594000),
         search_node_cap=search_node_cap,
