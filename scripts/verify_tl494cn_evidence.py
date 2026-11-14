@@ -35,7 +35,7 @@ def verify(folder: Path) -> dict:
         }:
             raise ValueError("TL494_UNEXPECTED_EXPORT_NAME")
     markers_checked = 0
-    for angle in ("bottom_to_top_90", "horizontal_0"):
+    for angle in ("bottom_to_top_270", "horizontal_0"):
         pair = []
         for mode in ("clean", "diagnostic"):
             stem = f"TL494CN_PWM_{angle}_{mode}"
@@ -55,7 +55,7 @@ def verify(folder: Path) -> dict:
             if len(function) != 1 or function[0].text != "PWM":
                 raise ValueError("TL494_MISSING_WHOLE_PWM_WORD")
             transform = function[0].get("transform", "")
-            if angle == "bottom_to_top_90":
+            if angle == "bottom_to_top_270":
                 if not transform.startswith("matrix(0 -1 1 0 "):
                     raise ValueError("TL494_WRONG_PWM_DIRECTION")
             elif transform:
