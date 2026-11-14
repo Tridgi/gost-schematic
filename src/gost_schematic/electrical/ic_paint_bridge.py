@@ -382,6 +382,31 @@ def propose_ic_paint_binding(
             orientation=arrangement,
             function_rotation=spec.profile.function_angle.value,
         )
+        # A portrait editor view must fit BOTH 0 and 90 degrees in the
+        # same main function region BEFORE any physical wire is committed.
+        # A typed proposed view is a NEW graphic revision; no hidden anchor
+        # change when the operator later toggles PWM text.
+        shared_width_um = dimensions.width_um
+        shared_height_um = dimensions.height_um
+        shared_main_um = dimensions.main_width_um
+        shared_span = dimensions.function_row_span
+        if (
+            arrangement is IcOrientation.LEFT_RIGHT
+            and spec.profile.body_axis is IcBodyAxis.PORTRAIT
+        ):
+            alternate = propose_ic_dimensions(
+                content, prelim, style, measurer, policy,
+                orientation=arrangement,
+                function_rotation=(
+                    0 if spec.profile.function_angle.value == 90 else 90
+                ),
+            )
+            if alternate.row_pitch_um != dimensions.row_pitch_um:
+                raise ValueError("IC_PWM_SHARED_ANGLE_ROW_PITCH_CONFLICT")
+            shared_width_um = max(shared_width_um, alternate.width_um)
+            shared_height_um = max(shared_height_um, alternate.height_um)
+            shared_main_um = max(shared_main_um, alternate.main_width_um)
+            shared_span = max(shared_span, alternate.function_row_span)
         # PAINT returns the minimum measured geometry. The original rectangle
         # is not silently edited. Instead produce a freshly versioned record.
         # Never silently shrink an author's existing declared rectangle;
@@ -393,19 +418,26 @@ def propose_ic_paint_binding(
         if spec.body.min_x % policy.module_um or spec.body.min_y % policy.module_um:
             raise ValueError("IC_GRID_MISMATCH: source body origin off module")
         width_um = ceil_multiple(
-            max(spec.body.max_x - spec.body.min_x, dimensions.width_um),
+            max(spec.body.max_x - spec.body.min_x, shared_width_um),
             (
                 policy.module_um if arrangement is IcOrientation.LEFT_RIGHT
                 else dimensions.row_pitch_um
             ),
         )
         height_um = ceil_multiple(
-            max(spec.body.max_y - spec.body.min_y, dimensions.height_um),
+            max(spec.body.max_y - spec.body.min_y, shared_height_um),
             (
                 dimensions.row_pitch_um if arrangement is IcOrientation.LEFT_RIGHT
                 else policy.module_um
             ),
         )
+        if (
+            spec.profile.body_axis is IcBodyAxis.PORTRAIT
+            and height_um <= width_um
+        ):
+            height_um = ceil_multiple(
+                width_um + policy.module_um, dimensions.row_pitch_um,
+            )
         body = Box(
             spec.body.min_x, spec.body.min_y,
             spec.body.min_x + width_um,
@@ -414,7 +446,7 @@ def propose_ic_paint_binding(
         requirements.append(IcPaintFieldRequirement(
             unit_id=spec.unit_id,
             port_layout=spec.profile.port_layout,
-            main_field_min_dimension_um=dimensions.main_width_um,
+            main_field_min_dimension_um=shared_main_um,
             first_aux_field_min_dimension_um=dimensions.left_width_um,
             second_aux_field_min_dimension_um=dimensions.right_width_um,
             body_width_um=width_um,
@@ -422,7 +454,7 @@ def propose_ic_paint_binding(
             row_pitch_um=dimensions.row_pitch_um,
             external_lead_um=dimensions.lead_length_um,
             guard_um=policy.ink_padding_um,
-            function_row_span=dimensions.function_row_span,
+            function_row_span=shared_span,
         ))
         new_rows = []
         for row in layout_rows:
