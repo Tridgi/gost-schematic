@@ -25,7 +25,6 @@ from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
 from gost_schematic.rendering.ic_electrical_binding import (
     render_verified_ic_paint_binding,
 )
-from gost_schematic.rendering.ic_hotspots import IcConnectionTarget
 from gost_schematic.rendering.ic_rectangular import render_resolved_ic
 from gost_schematic.standards.type_a_font import inspect_type_a_font
 
@@ -440,9 +439,9 @@ def normative_power():
 
 def merged_integration_regressions():
     """Execute published merged implementation, not unmerged owner mocks."""
+    from examples.review_net_continuations_cycle7 import specimen_three_sheet
     from gost_schematic.catalog.loader import load_symbol
     from gost_schematic.electrical.netrefs import validate_net_continuations
-    from examples.review_net_continuations_cycle7 import specimen_three_sheet
 
     symbols = sorted((ROOT / "src/gost_schematic/catalog/symbols").rglob("*.json"))
     winding = sorted((ROOT / "src/gost_schematic/catalog/inductors").glob("*.json"))
