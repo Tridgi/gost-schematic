@@ -5,6 +5,7 @@ smoke test inspects the actual wheel, not the local source tree.
 """
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 from zipfile import ZipFile
@@ -57,6 +58,8 @@ _PARTS = {
     "catalog/parts/diodes/varicap.json",
 }
 _REQUIREMENTS = "standards/requirements_2026_ru.json"
+_AI_FROZEN = "agent_project/data/tl494_ic97_frozen_source.json"
+_AI_FROZEN_BLOB = "a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65"
 
 
 def verify_wheel(wheel: Path) -> dict[str, int]:
@@ -66,7 +69,7 @@ def verify_wheel(wheel: Path) -> dict[str, int]:
             path.removeprefix(_PREFIX)
             for path in archive.namelist() if path.startswith(_PREFIX)
         }
-        missing = (_SYMBOLS | _PARTS | {_REQUIREMENTS}) - payload
+        missing = (_SYMBOLS | _PARTS | {_REQUIREMENTS, _AI_FROZEN}) - payload
         if missing:
             raise ValueError(f"Wheel missing required data: {sorted(missing)}")
         inductors = {
@@ -75,6 +78,10 @@ def verify_wheel(wheel: Path) -> dict[str, int]:
         }
         if len(inductors) != 15:
             raise ValueError(f"Expected exactly 15 versioned inductors, got {len(inductors)}")
+        frozen = archive.read(_PREFIX + _AI_FROZEN)
+        blob = b"blob " + str(len(frozen)).encode("ascii") + b"\x00" + frozen
+        if hashlib.sha1(blob).hexdigest() != _AI_FROZEN_BLOB:
+            raise ValueError("Wheel changed the signed frozen TL494 source")
         data = json.loads(archive.read(_PREFIX + _REQUIREMENTS))
         if data.get("profile_id") != "eskd-ru-2026-11":
             raise ValueError("Wheel contains an unexpected ESKD requirements edition")
