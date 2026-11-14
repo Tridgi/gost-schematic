@@ -4,7 +4,7 @@ on:
   push:
     branches: [reference/tl494-audit-v4-20261114]
     paths:
-      - examples/tl494_v4/**
+      - examples/tl494_v4/*.py
       - tests/test_tl494_v4_contract.py
       - .github/workflows/tl494-v4-audit.yml
   workflow_dispatch:
@@ -53,7 +53,6 @@ jobs:
           python -m pip install --disable-pip-version-check 'Pillow>=10,<13' pytest 'ruff>=0.9,<1'
       - name: 23/15 source gate, negative geometric DRC and Type A IC model
         id: audit
-        continue-on-error: true
         run: |
           set +e
           mkdir -p examples/tl494_v4/evidence
@@ -85,7 +84,10 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           if [ ! -d examples/tl494_v4/evidence ]; then exit 0; fi
-          git add -f examples/tl494_v4/evidence
+          RUN_DIR="examples/tl494_v4/evidence_runs/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          mkdir -p "$RUN_DIR"
+          cp -a examples/tl494_v4/evidence/. "$RUN_DIR/"
+          git add -f "$RUN_DIR"
           if git diff --cached --quiet; then exit 0; fi
           git commit -m 'test(tl494-v4): capture source/model and paper-space DRC evidence'
           git fetch origin reference/tl494-audit-v4-20261114
