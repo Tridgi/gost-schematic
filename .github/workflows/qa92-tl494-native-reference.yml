@@ -52,7 +52,8 @@ jobs:
           for file in _qa_sources/paint/src/gost_schematic/rendering/ic_*.py; do
             cp "$file" _qa_sources/reference/src/gost_schematic/rendering/
           done
-          for file in _qa_sources/ic/src/gost_schematic/electrical/ic*.py; do
+          for file in _qa_sources/ic/src/gost_schematic/electrical/ic*.py _qa_sources/ic/src/gost_schematic/electrical/tl494cn.py; do
+            test -f "$file"
             cp "$file" _qa_sources/reference/src/gost_schematic/electrical/
           done
           echo "Exact source restaged only inside temp GitHub runner; never merge/edit owner PRs"
