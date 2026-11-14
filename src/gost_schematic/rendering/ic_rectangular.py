@@ -670,14 +670,29 @@ def render_resolved_ic(
                 raise ValueError(
                     f"IC_INK_COLLISION: {label_region.owner} vs {later.owner}"
                 )
-    glyphs = tuple(
-        replace(glyph, ink=worldbox(glyph.ink))
-        if matrix_token is not None else glyph
-        for parent, baseline, matrix_token in texts
-        for glyph in _true_glyph_boxes(
-            parent.owner, parent.text, baseline, style,
-        )
-    ) if glyph_detail else ()
+    # A standalone glyph's FreeType bbox can differ from its shaped
+    # run bbox because kerning and ligatures depend on neighbors. The full
+    # measured run is authoritative; clamp per-codepoint review hints to it
+    # instead of reporting false hard collisions from standalone glyph ink.
+    glyph_list: list[IcGlyphBox] = []
+    if glyph_detail:
+        for parent, baseline, matrix_token in texts:
+            for glyph in _true_glyph_boxes(
+                parent.owner, parent.text, baseline, style,
+            ):
+                candidate = (
+                    worldbox(glyph.ink)
+                    if matrix_token is not None else glyph.ink
+                )
+                x1 = max(candidate.min_x, parent.box.min_x)
+                y1 = max(candidate.min_y, parent.box.min_y)
+                x2 = min(candidate.max_x, parent.box.max_x)
+                y2 = min(candidate.max_y, parent.box.max_y)
+                if x1 < x2 and y1 < y2:
+                    glyph_list.append(replace(
+                        glyph, ink=Box(x1, y1, x2, y2),
+                    ))
+    glyphs = tuple(glyph_list)
     for glyph in glyphs:
         for protected in strokes:
             if _ink_intersects(glyph.ink, protected.box, policy.ink_padding_um):
