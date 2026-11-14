@@ -161,6 +161,72 @@ def test_new_real_paint_full_16_tip_snapshot_composes_into_23_part_circuit(
     assert physical.circuit.nets == build_frozen_photo_23()[0].circuit.nets
 
 
+def test_real_ti_full_manufacturer_names_and_fb_oc_aliases_are_independent(
+    typographic_source,
+):
+    style, measure = typographic_source
+    physical, drawing, sealed = _actual_authoritative_binding(style, measure)
+    names = {p.number: p.name for p in physical.record.device.pins}
+    types = {
+        p.number: p.electrical_type.value for p in physical.record.device.pins
+    }
+    aliases = {
+        row.number: row.label for spec in physical.record.specs
+        for row in spec.rows
+    }
+    assert names["3"] == "FEEDBACK" and aliases["3"] == "FB"
+    assert names["13"] == "OUTPUT CTRL" and aliases["13"] == "OC"
+    for unit in drawing.views:
+        for pin in unit.pins:
+            assert pin.label == names[pin.number]
+            assert pin.display_alias == aliases[pin.number]
+            assert pin.visible_label == aliases[pin.number]
+            assert pin.manufacturer_electrical_type == types[pin.number]
+    xml = ET.fromstring(sealed.render(
+        physical, drawing, style, measure, diagnostics=True,
+    )[0].svg)
+    visible = {
+        node.get("data-physical-pin-number"): node for node in xml.iter()
+        if node.tag.endswith("text")
+        and node.get("data-physical-pin-number") is not None
+    }
+    assert {"3", "13"} <= set(visible)
+    assert visible["3"].get("data-full-manufacturer-name") == "FEEDBACK"
+    assert visible["3"].get("data-visible-pin-alias") == "FB"
+    assert visible["3"].get("data-manufacturer-electrical-type") == "input"
+    assert visible["13"].get("data-full-manufacturer-name") == "OUTPUT CTRL"
+    assert visible["13"].get("data-visible-pin-alias") == "OC"
+    assert visible["13"].get("data-manufacturer-electrical-type") == "input"
+
+
+@pytest.mark.parametrize("field", (
+    "label", "display_alias", "manufacturer_electrical_type",
+))
+def test_real_paint_cannot_spoof_ti_metadata_with_correct_geometry(
+    typographic_source, field,
+):
+    physical, drawing, _ = _actual_authoritative_binding(
+        *typographic_source,
+    )
+    view = drawing.views[0]
+    index = next(
+        i for i, pin in enumerate(view.pins) if pin.number == "3"
+    )
+    pin = view.pins[index]
+    corrupted = {
+        "label": "FB",
+        "display_alias": "FEEDBACK",
+        "manufacturer_electrical_type": "output",
+    }[field]
+    forged = replace(view, pins=tuple(
+        replace(p, **{field: corrupted}) if i == index else p
+        for i, p in enumerate(view.pins)
+    ))
+    with pytest.raises(ValueError, match="IC_PAINT_PIN_SEMANTIC_MISMATCH"):
+        replace(drawing, views=(forged,)).verify_endpoints()
+    assert physical.contact(PinRef("DA1", "3")).manufacturer_pin_name == "FEEDBACK"
+
+
 @pytest.mark.parametrize("kind", (
     "foreign_ref", "wrong_net", "disabled_input", "wrong_um",
     "missing_contact", "duplicate_contact", "wrong_pin_number",
