@@ -294,16 +294,19 @@ def candidate_wire_clearance(
     else:
         crossing = _strict_crossing(candidate, existing)
         if crossing is not None:
+            integer_crossing = (
+                Point(int(crossing[0]), int(crossing[1]))
+                if all(value.denominator == 1 for value in crossing) else None
+            )
             if not same_net:
-                if any(Point(*crossing) == p for p in explicit_junctions
-                       if all(c.denominator == 1 for c in crossing)):
+                if integer_crossing is not None and (
+                    integer_crossing in explicit_junctions
+                ):
                     errors.append("DRC_FOREIGN_NET_AUTHORED_X_JUNCTION")
                 else:
                     warnings.append("DRC_UNMARKED_DIFFERENT_NET_X")
-            elif not (
-                all(x.denominator == 1 for x in crossing)
-                and Point(*crossing) in explicit_junctions
-            ):
+            elif (integer_crossing is None
+                  or integer_crossing not in explicit_junctions):
                 errors.append("DRC_SAME_NET_X_NO_JUNCTION")
         else:
             candidate_points = {candidate.start, candidate.end}
