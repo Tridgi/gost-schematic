@@ -16,6 +16,7 @@ from gost_schematic.core.geometry import (
     Point,
     StyledLine,
     primitive_stroked_bounds,
+    primitive_stroke_width,
 )
 from gost_schematic.core.intersections import segment_intersects_box
 from gost_schematic.engines.orthogonal_route_planner import _resolve_real_pin
@@ -30,6 +31,7 @@ from gost_schematic.validation.external_wire_checks import (
 from gost_schematic.validation.route_drc import (
     RouteDRCReport,
     _on,
+    _seg_distance_sq,
     _symbol_boxes,
     audit_route_drc,
     candidate_wire_clearance,
@@ -146,6 +148,9 @@ class _SourceInk:
     permitted_pin: PinRef | None = None
     contact: Point | None = None
     normal: Point | None = None
+    ink_line: WireSegment | None = None
+    graphic_stroke_um: int = 0
+    wire_stroke_um: int = 0
 
 
 def _source_ink_obstacles(
@@ -196,6 +201,11 @@ def _source_ink_obstacles(
                  world.end if world.end in contact_by_point else None)
                 if touched else None,
                 touched[1] if touched else None,
+                WireSegment(
+                    world.start, world.end, "__NATIVE_SYMBOL_INK__",
+                ) if isinstance(world, (Line, StyledLine)) else None,
+                primitive_stroke_width(world, symbol.line_width_um),
+                stroke_um,
             ))
     return tuple(obstacles)
 
@@ -216,6 +226,15 @@ def _source_ink_collision(
     for ink in obstacles:
         if not segment_intersects_box(segment, ink.collision_bounds):
             continue
+        if ink.ink_line is not None:
+            # A diagonal line's AABB can contain large areas of empty paper.
+            # Compare source line and candidate *actual* printed strokes
+            # using exact rational squared distances, never their AABBs.
+            dist_sq = _seg_distance_sq(candidate, ink.ink_line)
+            if 4 * dist_sq > (
+                ink.wire_stroke_um + ink.graphic_stroke_um
+            ) ** 2:
+                continue
         if (
             ink.permitted_pin in authorized_pins
             and ink.contact in (candidate.start, candidate.end)
