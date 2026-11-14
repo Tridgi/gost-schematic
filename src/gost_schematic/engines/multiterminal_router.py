@@ -5,13 +5,13 @@ T junctions. It is always a read-only preview; no semantic Circuit.Net, componen
 placement, or physical PartDefinition is modified. A failed route returns a
 partial *nonprintable* graph and explicit reason. DO NOT claim ESKD APPROVED.
 """
-from collections import Counter
 from dataclasses import dataclass
 from heapq import heappop, heappush
 from itertools import pairwise
 
 from gost_schematic.core.geometry import Box, Line, Point
 from gost_schematic.core.intersections import segment_intersects_box
+from gost_schematic.engines.orthogonal_route_planner import _resolve_real_pin
 from gost_schematic.model.circuit import Circuit, Net, PinRef
 from gost_schematic.model.part import PartDefinition
 from gost_schematic.model.symbol import SymbolDefinition
@@ -27,7 +27,6 @@ from gost_schematic.validation.route_drc import (
     audit_route_drc,
     candidate_wire_clearance,
 )
-from gost_schematic.engines.orthogonal_route_planner import _resolve_real_pin
 
 # A priority list is an editorial routing order, never electrical authority.
 SOURCE_TL494_ROUTE_PRIORITY = (
@@ -463,7 +462,7 @@ def route_multi_terminal_net(
         trial = ExternalWireGraph(
             (*occupied.segments, *updated),
             tuple(sorted(
-                set((*occupied.junctions, *new_dots)),
+                {*occupied.junctions, *new_dots},
                 key=lambda p: (p.x, p.y),
             )),
         )
@@ -540,7 +539,7 @@ def route_circuit_net_trees(
         graph = ExternalWireGraph(
             (*graph.segments, *tree.segments),
             tuple(sorted(
-                set((*graph.junctions, *tree.junctions)),
+                {*graph.junctions, *tree.junctions},
                 key=lambda p: (p.x, p.y),
             )),
         )
