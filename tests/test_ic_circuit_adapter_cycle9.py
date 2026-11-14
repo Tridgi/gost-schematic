@@ -84,7 +84,6 @@ def test_actual_frozen_photo_source_23_15_62_all_16_vendor_contacts():
     assert binding.contact(PinRef("DA1", "13")).electrical_type is IcPinType.INPUT
     assert binding.contact(PinRef("DA1", "13")).schematic_short_label == "OC"
     assert binding.part.identifier == TI_DEVICE_ID
-    assert binding.part.pin_ids if False else True  # no proposed public API
     assert binding.part.pins[2].electrical_type is ElectricalType.INPUT
     assert binding.part.pins[12].electrical_type is ElectricalType.INPUT
     assert binding.part.pins[2].name == "FEEDBACK"
@@ -282,16 +281,21 @@ def test_frozen_photo_gate_detects_missing_net_or_source_reinterpretation():
     candidate = _bind_revised(binding, circuit=deleted)
     with pytest.raises(ValueError, match="COMPONENT_OR_NET_COUNT_DRIFT"):
         assert_frozen_photo_topology(candidate, source)
-    swapped = _bind_revised(
-        binding, circuit=_change_net(
-            binding, "FEEDBACK",
-            (PinRef("R3", "2"), PinRef("DA1", "13")),
-        ).__class__(
-            binding.circuit.components,
-            tuple(net for net in binding.circuit.nets if net.name != "COMMON"),
-        ),
-    ) if False else None
-    assert swapped is None  # source parity rejects change; not an ERC claim
+    # Swap two real DA1 physical contacts while keeping each contact unique:
+    # standalone Circuit accepts it, but the frozen original MUST NOT.
+    members = {}
+    for n in binding.circuit.nets:
+        members[n.name] = tuple(
+            PinRef("DA1", "5") if p == PinRef("DA1", "3") else
+            PinRef("DA1", "3") if p == PinRef("DA1", "5") else p
+            for p in n.members
+        )
+    hostile = replace(binding.circuit, nets=tuple(
+        replace(n, members=members[n.name]) for n in binding.circuit.nets
+    ))
+    rewritten = _bind_revised(binding, circuit=hostile)
+    with pytest.raises(ValueError, match="NET_MEMBERSHIP_DRIFT"):
+        assert_frozen_photo_topology(rewritten, source)
 
 
 def test_unmatched_alias_and_wrong_semantics_fail_at_circuit_adapter_boundary():
