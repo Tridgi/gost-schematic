@@ -8,8 +8,6 @@ import os
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
-from gost_schematic.electrical.ic_serde import ic_from_json
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
 from gost_schematic.rendering.ic_electrical_binding import (
@@ -21,6 +19,11 @@ SVG = "{http://www.w3.org/2000/svg}"
 
 
 def main():
+    # The ELEKTRIK package is a pinned optional source overlaid only in CI.
+    # Import here so this PAINT-only tree has a reproducible Ruff layout.
+    from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
+    from gost_schematic.electrical.ic_serde import ic_from_json
+
     font = Path(os.environ["IC_TYPE_A_FONT_PATH"])
     inspection = inspect_type_a_font(font, h_um=3500)
     assert inspection.measured_cap_height_um == 3500
