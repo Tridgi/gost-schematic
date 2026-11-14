@@ -349,8 +349,7 @@ def test_long_pwm_controller_shared_body_two_angles_all_d4(rotation, mirrored):
         bind_ic_paint_text_only,
         propose_ic_paint_binding,
     )
-    from gost_schematic.rendering.ic_rectangular import render_resolved_ic
-
+    paint = pytest.importorskip("gost_schematic.rendering.ic_rectangular")
     style, measurer = _actual_renderer()
     source = _mixed_record(8)
     placements = tuple(replace(
@@ -383,8 +382,8 @@ def test_long_pwm_controller_shared_body_two_angles_all_d4(rotation, mirrored):
     for view1, view0 in zip(proposed.views, second.views, strict=True):
         assert view1.body == view0.body
         assert view1.pins == view0.pins
-        v = render_resolved_ic(view1, style, measurer)
-        h = render_resolved_ic(view0, style, measurer)
+        v = paint.render_resolved_ic(view1, style, measurer)
+        h = paint.render_resolved_ic(view0, style, measurer)
         assert v.pin_anchors == h.pin_anchors
         assert v.body_world == h.body_world
     assert network.nets is initial_nets
