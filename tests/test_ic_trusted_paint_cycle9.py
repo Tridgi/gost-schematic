@@ -38,7 +38,7 @@ from gost_schematic.model.circuit import PinRef
 from gost_schematic.standards.type_a_font import inspect_type_a_font
 
 pytest.importorskip("gost_schematic.rendering.ic_sheet_composition")
-from gost_schematic.rendering.ic_sheet_composition import (  # noqa: E402
+from gost_schematic.rendering.ic_sheet_composition import (
     compose_authoritative_ic_layers,
 )
 
@@ -261,7 +261,7 @@ def test_current_paint_composition_refuses_counterfeit_pin_or_net(
             node for node in root.iter()
             if node.get("data-layer") == "ic-physical-pin-leads"
         )
-        layer.remove(list(layer)[0])
+        layer.remove(next(iter(layer)))
         corrupt = replace(actual, svg=ET.tostring(root, encoding="unicode"))
     elif kind == "wrong_circuit_net":
         targets = list(actual.connection_targets)
@@ -283,7 +283,7 @@ def test_current_paint_composition_refuses_counterfeit_pin_or_net(
             node for node in root.iter()
             if node.get("data-layer") == "editor-connection-targets"
         )
-        group.remove(list(group)[0])
+        group.remove(next(iter(group)))
         corrupt = replace(actual, svg=ET.tostring(root, encoding="unicode"))
     elif kind == "disabled_input":
         targets = list(actual.connection_targets)
