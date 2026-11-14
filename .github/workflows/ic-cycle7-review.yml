@@ -5,6 +5,8 @@ on:
     branches: [integration/stage0-12]
     paths:
       - "src/gost_schematic/rendering/ic_rectangular.py"
+      - "src/gost_schematic/rendering/ic_orientation.py"
+      - "src/gost_schematic/rendering/ic_hotspots.py"
       - "examples/review_ic_cycle7.py"
       - "tests/test_rendering_ic_cycle7.py"
       - ".github/workflows/ic-cycle7-review.yml"
@@ -24,7 +26,7 @@ jobs:
       - name: Test IC isolated engine
         run: |
           python -m pip install -e ".[dev]"
-          ruff check src/gost_schematic/rendering/ic_rectangular.py examples/review_ic_cycle7.py tests/test_rendering_ic_cycle7.py
+          ruff check src/gost_schematic/rendering/ic_rectangular.py src/gost_schematic/rendering/ic_orientation.py src/gost_schematic/rendering/ic_hotspots.py examples/review_ic_cycle7.py tests/test_rendering_ic_cycle7.py
           pytest -q tests/test_rendering_ic_cycle7.py
       - name: Install pinned external Type A font
         env:
@@ -45,16 +47,15 @@ jobs:
         run: |
           python -m examples.review_ic_cycle7 --font-file "$REVIEW_FONT" \
             --output-dir output/ic-cycle7
-      - name: Raster 10 DRAFT SVG variants at physical 300 DPI
+      - name: Raster all 20 DRAFT SVG variants at physical 300 DPI
         run: |
-          for CASE in 04-digital 08-analog 14-digital 40-digital 64-digital; do
-            for VIEW in clean diagnostic; do
-              NAME="ic-$CASE-$VIEW"
-              rsvg-convert --background-color white --dpi-x 300 --dpi-y 300 \
-                --output "output/ic-cycle7/$NAME-300dpi.png" \
-                "output/ic-cycle7/$NAME.svg"
-            done
+          for INPUT in output/ic-cycle7/ic-*-clean.svg output/ic-cycle7/ic-*-diagnostic.svg; do
+            test -f "$INPUT"
+            OUTPUT="${INPUT%.svg}-300dpi.png"
+            rsvg-convert --background-color white --dpi-x 300 --dpi-y 300 \
+              --output "$OUTPUT" "$INPUT"
           done
+          test "$(find output/ic-cycle7 -name 'ic-*-300dpi.png' | wc -l)" -eq 20
       - name: Verify DPI, text/stroke distances, anchors and create comparison
         run: |
           python - <<'PY'
@@ -68,41 +69,72 @@ jobs:
           assert abs(report["font"]["measured_cap_height_um"]-3500)<=10
           assert report["drawing_profile"]["module_um"]==2500
           imgs=[]
-          for count in (4,8,14,40,64):
-              typ="analog" if count==8 else "digital"
-              key=f"ic-{count:02d}-{typ}"
-              evidence=report["cases"][key]
-              assert evidence["physical_pin_count"]==count
-              assert len(evidence["pin_anchors"])==count
-              assert evidence["minimum_text_to_stroke_ink_gap_um"]>=1000
-              for view in ("clean","diagnostic"):
-                  svg=ET.fromstring((root/f"{key}-{view}.svg").read_text())
-                  lines=svg.findall(".//{http://www.w3.org/2000/svg}line[@data-pin-id]")
-                  assert len(lines)==count
-                  assert svg.get("data-font-sha256")==report["font"]["sha256"]
-                  assert svg.get("data-approval")=="DRAFT"
-                  w=float(svg.get("width").removesuffix("mm"))
-                  h=float(svg.get("height").removesuffix("mm"))
-                  path=root/f"{key}-{view}-300dpi.png"
-                  with Image.open(path) as pic:
-                      target=(round(w*300/25.4),round(h*300/25.4))
-                      assert all(abs(a-b)<=1 for a,b in zip(pic.size,target)),(key,pic.size,target)
-                      pic.save(path,dpi=(300,300))
-                  with Image.open(path) as pic:
-                      assert all(abs(d-300)<.2 for d in pic.info["dpi"])
-                      if view=="clean":
-                          imgs.append((count,pic.convert("RGB").copy()))
-          # Contact sheet is a *visual comparison*, NOT an in-scale CAD plot.
-          panel=(920,1150)
-          sheet=Image.new("RGB",(panel[0]*5,panel[1]),"white")
+          assert len(report["cases"])==10
+          for group in ("horizontal","vertical"):
+              for count in (4,8,14,40,64):
+                  typ="analog" if count==8 else "digital"
+                  key=(f"ic-{count:02d}-{typ}" if group=="horizontal"
+                       else f"ic-{count:02d}-vertical")
+                  evidence=report["cases"][key]
+                  assert evidence["physical_pin_count"]==count
+                  assert evidence["orientation"]==("left_right" if group=="horizontal"
+                                                   else "top_bottom")
+                  assert len(evidence["pin_anchors"])==count
+                  assert evidence["minimum_text_to_stroke_ink_gap_um"]>=1000
+                  assert evidence["visible_glyph_count"]>0
+                  for view in ("clean","diagnostic"):
+                      svg=ET.fromstring((root/f"{key}-{view}.svg").read_text())
+                      lines=svg.findall(".//{http://www.w3.org/2000/svg}line[@data-pin-id]")
+                      assert len(lines)==count
+                      assert svg.get("data-font-sha256")==report["font"]["sha256"]
+                      assert svg.get("data-approval")=="DRAFT"
+                      assert svg.get("data-orientation")==evidence["orientation"]
+                      w=float(svg.get("width").removesuffix("mm"))
+                      h=float(svg.get("height").removesuffix("mm"))
+                      path=root/f"{key}-{view}-300dpi.png"
+                      with Image.open(path) as pic:
+                          target=(round(w*300/25.4),round(h*300/25.4))
+                          assert all(abs(a-b)<=1 for a,b in zip(pic.size,target)),(key,pic.size,target)
+                          pic.save(path,dpi=(300,300))
+                      with Image.open(path) as pic:
+                          assert all(abs(d-300)<.2 for d in pic.info["dpi"])
+                          assert pic.convert("L").getextrema()[0]<120
+                          if view=="clean":
+                              # Independently compare actual rasterized glyph pixels
+                              # with the measured per-glyph world bboxes, allowing
+                              # only 3px anti-alias/FreeType fraction tolerance.
+                              x0,y0,*_=map(float,svg.get("viewBox").split())
+                              greyscale=pic.convert("L")
+                              scale=300/25.4/1000
+                              found=0
+                              boxes=evidence["glyph_ink_boxes"]
+                              for glyph in boxes[::max(1,len(boxes)//80)]:
+                                  b=glyph["ink_um"]
+                                  left=max(0,int((b[0]-1000*x0)*scale)-3)
+                                  top=max(0,int((b[1]-1000*y0)*scale)-3)
+                                  right=min(pic.width,int((b[2]-1000*x0)*scale)+4)
+                                  bottom=min(pic.height,int((b[3]-1000*y0)*scale)+4)
+                                  if right<=left or bottom<=top:
+                                      raise AssertionError(("clipped glyph",key,glyph))
+                                  dark=greyscale.crop((left,top,right,bottom)).getextrema()[0]
+                                  assert dark<150,("missing raster glyph",key,glyph,dark)
+                                  found+=1
+                              assert found>=5
+                              imgs.append((f"{count} pins | {group}",pic.convert("RGB").copy()))
+          # Two row comparison is visual only, NOT physical 1:1 paper scale.
+          panel=(930,1250)
+          sheet=Image.new("RGB",(panel[0]*5,panel[1]*2),"white")
           draw=ImageDraw.Draw(sheet)
-          font=ImageFont.truetype("DejaVuSans.ttf",34)
-          for i,(count,pic) in enumerate(imgs):
-              pic.thumbnail((panel[0]-60,panel[1]-135))
-              sheet.paste(pic,(i*panel[0]+(panel[0]-pic.width)//2,100))
-              draw.text((i*panel[0]+25,18),f"DRAFT IC {count} pins",font=font,fill="black")
-          sheet.save(root/"ic-4-8-14-40-64-overview.png")
-          print("5 IC sizes verified: 300 DPI, font SHA, physical glyph-vs-stroke, exact anchors")
+          font=ImageFont.truetype("DejaVuSans.ttf",31)
+          for i,(title,pic) in enumerate(imgs):
+              pic.thumbnail((panel[0]-55,panel[1]-135))
+              col=i%5
+              row=i//5
+              sheet.paste(pic,(col*panel[0]+(panel[0]-pic.width)//2,
+                               row*panel[1]+90))
+              draw.text((col*panel[0]+20,row*panel[1]+18),title,font=font,fill="black")
+          sheet.save(root/"ic-horizontal-vs-vertical-5x2-overview.png")
+          print("10 measured ICs, 20 x 300DPI PNG, 2 orientations, source pin/ink provenance and real glyph pixels")
           PY
       - uses: actions/upload-artifact@v4
         with:
