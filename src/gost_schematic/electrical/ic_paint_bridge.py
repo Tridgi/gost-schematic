@@ -160,7 +160,13 @@ class IcPaintBinding:
                     or pin.side != row.side
                     or pin.row != row.visual_row
                     or pin.row_key != row.row_key
-                    or pin.label != row.label
+                    or pin.label != (
+                        self.record.device.pin_map[row.number].name
+                    )
+                    or pin.display_alias != row.label
+                    or pin.manufacturer_electrical_type != (
+                        self.record.device.pin_map[row.number].electrical_type.value
+                    )
                     or pin.role != _role(
                         self.record.device.pin_map[row.number].electrical_type,
                     )
@@ -276,12 +282,16 @@ def _preliminary_pins(spec, placement, device):
         ResolvedIcPin(
             pin_id=f"{placement.component_ref}.P{row.number}",
             number=row.number,
-            label=row.label,
+            label=device.pin_map[row.number].name,
             side=row.side,
             row=row.visual_row,
             anchor=placement.transform.apply(row.anchor) + placement.origin,
             role=_role(device.pin_map[row.number].electrical_type),
             row_key=row.row_key,
+            display_alias=row.label,
+            manufacturer_electrical_type=(
+                device.pin_map[row.number].electrical_type.value
+            ),
         ) for row in spec.rows
     )
 
