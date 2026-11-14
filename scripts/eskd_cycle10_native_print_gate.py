@@ -95,6 +95,47 @@ def _source_profile(profile: dict) -> dict[str, dict]:
     return result
 
 
+def _typed_source_62(inventory: dict) -> dict:
+    """Cross-owner source Circuit inventory; no wiring inferred from SVG."""
+    _insist(inventory.get("source_sha") == FROZEN_SOURCE,
+            "TYPED_SOURCE_SHA_MISMATCH")
+    components = inventory.get("components", [])
+    nets = inventory.get("nets", [])
+    _insist(len(components) == 23 and len(set(components)) == 23,
+            "TYPED_SOURCE_NOT_23_UNIQUE_COMPONENTS")
+    _insist(len(nets) == 15
+            and len({n.get("name") for n in nets}) == 15,
+            "TYPED_SOURCE_NOT_15_UNIQUE_NETS")
+    members = [ref for net in nets for ref in net.get("members", [])]
+    _insist(len(members) == 62 and len(set(members)) == 62,
+            "TYPED_SOURCE_62_UNIQUE_PINREFS_REQUIRED")
+    for ref in members:
+        _insist(isinstance(ref, str) and "." in ref
+                and ref.split(".", 1)[0] in components,
+                "TYPED_SOURCE_UNKNOWN_PINREF_COMPONENT")
+    da1 = {
+        ref.split(".", 1)[1] for ref in members
+        if ref.startswith("DA1.")
+    }
+    _insist(da1 == {str(i) for i in range(1, 17)},
+            "TYPED_SOURCE_ALL_16_DA1_PINREFS_REQUIRED")
+    _insist(inventory.get("wire_segments") == 91
+            and inventory.get("junctions") == 37,
+            "TYPED_SOURCE_91_WIRES_37_DOTS_REQUIRED")
+    _insist(set(inventory.get("nonphysical_b", [])) == {"b-X2", "b-R5"},
+            "TYPED_SOURCE_B_GRAPHIC_NOT_PHYSICAL")
+    _insist(inventory.get("all_15_nets_routed") is False,
+            "TYPED_SOURCE_ORIGINAL_91_CANNOT_CLAIM_NEW_FULL_ROUTE")
+    return {
+        "status": "PASS_SOURCE_INVENTORY_ONLY",
+        "physical_parts": 23,
+        "physical_nets": 15,
+        "unique_pinref_memberships": 62,
+        "all_tl494_pin_numbers": sorted(da1, key=int),
+        "legacy_route_complete": False,
+    }
+
+
 def _owner_facts(manifest: dict, profile: dict[str, dict]) -> None:
     checks = {
         "source_sha": FROZEN_SOURCE,
@@ -364,13 +405,19 @@ def _verify_png(png_file: Path, width_mm: float, root: ET.Element, *,
 
 
 def audit(folder: Path, profile_path: Path, *,
-          verify_png: bool = False) -> dict:
+          verify_png: bool = False, typed_inventory: Path | None = None) -> dict:
     manifest_path = folder / "TL494_full_native_23_engine_manifest.json"
     _insist(manifest_path.is_file(), "REAL_NATIVE_MANIFEST_MISSING")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     profile = json.loads(profile_path.read_text(encoding="utf-8"))
     expected_profiles = _source_profile(profile)
     _owner_facts(manifest, expected_profiles)
+    typed_source = None
+    if typed_inventory is not None:
+        _insist(typed_inventory.is_file(), "REAL_TYPED_SOURCE_INVENTORY_MISSING")
+        typed_source = _typed_source_62(
+            json.loads(typed_inventory.read_text(encoding="utf-8"))
+        )
     result = {
         "release_verdict": "NO_GO",
         "approval": "DRAFT_NOT_APPROVED",
@@ -388,6 +435,8 @@ def audit(folder: Path, profile_path: Path, *,
             } for name, entry in sorted(expected_profiles.items())
         },
     }
+    if typed_source is not None:
+        result["checks"]["actual_typed_source_23_15_62_16"] = typed_source
     actual = {}
     for suffix, is_diagnostic in (("clean", False), ("diagnostic", True)):
         file = folder / f"{PAINT_BASE}_{suffix}.svg"
@@ -460,9 +509,11 @@ def main() -> None:
     parser.add_argument("--profile", required=True, type=Path)
     parser.add_argument("--out", required=True, type=Path)
     parser.add_argument("--verify-png", action="store_true")
+    parser.add_argument("--typed-inventory", type=Path)
     parser.add_argument("--expect-source-blocked", action="store_true")
     args = parser.parse_args()
-    result = audit(args.folder, args.profile, verify_png=args.verify_png)
+    result = audit(args.folder, args.profile, verify_png=args.verify_png,
+                   typed_inventory=args.typed_inventory)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n",
                         encoding="utf-8")
