@@ -13,6 +13,7 @@ import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from importlib import import_module
+from math import gcd
 from xml.etree import ElementTree as ET
 
 from gost_schematic.core.geometry import Box
@@ -153,7 +154,10 @@ def render_routed_native_sheet(
             if _point_on_segment(wire, point)
         )
         touched = {wire.net_name for wire in incident}
-        if len(incident) < 2 or len(touched) != 1:
+        if len(touched) != 1 or not _is_real_branch(incident, point):
+            # A straight splice or two-segment elbow does not require a
+            # conductive junction dot. Only a real 3+ arm T/X/branch may
+            # render a node; foreign-Net overlap is never implicitly joined.
             raise ValueError("ROUTED_SHEET_FOREIGN_OR_DANGLING_JUNCTION")
     if route_preview is not None:
         try:
@@ -368,6 +372,24 @@ def render_routed_native_sheet(
     }
     return RoutedSheetRender(result_views[0], result_views[1],
                              fingerprint, manifest, full)
+
+
+
+def _is_real_branch(segments, point) -> bool:
+    """At least three distinct exact-µm rays meet at the declared same-Net dot.
+
+    One segment passing through the point contributes two rays. Two endpoint
+    wires forming a straight splice or an L contribute only two, so neither
+    may be portrayed as a real three-terminal electrical junction.
+    """
+    rays = set()
+    for segment in segments:
+        for endpoint in (segment.start, segment.end):
+            dx, dy = endpoint.x - point.x, endpoint.y - point.y
+            if dx or dy:
+                divisor = gcd(abs(dx), abs(dy))
+                rays.add((dx // divisor, dy // divisor))
+    return len(rays) >= 3
 
 
 def _point_on_segment(segment, point) -> bool:
