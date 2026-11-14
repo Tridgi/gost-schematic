@@ -52,7 +52,7 @@ jobs:
           mkdir -p examples/tl494_full_photo_output
           PYTHONPATH=src python -m examples.tl494_full_photo_sheet \
             --font-file "$HOME/.local/share/fonts/OpenGostTypeA-Regular.ttf" \
-            --output examples/tl494_full_photo_output \
+            --output examples/tl494_full_photo_output --strict \
             > examples/tl494_full_photo_output/build_log.txt 2>&1
           CODE=$?
           echo "BUILD_EXIT_CODE=$CODE" >> examples/tl494_full_photo_output/build_log.txt
@@ -65,10 +65,10 @@ jobs:
           folder=Path('examples/tl494_full_photo_output')
           for svg in folder.glob('*.svg'):
               target=svg.with_suffix('.png')
-              cairosvg.svg2png(url=str(svg),write_to=str(target),dpi=200,
+              cairosvg.svg2png(url=str(svg),write_to=str(target),dpi=300,
                                 background_color='#ffffff')
               im=Image.open(target)
-              im.save(target,dpi=(200,200))
+              im.save(target,dpi=(300,300))
               print(target,im.size)
           PY
       - name: Persist actual output or failure
