@@ -80,6 +80,7 @@ def test_new_graph_not_old91_exact_lines_and_source_unmodified():
     ("foreign", "ROUTED_SHEET_FORGED_FOREIGN_NET"),
     ("count", "ROUTED_SHEET_SOURCE_NETS_DRIFT"),
     ("junction", "ROUTED_SHEET_FOREIGN_OR_DANGLING_JUNCTION"),
+    ("fake_dot", "ROUTED_SHEET_FOREIGN_OR_DANGLING_JUNCTION"),
     ("no_ic", "ROUTED_SHEET_TYPED_PHYSICAL_IC_REQUIRED"),
     ("owner", "ROUTED_SHEET_OWNER_PREVIEW"),
 ))
@@ -105,6 +106,15 @@ def test_reject_forged_external_graph_or_evidence(tamper, code):
             WireSegment(Point(-1000, 0), Point(1000, 0), "A"),
             WireSegment(Point(0, -1000), Point(0, 1000), "B"),
         ), (Point(0, 0),))
+    elif tamper == "fake_dot":
+        first = graph.segments[0]
+        halfway = Point(
+            (first.start.x+first.end.x)//2,
+            (first.start.y+first.end.y)//2,
+        )
+        kwargs["graph"] = ExternalWireGraph(
+            graph.segments, (halfway,),
+        )
     elif tamper == "no_ic":
         kwargs["physical_ic_renderings_clean"] = {}
     elif tamper == "owner":
