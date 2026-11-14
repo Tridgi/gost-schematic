@@ -15,8 +15,8 @@ from gost_schematic.core.geometry import (
     Line,
     Point,
     StyledLine,
-    primitive_stroked_bounds,
     primitive_stroke_width,
+    primitive_stroked_bounds,
 )
 from gost_schematic.core.intersections import segment_intersects_box
 from gost_schematic.engines.orthogonal_route_planner import _resolve_real_pin
