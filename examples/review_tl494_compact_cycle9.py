@@ -26,6 +26,7 @@ from gost_schematic.engines.multiterminal_router import (
     route_circuit_with_order_fallback,
 )
 from gost_schematic.engines.sheet_layout import layout_sheet
+from gost_schematic.model.circuit import PinRef
 from gost_schematic.rendering.external_wire_sheet import (
     build_external_wire_obstacles,
     render_external_wire_sheet,
@@ -198,14 +199,76 @@ def produce(
         and not frame_errors and not erc_errors
     )
     output.mkdir(parents=True, exist_ok=True)
-    # Genuine renderer uses exactly the newly generated Graph; it is NOT
-    # the legacy 91-segment photo rendering. No diagnostic overlay in print.
+    # Bind PAINT's real physical target IDs and original Circuit.Net names.
+    # These editor-only targets do not change topology, PinRef, or Net.
+    target_type = import_module(
+        "gost_schematic.rendering.ic_hotspots"
+    ).IcConnectionTarget
+    real_pin_nets = {
+        (member.reference, member.number): net.name
+        for net in circuit.nets for member in net.members
+    }
+    actual_targets = tuple(
+        target_type(
+            pin.pin_id,
+            PinRef("DA1", pin.number),
+            pin.anchor, True, real_pin_nets.get(("DA1", pin.number)),
+        )
+        for pin in bridge.views[0].pins
+    )
+    if len(actual_targets) != 16 or len({
+        target.pin_ref.number for target in actual_targets
+    }) != 16:
+        raise ValueError("COMPACT_PAINT_IC_EDITOR_TARGETS_NOT_16_TYPED_PINS")
+    # Genuine renderer uses exactly the newly generated Graph, not the
+    # frozen 91-wire layout. Compose PAINT glyphs/16 leads into the same
+    # physical drawing world as all original catalogue components.
     for mode in ("clean", "diagnostic"):
         native = render_external_wire_sheet(
             circuit, route.graph, symbols, style, measurer,
             diagnostic=(mode == "diagnostic"), strict_layout=False,
         )
         root = ET.fromstring(native.svg)
+        ic_source = (
+            real_ic if mode == "clean" else
+            import_module(
+                "gost_schematic.rendering.ic_rectangular"
+            ).render_resolved_ic(
+                bridge.views[0], style, measurer, glyph_detail=True,
+                editor_targets=actual_targets, editor_overlay=True,
+            )
+        )
+        if ic_source.pin_anchors != real_ic.pin_anchors:
+            raise ValueError("COMPACT_PAINT_EDITOR_CHANGED_PHYSICAL_TIPS")
+        placeholder = root.find(f"./{_SVG}g[@data-reference='DA1']")
+        if placeholder is None:
+            raise ValueError("COMPACT_SHEET_MISSING_SOURCE_DA1_PLACEHOLDER")
+        root.remove(placeholder)
+        ic_group = ET.SubElement(root, _SVG + "g", {
+            "data-owner": "DA1",
+            "data-ink-source": "real-native-PAINT-original-16leads",
+            "data-editor-diagnostics": "true" if mode == "diagnostic" else "false",
+            "data-physical-pinref-source": "genuine-typed-IC-not-visual-inference",
+        })
+        painted_ic = ET.fromstring(ic_source.svg)
+        if painted_ic.get("data-function-reading-local") != "bottom_to_top":
+            raise ValueError("COMPACT_PAINT_PWM_NOT_BOTTOM_UP")
+        actual_lines = painted_ic.findall(
+            f".//{_SVG}g[@data-layer='ic-physical-pin-leads']/{_SVG}line"
+        )
+        if len(actual_lines) != 16:
+            raise ValueError("COMPACT_PAINT_REAL_16_PHYSICAL_LEADS_LOST")
+        for item in painted_ic:
+            if item.tag != _SVG + "title":
+                ic_group.append(item)
+        # The editor diagnostic layer must stay ENTIRELY out of clean.
+        layer = root.find(
+            f".//{_SVG}g[@data-layer='editor-connection-targets']"
+        )
+        if mode == "clean" and layer is not None:
+            raise ValueError("COMPACT_EDITOR_PIN_SQUARES_LEAKED_TO_CLEAN")
+        if mode == "diagnostic" and layer is None:
+            raise ValueError("COMPACT_EDITOR_16_PIN_SQUARES_MISSING")
         rendered = root.findall(
             f".//{_SVG}line[@data-layer='wires']"
         )
@@ -254,6 +317,12 @@ def produce(
         "A3_10mm_editorial_frame_violations": frame_errors,
         "A3_10mm_editorial_frame_is_not_normative_claim": True,
         "real_PAINT_leads": 16,
+        "DA1_on_sheet_svg_ink": "real-PAINT-16-tips-and-bottom-up-PWM",
+        "editor_targets": {
+            "physical_tip_count": 16,
+            "only_in_diagnostic": True,
+            "source": "typed-native-PinRef-and-original-Circuit.Net",
+        },
         "verified_legacy_illegal_W2": {
             "first": [203460, 138750],
             "second": [203460, 43201],
