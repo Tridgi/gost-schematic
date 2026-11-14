@@ -13,13 +13,20 @@ from dataclasses import replace
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
+from gost_schematic.catalog.source_footprints import (
+    footprint_record,
+    source_footprint,
+    source_reference_symbol,
+    verify_footprint_record,
+)
 from gost_schematic.catalog.source_profiles import (
+    CATALOG,
     REQUIRED_REFERENCES,
     bind_tl494_source,
     load_catalog_pair,
     read_source_manifest,
 )
-from gost_schematic.core.geometry import Circle, Point
+from gost_schematic.core.geometry import Point
 from gost_schematic.core.transforms import Transform
 from gost_schematic.model.circuit import ComponentInstance
 from gost_schematic.rendering.svg import render_symbol_svg
@@ -44,20 +51,8 @@ SOURCES = {
 
 
 def _source_variant(symbol, ref):
-    """Only the reference VL source metal junction is graphically dotted."""
-    if ref != "VT1":
-        return symbol
-    # Existing working reference explicitly included this source/channel dot.
-    # Local connection of two source strokes is at (0,+5) mm. Dot is ONLY ink.
-    p = Point(0, 5000)
-    if not any(
-        getattr(item, "start", None) == p or getattr(item, "end", None) == p
-        for item in symbol.graphics
-    ):
-        raise ValueError("VT1 reference dot does not sit on a source stroke end")
-    if len(symbol.pins) != 3:
-        raise ValueError("VT1 dot may not create a fourth pin")
-    return replace(symbol, graphics=(*symbol.graphics, Circle(p, 250)))
+    """One source-specific dot from the shared immutable obstacle contract."""
+    return source_reference_symbol(symbol, ref)
 
 
 def pose_symbol(symbol, transform: Transform):
@@ -193,8 +188,22 @@ def generate(directory: Path):
         )
         instances.append(inst)
     bindings = bind_tl494_source(instances, parts, symbols)
+    figure_source = (
+        CATALOG / "source_profiles" / "tl494_figure_comparisons_20261115.json"
+    )
+    figure_ledger = json.loads(figure_source.read_text(encoding="utf-8"))
+    if (figure_ledger["status"] != "DRAFT"
+        or figure_ledger["source_reference_sha"] != source["reference_sha"]
+        or figure_ledger["actual_printed_1to1_verified"]
+        or figure_ledger["nomination_for_ESKD"] != "NONE"
+        or len(figure_ledger["figures"]) != 8):
+        raise ValueError("Source figure ledger cannot claim unsigned approval")
+    figure_output = "TL494-UGO-cycle9-figure-comparisons.json"
+    (directory / figure_output).write_bytes(figure_source.read_bytes())
     result = {
         "source_sha": source["reference_sha"],
+        "normative_figure_ledger_file": figure_output,
+        "normative_figure_count": len(figure_ledger["figures"]),
         "status": "DRAFT_NO_ESKD_1TO1",
         "source_bitmap_available": False,
         "gallery_count": len(REQUIRED_REFERENCES),
@@ -235,6 +244,40 @@ def generate(directory: Path):
             card["svg_sha256"][kind] = _write_svg(directory / fname, root)
             result["files"].append(fname)
         result["entries"].append(card)
+    # NET and PAINT can consume stable obstacle/pin-lead maps. Every record
+    # is derived from the same native SymbolDefinition as the gallery ink.
+    source_pose = [footprint_record(source_footprint(b)) for b in bindings]
+    d4_proofs = []
+    for bound in bindings:
+        for mirror in (False, True):
+            for angle in (0, 90, 180, 270):
+                placed = replace(
+                    bound.instance, transform=Transform(angle, mirror)
+                )
+                positions = placed.pin_positions(bound.symbol)
+                shifted = replace(
+                    bound, instance=placed,
+                    pin_positions=tuple(
+                        positions[pin.number] for pin in bound.part.pins
+                    ),
+                )
+                fp = source_footprint(shifted)
+                item = footprint_record(fp)
+                verify_footprint_record(fp, item)
+                d4_proofs.append(item)
+    footprint_file = "TL494-UGO-cycle9-footprints.json"
+    (directory / footprint_file).write_text(
+        json.dumps({
+            "schema_version": 1, "status": "DRAFT",
+            "source_reference_sha": source["reference_sha"],
+            "release_blocker": "NO_INDEPENDENT_CALIBRATED_1TO1",
+            "source_pose": source_pose, "d4_proofs": d4_proofs,
+        }, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    result["footprint_proofs_file"] = footprint_file
+    result["footprint_count"] = len(source_pose)
+    result["d4_footprint_count"] = len(d4_proofs)
     _write_index(directory / "index.html", result["entries"])
     for identifier in D4_IDS:
         symbol, part = load_catalog_pair(identifier)

@@ -6,6 +6,7 @@ The 13-component TL494 subset is source-SHA pinned and remains DRAFT.
 """
 
 import json
+import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from importlib.resources import files
@@ -59,27 +60,64 @@ def read_source_manifest() -> dict:
     return content
 
 
-def load_catalog_pair(symbol_id: str) -> tuple[SymbolDefinition, PartDefinition]:
-    """Read *actual packaged* symbol/part, never a reconstructed SVG icon."""
-    if symbol_id == "inductor.ferromagnetic":
-        built = load_inductor(CATALOG / "inductors" / (symbol_id + ".json"))
-        return built.symbol, built.part
-    family, _, item = symbol_id.partition(".")
-    folder = {
-        "capacitor": "capacitors",
-        "diode": "diodes",
-        "fuse": "fuses",
-        "resistor": "resistors",
-        "transistor": "transistors",
-    }.get(family)
-    if not folder or not item:
-        raise SymbolProfileMismatch(f"Unknown physical catalog family: {symbol_id}")
-    filename = item.replace(".with_case", "_with_case") + ".json"
-    return (
-        load_symbol(CATALOG / "symbols" / folder / filename),
-        load_part(CATALOG / "parts" / folder / filename),
-    )
+def select_tl494_symbol(reference: str, offered_ids: Iterable[str]) -> str:
+    """Exact single-choice resolver: even a valid ID among alternatives is unsafe.
 
+    A selection is a named source reference, not a free-form part search.
+    """
+    choices = tuple(offered_ids)
+    manifest = read_source_manifest()
+    matches = [row for row in manifest["profiles"] if row["reference"] == reference]
+    if len(matches) != 1:
+        raise SymbolProfileMismatch(f"{reference}: not a locked source reference")
+    expected = matches[0]["symbol_id"]
+    if len(choices) != 1 or any(
+        not isinstance(choice, str) or not choice.strip() for choice in choices
+    ):
+        raise SymbolProfileMismatch(
+            f"{reference}: AMBIGUOUS_OR_MISSING_SYMBOL_SELECTION {choices!r}"
+        )
+    if choices[0] != expected:
+        raise SymbolProfileMismatch(
+            f"{reference}: expected {expected}, got {choices[0]}"
+        )
+    return expected
+
+
+def load_catalog_pair(symbol_id: str) -> tuple[SymbolDefinition, PartDefinition]:
+    """Read actual packaged symbol+part; normalize missing/invalid lookup.
+
+    Catalog IDs are validated before filesystem access, not interpreted as a
+    path. The only parametric inductor here is exact source-locked variant.
+    """
+    if (not isinstance(symbol_id, str)
+        or not re.fullmatch(r"[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)+", symbol_id)):
+        raise SymbolProfileMismatch("Invalid or unsafe physical catalog ID")
+    try:
+        if symbol_id == "inductor.ferromagnetic":
+            built = load_inductor(CATALOG / "inductors" / (symbol_id + ".json"))
+            return built.symbol, built.part
+        family, _, item = symbol_id.partition(".")
+        folder = {
+            "capacitor": "capacitors",
+            "diode": "diodes",
+            "fuse": "fuses",
+            "resistor": "resistors",
+            "transistor": "transistors",
+        }.get(family)
+        if not folder or not item:
+            raise SymbolProfileMismatch(
+                f"Unknown physical catalog family: {symbol_id}"
+            )
+        filename = item.replace(".with_case", "_with_case") + ".json"
+        return (
+            load_symbol(CATALOG / "symbols" / folder / filename),
+            load_part(CATALOG / "parts" / folder / filename),
+        )
+    except (OSError, ValueError) as error:
+        raise SymbolProfileMismatch(
+            f"{symbol_id}: MISSING_OR_INVALID_CATALOG_SYMBOL"
+        ) from error
 
 def _line(symbol: SymbolDefinition, index: int) -> Line:
     result = symbol.graphics[index]
@@ -190,6 +228,7 @@ def bind_tl494_source(
         if (inst.transform.rotation != entry["rotation"]
             or inst.transform.mirror_x != entry["mirror_x"]):
             raise SymbolProfileMismatch(f"{reference}: source D4 pose changed")
+        select_tl494_symbol(reference, (inst.part_id,))
         part = parts.get(inst.part_id)
         symbol = symbols.get(inst.part_id)
         if part is None or symbol is None:

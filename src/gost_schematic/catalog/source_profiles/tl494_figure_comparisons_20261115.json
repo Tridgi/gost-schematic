@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "review_date": "2026-11-15",
+  "status": "DRAFT",
+  "source_reference_sha": "e695c415fdced164b0e0c39c5249d030795a0aa6",
+  "actual_printed_1to1_verified": false,
+  "reason": "No licensed machine-calibrated GOST source crop paired with exact dimensions and independent ESKD signoff. Shape checks are qualitative; numeric mm are editorial.",
+  "nomination_for_ESKD": "NONE",
+  "figures": [
+    {
+      "symbol_id": "diode.schottky",
+      "standard": "ГОСТ 2.730-73",
+      "pdf_url": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+      "pdf_page": 4,
+      "source_figure": "табл.4 поз.9; табл.5 поз.9",
+      "source_visible_invariant": "two different cathode hook offsets and opposite lateral bends; A/K remain distinct",
+      "engine_local_profile": "(2500,-3300)->(4200,-3300)->(4200,-1800); (2500,3300)->(800,3300)->(800,4800) [editorial µm]",
+      "shape_level": "REVIEWED_QUALITATIVE_NOT_1TO1",
+      "metric_1to1": "BLOCKED_SOURCE_CALIBRATION_AND_EVALUATOR",
+      "approval": "DRAFT"
+    },
+    {
+      "symbol_id": "transistor.mosfet_n_enh",
+      "standard": "ГОСТ 2.730-73",
+      "pdf_url": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+      "pdf_page": 6,
+      "source_figure": "табл.8 поз.3б",
+      "source_visible_invariant": "three electrodes G left D up S down; insulated gate; enhancement channel gap; source dot not fourth pin",
+      "engine_local_profile": "G(-11000,0); D(0,-18000); S(0,11000); gap y=-1000..1000 [editorial µm]",
+      "shape_level": "REVIEWED_QUALITATIVE_NOT_1TO1",
+      "metric_1to1": "BLOCKED_SOURCE_CALIBRATION_AND_EVALUATOR",
+      "approval": "DRAFT"
+    },
+    {
+      "symbol_id": "capacitor.fixed",
+      "standard": "ГОСТ 2.728-74",
+      "pdf_url": "https://helpeng.ru/public/normdoc/eskd/gost_2.728-74.pdf",
+      "pdf_page": 7,
+      "source_figure": "табл.4 поз.1",
+      "source_visible_invariant": "two thin equally stroked parallel plates; no plus sign",
+      "engine_local_profile": "two vertical 0.3mm strokes x=-750/+750µm; 8mm high [editorial]",
+      "shape_level": "REVIEWED_QUALITATIVE_NOT_1TO1",
+      "metric_1to1": "BLOCKED_SOURCE_CALIBRATION_AND_EVALUATOR",
+      "approval": "DRAFT"
+    },
+    {
+      "symbol_id": "capacitor.polarized",
+      "standard": "ГОСТ 2.728-74",
+      "pdf_url": "https://helpeng.ru/public/normdoc/eskd/gost_2.728-74.pdf",
+      "pdf_page": 7,
+      "source_figure": "табл.4 поз.1, примечание",
+      "source_visible_invariant": "thin parallel plates with plus sign on real PLUS side; not the thicker electrolytic variant",
+      "engine_local_profile": "two 0.3mm plates; + local x<0; physical 1=PLUS,2=MINUS [editorial]",
+      "shape_level": "REVIEWED_QUALITATIVE_NOT_1TO1",
+      "metric_1to1": "BLOCKED_SOURCE_CALIBRATION_AND_EVALUATOR",
+      "approval": "DRAFT"
+    },
+    {
+      "symbol_id": "capacitor.electrolytic",
+      "standard": "ГОСТ 2.728-74",
+      "pdf_url": "https://helpeng.ru/public/normdoc/eskd/gost_2.728-74.pdf",
+      "pdf_page": 7,
+      "source_figure": "табл.4 поз.2а",
+      "source_visible_invariant": "thick plate variant exists but expressly NOT selected for C1/C2/C3/C5/C6",
+      "engine_local_profile": "ALTERNATE_ONLY_NOT_SOURCE_SELECTED",
+      "shape_level": "REVIEWED_QUALITATIVE_NOT_1TO1",
+      "metric_1to1": "BLOCKED_SOURCE_CALIBRATION_AND_EVALUATOR",
+      "approval": "DRAFT"
+    },
+    {
+      "symbol_id": "inductor.ferromagnetic",
+      "standard": "ГОСТ 2.723-68",
+      "pdf_url": "https://vkopilke.narod.ru/file68.pdf",
+      "pdf_page": 3,
+      "source_figure": "табл.1 поз.1 и 2а",
+      "source_visible_invariant": "four actual semicircle turns and separate core stroke; core nonconductive",
+      "engine_local_profile": "4 radius-2mm semicircles; 0.3mm core line [editorial]",
+      "shape_level": "REVIEWED_QUALITATIVE_NOT_1TO1",
+      "metric_1to1": "BLOCKED_SOURCE_CALIBRATION_AND_EVALUATOR",
+      "approval": "DRAFT"
+    },
+    {
+      "symbol_id": "resistor.variable",
+      "standard": "ГОСТ 2.728-74",
+      "pdf_url": "https://helpeng.ru/public/normdoc/eskd/gost_2.728-74.pdf",
+      "pdf_page": 2,
+      "source_figure": "табл.1 поз.4",
+      "source_visible_invariant": "wiper arrow contacts resistor body; real physical W still available even if circuit uses two terminals",
+      "engine_local_profile": "1=A,2=B,3=W; 3 distinct conductor pin groups",
+      "shape_level": "REVIEWED_QUALITATIVE_NOT_1TO1",
+      "metric_1to1": "BLOCKED_SOURCE_CALIBRATION_AND_EVALUATOR",
+      "approval": "DRAFT"
+    },
+    {
+      "symbol_id": "fuse.general",
+      "standard": "ГОСТ 2.727-68",
+      "pdf_url": "https://www.nuvis.com.ua/GOST_2.727-68_ESKD.pdf",
+      "pdf_page": 3,
+      "source_figure": "табл.3 поз.2",
+      "source_visible_invariant": "two physical ends, interior drawn mark not an external zero-ohm Net",
+      "engine_local_profile": "abstract pin 1=A and 2=B independent graphic islands",
+      "shape_level": "REVIEWED_QUALITATIVE_NOT_1TO1",
+      "metric_1to1": "BLOCKED_SOURCE_CALIBRATION_AND_EVALUATOR",
+      "approval": "DRAFT"
+    }
+  ]
+}

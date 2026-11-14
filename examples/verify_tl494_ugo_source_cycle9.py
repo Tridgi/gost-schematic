@@ -9,6 +9,8 @@ from xml.etree import ElementTree as ET
 
 from PIL import Image, ImageChops
 
+from gost_schematic.agent_project.catalog import value_digest
+
 SVG = "{http://www.w3.org/2000/svg}"
 DPI = Decimal(300)
 
@@ -24,8 +26,59 @@ def verify(directory: Path) -> dict:
         or len(profile["files"]) != 92
         or not profile["source_1to1_status"].startswith("BLOCKED")):
         raise ValueError("Unapproved source-gallery status or content")
+    figure_path = directory / profile["normative_figure_ledger_file"]
+    figures = json.loads(figure_path.read_text(encoding="utf-8"))
+    if (profile["normative_figure_count"] != 8
+        or len(figures.get("figures", ())) != 8
+        or figures["source_reference_sha"] != profile["source_sha"]
+        or figures["status"] != "DRAFT"
+        or figures["actual_printed_1to1_verified"]
+        or figures["nomination_for_ESKD"] != "NONE"
+        or any(record["metric_1to1"] !=
+               "BLOCKED_SOURCE_CALIBRATION_AND_EVALUATOR"
+               for record in figures["figures"])):
+        raise ValueError("Uncalibrated normative figure must remain BLOCKED")
     if len(set(profile["files"])) != len(profile["files"]):
         raise ValueError("Duplicate gallery output name")
+    # Independent semantic inspection: raster success alone cannot prove
+    # pin-lead identity, ink envelopes or immutable source geometry.
+    proof_path = directory / profile["footprint_proofs_file"]
+    geometry = json.loads(proof_path.read_text(encoding="utf-8"))
+    if (geometry["status"] != "DRAFT"
+        or geometry["source_reference_sha"] != profile["source_sha"]
+        or geometry["release_blocker"] != "NO_INDEPENDENT_CALIBRATED_1TO1"
+        or len(geometry["source_pose"]) != 13
+        or len(geometry["d4_proofs"]) != 104
+        or profile["footprint_count"] != 13
+        or profile["d4_footprint_count"] != 104):
+        raise ValueError("Physical source footprint proof count / status mismatch")
+    all_poses = geometry["source_pose"] + geometry["d4_proofs"]
+    for shape in all_poses:
+        signature = shape["footprint_sha256"]
+        if value_digest({
+            key: val for key, val in shape.items()
+            if key != "footprint_sha256"
+        }) != signature:
+            raise ValueError("Tampered immutable UGO footprint SHA256")
+        pins = shape["physical_pin_roles"]
+        escapes = shape["pin_escape"]
+        leads = shape["real_leads"]
+        if (len(pins) != len(escapes) or len(leads) != len(pins)
+            or len(shape["graphic_ink"]) < len(pins)):
+            raise ValueError("Missing physical pin or ink obstacle")
+        if len({(x["ref"], x["number"]) for x in pins}) != len(pins):
+            raise ValueError("Duplicated physical pin identity")
+        for role, escape, lead in zip(pins, escapes, leads, strict=True):
+            identity = (role["ref"], role["number"])
+            if (identity != (escape["ref"], escape["number"])
+                or identity != (lead["ref"], lead["number"])
+                or escape["contact_um"] not in lead["segment_um"]
+                or escape["rule"] != "EXACT_PIN_OUTWARD_ONLY_NO_SELF_INK_WAIVER"
+                or lead["stroke_um"] <= 0
+                or lead["obstacle_um"] != shape["graphic_ink"][
+                    lead["graphic_index"]
+                ]["box_um"]):
+                raise ValueError("Fake lead, displaced endpoint or blanket waiver")
     metrics = []
     for file in profile["files"]:
         svg_path = directory / file
@@ -87,6 +140,14 @@ def verify(directory: Path) -> dict:
         "status": "PASS_ACTUAL_VECTOR_AND_RASTER_NOT_NORMATIVE_1TO1",
         "physical_source_approval": "BLOCKED_INDEPENDENT_ESKD_OVERLAY",
         "total_pairs": len(metrics),
+        "source_footprints": len(geometry["source_pose"]),
+        "d4_footprints": len(geometry["d4_proofs"]),
+        "figure_ledger_sha256": hashlib.sha256(
+            figure_path.read_bytes()
+        ).hexdigest(),
+        "footprint_proofs_sha256": hashlib.sha256(
+            proof_path.read_bytes()
+        ).hexdigest(),
         "original_photo_pixels_provided": False,
         "files": metrics,
     }
