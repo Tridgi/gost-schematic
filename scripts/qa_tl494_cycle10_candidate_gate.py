@@ -179,10 +179,15 @@ def inspect_candidate_driver(
             verified, normalized(source),
             exact_router_sha=OWNER_SHAS["ELEKTRIK_NET_PR114"],
         )
-        require(count == checked["routed_nets"] and
-                trial.get("technical_route_eligible") is
-                checked["status"].startswith("TECHNICAL_ROUTE_ELIGIBLE"),
-                "QA_RECON_CANDIDATE_FAKE_REROUTE_OR_SUCCESS")
+        require(count == checked["routed_nets"],
+                "QA_RECON_CANDIDATE_FAKE_REROUTE_COUNT")
+        # A real layout/ink page fit may veto an otherwise complete graph.
+        # It must never override BLOCKED geometry to manufacture success.
+        require(trial.get("technical_route_eligible") is not True or (
+            checked["status"].startswith("TECHNICAL_ROUTE_ELIGIBLE")
+            and trial.get("layout_valid") is True
+            and trial.get("a3", {}).get("A3_capacity_fit") is True
+        ), "QA_RECON_CANDIDATE_FORGED_PRINT_PREFLIGHT")
         physical = check_graph(
             trial.get("accepted_graph_nonprintable"), route, source,
         )
@@ -223,7 +228,7 @@ def selftest_tampering(real: dict, expected: dict) -> dict:
         ),
         "wrong_original_physical_contact": lambda a: a["candidates"][0][
             "source_nets"]["COMMON"].append("DA1.999"),
-        "claimed_15_of_15": lambda a: a.update(best_completed_nets=15),
+        "claimed_16_of_15": lambda a: a.update(best_completed_nets=16),
         "fake_original_alias": lambda a: a["internal_aliases_reverse"].update(
             {"a_INPUT_PLUS": "WRONG_NET"},
         ),
