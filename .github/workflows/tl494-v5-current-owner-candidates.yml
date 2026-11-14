@@ -27,27 +27,28 @@ jobs:
       - name: Pin all four unmerged current-owner source HEADs (never merge)
         run: |
           set -euxo pipefail
-          IC=b28428d94218cac777a28897ce9176285d0fab0b
-          PAINT=161c31bd0b538c6e827341ae465c3b3a59f6637d
-          CATALOG=edc71a48035723d48a203ae2ea12588701f68ba8
-          ROUTER=b3a8263944c5a687492a49555d8149e538f0902b
+          IC=809616e6ab58b80b6386c664405cdb8ef6a99196
+          PAINT=aa021643b887140e8c099b26d0d9c7f60faa5764
+          CATALOG=779dc0eabbd2d8f2f1ef9289cb683fcab1414bf1
+          ROUTER=2833e0a6eb5fc405279080110de78af2a761e0ce
           SOURCE=e695c415fdced164b0e0c39c5249d030795a0aa6
           for sha in "$IC" "$PAINT" "$CATALOG" "$ROUTER" "$SOURCE"; do
             git fetch origin "$sha"
             test "$(git rev-parse FETCH_HEAD)" = "$sha"
           done
-          for f in ic.py tl494cn.py ic_pin_alias.py ic_serde.py ic_paint_bridge.py ic_graphic_revision.py ic_circuit_adapter.py; do
+          for f in ic.py tl494cn.py ic_pin_alias.py ic_serde.py ic_paint_bridge.py ic_graphic_revision.py ic_circuit_adapter.py ic_editor_targets.py; do
             git show "$IC:src/gost_schematic/electrical/$f" > "src/gost_schematic/electrical/$f"
           done
           git show "$IC:examples/tl494_cycle9_circuit_integration.py" > examples/tl494_cycle9_circuit_integration.py
           mkdir -p tests/fixtures
           git show "$IC:tests/fixtures/tl494_photo_23_frozen_cycle9.json" > tests/fixtures/tl494_photo_23_frozen_cycle9.json
           test "$(git hash-object tests/fixtures/tl494_photo_23_frozen_cycle9.json)" = a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65
-          for f in ic_rectangular.py ic_hotspots.py ic_orientation.py ic_power_profiles.py ic_tl494_profile.py ic_electrical_binding.py ic_sheet_composition.py external_wire_sheet.py native_sheet_ink_audit.py; do
+          for f in ic_rectangular.py ic_hotspots.py ic_orientation.py ic_power_profiles.py ic_tl494_profile.py ic_electrical_binding.py ic_sheet_composition.py external_wire_sheet.py native_sheet_ink_audit.py routed_native_sheet.py; do
             git show "$PAINT:src/gost_schematic/rendering/$f" > "src/gost_schematic/rendering/$f"
           done
           mkdir -p src/gost_schematic/catalog/source_profiles
           git show "$CATALOG:src/gost_schematic/catalog/source_profiles.py" > src/gost_schematic/catalog/source_profiles.py
+          git show "$CATALOG:src/gost_schematic/catalog/source_footprints.py" > src/gost_schematic/catalog/source_footprints.py
           git show "$CATALOG:src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json" > src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json
           for f in orthogonal_route_planner.py multiterminal_router.py; do
             git show "$ROUTER:src/gost_schematic/engines/$f" > "src/gost_schematic/engines/$f"
