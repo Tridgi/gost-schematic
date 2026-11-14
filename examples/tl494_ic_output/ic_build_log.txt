@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/runner/work/gost-schematic/gost-schematic/examples/tl494_ic_paint_reference.py", line 186, in <module>
+    main()
+  File "/home/runner/work/gost-schematic/gost-schematic/examples/tl494_ic_paint_reference.py", line 182, in main
+    generate(args.output,args.font_file)
+  File "/home/runner/work/gost-schematic/gost-schematic/examples/tl494_ic_paint_reference.py", line 144, in generate
+    result=render_resolved_ic(
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/gost-schematic/gost-schematic/src/gost_schematic/rendering/ic_rectangular.py", line 689, in render_resolved_ic
+    raise ValueError(
+ValueError: IC_PIN_ANCHOR_MISMATCH: DA1.P2 exact external endpoint expected Point(x=25000, y=41250), model supplied Point(x=27000, y=41250)
+IC_RENDER_EXIT_CODE=1
