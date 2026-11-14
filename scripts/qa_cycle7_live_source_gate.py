@@ -331,11 +331,11 @@ def ic_text_gallery(output, font):
                 resolve_ic_pin_positions(revised.device, revised.specs,
                                           revised.placements), "IC_TEXT_REVISION_PINREF_MOVED")
         # #97's real typed cross-owner adapter must not modify physical nets.
+        from gost_schematic.electrical.ic import resolve_ic_pin_positions
         from gost_schematic.electrical.ic_paint_bridge import (
             bind_ic_paint_text_only,
             propose_ic_paint_binding,
         )
-        from gost_schematic.electrical.ic import resolve_ic_pin_positions
         source_binding = propose_ic_paint_binding(record, face.style, measurer)
         before_points = resolve_ic_pin_positions(
             source_binding.record.device, source_binding.record.specs,
