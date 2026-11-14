@@ -289,14 +289,23 @@ def _build_obstacles(assembly, net_circuit, font_file, verified_ti=None):
     )
     bridge.verify_endpoints()
     if verified_ti is not None:
-        # A cosmetic raw PinRef hotspot is never a signed physical source.
-        # #97 checks all 16 manufacturer roles, anchors, exact Net ownership.
-        verified_ti.seal_paint(bridge)
-    render = import_module(
-        "gost_schematic.rendering.ic_rectangular"
-    ).render_resolved_ic(
-        bridge.views[0], style, measurer, glyph_detail=True
-    )
+        # Authentic #97 geometry-consented physical PinRef/Net/PAINT overlay:
+        # source TIs and all moved leads are checked before any route search.
+        painted_owner, witness = verified_ti.seal_paint(bridge)
+        render = witness.render(
+            painted_owner, bridge, style, measurer, diagnostics=False,
+        )[0]
+        ink_render = witness.render(
+            painted_owner, bridge, style, measurer, diagnostics=True,
+        )[0]
+    else:
+        paint = import_module(
+            "gost_schematic.rendering.ic_rectangular"
+        ).render_resolved_ic
+        render = paint(
+            bridge.views[0], style, measurer, glyph_detail=True,
+        )
+        ink_render = render
     da1 = next(c for c in net_circuit.components if c.reference == "DA1")
     symbol = _owner_ic_obstacle(bridge.views[0], render.svg, da1)
     symbols = dict(assembly.symbols)
@@ -315,7 +324,7 @@ def _build_obstacles(assembly, net_circuit, font_file, verified_ti=None):
             if c.reference == "DA1"
         ).pin_positions(manufacturer_symbol)
         if any(
-            da1_world[number] != verified_ti.signed.contact(
+            da1_world[number] != painted_owner.contact(
                 PinRef("DA1", number),
             ).world_anchor
             for number in (str(p) for p in range(1, 17))
@@ -324,7 +333,7 @@ def _build_obstacles(assembly, net_circuit, font_file, verified_ti=None):
         net_circuit = verified_ti.signed.circuit
     exact_pa_int = tuple(
         MeasuredInkGuard(ink.owner, ink.box.expanded(500))
-        for ink in render.ink
+        for ink in ink_render.ink
         if ink.kind in (
             "refdes", "pin-label", "pin-number",
             "function", "main-text", "field-text",
