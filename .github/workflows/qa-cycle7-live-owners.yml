@@ -130,6 +130,7 @@ jobs:
         run: |
           python -m scripts.qa_cycle7_live_source_gate --font-file "$CYCLE7_QA_FONT" --output-dir "output/qa-cycle7-live-py${{ matrix.python-version }}"
       - name: Verify real wheel contains 36 symbols and physical parts
+        if: always()
         shell: bash
         run: |
           python -m pip wheel --no-deps . -w output/qa-cycle7-wheels
