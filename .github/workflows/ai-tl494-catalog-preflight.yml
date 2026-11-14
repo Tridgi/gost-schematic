@@ -52,7 +52,7 @@ jobs:
           assert report["transport"] == "real stdio MCP ClientSession"
           assert report["codex_cli_used"] is False
           assert report["python_bootstrap_not_mcp_write"] is True
-          assert len(report["tl494_profile"]["required_variants"]) == 12
+          assert len(report["tl494_profile"]["required_variants"]) == 13
           assert report["tl494_profile"]["tl494_device_catalog"] == "NOT_IN_INSTALLED_P11_CATALOG"
           assert report["tl494_aliases"]["FEEDBACK"]["display_alias"] == "FB"
           assert report["tl494_aliases"]["OUTPUT CTRL"]["display_alias"] == "OC"
