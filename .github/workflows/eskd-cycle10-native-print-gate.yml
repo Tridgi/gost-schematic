@@ -65,6 +65,17 @@ jobs:
             git show "$YGO_SHA:$p" > "$p"
           done
           test -s src/gost_schematic/electrical/tl494cn.py
+          # Legacy source's typed named continuation engine is NOT in the
+          # IC owner branch snapshot; source-lock these genuine modules,
+          # preserving the IC owner version if one is present.
+          for p in src/gost_schematic/electrical/netrefs.py \
+            src/gost_schematic/electrical/netrefs_serde.py; do
+            if [ ! -f "$p" ]; then
+              mkdir -p "$(dirname "$p")"
+              git show "$SOURCE_SHA:$p" > "$p"
+            fi
+          done
+          test -s src/gost_schematic/electrical/netrefs.py
           test "$(git rev-parse "$SOURCE_SHA")" = "$SOURCE_SHA"
           test "$(git rev-parse "$IC_SHA")" = "$IC_SHA"
           test "$(git rev-parse "$YGO_SHA")" = "$YGO_SHA"
@@ -75,6 +86,8 @@ jobs:
           from gost_schematic.agent_project.catalog import CatalogResolver
           from gost_schematic.catalog.source_profiles import PINNED_REFERENCE_SHA
           from gost_schematic.electrical.tl494cn import tl494cn_device
+          from gost_schematic.electrical.netrefs import NetContinuationProject
+          assert NetContinuationProject.__module__ == "gost_schematic.electrical.netrefs"
           assert PINNED_REFERENCE_SHA == "e695c415fdced164b0e0c39c5249d030795a0aa6"
           assert inspect.isfunction(compose_circuit)
           assert CatalogResolver.__module__ == "gost_schematic.agent_project.catalog"
