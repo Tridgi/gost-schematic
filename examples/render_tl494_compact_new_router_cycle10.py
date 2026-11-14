@@ -35,13 +35,44 @@ RECON = "10f22cea8d5908605b52853113b0c75bf91eec75"
 
 
 def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 25000):
-    # Optional cross-owner module is staged only in the isolated owner test.
-    # Import at use site so Ruff groups identically with or without IC #97.
+    # Optional unmerged owner modules are staged only in isolated CI.
+    # Resolve at use site to pass Ruff in both base and cross-owner checkouts.
+    from dataclasses import replace
+
+    from examples.tl494_cycle9_circuit_integration import (
+        bind_positioned_photo_circuit_from_catalog,
+    )
+    from examples.tl494_v5.route_candidate_driver import (
+        load_original_owner_fixture,
+        restore_original_named_nets,
+    )
     from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
+    from gost_schematic.electrical.tl494cn import TI_DEVICE_ID
 
     assembly = compact_source_assembly()
     assembly.verify()
-    circuit = assembly.circuit
+    frozen_source, _trusted_source = load_original_owner_fixture()
+    # #115 explicitly and reversibly maps V5 INPUT_POS/OUTPUT_NEG/ENERGY_TRANSFER
+    # to the actual photographed a_INPUT_PLUS/b_NEGATIVE_OUTPUT/TRANSFER.
+    # Never issue a new full-sheet drawing with only the convenient aliases.
+    original_named = restore_original_named_nets(assembly, frozen_source)
+    legacy_ic = assembly.parts["reference.tl494cn"]
+    manufacturer = replace(legacy_ic, identifier=TI_DEVICE_ID)
+    canonical_parts = {**assembly.parts, TI_DEVICE_ID: manufacturer}
+    verified = bind_positioned_photo_circuit_from_catalog(
+        original_named, assembly.owner_ic_record, canonical_parts,
+        aliases=assembly.owner_aliases,
+    )
+    verified.validate()
+    circuit = verified.circuit
+    if circuit.nets != original_named.nets or (
+        circuit.components != tuple(
+            replace(component, part_id=TI_DEVICE_ID)
+            if component.reference == "DA1" else component
+            for component in original_named.components
+        )
+    ):
+        raise AssertionError("COMPACT_TRUSTED_PART_REBIND_CHANGED_PHYSICAL_SOURCE")
     assert (len(circuit.components), len(circuit.nets)) == (23, 15)
     assert sum(len(n.members) for n in circuit.nets) == 62
     inspected = inspect_type_a_font(
@@ -81,7 +112,9 @@ def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 2500
         for part_id, part in assembly.parts.items()
         if part.symbol_id in assembly.symbols
     }
-    by_part["reference.tl494cn"] = _owner_ic_obstacle(view, clean.svg, da)
+    ic_obstacle = _owner_ic_obstacle(view, clean.svg, da)
+    by_part["reference.tl494cn"] = ic_obstacle
+    by_part[TI_DEVICE_ID] = ic_obstacle
     if any(c.part_id not in by_part for c in circuit.components):
         raise ValueError("COMPACT_CATALOG_SYMBOL_NOT_RESOLVED")
     footprint = actual_component_occupied_mm(assembly, by_part)
@@ -100,7 +133,7 @@ def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 2500
     route = import_module(
         "gost_schematic.engines.multiterminal_router"
     ).route_circuit_net_trees(
-        circuit, assembly.parts, by_part,
+        circuit, canonical_parts, by_part,
         page_box=Box(0, 0, *A3_LANDSCAPE_UM),
         annotation_placements=(*ic_ink, *placement.placements),
         stop_on_first_failure=False,
@@ -112,7 +145,7 @@ def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 2500
     ):
         raise AssertionError("COMPACT_ROUTER_CHANGED_SOURCE_NETS_OR_PARTS")
     native = render_routed_native_sheet(
-        circuit, route.graph, assembly.parts, by_part,
+        circuit, route.graph, canonical_parts, by_part,
         style, measurer,
         physical_ic_renderings_clean={"DA1": clean},
         physical_ic_renderings_diagnostic={"DA1": diagnostic},
@@ -144,6 +177,12 @@ def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 2500
         "NET114_owner_sha": NET,
         "RECON115_owner_sha": RECON,
         "source_reference": assembly.manifest(),
+        "original_named_nets_verified": [
+            net.name for net in original_named.nets
+        ],
+        "canonical_ti_part_id_verified": TI_DEVICE_ID,
+        "legacy_part_id_preserved_only_in_frozen_fixture": True,
+        "trusted_97_part_rebinding": True,
         "router_attempt": route.as_dict(),
         "A3_nominal_1_to_1_mm": [420, 297],
         "A3_true_catalog_bounds": footprint,
