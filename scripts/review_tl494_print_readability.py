@@ -234,6 +234,52 @@ def _view_page(original, min_x, min_y, width, height, *,
         nested.append(copy.deepcopy(el))
     if diagnostic:
         root.set("data-stroke-aware-diagnostics", "true")
+        # True source-coordinate stroke-distance markers, not fake electrical
+        # junctions. Same Net, physical terminals and source lines stay put.
+        problems = audit_strokes(original)
+        by_index = {
+            x["index"]: x["geometry"] for x in _all_wires(original)
+        }
+        overlay = ET.SubElement(nested, SVG+"g", {
+            "data-layer": "editor-stroke-clearance-diagnostics",
+            "data-editor-only": "true",
+            "fill": "none", "stroke": "#be6300",
+            "stroke-width": "0.35", "stroke-dasharray": "1 0.5",
+        })
+        for problem in problems["parallel_wire_examples"]:
+            aa, bb = (
+                by_index[idx] for idx in problem["wires"]
+            )
+            (ax, ay), (bx, by), _ = aa
+            (cx, cy), (dx, dy), _ = bb
+            if ay == by and cy == dy:
+                cxm = (max(min(ax, bx), min(cx, dx))
+                       + min(max(ax, bx), max(cx, dx))) / 2
+                cym = (ay + cy) / 2
+            else:
+                cxm = (ax + cx) / 2
+                cym = (max(min(ay, by), min(cy, dy))
+                       + min(max(ay, by), max(cy, dy))) / 2
+            ET.SubElement(overlay, SVG+"rect", {
+                "x": str(cxm-2), "y": str(cym-2),
+                "width": "4", "height": "4",
+                "data-code": problem["code"],
+                "data-wires": ",".join(problem["wires"]),
+                "data-stroke-gap-mm": str(problem["gap_mm"]),
+                "data-not-an-electrical-contact": "true",
+            })
+        for end in original.findall(
+            f".//{SVG}circle[@data-nonphysical-net-continuation]"
+        ):
+            xx = _value(end, "cx")
+            yy = _value(end, "cy")
+            ET.SubElement(overlay, SVG+"rect", {
+                "x": str(xx-2.5), "y": str(yy-2.5),
+                "width": "5", "height": "5",
+                "data-kind": "continuation-reading-zone-not-pad",
+                "data-endpoint": end.get("data-nonphysical-net-continuation"),
+                "data-not-an-electrical-contact": "true",
+            })
     return ET.tostring(root, encoding="unicode") + "\n"
 
 
