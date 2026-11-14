@@ -66,6 +66,25 @@ class ParallelPairMeasurement:
 
 
 @dataclass(frozen=True, slots=True)
+class WirePairDistance:
+    """Every unordered pair, including nonparallel crossings and open spacing."""
+    first_index: int
+    second_index: int
+    first_net: str
+    second_net: str
+    edge_gap_um: float
+    parallel_rule_applicable: bool
+
+    def as_dict(self) -> dict:
+        return {
+            "segments": [self.first_index, self.second_index],
+            "nets": [self.first_net, self.second_net],
+            "edge_gap_um": self.edge_gap_um,
+            "parallel_rule_applicable": self.parallel_rule_applicable,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class RouteDRCReport:
     wire_count: int
     component_count: int
@@ -78,6 +97,9 @@ class RouteDRCReport:
     crossing_pairs: int
     crossing_different_net: int
     parallel_measurements: tuple[ParallelPairMeasurement, ...]
+    all_wire_pair_distances: tuple[WirePairDistance, ...]
+    wire_lengths_um: tuple[float, ...]
+    net_lengths_um: tuple[tuple[str, float], ...]
     findings: tuple[RouteDRCFinding, ...]
     checked_symbol_geometry: bool
     checked_measured_text: bool
@@ -100,6 +122,12 @@ class RouteDRCReport:
             "crossing_pairs": self.crossing_pairs,
             "crossing_different_net": self.crossing_different_net,
             "parallel_measurements": [x.as_dict() for x in self.parallel_measurements],
+            "all_wire_pair_distances": [
+                x.as_dict() for x in self.all_wire_pair_distances
+            ],
+            "pair_distance_count": len(self.all_wire_pair_distances),
+            "wire_lengths_um": list(self.wire_lengths_um),
+            "net_lengths_um": dict(self.net_lengths_um),
             "findings": [x.as_dict() for x in self.findings],
             "error_count": sum(x.severity == "error" for x in self.findings),
             "warning_count": sum(x.severity == "warning" for x in self.findings),
@@ -273,6 +301,7 @@ def audit_route_drc(
     _validate_net_inventory(circuit, graph)
     violations: list[RouteDRCFinding] = []
     parallel: list[ParallelPairMeasurement] = []
+    pair_distances: list[WirePairDistance] = []
     segments = graph.segments
 
     def issue(code: str, severity: str, i: str, j: str | None, detail: str,
@@ -313,6 +342,11 @@ def audit_route_drc(
                         issue("DRC_SAME_NET_X_NO_JUNCTION", "error", id1, id2,
                               "Same-net interior X has no explicitly authored electrical dot",
                               point=_rational_xy(intersection))
+            pair_distances.append(WirePairDistance(
+                j, i, b.net_name, a.net_name,
+                _edge_gap(_seg_distance_sq(a, b), 2 * stroke_um),
+                _parallel_overlap(a, b),
+            ))
             # Exact endpoint-to-interior T needs an explicit authored junction.
             touches = {
                 p for p in (a.start, a.end) if _interior(b, p)
@@ -438,14 +472,21 @@ def audit_route_drc(
                 issue("DRC_WIRE_TEXT_KEEP_OUT", "error", f"W{index}",
                       f"TEXT{position}:{label.owner}",
                       "Conductor touches measured protected text/annotation hitbox")
-    total_length = sum(
-        sqrt((w.end.x - w.start.x) ** 2 + (w.end.y - w.start.y) ** 2)
-        for w in segments
-    )
+    wire_lengths = tuple(round(sqrt(
+        (w.end.x - w.start.x) ** 2 + (w.end.y - w.start.y) ** 2,
+    ), 3) for w in segments)
+    net_lengths = {
+        name: round(sum(
+            length for length, wire in zip(wire_lengths, segments, strict=True)
+            if wire.net_name == name
+        ), 3)
+        for name in sorted({w.net_name for w in segments})
+    }
     return RouteDRCReport(
         len(segments), len(circuit.components), len(circuit.nets),
-        len(graph.junctions), round(total_length, 3),
+        len(graph.junctions), round(sum(wire_lengths), 3),
         len(segments) - diagonal, diagonal, bends, crossings, foreign_crossings,
-        tuple(parallel), tuple(violations),
+        tuple(parallel), tuple(pair_distances), wire_lengths,
+        tuple(net_lengths.items()), tuple(violations),
         symbols_by_part is not None, bool(annotation_placements),
     )
