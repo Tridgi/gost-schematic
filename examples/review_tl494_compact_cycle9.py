@@ -18,16 +18,21 @@ from examples.tl494_v5.compact_layout import (
     compact_source_assembly,
 )
 from examples.tl494_v5.route_preflight import _owner_ic_obstacle
-from gost_schematic.core.geometry import Box
+from gost_schematic.core.geometry import Box, Point
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
-from gost_schematic.engines.multiterminal_router import route_circuit_net_trees
+from gost_schematic.engines.multiterminal_router import (
+    _source_ink_collision,
+    _source_ink_obstacles,
+    route_circuit_net_trees,
+)
 from gost_schematic.engines.sheet_layout import layout_sheet
 from gost_schematic.rendering.external_wire_sheet import (
     build_external_wire_obstacles,
     render_external_wire_sheet,
 )
+from gost_schematic.model.circuit import PinRef
 from gost_schematic.standards.type_a_font import inspect_type_a_font
-from gost_schematic.validation.external_wire_checks import validate_external_wires
+from gost_schematic.validation.external_wire_checks import WireSegment, validate_external_wires
 from gost_schematic.validation.route_drc import audit_route_drc
 
 _SVG = "{http://www.w3.org/2000/svg}"
@@ -77,6 +82,32 @@ def produce(
     symbols["reference.tl494cn"] = _owner_ic_obstacle(
         bridge.views[0], real_ic.svg, da1,
     )
+    actual_tip = da1.pin_positions(symbols[da1.part_id])["12"]
+    if actual_tip != Point(205000, 138750):
+        raise ValueError(
+            f"COMPACT_DA1_12_SOURCE_ANCHOR_DRIFT:{actual_tip}"
+        )
+    lead_ink = tuple(
+        ink for ink in _source_ink_obstacles(
+            circuit, symbols, stroke_um=300,
+        ) if ink.owner == "DA1"
+    )
+    if len({ink.permitted_pin for ink in lead_ink
+            if ink.permitted_pin is not None}) != 16:
+        raise ValueError("COMPACT_PAINT_16_PHYSICAL_LEADS_NOT_TRACKED")
+    repro_wire = WireSegment(
+        Point(203460, 138750), Point(203460, 43201),
+        "INPUT_POS",
+    )
+    repro_block = _source_ink_collision(
+        repro_wire, lead_ink,
+        authorized_pins=frozenset({
+            p for net in circuit.nets if net.name == "INPUT_POS"
+            for p in net.members
+        }),
+    )
+    if repro_block is None or repro_block.owner != "DA1":
+        raise ValueError("COMPACT_HISTORICAL_W2_LEAD_FOREST_VETO_MISSING")
     protected = tuple(
         _MeasuredInkGuard(ink.owner, ink.box.expanded(500))
         for ink in real_ic.ink
@@ -174,6 +205,19 @@ def produce(
         "paper": "A3_LANDSCAPE_420x297mm_DRAFT",
         "occupied_mm": occupancy,
         "real_PAINT_leads": 16,
+        "verified_legacy_illegal_W2": {
+            "first": [203460, 138750],
+            "second": [203460, 43201],
+            "owner": repro_block.owner,
+            "primitive": repro_block.primitive_index,
+            "source_pin": (
+                f"{repro_block.permitted_pin.reference}."
+                f"{repro_block.permitted_pin.number}"
+                if repro_block.permitted_pin else None
+            ),
+            "preflight": "REJECTED_INK_INTERSECTION",
+            "actual_target_DA1_12_um": [actual_tip.x, actual_tip.y],
+        },
         "measured_annotation_guards": len(annotations),
         "source_label_layout_valid": source_labels.valid,
         "after_label_layout_valid": after_labels.valid,
