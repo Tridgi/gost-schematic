@@ -1,0 +1,2 @@
+{"components": 23, "nets": 15, "wires": 91, "connected_DA1_pins": 16, "unexpected_wire_errors": 0, "justified_b_continuation_diagnostics": 2, "erc_errors": 0, "layout_valid": true}
+BUILD_EXIT_CODE=0
