@@ -9,7 +9,7 @@ import hashlib
 from dataclasses import dataclass, replace
 
 from gost_schematic.core.geometry import Point
-from gost_schematic.electrical.ic import IcGraphicProfile, IcTextAngle, resolve_ic_pin_positions
+from gost_schematic.electrical.ic import IcTextAngle, resolve_ic_pin_positions
 from gost_schematic.electrical.ic_serde import IcLibraryRecord, ic_to_json
 from gost_schematic.model.circuit import Circuit, PinRef
 
