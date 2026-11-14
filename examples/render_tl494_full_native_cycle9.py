@@ -14,10 +14,9 @@ from xml.etree import ElementTree as ET
 
 from gost_schematic.core.transforms import Transform
 from gost_schematic.model.circuit import Circuit, PinRef
-from gost_schematic.rendering.ic_orientation import compose_transforms
-from gost_schematic.validation.external_wire_checks import ExternalWireGraph
 from gost_schematic.rendering.external_wire_sheet import render_external_wire_sheet
 from gost_schematic.rendering.ic_hotspots import IcConnectionTarget
+from gost_schematic.rendering.ic_orientation import compose_transforms
 from gost_schematic.rendering.ic_rectangular import (
     IcFunctionReading,
     IcRenderingPolicy,
@@ -25,6 +24,7 @@ from gost_schematic.rendering.ic_rectangular import (
 )
 from gost_schematic.rendering.ic_tl494_profile import apply_tl494_portrait_profile
 from gost_schematic.rendering.native_sheet_ink_audit import audit_full_native_sheet_ink
+from gost_schematic.validation.external_wire_checks import ExternalWireGraph
 
 FROZEN_SOURCE = "e695c415fdced164b0e0c39c5249d030795a0aa6"
 FROZEN_IC = "6161e9102cbc0c9e0491fb27ed7a496dc0b274bc"
@@ -452,9 +452,7 @@ def generate(output: Path, font_file: Path, *, d4: bool = False):
                     diagnostic=False,
                     reading=IcFunctionReading.BOTTOM_TO_TOP,
                 )
-                assert set(
-                    (number, point) for number, point in painted.pin_anchors
-                ) == {
+                assert set(painted.pin_anchors) == {
                     (p.pin_id, t.apply(p.anchor)) for p in portrait.pins
                 }
                 name = (
