@@ -484,8 +484,7 @@ def actual_new_owner_paint_on_original_23_sheet(ctx, output_dir):
         apply_tl494_portrait_profile,
     )
 
-    (circuit, graph, parts, symbols, poses, unit, targets, style,
-     measure, policy, inspection, continuation, manufacturer) = ctx
+    unit, targets, style, measure = ctx[5:9]
     before = tuple((p.pin_id, p.number, p.anchor) for p in unit.pins)
     adjusted = apply_tl494_portrait_profile(unit)
     after = tuple((p.pin_id, p.number, p.anchor) for p in adjusted.pins)
