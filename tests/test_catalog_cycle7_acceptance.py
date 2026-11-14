@@ -87,7 +87,7 @@ def test_each_schematic_port_is_one_real_physical_pin_with_no_fake_bridge(
     card = acceptance[identifier]
     _confirm_roles(symbol, part, card)
     assert len(symbol.pins) == len(part.pins) == len(card["physical_pin_roles"])
-    assert len(set(pin.at for pin in symbol.pins)) == len(part.pins)
+    assert len({pin.at for pin in symbol.pins}) == len(part.pins)
     topo = inspect_conductor_topology(symbol)
     assert topo.valid, topo.diagnostics
     assert topo.explicit_junctions == 0
