@@ -21,6 +21,8 @@ RENAMES = {
     "TRANSFER": "ENERGY_TRANSFER",
 }
 PIN_NUMBERS = {str(i) for i in range(1, 17)}
+TI_TL494_DEVICE_ID = "ti.tl494cn.pdip16"  # Exact owner physical DA1 part
+
 
 
 class ContractError(AssertionError):
@@ -91,6 +93,11 @@ def _records(model):
 def validate_semantics(source, candidate):
     expected_parts, expected_nets, expected_pins = _records(source)
     parts, nets, pins = _records(candidate)
+    demand(expected_parts.get("DA1") == "reference.tl494cn",
+           "SOURCE_DA1_REFERENCE_PLACEHOLDER_DRIFT")
+    # The one sanctioned physical model upgrade: source DRAFT surrogate ->
+    # manufacturer-backed IC #97. No other BOM or pin changes are permitted.
+    expected_parts["DA1"] = TI_TL494_DEVICE_ID
     demand(parts == expected_parts, "CANDIDATE_BOM_OR_PART_SELECTION_CHANGED")
     demand(len(parts) == 23 and len(nets) == 15, "CANDIDATE_23_15_LOST")
     demand(nets == expected_nets, "CANDIDATE_PHYSICAL_NET_DELTA")
@@ -274,6 +281,8 @@ def validate_router_geometry(candidate, pin_owners):
 def negative_fixture_gate(source):
     """Mutation tests reuse the ACTUAL 23/15 model, not a fake good E3."""
     raw = deepcopy(source)
+    da1 = next(c for c in raw["components"] if c["reference"] == "DA1")
+    da1["part_id"] = TI_TL494_DEVICE_ID
     raw["tl494_pin_roles"] = {str(n): "unspecified" for n in range(1, 17)}
     raw["tl494_pin_roles"].update({"3": "input", "13": "input"})
     raw["tl494_pin_aliases"] = {
@@ -284,6 +293,13 @@ def negative_fixture_gate(source):
     negative = {}
     changes = {
         "component_missing": lambda x: x["components"].pop(),
+        "fake_original_DA1": lambda x: next(
+            c for c in x["components"] if c["reference"] == "DA1"
+        ).update(part_id="reference.tl494cn"),
+        "foreign_DA1_device": lambda x: next(
+            c for c in x["components"] if c["reference"] == "DA1"
+        ).update(part_id="ti.something_else"),
+
         "net_deleted": lambda x: x["nets"].pop(),
         "wrong_net_pin": lambda x: x["nets"][0]["members"].pop(),
         "pin_in_two_nets": lambda x: x["nets"][1]["members"].append(
