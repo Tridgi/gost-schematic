@@ -1,0 +1,447 @@
+{
+  "schema_version": 1,
+  "source_name": "TL494CN user original photos / working native ref",
+  "reference_branch": "reference/tl494-native-rework-20261114",
+  "reference_sha": "e695c415fdced164b0e0c39c5249d030795a0aa6",
+  "integration_base_sha": "afd359cf2c63337471e746e5ff7f399b76394612",
+  "source_counts": {
+    "components": 23,
+    "nets": 15,
+    "wires": 91,
+    "DA1_physical_pins": 16
+  },
+  "selection_mode": "FAIL_CLOSED_SYMBOL_PROFILE_MISMATCH",
+  "status": "DRAFT",
+  "original_user_bitmap": "NOT_MOUNTED_FOR_INDEPENDENT_PIXEL_1TO1",
+  "profiles": [
+    {
+      "reference": "VD1",
+      "symbol_id": "diode.schottky",
+      "rotation": 90,
+      "mirror_x": false,
+      "standard_figure": "ГОСТ 2.730-73 табл.4/9 и табл.5/9",
+      "normative_verdict": "BLOCKED_NO_CALIBRATED_SOURCE_1TO1",
+      "vendor_pinout": "UNVERIFIED_ABSTRACT_SCHEMATIC_PIN_IDS",
+      "expected_physical_roles": [
+        "A",
+        "K"
+      ],
+      "expected_graphic_labels": [
+        "A",
+        "K"
+      ],
+      "locked": true,
+      "source_layout_origin_mm": [
+        270,
+        130
+      ],
+      "source_pin_endpoints_mm": [
+        [
+          270,
+          120
+        ],
+        [
+          270,
+          140
+        ]
+      ]
+    },
+    {
+      "reference": "VT1",
+      "symbol_id": "transistor.mosfet_n_enh",
+      "rotation": 0,
+      "mirror_x": false,
+      "standard_figure": "ГОСТ 2.730-73 табл.8/3б",
+      "normative_verdict": "BLOCKED_NO_CALIBRATED_SOURCE_1TO1",
+      "vendor_pinout": "UNVERIFIED_ABSTRACT_SCHEMATIC_PIN_IDS",
+      "expected_physical_roles": [
+        "G",
+        "D",
+        "S"
+      ],
+      "expected_graphic_labels": [
+        "G",
+        "D",
+        "S"
+      ],
+      "locked": true,
+      "source_layout_origin_mm": [
+        170,
+        135
+      ],
+      "source_pin_endpoints_mm": [
+        [
+          159,
+          135
+        ],
+        [
+          170,
+          117
+        ],
+        [
+          170,
+          146
+        ]
+      ]
+    },
+    {
+      "reference": "C1",
+      "symbol_id": "capacitor.polarized",
+      "rotation": 0,
+      "mirror_x": false,
+      "standard_figure": "ГОСТ 2.728-74 табл.4/1 примечание: поляризованный конденсатор (+), тонкие обкладки",
+      "normative_verdict": "BLOCKED_NO_CALIBRATED_SOURCE_1TO1",
+      "vendor_pinout": "UNVERIFIED_ABSTRACT_SCHEMATIC_PIN_IDS",
+      "expected_physical_roles": [
+        "PLUS",
+        "MINUS"
+      ],
+      "expected_graphic_labels": [
+        "+",
+        "-"
+      ],
+      "locked": true,
+      "source_layout_origin_mm": [
+        225,
+        29
+      ],
+      "source_pin_endpoints_mm": [
+        [
+          217,
+          29
+        ],
+        [
+          233,
+          29
+        ]
+      ]
+    },
+    {
+      "reference": "C2",
+      "symbol_id": "capacitor.polarized",
+      "rotation": 0,
+      "mirror_x": false,
+      "standard_figure": "ГОСТ 2.728-74 табл.4/1 примечание: поляризованный конденсатор (+), тонкие обкладки",
+      "normative_verdict": "BLOCKED_NO_CALIBRATED_SOURCE_1TO1",
+      "vendor_pinout": "UNVERIFIED_ABSTRACT_SCHEMATIC_PIN_IDS",
+      "expected_physical_roles": [
+        "PLUS",
+        "MINUS"
+      ],
+      "expected_graphic_labels": [
+        "+",
+        "-"
+      ],
+      "locked": true,
+      "source_layout_origin_mm": [
+        225,
+        65
+      ],
+      "source_pin_endpoints_mm": [
+        [
+          217,
+          65
+        ],
+        [
+          233,
+          65
+        ]
+      ]
+    },
+    {
+      "reference": "C3",
+      "symbol_id": "capacitor.polarized",
+      "rotation": 90,
+      "mirror_x": false,
+      "standard_figure": "ГОСТ 2.728-74 табл.4/1 примечание: поляризованный конденсатор (+), тонкие обкладки",
+      "normative_verdict": "BLOCKED_NO_CALIBRATED_SOURCE_1TO1",
+      "vendor_pinout": "UNVERIFIED_ABSTRACT_SCHEMATIC_PIN_IDS",
+      "expected_physical_roles": [
+        "PLUS",
+        "MINUS"
+      ],
+      "expected_graphic_labels": [
+        "+",
+        "-"
+      ],
+      "locked": true,
+      "source_layout_origin_mm": [
+        -135,
+        105
+      ],
+      "source_pin_endpoints_mm": [
+        [
+          -135,
+          97
+        ],
+        [
+          -135,
+          113
+        ]
+      ]
+    },
+    {
+      "reference": "C4",
+      "symbol_id": "capacitor.fixed",
+      "rotation": 0,
+      "mirror_x": false,
+      "standard_figure": "ГОСТ 2.728-74 табл.4/1",
+      "normative_verdict": "BLOCKED_NO_CALIBRATED_SOURCE_1TO1",
+      "vendor_pinout": "UNVERIFIED_ABSTRACT_SCHEMATIC_PIN_IDS",
+      "expected_physical_roles": [
+        "A",
+        "B"
+      ],
+      "expected_graphic_labels": [
+        "",
+        ""
+      ],
+      "locked": true,
+      "source_layout_origin_mm": [
+        -118,
+        141
+      ],
+      "source_pin_endpoints_mm": [
+        [
+          -126,
+          141
+        ],
+        [
+          -110,
+          141
+        ]
+      ]
+    },
+    {
+      "reference": "C5",
+      "symbol_id": "capacitor.polarized",
+      "rotation": 270,
+      "mirror_x": false,
+      "standard_figure": "ГОСТ 2.728-74 табл.4/1 примечание: поляризованный конденсатор (+), тонкие обкладки",
+      "normative_verdict": "BLOCKED_NO_CALIBRATED_SOURCE_1TO1",
+      "vendor_pinout": "UNVERIFIED_ABSTRACT_SCHEMATIC_PIN_IDS",
+      "expected_physical_roles": [
+        "PLUS",
+        "MINUS"
+      ],
+      "expected_graphic_labels": [
+        "+",
+        "-"
+      ],
+      "locked": true,
+      "source_layout_origin_mm": [
+        345,
+        145
+      ],
+      "source_pin_endpoints_mm": [
+        [
+          345,
+          153
+        ],
+        [
+          345,
+          137
+        ]
+      ]
+    },
+    {
+      "reference": "C6",
+      "symbol_id": "capacitor.polarized",
+      "rotation": 270,
+      "mirror_x": false,
+      "standard_figure": "ГОСТ 2.728-74 табл.4/1 примечание: поляризованный конденсатор (+), тонкие обкладки",
+      "normative_verdict": "BLOCKED_NO_CALIBRATED_SOURCE_1TO1",
+      "vendor_pinout": "UNVERIFIED_ABSTRACT_SCHEMATIC_PIN_IDS",
+      "expected_physical_roles": [
+        "PLUS",
+        "MINUS"
+      ],
+      "expected_graphic_labels": [
+        "+",
+        "-"
+      ],
+      "locked": true,
+      "source_layout_origin_mm": [
+        385,
+        145
+      ],
+      "source_pin_endpoints_mm": [
+        [
+          385,
+          153
+        ],
+        [
+          385,
+          137
+        ]
+      ]
+    },
+    {
+      "reference": "C7",
+      "symbol_id": "capacitor.fixed",
+      "rotation": 90,
+      "mirror_x": false,
+      "standard_figure": "ГОСТ 2.728-74 табл.4/1",
+      "normative_verdict": "BLOCKED_NO_CALIBRATED_SOURCE_1TO1",
+      "vendor_pinout": "UNVERIFIED_ABSTRACT_SCHEMATIC_PIN_IDS",
+      "expected_physical_roles": [
+        "A",
+        "B"
+      ],
+      "expected_graphic_labels": [
+        "",
+        ""
+      ],
+      "locked": true,
+      "source_layout_origin_mm": [
+        -40,
+        183
+      ],
+      "source_pin_endpoints_mm": [
+        [
+          -40,
+          175
+        ],
+        [
+          -40,
+          191
+        ]
+      ]
+    },
+    {
+      "reference": "L1",
+      "symbol_id": "inductor.ferromagnetic",
+      "rotation": 0,
+      "mirror_x": false,
+      "standard_figure": "ГОСТ 2.723-68 табл.1/1,2а и табл.2/8",
+      "normative_verdict": "BLOCKED_NO_CALIBRATED_SOURCE_1TO1",
+      "vendor_pinout": "UNVERIFIED_ABSTRACT_SCHEMATIC_PIN_IDS",
+      "expected_physical_roles": [
+        "START",
+        "END"
+      ],
+      "expected_graphic_labels": [
+        "",
+        ""
+      ],
+      "locked": true,
+      "source_layout_origin_mm": [
+        115,
+        45
+      ],
+      "source_pin_endpoints_mm": [
+        [
+          103,
+          45
+        ],
+        [
+          127,
+          45
+        ]
+      ]
+    },
+    {
+      "reference": "L2",
+      "symbol_id": "inductor.ferromagnetic",
+      "rotation": 0,
+      "mirror_x": false,
+      "standard_figure": "ГОСТ 2.723-68 табл.1/1,2а и табл.2/8",
+      "normative_verdict": "BLOCKED_NO_CALIBRATED_SOURCE_1TO1",
+      "vendor_pinout": "UNVERIFIED_ABSTRACT_SCHEMATIC_PIN_IDS",
+      "expected_physical_roles": [
+        "START",
+        "END"
+      ],
+      "expected_graphic_labels": [
+        "",
+        ""
+      ],
+      "locked": true,
+      "source_layout_origin_mm": [
+        315,
+        45
+      ],
+      "source_pin_endpoints_mm": [
+        [
+          303,
+          45
+        ],
+        [
+          327,
+          45
+        ]
+      ]
+    },
+    {
+      "reference": "FU1",
+      "symbol_id": "fuse.general",
+      "rotation": 0,
+      "mirror_x": false,
+      "standard_figure": "ГОСТ 2.727-68 табл.3/2",
+      "normative_verdict": "BLOCKED_NO_CALIBRATED_SOURCE_1TO1",
+      "vendor_pinout": "UNVERIFIED_ABSTRACT_SCHEMATIC_PIN_IDS",
+      "expected_physical_roles": [
+        "A",
+        "B"
+      ],
+      "expected_graphic_labels": [
+        "A",
+        "B"
+      ],
+      "locked": true,
+      "source_layout_origin_mm": [
+        411,
+        45
+      ],
+      "source_pin_endpoints_mm": [
+        [
+          402,
+          45
+        ],
+        [
+          420,
+          45
+        ]
+      ]
+    },
+    {
+      "reference": "R5",
+      "symbol_id": "resistor.variable",
+      "rotation": 90,
+      "mirror_x": false,
+      "standard_figure": "ГОСТ 2.728-74 табл.1/4",
+      "normative_verdict": "BLOCKED_NO_CALIBRATED_SOURCE_1TO1",
+      "vendor_pinout": "UNVERIFIED_ABSTRACT_SCHEMATIC_PIN_IDS",
+      "expected_physical_roles": [
+        "A",
+        "B",
+        "W"
+      ],
+      "expected_graphic_labels": [
+        "A",
+        "B",
+        "W"
+      ],
+      "locked": true,
+      "source_layout_origin_mm": [
+        -135,
+        193
+      ],
+      "source_pin_endpoints_mm": [
+        [
+          -135,
+          184
+        ],
+        [
+          -135,
+          202
+        ],
+        [
+          -126,
+          193
+        ]
+      ]
+    }
+  ],
+  "photo_positions_kind": "REFERENCE_BRANCH_EDITORIAL_NOT_SOURCE_PRINT_METRIC"
+}
