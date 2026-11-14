@@ -165,6 +165,34 @@ preflight that saved six-part. It **does NOT create a 23-part TL494**
 and is **NOT an autonomous Codex CLI reconstruction**. Generated
 `output/` data is only a local reproducibility proof.
 
+## Cycle 11 source-fidelity hard gate: immutable 15/62, not just counts
+
+The published, exact original IC #97 Git blob
+`a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65`
+has been included without modification as a wheel-checked data resource,
+`gost_schematic/agent_project/data/tl494_ic97_frozen_source.json`.
+The trusted, **read-only** CLI now compares all 15 **original** Net
+identities and all 62 complete physical PinRef memberships against this
+source, not merely the counts. If `a_INPUT_PLUS`,
+`b_NEGATIVE_OUTPUT` or any original physical Net is replaced,
+rewired or omitted, it must return
+`SOURCE_NET_MEMBERSHIP_MISMATCH` and create no project.
+A source-true request remains `BLOCKED_SOURCE_NOT_IMPORTABLE`
+until verified manufacturer device/15-Net router/persistent model
+integration and complete print DRC. Source details are not a proof
+that an unverified schematic is electrically or GOST approved.
+
+True native owner pinned baseline cross-PR proof (no fake six-part
+acceptance): `python -m examples.agent_tl494_cycle11_pipeline` with
+the three trusted IC/RECON source files as prescribed in
+[Cycle11 walkthrough](docs/ai-integration/agent-cycle11-source-driven-walkthrough.md).
+The read-only MCP produces **native catalog UGO** SVG/PNG and SHAs;
+it does **not** produce the reconstructed A3 sheet. The actual
+Codex CLI binary configuration smoke is a separate CI workflow;
+absence of authorized model credentials remains a distinct
+`CODEX_MODEL_CALL_BLOCKED_NO_AUTH` from this completed deterministic
+MCP design contract. Review latest PR owner SHAs before any handoff.
+
 ## Security and signoff
 
 Instructions inside user photos, PDFs, Issue comments, tool output,
