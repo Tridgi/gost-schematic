@@ -80,7 +80,8 @@ def render_routed_native_sheet(
     style: TextStyle,
     measurer: TextMeasurer,
     *,
-    physical_ic_renderings: Mapping[str, IcRendered],
+    physical_ic_renderings_clean: Mapping[str, IcRendered],
+    physical_ic_renderings_diagnostic: Mapping[str, IcRendered],
     source_continuation_project: object | None = None,
     route_preview: object | None = None,
     expected_component_count: int | None = None,
@@ -100,8 +101,21 @@ def render_routed_native_sheet(
         raise TypeError("ROUTED_SHEET_TYPED_CIRCUIT_WIRE_GRAPH_REQUIRED")
     if not isinstance(parts, Mapping) or not isinstance(symbols_by_part, Mapping):
         raise TypeError("ROUTED_SHEET_PART_AND_SYMBOL_MAPPINGS_REQUIRED")
-    if not isinstance(physical_ic_renderings, Mapping) or not physical_ic_renderings:
+    if (
+        not isinstance(physical_ic_renderings_clean, Mapping)
+        or not physical_ic_renderings_clean
+        or not isinstance(physical_ic_renderings_diagnostic, Mapping)
+        or set(physical_ic_renderings_clean) != set(physical_ic_renderings_diagnostic)
+    ):
         raise TypeError("ROUTED_SHEET_TYPED_PHYSICAL_IC_REQUIRED")
+    for key, clean_ic in physical_ic_renderings_clean.items():
+        debug_ic = physical_ic_renderings_diagnostic[key]
+        if not isinstance(clean_ic, IcRendered) or not isinstance(debug_ic, IcRendered):
+            raise TypeError("ROUTED_SHEET_IC_RENDER_PAIR_TYPED_REQUIRED")
+        if clean_ic.pin_anchors != debug_ic.pin_anchors or (
+            clean_ic.connection_targets != debug_ic.connection_targets
+        ):
+            raise ValueError("ROUTED_SHEET_CLEAN_DEBUG_PINREF_NET_DRIFT")
     if type(stroke_um) is not int or stroke_um <= 0:
         raise ValueError("ROUTED_SHEET_INVALID_STROKE")
     for label, expected, observed in (
@@ -167,20 +181,20 @@ def render_routed_native_sheet(
     clean = render_external_wire_sheet(
         circuit, graph, dict(symbols_by_part), style, measurer,
         diagnostic=False, stroke_um=stroke_um, strict_layout=False,
-        physical_ic_renderings=physical_ic_renderings,
+        physical_ic_renderings=physical_ic_renderings_clean,
         source_continuation_project=source_continuation_project,
     )
     debug = render_external_wire_sheet(
         circuit, graph, dict(symbols_by_part), style, measurer,
         diagnostic=True, stroke_um=stroke_um, strict_layout=False,
-        physical_ic_renderings=physical_ic_renderings,
+        physical_ic_renderings=physical_ic_renderings_diagnostic,
         source_continuation_project=source_continuation_project,
     )
     if clean.layout != debug.layout:
         raise AssertionError("ROUTED_SHEET_CLEAN_DEBUG_LAYOUT_DRIFT")
     if not clean.layout.valid:
         blockers.append("ANNOTATION_LAYOUT_HAS_ERRORS")
-    ic = next(iter(physical_ic_renderings.values()))
+    ic = next(iter(physical_ic_renderings_clean.values()))
     text_collisions = audit_full_native_sheet_ink(
         circuit, graph, dict(symbols_by_part), clean.layout, ic,
         wire_stroke_um=stroke_um,
@@ -242,7 +256,7 @@ def render_routed_native_sheet(
                 item for item in list(root)
                 if item.get("data-layer") == "editor-connection-targets"
             ]
-            if len(foreground) != len(physical_ic_renderings):
+            if len(foreground) != len(physical_ic_renderings_diagnostic):
                 raise ValueError("ROUTED_SHEET_REAL_PIN_TARGET_LAYER_MISSING")
             for item in foreground:
                 root.remove(item)
