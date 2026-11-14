@@ -1205,10 +1205,11 @@ def current_native_editor_manifest_negative_gate(font):
         _render_variant,
         construct_native_paint,
     )
+    from gost_schematic.rendering.ic_rectangular import IcFunctionReading
+
     from gost_schematic.rendering.external_wire_sheet import (
         render_external_wire_sheet,
     )
-    from gost_schematic.rendering.ic_rectangular import IcFunctionReading
 
     (circuit, graph, symbols, visible, _old, style, measure,
      policy, _pair, _record, _catalog) = construct_native_paint(font)
