@@ -213,7 +213,7 @@ def test_real_paint_d4_split_identity_and_fail_closed_views(
                 assert line.get("y2") == format_mm(refs[ref].y)
 
 
-def test_true_top_bottom_electrical_view_is_explicitly_blocked(typography):
+def test_undeclared_top_bottom_mix_is_rejected_before_paint(typography):
     style, measurer = typography
     source = synthetic_ic(2)
     spec = source.specs[0]
@@ -222,7 +222,7 @@ def test_true_top_bottom_electrical_view_is_explicitly_blocked(typography):
     )
     new_spec = replace(spec, rows=(top_row, spec.rows[1]))
     top_view = IcLibraryRecord(source.device, (new_spec,), source.placements)
-    with pytest.raises(ValueError, match="IC_UNSUPPORTED_VERTICAL_PORT"):
+    with pytest.raises(ValueError, match="IC_PORT_LAYOUT_MISMATCH"):
         propose_ic_paint_binding(top_view, style, measurer)
 
 
