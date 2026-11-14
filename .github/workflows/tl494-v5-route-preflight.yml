@@ -26,7 +26,7 @@ jobs:
         run: |
           set -euxo pipefail
           IC=6161e9102cbc0c9e0491fb27ed7a496dc0b274bc
-          YGO=edc71a48035723d48a203ae2ea12588701f68ba8
+          YGO=779dc0eabbd2d8f2f1ef9289cb683fcab1414bf1
           PAINT=e3ea841dbe087952577121d5690fe41e9a9a5c83
           ROUTER=b3a8263944c5a687492a49555d8149e538f0902b
           for sha in "$IC" "$YGO" "$PAINT" "$ROUTER"; do
@@ -38,6 +38,7 @@ jobs:
           done
           mkdir -p src/gost_schematic/catalog/source_profiles
           git show "$YGO:src/gost_schematic/catalog/source_profiles.py" > src/gost_schematic/catalog/source_profiles.py
+          git show "$YGO:src/gost_schematic/catalog/source_footprints.py" > src/gost_schematic/catalog/source_footprints.py
           git show "$YGO:src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json" > src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json
           for file in ic_rectangular.py ic_hotspots.py ic_orientation.py ic_power_profiles.py ic_tl494_profile.py ic_electrical_binding.py; do
             git show "$PAINT:src/gost_schematic/rendering/$file" > "src/gost_schematic/rendering/$file"
