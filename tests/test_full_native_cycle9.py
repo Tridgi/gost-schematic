@@ -32,6 +32,13 @@ from gost_schematic.rendering.ic_rectangular import (
 from gost_schematic.rendering.ic_sheet_composition import (
     compose_authoritative_ic_layers,
 )
+from gost_schematic.rendering.native_sheet_ink_audit import (
+    audit_native_parallel_wire_strokes,
+)
+from gost_schematic.validation.external_wire_checks import (
+    ExternalWireGraph,
+    WireSegment,
+)
 
 NS = "{http://www.w3.org/2000/svg}"
 STYLE = TextStyle("/tmp/testfont-placeholder.ttf", "Synthetic Fixed Ink", 3500, 500)
@@ -253,3 +260,38 @@ def test_real_full_native_clean_vs_diagnostic_no_net_or_ref_mutations():
     assert all(m.get("fill") == "#148645" for m in markers)
     assert all(m.get("data-net-id") for m in markers
                if m.get("data-pin-number") != "15")
+
+
+def test_native_stroke_parallel_threshold_exact_2999_3000_and_nonparallel_x():
+    w = WireSegment(Point(0,0), Point(20000,0), "A")
+    ok = WireSegment(Point(2000,3300), Point(17000,3300), "B")
+    bad = WireSegment(Point(2000,3299), Point(17000,3299), "B")
+    assert audit_native_parallel_wire_strokes(
+        ExternalWireGraph((w, ok)),
+    ) == ()
+    result = audit_native_parallel_wire_strokes(
+        ExternalWireGraph((w, bad)),
+    )
+    assert len(result) == 1 and result[0].edge_gap_um == 2999
+    perp = WireSegment(Point(10000,-10000), Point(10000,10000), "B")
+    assert audit_native_parallel_wire_strokes(
+        ExternalWireGraph((w, perp)),
+    ) == ()
+    same = WireSegment(Point(2000,3299), Point(17000,3299), "A")
+    assert audit_native_parallel_wire_strokes(
+        ExternalWireGraph((w, same)),
+    ) == ()
+
+
+def test_source_native_91_wires_all_five_violations_and_no_circuit_modification():
+    loaded = construct_native_paint(_pinned_font())
+    circuit, graph, *_ = loaded
+    original = tuple(circuit.nets)
+    findings = audit_native_parallel_wire_strokes(graph)
+    expected = {
+        (27, 62, 1950), (28, 71, 1450), (42, 85, 1700),
+        (54, 63, 1700), (56, 72, 700),
+    }
+    assert {(f.first_segment, f.second_segment, f.edge_gap_um)
+            for f in findings} == expected
+    assert tuple(circuit.nets) == original
