@@ -11,6 +11,7 @@ on:
       - 'tests/test_ic_graphic_profile_cycle7.py'
       - 'tests/test_ic_editor_power_cycle7.py'
       - 'examples/review_ic_editor_cycle7.py'
+      - 'scripts/verify_ic_editor_raster_cycle7.py'
       - 'scripts/verify_ic_joint_visual_evidence.py'
       - 'examples/review_ic_paint_joint_cycle7.py'
       - 'examples/review_ic_text_profile_cycle7.py'
@@ -59,7 +60,7 @@ jobs:
           echo "IC_TYPE_A_FONT_PATH=$FONT_PATH" >> "$GITHUB_ENV"
           fc-cache -f
       - name: Ruff (owner-owned new files and joint tests)
-        run: ruff check src/gost_schematic/electrical/ic.py src/gost_schematic/electrical/ic_serde.py src/gost_schematic/electrical/ic_graphic_revision.py src/gost_schematic/electrical/ic_agent_snapshot.py src/gost_schematic/electrical/ic_paint_bridge.py src/gost_schematic/electrical/ic_editor_targets.py src/gost_schematic/electrical/ic_power_presentation.py tests/test_ic_paint_joint_cycle7.py tests/test_ic_graphic_profile_cycle7.py tests/test_ic_editor_power_cycle7.py examples/review_ic_paint_joint_cycle7.py examples/review_ic_text_profile_cycle7.py examples/review_ic_editor_cycle7.py scripts/verify_ic_joint_visual_evidence.py scripts/stamp_ic_joint_300dpi_metadata.py
+        run: ruff check src/gost_schematic/electrical/ic.py src/gost_schematic/electrical/ic_serde.py src/gost_schematic/electrical/ic_graphic_revision.py src/gost_schematic/electrical/ic_agent_snapshot.py src/gost_schematic/electrical/ic_paint_bridge.py src/gost_schematic/electrical/ic_editor_targets.py src/gost_schematic/electrical/ic_power_presentation.py tests/test_ic_paint_joint_cycle7.py tests/test_ic_graphic_profile_cycle7.py tests/test_ic_editor_power_cycle7.py examples/review_ic_paint_joint_cycle7.py examples/review_ic_text_profile_cycle7.py examples/review_ic_editor_cycle7.py scripts/verify_ic_joint_visual_evidence.py scripts/verify_ic_editor_raster_cycle7.py scripts/stamp_ic_joint_300dpi_metadata.py
       - name: Assert both packages exist and execute true 1um boundary tests
         run: |
           python -c 'import gost_schematic.electrical.ic_paint_bridge, gost_schematic.rendering.ic_rectangular'
@@ -90,6 +91,24 @@ jobs:
           done
           python scripts/stamp_ic_joint_300dpi_metadata.py --output-dir output/ic-pwm-profile-cycle7 --expected-count "$images"
           ( cd output/ic-pwm-profile-cycle7 && sha256sum *.svg *.png *.json > SHA256SUMS.txt )
+      - name: Real E3 physical PinRef diagnostic/clean 300DPI gallery
+        if: matrix.python-version == '3.12'
+        run: |
+          python -m examples.review_ic_editor_cycle7 --font-file "$IC_TYPE_A_FONT_PATH" --output-dir output/ic-editor-contacts-cycle7
+          test "$(find output/ic-editor-contacts-cycle7 -maxdepth 1 -name '*.svg' -type f | wc -l)" -eq 28
+          for src in output/ic-editor-contacts-cycle7/*.svg; do
+            rsvg-convert --dpi-x 300 --dpi-y 300 "$src" -o "${src%.svg}.png"
+          done
+          python scripts/stamp_ic_joint_300dpi_metadata.py --output-dir output/ic-editor-contacts-cycle7 --expected-count 28
+          python scripts/verify_ic_editor_raster_cycle7.py --output-dir output/ic-editor-contacts-cycle7
+          ( cd output/ic-editor-contacts-cycle7 && sha256sum *.svg *.png *.json > SHA256SUMS.txt )
+      - name: Upload full typed physical pin/editor diagnostic artifact
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-cycle7-real-pinref-editor-green-red-300dpi
+          path: output/ic-editor-contacts-cycle7/
+          if-no-files-found: error
       - name: Upload paired 0/90 physical-model orientation evidence
         if: matrix.python-version == '3.12'
         uses: actions/upload-artifact@v4
