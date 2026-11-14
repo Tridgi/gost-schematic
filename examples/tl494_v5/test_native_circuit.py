@@ -7,12 +7,12 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
-
-from examples.tl494_v5.native_circuit import assemble_native_v5, export_source_manifest
 from gost_schematic.catalog.source_profiles import (
     SymbolProfileMismatch,
     bind_tl494_source,
 )
+
+from examples.tl494_v5.native_circuit import assemble_native_v5, export_source_manifest
 from gost_schematic.model.circuit import Circuit, Net, PinRef
 
 
