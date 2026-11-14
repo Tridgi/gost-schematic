@@ -135,9 +135,8 @@ def verify_frozen_owner_fixture(
         value = p["nominal_si"]
         if value is not None and (type(value) is not str or len(value) > 60):
             _source_error("SOURCE_NOMINAL_INVALID")
-        if ref in TL494_REQUIRED_PARTS:
-            if part != TL494_REQUIRED_PARTS[ref]:
-                _source_error("SOURCE_UGO_VARIANT_MISMATCH")
+        if ref in TL494_REQUIRED_PARTS and part != TL494_REQUIRED_PARTS[ref]:
+            _source_error("SOURCE_UGO_VARIANT_MISMATCH")
         elif ref in ("X1", "X2", "DA1"):
             if part != {
                 "DA1": SOURCE_DEVICE_ALIAS, "X1": "reference.connector.x1",
