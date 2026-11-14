@@ -90,11 +90,56 @@ and set `project_id`, `expected_revision` and
 `expected_generation` to null: frozen source is **not** a persisted
 P1.1 revision. The typed set requires all 23 original refdes,
 13 known exact part/symbol locks and 10 explicitly unresolved parts.
-The full 15 distinct Net declarations and 62 source-bound contact
-tuples are required but **NOT YET independently source verified**.
-If the request fails inventory validation it is REJECTED; if numerical
-structure passes it remains **BLOCKED** because no native 16-pin TI
-part/package adapter or safe 15/15 global route exists in this branch.
+The full **15 original named Net / 62 physical PinRef** declarations
+are now independently compared with the verified IC #97 immutable
+Git blob `a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65`,
+embedded verbatim in the package and wheel. Matching counts alone
+are **not** enough: `SOURCE_NET_MEMBERSHIP_MISMATCH` is raised on
+any renamed source Net or changed physical ownership. `a_INPUT_PLUS`
+and `b_NEGATIVE_OUTPUT` are literal original names, not malformed
+lowercase inputs or aliases to silently merge.
+
+The `tl494_reconstruction` intent additionally requires each
+`components[]` row to carry **`source_part_id`** and **`nominal_si`**
+beside its reviewed `part_id`, `part_sha256` and `symbol_sha256`.
+Original `reference.tl494cn` is retained as the source physical part ID,
+even though the separate manufacturer owner calls it
+`ti.tl494cn.pdip16`. No automatic source ID substitution.
+`nominal_si` is an exact original string (or null where no
+source value exists), never rounded or formatted from UGO ink.
+`SOURCE_PART_ID_MISMATCH` and `SOURCE_NOMINAL_MISMATCH` reject
+same-count, wrong-BOM requests. Only the 13 approved-for-source-**choice**
+UGO IDs are currently installed; the remaining 10 exact original
+source part IDs are independently verified but deliberately unresolved
+in the target P1.1 catalogue.
+
+Example TL494-only component record:
+
+```json
+{
+  "reference": "R5",
+  "source_part_id": "resistor.variable",
+  "nominal_si": "1000",
+  "part_id": "resistor.variable",
+  "part_sha256": "REPLACE_WITH_ACTUAL_INSTALLED_SHA",
+  "symbol_sha256": "REPLACE_WITH_ACTUAL_INSTALLED_SHA"
+}
+```
+
+This record illustrates a shape, NOT valid SHA input. The complete
+machine-generated true original typed request is provided by
+`examples.agent_tl494_cycle11_pipeline` and preserved as
+`source-typed-request.json`; it contains all 23 sources, 15 Net
+identities, 62 members and original nominal strings.
+If the request passes source verification, it STILL returns
+`BLOCKED_SOURCE_NOT_IMPORTABLE` because the complete persistent
+TI device, 15/15 router, printed DRC and transactional writer have
+not been accepted. Fields
+`frozen_original_pinref_membership_verified=true`,
+`frozen_original_bom_part_ids_verified=true` and
+`frozen_original_nominals_verified=true` refer to the immutable
+**external source**, whereas `source_membership_verified=false`
+denotes **not imported into a complete persisted P1.1 project**.
 
 ### Failure codes and process exit contract
 
@@ -111,7 +156,8 @@ Examples of machine-readable `REJECTED.code`:
 `REQUEST_NET_MEMBERSHIP_MISMATCH`,
 `SOURCE_NET_INVENTORY_INCOMPLETE`,
 `SOURCE_PIN_INVENTORY_INCOMPLETE`,
-`SOURCE_UGO_VARIANT_MISMATCH`,
+`SOURCE_NET_MEMBERSHIP_MISMATCH`, `SOURCE_PART_ID_MISMATCH`,
+`SOURCE_NOMINAL_MISMATCH`, `SOURCE_UGO_VARIANT_MISMATCH`,
 `CATALOG_REVISION_MISMATCH`, `REQUEST_PINREF_REUSED`,
 `PROJECT_ACCESS_DENIED`.
 The response never emits a traceback or host secret path.
