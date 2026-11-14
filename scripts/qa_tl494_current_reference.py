@@ -1193,6 +1193,107 @@ def current_full_native_d4_owner_sheet(font, destination):
     }
 
 
+
+def current_native_editor_manifest_negative_gate(font):
+    """Mutate ACTUAL 23-part owner IC connection targets, never a fake symbol.
+
+    This tests source/Net/NC contract at the safe whole-sheet integration
+    boundary. The old low-level render_resolved_ic bypass is tracked
+    separately and remains a release blocker where exposed to clients.
+    """
+    from examples.render_tl494_full_native_cycle9 import (
+        _render_variant,
+        construct_native_paint,
+    )
+    from gost_schematic.rendering.external_wire_sheet import (
+        render_external_wire_sheet,
+    )
+    from gost_schematic.rendering.ic_rectangular import IcFunctionReading
+
+    (circuit, graph, symbols, visible, _old, style, measure,
+     policy, _pair, _record, _catalog) = construct_native_paint(font)
+    _whole, native = _render_variant(
+        circuit, graph, symbols, visible, style, measure, policy,
+        diagnostic=True, reading=IcFunctionReading.BOTTOM_TO_TOP,
+    )
+    authentic = tuple(native.connection_targets)
+    check(len(authentic) == 16 and
+          {p.pin_ref.number for p in authentic} ==
+          {str(n) for n in range(1, 17)},
+          "QA_CURRENT_OWNER_EDITOR_NO_REAL_16_TARGET_MANIFEST")
+    selected = next(
+        i for i, p in enumerate(authentic) if p.pin_ref == PinRef("DA1", "3")
+    )
+    actual = authentic[selected]
+    check(actual.net_id is not None and actual.connectable,
+          "QA_DA1_FB_TARGET_NOT_WIRED_OR_DISABLED")
+    mutations = {
+        "foreign_component": replace(
+            actual, pin_ref=PinRef("FORGED_DA", "3")
+        ),
+        "wrong_physical_number": replace(
+            actual, pin_ref=PinRef("DA1", "999")
+        ),
+        "wrong_net": replace(actual, net_id="FAKE_OTHER_NET"),
+        "false_nc_on_connected_fb": replace(
+            actual, connectable=False, reason="NC",
+        ),
+        "one_um_displaced_anchor": replace(
+            actual,
+            anchor=Point(actual.anchor.x + 1, actual.anchor.y),
+        ),
+    }
+    tested = {}
+    for name, forged in mutations.items():
+        altered = list(authentic)
+        altered[selected] = forged
+        test = replace(native, connection_targets=tuple(altered))
+        try:
+            render_external_wire_sheet(
+                circuit, graph, symbols, style, measure,
+                diagnostic=True, strict_layout=False,
+                physical_ic_renderings={"DA1": test},
+            )
+        except (ValueError, TypeError) as exc:
+            check(str(exc).startswith("SHEET_IC_"),
+                  "QA_CURRENT_OWNER_EDITOR_REJECTED_WRONG_REASON:" + name)
+            tested[name] = "REJECTED_REAL_SOURCE"
+        else:
+            raise AssertionError(
+                "QA_CURRENT_OWNER_EDITOR_FORGED_TARGET_ACCEPTED:" + name
+            )
+    for name, forged in (
+        ("missing_authoritative_tip", authentic[:-1]),
+        ("duplicate_authoritative_tip", (*authentic, authentic[0])),
+    ):
+        test = replace(native, connection_targets=tuple(forged))
+        try:
+            render_external_wire_sheet(
+                circuit, graph, symbols, style, measure,
+                diagnostic=True, strict_layout=False,
+                physical_ic_renderings={"DA1": test},
+            )
+        except (ValueError, TypeError) as exc:
+            check(str(exc).startswith("SHEET_IC_"),
+                  "QA_CURRENT_OWNER_EDITOR_WRONG_MANIFEST_REASON:" + name)
+            tested[name] = "REJECTED_REAL_SOURCE"
+        else:
+            raise AssertionError(
+                "QA_CURRENT_OWNER_EDITOR_MANIFEST_BYPASS:" + name
+            )
+    check(len(tested) == 7, "QA_CURRENT_OWNER_EDITOR_NEGATIVE_COUNT")
+    return {
+        "real_Circuit_components": 23,
+        "real_nets": 15,
+        "physical_DA1_targets": 16,
+        "negative_mutations": tested,
+        "all_negative_real_sheet_rejected": True,
+        "legacy_low_level_editor_gate": "SEPARATE_HISTORICAL_FAIL",
+        "print_release": "NO_GO_UNTIL_15_NET_AFTER",
+    }
+
+
+
 def write_report(args, results):
     summary = {
         "issue": 92, "epic": 107,
@@ -1309,6 +1410,8 @@ def main():
              current_full_native_23_owner_sheet(
                  args.font_file, args.output_dir
              ))
+        gate("P2_CURRENT_OWNER_EDITOR_MANIFEST_NEGATIVES", lambda:
+             current_native_editor_manifest_negative_gate(args.font_file))
         gate("P2_REAL_FULL_NATIVE_8_D4", lambda:
              current_full_native_d4_owner_sheet(
                  args.font_file, args.output_dir
