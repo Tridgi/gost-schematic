@@ -54,7 +54,7 @@ class RoutedSheetRender:
 def _graphic_hash(circuit: Circuit, graph: ExternalWireGraph) -> str:
     parts = [
         [c.reference, c.part_id, c.origin.x, c.origin.y,
-         c.transform.angle, c.transform.mirror]
+         c.transform.rotation, c.transform.mirror_x]
         for c in circuit.components
     ]
     nets = [
@@ -136,7 +136,12 @@ def render_routed_native_sheet(
         if len(touched) != 1:
             raise ValueError("ROUTED_SHEET_FOREIGN_OR_DANGLING_JUNCTION")
     if route_preview is not None:
-        from gost_schematic.engines.multiterminal_router import GlobalRoutePreview
+        try:
+            from gost_schematic.engines.multiterminal_router import GlobalRoutePreview
+        except ImportError as exc:
+            raise RuntimeError(
+                "ROUTED_SHEET_OWNER_114_ROUTER_NOT_INSTALLED"
+            ) from exc
 
         if not isinstance(route_preview, GlobalRoutePreview):
             raise TypeError("ROUTED_SHEET_OWNER_PREVIEW_TYPED_REQUIRED")
