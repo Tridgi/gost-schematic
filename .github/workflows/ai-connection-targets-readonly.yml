@@ -1,0 +1,85 @@
+name: AI editor targets read-only MCP proof
+
+on:
+  pull_request:
+    paths:
+      - "src/gost_schematic/agent_project/connection_targets.py"
+      - "src/gost_schematic/agent_project/service.py"
+      - "src/gost_schematic/mcp_server/saved_projects.py"
+      - "tests/agent_project/test_connection_targets*.py"
+      - "examples/agent_connection_targets_readonly.py"
+      - ".github/workflows/ai-connection-targets-readonly.yml"
+  workflow_dispatch:
+
+jobs:
+  real-editor-targets:
+    name: Real saved E3 PinRef + MCP + SVG/PNG (${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install real engine, MCP server and client
+        run: python -m pip install -e ".[dev,mcp]"
+      - name: Check code style
+        run: python -m ruff check .
+      - name: Unit and real stdio MCP client negative/positive tests
+        run: |
+          python -m pytest -q \
+            tests/agent_project/test_connection_targets.py \
+            tests/agent_project/test_connection_targets_stdio.py \
+            tests/agent_project/test_mcp_saved_stdio.py
+      - name: Open saved E3 via actual MCP and archive native images
+        shell: bash
+        run: |
+          mkdir -p output
+          python -m examples.agent_connection_targets_readonly \
+            --workspace output/saved-editor-targets \
+            --project-id "e0a5ee1c-c542-4a57-ab2c-30fa8730ee26" \
+            --idempotency-key "afcb7d8a-05a1-4e09-8493-8e337a8d0d13" \
+            > output/connection-target-evidence.json
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          evidence = json.loads(Path("output/connection-target-evidence.json").read_text())
+          actual = evidence["saved_e3_mcp"]
+          assert actual["real_transport"] == "mcp.ClientSession + stdio_client"
+          assert evidence["codex_cli_used"] is False
+          assert actual["authored_wire_endpoints"] == 32
+          assert actual["authored_junctions"] == 3
+          assert actual["net_count"] == 5
+          assert actual["forbidden_cross_net_reason"] == "NET_MERGE_DENIED"
+          assert actual["hover_creates_net"] is False
+          assert actual["mcp_created_or_modified_project"] is False
+          for ext in ("svg", "png"):
+              source = Path(actual["client_evidence_paths"][ext])
+              assert source.is_file()
+              key = "svg_sha256" if ext == "svg" else "png_sha256"
+              assert hashlib.sha256(source.read_bytes()).hexdigest() == actual[key]
+          project = Path("output/saved-editor-targets/projects") / actual["project_id"]
+          assert (project / "HEAD.json").exists()
+          assert (project / "revisions" / (actual["revision"] + ".gseproj")).exists()
+          print("Actual MCP read-only connection targets:", actual["revision"])
+          print("Diagnostic PNG SHA:", actual["png_sha256"])
+          print("Diagnostic SVG SHA:", actual["svg_sha256"])
+          PY
+      - name: Build installation wheel
+        run: |
+          python -m pip install build
+          python -m build --wheel
+      - name: Upload actual physical model and rendered client evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: editor-targets-python-${{ matrix.python }}
+          path: |
+            output/connection-target-evidence.json
+            output/saved-editor-targets/projects/
+            output/saved-editor-targets/client-evidence/
+          if-no-files-found: error
+          retention-days: 30
