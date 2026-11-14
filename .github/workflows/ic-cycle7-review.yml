@@ -7,6 +7,7 @@ on:
       - "src/gost_schematic/rendering/ic_rectangular.py"
       - "src/gost_schematic/rendering/ic_orientation.py"
       - "src/gost_schematic/rendering/ic_hotspots.py"
+      - "src/gost_schematic/rendering/ic_power_profiles.py"
       - "examples/review_ic_cycle7.py"
       - "scripts/verify_ic_debug_gallery.py"
       - "tests/test_rendering_ic_cycle7.py"
@@ -27,7 +28,7 @@ jobs:
       - name: Test IC isolated engine
         run: |
           python -m pip install -e ".[dev]"
-          ruff check src/gost_schematic/rendering/ic_rectangular.py src/gost_schematic/rendering/ic_orientation.py src/gost_schematic/rendering/ic_hotspots.py examples/review_ic_cycle7.py scripts/verify_ic_debug_gallery.py tests/test_rendering_ic_cycle7.py
+          ruff check src/gost_schematic/rendering/ic_rectangular.py src/gost_schematic/rendering/ic_orientation.py src/gost_schematic/rendering/ic_hotspots.py src/gost_schematic/rendering/ic_power_profiles.py examples/review_ic_cycle7.py scripts/verify_ic_debug_gallery.py tests/test_rendering_ic_cycle7.py
           pytest -q tests/test_rendering_ic_cycle7.py
       - name: Install pinned external Type A font
         env:
