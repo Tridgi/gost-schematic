@@ -9,6 +9,7 @@ from dataclasses import replace
 from gost_schematic.model.circuit import Circuit, PinRef
 from gost_schematic.rendering.ic_hotspots import IcConnectionTarget
 from gost_schematic.rendering.ic_rectangular import (
+    IcFunctionReading,
     IcTypographyProfile,
     render_resolved_ic,
 )
@@ -20,6 +21,7 @@ def render_verified_ic_paint_binding(
     editor_overlay: bool = False,
     typography_profile: IcTypographyProfile | None = None,
     function_rotation: int | None = None,
+    function_text_reading: IcFunctionReading | None = None,
 ):
     """Render actual resolved PinRef endpoints, with NO model revision edits.
 
@@ -43,6 +45,11 @@ def render_verified_ic_paint_binding(
     if (typography_profile is not None
             and not isinstance(typography_profile, IcTypographyProfile)):
         raise TypeError("IC_TYPOGRAPHY_PROFILE_TYPED_REQUIRED")
+    if function_rotation is not None and function_text_reading is not None:
+        raise ValueError("IC_FUNCTION_READING_ROTATION_AMBIGUOUS")
+    if (function_text_reading is not None
+            and not isinstance(function_text_reading, IcFunctionReading)):
+        raise TypeError("IC_FUNCTION_READING_TYPED_REQUIRED")
     binding.verify_endpoints()
     record = binding.record
     resolved_before = resolve_ic_pin_positions(
@@ -96,6 +103,10 @@ def render_verified_ic_paint_binding(
         if function_rotation is not None:
             presentation = replace(
                 presentation, function_rotation=function_rotation,
+            )
+        if function_text_reading is not None:
+            presentation = presentation.select_function_text_reading(
+                function_text_reading,
             )
         outputs.append(render_resolved_ic(
             presentation, style, measurer,
