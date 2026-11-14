@@ -59,7 +59,7 @@ jobs:
           for mode in ['clean','diagnostic']:
               source=root/f'TL494_native_power_{mode}.svg'
               target=root/f'TL494_native_power_{mode}.png'
-              cairosvg.svg2png(url=str(source),write_to=str(target),dpi=300)
+              cairosvg.svg2png(url=str(source),write_to=str(target),dpi=300,background_color='#ffffff')
               im=Image.open(target)
               im.save(target,dpi=(300,300))
               print(mode,im.size,im.info.get('dpi'))
