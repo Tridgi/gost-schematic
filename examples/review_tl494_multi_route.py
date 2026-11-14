@@ -203,6 +203,52 @@ def generate(
             raise ValueError("ROUTER_RENDER_LOST_PHYSICAL_WIRE_SEGMENT")
         (output / view).write_text(svg, encoding="utf-8")
     route_metrics = planned.as_dict()
+    before_parallel = tuple(
+        x for x in before.parallel_measurements if not x.compliant
+    )
+    after_parallel = tuple(
+        x for x in after.parallel_measurements if not x.compliant
+    )
+    change = {
+        "before": {
+            "segments": len(graph.segments),
+            "bends": baseline["geometric"]["bends"],
+            "length_mm": round(before.total_wire_length_um / 1000, 3),
+            "parallel_pairs_evaluated": len(before.parallel_measurements),
+            "parallel_clearance_errors": len(before_parallel),
+            "min_violating_edge_gap_mm": (
+                min(x.measured_edge_um for x in before_parallel) / 1000
+                if before_parallel else None
+            ),
+            "foreign_X_crossings": before.crossing_different_net,
+            "drc_errors": len([f for f in before.findings
+                               if f.severity == "error"]),
+            "drc_warnings": len([f for f in before.findings
+                                 if f.severity == "warning"]),
+        },
+        "after": {
+            "segments": len(planned.graph.segments),
+            "bends": sum(t.bend_count for t in planned.net_trees),
+            "length_mm": round(after.total_wire_length_um / 1000, 3),
+            "parallel_pairs_evaluated": len(after.parallel_measurements),
+            "parallel_clearance_errors": len(after_parallel),
+            "min_violating_edge_gap_mm": (
+                min(x.measured_edge_um for x in after_parallel) / 1000
+                if after_parallel else None
+            ),
+            "foreign_X_crossings": after.crossing_different_net,
+            "drc_errors": len([f for f in after.findings
+                               if f.severity == "error"]),
+            "drc_warnings": len([f for f in after.findings
+                                 if f.severity == "warning"]),
+            "completed_net_count": sum(
+                t.complete for t in planned.net_trees
+            ),
+        },
+    }
+    change["deltas_not_comparable_if_partial"] = (
+        not complete or not planned.print_pass
+    )
     report = {
         "source_commit": source_revision,
         "model_parts": len(circuit.components),
@@ -213,6 +259,7 @@ def generate(
         "source_net_members": source_net_map,
         "attempt_net_members": net_map,
         "source_before": before.as_dict(),
+        "comparison": change,
         "source_before_known_bad_errors": baseline["geometric"]["errors"],
         "source_before_known_bad_bends": baseline["geometric"]["bends"],
         "after_attempt": after.as_dict(),
@@ -237,6 +284,16 @@ def generate(
         json.dumps(report, sort_keys=True, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
+    for filename, payload in (
+        ("TL494-original-native-9-error-drc.json", before.as_dict()),
+        ("TL494-after-new-route-drc.json", after.as_dict()),
+        ("TL494-precise-net-diff.json", exact_net_diff),
+        ("TL494-route-metrics-comparison.json", change),
+    ):
+        (output / filename).write_text(
+            json.dumps(payload, sort_keys=True, ensure_ascii=False, indent=2)
+            + "\\n", encoding="utf-8",
+        )
     print(json.dumps({
         "status": report["release"],
         "source_wires": 91,
