@@ -5,6 +5,8 @@ on:
     paths:
       - examples/tl494_v5/route_candidate_driver.py
       - examples/tl494_v5/test_route_candidate_driver.py
+      - examples/tl494_v5/routed_graph_contract.py
+      - examples/tl494_v5/test_routed_graph_contract.py
       - examples/tl494_v5/native_circuit.py
       - examples/tl494_v5/compact_layout.py
       - examples/tl494_v5/route_preflight.py
@@ -71,7 +73,8 @@ jobs:
           PYTHONPATH=src pytest -q \
             examples/tl494_v5/test_native_circuit.py \
             examples/tl494_v5/test_compact_layout.py \
-            examples/tl494_v5/test_route_candidate_driver.py
+            examples/tl494_v5/test_route_candidate_driver.py \
+            examples/tl494_v5/test_routed_graph_contract.py
       - name: Compare original source 23/15/62 and run two order candidates
         run: |
           set -euxo pipefail
