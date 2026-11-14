@@ -357,13 +357,13 @@ def _occupied_side_rows(
 ) -> tuple[str, ...]:
     result = list(rows)
     for pin in pins:
-        if pin.side != side or not pin.label:
+        if pin.side != side or not pin.visible_label:
             continue
         while len(result) <= pin.row:
             result.append("")
-        if result[pin.row] and result[pin.row] != pin.label:
+        if result[pin.row] and result[pin.row] != pin.visible_label:
             raise ValueError(f"IC_TEXT_OVERFLOW: conflict {side.value} row {pin.row}")
-        result[pin.row] = pin.label
+        result[pin.row] = pin.visible_label
     return tuple(result)
 
 
@@ -771,21 +771,26 @@ def render_resolved_ic(
         follow = (
             _rotate_function if kind == "function" else (
                 _rotate_fields or (
-                    unit.typography_profile is
-                    IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT
+                    unit.typography_profile in (
+                        IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT,
+                        IcTypographyProfile.TL494_PORTRAIT_V3_DRAFT,
+                    )
                     and unit.transform.rotation in (90, 270)
                 )
             )
         )
-        if (kind == "function" and unit.function_rotation == 90
+        if (kind == "function" and unit.function_rotation in (90, 270)
                 and not _vertical_internal):
             from gost_schematic.rendering.ic_orientation import compose_transforms
 
             local, baseline = _rotated_function_placement(
                 owner, text, cell, style, measurer, policy,
+                rotation=unit.function_rotation,
             )
             rotated_function_baselines[owner] = baseline
-            word_pose = compose_transforms(unit.transform, Transform(90))
+            word_pose = compose_transforms(
+                unit.transform, Transform(unit.function_rotation),
+            )
             texts.append((
                 IcInkBox(owner, kind, worldbox(local.box), text),
                 Point(0, 0),
@@ -858,9 +863,11 @@ def render_resolved_ic(
     label = _measure(unit.reference, style, measurer)
     if (_vertical_internal or (
         unit.orientation is IcOrientation.LEFT_RIGHT
-        and (unit.function_rotation == 90 or
-             unit.typography_profile is
-             IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT)
+        and (unit.function_rotation in (90, 270) or
+             unit.typography_profile in (
+                 IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT,
+                 IcTypographyProfile.TL494_PORTRAIT_V3_DRAFT,
+             ))
     )):
         # Rotated function and D4 poses require reference placement on an
         # actually free WORLD perimeter side, never across the pin corridors.
@@ -930,7 +937,9 @@ def render_resolved_ic(
                 parent.owner, parent.text, baseline, style,
             ):
                 if parent.owner in rotated_function_baselines:
-                    rotated_local = Transform(90).box(glyph.ink).translated(
+                    rotated_local = Transform(unit.function_rotation).box(
+                        glyph.ink,
+                    ).translated(
                         rotated_function_baselines[parent.owner]
                     )
                     candidate = worldbox(rotated_local)
@@ -1000,8 +1009,14 @@ def render_resolved_ic(
             f"{ref.reference}.{ref.number}"
             for ref in power_audit.physical_pinrefs
         ))
-    if (unit.function_rotation == 90 and not _vertical_internal):
-        svg.set("data-function-rotation-deg", "90")
+    reading = {
+        0: IcFunctionReading.HORIZONTAL,
+        90: IcFunctionReading.TOP_TO_BOTTOM,
+        270: IcFunctionReading.BOTTOM_TO_TOP,
+    }[unit.function_rotation]
+    svg.set("data-function-reading-local", reading.value)
+    if (unit.function_rotation in (90, 270) and not _vertical_internal):
+        svg.set("data-function-rotation-deg", str(unit.function_rotation))
     ET.SubElement(svg, S + "title").text = (
         f"DRAFT physical E3 IC {unit.reference}; no electrical net inference"
     )
