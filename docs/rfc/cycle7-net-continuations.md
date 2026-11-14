@@ -55,7 +55,7 @@ electrical conductors or production UGO.
 For the horizontal 2-sheet specimen the measured DRAFT renderer puts the
 net designation above the conductor and the remote continuation address
 outside the arrow, to the right of a right-facing break and to the left
-of a left-facing break. The filled arrow is closer to the original figure
+of a left-facing break. The revised unfilled/barbed break arrow is closer to the original figure
 than the legacy chevron but its geometry and dimensions are still **DRAFT**;
 the exact 1:1 figure and alignment require the normative ESKD #91 owner.
 The project-specific `1/D4` sheet/zone address convention now checks that
@@ -217,7 +217,10 @@ The overlay itself contains the stable net IDs, exact frozen member PinRefs,
 sheet IDs/numbers, every endpoint's local/remote address+anchor+direction,
 typed address bindings, reciprocal explicit pair IDs and local real stubs.
 The envelope revision must be compared against the actual current Circuit
-before deserializing. A stale revision, new/unrecognized field, unverified
+before deserializing. ProjectService must also call
+\`netrefs_from_json(..., expected_schema_version=envelope.netrefs_overlay_schema_version)\`;
+without that external expected-version constraint, a deliberately stripped v2
+object could be misrepresented as an otherwise valid old v1 document. A stale revision, new/unrecognized field, unverified
 group membership or ambiguous equal-label multi-Net project is rejected.
 
 A future `AttachNetContinuation` typed transaction may add **only**
