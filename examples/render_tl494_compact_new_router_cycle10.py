@@ -7,6 +7,7 @@ retrospective fake 91-wire reconstruction.
 """
 import argparse
 import json
+from importlib import import_module
 from pathlib import Path
 
 from examples.tl494_v5.compact_layout import (
@@ -21,7 +22,6 @@ from examples.tl494_v5.route_preflight import (
 from gost_schematic.core.geometry import Box
 from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
-from gost_schematic.engines.multiterminal_router import route_circuit_net_trees
 from gost_schematic.engines.sheet_layout import layout_sheet
 from gost_schematic.model.circuit import PinRef
 from gost_schematic.rendering.ic_hotspots import IcConnectionTarget
@@ -94,7 +94,9 @@ def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 2500
             "main-text", "field-text",
         )
     )
-    route = route_circuit_net_trees(
+    route = import_module(
+        "gost_schematic.engines.multiterminal_router"
+    ).route_circuit_net_trees(
         circuit, assembly.parts, by_part,
         page_box=Box(0, 0, *A3_LANDSCAPE_UM),
         annotation_placements=(*ic_ink, *placement.placements),
