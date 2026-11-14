@@ -9,7 +9,7 @@ import hashlib
 import json
 import math
 from pathlib import Path
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 
@@ -52,7 +52,7 @@ def _pdf_page(uri: str) -> int:
 
 
 def _git_blob_sha(data: bytes) -> str:
-    prefix = f"blob {len(data)}\\0".encode("utf-8")
+    prefix = f"blob {len(data)}".encode("ascii") + bytes([0])
     return hashlib.sha1(prefix + data).hexdigest()
 
 
