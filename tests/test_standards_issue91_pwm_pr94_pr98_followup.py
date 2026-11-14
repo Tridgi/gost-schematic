@@ -104,6 +104,28 @@ def test_all_15_real_pr94_shape_ids_with_source_blobs_and_real_mm():
         assert entry["figure"]
 
 
+def test_all_fifteen_symbol_and_real_abstract_part_records_are_paired():
+    proof = symbols()
+    assert proof["paired_owner_parts_verified"] == 15
+    for item in proof["cards"]:
+        assert item["paired_part_symbol_id"] == item["id"]
+        assert len(item["paired_part_blob_sha"]) == 40
+        assert item["paired_part_file"].replace("/parts/", "/symbols/") == (
+            item["path"]
+        )
+        graphic = item["observed_1to1_json"]["pins"]
+        part = item["paired_part_pin_manifest"]
+        assert len(graphic) == len(part)
+        assert {p["number"]: p["label"] for p in graphic} == {
+            p["number"]: p["name"] for p in part
+        }
+        assert all(p["electrical_type"] == "passive" for p in part)
+        assert item["paired_part_number_to_graphic_role_verified"]
+        assert "not an authenticated manufacturer pinout" in (
+            item["paired_part_note"]
+        )
+
+
 def test_numpy_free_svg_1to1_mm_and_all_fifteen_frozen_owner_shapes():
     svg = ET.fromstring(GALLERY.read_text(encoding="utf-8"))
     assert svg.get("width") == "315mm"
