@@ -2,7 +2,7 @@
 
 Trusted Python bootstraps a six-part E3 because a full physical TL494CN
 device adapter is NOT in the P1.1 installed catalog. A real separate
-MCP ClientSession then chooses the 12 exact TL494 UGO variants from
+MCP ClientSession then chooses the 13 exact TL494 UGO source references from
 the installed catalog, requests genuine SVG/PNG examples, and invokes
 immutable preflight diagnostics on the saved six-part project. This is
 NOT a Codex model run, a TL494 circuit generation, or full print DRC.
@@ -68,7 +68,7 @@ async def run_native_client(workspace: Path, project_id: str, revision: str) -> 
             profile = decoded(await client.call_tool(
                 "schematic_tl494_selection_profile", {},
             ))
-            if len(profile["required_variants"]) != 12:
+            if len(profile["required_variants"]) != 13:
                 raise AssertionError("Incomplete source-specific TL494 UGO matrix")
             if profile["tl494_device_catalog"] != "NOT_IN_INSTALLED_P11_CATALOG":
                 raise AssertionError("Device provenance gate has changed; re-review")
