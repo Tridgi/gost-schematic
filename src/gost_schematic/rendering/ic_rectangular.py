@@ -994,7 +994,9 @@ def render_resolved_ic(
             "data-editor-only": "true",
             "data-physical-print": "false",
         })
+        pin_metadata = {pin.pin_id: pin for pin in unit.pins}
         for target in targets:
+            physical_pin = pin_metadata[target.pin_id]
             # Pure diagnostic glyph in physical SVG millimetres. The FUTURE
             # interactive editor must instead hit-test a CSS-pixel radius.
             at = target.anchor
@@ -1007,6 +1009,10 @@ def render_resolved_ic(
                     f"{target.pin_ref.reference}.{target.pin_ref.number}"
                 ),
                 "data-pin-id": target.pin_id,
+                "data-pin-number": target.pin_ref.number,
+                "data-pin-role": physical_pin.role,
+                "data-external-anchor-x-um": str(at.x),
+                "data-external-anchor-y-um": str(at.y),
                 "data-net-id": target.net_id or "",
                 "data-connectable": str(target.connectable).lower(),
                 "data-reason": target.reason or "",
