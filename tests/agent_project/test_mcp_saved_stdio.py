@@ -219,7 +219,6 @@ def test_actual_mcp_client_permission_denied_when_not_explicitly_enabled(tmp_pat
 def test_actual_mcp_client_rejects_redirected_workspace(tmp_path):
     workspace = tmp_path / "safe"
     import_six_part(workspace, project_id=PID, idempotency_key=KEY)
-    other = tmp_path / "another"
     try:
         (tmp_path / "redirect").symlink_to(workspace, target_is_directory=True)
     except (OSError, NotImplementedError):
