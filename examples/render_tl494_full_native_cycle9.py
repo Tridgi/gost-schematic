@@ -292,10 +292,19 @@ def _render_variant(
     assert len(root.findall(
         f".//{SVG}circle[@data-kind='authored-junction']"
     )) == 37
-    marks = native.findall(
+    marks = root.findall(
         f".//{SVG}g[@data-layer='editor-connection-targets']/{SVG}rect"
     )
     assert len(marks) == (16 if diagnostic else 0)
+    if diagnostic:
+        overlays = root.findall(
+            f"./{SVG}g[@data-layer='editor-connection-targets']"
+        )
+        assert len(overlays) == 1
+        assert overlays[0].get("data-layer-order") == "after-all-copper"
+        assert list(root).index(overlays[0]) > max(
+            list(root).index(wire) for wire in wires
+        )
     names = {
         el.get("data-physical-pin-number"): el.text
         for el in native.findall(f".//{SVG}text[@data-kind='pin-label']")
