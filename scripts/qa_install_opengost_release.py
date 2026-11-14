@@ -36,18 +36,21 @@ def verified_type_a_from_archive(payload: bytes) -> tuple[str, bytes]:
             and Path(member.filename).suffix.lower() in (".ttf", ".otf")
             and not member.filename.startswith("__MACOSX/")
         ]
-        if len(faces) != 1:
-            raise ValueError("QA_GOST_RELEASE_NOT_EXACTLY_ONE_TYPE_A")
-        face = faces[0]
-        if face.file_size > 20_000_000:
-            raise ValueError("QA_GOST_RELEASE_FONT_SIZE_UNSAFE")
-        content = archive.read(face)
-    if hashlib.sha256(content).hexdigest() != TYPE_A_SHA256:
-        raise ValueError("QA_GOST_TYPE_A_SHA256_MISMATCH")
-    if content[:4] not in (b"OTTO", b"\x00\x01\x00\x00", b"true"):
+        if not faces:
+            raise ValueError("QA_GOST_RELEASE_NO_TYPE_A")
+        verified = []
+        for face in faces:
+            if face.file_size > 20_000_000:
+                raise ValueError("QA_GOST_RELEASE_FONT_SIZE_UNSAFE")
+            content = archive.read(face)
+            if hashlib.sha256(content).hexdigest() == TYPE_A_SHA256:
+                verified.append((face, content))
+    if len(verified) != 1:
+        raise ValueError("QA_GOST_TYPE_A_SHA256_MISMATCH_OR_AMBIGUOUS")
+    face, content = verified[0]
+    if content[:4] not in (b"OTTO", b"\\x00\\x01\\x00\\x00", b"true"):
         raise ValueError("QA_GOST_RELEASE_NOT_OPENTYPE")
     return Path(face.filename).name, content
-
 
 def download_true_type_a(dest: Path) -> dict:
     request = urllib.request.Request(
