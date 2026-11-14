@@ -10,6 +10,7 @@ on:
       - "src/gost_schematic/rendering/ic_power_profiles.py"
       - "examples/review_ic_cycle7.py"
       - "scripts/verify_ic_debug_gallery.py"
+      - "scripts/replay_ic_qa99_pwm.py"
       - "tests/test_rendering_ic_cycle7.py"
       - ".github/workflows/ic-cycle7-review.yml"
   workflow_dispatch:
@@ -28,7 +29,7 @@ jobs:
       - name: Test IC isolated engine
         run: |
           python -m pip install -e ".[dev]"
-          ruff check src/gost_schematic/rendering/ic_rectangular.py src/gost_schematic/rendering/ic_orientation.py src/gost_schematic/rendering/ic_hotspots.py src/gost_schematic/rendering/ic_power_profiles.py examples/review_ic_cycle7.py scripts/verify_ic_debug_gallery.py tests/test_rendering_ic_cycle7.py
+          ruff check src/gost_schematic/rendering/ic_rectangular.py src/gost_schematic/rendering/ic_orientation.py src/gost_schematic/rendering/ic_hotspots.py src/gost_schematic/rendering/ic_power_profiles.py examples/review_ic_cycle7.py scripts/verify_ic_debug_gallery.py scripts/replay_ic_qa99_pwm.py tests/test_rendering_ic_cycle7.py
           pytest -q tests/test_rendering_ic_cycle7.py
       - name: Install pinned external Type A font
         env:
@@ -45,6 +46,17 @@ jobs:
           sha256sum "$FONT_FILE"
           sudo apt-get update -qq
           sudo apt-get install -y -qq librsvg2-bin
+      - name: Reproduce original red QA99 PWM_CONTROLLER source fixture (real Type A)
+        env:
+          QA_SOURCE_SHA: 7547eb758abac286bdd5c4d116e23d525fc900a8
+        run: |
+          git fetch --no-tags origin "$QA_SOURCE_SHA" --depth=1
+          git show "$QA_SOURCE_SHA:scripts/qa_cycle7_live_source_gate.py" \
+            > "$RUNNER_TEMP/qa99-pwm-original.py"
+          python -m scripts.replay_ic_qa99_pwm \
+            --qa-file "$RUNNER_TEMP/qa99-pwm-original.py" \
+            --font-file "$REVIEW_FONT" \
+            --output-dir output/ic-cycle7
       - name: Create 4/8/14/40/64 real OpenGost SVG and metric audit
         run: |
           python -m examples.review_ic_cycle7 --font-file "$REVIEW_FONT" \
