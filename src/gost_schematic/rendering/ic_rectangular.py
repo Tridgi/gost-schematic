@@ -1070,6 +1070,9 @@ def render_resolved_ic(
             "data-role": pin.role,
             "data-real-anchor": "true",
         })
+    pin_by_text_owner = {
+        f"{pin.side.value}.{pin.row}": pin for pin in unit.pins
+    }
     for region, baseline, matrix_token in texts:
         attrs = {
             "data-layer": "ic-text",
@@ -1085,6 +1088,14 @@ def render_resolved_ic(
             "font-style": style.font_style,
             "fill": "#000000", "stroke": "none",
         }
+        if region.kind == "pin-label" and region.owner in pin_by_text_owner:
+            named = pin_by_text_owner[region.owner]
+            attrs.update({
+                "data-pin-id": named.pin_id,
+                "data-physical-pin-number": named.number,
+                "data-full-manufacturer-name": named.label,
+                "data-visible-pin-alias": named.visible_label,
+            })
         if matrix_token is not None:
             attrs["transform"] = matrix_token
         node = ET.SubElement(svg, S + "text", attrs)
