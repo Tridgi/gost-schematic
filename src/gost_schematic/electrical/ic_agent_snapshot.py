@@ -9,7 +9,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 
-from gost_schematic.electrical.ic import validate_ic_circuit
+from gost_schematic.electrical.ic import IcPinType, validate_ic_circuit
 from gost_schematic.electrical.ic_serde import IcLibraryRecord, ic_from_json, ic_to_json
 from gost_schematic.model.circuit import Circuit, PinRef
 
@@ -63,7 +63,10 @@ class IcAgentSnapshot:
             if not name or not numbers or tuple(sorted(numbers)) != numbers:
                 raise ValueError("IC_AGENT_NET_INVALID")
             for num in numbers:
-                if num not in all_pins or num in seen:
+                if (
+                    num not in all_pins or num in seen
+                    or self.record.device.pin_map[num].electrical_type is IcPinType.NC
+                ):
                     raise ValueError("IC_AGENT_NET_PINREF_INVALID")
                 seen.add(num)
 
