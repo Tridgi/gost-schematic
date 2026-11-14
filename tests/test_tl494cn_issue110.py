@@ -269,7 +269,7 @@ def test_tl494_source_symbol_body_always_portrait():
     )
     assert spec.main_field == "PWM"
     assert len(spec.rows) == 16
-    assert spec.profile.function_angle is IcTextAngle.VERTICAL
+    assert spec.profile.function_angle is IcTextAngle.BOTTOM_TO_TOP
 
 
 def _actual_font():
