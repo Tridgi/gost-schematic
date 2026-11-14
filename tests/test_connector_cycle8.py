@@ -4,6 +4,7 @@ GOST 2.755-87 tab.5/1(1), tab.6/2–4. Geometry is DRAFT.
 Abstract contact IDs 1..4 are NOT a manufacturer's package pinout.
 """
 
+import itertools
 import json
 from dataclasses import replace
 from importlib.resources import files
@@ -179,7 +180,7 @@ def test_grouped_contacts_spacing_and_keepout_do_not_collide(identifier):
     symbol, _ = pair(identifier)
     assert len(symbol.pins) == 4
     ys = sorted(pin.at.y for pin in symbol.pins)
-    assert all(b - a >= 8000 for a, b in zip(ys, ys[1:]))
+    assert all(b - a >= 8000 for a, b in itertools.pairwise(ys))
     # Four 2mm high contact shapes or V-forks separated by 8mm row pitch.
     rows = [g for g in symbol.graphics if isinstance(g, Rectangle)]
     if "plug_" in identifier:
