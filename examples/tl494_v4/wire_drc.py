@@ -45,7 +45,8 @@ def axis(wire:WireSegment) -> str:
 
 
 def _span(w:WireSegment,coord:str)->tuple[int,int]:
-    a=getattr(w.start,coord);b=getattr(w.end,coord)
+    a=getattr(w.start,coord)
+    b=getattr(w.end,coord)
     return (min(a,b),max(a,b))
 
 
@@ -57,12 +58,14 @@ def pair_clearance(
     None means not parallel or longitudinal spans do not overlap positively.
     Measured from both stroked line edges (stroke_um/2 on each side).
     """
-    if stroke_um<=0: raise ValueError("P7: nonpositive stroke")
+    if stroke_um<=0:
+        raise ValueError("P7: nonpositive stroke")
     direction=axis(a)
     if direction=="OTHER" or axis(b)!=direction:
         return None
     normal,along=("y","x") if direction=="H" else ("x","y")
-    ax1,ax2=_span(a,along);bx1,bx2=_span(b,along)
+    ax1,ax2=_span(a,along)
+    bx1,bx2=_span(b,along)
     if min(ax2,bx2)<=max(ax1,bx1):
         return None
     return abs(getattr(a.start,normal)-getattr(b.start,normal))-stroke_um
@@ -75,7 +78,8 @@ def right_angle_crossing(a:WireSegment,b:WireSegment)->tuple[int,int] | None:
         return None
     h=a if da=="H" else b
     v=a if da=="V" else b
-    x=v.start.x;y=h.start.y
+    x=v.start.x
+    y=h.start.y
     if _span(h,"x")[0]<x<_span(h,"x")[1] and _span(v,"y")[0]<y<_span(v,"y")[1]:
         return x,y
     return None
