@@ -26,11 +26,11 @@ from examples.tl494_v5.native_circuit import (
     NativeV5Assembly,
     assemble_native_v5,
 )
-from examples.tl494_v5.routed_graph_contract import rehydrate_verified_route_graph
 from examples.tl494_v5.route_preflight import (
     MeasuredInkGuard,
     _owner_ic_obstacle,
 )
+from examples.tl494_v5.routed_graph_contract import rehydrate_verified_route_graph
 from gost_schematic.core.geometry import Box, Point
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.engines.sheet_layout import layout_sheet
