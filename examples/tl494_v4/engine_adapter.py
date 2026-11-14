@@ -10,7 +10,10 @@ from pathlib import Path
 from examples.tl494_connected_native import attach_catalog_ic
 from examples.tl494_native_rework import build as original_build_power
 from examples.tl494_v4.model_contract import (
-    PIN_ALIASES, PIN_DESCRIPTIONS, PIN_TYPES, frozen_inventory,
+    PIN_ALIASES,
+    PIN_DESCRIPTIONS,
+    PIN_TYPES,
+    frozen_inventory,
 )
 from gost_schematic.agent_project.catalog import CatalogResolver
 from gost_schematic.model.pins import PhysicalPin
@@ -23,11 +26,11 @@ def build_power_v4():
     circuit,parts,symbols,locations=original_build_power()
     original=CatalogResolver().symbols["transistor.mosfet_n_enh"]
     symbols[original.identifier]=original
-    if set(part.part_id for part in circuit.components
-           if part.reference in {"L1","L2"})!={"inductor.ferromagnetic"}:
+    if {part.part_id for part in circuit.components
+           if part.reference in {"L1","L2"}}!={"inductor.ferromagnetic"}:
         raise ValueError("P1: magnetic core missing")
-    if set(part.part_id for part in circuit.components
-           if part.reference in {"C1","C2","C5","C6"})!={"capacitor.polarized"}:
+    if {part.part_id for part in circuit.components
+           if part.reference in {"C1","C2","C5","C6"}}!={"capacitor.polarized"}:
         raise ValueError("P1: polarized thin plates missing")
     if any(diag.severity.value=="error" for diag in validate_symbol(original)):
         raise ValueError("P1: catalog real MOSFET invalid")

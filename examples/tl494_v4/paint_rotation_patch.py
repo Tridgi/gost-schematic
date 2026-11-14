@@ -9,7 +9,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-
 REPLACEMENTS = (
     ("or self.function_rotation not in (0, 90)", "or self.function_rotation not in (0, 90, 270)", 1),
     ("IC_TEXT_ROTATION_UNVERIFIED: only 0/90", "IC_TEXT_ROTATION_UNVERIFIED: only 0/90/270", 1),

@@ -10,7 +10,6 @@ from pathlib import Path
 from examples.tl494_full_native_model import SPEC, TRACED_NETS
 from gost_schematic.model.pins import ElectricalType
 
-
 SOURCE_PHOTOS = {
     "circuit": {
         "width_px": 640, "height_px": 290,
@@ -116,9 +115,9 @@ def frozen_inventory() -> dict:
         "pin_display_aliases":PIN_ALIASES,
         "pin_manufacturer_functions":PIN_DESCRIPTIONS,
         "pin_electrical_types":{k:v.value for k,v in PIN_TYPES.items()},
-        "source_components":{k:dict(
-            symbol_id=v[0],value=v[1],description=v[2]
-        ) for k,v in SOURCE_SHEET_PARTS.items()},
+        "source_components":{k:{
+            "symbol_id": v[0],"value": v[1],"description": v[2]
+        } for k,v in SOURCE_SHEET_PARTS.items()},
         "source_nets":{
             name:[f"{r}.{n}" for r,n in pins] for name,pins in TRACED_NETS.items()
         },

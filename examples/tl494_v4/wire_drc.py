@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from itertools import combinations
 
 from gost_schematic.core.geometry import Point
-from gost_schematic.validation.external_wire_checks import WireSegment, ExternalWireGraph
+from gost_schematic.validation.external_wire_checks import ExternalWireGraph, WireSegment
 
 
 @dataclass(frozen=True)

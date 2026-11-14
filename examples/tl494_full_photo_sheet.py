@@ -7,23 +7,28 @@ Core 13 come from proven native stage; 10 source control parts joined here.
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 from dataclasses import replace
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-from examples.tl494_connected_native import attach_catalog_ic, S, P, TAG
-from examples.tl494_native_rework import build as build_power, source_graph
+from gost_schematic.rendering.ic_rectangular import render_resolved_ic
+
+from examples.tl494_connected_native import TAG, S, attach_catalog_ic
 from examples.tl494_full_native_model import TRACED_NETS
+from examples.tl494_native_rework import build as build_power
+from examples.tl494_native_rework import source_graph
 from gost_schematic.core.geometry import Point
 from gost_schematic.core.transforms import Transform
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
 from gost_schematic.model.quantities import Quantity, Unit
-from gost_schematic.rendering.ic_rectangular import render_resolved_ic
 from gost_schematic.rendering.external_wire_sheet import render_external_wire_sheet
 from gost_schematic.validation.circuit_checks import validate_circuit
 from gost_schematic.validation.external_wire_checks import (
-    ExternalWireGraph, WireSegment, validate_external_wires,
+    ExternalWireGraph,
+    WireSegment,
+    validate_external_wires,
 )
 
 
@@ -91,10 +96,9 @@ def explicit_same_net_junctions(wires:tuple[WireSegment,...], base=()):
     for p in candidates:
         hits=[w for w in wires if on_segment(w,p)]
         nets={w.net_name for w in hits}
-        if len(hits)>1 and len(nets)==1:
-            if (len(hits)>2 or
-                any(p not in (w.start,w.end) for w in hits)):
-                explicit.add(p)
+        if len(hits)>1 and len(nets)==1 and (len(hits)>2 or
+            any(p not in (w.start,w.end) for w in hits)):
+            explicit.add(p)
     return tuple(sorted(explicit,key=lambda p:(p.x,p.y)))
 
 
@@ -124,7 +128,7 @@ def compose_circuit(font_file:Path):
     base_junctions=source_graph().junctions
 
     def route(net,*points):
-        for a,b in zip(points,points[1:]):
+        for a,b in itertools.pairwise(points):
             wires.append(S(net,a,b))
     def q(x,y):return M(x,y)
 
@@ -211,7 +215,7 @@ def compose_circuit(font_file:Path):
 
 
 def generate(output:Path,font_file:Path,*,strict:bool=False):
-    circuit,graph,parts,symbols,pose,unit,targets,style,measure,policy,font=(
+    circuit,graph,parts,symbols,_pose,unit,targets,style,measure,policy,font=(
         compose_circuit(font_file)
     )
     electrical=validate_external_wires(circuit,graph,parts,symbols)

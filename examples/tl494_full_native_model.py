@@ -11,16 +11,17 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+
+from examples.tl494_native_rework import contact_part
 from gost_schematic.agent_project.catalog import CatalogResolver
-from gost_schematic.core.geometry import Point, Box, Rectangle, Line, Side
+from gost_schematic.core.geometry import Box, Line, Point, Rectangle, Side
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
 from gost_schematic.model.part import PartDefinition
-from gost_schematic.model.pins import GraphicPin, PhysicalPin, ElectricalType
+from gost_schematic.model.pins import ElectricalType, GraphicPin, PhysicalPin
 from gost_schematic.model.quantities import Quantity, Unit
 from gost_schematic.model.symbol import SymbolDefinition, SymbolStatus
 from gost_schematic.validation.circuit_checks import validate_circuit
 from gost_schematic.validation.symbol_checks import validate_symbol
-from examples.tl494_native_rework import contact_part
 
 MANUFACTURER_PIN_MAP = {
     "1": ("1IN+", ElectricalType.INPUT),
@@ -174,8 +175,8 @@ def write_report(directory:Path):
         "rendered_full_e3":False,
         "unverified_electrical_claims":(
             "Control reference and R5 jumper still need source enlargement",
-            "R7=680kΩ and C7=1nF imply oscillator ≈1.47kHz by 1/(R*C), "
-            "not ~100kHz listed in source BOM",
+            ("R7=680kΩ and C7=1nF imply oscillator ≈1.47kHz by 1/(R*C), "
+            "not ~100kHz listed in source BOM"),
             "Schematics show a/b labels; not separately validated net continuation"
         ),
         "native_erc_diagnostics":[

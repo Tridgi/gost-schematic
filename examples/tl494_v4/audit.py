@@ -12,7 +12,8 @@ from xml.etree import ElementTree as ET
 
 from examples.tl494_named_photo_sheet import compose_circuit as compose_original
 from examples.tl494_v4.engine_adapter import (
-    attach_catalog_ic_v4, build_power_v4,
+    attach_catalog_ic_v4,
+    build_power_v4,
 )
 from examples.tl494_v4.model_contract import frozen_inventory
 from examples.tl494_v4.wire_drc import analyze_wire_graph
@@ -32,7 +33,7 @@ def run(font_file:Path,output:Path) -> dict:
     inventory=frozen_inventory()
     _write(output/"source_inventory.json",inventory)
 
-    circuit,graph,parts,symbols,pose,unit,targets,*rest=compose_original(font_file)
+    circuit,graph,parts,symbols,_pose,unit,_targets,*_rest=compose_original(font_file)
     physical={(p.reference,p.number) for n in circuit.nets for p in n.members}
     expected={(ref,num) for pins in inventory["source_nets"].values()
               for item in pins for ref,num in [item.split(".",1)]}
@@ -45,6 +46,7 @@ def run(font_file:Path,output:Path) -> dict:
     # real SymbolDefinition strokes and measured OpenGost annotation placements.
     # This is a read-only model audit: no output SVG is edited or generated.
     from gost_schematic.validation.route_drc import audit_route_drc
+
     from gost_schematic.engines.sheet_layout import layout_sheet
     from gost_schematic.rendering.external_wire_sheet import (
         build_external_wire_obstacles,
@@ -71,12 +73,12 @@ def run(font_file:Path,output:Path) -> dict:
     full["label_layout_valid"]=labels.valid
     full["acceptance"]="BLOCKED until full global reroute and ESKD owner source signoff"
     _write(output/"full_stroke_and_text_drc.json",full)
-    power,source_parts,source_symbols,positions=build_power_v4()
+    _power,_source_parts,source_symbols,_positions=build_power_v4()
     if source_symbols["transistor.mosfet_n_enh"].identifier!=(
         "transistor.mosfet_n_enh"
     ):
         raise AssertionError("P1: not catalog MOSFET")
-    upgraded,targets_v4,part_v4,sym_v4,instance,*tail=attach_catalog_ic_v4(font_file)
+    upgraded,_targets_v4,part_v4,_sym_v4,_instance,*_tail=attach_catalog_ic_v4(font_file)
     if upgraded.function_rotation!=270:
         raise AssertionError("P3: PWM is not bottom-to-top")
     if {p.number for p in part_v4.pins}!=set(inventory["pin_display_aliases"]):

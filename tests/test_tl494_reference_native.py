@@ -3,13 +3,18 @@
 No full E3 conformance claim: assertions cover typed source consistency,
 real physical PinRef membership and a source-derived electrical contradiction.
 """
+from examples.tl494_full_native_model import (
+    MANUFACTURER_PIN_MAP,
+    SPEC,
+    TRACED_NETS,
+)
+from examples.tl494_full_native_model import (
+    build as build_full,
+)
+from examples.tl494_native_rework import build as build_power
+from examples.tl494_native_rework import source_graph
 from gost_schematic.validation.circuit_checks import validate_circuit
 from gost_schematic.validation.external_wire_checks import validate_external_wires
-
-from examples.tl494_native_rework import build as build_power, source_graph
-from examples.tl494_full_native_model import (
-    MANUFACTURER_PIN_MAP, TRACED_NETS, SPEC, build as build_full,
-)
 
 
 def test_real_native_power_stage_and_graph():

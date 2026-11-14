@@ -1,17 +1,21 @@
 """P0/P1/P2/P7 independent TL494 v4 source and exact geometric negative tests."""
 import pytest
 
-from gost_schematic.core.geometry import Point
-from gost_schematic.validation.external_wire_checks import ExternalWireGraph, WireSegment
-
 from examples.tl494_v4.model_contract import (
-    PIN_ALIASES, PIN_DESCRIPTIONS, PIN_TYPES, SOURCE_SHEET_PARTS,
+    PIN_ALIASES,
+    PIN_DESCRIPTIONS,
+    PIN_TYPES,
+    SOURCE_SHEET_PARTS,
     frozen_inventory,
 )
 from examples.tl494_v4.wire_drc import (
-    analyze_wire_graph, pair_clearance, right_angle_crossing,
+    analyze_wire_graph,
+    pair_clearance,
+    right_angle_crossing,
 )
+from gost_schematic.core.geometry import Point
 from gost_schematic.model.pins import ElectricalType
+from gost_schematic.validation.external_wire_checks import ExternalWireGraph, WireSegment
 
 
 def p(x,y):
