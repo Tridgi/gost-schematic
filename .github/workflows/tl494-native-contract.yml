@@ -1,0 +1,30 @@
+name: TL494 photo reference native Circuit contract
+
+on:
+  push:
+    branches:
+      - reference/tl494-photo-reconstruction-20261114
+    paths:
+      - examples/tl494_photo_reference/TL494_engine_source.py
+      - examples/tl494_photo_reference/TL494_netlist.json
+      - .github/workflows/tl494-native-contract.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Exercise real Circuit / Net / PinRef and catalog APIs
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m examples.tl494_photo_reference.TL494_engine_source
+      - name: Compile native script
+        run: python -m py_compile examples/tl494_photo_reference/TL494_engine_source.py
