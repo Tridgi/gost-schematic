@@ -114,3 +114,38 @@ def test_parallel_boundary_with_asymmetric_actual_strokes():
         below, existing, candidate_stroke_um=400,
         existing_stroke_um=300,
     ).valid
+
+
+
+def test_same_net_perpendicular_interior_X_requires_actual_dot_at_integer_um():
+    h = w(-10000, 0, 10000, 0, "COMMON")
+    v = w(0, -10000, 0, 10000, "COMMON")
+    assert not candidate_wire_clearance(v, h).valid
+    validated = candidate_wire_clearance(
+        v, h, explicit_junctions=frozenset({Point(0, 0)}),
+    )
+    assert validated.valid
+    assert not validated.errors
+    assert not validated.warnings
+
+
+def test_foreign_X_with_dot_is_an_illegal_electrical_short():
+    h = w(-10000, 0, 10000, 0, "COMMON")
+    v = w(0, -10000, 0, 10000, "PE")
+    existing = candidate_wire_clearance(v, h)
+    assert existing.valid and existing.warnings
+    forbidden = candidate_wire_clearance(
+        v, h, explicit_junctions=frozenset({Point(0, 0)}),
+    )
+    assert not forbidden.valid
+    assert forbidden.errors == ("DRC_FOREIGN_NET_AUTHORED_X_JUNCTION",)
+
+
+def test_fractional_submicron_X_never_rounded_into_fake_junction():
+    one = w(-1000, -1000, 1000, 1000, "A")
+    other = w(0, -1000, 1, 1000, "A")
+    verdict = candidate_wire_clearance(
+        one, other, explicit_junctions=frozenset({Point(0, 0)}),
+    )
+    assert not verdict.valid
+    assert "DRC_SAME_NET_X_NO_JUNCTION" in verdict.errors
