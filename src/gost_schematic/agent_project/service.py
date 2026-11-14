@@ -123,6 +123,26 @@ class ProjectService:
         manifest = model_manifest(snapshot.project, self.catalog)
         return {**self._summary(snapshot), "model": manifest}
 
+    def get_connection_targets(
+        self, project_id: str, revision: str, *,
+        source_target_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Read authentic PinRefs and authored conductor endpoints by exact SHA.
+
+        Source-pair results are only provisional for editor visualization:
+        neither a safe physical route nor transaction authorization exists.
+        """
+        from .connection_targets import build_connection_targets
+
+        if revision is None:
+            raise ProjectError("REVISION_REQUIRED", "Editor targets need immutable SHA")
+        snapshot = self.open_project(project_id, revision)
+        result = build_connection_targets(
+            snapshot.project, self.catalog,
+            source_target_id=source_target_id,
+        )
+        return {**result, "generation": snapshot.head.generation}
+
     def render_project(
         self, project_id: str, revision: str, *, mode: str = "clean",
         reference: str | None = None, target_dpi: int = 500,
