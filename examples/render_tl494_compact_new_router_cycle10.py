@@ -19,8 +19,6 @@ from examples.tl494_v5.route_preflight import (
     MeasuredInkGuard,
     _owner_ic_obstacle,
 )
-from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
-
 from gost_schematic.core.geometry import Box
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.engines.sheet_layout import layout_sheet
@@ -37,6 +35,10 @@ RECON = "10f22cea8d5908605b52853113b0c75bf91eec75"
 
 
 def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 25000):
+    # Optional cross-owner module is staged only in the isolated owner test.
+    # Import at use site so Ruff groups identically with or without IC #97.
+    from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
+
     assembly = compact_source_assembly()
     assembly.verify()
     circuit = assembly.circuit
