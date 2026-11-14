@@ -66,6 +66,24 @@ def _change_net(binding, name, members):
     return replace(binding.circuit, nets=nets)
 
 
+def test_frozen_photo_fixture_checksum_rejects_silent_same_count_net_swap(tmp_path):
+    """A source file cannot be rewritten to change topology yet keep counts."""
+    from examples.tl494_cycle9_circuit_integration import (
+        FROZEN_FIXTURE,
+        load_frozen_source,
+    )
+
+    original = FROZEN_FIXTURE.read_text(encoding="utf-8")
+    # Still 23 components / 15 Nets / 62 members, but wrong real pin.
+    mutated = original.replace('"DA1.3"', '"DA1.6"', 1)
+    assert mutated != original
+    untrusted = tmp_path / "forged.json"
+    untrusted.write_text(mutated, encoding="utf-8")
+    with pytest.raises(ValueError, match="FIXTURE_BYTES_CHANGED"):
+        load_frozen_source(untrusted)
+    assert load_frozen_source() == load_frozen_source(FROZEN_FIXTURE)
+
+
 def test_actual_frozen_photo_source_23_15_62_all_16_vendor_contacts():
     binding, source = _photo()
     assert source["source_commit"] == FROZEN_SOURCE_COMMIT
