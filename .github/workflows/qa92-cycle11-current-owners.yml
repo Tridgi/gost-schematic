@@ -116,12 +116,18 @@ jobs:
           ):
               stage("paint", "examples/" + name)
           stage("paint", "tests/test_routed_native_sheet_cycle10.py")
+          stage("catalog", "tests/test_tl494_source_footprints.py")
+          stage("catalog", "examples/review_tl494_ugo_source_cycle9.py")
           for name in ("source_profiles.py", "source_footprints.py"):
               stage("catalog", "src/gost_schematic/catalog/" + name)
           for name in (
               "tl494_source_20261114.json",
           ):
               stage("catalog", "src/gost_schematic/catalog/source_profiles/" + name)
+          stage(
+              "catalog",
+              "src/gost_schematic/catalog/source_profiles/tl494_figure_comparisons_20261115.json",
+          )
           for name in ("orthogonal_route_planner.py", "multiterminal_router.py"):
               stage("net", "src/gost_schematic/engines/" + name)
           stage("net", "src/gost_schematic/validation/route_drc.py")
@@ -168,7 +174,8 @@ jobs:
             examples/tl494_v5/test_compact_layout.py \
             examples/tl494_v5/test_route_candidate_driver.py \
             examples/tl494_v5/test_routed_graph_contract.py \
-            tests/test_routed_native_sheet_cycle10.py
+            tests/test_routed_native_sheet_cycle10.py \
+            tests/test_tl494_source_footprints.py
       - name: Current exact HEAD 23-15-62 candidate and all 15 originally named Nets
         shell: bash
         run: |
