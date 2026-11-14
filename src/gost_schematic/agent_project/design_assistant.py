@@ -11,7 +11,8 @@ from gost_schematic.core.transforms import Transform
 from gost_schematic.model.obstacles import WireObstacle
 from gost_schematic.rendering.svg import render_symbol_svg
 from gost_schematic.validation.dimensional_checks import (
-    check_verified_dimensions, load_requirements,
+    check_verified_dimensions,
+    load_requirements,
 )
 from gost_schematic.validation.sheet_wire_rules import validate_sheet_wire_rules
 
@@ -297,7 +298,7 @@ def preflight_project(project: SchematicProject, catalog: CatalogResolver, *,
     """Physical model based pre-render evidence; never claim full printable DRC."""
     if profile not in ("none", "tl494"):
         raise ProjectError("INVALID_PREFLIGHT_PROFILE", "Only none or tl494 supported")
-    placed, parts, symbols = _placed_boxes(project, catalog)
+    placed, parts, _symbols = _placed_boxes(project, catalog)
     record = project.to_record()
     ref_to_id = {c["reference"]: c["id"] for c in record["components"]}
     components = []
@@ -346,8 +347,8 @@ def preflight_project(project: SchematicProject, catalog: CatalogResolver, *,
                     "source": "source_selection_matrix",
                 })
     wires = tuple(
-        WireObstacle(wire_id, Line(w.start, w.end),
-                     stroke_um=project.stroke_widths_um[i], net_name=w.net_name)
+        WireObstacle(wire_id, Line(wire.start, wire.end),
+                     stroke_um=project.stroke_widths_um[i], net_name=wire.net_name)
         for i, (wire, wire_id) in enumerate(zip(
             project.graph.segments, project.wire_ids, strict=True
         ))
