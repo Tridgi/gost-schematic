@@ -12,6 +12,8 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from dataclasses import replace
+from gost_schematic.core.geometry import Circle
 from xml.etree import ElementTree as ET
 
 from gost_schematic.agent_project.catalog import CatalogResolver
@@ -89,6 +91,15 @@ def build():
     resolver = CatalogResolver()
     parts = dict(resolver.parts)
     symbols = dict(resolver.symbols)
+    # The source photo shows a D/S internal junction marker. Keep the
+    # base catalog DRAFT unchanged and create a review-only typed variant.
+    transistor = symbols["transistor.mosfet_n_enh"]
+    symbols["transistor.mosfet_n_enh"] = replace(
+        transistor,
+        graphics=(*transistor.graphics, Circle(Point(0, 5000), 250)),
+        standard_refs=(*transistor.standard_refs,
+                       "PHOTO_MATCH_DRAFT: visible junction dot at source/channel junction"),
+    )
     for part, symbol in (contact_part(destination=False), contact_part(destination=True)):
         parts[part.identifier] = part
         symbols[symbol.identifier] = symbol
@@ -97,12 +108,12 @@ def build():
             raise AssertionError(f"{part.identifier}: invalid custom terminal: {errors}")
     specs = (
         ("X1", "reference.connector.x1", 20, 45, 0, None),
-        ("L1", "inductor.air_core", 115, 45, 0, ("100", Unit.MICROHENRY)),
+        ("L1", "inductor.ferromagnetic", 115, 45, 0, ("100", Unit.MICROHENRY)),
         ("VT1", "transistor.mosfet_n_enh", 170, 135, 0, None),
         ("C1", "capacitor.polarized", 225, 29, 0, ("220", Unit.MICROFARAD)),
         ("C2", "capacitor.polarized", 225, 65, 0, ("220", Unit.MICROFARAD)),
-        ("VD1", "diode.schottky", 270, 130, 270, None),
-        ("L2", "inductor.air_core", 315, 45, 0, ("100", Unit.MICROHENRY)),
+        ("VD1", "diode.schottky", 270, 130, 90, None),
+        ("L2", "inductor.ferromagnetic", 315, 45, 0, ("100", Unit.MICROHENRY)),
         ("C5", "capacitor.polarized", 345, 145, 270, ("1000", Unit.MICROFARAD)),
         ("C6", "capacitor.polarized", 385, 145, 270, ("1000", Unit.MICROFARAD)),
         ("FU1", "fuse.general", 411, 45, 0, None),
@@ -116,7 +127,7 @@ def build():
         Net("INPUT_POS", (PinRef("X1", "1"), PinRef("L1", "1"))),
         Net("COMMON", (
             PinRef("X1", "2"), PinRef("X2", "2"), PinRef("VT1", "3"),
-            PinRef("VD1", "1"), PinRef("C5", "1"), PinRef("C6", "1"),
+            PinRef("VD1", "2"), PinRef("C5", "1"), PinRef("C6", "1"),
         )),
         Net("SWITCH", (
             PinRef("L1", "2"), PinRef("VT1", "2"),
@@ -124,7 +135,7 @@ def build():
         )),
         Net("ENERGY_TRANSFER", (
             PinRef("C1", "2"), PinRef("C2", "2"),
-            PinRef("VD1", "2"), PinRef("L2", "1"),
+            PinRef("VD1", "1"), PinRef("L2", "1"),
         )),
         Net("OUT_BEFORE_FUSE", (
             PinRef("L2", "2"), PinRef("C5", "2"),
@@ -147,7 +158,7 @@ def build():
         ("VT1", "3"): (170, 146),
         ("C1", "1"): (217, 29), ("C1", "2"): (233, 29),
         ("C2", "1"): (217, 65), ("C2", "2"): (233, 65),
-        ("VD1", "1"): (270, 140), ("VD1", "2"): (270, 120),
+        ("VD1", "1"): (270, 120), ("VD1", "2"): (270, 140),
         ("L2", "1"): (303, 45), ("L2", "2"): (327, 45),
         ("C5", "1"): (345, 153), ("C5", "2"): (345, 137),
         ("C6", "1"): (385, 153), ("C6", "2"): (385, 137),
