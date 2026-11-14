@@ -133,13 +133,24 @@ def _on(a, b, p):
 
 
 def _overlap(a, b):
+    """Strict positive collinear projection overlap, including partial overlap."""
     x, y = a[0], a[1]
     u, v = b[0], b[1]
-    if not _on(x, y, u) or not _on(x, y, v):
+    cross_u = (y[0] - x[0]) * (u[1] - x[1]) - (
+        y[1] - x[1]) * (u[0] - x[0])
+    cross_v = (y[0] - x[0]) * (v[1] - x[1]) - (
+        y[1] - x[1]) * (v[0] - x[0])
+    if cross_u or cross_v:
         return False
     axis = 0 if x[0] != y[0] else 1
     return max(min(x[axis], y[axis]), min(u[axis], v[axis])) < min(
         max(x[axis], y[axis]), max(u[axis], v[axis]))
+
+
+def _foreign_contact(a, b, c, d):
+    """A foreign wire endpoint on another wire is a physical T/endpoint short."""
+    return any((_on(a, b, c), _on(a, b, d),
+                _on(c, d, a), _on(c, d, b)))
 
 
 def parallel_gap_um(first, second):
@@ -207,6 +218,8 @@ def validate_router_geometry(candidate, pin_owners):
             c, d, bw, bn = wires[k]
             if an == bn:
                 continue
+            demand(not _foreign_contact(a, b, c, d),
+                   "CANDIDATE_FOREIGN_ENDPOINT_OR_T_SHORT")
             gap2 = parallel_gap_um((a, b, aw), (c, d, bw))
             if gap2 is not None and gap2 < 6000:
                 parallel.append((i, k, gap2))
@@ -302,6 +315,25 @@ def negative_fixture_gate(source):
            "NEGATIVE_3_000_MM_PRECISION")
     negative["edge_2999um"] = "REJECTED"
     negative["edge_3000um"] = "ACCEPTED"
+    demand(_overlap(((0, 0), (10000, 0)),
+                    ((5000, 0), (15000, 0))),
+           "NEGATIVE_PARTIAL_COLLINEAR_OVERLAP_LOST")
+    demand(not _overlap(((0, 0), (10000, 0)),
+                        ((10000, 0), (15000, 0))),
+           "NEGATIVE_ENDPOINT_ONLY_MISCLASSIFIED_OVERLAP")
+    demand(_foreign_contact((0, 0), (10000, 0),
+                            (5000, 0), (5000, 5000)),
+           "NEGATIVE_DIFFERENT_NET_T_SHORT_NOT_DETECTED")
+    demand(not _foreign_contact((0, 0), (10000, 0),
+                                (5000, -5000), (5000, 5000)),
+           "NEGATIVE_X_CROSS_IS_NOT_AN_ENDPOINT_SHORT")
+    demand(_on((0, 0), (10000, 0), (5000, 0)) and
+           not _on((0, 0), (10000, 0), (5000, 1)),
+           "NEGATIVE_ONE_MICRON_POINT_CONTACT")
+    negative["partial_collinear_overlap"] = "DETECTED"
+    negative["different_net_T_endpoint"] = "REJECTED"
+    negative["distinct_net_X_without_dot"] = "NONCONDUCTIVE_REVIEW"
+    negative["point_contact_one_um"] = "EXACT"
     return negative
 
 
