@@ -229,7 +229,8 @@ def generate(output: Path, font: Path) -> dict:
     output.mkdir(parents=True, exist_ok=True)
     (output/"TL494_native_power_clean.svg").write_text(sheet_clean.svg,encoding="utf-8")
     (output/"TL494_native_power_diagnostic.svg").write_text(sheet_debug.svg,encoding="utf-8")
-    ET.fromstring(sheet_clean.svg); ET.fromstring(sheet_debug.svg)
+    ET.fromstring(sheet_clean.svg)
+    ET.fromstring(sheet_debug.svg)
     if any(x in sheet_clean.svg for x in ("#168f78", "#d79a3d", "#148a74")):
         raise AssertionError("Diagnostics leaked into clean native render")
     report = {
