@@ -16,6 +16,8 @@ on:
       - "tests/test_route_candidate_clearance_cycle9.py"
       - "tests/test_multiterminal_router_cycle9.py"
       - "src/gost_schematic/engines/multiterminal_router.py"
+      - "examples/review_tl494_multi_route.py"
+      - "tests/fixtures/tl494_cycle9_known_bad_nine_drc.json"
       - ".github/workflows/tl494-routing-cycle9-review.yml"
   workflow_dispatch:
 
@@ -110,4 +112,119 @@ jobs:
         with:
           name: draft-tl494-cycle9-${{ matrix.python-version }}
           path: output/tl494-routing-cycle9/**
+          if-no-files-found: error
+
+  source-native-tl494:
+    name: Immutable original 23-part 15-Net source rerouting review (${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - name: Checkout routing owner PR #114
+        uses: actions/checkout@v4
+      - name: Checkout EXACT reference HEAD (read-only, independent original)
+        uses: actions/checkout@v4
+        with:
+          repository: Tridgi/gost-schematic
+          ref: e695c415fdced164b0e0c39c5249d030795a0aa6
+          path: cycle9-source-reference
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install source model + strict test tools
+        run: |
+          python -m pip install -e ".[dev,mcp]"
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin fontconfig
+      - name: Pin original source and import ONLY exact immutable adapter files
+        run: |
+          test "$(git -C cycle9-source-reference rev-parse HEAD)" = "e695c415fdced164b0e0c39c5249d030795a0aa6"
+          for F in tl494_native_rework tl494_connected_native tl494_full_native_model tl494_ic_paint_reference tl494_named_photo_sheet; do
+            cp "cycle9-source-reference/examples/$F.py" "examples/$F.py"
+          done
+          python -m compileall -q examples/review_tl494_multi_route.py examples/tl494_named_photo_sheet.py
+      - name: Install and pin the real OpenGost Type A font
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/install_opengost_type_a.py \
+            --directory "$HOME/.local/share/fonts" \
+            --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a
+          fc-cache -f
+          fc-match 'OpenGost Type A'
+      - name: Run actual source-native 15-Net global route with fail-closed DRC
+        run: |
+          FONT_FILE="$(find "$HOME/.local/share/fonts" -type f -name 'OpenGOST-TypeA-*' | head -n1)"
+          test -f "$FONT_FILE"
+          python -m examples.review_tl494_multi_route \
+            --font-file "$FONT_FILE" \
+            --source-sha e695c415fdced164b0e0c39c5249d030795a0aa6 \
+            --page A1 --max-nodes 25000 \
+            --output-dir output/tl494-source-global-routing
+      - name: Assert negative 9-error baseline and exact source Net diff
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+
+          out = Path("output/tl494-source-global-routing")
+          result = json.loads((out / "TL494-before-and-after-drc.json").read_text("utf-8"))
+          assert (result["model_parts"], result["model_nets"], result["model_DA1_physical_pin_count"]) == (23, 15, 16)
+          assert result["source_commit"] == "e695c415fdced164b0e0c39c5249d030795a0aa6"
+          assert result["source_before"]["wire_count"] == 91
+          assert result["source_before"]["error_count"] == 9
+          assert result["source_before"]["warning_count"] == 32
+          assert result["source_net_diff"] == {
+              "added_nets": [], "removed_nets": [], "changed_pinref_members": {},
+          }
+          assert result["after_attempt"]["wire_count"] == result["routed_segments"]
+          assert result["after_attempt"]["checked_symbol_geometry"]
+          assert result["after_attempt"]["checked_measured_text"]
+          # No release promotion can follow from an incomplete graph or red DRC.
+          assert not result["attempt_accepted_print_drc_only"] or (
+              result["attempt_routing"]["complete"]
+              and result["after_attempt"]["valid"]
+              and result["attempt_layout_ok"]
+          )
+          root = "{http://www.w3.org/2000/svg}"
+          for name, count in [
+              ("TL494-original-known-bad.svg", 91),
+              ("TL494-after-router-attempt.svg", result["routed_segments"]),
+          ]:
+              svg = ET.parse(out / name).getroot()
+              assert svg.tag == root + "svg"
+              assert len(svg.findall(f".//{root}line[@data-layer='wires']")) == count
+          print(
+              "P0 pinned source 23/15/16/91, 9 known-bad ERR, zero Net-diff;"
+              " AFTER route DRC retained explicitly:", result["release"],
+          )
+          PY
+      - name: Rasterize actual SOURCE and AFTER candidate at 300 DPI
+        run: |
+          for NAME in TL494-original-known-bad TL494-after-router-attempt; do
+            rsvg-convert --background-color white \
+              --dpi-x 300 --dpi-y 300 \
+              --output "output/tl494-source-global-routing/$NAME-300dpi.png" \
+              "output/tl494-source-global-routing/$NAME.svg"
+          done
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+
+          out = Path("output/tl494-source-global-routing")
+          for name in ("TL494-original-known-bad", "TL494-after-router-attempt"):
+              with Image.open(out / f"{name}-300dpi.png") as image:
+                  assert image.format == "PNG"
+                  assert image.width > 1500 and image.height > 1000
+          print("Both authentic native renderings rasterized at 300 DPI")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cycle9-real-source-15net-${{ matrix.python-version }}
+          path: output/tl494-source-global-routing/**
           if-no-files-found: error
