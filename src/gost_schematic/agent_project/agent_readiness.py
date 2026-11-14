@@ -12,9 +12,9 @@ Two states:
   are imported and independently approved.
 """
 import json
-from importlib.resources import files
 import re
 import sys
+from importlib.resources import files
 from typing import Any
 
 from .catalog import CatalogResolver, ProjectError
