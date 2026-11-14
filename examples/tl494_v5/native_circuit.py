@@ -152,8 +152,8 @@ def assemble_native_v5() -> NativeV5Assembly:
     """Use ACTUAL owner source; unavailable contracts fail, never stubbed."""
     from gost_schematic.catalog.source_profiles import bind_tl494_source
     from gost_schematic.electrical.tl494cn import (
-        IcFunctionReading,
         TI_SHORT_LABELS,
+        IcFunctionReading,
         tl494cn_record,
     )
 
