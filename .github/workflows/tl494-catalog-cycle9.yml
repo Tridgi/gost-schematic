@@ -1,0 +1,93 @@
+name: YGO Cycle9 source-faithful TL494 real UGO 300DPI
+
+on:
+  push:
+    branches: [parallel/catalog-tl494-source-fidelity-cycle9]
+    paths:
+      - "src/gost_schematic/catalog/source_profiles/**"
+      - "src/gost_schematic/catalog/source_profiles.py"
+      - "examples/review_tl494_ugo_source_cycle9.py"
+      - "examples/verify_tl494_ugo_source_cycle9.py"
+      - "tests/test_tl494_source_ugo_cycle9.py"
+      - "docs/catalog/tl494-cycle9-*"
+      - "scripts/verify_wheel_payload.py"
+      - "pyproject.toml"
+      - ".github/workflows/tl494-catalog-cycle9.yml"
+  pull_request:
+    branches: [integration/stage0-12]
+    paths:
+      - "src/gost_schematic/catalog/source_profiles/**"
+      - "src/gost_schematic/catalog/source_profiles.py"
+      - "examples/review_tl494_ugo_source_cycle9.py"
+      - "examples/verify_tl494_ugo_source_cycle9.py"
+      - "tests/test_tl494_source_ugo_cycle9.py"
+      - "docs/catalog/tl494-cycle9-*"
+      - "scripts/verify_wheel_payload.py"
+      - "pyproject.toml"
+      - ".github/workflows/tl494-catalog-cycle9.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ygo-tl494-source-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-ugo-review:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install review dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Ruff source-locked UGO and independent raster verifier
+        run: |
+          ruff check src/gost_schematic/catalog/source_profiles.py examples/review_tl494_ugo_source_cycle9.py examples/verify_tl494_ugo_source_cycle9.py tests/test_tl494_source_ugo_cycle9.py scripts/verify_wheel_payload.py
+      - name: Verify true 13 selected E3 source profiles and eight D4 poses
+        run: pytest -q tests/test_tl494_source_ugo_cycle9.py
+      - name: Audit unchanged DRAFT physical catalogue and packaged wheel
+        run: |
+          python scripts/audit_symbol_catalog.py --output output/tl494-cycle9-catalog-audit.json
+          python -m pip wheel . --no-deps --wheel-dir dist
+          python scripts/verify_wheel_payload.py dist
+      - name: Pin original OpenGost Type A for SVG source/gallery labels
+        if: matrix.python-version == '3.12'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/install_opengost_type_a.py --directory "$HOME/.local/share/fonts" --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a
+          fc-cache -f
+          FONT_FILE="$(find "$HOME/.local/share/fonts" -type f -iname '*TypeA*.ttf' | head -1)"
+          VIEWER_FONT="$(fc-match -f '%{file}' 'OpenGost Type A')"
+          test -n "$FONT_FILE" && test -f "$FONT_FILE"
+          test "$(realpath "$FONT_FILE")" = "$(realpath "$VIEWER_FONT")"
+      - name: Generate 13 source positions and 64 extra D4 real SVG
+        if: matrix.python-version == '3.12'
+        run: python -m examples.review_tl494_ugo_source_cycle9 --output-dir output/tl494-cycle9
+      - name: Rasterize original metric SVG at true 300 DPI and independently audit
+        if: matrix.python-version == '3.12'
+        shell: bash
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+          for svg in output/tl494-cycle9/*.svg; do
+            rsvg-convert --dpi-x 300 --dpi-y 300 --background-color white -o "${svg%.svg}.png" "$svg"
+          done
+          python -m examples.verify_tl494_ugo_source_cycle9 --output-dir output/tl494-cycle9
+      - name: Publish DRAFT source-linked actual 300-DPI figures and provenance
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tl494-cycle9-real-ugo-source-review-draft
+          path: |
+            output/tl494-cycle9/*
+            output/tl494-cycle9-catalog-audit.json
+          if-no-files-found: error

@@ -25,7 +25,7 @@ gost-schematic-mcp = "gost_schematic.mcp_server.server:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-gost_schematic = ["catalog/symbols/**/*.json", "catalog/parts/**/*.json", "catalog/inductors/*.json", "standards/*.json"]
+gost_schematic = ["catalog/symbols/**/*.json", "catalog/parts/**/*.json", "catalog/inductors/*.json", "catalog/source_profiles/*.json", "standards/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

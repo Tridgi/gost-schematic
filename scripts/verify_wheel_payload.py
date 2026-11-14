@@ -57,6 +57,7 @@ _PARTS = {
     "catalog/parts/diodes/varicap.json",
 }
 _REQUIREMENTS = "standards/requirements_2026_ru.json"
+_SOURCE_PROFILE = "catalog/source_profiles/tl494_source_20261114.json"
 
 
 def verify_wheel(wheel: Path) -> dict[str, int]:
@@ -66,7 +67,7 @@ def verify_wheel(wheel: Path) -> dict[str, int]:
             path.removeprefix(_PREFIX)
             for path in archive.namelist() if path.startswith(_PREFIX)
         }
-        missing = (_SYMBOLS | _PARTS | {_REQUIREMENTS}) - payload
+        missing = (_SYMBOLS | _PARTS | {_REQUIREMENTS, _SOURCE_PROFILE}) - payload
         if missing:
             raise ValueError(f"Wheel missing required data: {sorted(missing)}")
         inductors = {
@@ -75,6 +76,11 @@ def verify_wheel(wheel: Path) -> dict[str, int]:
         }
         if len(inductors) != 15:
             raise ValueError(f"Expected exactly 15 versioned inductors, got {len(inductors)}")
+        profile = json.loads(archive.read(_PREFIX + _SOURCE_PROFILE))
+        if (profile.get("status") != "DRAFT"
+            or profile.get("source_counts", {}).get("components") != 23
+            or len(profile.get("profiles", ())) != 13):
+            raise ValueError("Missing pinned source-photo profile or forged approval")
         data = json.loads(archive.read(_PREFIX + _REQUIREMENTS))
         if data.get("profile_id") != "eskd-ru-2026-11":
             raise ValueError("Wheel contains an unexpected ESKD requirements edition")
