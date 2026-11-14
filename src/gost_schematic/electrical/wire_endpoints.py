@@ -205,9 +205,9 @@ def _resolve_contacts(
 def _verify_nets(
     circuit: Circuit, bindings: tuple[NetIdentity, ...],
 ) -> dict[str, NetIdentity]:
-    if len(set(item.id for item in bindings)) != len(bindings):
+    if len({item.id for item in bindings}) != len(bindings):
         raise ValueError("WIRE_END_DUPLICATE_NET_ID")
-    if len(set(n.name for n in circuit.nets)) != len(circuit.nets):
+    if len({n.name for n in circuit.nets}) != len(circuit.nets):
         raise ValueError("WIRE_END_AMBIGUOUS_REAL_NET")
     by_name = {n.name: n for n in circuit.nets}
     if {b.net_name for b in bindings} != set(by_name) or len(bindings) != len(by_name):
@@ -221,7 +221,7 @@ def _verify_nets(
             if member in owners and owners[member] != binding.id:
                 raise ValueError("WIRE_END_PHYSICAL_PIN_MULTI_NET")
             owners[member] = binding.id
-    if not set(m.reference for m in owners).issubset({
+    if not {m.reference for m in owners}.issubset({
         p.reference for p in circuit.components
     }):
         raise ValueError("WIRE_END_UNKNOWN_COMPONENT")
