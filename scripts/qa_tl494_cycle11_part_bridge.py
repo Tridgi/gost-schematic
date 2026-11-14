@@ -11,14 +11,14 @@ from dataclasses import replace
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
+from examples.tl494_cycle9_circuit_integration import (
+    assert_frozen_photo_topology,
+    bind_positioned_photo_circuit_from_catalog,
+)
 from examples.tl494_v5.compact_layout import compact_source_assembly
 from examples.tl494_v5.route_candidate_driver import (
     load_original_owner_fixture,
     restore_original_named_nets,
-)
-from examples.tl494_cycle9_circuit_integration import (
-    assert_frozen_photo_topology,
-    bind_positioned_photo_circuit_from_catalog,
 )
 from gost_schematic.core.geometry import Point
 from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
