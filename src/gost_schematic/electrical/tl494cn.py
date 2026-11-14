@@ -3,7 +3,6 @@
 SOURCE-FAITHFUL pinout but DRAFT E3 drawing; no generic GOST certification.
 Schematic view is source-authored, not a product footprint or auto-router.
 """
-from dataclasses import dataclass
 from enum import Enum
 
 from gost_schematic.core.geometry import Box, Point, Side
