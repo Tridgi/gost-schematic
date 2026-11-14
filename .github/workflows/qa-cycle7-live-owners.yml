@@ -115,10 +115,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install real package and independent raster tools
         run: python -m pip install -e ".[dev,fonts,mcp]" cairosvg
-      - name: Ruff independent gate and original owner modules
-        run: |
-          ruff check scripts/qa_cycle7_live_source_gate.py
-          ruff check src/gost_schematic/electrical src/gost_schematic/rendering/ic_rectangular.py src/gost_schematic/rendering/ic_orientation.py src/gost_schematic/agent_project
+      - name: Ruff independent QA gate (must pass before running)
+        run: ruff check scripts/qa_cycle7_live_source_gate.py
       - name: Install hash-verified real OpenGost Type A outside repository
         shell: bash
         run: |
@@ -152,6 +150,10 @@ jobs:
           assert parts <= names, sorted(parts - names)
           print("WHEEL_INDEPENDENT_36_UGO_PASS", len(symbols), len(parts))
           PY
+      - name: Ruff on original owner modules (strict release gate, never waived)
+        if: always()
+        run: |
+          ruff check src/gost_schematic/electrical src/gost_schematic/rendering/ic_rectangular.py src/gost_schematic/rendering/ic_orientation.py src/gost_schematic/agent_project
       - name: Upload real SVG PNG 300 DPI and exact SHA matrix (no fonts)
         if: always()
         uses: actions/upload-artifact@v4
