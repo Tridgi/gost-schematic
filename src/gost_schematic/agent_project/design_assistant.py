@@ -29,7 +29,17 @@ TL494_REQUIRED_PARTS = {
     "L2": "inductor.ferromagnetic",
     "VT1": "transistor.mosfet_n_enh",
     "VD1": "diode.schottky", "FU1": "fuse.general",
+    "R5": "resistor.variable",
 }
+# Exact frozen source reference; this is a baseline, NOT independent print approval.
+TL494_FROZEN_SOURCE_SHA = "e695c415fdced164b0e0c39c5249d030795a0aa6"
+TL494_SOURCE_MANIFEST_BLOB_SHA = "b2375feb43ad18b8a8e5a515bfc007d169b26908"
+TL494_BASELINE = {
+    "component_count": 23, "net_count": 15,
+    "wire_segment_count": 91, "explicit_junction_count": 37,
+    "da1_physical_contact_count": 16,
+}
+
 TL494_EDITORIAL_ALIASES = {
     "FEEDBACK": ("FB", "3"),
     "OUTPUT CTRL": ("OC", "13"),
@@ -94,6 +104,8 @@ def catalog_card(catalog: CatalogResolver, part_id: str) -> dict[str, Any]:
         **lock,
         "physical_pin_refs": [
             {"number": pin.number, "name": pin.name,
+             "is_instantiated_pin_ref": False, "pin_ref": None,
+             "pin_identity_scope": "catalog_template_only",
              "electrical_role": pin.electrical_type.value,
              "function": pin.function.value, "polarity": pin.polarity.value,
              "symbol_anchor_um": [next(p.at.x for p in symbol.pins
@@ -205,8 +217,12 @@ def tl494_profile(catalog: CatalogResolver) -> dict[str, Any]:
             "choice": "EXACT_USER_SOURCE_PROFILE",
         })
     return {
-        "schema_version": 1, "profile_id": "issue107-tl494-ugo-source-v1",
+        "schema_version": 1, "profile_id": "issue107-tl494-ugo-source-v2",
         "source": "Issue #107 authored 2026-11-14, editorial requirements",
+        "frozen_source_git_commit_sha": TL494_FROZEN_SOURCE_SHA,
+        "frozen_source_manifest_git_blob_sha": TL494_SOURCE_MANIFEST_BLOB_SHA,
+        "frozen_source_model_counts": dict(TL494_BASELINE),
+        "frozen_reference_is_not_a_persisted_p11_project": True,
         "read_only": True, "not_normatively_approved": True,
         "required_variants": rows,
         "unlisted_components": "REQUIRE_INDEPENDENT_EXACT_PART_SELECTION",
