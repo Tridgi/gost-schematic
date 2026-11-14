@@ -234,6 +234,52 @@ class IcVerifiedPaintSnapshot:
             ):
                 raise ValueError("IC_TRUSTED_OVERLAY_RENDER_DRIFT")
             root = ET.fromstring(actual.svg)
+            from gost_schematic.core.units import format_mm
+
+            if root.get("data-pin-anchor-authority") != "external-resolved-only":
+                raise ValueError("IC_TRUSTED_OVERLAY_UNVERIFIED_SVG_ORIGIN")
+            leads = [
+                child for group in root.iter()
+                if group.get("data-layer") == "ic-physical-pin-leads"
+                for child in group if child.tag.endswith("line")
+            ]
+            by_number = {c.physical_number: c for c in source_unit}
+            if len(leads) != len(by_number):
+                raise ValueError("IC_TRUSTED_OVERLAY_MISSING_PHYSICAL_LEADS")
+            seen_leads = set()
+            for lead in leads:
+                number = lead.get("data-pin-number")
+                physical = by_number.get(number)
+                if physical is None or number in seen_leads or (
+                    lead.get("data-pin-id") != (
+                        f"{physical.component_ref}.P{physical.physical_number}"
+                    )
+                    or lead.get("x2") != format_mm(physical.anchor.x)
+                    or lead.get("y2") != format_mm(physical.anchor.y)
+                    or lead.get("data-role") != physical.role
+                    or lead.get("data-manufacturer-electrical-type")
+                    != physical.electrical_type.value
+                ):
+                    raise ValueError("IC_TRUSTED_OVERLAY_PHYSICAL_LEAD_INK_DRIFT")
+                seen_leads.add(number)
+            for node in root.iter():
+                number = node.get("data-physical-pin-number")
+                if number is None:
+                    continue
+                physical = by_number.get(number)
+                if physical is None or (
+                    node.get("data-full-manufacturer-name") != physical.pin_name
+                    or node.get("data-visible-pin-alias")
+                    != source.record.device.pin_map[number].name
+                    and node.get("data-visible-pin-alias")
+                    != next((
+                        row.label for spec in source.record.specs
+                        for row in spec.rows if row.number == number
+                    ), None)
+                    or node.get("data-manufacturer-electrical-type")
+                    != physical.electrical_type.value
+                ):
+                    raise ValueError("IC_TRUSTED_OVERLAY_PIN_METADATA_DRIFT")
             layers = [
                 element for element in root.iter()
                 if element.get("data-layer") == "editor-connection-targets"
