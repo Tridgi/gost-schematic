@@ -19,8 +19,9 @@ from examples.tl494_v5.route_preflight import (
     MeasuredInkGuard,
     _owner_ic_obstacle,
 )
-from gost_schematic.core.geometry import Box
 from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
+
+from gost_schematic.core.geometry import Box
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.engines.sheet_layout import layout_sheet
 from gost_schematic.model.circuit import PinRef
