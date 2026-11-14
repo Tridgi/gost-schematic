@@ -22,7 +22,7 @@ from examples.tl494_cycle9_circuit_integration import (
     bind_positioned_photo_circuit_from_catalog,
     load_frozen_source,
 )
-from gost_schematic.core.geometry import Point
+from gost_schematic.core.geometry import Box, Point
 from gost_schematic.core.transforms import Transform
 from gost_schematic.electrical.ic import IcTextAngle, resolve_ic_pin_positions
 from gost_schematic.electrical.ic_circuit_adapter import (
@@ -313,6 +313,63 @@ def test_real_115_paint_text_only_toggle_keeps_trusted_physical_points():
         assert authorized.render(
             rotated_binding, rotated_paint, style, measure, diagnostics=True,
         )
+
+
+
+
+def test_real_115_latest_paint_routed_native_requires_genuine_15_net_graph():
+    """Exercise PAINT's actual whole-sheet API, safely blocked without NET114."""
+    from gost_schematic.rendering.routed_native_sheet import render_routed_native_sheet
+    from gost_schematic.validation.external_wire_checks import ExternalWireGraph
+
+    font = Path(os.environ["IC_TYPE_A_FONT_PATH"])
+    native, signed, paint, verified, style, measure = live_paint(font)
+    clean = verified.render(
+        signed, paint, style, measure, diagnostics=False,
+    )[0]
+    diagnostic = verified.render(
+        signed, paint, style, measure, diagnostics=True,
+    )[0]
+    # PAINT's whole-sheet renderer does NOT accept legacy Part-ID pretending
+    # to be TI; bind a separate source-validated, typed manufacturer catalog.
+    parts = {**native.parts, signed.part.identifier: signed.part}
+    assert signed.symbol_surrogate is not None
+    symbols = {
+        part_id: native.symbols[part.symbol_id]
+        for part_id, part in native.parts.items()
+        if part.symbol_id in native.symbols
+    }
+    symbols[signed.part.identifier] = signed.symbol_surrogate
+    da1 = next(c for c in signed.circuit.components if c.reference == "DA1")
+    assert da1.pin_positions(signed.symbol_surrogate) == {
+        c.pin_ref.number: c.world_anchor for c in signed.contacts
+    }
+    result = render_routed_native_sheet(
+        signed.circuit, ExternalWireGraph(()), parts, symbols,
+        style, measure,
+        physical_ic_renderings_clean={"DA1": clean},
+        physical_ic_renderings_diagnostic={"DA1": diagnostic},
+        source_continuation_project=None,
+        expected_component_count=23,
+        expected_net_count=15,
+        expected_net_pinrefs=62,
+        physical_page_box=Box(0, 0, 420000, 297000),
+    )
+    assert result.printable_candidate is False
+    assert result.manifest["source_components"] == 23
+    assert result.manifest["source_nets"] == 15
+    assert result.manifest["source_net_pinrefs"] == 62
+    assert result.manifest["route_segments"] == 0
+    assert result.manifest["blockers"]
+    assert result.manifest["gost_approved"] is False
+    assert result.manifest["source_graph_mutated"] is False
+    assert _expected_marker_count(result.clean_svg) == 0
+    assert _expected_marker_count(result.diagnostic_svg) == 16
+    assert ET.fromstring(result.clean_svg).get("data-release") == (
+        "BLOCKED_INCOMPLETE_OR_PRINT_DRC"
+    )
+    # A completed 15-Net global route is NOT invented for this smoke test.
+    assert signed.circuit.nets is native.circuit.nets
 
 
 def main() -> None:
