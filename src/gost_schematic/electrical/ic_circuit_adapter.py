@@ -10,12 +10,10 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from pathlib import Path
 
 from gost_schematic.core.geometry import Box, Line, Point, Rectangle, Side
 from gost_schematic.core.transforms import Transform
 from gost_schematic.electrical.ic import (
-    IcDeviceDefinition,
     IcPinType,
     resolve_ic_pin_positions,
     resolve_ic_port_sides,
@@ -109,10 +107,11 @@ def _single_symbol(
             boundary = Point(endpoint.x, body.max_y)
         if boundary == endpoint:
             raise ValueError("IC_ADAPTER_ZERO_LEAD")
-        if side is Side.LEFT and endpoint.x >= boundary.x or (
-            side is Side.RIGHT and endpoint.x <= boundary.x
-        ) or (side is Side.TOP and endpoint.y >= boundary.y) or (
-            side is Side.BOTTOM and endpoint.y <= boundary.y
+        if (
+            (side is Side.LEFT and endpoint.x >= boundary.x)
+            or (side is Side.RIGHT and endpoint.x <= boundary.x)
+            or (side is Side.TOP and endpoint.y >= boundary.y)
+            or (side is Side.BOTTOM and endpoint.y <= boundary.y)
         ):
             raise ValueError("IC_ADAPTER_LEAD_NORMAL_MISMATCH")
         geometry.append(Line(boundary, endpoint))
@@ -463,7 +462,6 @@ def bind_ic_circuit(
                 or physical.number not in external[physical.reference]
             ):
                 raise ValueError("IC_ADAPTER_FOREIGN_OR_UNKNOWN_EXTERNAL_PIN")
-    local = {s.unit_id: s for s in record.specs}
     ownership = {}
     for spec in record.specs:
         for row in spec.rows:
