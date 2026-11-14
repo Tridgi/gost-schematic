@@ -267,7 +267,10 @@ def test_text_only_and_geometry_revisions_fail_on_circuit_identity_mutation():
 @pytest.mark.parametrize("angle", (IcTextAngle.HORIZONTAL, IcTextAngle.VERTICAL))
 def test_real_paint_two_text_poses_same_physical_lr_view(count, angle):
     paint = pytest.importorskip("gost_schematic.rendering.ic_rectangular")
-    from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
+    from gost_schematic.electrical.ic_paint_bridge import (
+        bind_ic_paint_text_only,
+        propose_ic_paint_binding,
+    )
     from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
     from gost_schematic.standards.type_a_font import inspect_type_a_font
 
@@ -287,23 +290,29 @@ def test_real_paint_two_text_poses_same_physical_lr_view(count, angle):
     assert validate_ic_graphic_revision(
         fixed.record, orientation, circuit=circuit,
     ).moved == ()
-    if angle is IcTextAngle.VERTICAL:
-        with pytest.raises(
-            ValueError, match="IC_PAINT_LEFT_RIGHT_TEXT_ROTATION_BLOCKED",
-        ):
-            propose_ic_paint_binding(orientation, style, measure)
-    else:
-        selected = fixed.views
-        for unit in selected:
-            rendered = paint.render_resolved_ic(unit, style, measure)
-            assert len(rendered.pin_anchors) == len(unit.pins)
+    rebound = bind_ic_paint_text_only(fixed, orientation)
+    assert rebound.record == orientation
+    assert rebound.record.device is fixed.record.device
+    assert all(a.body == b.body for a, b in zip(
+        fixed.views, rebound.views, strict=True,
+    ))
+    assert all(a.pins == b.pins for a, b in zip(
+        fixed.views, rebound.views, strict=True,
+    ))
+    for unit in rebound.views:
+        rendered = paint.render_resolved_ic(unit, style, measure)
+        assert len(rendered.pin_anchors) == len(unit.pins)
+        assert any(ink.kind == "function" for ink in rendered.ink)
 
 
 @pytest.mark.parametrize("count", COUNTS)
 @pytest.mark.parametrize("angle", (IcTextAngle.HORIZONTAL, IcTextAngle.VERTICAL))
 def test_real_paint_top_bottom_text_poses_preserve_true_physical_side(count, angle):
     paint = pytest.importorskip("gost_schematic.rendering.ic_rectangular")
-    from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
+    from gost_schematic.electrical.ic_paint_bridge import (
+        bind_ic_paint_text_only,
+        propose_ic_paint_binding,
+    )
     from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
     from gost_schematic.standards.type_a_font import inspect_type_a_font
 
@@ -451,7 +460,10 @@ def test_portrait_left_right_pwm_is_valid_in_model_with_two_text_angles(count):
 @pytest.mark.parametrize("count", COUNTS)
 def test_portrait_left_right_paint_0_and_90_contract_proof(count):
     paint = pytest.importorskip("gost_schematic.rendering.ic_rectangular")
-    from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
+    from gost_schematic.electrical.ic_paint_bridge import (
+        bind_ic_paint_text_only,
+        propose_ic_paint_binding,
+    )
     from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
     from gost_schematic.standards.type_a_font import inspect_type_a_font
 
@@ -485,16 +497,25 @@ def test_portrait_left_right_paint_0_and_90_contract_proof(count):
     assert validate_ic_graphic_revision(
         horizontal.record, vertical_text, circuit=network,
     ).moved == ()
-    with pytest.raises(
-        ValueError, match="IC_PAINT_LEFT_RIGHT_TEXT_ROTATION_BLOCKED",
-    ):
-        propose_ic_paint_binding(vertical_text, style, measure)
+    turned_view = bind_ic_paint_text_only(horizontal, vertical_text)
+    assert all(a.pins == b.pins and a.body == b.body
+               for a, b in zip(
+                   horizontal.views, turned_view.views, strict=True,
+               ))
+    for angle, gallery in ((0, horizontal), (90, turned_view)):
+        for view in gallery.views:
+            painted = paint.render_resolved_ic(view, style, measure)
+            assert len(painted.pin_anchors) == len(view.pins)
+            assert view.function_rotation == angle
 
 
 @pytest.mark.parametrize("count", (8, 14, 40, 64))
 def test_real_paint_exports_measured_field_requirements_and_ink_guards(count):
     paint = pytest.importorskip("gost_schematic.rendering.ic_rectangular")
-    from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
+    from gost_schematic.electrical.ic_paint_bridge import (
+        bind_ic_paint_text_only,
+        propose_ic_paint_binding,
+    )
     from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
     from gost_schematic.standards.type_a_font import inspect_type_a_font
 
