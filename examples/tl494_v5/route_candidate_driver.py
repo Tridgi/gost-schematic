@@ -12,6 +12,7 @@ import argparse
 import hashlib
 import json
 from dataclasses import dataclass, replace
+from decimal import Decimal, InvalidOperation
 from importlib import import_module
 from pathlib import Path
 
@@ -62,7 +63,7 @@ class Candidate:
     """Only route order or genuine ComponentInstance origins may differ."""
     key: str
     priority: tuple[str, ...]
-    move_mm: tuple[tuple[str, int, int], ...] = ()
+    move_mm: tuple[tuple[str, int | Decimal, int | Decimal], ...] = ()
 
 
 def _pins(nets) -> dict[str, tuple[str, ...]]:
@@ -142,24 +143,34 @@ def restore_original_named_nets(
     return out
 
 
+def _exact_grid_move_um(value: object) -> int:
+    """Convert a 2.5-mm-step Decimal millimetre move to exact integer µm."""
+    if type(value) not in (int, Decimal):
+        raise ValueError("V5_CANDIDATE_MOVE_INTEGER_UM_REQUIRED")
+    amount = Decimal(value)
+    if (
+        not amount.is_finite() or abs(amount) > 30
+        or (amount * 1000) % 2500
+    ):
+        raise ValueError("V5_CANDIDATE_MOVE_MUST_BE_SOURCED_2P5MM_GRID")
+    return int(amount * 1000)
+
+
 def position_only_move(
     base: NativeV5Assembly,
-    movements: tuple[tuple[str, int, int], ...],
+    movements: tuple[tuple[str, int | Decimal, int | Decimal], ...],
 ) -> NativeV5Assembly:
     """Reposition only real parts on 2.5mm grid; origin Net unchanged."""
     if not movements:
         return base
     if len({row[0] for row in movements}) != len(movements):
         raise ValueError("V5_CANDIDATE_DUPLICATE_MOVE")
-    if any(
-        ref not in COMPACT_A3_MM or type(dx) is not int or type(dy) is not int
-        or abs(dx) > 30 or abs(dy) > 30
-        or dx * 1000 % 2500 != 0 or dy * 1000 % 2500 != 0
+    if any(ref not in COMPACT_A3_MM for ref, _, _ in movements):
+        raise ValueError("V5_CANDIDATE_MOVE_MUST_BE_SOURCE_PART")
+    offsets = {
+        ref: Point(_exact_grid_move_um(dx), _exact_grid_move_um(dy))
         for ref, dx, dy in movements
-    ):
-        raise ValueError("V5_CANDIDATE_MOVE_MUST_BE_SOURCED_2P5MM_GRID")
-    offsets = {ref: Point(dx * 1000, dy * 1000)
-               for ref, dx, dy in movements}
+    }
     moved = tuple(
         replace(component, origin=component.origin + offsets[component.reference])
         if component.reference in offsets else component
@@ -215,7 +226,9 @@ def load_original_owner_fixture() -> tuple[dict, object]:
     return frozen, binding
 
 
-def parse_candidate_moves(values: tuple[str, ...]) -> tuple[tuple[str, int, int], ...]:
+def parse_candidate_moves(
+    values: tuple[str, ...],
+) -> tuple[tuple[str, Decimal, Decimal], ...]:
     """Parse REF:dx_mm:dy_mm without implicit circuit/topology changes."""
     result = []
     seen = set()
@@ -230,14 +243,13 @@ def parse_candidate_moves(values: tuple[str, ...]) -> tuple[tuple[str, int, int]
             raise ValueError("V5_CANDIDATE_DUPLICATE_MOVE")
         seen.add(ref)
         try:
-            dx, dy = int(dx_raw), int(dy_raw)
-        except ValueError as exc:
-            raise ValueError("V5_CANDIDATE_INTEGER_MM_MOVE_REQUIRED") from exc
-        if (
-            ref not in COMPACT_A3_MM or abs(dx) > 30 or abs(dy) > 30
-            or dx * 1000 % 2500 or dy * 1000 % 2500
-        ):
-            raise ValueError("V5_CANDIDATE_MOVE_MUST_BE_SOURCED_2P5MM_GRID")
+            dx, dy = Decimal(dx_raw), Decimal(dy_raw)
+        except InvalidOperation as exc:
+            raise ValueError("V5_CANDIDATE_DECIMAL_MM_MOVE_REQUIRED") from exc
+        if ref not in COMPACT_A3_MM:
+            raise ValueError("V5_CANDIDATE_MOVE_MUST_BE_SOURCE_PART")
+        _exact_grid_move_um(dx)
+        _exact_grid_move_um(dy)
         result.append((ref, dx, dy))
     return tuple(result)
 
@@ -405,7 +417,9 @@ def run_candidate(
         ),
         "owner_router_report": report,
         "priority": list(config.priority),
-        "moves_mm": [list(move) for move in config.move_mm],
+        "moves_mm": [
+            [ref, str(dx), str(dy)] for ref, dx, dy in config.move_mm
+        ],
         "source_nets": source_named,
         "Net_membership_SHA256": _digest(source_named),
         "source_unchanged": True,
@@ -456,7 +470,7 @@ def drive_candidates(
     font_file: Path, output_file: Path, *,
     variants: tuple[str, ...] = ("source",),
     node_cap: int = 25000,
-    move_mm: tuple[tuple[str, int, int], ...] = (),
+    move_mm: tuple[tuple[str, int | Decimal, int | Decimal], ...] = (),
 ) -> dict:
     """Current owner trial/snapshot + best partial evidence, no success fiction."""
     if not variants or len(variants) > 3 or len(set(variants)) != len(variants):
@@ -525,7 +539,9 @@ def drive_candidates(
         },
         "negative_original_DRC_expected": ORIGINAL_BAD_DRC,
         "paper": "A3 landscape 420x297mm; 10mm margins; DRAFT",
-        "source_position_only_moves_mm": [list(item) for item in move_mm],
+        "source_position_only_moves_mm": [
+            [ref, str(dx), str(dy)] for ref, dx, dy in move_mm
+        ],
         "candidates": trials,
         "best_evidence_variant": best["key"],
         "best_completed_nets": best["routed_net_count"],
