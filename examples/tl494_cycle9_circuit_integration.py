@@ -222,14 +222,13 @@ def bind_positioned_photo_circuit_from_catalog(
             and component.part_id != original["part_id"]
         ):
             raise ValueError("TL494_PHOTO_REBIND_NON_IC_PART_CHANGED")
-        if reference == "DA1":
-            if (
-                original["part_id"] != "reference.tl494cn"
-                or component.part_id not in ("reference.tl494cn", TI_DEVICE_ID)
-                or component.origin != placement.origin
-                or component.transform != placement.transform
-            ):
-                raise ValueError("TL494_PHOTO_REBIND_DA1_PART_OR_POSE_MISMATCH")
+        if reference == "DA1" and (
+            original["part_id"] != "reference.tl494cn"
+            or component.part_id not in ("reference.tl494cn", TI_DEVICE_ID)
+            or component.origin != placement.origin
+            or component.transform != placement.transform
+        ):
+            raise ValueError("TL494_PHOTO_REBIND_DA1_PART_OR_POSE_MISMATCH")
         if original["nominal_si"] is None:
             if component.nominal is not None:
                 raise ValueError("TL494_PHOTO_REBIND_UNSOURCED_NOMINAL")
