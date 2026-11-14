@@ -8,6 +8,7 @@ from importlib import import_module
 from pathlib import Path
 
 import pytest
+
 from examples.tl494_v5.native_circuit import assemble_native_v5, export_source_manifest
 from gost_schematic.model.circuit import Circuit, Net, PinRef
 
