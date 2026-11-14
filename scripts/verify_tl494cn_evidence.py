@@ -119,14 +119,14 @@ def verify(folder: Path) -> dict:
                         m.get("data-connectable") != "true"
                     ):
                         raise ValueError("TL494_POWER_OR_PIN_WRONGLY_DISABLED")
-                    x = int(round(
+                    x = round(
                         (position[0] / 1000 - viewbox[0])
                         / viewbox[2] * pixels.width,
-                    ))
-                    y = int(round(
+                    )
+                    y = round(
                         (position[1] / 1000 - viewbox[1])
                         / viewbox[3] * pixels.height,
-                    ))
+                    )
                     if x < 3 or y < 3 or (
                         x >= pixels.width - 3 or y >= pixels.height - 3
                     ):
