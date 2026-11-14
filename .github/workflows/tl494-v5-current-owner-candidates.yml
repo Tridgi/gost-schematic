@@ -105,6 +105,11 @@ jobs:
           assert m["manufacturer_DA1_physical_pin_count"] == 16
           assert len(m["source_b_marker_um"]) == 2
           assert set(m["source_b_marker_um"]) == {"b-X2", "b-R5"}
+          assert all(
+              len(point) == 2 and 10000 <= point[0] <= 410000
+              and 10000 <= point[1] <= 287000
+              for point in m["source_b_marker_um"].values()
+          )
           assert m["source_b_nonphysical_Net"] == "b_NEGATIVE_OUTPUT"
           assert set(m["source_b_physical_members"]) == {
               "FU1.2", "X2.1", "R5.2"
@@ -112,6 +117,7 @@ jobs:
           assert not m["full_clean_SVG_or_300DPI_PNG_released"]
           assert m["full_A3_print_and_photo_1_to_1"] == "BLOCKED"
           PY
+          sha256sum output/tl494-v5-current/C11_SIGNED_REAL_SOURCE_B_PROOF.json > output/tl494-v5-current/SHA256SUMS.txt
       - name: Compare original source 23/15/62 and run two order candidates
         run: |
           set -euxo pipefail
@@ -160,7 +166,7 @@ jobs:
           print("TRUE_15_NETS_ATTEMPTED", [(c["key"], c["routed_net_count"]) for c in m["candidates"]])
           print("NO_FAKE_RELEASE_TRUE 23/15/62", m["best_evidence_variant"])
           PY
-          sha256sum output/tl494-v5-current/all15-candidate-report.json > output/tl494-v5-current/SHA256SUMS.txt
+          sha256sum output/tl494-v5-current/all15-candidate-report.json >> output/tl494-v5-current/SHA256SUMS.txt
           git diff --exit-code -- examples/tl494_named_truth_output/ examples/tl494_v4/evidence_runs/
       - uses: actions/upload-artifact@v4
         if: always()
