@@ -1,0 +1,381 @@
+{
+  "schema_version": 1,
+  "issue": 91,
+  "epic": 86,
+  "created": "2026-11-14",
+  "branch": "parallel/standards-ic-power-cycle7-post101",
+  "base_sha": "1cdd11a3e72e467573d5d660db923b201be21df9",
+  "previous_merged_prs_not_modified": [
+    95,
+    101
+  ],
+  "sources": {
+    "digital": {
+      "standard": "ГОСТ 2.743-91",
+      "edition": "1991; valid in Russia on 2026-11-14",
+      "registry": "https://protect.gost.ru/gost/details/c572dd1f-bd96-4aa7-8a14-0edbaf310c3f",
+      "figure6": "https://meganorm.ru/Data/190/19085.pdf#page=15",
+      "table5": "https://meganorm.ru/Data/190/19085.pdf#page=13",
+      "table5continued": "https://meganorm.ru/Data/190/19085.pdf#page=14",
+      "orientation": "https://meganorm.ru/Data/190/19085.pdf#page=4"
+    },
+    "analog": {
+      "standard": "ГОСТ 2.759-82",
+      "edition": "1982 with amendment 1; valid in Russia on 2026-11-14",
+      "registry": "https://protect.gost.ru/gost/details/92d70b32-430f-4a8a-9aeb-dca9134a5046",
+      "table2": "https://files.stroyinf.ru/Data2/1/4294849/4294849490.pdf#page=2"
+    }
+  },
+  "original_figures_are_linked_not_redistributed": true,
+  "normative_ugo_approvals": 0,
+  "all_new_ugo_status": "DRAFT",
+  "statuses": {
+    "PASS": "source-scoped rule only, not blanket production APPROVED",
+    "FAIL": "explicit contradicted universal normative assertion or forbidden clean export",
+    "BLOCKED": "insufficient cited permission/verified full-source figure match"
+  },
+  "cases": [
+    {
+      "id": "P01-LEFT",
+      "group": "power",
+      "status": "PASS",
+      "standard": "ГОСТ 2.743-91",
+      "clause": "§2.1.4, §2.3.6 табл.5, §2.3.11 черт.6",
+      "primary_source": "https://meganorm.ru/Data/190/19085.pdf#page=15",
+      "positive_example": "DD1 true power/nonlogical lead LEFT, correct Vcc/GND, real PinRef",
+      "negative_example": "claim power MUST always be left",
+      "mandatory": [
+        "nonlogical input line may lie left; label/physical pin correctly mapped"
+      ],
+      "editorial": [
+        "pin pitch, placement offset, stroke"
+      ],
+      "release_blocker": null,
+      "approved": false
+    },
+    {
+      "id": "P02-RIGHT",
+      "group": "power",
+      "status": "PASS",
+      "standard": "ГОСТ 2.743-91",
+      "clause": "§2.1.4; §2.3.6 табл.5",
+      "primary_source": "https://meganorm.ru/Data/190/19085.pdf#page=4",
+      "positive_example": "real nonlogical VCC on RIGHT with intact physical mapping",
+      "negative_example": "ban right-side power just because Fig6 draws left",
+      "mandatory": [
+        "nonlogical lead may lie right; labels and numbers authentic"
+      ],
+      "editorial": [
+        "right-side style"
+      ],
+      "release_blocker": null,
+      "approved": false
+    },
+    {
+      "id": "P03-TOP-FIXED",
+      "group": "power",
+      "status": "BLOCKED",
+      "standard": "ГОСТ 2.743-91",
+      "clause": "§2.1.4 versus §2.1.6 черт.3",
+      "primary_source": "https://meganorm.ru/Data/190/19085.pdf#page=4",
+      "positive_example": "show top VCC only as experimental nonnormative editor view",
+      "negative_example": "claim §2.1.6 allows automatic VCC_TOP in fixed LEFT_RIGHT portrait",
+      "mandatory": [
+        "no established universal TOP rule for nonlogical pin in unchanged portrait"
+      ],
+      "editorial": [
+        "KiCad-style VCC_TOP"
+      ],
+      "release_blocker": "independent normative diagram for fixed TOP power absent",
+      "approved": false
+    },
+    {
+      "id": "P04-BOTTOM-FIXED",
+      "group": "power",
+      "status": "BLOCKED",
+      "standard": "ГОСТ 2.743-91",
+      "clause": "§2.1.4 versus §2.1.6 черт.3",
+      "primary_source": "https://meganorm.ru/Data/190/19085.pdf#page=4",
+      "positive_example": "show bottom GND only as editor DRAFT variant",
+      "negative_example": "claim GND must be below simply because ground potential is low",
+      "mandatory": [
+        "no universal BOTTOM rule for nonlogical lead in unchanged portrait"
+      ],
+      "editorial": [
+        "KiCad-style GND_BOTTOM"
+      ],
+      "release_blocker": "source does not affirm supply-only relocation to bottom",
+      "approved": false
+    },
+    {
+      "id": "P05-WHOLE-ORIENTATION",
+      "group": "power",
+      "status": "PASS",
+      "standard": "ГОСТ 2.743-91",
+      "clause": "§2.1.6 черт.3, 4; §2.3.11",
+      "primary_source": "https://meganorm.ru/Data/190/19085.pdf#page=4",
+      "positive_example": "source-matched whole element with TOP inputs/BOTTOM outputs, power separately validated",
+      "negative_example": "cite whole UGO rotation as automatic license to change just VCC side",
+      "mandatory": [
+        "signal input/output layout and reversed-flow arrows/source function"
+      ],
+      "editorial": [
+        "whole-body transforms, new geometry"
+      ],
+      "release_blocker": "specific POWER top/bottom remains unapproved without matching original",
+      "approved": false
+    },
+    {
+      "id": "P06-COMMON-CONTROL",
+      "group": "power",
+      "status": "PASS",
+      "standard": "ГОСТ 2.743-91",
+      "clause": "§2.3.11 черт.6а",
+      "primary_source": "https://meganorm.ru/Data/190/19085.pdf#page=15",
+      "positive_example": "DD1 common control block includes +5V and 0V roles",
+      "negative_example": "invent additional physical device for common control block",
+      "mandatory": [
+        "same physical IC identity and contact inventory"
+      ],
+      "editorial": [
+        "line placement and display grouping"
+      ],
+      "release_blocker": null,
+      "approved": false
+    },
+    {
+      "id": "P07-SEPARATE-CONTOUR",
+      "group": "power",
+      "status": "PASS",
+      "standard": "ГОСТ 2.743-91",
+      "clause": "§2.3.11 черт.6в, note under fig6",
+      "primary_source": "https://meganorm.ru/Data/190/19085.pdf#page=15",
+      "positive_example": "DD3 supply contour + DD3.1/2/3 logic share one physical IC",
+      "negative_example": "use 6б+6в simultaneously and claim arbitrary combination",
+      "mandatory": [
+        "one true IC, 6a+6v drawing-set policy"
+      ],
+      "editorial": [
+        "display position"
+      ],
+      "release_blocker": "full cross-unit cold reopen with actual pin map pending",
+      "approved": false
+    },
+    {
+      "id": "P08-SPLIT-ONE-UNIT",
+      "group": "power",
+      "status": "PASS",
+      "standard": "ГОСТ 2.743-91",
+      "clause": "§2.3.11 черт.6б, note under fig6",
+      "primary_source": "https://meganorm.ru/Data/190/19085.pdf#page=15",
+      "positive_example": "DD2.1 hosts power display; DD2.2/3 same real package",
+      "negative_example": "repeat same power PhysicalPin in every DD2 unit",
+      "mandatory": [
+        "6a+6b documented drawing-set policy; unique physical PinRef"
+      ],
+      "editorial": [
+        "which unit renders supply"
+      ],
+      "release_blocker": "multiunit project save/reopen pending",
+      "approved": false
+    },
+    {
+      "id": "P09-TEXT-FREE-FIELD",
+      "group": "power",
+      "status": "PASS",
+      "standard": "ГОСТ 2.743-91",
+      "clause": "§2.3.11 textual alternative",
+      "primary_source": "https://meganorm.ru/Data/190/19085.pdf#page=15",
+      "positive_example": "clear sheet text DD1 physical pin 14 +5V and pin 7 0V, verified external datasheet",
+      "negative_example": "free-floating +5V text with unknown device/pin fabricated into net",
+      "mandatory": [
+        "unambiguous text assignment to true part/pin"
+      ],
+      "editorial": [
+        "note font and position"
+      ],
+      "release_blocker": "actual manufacturer pin assignment required for concrete IC",
+      "approved": false
+    },
+    {
+      "id": "P10-FIG6-MIX-UNRESTRICTED",
+      "group": "power",
+      "status": "FAIL",
+      "standard": "ГОСТ 2.743-91",
+      "clause": "note below §2.3.11 fig6",
+      "primary_source": "https://meganorm.ru/Data/190/19085.pdf#page=15",
+      "positive_example": "select 6а+6б OR 6а+6в at document-set level",
+      "negative_example": "say arbitrary mixing 6б and 6в is source-approved",
+      "mandatory": [
+        "specific allowed pairings"
+      ],
+      "editorial": [
+        "explicit mode setting"
+      ],
+      "release_blocker": null,
+      "approved": false
+    },
+    {
+      "id": "P11-VCC-GND-LABELS",
+      "group": "power",
+      "status": "PASS",
+      "standard": "ГОСТ 2.743-91",
+      "clause": "§2.3.6 табл.5 поз.1/2, notes",
+      "primary_source": "https://meganorm.ru/Data/190/19085.pdf#page=13",
+      "positive_example": "true power label Vcc, VCC on computer-output or allowed U; GND/common label from actual part",
+      "negative_example": "VCC text creates phantom electrical connection or is a package number",
+      "mandatory": [
+        "use table5 marks contextually; distinct nets and physical numbers"
+      ],
+      "editorial": [
+        "nominal voltage inside/outside per notes"
+      ],
+      "release_blocker": null,
+      "approved": false
+    },
+    {
+      "id": "P12-ANALOG-U-OV",
+      "group": "analog",
+      "status": "PASS",
+      "standard": "ГОСТ 2.759-82",
+      "clause": "§1.1, §1.8, §1.9.2 табл.2 поз.10/11",
+      "primary_source": "https://files.stroyinf.ru/Data2/1/4294849/4294849490.pdf#page=2",
+      "positive_example": "DA supply U, allowed V with nominal, letter-O common OV",
+      "negative_example": "treat analog OV letters as digit 0V voltage or impose GND default as sole table2 label",
+      "mandatory": [
+        "analog inherits 2.743; U/OV and input/output profile as given"
+      ],
+      "editorial": [
+        "aliases and visual font"
+      ],
+      "release_blocker": null,
+      "approved": false
+    },
+    {
+      "id": "P13-PHYSICAL-PIN-NUMBERS",
+      "group": "power",
+      "status": "PASS",
+      "standard": "ГОСТ 2.743-91",
+      "clause": "§2.3.12 and note",
+      "primary_source": "https://meganorm.ru/Data/190/19085.pdf#page=15",
+      "positive_example": "actual number above L/R lead or permitted gap, unique source PinRef",
+      "negative_example": "use text Vcc itself as number or duplicate physical supply pin",
+      "mandatory": [
+        "physical numbers retain manufacturer identity"
+      ],
+      "editorial": [
+        "offsets, collision zone"
+      ],
+      "release_blocker": "real datasheet pin number required for production part",
+      "approved": false
+    },
+    {
+      "id": "PWM-0",
+      "group": "pwm",
+      "status": "PASS",
+      "standard": "ГОСТ 2.743-91",
+      "clause": "§2.1.2, §2.1.7, §2.2.6",
+      "primary_source": "https://meganorm.ru/Data/190/19085.pdf#page=4",
+      "positive_example": "fixed portrait body L/R with horizontal PWM as function, documented meaning",
+      "negative_example": "claim PWM in table2 without source or clip word",
+      "mandatory": [
+        "function first main-field line, actual ink and correct fields"
+      ],
+      "editorial": [
+        "body aspect and text alignment"
+      ],
+      "release_blocker": null,
+      "approved": false
+    },
+    {
+      "id": "PWM-90",
+      "group": "pwm",
+      "status": "BLOCKED",
+      "standard": "ГОСТ 2.743-91",
+      "clause": "§2.1.6 черт.3",
+      "primary_source": "https://meganorm.ru/Data/190/19085.pdf#page=4",
+      "positive_example": "opt-in word-only 90° as DRAFT editor display, unchanged pins",
+      "negative_example": "claim fig3 universally allows rotating ONLY PWM in unchanged L/R rectangle",
+      "mandatory": [
+        "no independently proven 90 word-only normative profile"
+      ],
+      "editorial": [
+        "default vertical word"
+      ],
+      "release_blocker": "source proof for arbitrary text-only 90 absent",
+      "approved": false
+    },
+    {
+      "id": "PWM-270",
+      "group": "pwm",
+      "status": "BLOCKED",
+      "standard": "ГОСТ 2.743-91",
+      "clause": "§2.1.6 черт.3/4",
+      "primary_source": "https://meganorm.ru/Data/190/19085.pdf#page=4",
+      "positive_example": "opt-in word-only 270° diagnostic view",
+      "negative_example": "claim §2.1.9 readability implies permission for any 270-only word",
+      "mandatory": [
+        "no independently proven 270-only normative profile"
+      ],
+      "editorial": [
+        "alternate rotated text direction"
+      ],
+      "release_blocker": "no source-matched permission for 270-only",
+      "approved": false
+    },
+    {
+      "id": "UI-CLEAN-GREEN",
+      "group": "ui",
+      "status": "FAIL",
+      "standard": "ГОСТ 2.743-91",
+      "clause": "§2.743 2.1.1–2.1.5; Issue #100 clean export policy",
+      "primary_source": "https://meganorm.ru/Data/190/19085.pdf#page=15",
+      "positive_example": "clean drawing without any editor-only green hotspot overlays",
+      "negative_example": "print editor green squares as mandatory ГОСТ junctions",
+      "mandatory": [
+        "clean release does not print interactive targets; project invariant"
+      ],
+      "editorial": [
+        "color and CSS hit radius are editor-only"
+      ],
+      "release_blocker": null,
+      "approved": false
+    },
+    {
+      "id": "UI-DIAGNOSTIC",
+      "group": "ui",
+      "status": "PASS",
+      "standard": "ГОСТ 2.743-91",
+      "clause": "Issue #100 / editor policy; not a ГОСТ-required symbol",
+      "primary_source": "https://meganorm.ru/Data/190/19085.pdf#page=15",
+      "positive_example": "explicit opt-in green rect at true Point and PinRef, NC disabled",
+      "negative_example": "hover creates Net, extra pin or electrical short",
+      "mandatory": [
+        "read-only target, explicit overlay enabled, no net mutation"
+      ],
+      "editorial": [
+        "8–12 CSS px targets, colors"
+      ],
+      "release_blocker": "joint PAINT/QA integration pending",
+      "approved": false
+    },
+    {
+      "id": "UI-CONTACT-INDEPENDENCE",
+      "group": "ui",
+      "status": "PASS",
+      "standard": "ГОСТ 2.743-91",
+      "clause": "§2.3.10/11 + real typed PinRef",
+      "primary_source": "https://meganorm.ru/Data/190/19085.pdf#page=15",
+      "positive_example": "clean and diagnostic views preserve identical physical pins and Circuit.Net",
+      "negative_example": "treat green marker as separate power pin or actual black connection dot",
+      "mandatory": [
+        "power true pin remains same, NC never connected"
+      ],
+      "editorial": [
+        "overlay zoom policy"
+      ],
+      "release_blocker": null,
+      "approved": false
+    }
+  ]
+}
