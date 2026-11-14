@@ -210,6 +210,15 @@ jobs:
           PYTHONPATH=src:. python scripts/qa_tl494_current_editor_cycle10.py \
             --cycle11 --font-file "$QA_C11_GOST_FONT" \
             --output "../../output/qa92-cycle11-${{ matrix.python-version }}/independent-TI-editor-matrix.json"
+      - name: Authoritative real TI partID adapter on true 23/15/62 with seven negative source mutations
+        shell: bash
+        run: |
+          set -euo pipefail
+          ruff check scripts/qa_tl494_cycle11_part_bridge.py
+          cd _qa_sources/recon
+          PYTHONPATH=src:. python ../../scripts/qa_tl494_cycle11_part_bridge.py \
+            --font-file "$QA_C11_GOST_FONT" \
+            --output "../../output/qa92-cycle11-${{ matrix.python-version }}/manufacturer-PartID-source-bridge.json"
       - name: Genuine PAINT current HEAD 23-part new compact A3 routed native SVG, not old 91-wire redraw
         shell: bash
         if: always()
