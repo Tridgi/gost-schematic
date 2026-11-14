@@ -1,0 +1,425 @@
+{
+  "schema_version": 1,
+  "issue": 89,
+  "branch": "parallel/catalog-electronic-cycle7",
+  "baseline_head": "47b0589ffa048c0801b6b8604582efd62a63acc9",
+  "release": "BLOCKED_ESKD_1TO1_AND_QA",
+  "evidence": "SOURCE_TABLE_REFERENCES_AND_PHYSICAL_PORT_REGRESSION_NOT_A_CERTIFIED_NORMATIVE_OVERLAY",
+  "existing_gallery": "examples/review_electronic_cycle7_extended.py",
+  "existing_raster_check": "examples/verify_electronic_cycle7_extended.py",
+  "standards_dependency": "merged PR #95, Issue #91",
+  "connector_gate": {
+    "status": "BLOCKED_NO_VERIFIED_CONTACT_GEOMETRY_AND_PRODUCT_PINMAP",
+    "standard": "ГОСТ 2.755-87, таблицы 5/6",
+    "disallow_confusion_with": "Issue #90 nonphysical net continuations",
+    "requirements": [
+      "selected and verified exact plug/socket contact figure",
+      "mating orientation and male/female contacts",
+      "datasheet+package revision and physical numbers",
+      "one PhysicalPin+GraphicPin per contact",
+      "independent ESKD/QA verification"
+    ]
+  },
+  "cards": [
+    {
+      "id": "resistor.variable",
+      "status": "DRAFT",
+      "source_ref": "ГОСТ 2.728-74 табл. 1, поз. 4, PDF page=3 / printed page C.3; табл. 6 поз. 3 PDF page=20",
+      "source_pdf": "https://helpeng.ru/public/normdoc/eskd/gost_2.728-74.pdf",
+      "source_pdf_page": null,
+      "source_rule_evidence": "EXACT_TABLE_LOCATION_TRACED",
+      "physical_pin_roles": {
+        "1": "A",
+        "2": "B",
+        "3": "W"
+      },
+      "canonical_pin_islands": [
+        [
+          "1"
+        ],
+        [
+          "2"
+        ],
+        [
+          "3"
+        ]
+      ],
+      "figure_overlay": "BLOCKED_NO_INDEPENDENT_1TO1_CALIBRATION",
+      "real_device_pinmap": "BLOCKED_NO_MFG_DATASHEET",
+      "release": "DRAFT_NOT_APPROVED",
+      "special_guard": "PHYSICAL_WIPER_MUST_REMAIN"
+    },
+    {
+      "id": "resistor.trimmer",
+      "status": "DRAFT",
+      "source_ref": "ГОСТ 2.728-74 табл. 1 поз. 9 PDF page=6 / printed C.6; табл. 6 поз. 5 PDF page=20; distinction from table 1 position 10 dual variable plus trimmer",
+      "source_pdf": "https://helpeng.ru/public/normdoc/eskd/gost_2.728-74.pdf",
+      "source_pdf_page": null,
+      "source_rule_evidence": "EXACT_TABLE_LOCATION_TRACED",
+      "physical_pin_roles": {
+        "1": "A",
+        "2": "B",
+        "3": "W"
+      },
+      "canonical_pin_islands": [
+        [
+          "1"
+        ],
+        [
+          "2"
+        ],
+        [
+          "3"
+        ]
+      ],
+      "figure_overlay": "BLOCKED_NO_INDEPENDENT_1TO1_CALIBRATION",
+      "real_device_pinmap": "BLOCKED_NO_MFG_DATASHEET",
+      "release": "DRAFT_NOT_APPROVED",
+      "special_guard": "PHYSICAL_WIPER_MUST_REMAIN"
+    },
+    {
+      "id": "fuse.general",
+      "status": "DRAFT",
+      "source_ref": "ГОСТ 2.727-68 §4, табл. 3 поз. 2 PDF page=3, May 2002 changes 1–2",
+      "source_pdf": "https://www.nuvis.com.ua/GOST_2.727-68_ESKD.pdf",
+      "source_pdf_page": null,
+      "source_rule_evidence": "EXACT_TABLE_LOCATION_TRACED",
+      "physical_pin_roles": {
+        "1": "A",
+        "2": "B"
+      },
+      "canonical_pin_islands": [
+        [
+          "1"
+        ],
+        [
+          "2"
+        ]
+      ],
+      "figure_overlay": "BLOCKED_NO_INDEPENDENT_1TO1_CALIBRATION",
+      "real_device_pinmap": "BLOCKED_NO_MFG_DATASHEET",
+      "release": "DRAFT_NOT_APPROVED",
+      "special_guard": "FUSE_DRAWN_STROKE_NOT_ZERO_OHM_NET"
+    },
+    {
+      "id": "transistor.bjt_pnp",
+      "status": "DRAFT",
+      "source_ref": "ГОСТ 2.730-73, переиздание май 2002, изменения №1–4 §8 табл.7/1а (PNP); примечание о схематическом корпусе и зеркале",
+      "source_pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+      "source_pdf_page": 5,
+      "source_rule_evidence": "SOURCE_FIGURE_INSPECTED",
+      "physical_pin_roles": {
+        "1": "B",
+        "2": "C",
+        "3": "E"
+      },
+      "canonical_pin_islands": [
+        [
+          "1"
+        ],
+        [
+          "2"
+        ],
+        [
+          "3"
+        ]
+      ],
+      "figure_overlay": "BLOCKED_NO_INDEPENDENT_1TO1_CALIBRATION",
+      "real_device_pinmap": "BLOCKED_NO_MFG_DATASHEET",
+      "release": "DRAFT_NOT_APPROVED",
+      "special_guard": "PHYSICAL_PIN_ROLES_UNCHANGED"
+    },
+    {
+      "id": "transistor.bjt_pnp.with_case",
+      "status": "DRAFT",
+      "source_ref": "ГОСТ 2.730-73, переиздание май 2002, изменения №1–4 §8 табл.7/1а (PNP); примечание о схематическом корпусе и зеркале",
+      "source_pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+      "source_pdf_page": 5,
+      "source_rule_evidence": "SOURCE_FIGURE_INSPECTED",
+      "physical_pin_roles": {
+        "1": "B",
+        "2": "C",
+        "3": "E"
+      },
+      "canonical_pin_islands": [
+        [
+          "1"
+        ],
+        [
+          "2"
+        ],
+        [
+          "3"
+        ]
+      ],
+      "figure_overlay": "BLOCKED_NO_INDEPENDENT_1TO1_CALIBRATION",
+      "real_device_pinmap": "BLOCKED_NO_MFG_DATASHEET",
+      "release": "DRAFT_NOT_APPROVED",
+      "special_guard": "CASE_CIRCLE_NOT_FOOTPRINT_OR_PIN"
+    },
+    {
+      "id": "transistor.bjt_npn",
+      "status": "DRAFT",
+      "source_ref": "ГОСТ 2.730-73, переиздание май 2002, изменения №1–4 таблица 1/2 (N emitter) и §8 табл. 7/1а (PNP, базовая операция обращения стрелки); НЕ табл.7/1б",
+      "source_pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+      "source_pdf_page": 5,
+      "source_rule_evidence": "EXPERIMENTAL_DERIVED",
+      "physical_pin_roles": {
+        "1": "B",
+        "2": "C",
+        "3": "E"
+      },
+      "canonical_pin_islands": [
+        [
+          "1"
+        ],
+        [
+          "2"
+        ],
+        [
+          "3"
+        ]
+      ],
+      "figure_overlay": "BLOCKED_NO_INDEPENDENT_1TO1_CALIBRATION",
+      "real_device_pinmap": "BLOCKED_NO_MFG_DATASHEET",
+      "release": "DRAFT_NOT_APPROVED",
+      "special_guard": "NPN_3PIN_EXPERIMENTAL_NOT_GOST_TABLE7_1B_SHIELDED"
+    },
+    {
+      "id": "transistor.bjt_npn.with_case",
+      "status": "DRAFT",
+      "source_ref": "ГОСТ 2.730-73, переиздание май 2002, изменения №1–4 таблица 1/2 (N emitter) и §8 табл. 7/1а (PNP, базовая операция обращения стрелки); НЕ табл.7/1б",
+      "source_pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+      "source_pdf_page": 5,
+      "source_rule_evidence": "EXPERIMENTAL_DERIVED",
+      "physical_pin_roles": {
+        "1": "B",
+        "2": "C",
+        "3": "E"
+      },
+      "canonical_pin_islands": [
+        [
+          "1"
+        ],
+        [
+          "2"
+        ],
+        [
+          "3"
+        ]
+      ],
+      "figure_overlay": "BLOCKED_NO_INDEPENDENT_1TO1_CALIBRATION",
+      "real_device_pinmap": "BLOCKED_NO_MFG_DATASHEET",
+      "release": "DRAFT_NOT_APPROVED",
+      "special_guard": "NPN_3PIN_EXPERIMENTAL_NOT_GOST_TABLE7_1B_SHIELDED"
+    },
+    {
+      "id": "transistor.mosfet_n_enh",
+      "status": "DRAFT",
+      "source_ref": "ГОСТ 2.730-73, переиздание май 2002, изменения №1–4 §9 табл.8/3б (MOS N enrichment), примечание об изображении корпуса",
+      "source_pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+      "source_pdf_page": 6,
+      "source_rule_evidence": "SOURCE_FIGURE_INSPECTED",
+      "physical_pin_roles": {
+        "1": "G",
+        "2": "D",
+        "3": "S"
+      },
+      "canonical_pin_islands": [
+        [
+          "1"
+        ],
+        [
+          "2"
+        ],
+        [
+          "3"
+        ]
+      ],
+      "figure_overlay": "BLOCKED_NO_INDEPENDENT_1TO1_CALIBRATION",
+      "real_device_pinmap": "BLOCKED_NO_MFG_DATASHEET",
+      "release": "DRAFT_NOT_APPROVED",
+      "special_guard": "PHYSICAL_PIN_ROLES_UNCHANGED"
+    },
+    {
+      "id": "transistor.mosfet_n_enh.with_case",
+      "status": "DRAFT",
+      "source_ref": "ГОСТ 2.730-73, переиздание май 2002, изменения №1–4 §9 табл.8/3б (MOS N enrichment), примечание об изображении корпуса",
+      "source_pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+      "source_pdf_page": 6,
+      "source_rule_evidence": "SOURCE_FIGURE_INSPECTED",
+      "physical_pin_roles": {
+        "1": "G",
+        "2": "D",
+        "3": "S"
+      },
+      "canonical_pin_islands": [
+        [
+          "1"
+        ],
+        [
+          "2"
+        ],
+        [
+          "3"
+        ]
+      ],
+      "figure_overlay": "BLOCKED_NO_INDEPENDENT_1TO1_CALIBRATION",
+      "real_device_pinmap": "BLOCKED_NO_MFG_DATASHEET",
+      "release": "DRAFT_NOT_APPROVED",
+      "special_guard": "CASE_CIRCLE_NOT_FOOTPRINT_OR_PIN"
+    },
+    {
+      "id": "transistor.mosfet_p_enh",
+      "status": "DRAFT",
+      "source_ref": "ГОСТ 2.730-73, переиздание май 2002, изменения №1–4 §9 табл.8/3а (MOS P enrichment), примечание об изображении корпуса",
+      "source_pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+      "source_pdf_page": 6,
+      "source_rule_evidence": "SOURCE_FIGURE_INSPECTED",
+      "physical_pin_roles": {
+        "1": "G",
+        "2": "D",
+        "3": "S"
+      },
+      "canonical_pin_islands": [
+        [
+          "1"
+        ],
+        [
+          "2"
+        ],
+        [
+          "3"
+        ]
+      ],
+      "figure_overlay": "BLOCKED_NO_INDEPENDENT_1TO1_CALIBRATION",
+      "real_device_pinmap": "BLOCKED_NO_MFG_DATASHEET",
+      "release": "DRAFT_NOT_APPROVED",
+      "special_guard": "PHYSICAL_PIN_ROLES_UNCHANGED"
+    },
+    {
+      "id": "transistor.mosfet_p_enh.with_case",
+      "status": "DRAFT",
+      "source_ref": "ГОСТ 2.730-73, переиздание май 2002, изменения №1–4 §9 табл.8/3а (MOS P enrichment), примечание об изображении корпуса",
+      "source_pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+      "source_pdf_page": 6,
+      "source_rule_evidence": "SOURCE_FIGURE_INSPECTED",
+      "physical_pin_roles": {
+        "1": "G",
+        "2": "D",
+        "3": "S"
+      },
+      "canonical_pin_islands": [
+        [
+          "1"
+        ],
+        [
+          "2"
+        ],
+        [
+          "3"
+        ]
+      ],
+      "figure_overlay": "BLOCKED_NO_INDEPENDENT_1TO1_CALIBRATION",
+      "real_device_pinmap": "BLOCKED_NO_MFG_DATASHEET",
+      "release": "DRAFT_NOT_APPROVED",
+      "special_guard": "CASE_CIRCLE_NOT_FOOTPRINT_OR_PIN"
+    },
+    {
+      "id": "diode.schottky",
+      "status": "DRAFT",
+      "source_ref": "ГОСТ 2.730-73, переиздание май 2002, изменения №1–4 §6 табл.5/9",
+      "source_pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+      "source_pdf_page": 4,
+      "source_rule_evidence": "SOURCE_FIGURE_INSPECTED",
+      "physical_pin_roles": {
+        "1": "A",
+        "2": "K"
+      },
+      "canonical_pin_islands": [
+        [
+          "1"
+        ],
+        [
+          "2"
+        ]
+      ],
+      "figure_overlay": "BLOCKED_NO_INDEPENDENT_1TO1_CALIBRATION",
+      "real_device_pinmap": "BLOCKED_NO_MFG_DATASHEET",
+      "release": "DRAFT_NOT_APPROVED",
+      "special_guard": "DUAL_STEPPED_CATHODE_NOT_ZENER"
+    },
+    {
+      "id": "diode.led",
+      "status": "DRAFT",
+      "source_ref": "ГОСТ 2.730-73, переиздание май 2002, изменения №1–4 §6 табл.5/10",
+      "source_pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+      "source_pdf_page": 4,
+      "source_rule_evidence": "SOURCE_FIGURE_INSPECTED",
+      "physical_pin_roles": {
+        "1": "A",
+        "2": "K"
+      },
+      "canonical_pin_islands": [
+        [
+          "1"
+        ],
+        [
+          "2"
+        ]
+      ],
+      "figure_overlay": "BLOCKED_NO_INDEPENDENT_1TO1_CALIBRATION",
+      "real_device_pinmap": "BLOCKED_NO_MFG_DATASHEET",
+      "release": "DRAFT_NOT_APPROVED",
+      "special_guard": "OPTICAL_ARROWS_NONCONDUCTIVE"
+    },
+    {
+      "id": "diode.photodiode",
+      "status": "DRAFT",
+      "source_ref": "ГОСТ 2.730-73, переиздание май 2002, изменения №1–4 §10 табл.9/2",
+      "source_pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+      "source_pdf_page": 7,
+      "source_rule_evidence": "SOURCE_FIGURE_INSPECTED",
+      "physical_pin_roles": {
+        "1": "A",
+        "2": "K"
+      },
+      "canonical_pin_islands": [
+        [
+          "1"
+        ],
+        [
+          "2"
+        ]
+      ],
+      "figure_overlay": "BLOCKED_NO_INDEPENDENT_1TO1_CALIBRATION",
+      "real_device_pinmap": "BLOCKED_NO_MFG_DATASHEET",
+      "release": "DRAFT_NOT_APPROVED",
+      "special_guard": "OPTICAL_ARROWS_NONCONDUCTIVE"
+    },
+    {
+      "id": "diode.varicap",
+      "status": "DRAFT",
+      "source_ref": "ГОСТ 2.730-73, переиздание май 2002, изменения №1–4 §6 табл.5/6",
+      "source_pdf": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+      "source_pdf_page": 4,
+      "source_rule_evidence": "SOURCE_FIGURE_INSPECTED",
+      "physical_pin_roles": {
+        "1": "A",
+        "2": "K"
+      },
+      "canonical_pin_islands": [
+        [
+          "1"
+        ],
+        [
+          "2"
+        ]
+      ],
+      "figure_overlay": "BLOCKED_NO_INDEPENDENT_1TO1_CALIBRATION",
+      "real_device_pinmap": "BLOCKED_NO_MFG_DATASHEET",
+      "release": "DRAFT_NOT_APPROVED",
+      "special_guard": "PHYSICAL_PIN_ROLES_UNCHANGED"
+    }
+  ]
+}
