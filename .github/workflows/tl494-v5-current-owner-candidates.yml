@@ -34,10 +34,10 @@ jobs:
       - name: Pin all four unmerged current-owner source HEADs (never merge)
         run: |
           set -euxo pipefail
-          IC=9242fa83606a881b8ff277ff051c7b46a5b63a22
-          PAINT=b182d5f089a9b5a1a4234b000a3caa39169dede8
-          CATALOG=1b0439315a4d534983684e4654830b2f7c367f1a
-          ROUTER=e38628244e5819c904ab21e9645450d5fd232d0f
+          IC=c8991bf232428645cad6e8b402d70abccf12a546
+          PAINT=df49c16fb082ee98213299358f374894fe1da220
+          CATALOG=2dae5306c0690f2fc2d402bb4b65266dabd778b8
+          ROUTER=e604ab355f1f704aa11f5545d048a0087c97e39a
           SOURCE=e695c415fdced164b0e0c39c5249d030795a0aa6
           for sha in "$IC" "$PAINT" "$CATALOG" "$ROUTER" "$SOURCE"; do
             git fetch origin "$sha"
@@ -100,6 +100,8 @@ jobs:
           assert m["frozen_source_Net_count"] == 15
           assert m["frozen_source_physical_memberships"] == 62
           assert m["signed_source_Circuit_Nets_identical"]
+          from examples.tl494_v5.route_candidate_driver import OWNER_SHAS
+          assert m["owner_exact_HEADs"] == OWNER_SHAS
           assert m["manufacturer_DA1_physical_pin_count"] == 16
           assert len(m["source_b_marker_um"]) == 2
           assert set(m["source_b_marker_um"]) == {"b-X2", "b-R5"}
