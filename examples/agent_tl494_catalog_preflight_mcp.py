@@ -96,6 +96,18 @@ async def run_native_client(workspace: Path, project_id: str, revision: str) -> 
                 if (hashlib.sha256(png).hexdigest() != meta["png_sha256"]
                         or hashlib.sha256(svg.encode()).hexdigest() != meta["svg_sha256"]):
                     raise AssertionError("Ungrounded catalog preview image")
+                selection = decoded(await client.call_tool(
+                    "schematic_catalog_select", {
+                        "part_id": part_id,
+                        "part_sha256": meta["part_sha256"],
+                        "symbol_sha256": meta["symbol_sha256"],
+                    },
+                ))
+                if (selection["selection_status"] != "EXACT_CATALOG_LOCK_MATCH"
+                        or selection["connection_authorized"]
+                        or any(pin["pin_ref"] is not None
+                               for pin in selection["physical_pin_templates"])):
+                    raise AssertionError("Catalog-only selection invented a physical instance")
                 (output / (part_id + ".svg")).write_text(svg, encoding="utf-8")
                 (output / (part_id + ".png")).write_bytes(png)
                 sampled[part_id] = {
@@ -135,6 +147,21 @@ async def run_native_client(workspace: Path, project_id: str, revision: str) -> 
                 raise AssertionError("TL494 mismatch was falsely accepted")
             if before["print_ready"] or contrast["print_ready"]:
                 raise AssertionError("False full print/DRC acceptance")
+            c3 = next(row for row in before["components"]
+                      if row["reference"] == "C3")
+            proposed = decoded(await client.call_tool(
+                "schematic_preview_placement", {
+                    "project_id": project_id, "revision": revision,
+                    "reference": "C3",
+                    "x_um": c3["origin_um"][0] + 10000,
+                    "y_um": c3["origin_um"][1],
+                },
+            ))
+            if (not any(d["code"] == "CONNECTED_PIN_RELOCATION_BLOCKED"
+                        for d in proposed["diagnostics"])
+                    or proposed["commit_authorized"]
+                    or proposed["model_or_head_mutated"]):
+                raise AssertionError("Hypothetical move bypassed physical Net isolation")
             view = await client.call_tool("schematic_render_project", {
                 "project_id": project_id, "revision": revision,
                 "mode": "diagnostic", "reference": "C3",
@@ -154,6 +181,9 @@ async def run_native_client(workspace: Path, project_id: str, revision: str) -> 
             (output / "saved-c3-diagnostic.svg").write_text(svg, encoding="utf-8")
             return {
                 "status": "READ_ONLY_PREVIEW_PARTIAL_PRINT_DRC",
+                "source_locked_reference_count": len(profile["required_variants"]),
+                "placement_proposal": proposed,
+                "catalog_selection_all_parts_SHA_verified": True,
                 "transport": "real stdio MCP ClientSession",
                 "python_bootstrap_not_mcp_write": True,
                 "codex_cli_used": False,
