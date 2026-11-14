@@ -9,7 +9,9 @@ from dataclasses import dataclass, replace
 from heapq import heappop, heappush
 from itertools import pairwise
 
-from gost_schematic.core.geometry import Box, Line, Point
+from gost_schematic.core.geometry import (
+    SIDE_VECTORS, Box, Line, Point, StyledLine, primitive_stroked_bounds,
+)
 from gost_schematic.core.intersections import segment_intersects_box
 from gost_schematic.engines.orthogonal_route_planner import _resolve_real_pin
 from gost_schematic.model.circuit import Circuit, Net, PinRef
@@ -118,6 +120,106 @@ class GlobalRoutePreview:
             "blocked_release": not self.print_pass,
             "not_gost_approved": True,
         }
+
+
+@dataclass(frozen=True, slots=True)
+class _SourceInk:
+    """Actual transformed stroked UGO primitive; never a guessed pin lane."""
+
+    owner: str
+    primitive_index: int
+    primitive_kind: str
+    collision_bounds: Box
+    permitted_pin: PinRef | None = None
+    contact: Point | None = None
+    normal: Point | None = None
+
+
+def _source_ink_obstacles(
+    circuit: Circuit,
+    symbols: dict[str, SymbolDefinition],
+    *,
+    stroke_um: int,
+) -> tuple[_SourceInk, ...]:
+    """Transform every symbol primitive to world coordinates at true D4 pose.
+
+    Native physical leads are matched by actual GraphicPin endpoints, not
+    assumed DA1 pin pitch. Only that one exact lead may touch its own
+    conductor, and only at its sourced outward endpoint.
+    """
+    obstacles: list[_SourceInk] = []
+    for component in circuit.components:
+        symbol = symbols.get(component.part_id)
+        if symbol is None:
+            raise ValueError("ROUTE_NATIVE_SYMBOL_MISSING:" + component.part_id)
+        actual_pins = component.pin_positions(symbol)
+        vectors = {
+            pin.number: component.transform.apply(
+                SIDE_VECTORS[pin.side],
+            )
+            for pin in symbol.pins
+        }
+        contact_by_point = {
+            pos: (PinRef(component.reference, number), vectors[number])
+            for number, pos in actual_pins.items()
+        }
+        for i, primitive in enumerate(symbol.graphics):
+            world = component.transform.primitive(primitive, component.origin)
+            touched = None
+            if isinstance(world, (Line, StyledLine)):
+                matches = tuple(
+                    contact_by_point[p] for p in (world.start, world.end)
+                    if p in contact_by_point
+                )
+                if len(matches) == 1:
+                    touched = matches[0]
+            obstacles.append(_SourceInk(
+                component.reference, i, type(world).__name__,
+                primitive_stroked_bounds(
+                    world, symbol.line_width_um,
+                ).expanded((stroke_um + 1) // 2),
+                touched[0] if touched else None,
+                (world.start if world.start in contact_by_point else
+                 world.end if world.end in contact_by_point else None)
+                if touched else None,
+                touched[1] if touched else None,
+            ))
+    return tuple(obstacles)
+
+
+def _source_ink_collision(
+    candidate: WireSegment,
+    obstacles: tuple[_SourceInk, ...],
+    *,
+    authorized_pins: frozenset[PinRef],
+) -> _SourceInk | None:
+    """Prevent the DA1 right-lead fanout overprint *during* graph search.
+
+    An outward segment from its OWN physical lead tip can touch that lead's
+    stroked cap. It cannot use the same exemption for any other pin, a body,
+    a label or a second segment merely on the same component reference.
+    """
+    segment = Line(candidate.start, candidate.end)
+    for ink in obstacles:
+        if not segment_intersects_box(segment, ink.collision_bounds):
+            continue
+        if (
+            ink.permitted_pin in authorized_pins
+            and ink.contact in (candidate.start, candidate.end)
+            and ink.normal is not None
+        ):
+            other = (
+                candidate.end if candidate.start == ink.contact
+                else candidate.start
+            )
+            if (
+                (other.x - ink.contact.x) * ink.normal.x
+                + (other.y - ink.contact.y) * ink.normal.y > 0
+            ):
+                # Only direct pin exit may overlap its own terminal cap.
+                continue
+        return ink
+    return None
 
 
 def _empty_graph() -> ExternalWireGraph:
@@ -241,6 +343,8 @@ def _visibility_path(
     tree: tuple[WireSegment, ...],
     existing_dots: tuple[Point, ...],
     goal_pin_normals: dict[Point, Point],
+    ink_obstacles: tuple[_SourceInk, ...],
+    authorized_pins: frozenset[PinRef],
     boxes: tuple[Box, ...],
     page: Box,
     stroke_um: int,
@@ -354,6 +458,11 @@ def _visibility_path(
             if not page.includes(to) or any(
                 segment_intersects_box(Line(here, to), box) for box in boxes
             ):
+                continue
+            if _source_ink_collision(
+                WireSegment(here, to, net_name),
+                ink_obstacles, authorized_pins=authorized_pins,
+            ) is not None:
                 continue
             if state == start and (
                 (to.x - here.x) * normal.x
@@ -479,6 +588,9 @@ def route_multi_terminal_net(
         stroke_um=stroke_um, clearance_um=symbol_gap_um,
         annotations=annotation_placements,
     )
+    source_ink = _source_ink_obstacles(
+        circuit, symbols, stroke_um=stroke_um,
+    )
     for pin in order[1:]:
         current, outward = locations[pin]
         if branches and _pin_is_attached(current, tuple(branches), dots):
@@ -505,6 +617,8 @@ def route_multi_terminal_net(
             current, outward, goals, net_name=net.name,
             occupied=occupied, tree=tuple(branches),
             existing_dots=dots,
+            ink_obstacles=source_ink,
+            authorized_pins=frozenset(pins),
             goal_pin_normals={
                 at: normal for ref in connected
                 for at, normal in (locations[ref],)
@@ -541,13 +655,44 @@ def route_multi_terminal_net(
             annotation_placements=annotation_placements,
         )
         if not result.valid:
-            reasons = tuple(sorted({f.code for f in result.findings
-                                    if f.severity == "error"}))
+            failures = tuple(
+                f for f in result.findings if f.severity == "error"
+            )
+            # Fail on the EXACT committed candidate segment, never collapse
+            # real owner+coordinates into a bare code. The inspector remains
+            # the normative authority; this is source-identity provenance.
+            reasons = []
+            for finding in failures:
+                location = ""
+                if finding.first.startswith("W") and finding.first[1:].isdigit():
+                    index = int(finding.first[1:])
+                    if index < len(trial.segments):
+                        wire = trial.segments[index]
+                        location = (
+                            f":W{index}:{wire.start.x},{wire.start.y}->"
+                            f"{wire.end.x},{wire.end.y}:owner={finding.second}"
+                        )
+                        collision = _source_ink_collision(
+                            wire, source_ink,
+                            authorized_pins=frozenset(pins),
+                        )
+                        if collision is not None:
+                            location += (
+                                f":primitive={collision.primitive_index}/"
+                                f"{collision.primitive_kind}"
+                            )
+                            if collision.permitted_pin is not None:
+                                location += (
+                                    f":physical_lead="
+                                    f"{collision.permitted_pin.reference}."
+                                    f"{collision.permitted_pin.number}"
+                                )
+                reasons.append(finding.code + location)
             return NetTreePreview(
                 net.name, pins, tuple(branches), dots, total_bends,
                 sum(abs(w.end.x-w.start.x)+abs(w.end.y-w.start.y)
                     for w in branches), total_crossings,
-                ("ROUTE_POST_DRC_ERROR:" + ",".join(reasons),),
+                tuple("ROUTE_POST_DRC_ERROR:" + message for message in reasons),
                 tuple(p for p in pins if p in connected),
             )
         total_bends += max(0, len(path) - 2)
