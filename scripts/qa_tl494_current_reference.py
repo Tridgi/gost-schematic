@@ -561,7 +561,7 @@ def symbol_and_ic_obstacle_gate(ctx, svg):
     Supports exact SVG line primitives and PAINT's real measured text ink.
     Curved/arc geometry is explicitly unapproved, not assumed clear.
     """
-    circuit, graph, parts, symbols, poses, unit, *_ = ctx
+    circuit, _graph, _parts, _symbols, poses, unit, *_ = ctx
     wires = svg_lines(svg)
     members = {
         (p.reference, p.number): net.name
