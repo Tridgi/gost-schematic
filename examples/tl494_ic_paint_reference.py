@@ -62,7 +62,7 @@ def build(font_file: Path):
     assert PINS["13"] == ("OUTPUT CTRL", ElectricalType.INPUT)
     assert PINS["14"] == ("REF", ElectricalType.POWER_OUTPUT)
     inspection = inspect_type_a_font(
-        font_file, h_um=3500, family="OpenGost Type A TT",
+        font_file, h_um=3500, family="OpenGOST type A",
         require_family_match=True,
     )
     style = inspection.style
@@ -200,7 +200,7 @@ def generate(output: Path, font_file: Path) -> dict:
         "variants": {},
     }
     for name, binding, direction in (
-        ("bottom_to_top_90", vertical, IcFunctionReading.BOTTOM_TO_TOP),
+        ("bottom_to_top_270", vertical, IcFunctionReading.BOTTOM_TO_TOP),
         ("horizontal_0", horizontal, IcFunctionReading.HORIZONTAL),
     ):
         binding.verify_endpoints()
