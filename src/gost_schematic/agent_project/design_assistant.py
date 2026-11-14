@@ -129,6 +129,10 @@ def catalog_search(catalog: CatalogResolver, query: str) -> dict[str, Any]:
     group = SEMANTIC_QUERY_TERMS.get(word, word)
     if group in catalog.parts:
         ids = [group]
+    elif group == "transistor.mosfet":
+        # Actual installed IDs are transistor.mosfet_n_enh*, not dot children.
+        ids = [key for key in sorted(catalog.parts)
+               if key.startswith("transistor.mosfet_")]
     else:
         ids = [key for key in sorted(catalog.parts)
                if key.startswith(group + ".")]
