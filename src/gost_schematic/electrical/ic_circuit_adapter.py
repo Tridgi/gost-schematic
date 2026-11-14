@@ -262,6 +262,10 @@ class IcVerifiedPaintSnapshot:
                 ):
                     raise ValueError("IC_TRUSTED_OVERLAY_PHYSICAL_LEAD_INK_DRIFT")
                 seen_leads.add(number)
+            visible_labels = {
+                row.number: row.label for spec in source.record.specs
+                for row in spec.rows
+            }
             for node in root.iter():
                 number = node.get("data-physical-pin-number")
                 if number is None:
@@ -270,12 +274,7 @@ class IcVerifiedPaintSnapshot:
                 if physical is None or (
                     node.get("data-full-manufacturer-name") != physical.pin_name
                     or node.get("data-visible-pin-alias")
-                    != source.record.device.pin_map[number].name
-                    and node.get("data-visible-pin-alias")
-                    != next((
-                        row.label for spec in source.record.specs
-                        for row in spec.rows if row.number == number
-                    ), None)
+                    != visible_labels.get(number)
                     or node.get("data-manufacturer-electrical-type")
                     != physical.electrical_type.value
                 ):
