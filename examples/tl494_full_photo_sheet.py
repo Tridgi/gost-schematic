@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from dataclasses import replace
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -102,6 +103,9 @@ def compose_circuit(font_file:Path):
     unit,targets,ic_part,ic_symbol,ic_instance,style,measure,policy,font=(
         attach_catalog_ic(font_file)
     )
+    # The source photo places PWM vertically within its own central field.
+    # PAINT has already reserved both angles; no physical anchor can move.
+    unit=replace(unit,function_rotation=90)
     parts[ic_part.identifier]=ic_part
     symbols[ic_symbol.identifier]=ic_symbol
     components=full_components(power.components,ic_instance)
@@ -228,6 +232,7 @@ def generate(output:Path,font_file:Path,*,strict:bool=False):
             key=int,
         ),
         "source_a":["X1.1","DA1.12","DA1.8","DA1.11"],
+        "pwm_function_rotation_degrees":90,
         "source_b":["FU1.2","X2.1","R5.2"],
         "wire_diagnostics":[{"code":d.code,"severity":d.severity.value,
                              "message":d.message} for d in electrical],
