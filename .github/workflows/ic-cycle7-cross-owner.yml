@@ -19,7 +19,7 @@ jobs:
   pinned-ic-model:
     runs-on: ubuntu-latest
     env:
-      ELEKTRIK_SHA: c0f9ca684852b148d040d864772c8d74cd1ddac7
+      ELEKTRIK_SHA: 22a49e18f6603869d2c7d11d767c67f5abb988a7
     steps:
       - uses: actions/checkout@v4
         with:
