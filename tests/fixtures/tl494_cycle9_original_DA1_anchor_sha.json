@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "source_commit": "e695c415fdced164b0e0c39c5249d030795a0aa6",
+  "source_ic_manifest_blob_sha": "bdded0f031e68ccd4d0da8dcd26bfe5c58de898e",
+  "source_render_head": "79ddb2ae57efd9ea621d64914a324988b343061d",
+  "font_sha256": "f5c539d432e2fceae137ad746d4acfdcca941d2c7349f013a5bf60231d3e6d01",
+  "original_ic_origin_um": [
+    35000,
+    30000
+  ],
+  "installed_source_ic_origin_um": [
+    65000,
+    87000
+  ],
+  "physical_DA1_PinRef_points_um": {
+    "1": [
+      55000,
+      143250
+    ],
+    "2": [
+      55000,
+      98250
+    ],
+    "3": [
+      55000,
+      113250
+    ],
+    "4": [
+      55000,
+      105750
+    ],
+    "5": [
+      55000,
+      120750
+    ],
+    "6": [
+      55000,
+      128250
+    ],
+    "7": [
+      55000,
+      135750
+    ],
+    "8": [
+      135000,
+      128250
+    ],
+    "9": [
+      135000,
+      143250
+    ],
+    "10": [
+      135000,
+      150750
+    ],
+    "11": [
+      135000,
+      135750
+    ],
+    "12": [
+      135000,
+      98250
+    ],
+    "13": [
+      135000,
+      120750
+    ],
+    "14": [
+      135000,
+      113250
+    ],
+    "15": [
+      135000,
+      105750
+    ],
+    "16": [
+      55000,
+      150750
+    ]
+  },
+  "source_note": "Immutable original 16 physical DA1 tip anchors, not an inferred SVG pixel location; horizontal displacement 30 mm, vertical 57 mm from native original composer."
+}
