@@ -12,6 +12,7 @@ import tempfile
 import traceback
 from dataclasses import replace
 from decimal import Decimal
+from importlib import import_module
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -23,11 +24,16 @@ from PIL import Image
 from gost_schematic.core.geometry import Point
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
-from gost_schematic.rendering.ic_electrical_binding import (
-    render_verified_ic_paint_binding,
-)
-from gost_schematic.rendering.ic_rectangular import render_resolved_ic
 from gost_schematic.standards.type_a_font import inspect_type_a_font
+
+# Load reviewed owner production modules at runtime, not via static imports.
+# #99's base intentionally has no unmerged PAINT/IC production package.
+render_verified_ic_paint_binding = import_module(
+    "gost_schematic.rendering.ic_electrical_binding"
+).render_verified_ic_paint_binding
+render_resolved_ic = import_module(
+    "gost_schematic.rendering.ic_rectangular"
+).render_resolved_ic
 
 ROOT = Path(__file__).resolve().parents[1]
 NS = "{http://www.w3.org/2000/svg}"
