@@ -133,8 +133,13 @@ def test_reject_forged_physical_pinref_from_renderer_output():
         ("DD1.P999", clean.pin_anchors[0][1]),
         *clean.pin_anchors[1:],
     ))
-    with pytest.raises(ValueError, match="SHEET_IC_PINREF_POINT_INVENTORY_MISMATCH"):
+    with pytest.raises(ValueError, match="ROUTED_SHEET_CLEAN_DEBUG_PINREF_NET_DRIFT"):
         _render(circuit, graph, parts, symbols, bad, diag)
+    # Even a colluding clean/debug pair with identical forged PinRef data
+    # must fail against the source-owned physical catalogue.
+    forged_pair = replace(diag, pin_anchors=bad.pin_anchors)
+    with pytest.raises(ValueError, match="SHEET_IC_PINREF_POINT_INVENTORY_MISMATCH"):
+        _render(circuit, graph, parts, symbols, bad, forged_pair)
 
 
 def test_debug_layer_is_truly_foreground_after_all_new_wire_and_junction_ink():
