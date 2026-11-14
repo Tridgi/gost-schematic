@@ -220,6 +220,19 @@ def construct_native_paint(font_file: Path):
     ):
         raise AssertionError("FULL_NATIVE_SOURCE_PINREF_DELTA")
     visible = apply_tl494_portrait_profile(source_unit)
+    visible = replace(visible, pins=tuple(
+        replace(
+            pin,
+            manufacturer_electrical_type=(
+                device.pin_map[pin.number].electrical_type.value
+            ),
+        ) for pin in visible.pins
+    ))
+    assert visible.pins == tuple(
+        replace(pin, manufacturer_electrical_type=(
+            device.pin_map[pin.number].electrical_type.value
+        )) for pin in apply_tl494_portrait_profile(source_unit).pins
+    )
     for p in visible.pins:
         expected_alias = alias.labels[int(p.number)-1].schematic_short_label
         if p.visible_label.replace("−", "-") != expected_alias:
@@ -385,6 +398,7 @@ def generate(output: Path, font_file: Path, *, d4: bool = False):
         "tl494_manufacturer": record.device.package.manufacturer,
         "actual_ti_pin3_electrical": record.device.pin_map["3"].electrical_type.value,
         "actual_ti_pin13_electrical": record.device.pin_map["13"].electrical_type.value,
+        "manufacturer_role_is_separate_from_frozen_graphic_port_side": True,
         "font_sha256": style.font_sha256,
         "font_family_source_legacy_alias": (
             "OpenGost Type A TT -> verified OpenGOST type A; "
