@@ -45,7 +45,7 @@ _SOURCE_SHA = "e695c415fdced164b0e0c39c5249d030795a0aa6"
 def produce(
     output: Path, font_file: Path, *,
     owner_sha: str, reference_sha: str, node_cap: int = 25000,
-    priority_trials: int = 2,
+    priority_trials: int = 2, page_format: str = "A3",
 ) -> dict:
     if len(owner_sha) != 40 or len(reference_sha) != 40:
         raise ValueError("COMPACT_UNPINNED_OWNER_SHA")
@@ -127,7 +127,15 @@ def produce(
     if len(annotations) < 39:
         raise ValueError("COMPACT_MEASURED_TEXT_PROTECTION_MISSING")
     occupancy = actual_component_occupied_mm(model, symbols)
-    page = Box(0, 0, *A3_LANDSCAPE_UM)
+    # The actual source component positions are not scaled or moved. A2
+    # extends the available paper without faking A3 parity or revising Nets.
+    supported_formats = {
+        "A3": A3_LANDSCAPE_UM,
+        "A2": (594000, 420000),
+    }
+    if page_format not in supported_formats:
+        raise ValueError("ROUTER_COMPACT_PAPER_UNSUPPORTED")
+    page = Box(0, 0, *supported_formats[page_format])
     # The footprint WIDTH fitting A3 does NOT prove actual anchored
     # positions, text ink, or conductors stay within the physical page.
     # This 10mm margin follows the RECON A3 draft policy, not a generic
@@ -330,7 +338,16 @@ def produce(
             "added": [], "removed": [], "physical_members_changed": [],
         },
         "net_members": net_members,
-        "paper": "A3_LANDSCAPE_420x297mm_DRAFT",
+        "paper": (
+            f"{page_format}_LANDSCAPE_"
+            f"{page.max_x//1000}x{page.max_y//1000}mm_DRAFT"
+        ),
+        "suggested_sheet_if_blocked": (
+            "A2_LANDSCAPE_594x420mm_OR_SOURCE_APPROVED_SPLIT"
+            if page_format == "A3" and not geometric_pass
+            else "SOURCE_APPROVED_SPLIT_OR_MANUAL_LAYOUT_REVIEW"
+            if not geometric_pass else None
+        ),
         "occupied_mm": occupancy,
         "A3_10mm_editorial_frame_violations": frame_errors,
         "A3_10mm_editorial_frame_is_not_normative_claim": True,
@@ -425,11 +442,13 @@ def main() -> None:
     parser.add_argument("--reference-sha", type=str, required=True)
     parser.add_argument("--max-nodes", type=int, default=25000)
     parser.add_argument("--priority-trials", type=int, default=2)
+    parser.add_argument("--page-format", choices=("A3", "A2"), default="A3")
     args = parser.parse_args()
     produce(
         args.output, args.font_file, owner_sha=args.owner_sha,
         reference_sha=args.reference_sha, node_cap=args.max_nodes,
         priority_trials=args.priority_trials,
+        page_format=args.page_format,
     )
 
 
