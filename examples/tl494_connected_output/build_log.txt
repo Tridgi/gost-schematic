@@ -1,2 +1,2 @@
-{"count": 13, "pin_count": 16, "wires": 35, "wire_errors": 3, "erc_errors": 0, "layout": true}
+{"count": 13, "pin_count": 16, "wires": 35, "wire_errors": 0, "erc_errors": 0, "layout": true}
 BUILD_EXIT_CODE=0

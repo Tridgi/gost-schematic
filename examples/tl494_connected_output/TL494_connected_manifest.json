@@ -130,21 +130,5 @@
       "wire_count": 35
     }
   },
-  "wire_diagnostics": [
-    {
-      "code": "WIRE_NET_DISCONNECTED",
-      "message": "Net COMMON does not form one physical wire island",
-      "severity": "error"
-    },
-    {
-      "code": "WIRE_DANGLING_END",
-      "message": "Wire 27 has an unconnected endpoint at 42000,143250",
-      "severity": "error"
-    },
-    {
-      "code": "WIRE_DANGLING_END",
-      "message": "Wire 28 has an unconnected endpoint at 42000,150750",
-      "severity": "error"
-    }
-  ]
+  "wire_diagnostics": []
 }
