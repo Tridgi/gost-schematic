@@ -132,26 +132,6 @@
   },
   "wire_diagnostics": [
     {
-      "code": "WIRE_JUNCTION_DANGLING",
-      "message": "Junction Point(x=42000, y=0) has fewer than two wires and no pin",
-      "severity": "error"
-    },
-    {
-      "code": "WIRE_JUNCTION_DANGLING",
-      "message": "Junction Point(x=150000, y=0) has fewer than two wires and no pin",
-      "severity": "error"
-    },
-    {
-      "code": "WIRE_PIN_CONTACT_UNDECLARED",
-      "message": "R8.1 touches a wire interior without junction",
-      "severity": "error"
-    },
-    {
-      "code": "WIRE_NET_SHORT",
-      "message": "Conductors join distinct nets: COMMON, GATE_DRIVE",
-      "severity": "error"
-    },
-    {
       "code": "WIRE_NET_DISCONNECTED",
       "message": "Net COMMON does not form one physical wire island",
       "severity": "error"
@@ -164,16 +144,6 @@
     {
       "code": "WIRE_DANGLING_END",
       "message": "Wire 28 has an unconnected endpoint at 42000,150750",
-      "severity": "error"
-    },
-    {
-      "code": "WIRE_DANGLING_END",
-      "message": "Wire 29 has an unconnected endpoint at 42000,0",
-      "severity": "error"
-    },
-    {
-      "code": "WIRE_DANGLING_END",
-      "message": "Wire 30 has an unconnected endpoint at 150000,0",
       "severity": "error"
     }
   ]
