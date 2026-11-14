@@ -30,6 +30,30 @@ TL494_EDITORIAL_ALIASES = {
     "FEEDBACK": ("FB", "3"),
     "OUTPUT CTRL": ("OC", "13"),
 }
+# A small, reviewed phrase dictionary, not fuzzy/LMM-generated synonyms.
+# Ambiguous semantics deliberately return the whole catalog family.
+SEMANTIC_QUERY_TERMS = {
+    "capacitor": "capacitor",
+    "конденсатор": "capacitor",
+    "polarized capacitor": "capacitor.polarized",
+    "полярный конденсатор": "capacitor.polarized",
+    "fixed capacitor": "capacitor.fixed",
+    "неполярный конденсатор": "capacitor.fixed",
+    "electrolytic capacitor": "capacitor.electrolytic",
+    "катушка": "inductor",
+    "inductor": "inductor",
+    "катушка с сердечником": "inductor",
+    "ferromagnetic inductor": "inductor.ferromagnetic",
+    "катушка с ферромагнитным сердечником": "inductor.ferromagnetic",
+    "mosfet": "transistor",
+    "n channel enhancement mosfet": "transistor.mosfet_n_enh",
+    "diode": "diode",
+    "диод": "diode",
+    "диод шоттки": "diode.schottky",
+    "schottky diode": "diode.schottky",
+    "fuse": "fuse.general",
+    "предохранитель": "fuse.general",
+}
 TL494_GROUPS = {
     "input_and_L1": ("X1", "L1"),
     "feedback_and_control": (
@@ -89,12 +113,12 @@ def catalog_search(catalog: CatalogResolver, query: str) -> dict[str, Any]:
         char not in "abcdefghijklmnopqrstuvwxyz0123456789._- " for char in word
     ):
         raise ProjectError("INVALID_SEMANTIC_QUERY", "Use a canonical catalog category/ID")
-    if word in catalog.parts:
-        ids = [word]
+    group = SEMANTIC_QUERY_TERMS.get(word, word)
+    if group in catalog.parts:
+        ids = [group]
     else:
-        group = word.replace(" ", ".")
         ids = [key for key in sorted(catalog.parts)
-               if key.startswith(group + ".") or key.split(".")[0] == group]
+               if key.startswith(group + ".")]
     if len(ids) > 64:
         raise ProjectError("CATALOG_QUERY_TOO_BROAD", "Refine to a specific category")
     if not ids:
