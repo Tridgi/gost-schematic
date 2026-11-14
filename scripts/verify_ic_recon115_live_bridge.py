@@ -10,6 +10,7 @@ import argparse
 import json
 import os
 from dataclasses import replace
+from importlib import import_module
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -21,7 +22,6 @@ from examples.tl494_cycle9_circuit_integration import (
     bind_positioned_photo_circuit_from_catalog,
     load_frozen_source,
 )
-from examples.tl494_v5.compact_layout import compact_source_assembly
 from gost_schematic.core.geometry import Point
 from gost_schematic.core.transforms import Transform
 from gost_schematic.electrical.ic import IcTextAngle, resolve_ic_pin_positions
@@ -45,6 +45,11 @@ from gost_schematic.standards.type_a_font import inspect_type_a_font
 
 _NS = "{http://www.w3.org/2000/svg}"
 _FONT_SHA256 = "f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a"
+
+
+def compact_source_assembly():
+    """Load actual pinned #115 only at live integration runtime."""
+    return import_module("examples.tl494_v5.compact_layout").compact_source_assembly()
 
 
 def live_reconstruction():
