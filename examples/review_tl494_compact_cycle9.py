@@ -23,7 +23,7 @@ from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.engines.multiterminal_router import (
     _source_ink_collision,
     _source_ink_obstacles,
-    route_circuit_net_trees,
+    route_circuit_with_order_fallback,
 )
 from gost_schematic.engines.sheet_layout import layout_sheet
 from gost_schematic.rendering.external_wire_sheet import (
@@ -44,6 +44,7 @@ _SOURCE_SHA = "e695c415fdced164b0e0c39c5249d030795a0aa6"
 def produce(
     output: Path, font_file: Path, *,
     owner_sha: str, reference_sha: str, node_cap: int = 25000,
+    priority_trials: int = 2,
 ) -> dict:
     if len(owner_sha) != 40 or len(reference_sha) != 40:
         raise ValueError("COMPACT_UNPINNED_OWNER_SHA")
@@ -126,10 +127,10 @@ def produce(
         raise ValueError("COMPACT_MEASURED_TEXT_PROTECTION_MISSING")
     occupancy = actual_component_occupied_mm(model, symbols)
     page = Box(0, 0, *A3_LANDSCAPE_UM)
-    route = route_circuit_net_trees(
+    route = route_circuit_with_order_fallback(
         circuit, model.parts, symbols, page_box=page,
         annotation_placements=annotations, search_node_cap=node_cap,
-        stop_on_first_failure=False, max_order_restarts=2,
+        max_order_restarts=2, try_priorities=priority_trials,
     )
     model.verify()
     if {
@@ -195,6 +196,16 @@ def produce(
         "source_sha": _SOURCE_SHA,
         "owner_router_sha": owner_sha,
         "reference_recon_sha": reference_sha,
+        "pinned_model_owners": {
+            "ELEKTRIK_IC": "6161e9102cbc0c9e0491fb27ed7a496dc0b274bc",
+            "PAINT": "e3ea841dbe087952577121d5690fe41e9a9a5c83",
+            "YGO2": "edc71a48035723d48a203ae2ea12588701f68ba8",
+            "RECON": reference_sha,
+        },
+        "note": (
+            "Model/PAINT modules pinned to isolated mutually compatible "
+            "source fixture; current owner heads need separate QA re-pin"
+        ),
         "font_sha256": style.font_sha256,
         "source_components": 23,
         "source_nets": 15,
@@ -290,10 +301,12 @@ def main() -> None:
     parser.add_argument("--owner-sha", type=str, required=True)
     parser.add_argument("--reference-sha", type=str, required=True)
     parser.add_argument("--max-nodes", type=int, default=25000)
+    parser.add_argument("--priority-trials", type=int, default=2)
     args = parser.parse_args()
     produce(
         args.output, args.font_file, owner_sha=args.owner_sha,
         reference_sha=args.reference_sha, node_cap=args.max_nodes,
+        priority_trials=args.priority_trials,
     )
 
 
