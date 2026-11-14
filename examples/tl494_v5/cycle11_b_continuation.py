@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+from examples.tl494_v4.model_contract import SOURCE_SHEET_PARTS, frozen_inventory
+from examples.tl494_v5.native_circuit import NET_RENAMES
 from gost_schematic.core.geometry import Box, Point
 from gost_schematic.electrical.netrefs import (
     ContinuationAddressKind,
@@ -60,6 +62,31 @@ def rebind_true_source_b(
         or len(source_project.nets[0].members) != 3
     ):
         raise ValueError("TL494_C11_B_ORIGINAL_PHYSICAL_NET_UNVERIFIED")
+    # The old project itself must be the complete frozen source, not an
+    # arbitrary geometrically plausible two-marker fake.
+    frozen_nets = frozen_inventory()["source_nets"]
+    expected_legacy = {
+        NET_RENAMES.get(name, name): tuple(
+            PinRef(*value.rsplit(".", 1)) for value in members
+        ) for name, members in frozen_nets.items()
+    }
+    actual_legacy = {net.name: net.members for net in source_project.circuit.nets}
+    before_components = {
+        component.reference: component
+        for component in source_project.circuit.components
+    }
+    if (
+        len(source_project.circuit.components) != 23
+        or len(before_components) != 23
+        or set(before_components) != set(SOURCE_SHEET_PARTS)
+        or any(
+            before_components[ref].part_id != entry[0]
+            for ref, entry in SOURCE_SHEET_PARTS.items()
+        )
+        or len(actual_legacy) != 15
+        or actual_legacy != expected_legacy
+    ):
+        raise ValueError("TL494_C11_B_HISTORICAL_23_15_62_SOURCE_NOT_AUTHENTIC")
     real_names = {net.name for net in compact.nets}
     if len(compact.components) != 23 or len(real_names) != 15 or (
         sum(len(net.members) for net in compact.nets) != 62
@@ -80,6 +107,18 @@ def rebind_true_source_b(
         }
     ):
         raise ValueError("TL494_C11_B_NOT_TWO_REAL_SOURCE_MARKERS")
+    original_markers = {
+        "b-X2": ("X2.1", "R5.2", ContinuationDirection.SOURCE),
+        "b-R5": ("R5.2", "X2.1", ContinuationDirection.TARGET),
+    }
+    if any(
+        ep.label != "b"
+        or (ep.address, ep.target_address, ep.direction) != (
+            original_markers[ep.id]
+        )
+        for ep in source_project.endpoints
+    ):
+        raise ValueError("TL494_C11_B_SOURCE_B_MARKER_ADDRESS_DRIFT")
     bindings = {
         item.endpoint_id: item for item in source_project.address_bindings
     }
