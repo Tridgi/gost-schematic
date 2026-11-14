@@ -84,6 +84,58 @@ jobs:
           print("PNG:", actual["project_mcp_png_sha256"])
           print("SVG:", actual["project_mcp_svg_sha256"])
           PY
+      - name: Cold-process original six-part 6/5/16/3 E3 and archive full model
+        shell: bash
+        run: |
+          python -m gost_schematic.agent_project \
+            --workspace output/p11-sixpart-real \
+            import-six-part \
+            --project-id "ab6712af-c35c-4e3c-b734-f30f13486c4d" \
+            --idempotency-key "b2c55af9-b98d-4858-810f-c32cc3105142" \
+            > output/p11-sixpart-created.json
+          REV="$(python -c 'import json; print(json.load(open("output/p11-sixpart-created.json"))["revision"])')"
+          python -m gost_schematic.agent_project \
+            --workspace output/p11-sixpart-real \
+            open ab6712af-c35c-4e3c-b734-f30f13486c4d --revision "$REV" \
+            > output/p11-sixpart-validated.json
+          python -m gost_schematic.agent_project \
+            --workspace output/p11-sixpart-real \
+            render ab6712af-c35c-4e3c-b734-f30f13486c4d "$REV" \
+            --component C3 > output/p11-sixpart-c3-view.json
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          created = json.loads(Path("output/p11-sixpart-created.json").read_text())
+          report = json.loads(Path("output/p11-sixpart-validated.json").read_text())
+          image = json.loads(Path("output/p11-sixpart-c3-view.json").read_text())
+          ident, rev = created["project_id"], created["revision"]
+          assert created["generation"] == report["generation"] == 1
+          assert report["project_id"] == ident
+          assert report["project_revision"] == image["project_revision"] == rev
+          assert (
+              report["component_count"], report["net_count"],
+              report["wire_segment_count"], report["junction_count"]
+          ) == (6, 5, 16, 3)
+          assert not any(item["severity"] == "error"
+                         for item in report["diagnostics"])
+          blob = Path("output/p11-sixpart-real/projects") / ident / (
+              "revisions/" + rev + ".gseproj"
+          )
+          assert hashlib.sha256(b"GSE_PROJECT_V1\x00" + blob.read_bytes()).hexdigest() == rev
+          record = json.loads(blob.read_bytes())
+          assert len(record["wires"]) == 16
+          assert len(record["junctions"]) == 3
+          c3 = next(x for x in record["components"] if x["reference"] == "C3")
+          assert c3["part_id"] == "capacitor.electrolytic"
+          for ext in ("svg", "png"):
+              filename = Path(image["artifacts"][ext])
+              assert filename.is_file()
+              key = "view_svg_sha256" if ext == "svg" else "png_sha256"
+              assert hashlib.sha256(filename.read_bytes()).hexdigest() == image[key]
+          print("Six-part cold E3 proof SHA:", rev)
+          print("Physical Circuit/Net/Wire/Junction counts: 6/5/16/3")
+          PY
       - name: Upload real engineering project and native image evidence
         uses: actions/upload-artifact@v4
         with:
@@ -95,5 +147,10 @@ jobs:
             output/p11-mcp-evidence.json
             output/agent-p11-mcp-smoke/projects/
             output/agent-p11-mcp-smoke/artifacts/
+            output/p11-sixpart-created.json
+            output/p11-sixpart-validated.json
+            output/p11-sixpart-c3-view.json
+            output/p11-sixpart-real/projects/
+            output/p11-sixpart-real/artifacts/
           if-no-files-found: error
           retention-days: 30
