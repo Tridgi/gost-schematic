@@ -15,7 +15,6 @@ from examples.tl494_cycle9_circuit_integration import (
     assert_frozen_photo_topology,
     build_frozen_photo_23,
 )
-from gost_schematic.core.geometry import Point
 from gost_schematic.core.transforms import Transform
 from gost_schematic.electrical.ic import (
     IcKind,
@@ -57,9 +56,9 @@ def typography():
     return inspection.style, PillowTextMeasurer()
 
 
-def _real_paint_source(style, measure, *, pose=Transform()):
+def _real_paint_source(style, measure, *, pose=None):
     binding, source = build_frozen_photo_23()
-    if pose != Transform():
+    if pose is not None and pose != Transform():
         record = IcLibraryRecord(
             binding.record.device, binding.record.specs,
             tuple(replace(p, transform=pose) for p in binding.record.placements),
