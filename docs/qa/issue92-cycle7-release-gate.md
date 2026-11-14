@@ -181,3 +181,65 @@ ESKD #91 подтвердил нормативные **кандидаты**, н�
 | #99 QA | **HOLD / KEEP DRAFT** | независимый mandatory P1 продолжает обнаруживать неудовлетворённые случаи; не выключать gate ради зелёного CI |
 
 Актуальные Actions и artifact ZIP должны быть привязаны в PR #99 к exact QA HEAD, а не к историческим коммитам. **Проверка завершения Cycle 7: NO-GO.**
+
+
+## 12. QA 2 — реальные зелёные квадраты, питание, merged integration (14.11.2026)
+
+**Решение: FAIL P0 / HOLD PR #99.** Независимые тесты добавлены к старым, а не заменили красный PWM-контракт. Production исходники владельцев не редактируются; original PR #93 и #97 копируются в отдельную временную рабочую область GitHub Actions поверх настоящей экспериментальной integration.
+
+### 12.1. Точные источники и артефакты
+
+| Source | Pinned commit | Git blob SHA1 |
+|---|---|---|
+| Merged experimental integration | 1cdd11a3e72e467573d5d660db923b201be21df9 | #94, #96, #98 уже объединены |
+| PAINT #93 | 165017630dc911c3006eda35424d8293498db100 | ic_rectangular.py bff0caf982a14ebd2bacda15b419f9b4bcc16f70; ic_hotspots.py ca7fb0d481e32e66732606b56e315612fbbd9868; ic_electrical_binding.py 126b591875d88afb236b4266290c0fc69145a0ac; original review_ic_cycle7.py 8aab4abb4774e989853fa74697411ca430c61216 |
+| ELEKTRIK IC #97 | 20bd39c794bc375937fe332c173e17955554d1e1 | electrical/ic.py 879ced36cd11c2607bcac1db345bd75cae06e54a; ic_paint_bridge.py edf70d41f2833f8a9504d20632398eb8294ad2ea |
+| ESKD #95 merged | 1e54166304928ba27eaf674d79597e1d527fb3bb | issue-91-deep-source-audit.json 07b2ab53b64fe40fe35750f0a21b52db8ca66c30 |
+
+Оригинальный OpenGost Type A v0.7 SHA256: f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a. Шрифт установлен только в CI, не передаётся в артефактах.
+
+Основной **[независимый run 43585942716](https://github.com/Tridgi/gost-schematic/actions/runs/43585942716)**, настоящие SVG, PNG 300 DPI, чистые PDF и JSON: **[Python 3.12 artifact](https://github.com/Tridgi/gost-schematic/actions/runs/43585942716/artifacts/14109848103)**, **[Python 3.13 artifact](https://github.com/Tridgi/gost-schematic/actions/runs/43585942716/artifacts/14110236899)**.
+
+### 12.2. P0: два противоположных результата на одном настоящем PAINT
+
+**FAIL исходной галереи:** вызов действительного examples.review_ic_cycle7.generate создаёт все 10 диагностических изображений 4/8/14/40/64 выводов в горизонтальной и вертикальной ориентации. Но все десять диагностических SVG имеют **0 editor-connection-targets rect**, хотя физические lead lines существуют. Причина: исходный генератор задаёт review_overlay, но не editor_overlay и не передаёт полный типизированный список. Нельзя объявлять это исправленным лишь потому, что у низкоуровневого renderer есть код рисования зелёных квадратов.
+
+**PASS типизированного рендера:** 10 настоящих синтетических package-records DD/DA по 4/8/14/40/64 выводов, original IcPaintBinding, Circuit.Net, сохранённые PinRef, source physical pin numbers и реальные Type A. Включение editor_overlay на render_verified_ic_paint_binding даёт каждый внешний квадрат. Центр прямоугольника совпадает без допуска 1 мкм с PinRef→Point и с SVG line.x2/y2. Нет подставленных маркеров на текст/рамку, каждый физический PIN соответствует единственному реальному lead и typed original component; отдельные POWER_INPUT сохранены. Разрешённые контакты зелёные, NC — красные и недоступные; это определено IcPinType, не содержимым подписей NC/VCC/GND. Реальный PNG на 300 DPI содержит зелёные пиксели. Clean SVG и PDF после реального PDF-raster на 300 DPI не содержат цветных редакторских маркеров; они не являются ГОСТ-символами. Достоверность конкретного manufacturer pinout остаётся **BLOCKED**: fixture явно synthetic.
+
+**FAIL 4 / 9 negative контрактов** при независимом вызове production verifier, не фиктивном рендере:
+
+| Подмена | Факт |
+|---|---|
+| Несуществующий PinRef.number / неправильный номер | PASS_REJECTED |
+| Неправильный Point +1 мкм | PASS_REJECTED |
+| Повторяющийся physical target | PASS_REJECTED |
+| NC объявлен connectable и зелёным | PASS_REJECTED |
+| Чужой physical component reference | **FAIL_ACCEPTED_UNSAFE** |
+| Пропуск одной real connection point из полного набора | **FAIL_ACCEPTED_UNSAFE** |
+| Подмена net_id на несуществующий в Circuit | **FAIL_ACCEPTED_UNSAFE** |
+| Истинный активный физический pin ложно объявлен NC/disabled | **FAIL_ACCEPTED_UNSAFE** |
+
+Root cause: текущий verify_ic_connection_targets допускает подмножество и не получает достаточную исходную связь Circuit.Net / physical component reference / IcPinType. Требуется полная fail-closed проверка PinRef–Point–Net–роль, без угадывания по тексту или цвету.
+
+### 12.3. P1: ГОСТ и питание
+
+Независимо рассмотрен **оригинальный скан** ГОСТ 2.743-91, печатная с.14 (PDF page index 14), **п.2.3.11, черт.6**. Источник разрешает текстовую информацию о питании на свободном поле схемы, **6а общий блок управления**, **6б питание в одной секции разнесённой ИС**, **6в отдельный контур**. В одном комплекте документации примечание разрешает комбинацию 6а+6б **либо** 6а+6в. §2.1.4 указывает, что нелогические выводы могут располагаться слева или справа. Для аналоговых DA ГОСТ 2.759-82, табл.4, предусмотрены метки U, UD, OV и их документированные варианты. Для всех источников source permission = PASS, но полная реализованная SVG 1:1 нормативная графика = BLOCKED. Экспериментальный вариант **VCC сверху/GND снизу** без собственной подтверждённой фигуры = **BLOCKED**, а не APPROVED.
+
+### 12.4. P2 и P3, release matrix
+
+Обязательный **[PWM red workflow 43564424398](https://github.com/Tridgi/gost-schematic/actions/runs/43564424398)** оставлен без skip/xfail. Новое выполнение **[43585942730](https://github.com/Tridgi/gost-schematic/actions/runs/43585942730)** сохраняет четыре настоящих IC_TEXT_OVERFLOW для PWM_CONTROLLER при D4 90°/270° × mirror false/true и неизменных физических контактах. Повторная проверка нужна после очередных новых SHA PAINT/ELEKTRIK.
+
+Независимый новый P3 PASS на merged experimental integration: **2341 passed, 8 skipped, 3 warnings** и на Python 3.12, и на Python 3.13, каталог **36 DRAFT / 0 APPROVED**, 0 hard audit errors. Проверены 21 статический символ и 15 параметрических катушек, реальные 3 Net у трёхлистовой модели и 6-part read-only ProjectService cold reopen в другом процессе. Multiunit IC persistence всё ещё BLOCKED.
+
+| Проверка | Результат | Решение |
+|---|---|---|
+| P0 штатные 10 owner diagnostic SVG | **FAIL** | HOLD owner gallery |
+| P0 genuine typed PinRef/Point squares + PNG/PDF | **PASS DRAFT** | Только экспериментальный editor |
+| P0 строгость всех отрицательных случаев | **FAIL (4 bypasses)** | HOLD PinRef/Net validation |
+| P1 нормативные основания по черт.6 и U/OV | **PASS SOURCE ONLY** | 1:1 production SVG остаётся BLOCKED |
+| P1 VCC сверху/GND снизу | **BLOCKED EXPERIMENTAL** | Запрещено APPROVED |
+| P2 PWM_CONTROLLER 4 D4 позиции | **FAIL** | Обязательный HOLD |
+| P3 уже объединённые #94/#96/#98 | **PASS DRAFT** | Никаких повторных merge |
+| Общий PR #99 | **NO-GO, KEEP DRAFT** | Не изменять main и production |
+
+Новый независимый скрипт: scripts/qa_cycle7_pin_squares.py. Новый отдельный обязательный workflow: .github/workflows/qa-cycle7-pin-squares.yml. Старые проверки и отчёты сохранены.
