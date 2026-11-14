@@ -48,7 +48,7 @@ def verified_type_a_from_archive(payload: bytes) -> tuple[str, bytes]:
     if len(verified) != 1:
         raise ValueError("QA_GOST_TYPE_A_SHA256_MISMATCH_OR_AMBIGUOUS")
     face, content = verified[0]
-    if content[:4] not in (b"OTTO", b"\\x00\\x01\\x00\\x00", b"true"):
+    if content[:4] not in (b"OTTO", b"\x00\x01\x00\x00", b"true"):
         raise ValueError("QA_GOST_RELEASE_NOT_OPENTYPE")
     return Path(face.filename).name, content
 
