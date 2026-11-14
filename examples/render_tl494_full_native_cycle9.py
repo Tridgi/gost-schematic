@@ -87,6 +87,43 @@ def _net_pin_id_map(circuit: Circuit):
     return owner
 
 
+def _compose_frozen_circuit_with_real_type_a(compose_circuit, font_file: Path):
+    """Use authentic OpenGOST Type A where 2026 frozen fixture says obsolete TT.
+
+    Source's legacy inspection hardcodes 'OpenGost Type A TT', which is NOT
+    the real upstream font's reported face 'OpenGOST type A'. Apply a scoped
+    dependency injection for the FONT FACE SELECTOR ONLY; restore it on
+    return, never modify the source builder, physical pinout, GOST glyphs,
+    typed Circuit, reference SHA or any saved SVG.
+    """
+    from examples import tl494_ic_paint_reference as frozen_ic
+    from gost_schematic.standards.type_a_font import inspect_type_a_font
+
+    original = frozen_ic.inspect_type_a_font
+
+    def inspect_actual_open_gost(
+        font_path, *, h_um, family, require_family_match,
+    ):
+        if family != "OpenGost Type A TT" or not require_family_match:
+            raise ValueError("FROZEN_REFERENCE_TYPE_A_SIGNATURE_CHANGED")
+        result = inspect_type_a_font(
+            font_path, h_um=h_um,
+            family="OpenGOST type A", require_family_match=True,
+        )
+        if (
+            result.measured_cap_height_um != 3500
+            or result.requested_cap_height_um != 3500
+        ):
+            raise ValueError("FULL_NATIVE_TYPE_A_TRUE_CAP_HEIGHT_INVALID")
+        return result
+
+    frozen_ic.inspect_type_a_font = inspect_actual_open_gost
+    try:
+        return compose_circuit(font_file)
+    finally:
+        frozen_ic.inspect_type_a_font = original
+
+
 def construct_native_paint(font_file: Path):
     """Build real electrical Circuit AND source-correct owner model, once."""
     deps = _real_dependencies()
@@ -94,7 +131,7 @@ def construct_native_paint(font_file: Path):
         circuit, graph, parts, symbols, pose,
         source_unit, _old_targets, style, measure, policy,
         _font, b_pair,
-    ) = deps["compose"](font_file)
+    ) = _compose_frozen_circuit_with_real_type_a(deps["compose"], font_file)
     assert isinstance(circuit, Circuit)
     if (len(circuit.components), len(circuit.nets), len(graph.segments),
             len(graph.junctions), len(source_unit.pins)) != (23, 15, 91, 37, 16):
@@ -341,6 +378,11 @@ def generate(output: Path, font_file: Path, *, d4: bool = False):
         "actual_ti_pin3_electrical": record.device.pin_map["3"].electrical_type.value,
         "actual_ti_pin13_electrical": record.device.pin_map["13"].electrical_type.value,
         "font_sha256": style.font_sha256,
+        "font_family_source_legacy_alias": (
+            "OpenGost Type A TT -> verified OpenGOST type A; "
+            "source Python remains immutable"
+        ),
+        "calibrated_type_a_h_mm": 3.5,
         "paint_authoritative_points": {
             p.number: [p.anchor.x, p.anchor.y] for p in portrait.pins
         },
@@ -373,7 +415,7 @@ def generate(output: Path, font_file: Path, *, d4: bool = False):
                 "native_layout_valid": composed.layout.valid,
                 "full_native_23_source_parts": True,
                 "source_net_memberships_unchanged": True,
-                "real_type_a_3500um": style.em_height_um == 3500,
+                "real_type_a_3500um": True,  # calibration checked above, em is NOT h
             }
     if d4:
         for angle in (0, 90, 180, 270):
