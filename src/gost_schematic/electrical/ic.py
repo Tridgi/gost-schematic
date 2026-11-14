@@ -223,6 +223,20 @@ class IcGraphicProfile:
     function_angle: IcTextAngle = IcTextAngle.HORIZONTAL
     other_text_angle: IcTextAngle = IcTextAngle.HORIZONTAL
 
+    @classmethod
+    def experimental_portrait_pwm(cls) -> "IcGraphicProfile":
+        """New E3 editor preset: PORTRAIT + PWM 90°, unchanged LEFT/RIGHT.
+
+        Existing legacy default stays AUTO+0 until a reviewed migration.
+        This profile is an EXPERIMENTAL VIEW, not ESKD print approval.
+        """
+        return cls(
+            port_layout=IcPortLayout.LEFT_RIGHT,
+            body_axis=IcBodyAxis.PORTRAIT,
+            function_angle=IcTextAngle.VERTICAL,
+            other_text_angle=IcTextAngle.HORIZONTAL,
+        )
+
     def __post_init__(self) -> None:
         if not isinstance(self.port_layout, IcPortLayout):
             raise TypeError("IC_PORT_LAYOUT_TYPED_REQUIRED")
