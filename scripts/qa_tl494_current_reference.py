@@ -979,7 +979,11 @@ def current_full_native_23_owner_sheet(font, destination):
           record.device.pin_map["13"].electrical_type.value == "input",
           "CURRENT_PAINT_REAL_IC_SOURCE_ROLE_MISMATCH")
     check(len(catalog) == 13, "CURRENT_PAINT_CATALOG_NOT_REAL_SOURCE")
-    check(style.em_height_um == 3500, "CURRENT_PAINT_TYPE_A_NOT_3500UM")
+    from gost_schematic.standards.type_a_font import inspect_type_a_font
+    inspected = inspect_type_a_font(font, h_um=3500)
+    check(inspected.measured_cap_height_um == 3500 and
+          inspected.style.font_sha256 == style.font_sha256,
+          "CURRENT_PAINT_MEASURED_TYPE_A_CAP_HEIGHT_NOT_3500UM")
 
     results = {}
     for diagnostic in (False, True):
