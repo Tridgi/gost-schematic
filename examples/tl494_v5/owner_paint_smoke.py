@@ -6,12 +6,11 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-from importlib import import_module
 import json
+from importlib import import_module
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-from gost_schematic.electrical.ic import resolve_ic_pin_positions
 from examples.tl494_v5.native_circuit import assemble_native_v5
 from gost_schematic.core.units import format_mm
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
@@ -34,6 +33,9 @@ def generate_da1_only(output: Path, font_file: Path) -> dict:
     propose_ic_paint_binding = import_module(
         "gost_schematic.electrical.ic_paint_bridge"
     ).propose_ic_paint_binding
+    resolve_ic_pin_positions = import_module(
+        "gost_schematic.electrical.ic"
+    ).resolve_ic_pin_positions
     render_resolved_ic = import_module(
         "gost_schematic.rendering.ic_rectangular"
     ).render_resolved_ic
