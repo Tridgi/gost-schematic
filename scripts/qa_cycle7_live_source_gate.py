@@ -30,21 +30,22 @@ from gost_schematic.validation.conductor_checks import inspect_conductor_topolog
 ROOT = Path(__file__).resolve().parents[1]
 SVG = "{http://www.w3.org/2000/svg}"
 OWNER = {
-    "paint": "03f758ef095913f286c609a715ab76a90180b053",
-    "ic": "9458c1948ff7b0214af1a693bb73426ae46c8bad",
-    "net": "3262cb598cf1451e3b785e02d7f920e4b7d1d135",
-    "catalog": "47b0589ffa048c0801b6b8604582efd62a63acc9",
-    "project": "343ea6f9c032f803ead851afcd77174bb834a524",
+    "paint": "165017630dc911c3006eda35424d8293498db100",
+    "ic": "e65ee3f220084ee32ef8f71a48274ce39e933bf2",
+    "net": "8ab0778a67c2e56be4be9cd0297e454413f56028",
+    "catalog": "37f7c5e58938db1d5bcf308ff04e740356afc0e4",
+    "project": "a58ecd388a7cf99fe6cc2f7340d39403b0fa9abf",
     "norm_merge": "1e54166304928ba27eaf674d79597e1d527fb3bb",
 }
 SOURCE_BLOBS = {
-    "src/gost_schematic/rendering/ic_rectangular.py": "4f5f6906278fa1ddebafcdcdf9f1bbc94fd0a6c8",
-    "src/gost_schematic/electrical/ic.py": "742718c59650a1f97364808c9005ce54800c04c9",
-    "src/gost_schematic/electrical/netrefs.py": "69041ca955392c58044643175b21c8e8127bdef8",
-    "src/gost_schematic/electrical/ic_paint_bridge.py": "74d2f00bad6af842797ee20e6805be264cfacbb2",
-    "src/gost_schematic/agent_project/service.py": "80f48c9cc7e2d11a4ed2204d249aaaa9fc163b62",
+    "src/gost_schematic/rendering/ic_rectangular.py": "bff0caf982a14ebd2bacda15b419f9b4bcc16f70",
+    "src/gost_schematic/electrical/ic.py": "879ced36cd11c2607bcac1db345bd75cae06e54a",
+    "src/gost_schematic/electrical/netrefs.py": "729a53b4ea19d68b0be1372e745863a11eb83d07",
+    "src/gost_schematic/electrical/ic_paint_bridge.py": "99148380fe6b44c0458cb519dbc1d461de886e7c",
+    "src/gost_schematic/agent_project/service.py": "6d20a3020e30c114d9e9931e5e4762b1c3cb9489",
     "docs/standards/issue-91-deep-source-audit.json": "07b2ab53b64fe40fe35750f0a21b52db8ca66c30",
     "docs/catalog/electronic-cycle7-second-batch-cards.json": "19e0b0ad1c8d88819bf8a6e46511c386b30f7899",
+    "docs/catalog/issue89-acceptance-matrix.json": "0c16ba218f64437aa202ec56a7e30b02fdc73866",
 }
 NAMES = (
     "resistor.variable", "resistor.trimmer", "fuse.general",
@@ -117,6 +118,14 @@ def catalog_gallery(output):
     first = json.loads((ROOT / "docs/catalog/electronic-cycle7-first-batch-cards.json").read_text())
     cards = {row["id"]: row for row in (*first["cards"], *review["cards"])}
     require(set(cards) == set(NAMES), "CATALOG_15_CARD_ID_MISMATCH")
+    acceptance = json.loads((ROOT / "docs/catalog/issue89-acceptance-matrix.json").read_text())
+    require(acceptance["release"].startswith("BLOCKED"), "OWNER_89_RELEASE_FALSE")
+    require({x["id"] for x in acceptance["cards"]} == set(NAMES),
+            "OWNER_89_INDEPENDENT_MATRIX_INCOMPLETE")
+    require(all(x["release"] == "DRAFT_NOT_APPROVED" and
+                x["figure_overlay"].startswith("BLOCKED") and
+                x["real_device_pinmap"].startswith("BLOCKED")
+                for x in acceptance["cards"]), "OWNER_89_NORMATIVE_FALSE_PASS")
     files, result = {}, {}
     roles = {"resistor": ("A", "B", "W"), "fuse": ("A", "B"),
              "transistor": None, "diode": ("A", "K")}
@@ -321,6 +330,36 @@ def ic_text_gallery(output, font):
                                           record.placements) ==
                 resolve_ic_pin_positions(revised.device, revised.specs,
                                           revised.placements), "IC_TEXT_REVISION_PINREF_MOVED")
+        # #97's real typed cross-owner adapter must not modify physical nets.
+        from gost_schematic.electrical.ic_paint_bridge import (
+            bind_ic_paint_text_only,
+            propose_ic_paint_binding,
+        )
+        from gost_schematic.electrical.ic import resolve_ic_pin_positions
+        source_binding = propose_ic_paint_binding(record, face.style, measurer)
+        before_points = resolve_ic_pin_positions(
+            source_binding.record.device, source_binding.record.specs,
+            source_binding.record.placements,
+        )
+        proposed = revise_ic_text_orientation(
+            source_binding.record, IcTextAngle.VERTICAL,
+        )
+        rebound = bind_ic_paint_text_only(source_binding, proposed)
+        rebound.verify_endpoints()
+        assert source_binding.record.device == rebound.record.device
+        assert all(a.body == b.body for a, b in
+                   zip(source_binding.record.specs, rebound.record.specs, strict=True))
+        after_points = resolve_ic_pin_positions(
+            rebound.record.device, rebound.record.specs,
+            rebound.record.placements,
+        )
+        require(before_points == after_points, "IC_TYPED_BRIDGE_MOVED_PHYSICAL_PINREF")
+        assert all(a.pin_anchors == b.pin_anchors for a, b in zip(
+            (paint.render_resolved_ic(v, face.style, measurer)
+             for v in source_binding.views),
+            (paint.render_resolved_ic(v, face.style, measurer)
+             for v in rebound.views), strict=True
+        ))
     return {"cases": len(cases), "real_font_sha256": face.style.font_sha256,
             "files": imgs, "visual_default": "EXPLICIT_PORTRAIT_V2_ONLY",
             "global_default": "BLOCKED_LEGACY_HORIZONTAL"}

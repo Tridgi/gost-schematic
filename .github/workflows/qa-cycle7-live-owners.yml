@@ -24,31 +24,31 @@ jobs:
       - name: Checkout exact PAINT #93
         uses: actions/checkout@v4
         with:
-          ref: 03f758ef095913f286c609a715ab76a90180b053
+          ref: 165017630dc911c3006eda35424d8293498db100
           path: _qa_sources/paint
           persist-credentials: false
       - name: Checkout exact ELEKTRIK IC #97
         uses: actions/checkout@v4
         with:
-          ref: 9458c1948ff7b0214af1a693bb73426ae46c8bad
+          ref: e65ee3f220084ee32ef8f71a48274ce39e933bf2
           path: _qa_sources/ic
           persist-credentials: false
       - name: Checkout exact ELEKTRIK NET #98
         uses: actions/checkout@v4
         with:
-          ref: 3262cb598cf1451e3b785e02d7f920e4b7d1d135
+          ref: 8ab0778a67c2e56be4be9cd0297e454413f56028
           path: _qa_sources/net
           persist-credentials: false
       - name: Checkout 15 real YGO #94 pairs
         uses: actions/checkout@v4
         with:
-          ref: 47b0589ffa048c0801b6b8604582efd62a63acc9
+          ref: 37f7c5e58938db1d5bcf308ff04e740356afc0e4
           path: _qa_sources/catalog
           persist-credentials: false
       - name: Checkout real MCP #96 service
         uses: actions/checkout@v4
         with:
-          ref: 343ea6f9c032f803ead851afcd77174bb834a524
+          ref: a58ecd388a7cf99fe6cc2f7340d39403b0fa9abf
           path: _qa_sources/project
           persist-credentials: false
       - name: Checkout ESKD #95 merged official normative sources
@@ -61,11 +61,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -C _qa_sources/paint rev-parse HEAD)" = 03f758ef095913f286c609a715ab76a90180b053
-          test "$(git -C _qa_sources/ic rev-parse HEAD)" = 9458c1948ff7b0214af1a693bb73426ae46c8bad
-          test "$(git -C _qa_sources/net rev-parse HEAD)" = 3262cb598cf1451e3b785e02d7f920e4b7d1d135
-          test "$(git -C _qa_sources/catalog rev-parse HEAD)" = 47b0589ffa048c0801b6b8604582efd62a63acc9
-          test "$(git -C _qa_sources/project rev-parse HEAD)" = 343ea6f9c032f803ead851afcd77174bb834a524
+          test "$(git -C _qa_sources/paint rev-parse HEAD)" = 165017630dc911c3006eda35424d8293498db100
+          test "$(git -C _qa_sources/ic rev-parse HEAD)" = e65ee3f220084ee32ef8f71a48274ce39e933bf2
+          test "$(git -C _qa_sources/net rev-parse HEAD)" = 8ab0778a67c2e56be4be9cd0297e454413f56028
+          test "$(git -C _qa_sources/catalog rev-parse HEAD)" = 37f7c5e58938db1d5bcf308ff04e740356afc0e4
+          test "$(git -C _qa_sources/project rev-parse HEAD)" = a58ecd388a7cf99fe6cc2f7340d39403b0fa9abf
           test "$(git -C _qa_sources/standards rev-parse HEAD)" = 1e54166304928ba27eaf674d79597e1d527fb3bb
           python - <<'PY'
           from pathlib import Path
@@ -103,7 +103,8 @@ jobs:
           copy("ic", "examples/review_ic_cycle7.py", "examples")
           copy("net", "examples/review_net_continuations_cycle7.py", "examples")
           for name in ("electronic-cycle7-first-batch-cards.json",
-                       "electronic-cycle7-second-batch-cards.json"):
+                       "electronic-cycle7-second-batch-cards.json",
+                       "issue89-acceptance-matrix.json"):
               copy("catalog", "docs/catalog/" + name, "docs/catalog")
           for name in ("issue-91-deep-source-audit.json",
                        "issue-91-cycle7-electronics-cards.json"):
