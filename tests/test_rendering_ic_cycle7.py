@@ -828,7 +828,6 @@ def test_hotspot_follows_d4_external_anchor_not_body_boundary(angle, mirror):
     from decimal import Decimal
 
     from examples.review_ic_cycle7 import _declared_synthetic_targets
-
     from gost_schematic.rendering.ic_rectangular import IcTypographyProfile
 
     original, _ = specimen(
