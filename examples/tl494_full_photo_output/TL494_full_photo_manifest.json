@@ -320,6 +320,7 @@
   "not_electrically_verified": true,
   "photo_component_count": 23,
   "photo_net_count": 15,
+  "pwm_function_rotation_degrees": 90,
   "source_a": [
     "X1.1",
     "DA1.12",
