@@ -56,6 +56,13 @@ def produce(
     if source["source_sha"] != _SOURCE_SHA:
         raise ValueError("COMPACT_ORIGINAL_TL494_SOURCE_DRIFT")
     circuit = model.circuit
+    source_ugos = tuple(model.source_UGO_bindings)
+    if (
+        len(source_ugos) != 13
+        or "VT1" not in {item.reference for item in source_ugos}
+        or any(item.symbol.status.value != "draft" for item in source_ugos)
+    ):
+        raise ValueError("COMPACT_REQUIRES_13_REAL_SOURCE_DRAFT_UGOS")
     if (len(circuit.components), len(circuit.nets)) != (23, 15):
         raise ValueError("COMPACT_SOURCE_23_15_DRIFT")
     net_members = {
@@ -373,6 +380,20 @@ def produce(
         "paper_10mm_editorial_frame_violations": frame_errors,
         "A3_10mm_editorial_frame_is_not_normative_claim": True,
         "real_PAINT_leads": 16,
+        "real_source_UGO_draft_count": len(source_ugos),
+        "actual_source_UGO_authority": {
+            binding.reference: {
+                "symbol_id": binding.symbol.identifier,
+                "figure": binding.figure_reference,
+                "status": binding.symbol.status.value,
+                "geometry_circles": sum(
+                    type(g).__name__ == "Circle"
+                    for g in binding.symbol.graphics
+                ),
+            }
+            for binding in source_ugos
+        },
+        "VT1_source_UGO_normative_approved": False,
         "DA1_on_sheet_svg_ink": "real-PAINT-16-tips-and-bottom-up-PWM",
         "editor_targets": {
             "physical_tip_count": 16,
