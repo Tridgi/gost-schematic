@@ -18,15 +18,15 @@ from xml.etree import ElementTree as ET
 import cairosvg
 import fitz
 import numpy as np
-from gost_schematic.rendering.ic_electrical_binding import (
-    render_verified_ic_paint_binding,
-)
-from gost_schematic.rendering.ic_rectangular import render_resolved_ic
 from PIL import Image
 
 from gost_schematic.core.geometry import Point
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
+from gost_schematic.rendering.ic_electrical_binding import (
+    render_verified_ic_paint_binding,
+)
+from gost_schematic.rendering.ic_rectangular import render_resolved_ic
 from gost_schematic.standards.type_a_font import inspect_type_a_font
 
 ROOT = Path(__file__).resolve().parents[1]
