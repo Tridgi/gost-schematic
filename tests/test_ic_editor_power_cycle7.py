@@ -345,12 +345,11 @@ def test_real_editor_rejects_1um_wrong_ref_wrong_unit_duplicates_and_fake_net(co
 @pytest.mark.parametrize("rotation", (0, 90, 180, 270))
 @pytest.mark.parametrize("mirrored", (False, True))
 def test_long_pwm_controller_shared_body_two_angles_all_d4(rotation, mirrored):
-    from gost_schematic.rendering.ic_rectangular import render_resolved_ic
-
     from gost_schematic.electrical.ic_paint_bridge import (
         bind_ic_paint_text_only,
         propose_ic_paint_binding,
     )
+    from gost_schematic.rendering.ic_rectangular import render_resolved_ic
 
     style, measurer = _actual_renderer()
     source = _mixed_record(8)
