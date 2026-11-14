@@ -340,3 +340,23 @@ Root cause: текущий verify_ic_connection_targets допускает по�
 | P5 полная схема release | **NO-GO / KEEP PR #99 Draft** |
 
 Общая интеграция и main/production других агентов не модифицировались; merge не проводился.
+
+
+### 13.7. Независимая приёмка именно текущих owner fixes, без оправдания старого листа
+
+**Точный итоговый прогон:** [QA92 native 23part / current owner recheck 43608870116](https://github.com/Tridgi/gost-schematic/actions/runs/43608870116), Python **3.12 и 3.13 одинаково**:
+
+- **PASS P2_CURRENT_OWNER_IC_STANDALONE:** настоящий `tl494cn_device()` из #97 имеет 16/16 datasheet-backed физических контактов, `DA1.3 FEEDBACK=INPUT`, `DA1.13 OUTPUT CTRL=INPUT`, `FB/OC` как обратимые metadata aliases с максимумом 6 видимых символов. Физические `PinRef→Point` не изменились; негативные проверки pin3=OUTPUT, подмены компонента, семисимвольного или дублирующегося псевдонима строго отклоняются. **Это отдельная текущая owner библиотека, не редактирование e695.**
+- **PASS P2_CURRENT_OWNER_PAINT_ON_ACTUAL_DA1:** настоящий `apply_tl494_portrait_profile()` из #93 запущен на физическом DA1 именно **из 23-компонентного e695**, не новом синтетическом образце. Временная paint-only view отображает `PWM` снизу вверх, aliases `FB/OC`, все 16 маркеров, сохраняет actual body/ports/PinRef points. В артефактах имеется реальный owner render `actual_current_owner_on_23part_DA1_zoom.svg`.
+- Но исходный `TL494_named_photo_clean.svg` остаётся **FAIL**: в нём пока pin3 OUTPUT, видимые FEEDBACK/OUTPUT CTRL и PWM в неправильном направлении. Нельзя на основании успеха отдельного подменённого вида считать собранную схему исправленной.
+- **PASS** повторно: P0 23/15/16/91; P1 все 13 поимённо обозначенных групп правильных символов и 48 D4, P3 2.999/3.000/1 µm negative.
+- **FAIL** повторно: P2 исходный лист, P3 5 долгих параллельных недопустимых расстояний + 2 близких endpoint R5/R6 + 4 настоящих text-ink crossing.
+- **BLOCKED** оригинальное фото: unavailable. Реально сформированы clean/diagnostic PNG 300 DPI и четыре thumbnail с произвольным zoom без модификации авторитетной геометрии.
+
+[Артефакты 3.12](https://github.com/Tridgi/gost-schematic/actions/runs/43608870116/artifacts/14118523578), [артефакты 3.13](https://github.com/Tridgi/gost-schematic/actions/runs/43608870116/artifacts/14119203632). Реальный каталог `36 DRAFT/0 APPROVED`. Соседняя изолированная QA CI с уже существующими тестами: [43608870111](https://github.com/Tridgi/gost-schematic/actions/runs/43608870111) — **2472 passed, 8 skipped, 3 warnings**, Python 3.12 и 3.13, wheel packaging 21 static+15 parametric, Ruff PASS.
+
+**Контроль OEM компонентов:** Infineon IRFZ44NPbF/TO-220 manufacturer pinout `1 Gate, 2 Drain+tab, 3 Source` (<https://www.infineon.com/assets/row/public/documents/24/49/infineon-irfz44n-datasheet-en.pdf>); STMicroelectronics 1N5822 — настоящий axial 40V 3A **Schottky** (<https://www.st.com/resource/en/datasheet/1n5822.pdf>). Эти datasheets подтверждают тип деталей и назначение внешних выводов, **не являются 1:1 утверждением об оформлении печатных УГО по ГОСТ 2.730-73**.
+
+**Issue #109, COMMON/0V/PE:** в реальной Circuit есть `COMMON` с настоящим `DA1.7`; не найдено нормированного typed ground marker в 23-part исходном рисунке. Status `BLOCKED_MISSING_VIEW_MARKER` — это не разрешение создать фантазийный `PE`, chassis или дополнительный Net. Нужна отдельная нормативная работа #109.
+
+**Необходимое действие владельца исходной реконструкции:** собрать новый **реальный** 23-компонентный SVG с правильным #97 `IcDeviceDefinition` и #93 `TL494_PORTRAIT_V3`, не трогая 15 Net/номера и не маскируя нарушения трассировки. Затем повторить P0–P5 на новом однозначном source SHA и приложить настоящую фотографию; лишь после этого возможна дальнейшая приёмка. До того **PR #99 KEEP DRAFT**.
