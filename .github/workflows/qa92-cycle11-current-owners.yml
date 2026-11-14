@@ -154,9 +154,10 @@ jobs:
           python -m pip install -e "./_qa_sources/recon[dev,mcp,fonts]" cairosvg pillow
           ruff check scripts/qa_tl494_next_route_gate.py \
             scripts/qa_tl494_cycle10_candidate_gate.py \
-            scripts/qa_tl494_current_editor_cycle10.py
-          python _qa_sources/recon/scripts/install_opengost_type_a.py \
-            --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a \
+            scripts/qa_tl494_current_editor_cycle10.py \
+            scripts/qa_tl494_cycle11_native_300dpi.py \
+            scripts/qa_install_opengost_release.py
+          python scripts/qa_install_opengost_release.py \
             --directory "$HOME/.local/share/fonts"
           fc-cache -f
           FONT="$(find "$HOME/.local/share/fonts" -iname '*TypeA*.ttf' -type f | head -1)"
