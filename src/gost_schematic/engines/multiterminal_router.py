@@ -394,6 +394,11 @@ def route_multi_terminal_net(
         raise ValueError("ROUTE_INVALID_STROKE_OR_GRID")
     pins = net.members
     locations = _pin_catalog(circuit, net, parts, symbols)
+    if any(not page_box.includes(point) for point, _ in locations.values()):
+        return NetTreePreview(
+            net.name, pins, (), (), 0, 0, 0,
+            ("ROUTE_PHYSICAL_PIN_OUTSIDE_SELECTED_PAGE",), (),
+        )
     occupied = occupied_graph if occupied_graph is not None else _empty_graph()
     for wire in occupied.segments:
         if wire.net_name == net.name:
