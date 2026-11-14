@@ -5,10 +5,9 @@ from xml.etree import ElementTree as ET
 import pytest
 
 from examples.review_tl494_cycle7 import specimen
-from gost_schematic.core.geometry import Point
+from gost_schematic.core.geometry import Box, Point
 from gost_schematic.core.transforms import Transform
 from gost_schematic.model.annotations import MeasuredText, TextStyle
-from gost_schematic.core.geometry import Box
 from gost_schematic.rendering.ic_rectangular import (
     IcFunctionReading,
     IcTypographyProfile,
