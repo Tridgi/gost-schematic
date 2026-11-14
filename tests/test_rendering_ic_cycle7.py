@@ -489,3 +489,31 @@ def test_editor_overlay_never_replaces_real_clean_pin_geometry():
     unit,_=vertical_specimen(4)
     with pytest.raises(ValueError,match="IC_EDITOR_OVERLAY_REQUIRES_EXPLICIT"):
         render_resolved_ic(unit,STYLE,FixedInk(),editor_overlay=True)
+
+
+def test_vertical_64_pin_a4_page_zone_fails_instead_of_auto_scaling():
+    unit, _ = vertical_specimen(64)
+    with pytest.raises(ValueError, match="IC_PAGE_OVERFLOW"):
+        render_resolved_ic(
+            unit, STYLE, FixedInk(),
+            page_bounds=Box(20000, 5000, 205000, 237000),
+        )
+    result = render_resolved_ic(
+        unit, STYLE, FixedInk(),
+        page_bounds=Box(20000, 5000, 312000, 200000),
+    )
+    assert len(result.pin_anchors) == 64
+    assert result.proposed.width_um > 200000
+
+
+def test_vertical_function_rotated_glyph_boxes_stay_on_frame_clearance():
+    # Deterministic stub tests text-run geometry and invariants; real Type A
+    # per-codepoint raster proof is exercised in independent gallery workflow.
+    unit, _ = vertical_specimen(14)
+    result = render_resolved_ic(unit, STYLE, FixedInk())
+    function = next(x for x in result.ink if x.kind == "function")
+    strokes = [x for x in result.ink if x.kind in (
+        "outer-stroke", "field-divider", "zone-divider", "pin-lead",
+    )]
+    assert all(not function.box.expanded(1000).overlaps(x.box) for x in strokes)
+    assert result.proposed.vertical_field_heights_um[1] > 0
