@@ -10,7 +10,12 @@ from heapq import heappop, heappush
 from itertools import pairwise
 
 from gost_schematic.core.geometry import (
-    SIDE_VECTORS, Box, Line, Point, StyledLine, primitive_stroked_bounds,
+    SIDE_VECTORS,
+    Box,
+    Line,
+    Point,
+    StyledLine,
+    primitive_stroked_bounds,
 )
 from gost_schematic.core.intersections import segment_intersects_box
 from gost_schematic.engines.orthogonal_route_planner import _resolve_real_pin
