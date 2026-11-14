@@ -11,6 +11,7 @@ on:
       - "examples/render_tl494_full_native_cycle9.py"
       - "src/gost_schematic/rendering/native_sheet_ink_audit.py"
       - "scripts/emit_tl494_native_print_crops.py"
+      - "scripts/verify_full_native_23_raster.py"
       - "tests/test_full_native_cycle9.py"
       - ".github/workflows/tl494-full-native-cycle9.yml"
   workflow_dispatch:
@@ -86,6 +87,7 @@ jobs:
             examples/render_tl494_full_native_cycle9.py \
             src/gost_schematic/rendering/native_sheet_ink_audit.py \
             scripts/emit_tl494_native_print_crops.py \
+            scripts/verify_full_native_23_raster.py \
             tests/test_full_native_cycle9.py
           pytest -q tests/test_full_native_cycle9.py
       - name: Render COMPLETE new native 23/15/16/91 before-after from source Circuit
@@ -140,6 +142,8 @@ jobs:
           print("PASS full 23 native sheet actual SVG and PNG 300DPI",
                 len(proof["variants"]),"mode variants")
           PY
+          python -m scripts.verify_full_native_23_raster \
+            --folder output/tl494-full-native-cycle9
       - uses: actions/upload-artifact@v4
         with:
           name: tl494-FULL-native-23-TypeA-${{ matrix.python-version }}
