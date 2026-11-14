@@ -1,0 +1,94 @@
+name: AI TL494 source-pinned catalog and preflight MCP
+
+on:
+  pull_request:
+    paths:
+      - "src/gost_schematic/agent_project/design_assistant.py"
+      - "src/gost_schematic/agent_project/service.py"
+      - "src/gost_schematic/mcp_server/saved_projects.py"
+      - "tests/agent_project/test_tl494_catalog_preflight*.py"
+      - "examples/agent_tl494_catalog_preflight_mcp.py"
+      - "docs/ai-integration/tl494-catalog-and-preflight-issue107.md"
+      - ".github/workflows/ai-tl494-catalog-preflight.yml"
+  workflow_dispatch:
+
+jobs:
+  actual-readonly-mcp:
+    name: Real catalog MCP + TL494 print preflight (${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install actual source catalog and real MCP transport
+        run: python -m pip install -e ".[dev,mcp]"
+      - name: Ruff
+        run: python -m ruff check .
+      - name: Actual stdio ClientSession and engineering unit tests
+        run: |
+          python -m pytest -q \
+            tests/agent_project/test_tl494_catalog_preflight.py \
+            tests/agent_project/test_tl494_catalog_preflight_stdio.py \
+            tests/agent_project/test_mcp_saved_stdio.py
+      - name: Real native MCP sample gallery and six-part print preflight
+        shell: bash
+        run: |
+          mkdir -p output
+          python -m examples.agent_tl494_catalog_preflight_mcp \
+            --workspace output/tl494-catalog-evidence \
+            --project-id "24d49302-621b-46a6-9505-8af5be248ab8" \
+            --idempotency-key "c623dd5a-a14a-4a1a-a85b-2cead3c86f63" \
+            > output/tl494-catalog-client-proof.json
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          report = json.loads(Path("output/tl494-catalog-client-proof.json").read_text())
+          assert report["transport"] == "real stdio MCP ClientSession"
+          assert report["codex_cli_used"] is False
+          assert report["python_bootstrap_not_mcp_write"] is True
+          assert len(report["tl494_profile"]["required_variants"]) == 12
+          assert report["tl494_profile"]["tl494_device_catalog"] == "NOT_IN_INSTALLED_P11_CATALOG"
+          assert report["tl494_aliases"]["FEEDBACK"]["display_alias"] == "FB"
+          assert report["tl494_aliases"]["OUTPUT CTRL"]["display_alias"] == "OC"
+          assert report["saved_sixpart_preflight"]["print_ready"] is False
+          assert report["misprofiled_sixpart_tl494_preflight"]["print_ready"] is False
+          refs = {d["code"] for d in
+                  report["misprofiled_sixpart_tl494_preflight"]["diagnostics"]}
+          assert "TL494_UGO_VARIANT_MISMATCH" in refs
+          assert "TL494_REQUIRED_COMPONENT_MISSING" in refs
+          for part, hashes in report["selected_physical_symbol_variants"].items():
+              for ext in ("svg", "png"):
+                  path = Path("output/tl494-catalog-evidence/client-evidence") / (part+"."+ext)
+                  assert path.is_file()
+                  assert hashlib.sha256(path.read_bytes()).hexdigest() == hashes[ext+"_sha256"]
+          for ext in ("svg", "png"):
+              path = Path("output/tl494-catalog-evidence/client-evidence") / (
+                  "saved-c3-diagnostic."+ext
+              )
+              assert path.exists()
+              assert hashlib.sha256(path.read_bytes()).hexdigest() == report[
+                  "project_diagnostic_"+ext+"_sha256"
+              ]
+          print("MCP project SHA:", report["project_revision"])
+          print("Source-locked variants:", sorted(report["selected_physical_symbol_variants"]))
+          PY
+      - name: Build wheel and verify package payload
+        run: |
+          python -m pip wheel . --no-deps --wheel-dir dist
+          python scripts/verify_wheel_payload.py dist
+      - name: Archive actual UGO glyphs and project diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-tl494-catalog-evidence-python-${{ matrix.python }}
+          path: |
+            output/tl494-catalog-client-proof.json
+            output/tl494-catalog-evidence/client-evidence/
+            output/tl494-catalog-evidence/projects/
+          if-no-files-found: error
+          retention-days: 30
