@@ -217,7 +217,9 @@ def make_paint_editor_targets(
             net_id=c.net_id,
             reason=c.reason,
         ) for c in source)
-        checked = verify_ic_connection_targets(view.pins, targets)
+        checked = verify_ic_connection_targets(
+            view.pins, targets, expected_component_ref=source[0].component_ref,
+        )
         if len(checked) != len(view.pins) or {
             t.pin_id for t in checked
         } != {p.pin_id for p in view.pins}:
