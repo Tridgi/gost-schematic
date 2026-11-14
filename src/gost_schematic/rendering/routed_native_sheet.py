@@ -183,7 +183,13 @@ def render_routed_native_sheet(
     electric_error_codes = sorted(
         {i.code for i in electrical if i.severity.value == "error"}
     )
-    blockers = []
+    blockers = list(_tl494_source_print_proof_blockers(
+        len(circuit.components), len(circuit.nets),
+        sum(len(net.members) for net in circuit.nets),
+        route_preview=route_preview,
+        source_continuation_project=source_continuation_project,
+        physical_page_box=physical_page_box,
+    ))
     if electric_error_codes:
         blockers.extend(f"ELECTRICAL:{code}" for code in electric_error_codes)
     if route_preview is not None and not route_preview.complete:
@@ -275,12 +281,6 @@ def render_routed_native_sheet(
         )
         if not page_fits:
             blockers.append("A3_TRUE_1_TO_1_ARTWORK_OUTSIDE_PAPER")
-        if (
-            expected_component_count == 23
-            and expected_net_count == 15
-            and source_continuation_project is None
-        ):
-            blockers.append("A3_SOURCE_CONTINUATION_BINDING_UNRESOLVED")
     full = (
         not blockers
         and drc is not None
@@ -373,6 +373,35 @@ def render_routed_native_sheet(
     return RoutedSheetRender(result_views[0], result_views[1],
                              fingerprint, manifest, full)
 
+
+
+
+def _tl494_source_print_proof_blockers(
+    component_count: int,
+    net_count: int,
+    net_memberships: int,
+    *,
+    route_preview: object | None,
+    source_continuation_project: object | None,
+    physical_page_box: Box | None,
+) -> tuple[str, ...]:
+    """Fail closed on three mandatory independent full-source print proofs.
+
+    A 23/15/62 model is not print-approved merely because all SVG segments
+    happen to draw. It still needs verified new automatic routing, the source
+    b-continuation rebinding, and a bounded physical print page. Tiny generic
+    fixtures remain useful without falsely certifying the TL494 source.
+    """
+    if (component_count, net_count, net_memberships) != (23, 15, 62):
+        return ()
+    blockers = []
+    if route_preview is None:
+        blockers.append("TL494_NEW_ROUTER_OWNER_PROVENANCE_MISSING")
+    if source_continuation_project is None:
+        blockers.append("A3_SOURCE_CONTINUATION_BINDING_UNRESOLVED")
+    if physical_page_box is None:
+        blockers.append("TL494_PHYSICAL_ONE_TO_ONE_PAGE_NOT_VERIFIED")
+    return tuple(blockers)
 
 
 def _is_real_branch(segments, point) -> bool:
