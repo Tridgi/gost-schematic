@@ -91,8 +91,8 @@ class IcFunctionReading(str, Enum):
         if self is IcFunctionReading.HORIZONTAL:
             return IcTextAngle.HORIZONTAL
         if self is IcFunctionReading.BOTTOM_TO_TOP:
-            # PAINT uses Transform(90): x basis goes (0,-1) on SVG y-down.
-            return IcTextAngle.VERTICAL
+            # PAINT Transform(270) sends the word x-basis toward SVG -Y.
+            return IcTextAngle.BOTTOM_TO_TOP
         raise ValueError("IC_FUNCTION_WRONG_READING_DIRECTION_BLOCKED")
 
 
