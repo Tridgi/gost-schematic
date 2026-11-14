@@ -255,24 +255,68 @@ def _visibility_path(
     """
     if not goals:
         return (), "ROUTE_NO_TREE_TARGET"
-    targets = frozenset(goals)
-    x_set = {page.min_x, page.max_x, source.x}
-    y_set = {page.min_y, page.max_y, source.y}
-    x_set.update(p.x for p in goals)
-    y_set.update(p.y for p in goals)
+    # Source's long COMMON and GATE_DRIVE require a SPARSE visibility grid.
+    # A full Cartesian grid from every source wire endpoint can exceed 25k
+    # nodes after just 5 nets. Keep closest genuine branch targets first;
+    # retaining all pre-existing physical obstacles in edge validity checks.
+    reachable_goals = tuple(sorted(
+        set(goals),
+        key=lambda p: (
+            abs(p.x - source.x) + abs(p.y - source.y), p.x, p.y,
+        ),
+    ))[:24]
+    targets = frozenset(reachable_goals)
+    x0 = min(source.x, *(p.x for p in reachable_goals))
+    x1 = max(source.x, *(p.x for p in reachable_goals))
+    y0 = min(source.y, *(p.y for p in reachable_goals))
+    y1 = max(source.y, *(p.y for p in reachable_goals))
+    detour_window = max(40000, min(
+        160000, max(x1 - x0, y1 - y0) // 2,
+    ))
+    window = Box(
+        max(page.min_x, x0 - detour_window),
+        max(page.min_y, y0 - detour_window),
+        min(page.max_x, x1 + detour_window),
+        min(page.max_y, y1 + detour_window),
+    )
+    x_set = {window.min_x, window.max_x, source.x}
+    y_set = {window.min_y, window.max_y, source.y}
+    x_set.update(p.x for p in reachable_goals)
+    y_set.update(p.y for p in reachable_goals)
+
+    def overlaps_window(box: Box, *, cushion: int = 3300) -> bool:
+        return (
+            box.max_x + cushion >= window.min_x
+            and box.min_x - cushion <= window.max_x
+            and box.max_y + cushion >= window.min_y
+            and box.min_y - cushion <= window.max_y
+        )
+
     for box in boxes:
-        x_set.update((box.min_x - 1, box.max_x + 1))
-        y_set.update((box.min_y - 1, box.max_y + 1))
+        if overlaps_window(box):
+            x_set.update((box.min_x - 1, box.max_x + 1))
+            y_set.update((box.min_y - 1, box.max_y + 1))
     for old in (*occupied.segments, *tree):
-        for p in (old.start, old.end):
-            x_set.update((p.x - 3300, p.x, p.x + 3300))
-            y_set.update((p.y - 3300, p.y, p.y + 3300))
-    # Include enough direct orthogonal bends to reach terminals from pin tips.
-    for point in (source, *goals):
+        bounds = Box(
+            min(old.start.x, old.end.x), min(old.start.y, old.end.y),
+            max(old.start.x, old.end.x) + 1,
+            max(old.start.y, old.end.y) + 1,
+        )
+        if not overlaps_window(bounds):
+            continue
+        if old.start.y == old.end.y:
+            x_set.update((old.start.x - 3300, old.start.x,
+                          old.end.x, old.end.x + 3300))
+            y_set.update((old.start.y - 3300, old.start.y + 3300))
+        else:
+            x_set.update((old.start.x - 3300, old.start.x + 3300))
+            y_set.update((old.start.y - 3300, old.start.y,
+                          old.end.y, old.end.y + 3300))
+    for point in (source, *reachable_goals):
         x_set.update((point.x - grid_um, point.x + grid_um))
         y_set.update((point.y - grid_um, point.y + grid_um))
-    xs = sorted(x for x in x_set if page.min_x <= x <= page.max_x)
-    ys = sorted(y for y in y_set if page.min_y <= y <= page.max_y)
+    xs = sorted(x for x in x_set if window.min_x <= x <= window.max_x)
+    ys = sorted(y for y in y_set if window.min_y <= y <= window.max_y)
     if len(xs) * len(ys) > search_node_cap:
         return (), "ROUTE_GRID_TOO_DENSE"
     x_idx = {x: i for i, x in enumerate(xs)}
