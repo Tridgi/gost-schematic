@@ -127,7 +127,6 @@ def test_malformed_semantic_input_no_injection_or_guessing():
     for raw in inputs:
         with pytest.raises(ProjectError, match="INVALID_SEMANTIC_QUERY"):
             catalog_search(cat, raw)
-    assert catalog_search(cat, "непонятная деталь")["status"] if False else True
     assert catalog_search(cat, "unknownphysicalcomponent")[
         "status"] == "NO_EXACT_CATALOG_MATCH"
 
