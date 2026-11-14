@@ -1,0 +1,1393 @@
+{
+  "schema_version": 1,
+  "epic": 107,
+  "children": [
+    108,
+    109,
+    110
+  ],
+  "review_date": "2026-11-14",
+  "branch": "parallel/standards-tl494-ugo-ground-cycle8",
+  "base_sha": "afd359cf2c63337471e746e5ff7f399b76394612",
+  "reference_head": "e695c415fdced164b0e0c39c5249d030795a0aa6",
+  "reference_manifest_blob": "b2375feb43ad18b8a8e5a515bfc007d169b26908",
+  "cards": [
+    {
+      "id": "diode.general",
+      "source": {
+        "standard": "ГОСТ 2.730-73",
+        "edition": "2002 reprint, Amendments 1–4",
+        "url": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf"
+      },
+      "source_clauses": "§6, table 5 position 1",
+      "source_figure_url": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf#page=3",
+      "source_printed_page_verified": true,
+      "status_source_shape": "PASS",
+      "status_full_1to1": "BLOCKED",
+      "approval": "DRAFT",
+      "real_part_certificate": false,
+      "owner_source_path": "src/gost_schematic/catalog/symbols/diodes/general.json",
+      "owner_blob_sha": "d632f3bafde7ab794cb72e8af9cc67ba33960c0e",
+      "owner_exact_project_geometry": {
+        "rectangles": [],
+        "lines": [
+          [
+            [
+              -10,
+              0
+            ],
+            [
+              -2.5,
+              0
+            ]
+          ],
+          [
+            [
+              2.5,
+              0
+            ],
+            [
+              10,
+              0
+            ]
+          ],
+          [
+            [
+              -2.5,
+              -3
+            ],
+            [
+              2.5,
+              0
+            ]
+          ],
+          [
+            [
+              2.5,
+              0
+            ],
+            [
+              -2.5,
+              3
+            ]
+          ],
+          [
+            [
+              -2.5,
+              3
+            ],
+            [
+              -2.5,
+              -3
+            ]
+          ],
+          [
+            [
+              2.5,
+              -3.3
+            ],
+            [
+              2.5,
+              3.3
+            ]
+          ]
+        ],
+        "circles": []
+      },
+      "owner_profile": null,
+      "owner_line_width_mm": 0.3,
+      "positive_test": "Triangle/diode barrier with A,K physical roles preserved",
+      "negative_test": "swap A/K or treat semiconductor barrier as a new conductor",
+      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED",
+      "gallery": "issue107-catalog-12-draft-source-gallery.svg"
+    },
+    {
+      "id": "diode.schottky",
+      "source": {
+        "standard": "ГОСТ 2.730-73",
+        "edition": "2002 reprint, Amendments 1–4",
+        "url": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf"
+      },
+      "source_clauses": "§5 table 4 position 9; §6 table 5 position 9",
+      "source_figure_url": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf#page=4",
+      "source_printed_page_verified": true,
+      "status_source_shape": "PASS",
+      "status_full_1to1": "BLOCKED",
+      "approval": "DRAFT",
+      "real_part_certificate": false,
+      "owner_source_path": "src/gost_schematic/catalog/symbols/diodes/schottky.json",
+      "owner_blob_sha": "38cf0cd20b111719cb2b9b3147397346e455b231",
+      "owner_exact_project_geometry": {
+        "rectangles": [],
+        "lines": [
+          [
+            [
+              -10,
+              0
+            ],
+            [
+              -2.5,
+              0
+            ]
+          ],
+          [
+            [
+              2.5,
+              0
+            ],
+            [
+              10,
+              0
+            ]
+          ],
+          [
+            [
+              -2.5,
+              -3
+            ],
+            [
+              2.5,
+              0
+            ]
+          ],
+          [
+            [
+              2.5,
+              0
+            ],
+            [
+              -2.5,
+              3
+            ]
+          ],
+          [
+            [
+              -2.5,
+              3
+            ],
+            [
+              -2.5,
+              -3
+            ]
+          ],
+          [
+            [
+              2.5,
+              -3.3
+            ],
+            [
+              2.5,
+              3.3
+            ]
+          ],
+          [
+            [
+              2.5,
+              -3.3
+            ],
+            [
+              4.2,
+              -3.3
+            ]
+          ],
+          [
+            [
+              4.2,
+              -3.3
+            ],
+            [
+              4.2,
+              -1.8
+            ]
+          ],
+          [
+            [
+              2.5,
+              3.3
+            ],
+            [
+              0.8,
+              3.3
+            ]
+          ],
+          [
+            [
+              0.8,
+              3.3
+            ],
+            [
+              0.8,
+              4.8
+            ]
+          ]
+        ],
+        "circles": []
+      },
+      "owner_profile": null,
+      "owner_line_width_mm": 0.3,
+      "positive_test": "Cathode RIGHT with upper hook to RIGHT and lower hook to LEFT, A LEFT K RIGHT; under R90 A TOP K BOTTOM; exact source vector transform",
+      "negative_test": "symmetrize two hooks or rewire cathode upper/lower under R90",
+      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED",
+      "signature_mm": {
+        "cathode_x": 2.5,
+        "upper_hook": [
+          [
+            2.5,
+            -3.3
+          ],
+          [
+            4.2,
+            -3.3
+          ],
+          [
+            4.2,
+            -1.8
+          ]
+        ],
+        "lower_hook": [
+          [
+            2.5,
+            3.3
+          ],
+          [
+            0.8,
+            3.3
+          ],
+          [
+            0.8,
+            4.8
+          ]
+        ],
+        "anode_mm": [
+          -10,
+          0
+        ],
+        "cathode_pin_mm": [
+          10,
+          0
+        ],
+        "R90_clockwise_screen": {
+          "A": [
+            0,
+            -10
+          ],
+          "K": [
+            0,
+            10
+          ],
+          "upper_hook": [
+            [
+              3.3,
+              2.5
+            ],
+            [
+              3.3,
+              4.2
+            ],
+            [
+              1.8,
+              4.2
+            ]
+          ],
+          "lower_hook": [
+            [
+              -3.3,
+              2.5
+            ],
+            [
+              -3.3,
+              0.8
+            ],
+            [
+              -4.8,
+              0.8
+            ]
+          ]
+        }
+      },
+      "gallery": "issue107-schottky-d4-owner-1to1.svg",
+      "confidence": "shape orientation verified in original PDF p.4; exact absolute mm original absent"
+    },
+    {
+      "id": "transistor.bjt_npn",
+      "source": {
+        "standard": "ГОСТ 2.730-73",
+        "edition": "2002 reprint, Amendments 1–4",
+        "url": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf"
+      },
+      "source_clauses": "§2 table 1 emitter components; §8 table 7",
+      "source_figure_url": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf#page=5",
+      "source_printed_page_verified": true,
+      "status_source_shape": "BLOCKED",
+      "status_full_1to1": "BLOCKED",
+      "approval": "DRAFT",
+      "real_part_certificate": false,
+      "owner_source_path": "src/gost_schematic/catalog/symbols/transistors/bjt_npn.json",
+      "owner_blob_sha": "219b123fbdcd87964e91df37db8ca4420744059a",
+      "owner_exact_project_geometry": {
+        "rectangles": [],
+        "lines": [
+          [
+            [
+              -11,
+              0
+            ],
+            [
+              -2,
+              0
+            ]
+          ],
+          [
+            [
+              9,
+              -10
+            ],
+            [
+              -2,
+              -2
+            ]
+          ],
+          [
+            [
+              -2,
+              2
+            ],
+            [
+              9,
+              10
+            ]
+          ],
+          [
+            [
+              -2,
+              -3
+            ],
+            [
+              -2,
+              3
+            ]
+          ],
+          [
+            [
+              4.25,
+              7.5
+            ],
+            [
+              6.25,
+              8
+            ]
+          ],
+          [
+            [
+              5,
+              6.4
+            ],
+            [
+              6.25,
+              8
+            ]
+          ]
+        ],
+        "circles": []
+      },
+      "owner_profile": null,
+      "owner_line_width_mm": 0.3,
+      "positive_test": "Outward emitter arrow is correct NPN schematic characteristic",
+      "negative_test": "assert 3-pin source is verbatim table7/1б (original has a shield contact)",
+      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED",
+      "symbol_is_source_derived": true
+    },
+    {
+      "id": "transistor.bjt_pnp",
+      "source": {
+        "standard": "ГОСТ 2.730-73",
+        "edition": "2002 reprint, Amendments 1–4",
+        "url": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf"
+      },
+      "source_clauses": "§8 table 7 position 1а and note",
+      "source_figure_url": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf#page=5",
+      "source_printed_page_verified": true,
+      "status_source_shape": "PASS",
+      "status_full_1to1": "BLOCKED",
+      "approval": "DRAFT",
+      "real_part_certificate": false,
+      "owner_source_path": "src/gost_schematic/catalog/symbols/transistors/bjt_pnp.json",
+      "owner_blob_sha": "9243b2b4d5018102fab41129b497e89bfa7c139d",
+      "owner_exact_project_geometry": {
+        "rectangles": [],
+        "lines": [
+          [
+            [
+              -11,
+              0
+            ],
+            [
+              -2,
+              0
+            ]
+          ],
+          [
+            [
+              9,
+              -10
+            ],
+            [
+              -2,
+              -2
+            ]
+          ],
+          [
+            [
+              -2,
+              2
+            ],
+            [
+              9,
+              10
+            ]
+          ],
+          [
+            [
+              -2,
+              -3
+            ],
+            [
+              -2,
+              3
+            ]
+          ],
+          [
+            [
+              1,
+              2.7
+            ],
+            [
+              -0.625,
+              3
+            ]
+          ],
+          [
+            [
+              0.3,
+              4.4
+            ],
+            [
+              -0.625,
+              3
+            ]
+          ]
+        ],
+        "circles": []
+      },
+      "owner_profile": null,
+      "owner_line_width_mm": 0.3,
+      "positive_test": "PNP emitter arrow points toward base; circle may be optional schematic outline",
+      "negative_test": "draw NPN arrow, double C/E, equate circle to TO-220 footprint",
+      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED"
+    },
+    {
+      "id": "transistor.mosfet_n_enh",
+      "source": {
+        "standard": "ГОСТ 2.730-73",
+        "edition": "2002 reprint, Amendments 1–4",
+        "url": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf"
+      },
+      "source_clauses": "§2 table 1 positions 4/9/10; §9 table 8 position 3б and 4",
+      "source_figure_url": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf#page=6",
+      "source_printed_page_verified": true,
+      "status_source_shape": "PASS",
+      "status_full_1to1": "BLOCKED",
+      "approval": "DRAFT",
+      "real_part_certificate": false,
+      "owner_source_path": "src/gost_schematic/catalog/symbols/transistors/mosfet_n_enh.json",
+      "owner_blob_sha": "0ca4a854d72ba314aca897b067477c2aca621ab5",
+      "owner_exact_project_geometry": {
+        "rectangles": [],
+        "lines": [
+          [
+            [
+              -11,
+              0
+            ],
+            [
+              -4,
+              0
+            ]
+          ],
+          [
+            [
+              0,
+              -18
+            ],
+            [
+              0,
+              -5
+            ]
+          ],
+          [
+            [
+              0,
+              5
+            ],
+            [
+              0,
+              11
+            ]
+          ],
+          [
+            [
+              -4,
+              -3
+            ],
+            [
+              -4,
+              3
+            ]
+          ],
+          [
+            [
+              0,
+              -5
+            ],
+            [
+              0,
+              -1
+            ]
+          ],
+          [
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              5
+            ]
+          ],
+          [
+            [
+              4,
+              0
+            ],
+            [
+              1,
+              0
+            ]
+          ],
+          [
+            [
+              2.4,
+              -1
+            ],
+            [
+              1,
+              0
+            ]
+          ],
+          [
+            [
+              2.4,
+              1
+            ],
+            [
+              1,
+              0
+            ]
+          ]
+        ],
+        "circles": []
+      },
+      "owner_profile": null,
+      "owner_line_width_mm": 0.3,
+      "positive_test": "N enhancement isolated gate separated from channel; D,G,S actual pin identity, no fabricated B",
+      "negative_test": "draw gate touching channel, wrong N arrow, invent G-to-S electrical dot on intersection",
+      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED",
+      "comment": "Source-photo extra internal junction dot must be independently reconciled with exact source row, not inserted as default conductor topology."
+    },
+    {
+      "id": "capacitor.fixed",
+      "source": {
+        "standard": "ГОСТ 2.728-74",
+        "edition": "2002 reprint, Amendments 1–2",
+        "url": "https://helpeng.ru/public/normdoc/eskd/gost_2.728-74.pdf"
+      },
+      "source_clauses": "§5 table 4 position 1",
+      "source_figure_url": "https://helpeng.ru/public/normdoc/eskd/gost_2.728-74.pdf#page=7",
+      "source_printed_page_verified": true,
+      "status_source_shape": "PASS",
+      "status_full_1to1": "BLOCKED",
+      "approval": "DRAFT",
+      "real_part_certificate": false,
+      "owner_source_path": "src/gost_schematic/catalog/symbols/capacitors/fixed.json",
+      "owner_blob_sha": "3e173b1cd52120f4cedd26e0f43348864119ec47",
+      "owner_exact_project_geometry": {
+        "rectangles": [],
+        "lines": [
+          [
+            [
+              -8,
+              0
+            ],
+            [
+              -0.75,
+              0
+            ]
+          ],
+          [
+            [
+              0.75,
+              0
+            ],
+            [
+              8,
+              0
+            ]
+          ],
+          [
+            [
+              -0.75,
+              -4
+            ],
+            [
+              -0.75,
+              4
+            ]
+          ],
+          [
+            [
+              0.75,
+              -4
+            ],
+            [
+              0.75,
+              4
+            ]
+          ]
+        ],
+        "circles": []
+      },
+      "owner_profile": null,
+      "owner_line_width_mm": 0.3,
+      "positive_test": "Two thin plates without + as C4/C7",
+      "negative_test": "use polar thick plates or silently add a positive pin",
+      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED"
+    },
+    {
+      "id": "capacitor.polarized",
+      "source": {
+        "standard": "ГОСТ 2.728-74",
+        "edition": "2002 reprint, Amendments 1–2",
+        "url": "https://helpeng.ru/public/normdoc/eskd/gost_2.728-74.pdf"
+      },
+      "source_clauses": "§5 table 4 position 1 note",
+      "source_figure_url": "https://helpeng.ru/public/normdoc/eskd/gost_2.728-74.pdf#page=7",
+      "source_printed_page_verified": true,
+      "status_source_shape": "PASS",
+      "status_full_1to1": "BLOCKED",
+      "approval": "DRAFT",
+      "real_part_certificate": false,
+      "owner_source_path": "src/gost_schematic/catalog/symbols/capacitors/polarized.json",
+      "owner_blob_sha": "ba14a82d52696f8ffb8f89344c39b153374ffaa0",
+      "owner_exact_project_geometry": {
+        "rectangles": [],
+        "lines": [
+          [
+            [
+              -8,
+              0
+            ],
+            [
+              -0.75,
+              0
+            ]
+          ],
+          [
+            [
+              0.75,
+              0
+            ],
+            [
+              8,
+              0
+            ]
+          ],
+          [
+            [
+              -0.75,
+              -4
+            ],
+            [
+              -0.75,
+              4
+            ]
+          ],
+          [
+            [
+              0.75,
+              -4
+            ],
+            [
+              0.75,
+              4
+            ]
+          ],
+          [
+            [
+              -3.5,
+              -4
+            ],
+            [
+              -2.5,
+              -4
+            ]
+          ],
+          [
+            [
+              -3,
+              -4.5
+            ],
+            [
+              -3,
+              -3.5
+            ]
+          ]
+        ],
+        "circles": []
+      },
+      "owner_profile": null,
+      "owner_line_width_mm": 0.3,
+      "positive_test": "Two THIN capacitor plates with + near designated positive electrode; C1/C2/C3/C5/C6 source-selected",
+      "negative_test": "replace with thick capacitor electrolytic by default or reverse + after rotation",
+      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED",
+      "photo_instances": [
+        "C1",
+        "C2",
+        "C3",
+        "C5",
+        "C6"
+      ],
+      "photo_selection": "DRAFT_SOURCE_PHOTO_AND_BOM",
+      "polarity_electrical_gate": "BLOCKED_VOLTAGE_UNVERIFIED"
+    },
+    {
+      "id": "capacitor.electrolytic",
+      "source": {
+        "standard": "ГОСТ 2.728-74",
+        "edition": "2002 reprint, Amendments 1–2",
+        "url": "https://helpeng.ru/public/normdoc/eskd/gost_2.728-74.pdf"
+      },
+      "source_clauses": "§5 table 4 position 2а and note",
+      "source_figure_url": "https://helpeng.ru/public/normdoc/eskd/gost_2.728-74.pdf#page=7",
+      "source_printed_page_verified": true,
+      "status_source_shape": "PASS",
+      "status_full_1to1": "BLOCKED",
+      "approval": "DRAFT",
+      "real_part_certificate": false,
+      "owner_source_path": "src/gost_schematic/catalog/symbols/capacitors/electrolytic.json",
+      "owner_blob_sha": "8094edd30765c502c3474d75724e543da6bcb211",
+      "owner_exact_project_geometry": {
+        "rectangles": [],
+        "lines": [
+          [
+            [
+              -9,
+              0
+            ],
+            [
+              -2.25,
+              0
+            ]
+          ],
+          [
+            [
+              2.25,
+              0
+            ],
+            [
+              9,
+              0
+            ]
+          ],
+          [
+            [
+              -2.25,
+              -4
+            ],
+            [
+              -0.75,
+              -4
+            ]
+          ],
+          [
+            [
+              -0.75,
+              -4
+            ],
+            [
+              -0.75,
+              4
+            ]
+          ],
+          [
+            [
+              -0.75,
+              4
+            ],
+            [
+              -2.25,
+              4
+            ]
+          ],
+          [
+            [
+              -2.25,
+              4
+            ],
+            [
+              -2.25,
+              -4
+            ]
+          ],
+          [
+            [
+              0.75,
+              -4
+            ],
+            [
+              2.25,
+              -4
+            ]
+          ],
+          [
+            [
+              2.25,
+              -4
+            ],
+            [
+              2.25,
+              4
+            ]
+          ],
+          [
+            [
+              2.25,
+              4
+            ],
+            [
+              0.75,
+              4
+            ]
+          ],
+          [
+            [
+              0.75,
+              4
+            ],
+            [
+              0.75,
+              -4
+            ]
+          ],
+          [
+            [
+              -4,
+              -4.5
+            ],
+            [
+              -3,
+              -4.5
+            ]
+          ],
+          [
+            [
+              -3.5,
+              -5
+            ],
+            [
+              -3.5,
+              -4
+            ]
+          ]
+        ],
+        "circles": []
+      },
+      "owner_profile": null,
+      "owner_line_width_mm": 0.3,
+      "positive_test": "Separate thick-outline plate electrolytic with + when informative",
+      "negative_test": "claim this is mandatory for every electrolytic and ignore thin polarized source image",
+      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED",
+      "selected_for_TL494_reference": false,
+      "source_optional_plus": "can be omitted only if not misleading"
+    },
+    {
+      "id": "resistor.variable",
+      "source": {
+        "standard": "ГОСТ 2.728-74",
+        "edition": "2002 reprint, Amendments 1–2",
+        "url": "https://helpeng.ru/public/normdoc/eskd/gost_2.728-74.pdf"
+      },
+      "source_clauses": "§2 table 1 position 4 and notes",
+      "source_figure_url": "https://helpeng.ru/public/normdoc/eskd/gost_2.728-74.pdf#page=2",
+      "source_printed_page_verified": true,
+      "status_source_shape": "PASS",
+      "status_full_1to1": "BLOCKED",
+      "approval": "DRAFT",
+      "real_part_certificate": false,
+      "owner_source_path": "src/gost_schematic/catalog/symbols/resistors/variable.json",
+      "owner_blob_sha": "3f0d4c2f2a8ff0a85cf33f80e25862cf168d43db",
+      "owner_exact_project_geometry": {
+        "rectangles": [
+          [
+            -5,
+            -2,
+            5,
+            2
+          ]
+        ],
+        "lines": [
+          [
+            [
+              -9,
+              0
+            ],
+            [
+              -5,
+              0
+            ]
+          ],
+          [
+            [
+              5,
+              0
+            ],
+            [
+              9,
+              0
+            ]
+          ],
+          [
+            [
+              0,
+              -9
+            ],
+            [
+              0,
+              -2
+            ]
+          ],
+          [
+            [
+              -1,
+              -3.5
+            ],
+            [
+              0,
+              -2
+            ]
+          ],
+          [
+            [
+              1,
+              -3.5
+            ],
+            [
+              0,
+              -2
+            ]
+          ]
+        ],
+        "circles": []
+      },
+      "owner_profile": null,
+      "owner_line_width_mm": 0.3,
+      "positive_test": "W slider arrow represents movable PHYSICAL contact; permitted omit unused graphic lead",
+      "negative_test": "delete physical third pin because omitted in schematic",
+      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED"
+    },
+    {
+      "id": "inductor.ferromagnetic",
+      "source": {
+        "standard": "ГОСТ 2.723-68",
+        "edition": "2010 official collection, Amendments 1–3 and corrections",
+        "url": "https://docs.guap.ru/regdocs/stands/gost_2-723-68_ver-2010.pdf"
+      },
+      "source_clauses": "§5 table 1 positions 1 and 2а; §6 table 2 position 8",
+      "source_figure_url": "https://docs.guap.ru/regdocs/stands/gost_2-723-68_ver-2010.pdf#page=5",
+      "source_printed_page_verified": true,
+      "status_source_shape": "PASS",
+      "status_full_1to1": "BLOCKED",
+      "approval": "DRAFT",
+      "real_part_certificate": false,
+      "owner_source_path": "src/gost_schematic/catalog/inductors/inductor.ferromagnetic.json",
+      "owner_blob_sha": "d1030f7b79778b3ecb69135db2a6c59c10b86c66",
+      "owner_exact_project_geometry": null,
+      "owner_profile": {
+        "schema_version": 1,
+        "id": "inductor.ferromagnetic",
+        "revision": 1,
+        "turns": 4,
+        "radius_mm": "2",
+        "lead_mm": "4",
+        "line_width_mm": "0.3",
+        "core": "ferromagnetic",
+        "normative_relation": "table_1_composition",
+        "normative_basis": "ГОСТ 2.723-68, табл. 1, пп. 1 и 2а — обмотка + ферромагнитный магнитопровод"
+      },
+      "owner_line_width_mm": 0.3,
+      "positive_test": "Coil with ferromagnetic SOLID bar above all turns, two real terminals, no fake tap",
+      "negative_test": "default to air-core or dashed bar despite source L1/L2 ferromagnetic",
+      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED",
+      "photo_instances": [
+        "L1",
+        "L2"
+      ],
+      "pitch_mm_editorial": 4
+    },
+    {
+      "id": "choke.ferromagnetic",
+      "source": {
+        "standard": "ГОСТ 2.723-68",
+        "edition": "2010 official collection, Amendments 1–3 and corrections",
+        "url": "https://docs.guap.ru/regdocs/stands/gost_2-723-68_ver-2010.pdf"
+      },
+      "source_clauses": "§6 table 2 position 8",
+      "source_figure_url": "https://docs.guap.ru/regdocs/stands/gost_2-723-68_ver-2010.pdf#page=5",
+      "source_printed_page_verified": true,
+      "status_source_shape": "PASS",
+      "status_full_1to1": "BLOCKED",
+      "approval": "DRAFT",
+      "real_part_certificate": false,
+      "owner_source_path": "src/gost_schematic/catalog/inductors/choke.ferromagnetic.json",
+      "owner_blob_sha": "f893514eb8282524927ef8e3c1f50902ef8c1b4b",
+      "owner_exact_project_geometry": null,
+      "owner_profile": {
+        "schema_version": 1,
+        "id": "choke.ferromagnetic",
+        "revision": 1,
+        "turns": 4,
+        "radius_mm": "2",
+        "lead_mm": "4",
+        "line_width_mm": "0.3",
+        "core": "ferromagnetic",
+        "normative_relation": "table_2_example",
+        "normative_basis": "ГОСТ 2.723-68, табл. 2, п. 8 — дроссель с ферромагнитным магнитопроводом"
+      },
+      "owner_line_width_mm": 0.3,
+      "positive_test": "Solid core bar over coil as choke (source-specific variant)",
+      "negative_test": "draw magnetodielectric dashed line or no core",
+      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED"
+    },
+    {
+      "id": "inductor.magnetodielectric",
+      "source": {
+        "standard": "ГОСТ 2.723-68",
+        "edition": "2010 official collection, Amendments 1–3 and corrections",
+        "url": "https://docs.guap.ru/regdocs/stands/gost_2-723-68_ver-2010.pdf"
+      },
+      "source_clauses": "§5 table 1 position 2в; §6 table 2 position 5",
+      "source_figure_url": "https://docs.guap.ru/regdocs/stands/gost_2-723-68_ver-2010.pdf#page=4",
+      "source_printed_page_verified": true,
+      "status_source_shape": "PASS",
+      "status_full_1to1": "BLOCKED",
+      "approval": "DRAFT",
+      "real_part_certificate": false,
+      "owner_source_path": "src/gost_schematic/catalog/inductors/inductor.magnetodielectric.json",
+      "owner_blob_sha": "421fa3c2fe75f943d0c0837d6a45696b09e5b4fc",
+      "owner_exact_project_geometry": null,
+      "owner_profile": {
+        "schema_version": 1,
+        "id": "inductor.magnetodielectric",
+        "revision": 1,
+        "turns": 4,
+        "radius_mm": "2",
+        "lead_mm": "4",
+        "line_width_mm": "0.3",
+        "core": "magnetodielectric",
+        "normative_relation": "table_2_example",
+        "normative_basis": "ГОСТ 2.723-68, табл. 2, п. 5 — магнитодиэлектрический сердечник"
+      },
+      "owner_line_width_mm": 0.3,
+      "positive_test": "Magnetodielectric line is DASHED and must NOT be swapped for ferromagnetic solid",
+      "negative_test": "use this for TL494 L1/L2 if photo has solid magnetic core",
+      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED"
+    },
+    {
+      "id": "net-marker.common",
+      "source": {
+        "standard": "ГОСТ 2.721-74",
+        "edition": "2008 reprint, current changes by 2008",
+        "url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf"
+      },
+      "source_clauses": "Table 6б position 1 versus a common named net",
+      "source_figure_url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf#page=10",
+      "source_printed_page_verified": true,
+      "status_source_shape": "BLOCKED",
+      "status_full_1to1": "BLOCKED",
+      "approval": "DRAFT",
+      "real_part_certificate": false,
+      "owner_source_path": null,
+      "owner_blob_sha": null,
+      "owner_exact_project_geometry": null,
+      "owner_profile": null,
+      "owner_line_width_mm": null,
+      "positive_test": "marker points to named COMMON Net without creating PE/chassis",
+      "negative_test": "GND graphics auto-create a new net or assert common is bonded to earth",
+      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED",
+      "source_subject": "Circuit common / 0V reference",
+      "requires_existing_net": true,
+      "marker_may_create_physical_part": false,
+      "editorial_marker_profile": true
+    },
+    {
+      "id": "net-marker.earth",
+      "source": {
+        "standard": "ГОСТ 2.721-74",
+        "edition": "2008 reprint, current changes by 2008",
+        "url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf"
+      },
+      "source_clauses": "Table 6б position 1",
+      "source_figure_url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf#page=10",
+      "source_printed_page_verified": true,
+      "status_source_shape": "PASS",
+      "status_full_1to1": "BLOCKED",
+      "approval": "DRAFT",
+      "real_part_certificate": false,
+      "owner_source_path": null,
+      "owner_blob_sha": null,
+      "owner_exact_project_geometry": null,
+      "owner_profile": null,
+      "owner_line_width_mm": null,
+      "positive_test": "earth connection established by circuit documentation and drawn in table6б row1 profile",
+      "negative_test": "call every 0V COM net a true Earth",
+      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED",
+      "source_subject": "Earth / ground in general",
+      "requires_existing_net": true,
+      "marker_may_create_physical_part": false,
+      "editorial_marker_profile": true
+    },
+    {
+      "id": "net-marker.protective_earth",
+      "source": {
+        "standard": "ГОСТ 2.721-74",
+        "edition": "2008 reprint, current changes by 2008",
+        "url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf"
+      },
+      "source_clauses": "Table 6б position 3",
+      "source_figure_url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf#page=10",
+      "source_printed_page_verified": true,
+      "status_source_shape": "PASS",
+      "status_full_1to1": "BLOCKED",
+      "approval": "DRAFT",
+      "real_part_certificate": false,
+      "owner_source_path": null,
+      "owner_blob_sha": null,
+      "owner_exact_project_geometry": null,
+      "owner_profile": null,
+      "owner_line_width_mm": null,
+      "positive_test": "PE flag on the actual protective conductor with validated power bonding",
+      "negative_test": "GND reference attached to PE for a nice icon",
+      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED",
+      "source_subject": "protective earth (PE) enclosing circle",
+      "requires_existing_net": true,
+      "marker_may_create_physical_part": false,
+      "editorial_marker_profile": true
+    },
+    {
+      "id": "net-marker.chassis",
+      "source": {
+        "standard": "ГОСТ 2.721-74",
+        "edition": "2008 reprint, current changes by 2008",
+        "url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf"
+      },
+      "source_clauses": "Table 6б position 4",
+      "source_figure_url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf#page=10",
+      "source_printed_page_verified": true,
+      "status_source_shape": "PASS",
+      "status_full_1to1": "BLOCKED",
+      "approval": "DRAFT",
+      "real_part_certificate": false,
+      "owner_source_path": null,
+      "owner_blob_sha": null,
+      "owner_exact_project_geometry": null,
+      "owner_profile": null,
+      "owner_line_width_mm": null,
+      "positive_test": "chassis marker on deliberate chassis net, not grounds by label coincidence",
+      "negative_test": "merge 0V and chassis silently because reference symbols share ground appearance",
+      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED",
+      "source_subject": "electrical connection to chassis/mass",
+      "requires_existing_net": true,
+      "marker_may_create_physical_part": false,
+      "editorial_marker_profile": true
+    },
+    {
+      "id": "net-marker.equipotential",
+      "source": {
+        "standard": "ГОСТ 2.721-74",
+        "edition": "2008 reprint, current changes by 2008",
+        "url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf"
+      },
+      "source_clauses": "Table 6б position 5",
+      "source_figure_url": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf#page=10",
+      "source_printed_page_verified": true,
+      "status_source_shape": "PASS",
+      "status_full_1to1": "BLOCKED",
+      "approval": "DRAFT",
+      "real_part_certificate": false,
+      "owner_source_path": null,
+      "owner_blob_sha": null,
+      "owner_exact_project_geometry": null,
+      "owner_profile": null,
+      "owner_line_width_mm": null,
+      "positive_test": "equipotential view marker with explicit intended equipotential class",
+      "negative_test": "treat equipotential triangle as literal PE anchor with imaginary conductor",
+      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED",
+      "source_subject": "equipotential bonding",
+      "requires_existing_net": true,
+      "marker_may_create_physical_part": false,
+      "editorial_marker_profile": true
+    },
+    {
+      "id": "net-continuation.other-sheet",
+      "source": {
+        "standard": "ГОСТ 2.701-2008",
+        "edition": "2009 official edition",
+        "url": "https://rosgosts.ru/file/gost/01/100/gost_2.701-2008.pdf"
+      },
+      "source_clauses": "ГОСТ 2.701 §5.5.3 and ГОСТ 2.721 table6в position 8",
+      "source_figure_url": "https://rosgosts.ru/file/gost/01/100/gost_2.701-2008.pdf#page=7",
+      "source_printed_page_verified": true,
+      "status_source_shape": "PASS",
+      "status_full_1to1": "BLOCKED",
+      "approval": "DRAFT",
+      "real_part_certificate": false,
+      "owner_source_path": null,
+      "owner_blob_sha": null,
+      "owner_exact_project_geometry": null,
+      "owner_profile": null,
+      "owner_line_width_mm": null,
+      "positive_test": "line identifier + (sheet,zone) or document reference, no arrow for inter-sheet",
+      "negative_test": "require arrow for every other-sheet break",
+      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED",
+      "source_subject": "inter-sheet break without arrows according 2.701",
+      "requires_existing_net": true,
+      "marker_may_create_physical_part": false,
+      "editorial_marker_profile": true
+    },
+    {
+      "id": "net-continuation.same-sheet",
+      "source": {
+        "standard": "ГОСТ 2.701-2008",
+        "edition": "2009 official edition",
+        "url": "https://rosgosts.ru/file/gost/01/100/gost_2.701-2008.pdf"
+      },
+      "source_clauses": "ГОСТ 2.701 §5.5.4 and ГОСТ 2.721 table6в position 8",
+      "source_figure_url": "https://rosgosts.ru/file/gost/01/100/gost_2.701-2008.pdf#page=7",
+      "source_printed_page_verified": true,
+      "status_source_shape": "PASS",
+      "status_full_1to1": "BLOCKED",
+      "approval": "DRAFT",
+      "real_part_certificate": false,
+      "owner_source_path": null,
+      "owner_blob_sha": null,
+      "owner_exact_project_geometry": null,
+      "owner_profile": null,
+      "owner_line_width_mm": null,
+      "positive_test": "arrow on same-sheet interrupted line with destination annotation",
+      "negative_test": "confuse same-sheet interrupted arrow with 2.701 §5.5.3 other-sheet arrowless rule",
+      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED",
+      "source_subject": "same-sheet graphical interrupted wire",
+      "requires_existing_net": true,
+      "marker_may_create_physical_part": false,
+      "editorial_marker_profile": true
+    },
+    {
+      "id": "ic.TL494CN",
+      "source": {
+        "standard": "ГОСТ 2.743-91",
+        "edition": "2003 reprint",
+        "url": "https://meganorm.ru/Data/190/19085.pdf"
+      },
+      "source_clauses": "§§2.1.2,2.1.6 fig3/4, 2.2.6, 2.3.11, 2.3.12",
+      "source_figure_url": "https://meganorm.ru/Data/190/19085.pdf#page=4",
+      "source_printed_page_verified": true,
+      "status_source_shape": "PASS",
+      "status_full_1to1": "BLOCKED",
+      "approval": "DRAFT",
+      "real_part_certificate": false,
+      "owner_source_path": null,
+      "owner_blob_sha": null,
+      "owner_exact_project_geometry": null,
+      "owner_profile": null,
+      "owner_line_width_mm": null,
+      "positive_test": "Exactly one TL494 physical 16pin package, role labels and contacts read from TI; word PWM bottom-to-top as editor DRAFT",
+      "negative_test": "rotate whole body or pin order when toggling PWM; assume independent word -90 is normative because screenshot or other CAD",
+      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED",
+      "vendor_datasheet": {
+        "standard": "TI TL494 Datasheet",
+        "edition": "SLVS074J – revised September 2026",
+        "url": "https://www.ti.com/lit/ds/symlink/tl494.pdf"
+      },
+      "function_text_bottom_to_top": {
+        "svg_local_angle_degrees": -90,
+        "svg_matrix": "matrix(0,-1,1,0,0,0)",
+        "editorial": true,
+        "gost_approval": "BLOCKED"
+      },
+      "aliases": {
+        "3": {
+          "manufacturer": "FEEDBACK",
+          "display": "FB"
+        },
+        "13": {
+          "manufacturer": "OUTPUT CTRL",
+          "display": "OC"
+        }
+      },
+      "max_display_characters": 6,
+      "maximum_rule": "EDITORIAL_NOT_GOST",
+      "real_pin_count": 16
+    },
+    {
+      "id": "drc.clearances",
+      "source": {
+        "standard": "ГОСТ 2.701-2008",
+        "edition": "2009 official edition",
+        "url": "https://rosgosts.ru/file/gost/01/100/gost_2.701-2008.pdf"
+      },
+      "source_clauses": "§5.3.4, §5.5.1, §5.5.2, §5.4",
+      "source_figure_url": "https://rosgosts.ru/file/gost/01/100/gost_2.701-2008.pdf#page=7",
+      "source_printed_page_verified": true,
+      "status_source_shape": "PASS",
+      "status_full_1to1": "BLOCKED",
+      "approval": "DRAFT",
+      "real_part_certificate": false,
+      "owner_source_path": null,
+      "owner_blob_sha": null,
+      "owner_exact_project_geometry": null,
+      "owner_profile": null,
+      "owner_line_width_mm": null,
+      "positive_test": "Gaps >=1mm adjacent UGO strokes, >=2mm separate UGO, >=3mm adjacent parallel wire connections; wire stroke 0.2–1.0mm, recommended 0.3–0.4mm",
+      "negative_test": "treat all stroke centreline gaps as ink clearance, apply 3mm to a joined same-Net T, certify visual router from zero ERC",
+      "release_gate": "SOURCE_FIGURE_TO_EXACT_RENDER_1TO1_AND_300DPI_REVIEW_REQUIRED",
+      "hard_mm": {
+        "adjacent_ugo_line_gap": 1,
+        "distinct_ugo_gap": 2,
+        "parallel_interconnect_gap": 3,
+        "wire_stroke_min": 0.2,
+        "wire_stroke_max": 1
+      },
+      "recommendation_mm": {
+        "wire_stroke_min": 0.3,
+        "wire_stroke_max": 0.4
+      },
+      "tl494_wire_drc_real_run": "BLOCKED_NOT_YET_SOURCE_MEASURED"
+    }
+  ],
+  "totals_source": {
+    "PASS": 19,
+    "BLOCKED": 2
+  },
+  "approved": 0,
+  "release_policy": "All candidate UGO remain DRAFT; exact user photo vs original standard vs 300-DPI actual owner raster is NOT source-certified.",
+  "figure_policy": "Link primary original PDF page with exact table/position; do not commit copyrighted scans; source-pinned project SVGs are independent editorial/electrical artifacts."
+}
