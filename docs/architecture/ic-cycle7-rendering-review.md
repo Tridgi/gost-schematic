@@ -74,3 +74,90 @@ The dedicated workflow verifies all 20 SVG/PNG pairs, PNG pixel dimensions compu
 PASS: Python static/type-safe E3 IC frame, actual Type A ink/300DPI, 1µm PinRef equality, main and optional left/right fields, 10 genuine source orientation examples, all eight D4 poses, typed real owner bridge horizontal, 2/4/8/14/40/64, NC editor target rejection, default uncolored image and existing full CI. FAIL: none remaining in supported 10-case executable regression scenarios at checked SHA. BLOCKED: physical TOP/BOTTOM typed model bridge #97 (owner revision pending), exact per-indicator and function graph conformity, full 1:1 printed and manufacturer pin evidence, interactive green UI and final QA/ESKD acceptance. This is deliberately an engineering DRAFT, not an approved ГОСТ component.
 
 **No merge executed.**
+
+
+## 2026-11-14: independent portrait function typography — V2 EXPERIMENTAL DRAFT
+
+### Contract and migration
+
+New **`IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT`** is a
+versioned renderer presentation choice. The unchanged
+`IcTypographyProfile.LEGACY_V1` remains the API/SVG default and still
+defaults to function angle 0°. A future UI can propose V2 as its choice
+**only after MAIN2 + ESKD #91 + QA #92 acceptance**. No existing document
+is migrated silently; no E3 IC variant is an approved normative symbol.
+
+To select V2 from a verified existing view, use
+`unit.select_typography_profile(IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT)`;
+the selection resets a legacy 0° preference to V2's default 90°, while
+`dataclasses.replace(unit, function_rotation=0)` changes the chosen
+word back to horizontal. Plain `dataclasses.replace(unit,
+typography_profile=...)` intentionally retains the explicitly selected
+old angle; the dedicated selection method is the UI-facing operation.
+The public `LEFT_RIGHT` port-side geometry, optional real
+`TOP_BOTTOM` source orientation, D4 placement transform and
+function-text angle are different controls. No port is ever inferred
+from the aspect ratio. V2 rejects a non-portrait frame rather than
+pretending to reshape or relabel physical contacts.
+
+### Measured geometry and collision rules
+
+- L/R + `function_rotation=90` no longer raises
+  `IC_TEXT_ROTATION_REQUIRES_TOP_BOTTOM_PROFILE`. The function text is
+  one SVG `<text>` node, transformed by a composed orthogonal matrix:
+  the function's own +90° rotation plus the fixed D4 symbol transform.
+  It is **not** a stack of single-letter strings.
+- `PillowTextMeasurer` first measures the OpenGost Type A ink-run box.
+  All four ink-rectangle corners are transformed in integer
+  micrometres. Physical stroke keepouts, font geometry, extra fields,
+  all side labels and numbers, reference, neighboring geometry,
+  page-zone bounds and real pin-lead corridors are checked against the
+  final world-space boxes. Individual glyph boxes are separately
+  transformed for PNG 300DPI raster inspection.
+- A tall function may consume **multiple full row pitches** in the main
+  field. Only subsequent main-field text is reflowed; side labels tied
+  to physical rows remain on the same physical contacts. Different
+  width requirements of 0/90 views do not silently modify the real
+  `IcSymbolSpec` or the resolved `PinRef -> Point` map. If both
+  layouts cannot fit the same authored frame, rendering fails with
+  `IC_TEXT_OVERFLOW`; source ELEKTRIK must issue/revalidate a
+  geometry revision before a new view is accepted.
+- The `IcResolvedUnit` type now supports an optional versioned
+  presentation parameter only; no shared `Circuit`, `Net`,
+  `PinRef`, `IcUnitPlacement`, pin number or external anchor is
+  re-resolved. The optional typed PR #97 adapter accepts
+  `typography_profile` and `function_rotation`, preserves
+  independent true source-verified electrical identity, and records
+  either paired PASS or explicit owner-geometry BLOCKED.
+- V2 uses stable reference placement relative to the *physical* free
+  perimeter side at both word angles, including D4 transforms. Green
+  editor connection targets exist only under explicit diagnostic
+  `editor_overlay=True`, never in clean SVG.
+- The same physical synthetic IC with 8/14/40/64 pins is rendered to
+  actual Type A **0°/90° SVG pairs**, plus 300-DPI clean and diagnostic
+  PNG. The CI checks the rasterized glyph pixels (not merely XML),
+  unchanged side labels/refdes/physical endpoints and the permitted
+  reflow of subsequent main rows. A 64-pin portrait overflows the
+  explicitly chosen A4 print zone and is accepted in A3 landscape
+  without scaling. Synthetic parts do not claim real manufacturer
+  datasheet pinouts.
+
+### Normative gate and explicit unsupported cases
+
+ESKD #91's inspection of ГОСТ 2.743-91 §2.1.6 and figure 3 establishes
+a specifically drawn TOP-input/BOTTOM-output orientation variant. It
+**does not** establish a general permission to rotate only the word
+`PWM` within an otherwise unchanged L/R symbol. Therefore the newly
+requested independent-function orientation is **DRAFT / NORMATIVE
+BLOCKED**, even if geometry and raster CI PASS. Existing specialized
+TOP/BOTTOM source semantics are not replaced by V2. All E3 exports
+still mark themselves `data-approval="DRAFT"`; do not place V2 in the
+normative export path without actual source-specific acceptance.
+
+Remaining independent gates: ESKD source overlay and indicator/number
+placement, manufacturer datasheets and package revisions, ELEKTRIK
+explicit geometry revision for undersized real views, QA #92 physical
+Net invariance and full A4/A3 sheet composition, and MAIN2 promotion.
+The separately controlled interactive hit-zone editor remains Issue
+#100, not a feature implicitly delivered by the diagnostic green layer.
+
