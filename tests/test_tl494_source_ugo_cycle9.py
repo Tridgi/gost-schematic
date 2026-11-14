@@ -12,16 +12,24 @@ from xml.etree import ElementTree as ET
 import pytest
 
 from examples.review_tl494_ugo_source_cycle9 import (
-    D4_IDS, _actual_root, _source_variant, generate, pose_symbol,
+    D4_IDS,
+    _actual_root,
+    _source_variant,
+    generate,
+    pose_symbol,
 )
 from gost_schematic.catalog.source_profiles import (
-    PINNED_REFERENCE_SHA, REQUIRED_REFERENCES, SymbolProfileMismatch,
-    bind_tl494_source, check_ink_contract, load_catalog_pair,
+    PINNED_REFERENCE_SHA,
+    REQUIRED_REFERENCES,
+    SymbolProfileMismatch,
+    bind_tl494_source,
+    check_ink_contract,
+    load_catalog_pair,
     read_source_manifest,
 )
 from gost_schematic.core.geometry import Circle, Line, Point, Semicircle, StyledLine
 from gost_schematic.core.transforms import Transform
-from gost_schematic.model.circuit import ComponentInstance, PinRef
+from gost_schematic.model.circuit import ComponentInstance
 from gost_schematic.model.symbol import SymbolStatus
 from gost_schematic.validation.conductor_checks import inspect_conductor_topology
 

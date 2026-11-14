@@ -6,15 +6,15 @@ The 13-component TL494 subset is source-SHA pinned and remains DRAFT.
 """
 
 import json
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from importlib.resources import files
 from pathlib import Path
-from typing import Mapping, Iterable
 
 from gost_schematic.catalog.inductors import load_inductor
 from gost_schematic.catalog.loader import load_symbol
 from gost_schematic.catalog.part_loader import load_part
-from gost_schematic.core.geometry import Circle, Line, Point, StyledLine
+from gost_schematic.core.geometry import Line, Point, StyledLine
 from gost_schematic.model.circuit import ComponentInstance, PinRef
 from gost_schematic.model.part import PartDefinition
 from gost_schematic.model.symbol import SymbolDefinition, SymbolStatus
@@ -160,9 +160,10 @@ def check_ink_contract(symbol: SymbolDefinition, part: PartDefinition) -> None:
             raise SymbolProfileMismatch("Physical slider/wiper was lost")
         if result.pin_islands != (("1",), ("2",), ("3",)):
             raise SymbolProfileMismatch("Wiper was incorrectly joined through ink")
-    elif id_ == "fuse.general":
-        if len(symbol.pins) != 2 or result.pin_islands != (("1",), ("2",)):
-            raise SymbolProfileMismatch("Fuse is not a zero-ohm Net bridge")
+    elif id_ == "fuse.general" and (
+        len(symbol.pins) != 2 or result.pin_islands != (("1",), ("2",))
+    ):
+        raise SymbolProfileMismatch("Fuse is not a zero-ohm Net bridge")
 
 
 def bind_tl494_source(

@@ -14,7 +14,9 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 from gost_schematic.catalog.source_profiles import (
-    REQUIRED_REFERENCES, bind_tl494_source, load_catalog_pair,
+    REQUIRED_REFERENCES,
+    bind_tl494_source,
+    load_catalog_pair,
     read_source_manifest,
 )
 from gost_schematic.core.geometry import Circle, Point
