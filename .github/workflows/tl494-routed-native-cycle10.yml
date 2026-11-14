@@ -103,7 +103,7 @@ jobs:
           python -m examples.render_tl494_new_router_cycle10 \
             --font-file "$REVIEW_FONT" \
             --output output/tl494-C10-new-net114-owner-graph \
-            --node-cap 25000
+            --node-cap 25000 --d4
       - name: REAL RECON115 compact A3 model + NET114 new routing attempt
         run: |
           python -m examples.render_tl494_compact_new_router_cycle10 \
@@ -128,6 +128,16 @@ jobs:
                   proof["source_net_pinrefs"]) == (23,15,62)
           assert proof["original_negative_wires"]==91
           assert proof["new_graph_not_source_91_frozen"]
+          assert len(proof["whole_routed_sheet_D4"])==8
+          for name,meta in proof["whole_routed_sheet_D4"].items():
+              assert meta["whole_sheet_23"] and meta["source_nets_15_unchanged"]
+              assert meta["all_physical_PinRef_62_unchanged"]
+              assert meta["new_segments"]==proof["route_segments"]
+              assert not meta["printable"]
+              root=ET.fromstring((d/name).read_text())
+              assert root.get("data-release")=="BLOCKED_INCOMPLETE_OR_PRINT_DRC"
+              assert len(root.findall(".//{http://www.w3.org/2000/svg}g[@data-layer='symbols']"))==23
+              assert len(root.findall(".//{http://www.w3.org/2000/svg}line[@data-layer='wires']"))==proof["route_segments"]
           assert not proof["printable_candidate"] if "printable_candidate" in proof else proof["blocked_release"]
           assert proof["blocked_release"]
           assert not proof["owner_preview_complete"]
