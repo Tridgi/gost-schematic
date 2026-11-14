@@ -117,6 +117,7 @@ def netrefs_from_json(
     verified_address_owners: dict[
         tuple[ContinuationAddressKind, str], frozenset[PinRef]
     ] | None = None,
+    expected_schema_version: int | None = None,
 ) -> NetContinuationProject:
     if type(text) is not str or not isinstance(circuit, Circuit):
         raise TypeError("Decoder requires text and REAL existing Circuit")
@@ -126,6 +127,11 @@ def netrefs_from_json(
     version = raw.get("schema_version")
     if type(version) is not int or version not in (1, 2):
         raise ValueError("Unsupported continuation schema version")
+    if expected_schema_version is not None:
+        if type(expected_schema_version) is not int or expected_schema_version not in (1, 2):
+            raise ValueError("Expected schema version must be 1 or 2")
+        if version != expected_schema_version:
+            raise ValueError("E3_CONT_SCHEMA_VERSION_MISMATCH: explicit migration required")
     keys = {"schema_version", "record_type", "nets", "sheets",
             "endpoints", "pairs", "stubs"}
     if version == 2:
