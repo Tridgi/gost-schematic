@@ -126,6 +126,7 @@ class ResolvedIcPin:
     role: str = "passive"
     row_key: str | None = None  # shared logical group; not a graphic row index
     display_alias: str | None = None  # source-authoritative visible name
+    manufacturer_electrical_type: str | None = None  # validated IC owner role
 
     @property
     def visible_label(self) -> str:
@@ -146,6 +147,14 @@ class ResolvedIcPin:
             or "\n" in self.display_alias or "\r" in self.display_alias
         ):
             raise ValueError("IC_PIN_ALIAS_INVALID")
+        if self.manufacturer_electrical_type is not None and (
+            self.manufacturer_electrical_type not in (
+                "input", "output", "bidirectional", "power_input",
+                "power_output", "open_collector", "passive", "nc",
+            )
+            or not isinstance(self.manufacturer_electrical_type, str)
+        ):
+            raise ValueError("IC_MANUFACTURER_ELECTRICAL_TYPE_INVALID")
 
 
 @dataclass(frozen=True, slots=True)
@@ -1073,6 +1082,11 @@ def render_resolved_ic(
             "data-pin-id": pin.pin_id, "data-pin-number": pin.number,
             "data-role": pin.role,
             "data-real-anchor": "true",
+            **({
+                "data-manufacturer-electrical-type": (
+                    pin.manufacturer_electrical_type
+                ),
+            } if pin.manufacturer_electrical_type is not None else {}),
         })
     pin_by_text_owner = {
         f"{pin.side.value}.{pin.row}": pin for pin in unit.pins
@@ -1100,6 +1114,10 @@ def render_resolved_ic(
                 "data-full-manufacturer-name": named.label,
                 "data-visible-pin-alias": named.visible_label,
             })
+            if named.manufacturer_electrical_type is not None:
+                attrs["data-manufacturer-electrical-type"] = (
+                    named.manufacturer_electrical_type
+                )
         if matrix_token is not None:
             attrs["transform"] = matrix_token
         node = ET.SubElement(svg, S + "text", attrs)
@@ -1155,6 +1173,11 @@ def render_resolved_ic(
                 "data-pin-id": target.pin_id,
                 "data-pin-number": target.pin_ref.number,
                 "data-pin-role": physical_pin.role,
+                **({
+                    "data-manufacturer-electrical-type": (
+                        physical_pin.manufacturer_electrical_type
+                    ),
+                } if physical_pin.manufacturer_electrical_type is not None else {}),
                 "data-external-anchor-x-um": str(at.x),
                 "data-external-anchor-y-um": str(at.y),
                 "data-net-id": target.net_id or "",
