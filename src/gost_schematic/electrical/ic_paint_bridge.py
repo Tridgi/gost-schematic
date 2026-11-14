@@ -9,8 +9,8 @@ from dataclasses import dataclass, replace
 
 from gost_schematic.core.geometry import SIDE_VECTORS, Box, Point, Side
 from gost_schematic.electrical.ic import (
-    IcField,
     IcBodyAxis,
+    IcField,
     IcKind,
     IcPinType,
     IcPortLayout,
@@ -302,8 +302,8 @@ def propose_ic_paint_binding(
     from gost_schematic.rendering.ic_rectangular import (
         IcOrientation,
         IcRenderingPolicy,
-        IcTypographyProfile,
         IcResolvedUnit,
+        IcTypographyProfile,
         propose_ic_dimensions,
     )
 
