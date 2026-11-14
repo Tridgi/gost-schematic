@@ -15,6 +15,7 @@ from gost_schematic.validation.external_wire_checks import (
     ExternalWireGraph,
     WireSegment,
 )
+
 NS = "{http://www.w3.org/2000/svg}"
 
 
