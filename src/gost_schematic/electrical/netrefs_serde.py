@@ -67,10 +67,17 @@ def _decode_pin(p: object) -> PinRef:
     return PinRef(p["reference"], p["number"])
 
 
-def netrefs_to_json(project: NetContinuationProject) -> str:
+def netrefs_to_json(
+    project: NetContinuationProject,
+    *, verified_address_owners: dict[
+        tuple[ContinuationAddressKind, str], frozenset[PinRef]
+    ] | None = None,
+) -> str:
     if not isinstance(project, NetContinuationProject):
         raise TypeError("Expected NetContinuationProject")
-    issues = validate_net_continuations(project)
+    issues = validate_net_continuations(
+        project, verified_address_owners=verified_address_owners,
+    )
     if issues:
         raise ValueError("; ".join(issue.code for issue in issues))
     value = {
@@ -105,7 +112,12 @@ def netrefs_to_json(project: NetContinuationProject) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
 
 
-def netrefs_from_json(text: str, circuit: Circuit) -> NetContinuationProject:
+def netrefs_from_json(
+    text: str, circuit: Circuit, *,
+    verified_address_owners: dict[
+        tuple[ContinuationAddressKind, str], frozenset[PinRef]
+    ] | None = None,
+) -> NetContinuationProject:
     if type(text) is not str or not isinstance(circuit, Circuit):
         raise TypeError("Decoder requires text and REAL existing Circuit")
     raw = json.loads(text, object_pairs_hook=_pairs, parse_constant=_constant)
@@ -173,7 +185,9 @@ def netrefs_from_json(text: str, circuit: Circuit) -> NetContinuationProject:
         tuple(pairs), tuple(stubs), schema_version=version,
         address_bindings=tuple(address_bindings),
     )
-    issues = validate_net_continuations(project)
+    issues = validate_net_continuations(
+        project, verified_address_owners=verified_address_owners,
+    )
     if issues:
         raise ValueError("; ".join(issue.code for issue in issues))
     return project
