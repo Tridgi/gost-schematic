@@ -1,4 +1,11 @@
-# TL494CN — цифровая реконструкция исходной схемы (DRAFT)
+# TL494CN — электрическая схема по фотографии
+
+![Схема TL494CN](TL494_E3_clean.svg)
+
+**Открыть:** [чистый SVG](TL494_E3_clean.svg) · [диагностический SVG с зелёными PinRef](TL494_E3_diagnostic.svg) · [Netlist JSON](TL494_netlist.json) · [перечень элементов CSV](TL494_elements.csv) · [исходник нативной модели](TL494_engine_source.py) · [проверки](TL494_verification.md).
+
+**PNG-превью:** [TL494_E3_preview.png](TL494_E3_preview.png) создаётся отдельным GitHub Actions workflow, если действия репозитория разрешают его выполнение; наличие файла необходимо проверить после завершения задания.
+
 
 Ветка: `reference/tl494-photo-reconstruction-20261114`. Отдельный эксперимент, без изменения `main` и `integration/stage0-12`.
 
