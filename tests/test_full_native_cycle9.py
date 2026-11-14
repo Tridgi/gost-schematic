@@ -78,7 +78,7 @@ def fixture(diagnostic=False):
     ) for pin in resolved)
     symbol = SymbolDefinition(
         "test.ic", 1, (Rectangle(body),), graphics,
-        body_keepout=body, status=SymbolStatus.DRAFT,
+        body_keepout=body, line_width_um=300, status=SymbolStatus.DRAFT,
     )
     circuit = Circuit(
         (ComponentInstance("DD1", "test.ic", origin, Transform()),),
