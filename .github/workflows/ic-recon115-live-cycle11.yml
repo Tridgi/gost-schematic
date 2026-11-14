@@ -66,7 +66,7 @@ jobs:
           mkdir -p _recon115_exact/src/gost_schematic/catalog/source_profiles
           cp _catalog113_exact/src/gost_schematic/catalog/source_profiles.py _recon115_exact/src/gost_schematic/catalog/
           cp _catalog113_exact/src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json _recon115_exact/src/gost_schematic/catalog/source_profiles/
-          for part in ic_rectangular ic_hotspots ic_orientation ic_sheet_composition ic_power_profiles ic_tl494_profile ic_electrical_binding; do
+          for part in ic_rectangular ic_hotspots ic_orientation ic_sheet_composition ic_power_profiles ic_tl494_profile ic_electrical_binding routed_native_sheet external_wire_sheet native_sheet_ink_audit; do
             cp "_paint93_exact/src/gost_schematic/rendering/$part.py" "_recon115_exact/src/gost_schematic/rendering/$part.py"
           done
           test -f _paint93_exact/src/gost_schematic/rendering/routed_native_sheet.py
