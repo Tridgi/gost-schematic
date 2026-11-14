@@ -1,0 +1,2 @@
+{"native_components": 11, "real_nets": 6, "wire_segments": 26, "wire_errors": 0, "erc_errors": 0, "layout_valid": true, "font": "OpenGost Type A TT"}
+ENGINE_EXIT_CODE=0

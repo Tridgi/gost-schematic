@@ -1,0 +1,227 @@
+{
+  "component_count": 11,
+  "erc_diagnostics": [
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol reference.connector.x1 is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol inductor.air_core is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol transistor.mosfet_n_enh is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol capacitor.electrolytic is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol capacitor.electrolytic is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol diode.schottky is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol inductor.air_core is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol capacitor.electrolytic is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol capacitor.electrolytic is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol fuse.general is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol reference.connector.x2 is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "POLARITY_UNVERIFIABLE",
+      "message": "C1 (1:+ on SWITCH, 2:- on ENERGY_TRANSFER): Both terminals are connected, but no potentials were supplied",
+      "severity": "warning"
+    },
+    {
+      "code": "POLARITY_UNVERIFIABLE",
+      "message": "C2 (1:+ on SWITCH, 2:- on ENERGY_TRANSFER): Both terminals are connected, but no potentials were supplied",
+      "severity": "warning"
+    },
+    {
+      "code": "POLARITY_UNVERIFIABLE",
+      "message": "C5 (1:+ on COMMON, 2:- on OUT_BEFORE_FUSE): Both terminals are connected, but no potentials were supplied",
+      "severity": "warning"
+    },
+    {
+      "code": "POLARITY_UNVERIFIABLE",
+      "message": "C6 (1:+ on COMMON, 2:- on OUT_BEFORE_FUSE): Both terminals are connected, but no potentials were supplied",
+      "severity": "warning"
+    }
+  ],
+  "erc_valid": true,
+  "experiment_not_eskd_approved": true,
+  "font": {
+    "cap_height_measured_um": 3500,
+    "cap_height_target_um": 3500,
+    "family": "OpenGost Type A TT",
+    "sha256": "f5c539d432e2fceae137ad746d4acfdcca941d2c7349f013a5bf60231d3e6d01"
+  },
+  "layout_diagnostics": [
+    {
+      "code": "NOMINAL_COMPACT_UNSUPPORTED",
+      "message": "ГОСТ 2.702-2011 §5.3.20 has no defined shortened format for inductance=0.000100 (SI units)",
+      "severity": "warning"
+    },
+    {
+      "code": "NOMINAL_COMPACT_UNSUPPORTED",
+      "message": "ГОСТ 2.702-2011 §5.3.20 has no defined shortened format for inductance=0.000100 (SI units)",
+      "severity": "warning"
+    }
+  ],
+  "layout_valid": true,
+  "net_count": 6,
+  "physical_pin_coordinates_mm": {
+    "C1": {
+      "1": [
+        216,
+        29
+      ],
+      "2": [
+        234,
+        29
+      ]
+    },
+    "C2": {
+      "1": [
+        216,
+        65
+      ],
+      "2": [
+        234,
+        65
+      ]
+    },
+    "C5": {
+      "1": [
+        345,
+        154
+      ],
+      "2": [
+        345,
+        136
+      ]
+    },
+    "C6": {
+      "1": [
+        385,
+        154
+      ],
+      "2": [
+        385,
+        136
+      ]
+    },
+    "FU1": {
+      "1": [
+        402,
+        45
+      ],
+      "2": [
+        420,
+        45
+      ]
+    },
+    "L1": {
+      "1": [
+        103,
+        45
+      ],
+      "2": [
+        127,
+        45
+      ]
+    },
+    "L2": {
+      "1": [
+        303,
+        45
+      ],
+      "2": [
+        327,
+        45
+      ]
+    },
+    "VD1": {
+      "1": [
+        270,
+        140
+      ],
+      "2": [
+        270,
+        120
+      ]
+    },
+    "VT1": {
+      "1": [
+        159,
+        135
+      ],
+      "2": [
+        170,
+        117
+      ],
+      "3": [
+        170,
+        146
+      ]
+    },
+    "X1": {
+      "1": [
+        30,
+        45
+      ],
+      "2": [
+        30,
+        60
+      ]
+    },
+    "X2": {
+      "1": [
+        460,
+        45
+      ],
+      "2": [
+        460,
+        60
+      ]
+    }
+  },
+  "reasons_incomplete": [
+    "TL494 16-pin controller and feedback/timing circuitry are not included in this 11-component power-stage sample"
+  ],
+  "reference_drawing_complete": false,
+  "source": "GOST Schematic Engine native Parts/Symbols, Circuit and WireGraph",
+  "status": "DRAFT_NATIVE_POWER_STAGE_ONLY",
+  "wire_diagnostics": [],
+  "wire_segments": 26,
+  "wire_valid": true
+}
