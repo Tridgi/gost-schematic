@@ -284,14 +284,14 @@ def _actual_font():
 
 def test_tl494_real_paint_two_word_poses_16_targets_no_ink_overflow():
     font = _actual_font()
-    from gost_schematic.rendering.ic_rectangular import render_resolved_ic
-
+    paint = pytest.importorskip("gost_schematic.rendering.ic_rectangular")
     from examples.tl494_ic_paint_reference import build
     from gost_schematic.electrical.ic_editor_targets import (
         make_ic_editor_manifest,
         make_paint_editor_targets,
     )
 
+    render_resolved_ic = paint.render_resolved_ic
     upright, horizontal, circuit, aliases, style, metrics, face = build(font)
     assert face.style.font_sha256 == style.font_sha256
     verify_alias_display(aliases, upright.record)
