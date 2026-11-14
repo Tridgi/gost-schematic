@@ -3,6 +3,7 @@ import json
 from xml.etree import ElementTree as ET
 
 import pytest
+from test_full_native_cycle9 import STYLE, FixedInk, fixture
 
 from gost_schematic.core.geometry import Point
 from gost_schematic.model.part import PartDefinition
@@ -14,8 +15,6 @@ from gost_schematic.validation.external_wire_checks import (
     ExternalWireGraph,
     WireSegment,
 )
-from test_full_native_cycle9 import STYLE, FixedInk, fixture
-
 NS = "{http://www.w3.org/2000/svg}"
 
 
@@ -86,14 +85,14 @@ def test_new_graph_not_old91_exact_lines_and_source_unmodified():
 ))
 def test_reject_forged_external_graph_or_evidence(tamper, code):
     circuit, graph, parts, symbols, clean, diag = _case()
-    kwargs = dict(
-        circuit=circuit, graph=graph, parts=parts,
-        symbols_by_part=symbols, style=STYLE, measurer=FixedInk(),
-        physical_ic_renderings_clean={"DD1": clean},
-        physical_ic_renderings_diagnostic={"DD1": diag},
-        expected_component_count=1, expected_net_count=2,
-        expected_net_pinrefs=4,
-    )
+    kwargs = {
+        "circuit": circuit, "graph": graph, "parts": parts,
+        "symbols_by_part": symbols, "style": STYLE, "measurer": FixedInk(),
+        "physical_ic_renderings_clean": {"DD1": clean},
+        "physical_ic_renderings_diagnostic": {"DD1": diag},
+        "expected_component_count": 1, "expected_net_count": 2,
+        "expected_net_pinrefs": 4,
+    }
     if tamper == "foreign":
         kwargs["graph"] = ExternalWireGraph((
             WireSegment(graph.segments[0].start,
