@@ -81,6 +81,9 @@ def build(font_file: Path):
         ) for angle in (0,90)
     }
     pitch=plans[0].row_pitch_um
+    lead=plans[0].lead_length_um
+    if plans[90].lead_length_um!=lead:
+        raise ValueError("Physical lead revision between typography angles")
     if plans[90].row_pitch_um!=pitch:
         raise ValueError("Portrait typography cannot be switched without body revision")
     width=max(x.width_um for x in plans.values())
@@ -95,8 +98,8 @@ def build(font_file: Path):
         vector=SIDE_VECTORS[pin.side]
         resolved.append(replace(
             pin,anchor=Point(
-                start.x + vector.x*policy.lead_length_um,
-                start.y + vector.y*policy.lead_length_um,
+                start.x + vector.x*lead,
+                start.y + vector.y*lead,
             )
         ))
     resolved=tuple(resolved)
