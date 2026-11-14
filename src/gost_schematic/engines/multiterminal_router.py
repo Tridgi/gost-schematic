@@ -251,18 +251,21 @@ def _source_ink_collision(
             # move behind the tip into the IC lead forest or any off-axis
             # crossing of another lead. All wire-to-wire and DRC checks
             # still run afterwards, and this does not author a junction.
-            tangent = lambda p: (
-                (p.x - ink.contact.x) * ink.normal.y
-                - (p.y - ink.contact.y) * ink.normal.x
-            )
-            outward = lambda p: (
-                (p.x - ink.contact.x) * ink.normal.x
-                + (p.y - ink.contact.y) * ink.normal.y
-            )
+            first_offset = candidate.start - ink.contact
+            second_offset = candidate.end - ink.contact
             if (
-                tangent(candidate.start) == tangent(candidate.end) == 0
-                and outward(candidate.start) >= 0
-                and outward(candidate.end) >= 0
+                first_offset.x * ink.normal.y
+                == first_offset.y * ink.normal.x
+                and second_offset.x * ink.normal.y
+                == second_offset.y * ink.normal.x
+                and (
+                    first_offset.x * ink.normal.x
+                    + first_offset.y * ink.normal.y
+                ) >= 0
+                and (
+                    second_offset.x * ink.normal.x
+                    + second_offset.y * ink.normal.y
+                ) >= 0
             ):
                 continue
         return ink
