@@ -1,0 +1,83 @@
+name: TL494CN real IC PAINT PR93 isolated proof
+
+on:
+  push:
+    branches:
+      - reference/tl494-native-rework-20261114
+    paths:
+      - examples/tl494_ic_paint_reference.py
+      - .github/workflows/tl494-ic-paint-proof.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  ic-paint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Copy PAINT implementation from EXACT Draft SHA, WITHOUT merging PR
+        run: |
+          set -eux
+          SHA=79ddb2ae57efd9ea621d64914a324988b343061d
+          git fetch origin refs/heads/parallel/rendering-ic-cycle7
+          test "$(git rev-parse FETCH_HEAD)" = "$SHA"
+          for name in ic_rectangular.py ic_hotspots.py ic_orientation.py ic_power_profiles.py; do
+            git show "$SHA:src/gost_schematic/rendering/$name" > "src/gost_schematic/rendering/$name"
+          done
+      - name: Install inspected real Type A OpenGost
+        run: |
+          set -euxo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq rpm2cpio cpio fontconfig
+          curl --fail --location --retry 3 \
+            https://fr2.rpmfind.net/linux/opensuse/tumbleweed/repo/oss/noarch/opengost-ttf-fonts-0.3-7.32.noarch.rpm \
+            -o /tmp/opengost.rpm
+          mkdir -p /tmp/opengost
+          (cd /tmp/opengost && rpm2cpio /tmp/opengost.rpm | cpio -idm --quiet)
+          FONT="$(find /tmp/opengost -name 'OpenGostTypeA-Regular.ttf' -print -quit)"
+          test -n "$FONT"
+          mkdir -p "$HOME/.local/share/fonts"
+          cp "$FONT" "$HOME/.local/share/fonts/OpenGostTypeA-Regular.ttf"
+          fc-cache -f "$HOME/.local/share/fonts"
+          python -m pip install --disable-pip-version-check 'Pillow>=10,<13' cairosvg
+      - name: Paint source-verified 16 physical contacts / h3500 Type A
+        id: render
+        continue-on-error: true
+        run: |
+          set +e
+          mkdir -p examples/tl494_ic_output
+          PYTHONPATH=src python -m examples.tl494_ic_paint_reference \
+            --font-file "$HOME/.local/share/fonts/OpenGostTypeA-Regular.ttf" \
+            --output examples/tl494_ic_output \
+            > examples/tl494_ic_output/ic_build_log.txt 2>&1
+          CODE=$?
+          echo "IC_RENDER_EXIT_CODE=$CODE" >> examples/tl494_ic_output/ic_build_log.txt
+          cat examples/tl494_ic_output/ic_build_log.txt
+          if [ "$CODE" -ne 0 ]; then exit 1; fi
+          python - <<'PY'
+          from pathlib import Path
+          import cairosvg
+          from PIL import Image
+          folder=Path('examples/tl494_ic_output')
+          for source in folder.glob('*.svg'):
+              target=source.with_suffix('.png')
+              cairosvg.svg2png(url=str(source),write_to=str(target),
+                                dpi=300,background_color='#ffffff')
+              im=Image.open(target)
+              im.save(target,dpi=(300,300))
+              print(source.name, im.size, im.info.get('dpi'))
+          PY
+      - name: Record actual IC outputs or errors, regardless of build status
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f examples/tl494_ic_output/
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "build(reference): publish real PAINT TL494CN physical IC evidence"
+          git push origin HEAD:reference/tl494-native-rework-20261114
