@@ -14,7 +14,7 @@ from xml.etree import ElementTree as ET
 
 SVG = "{http://www.w3.org/2000/svg}"
 FROZEN_SOURCE = "e695c415fdced164b0e0c39c5249d030795a0aa6"
-PAINT_HEAD = "161c31bd0b538c6e827341ae465c3b3a59f6637d"
+PAINT_HEAD = "32f2efb2cdcb561cb2567a54448381de3cb87832"
 YGO_HEAD = "edc71a48035723d48a203ae2ea12588701f68ba8"
 FONT_SHA = "f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a"
 PAINT_BASE = "TL494_native_23_bottom_to_top"
