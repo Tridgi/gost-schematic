@@ -375,6 +375,105 @@ def ic_gate(ctx, root):
     }
 
 
+def actual_new_owner_ic_contract():
+    """Independently evaluate current #97 real typed code, not the e695 model.
+
+    A standalone owner fix is NOT equivalent to a corrected 23-part sheet.
+    """
+    from gost_schematic.electrical.ic import IcPinType, resolve_ic_pin_positions
+    from gost_schematic.electrical.tl494cn import (
+        TI_PHYSICAL_PINS,
+        tl494cn_alias_profile,
+        tl494cn_device,
+        tl494cn_record,
+        tl494cn_unwired_circuit,
+        verify_tl494cn_ti_pinout,
+    )
+
+    actual = tl494cn_device()
+    verify_tl494cn_ti_pinout(actual)
+    physical = {
+        pin.number: pin for pin in actual.pins
+    }
+    check(set(physical) == set(TI_PIN_NAMES), "CURRENT_IC_16_PHYSICAL_LOSS")
+    check(physical["3"].electrical_type is IcPinType.INPUT,
+          "CURRENT_IC_FEEDBACK_STILL_OUTPUT")
+    profile = tl494cn_alias_profile("DA1")
+    check(len(profile.labels) == 16, "CURRENT_IC_ALIAS_INCOMPLETE")
+    check(all(len(a.schematic_short_label) <= 6 for a in profile.labels),
+          "CURRENT_IC_OWNER_ALIAS_TOO_LONG")
+    shorts = {
+        label.physical_number: label.schematic_short_label
+        for label in profile.labels
+    }
+    check(shorts["3"] == "FB" and shorts["13"] == "OC",
+          "CURRENT_IC_OWNER_WRONG_FB_OC")
+    record, returned = tl494cn_record("DA1")
+    check(returned == profile, "CURRENT_IC_OWNER_ALIAS_DIFFERENT")
+    wired = profile.apply_to_record(record)
+    check(resolve_ic_pin_positions(
+        record.device, record.specs, record.placements
+    ) == resolve_ic_pin_positions(
+        wired.device, wired.specs, wired.placements
+    ), "CURRENT_IC_OWNER_LABEL_CHANGED_PIN_POSITIONS")
+    check(
+        not tl494cn_unwired_circuit(record).nets,
+        "CURRENT_IC_OWNER_INVENTED_MODEL_NETS",
+    )
+    check(record.specs[0].profile.function_angle.value == 270,
+          "CURRENT_IC_OWNER_PWM_NOT_BOTTOM_TO_TOP")
+    rejected = {}
+    mutated = list(actual.pins)
+    mutated[2] = replace(mutated[2], electrical_type=IcPinType.OUTPUT)
+    try:
+        verify_tl494cn_ti_pinout(replace(actual, pins=tuple(mutated)))
+    except ValueError:
+        rejected["pin3_output"] = True
+    else:
+        rejected["pin3_output"] = False
+    from gost_schematic.electrical.ic_pin_alias import IcPinAliasProfile
+    for name, edited in (
+        ("foreign_component", replace(
+            profile.labels[2], real_pin_ref=PinRef("DD2", "3"),
+        )),
+        ("seven_char_alias", replace(
+            profile.labels[2], schematic_short_label="SEVEN77",
+        )),
+        ("duplicate_alias", replace(
+            profile.labels[2], schematic_short_label="GND",
+        )),
+    ):
+        labels = list(profile.labels)
+        labels[2] = edited
+        try:
+            replacement = IcPinAliasProfile(
+                profile.component_ref,
+                profile.device_id,
+                tuple(labels),
+                max_display_chars=6,
+            )
+            replacement.validate_device(actual)
+        except ValueError:
+            rejected[name] = True
+        else:
+            rejected[name] = False
+    check(all(rejected.values()), "CURRENT_IC_OWNER_NEGATIVE_CONTRACT_BYPASS")
+    check(len(TI_PHYSICAL_PINS) == 16, "CURRENT_IC_TI_WHOLE_TABLE_MISSING")
+    return {
+        "current_owner_pin_count": len(actual.pins),
+        "pin3_source_role": physical["3"].electrical_type.value,
+        "pin3_visible": shorts["3"],
+        "pin13_visible": shorts["13"],
+        "all_current_owner_aliases": shorts,
+        "bottom_to_top_angle_degrees": 270,
+        "negative_rejections": rejected,
+        "real_PinRef_unchanged_by_display": True,
+        "retains_unwired_separation_from_23_part_reference": True,
+        "source_23_component_sheet_still_not_updated": True,
+        "acceptance": "PASS_DRAFT_OWNER_STANDALONE_ONLY",
+    }
+
+
 def geometry_gate(ctx, svg):
     circuit, graph, _parts, _symbols, _poses, _unit, *_ = ctx
     lines = svg_lines(svg)
@@ -906,6 +1005,7 @@ def main():
         diag = regenerated / "TL494_named_photo_diagnostic.svg"
         svg = ET.parse(clean).getroot()
         gate("P1_REAL_CATALOG_AND_48_D4", lambda: part_gate(typed))
+        gate("P2_CURRENT_OWNER_IC_STANDALONE", actual_new_owner_ic_contract)
         gate("P2_TI_PIN_ALIASES_AND_PWM", lambda: ic_gate(typed, svg))
         gate("P3_STROKE_AWARE_DRC", lambda: geometry_gate(typed, svg))
         gate("P3_SYMBOL_AND_DA1_OBSTACLES", lambda: symbol_and_ic_obstacle_gate(
