@@ -100,7 +100,7 @@ def _validate_svg(
     root = ET.fromstring(svg)
     functions = [
         item for item in root.iter()
-        if item.attrib.get("data-kind") == "function"
+        if item.tag.endswith("text") and item.attrib.get("data-kind") == "function"
     ]
     if len(functions) != 1 or functions[0].text != "PWM":
         raise ValueError("TL494_FUNCTION_WORD_MISSING")
