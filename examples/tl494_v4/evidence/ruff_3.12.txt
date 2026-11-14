@@ -1,0 +1,71 @@
+F401 [*] `dataclasses.dataclass` imported but unused
+ --> examples/tl494_v4/model_contract.py:7:25
+  |
+5 | from __future__ import annotations
+6 |
+7 | from dataclasses import dataclass
+  |                         ^^^^^^^^^
+8 | from hashlib import sha256
+9 | from pathlib import Path
+  |
+help: Remove unused import: `dataclasses.dataclass`
+  |
+6 |
+  - from dataclasses import dataclass
+7 | from hashlib import sha256
+  |
+
+E702 Multiple statements on one line (semicolon)
+  --> examples/tl494_v4/wire_drc.py:48:29
+   |
+47 | def _span(w:WireSegment,coord:str)->tuple[int,int]:
+48 |     a=getattr(w.start,coord);b=getattr(w.end,coord)
+   |                             ^
+49 |     return (min(a,b),max(a,b))
+   |
+
+E701 Multiple statements on one line (colon)
+  --> examples/tl494_v4/wire_drc.py:60:20
+   |
+58 |     Measured from both stroked line edges (stroke_um/2 on each side).
+59 |     """
+60 |     if stroke_um<=0: raise ValueError("P7: nonpositive stroke")
+   |                    ^
+61 |     direction=axis(a)
+62 |     if direction=="OTHER" or axis(b)!=direction:
+   |
+
+E702 Multiple statements on one line (semicolon)
+  --> examples/tl494_v4/wire_drc.py:65:27
+   |
+63 |         return None
+64 |     normal,along=("y","x") if direction=="H" else ("x","y")
+65 |     ax1,ax2=_span(a,along);bx1,bx2=_span(b,along)
+   |                           ^
+66 |     if min(ax2,bx2)<=max(ax1,bx1):
+67 |         return None
+   |
+
+E702 Multiple statements on one line (semicolon)
+  --> examples/tl494_v4/wire_drc.py:78:16
+   |
+76 |     h=a if da=="H" else b
+77 |     v=a if da=="V" else b
+78 |     x=v.start.x;y=h.start.y
+   |                ^
+79 |     if _span(h,"x")[0]<x<_span(h,"x")[1] and _span(v,"y")[0]<y<_span(v,"y")[1]:
+80 |         return x,y
+   |
+
+E702 Multiple statements on one line (semicolon)
+  --> tests/test_tl494_v4_contract.py:90:15
+   |
+89 | def test_foreign_net_crossing_at_explicit_junction_is_hard_error():
+90 |     a=h(0,"a");b=v(5000,"b")
+   |               ^
+91 |     d=analyze_wire_graph(ExternalWireGraph((a,b),(p(5000,0),)))
+92 |     assert "UNAUTHORIZED_CROSS_NET_JUNCTION" in {v["code"] for v in d["violations"]}
+   |
+
+Found 6 errors.
+[*] 1 fixable with `--fix`.
