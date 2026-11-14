@@ -178,6 +178,19 @@ def render_external_wire_sheet(
             f"{item.severity.value}:{item.code}:{item.subject or ''}"
             for item in layout.diagnostics
         )
+    # End with physical-PinRef EDITOR hitboxes, above all genuine
+    # conductors, drawn junctions and typed nonphysical b continuations.
+    # Never add generic green dots or alter E3 electrical connectivity.
+    if diagnostic and physical_ic_renderings:
+        foreground = [
+            child for child in list(root)
+            if child.get("data-layer") == "editor-connection-targets"
+        ]
+        if len(foreground) != len(physical_ic_renderings):
+            raise ValueError("SHEET_VERIFIED_FOREGROUND_TARGET_LAYER_MISSING")
+        for layer in foreground:
+            root.remove(layer)
+            root.append(layer)
     return ExternalWireSheet(
         ET.tostring(root, encoding="unicode") + "\n",
         layout,
