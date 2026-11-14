@@ -117,6 +117,55 @@ def _vertical_fixture(count, kind, style, measurer):
     ), plan
 
 
+
+def _portrait_function_pair(count, kind, style, measurer):
+    """Two genuinely identical physical ICs, changing only PWM/ADC angle.
+
+    This is a SYNTHETIC, profile-v2 DRAFT. All resolved port endpoints are
+    built once from an explicit body revision and never re-proposed on toggle.
+    """
+    from gost_schematic.rendering.ic_rectangular import IcTypographyProfile
+
+    source, _ = _fixture(count, kind, style, measurer)
+    content = replace(source.content, function="ADC" if kind == "analog" else "PWM")
+    policy = IcRenderingPolicy()
+    rotated = propose_ic_dimensions(
+        content, source.pins, style, measurer, policy, function_rotation=90,
+    )
+    flat = propose_ic_dimensions(
+        content, source.pins, style, measurer, policy, function_rotation=0,
+    )
+    if rotated.row_pitch_um != flat.row_pitch_um:
+        raise ValueError(
+            "IC_PROFILE_PITCH_REVISION_REQUIRED: request ELEKTRIK geometry"
+        )
+    pitch = rotated.row_pitch_um
+    width = max(flat.width_um, rotated.width_um)
+    height = max(
+        flat.height_um, rotated.height_um,
+        (width // pitch + 1) * pitch,
+    )
+    origin = Point(30000, 20000)
+    resolved = []
+    for pin in source.pins:
+        frame = Point(
+            origin.x + (0 if pin.side is Side.LEFT else width),
+            origin.y + pin.row * pitch + pitch // 2,
+        )
+        vector = SIDE_VECTORS[pin.side]
+        resolved.append(replace(pin, anchor=Point(
+            frame.x + vector.x * rotated.lead_length_um,
+            frame.y + vector.y * rotated.lead_length_um,
+        )))
+    baseline = IcResolvedUnit(
+        source.reference, Box(0, 0, width, height),
+        tuple(resolved), content, origin,
+    )
+    portrait = baseline.select_typography_profile(
+        IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT,
+    )
+    return portrait, replace(portrait, function_rotation=0)
+
 def _bbox_gap(a, b):
     dx = max(b.min_x - a.max_x, a.min_x - b.max_x, 0)
     dy = max(b.min_y - a.max_y, a.min_y - b.max_y, 0)
@@ -152,6 +201,7 @@ def generate(folder: Path, font_file: Path):
             "lead_length_um": policy.lead_length_um,
         },
         "cases": {},
+        "portrait_cases": {},
     }
     for count in (4, 8, 14, 40, 64):
         kind = "analog" if count == 8 else "digital"
@@ -221,6 +271,69 @@ def generate(folder: Path, font_file: Path):
                 "source_pin_numbers": [p.number for p in unit.pins],
                 "status": "DRAFT",
             }
+
+    # New independent-function portrait pair, kept separate from the ten
+    # historical source-orientation SVGs and their byte-level conventions.
+    for count in (8, 14, 40, 64):
+        kind = "analog" if count == 8 else "digital"
+        p90, p0 = _portrait_function_pair(count, kind, style, measure)
+        pair = {}
+        for angle, unit in ((90, p90), (0, p0)):
+            result = render_resolved_ic(
+                unit, style, measure, policy=policy, glyph_detail=True,
+            )
+            key = f"portrait-{count:02d}-function-{angle:02d}"
+            (folder / f"{key}-clean.svg").write_text(
+                result.svg, encoding="utf-8",
+            )
+            (folder / f"{key}-diagnostic.svg").write_text(
+                render_resolved_ic(
+                    unit, style, measure, policy=policy,
+                    glyph_detail=True, review_overlay=True,
+                ).svg, encoding="utf-8",
+            )
+            txt = tuple(x for x in result.ink if x.text)
+            strokes = tuple(x for x in result.ink if x.kind in (
+                "outer-stroke", "field-divider", "zone-divider", "pin-lead",
+            ))
+            distance = min(
+                _bbox_gap(t.box, edge.box)
+                for t in txt for edge in strokes
+            )
+            assert distance >= policy.ink_padding_um
+            assert result.pin_anchors == tuple(
+                (p.pin_id, p.anchor) for p in unit.pins
+            )
+            pair[str(angle)] = {
+                "svg": f"{key}-clean.svg",
+                "physical_pin_count": count,
+                "body_width_um": unit.body.max_x - unit.body.min_x,
+                "body_height_um": unit.body.max_y - unit.body.min_y,
+                "angle_deg": angle,
+                "minimum_ink_clearance_um": distance,
+                "function_ink_um": [
+                    x.box.min_x for x in txt if x.kind == "function"
+                ] + [
+                    value for x in txt if x.kind == "function"
+                    for value in (x.box.min_y, x.box.max_x, x.box.max_y)
+                ],
+                "source_anchors": {
+                    pin.pin_id: [pin.anchor.x, pin.anchor.y]
+                    for pin in unit.pins
+                },
+                "glyph_ink_boxes": [
+                    [g.owner, g.index, g.ink.min_x, g.ink.min_y,
+                     g.ink.max_x, g.ink.max_y]
+                    for g in result.glyph_ink
+                ],
+            }
+        assert pair["90"]["source_anchors"] == pair["0"]["source_anchors"]
+        assert (
+            pair["90"]["body_width_um"] == pair["0"]["body_width_um"]
+            and pair["90"]["body_height_um"] == pair["0"]["body_height_um"]
+        )
+        report["portrait_cases"][str(count)] = pair
+
     (folder / "ic-metric-audit.json").write_text(
         json.dumps(report, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
         encoding="utf-8",
