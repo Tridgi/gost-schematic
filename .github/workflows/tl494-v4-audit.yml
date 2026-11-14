@@ -35,6 +35,10 @@ jobs:
           done
           python -m examples.tl494_v4.paint_rotation_patch \
             src/gost_schematic/rendering/ic_rectangular.py
+          OWNER_DRC=9b0511303af806575040d6e48c87c0ed66236a90
+          git fetch origin "$OWNER_DRC"
+          test "$(git rev-parse FETCH_HEAD)" = "$OWNER_DRC"
+          git show "$OWNER_DRC:src/gost_schematic/validation/route_drc.py" >             src/gost_schematic/validation/route_drc.py
       - name: Install real OpenGost Type A and test tools
         run: |
           set -euxo pipefail
