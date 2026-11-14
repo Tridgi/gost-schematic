@@ -103,6 +103,7 @@ jobs:
       - name: Route A3 actual 23-part native model with zero Net changes
         run: |
           set -euo pipefail
+          mkdir -p output/compact-A3
           FONT="$(find "$HOME/.local/share/fonts" -name '*TypeA*' -type f -print -quit)"
           test -f "$FONT"
           python -m examples.review_tl494_compact_cycle9 \
@@ -110,7 +111,8 @@ jobs:
             --owner-sha "$GITHUB_SHA" \
             --reference-sha e56397300875ac155a316a9bfebe2601358a4147 \
             --max-nodes 25000 \
-            --output output/compact-A3
+            --output output/compact-A3 \
+            2>&1 | tee output/compact-A3/owner-route-trace.log
       - name: Check actual 23/15/16/62 and blocked-safe native SVG
         run: |
           python - <<'PY'
