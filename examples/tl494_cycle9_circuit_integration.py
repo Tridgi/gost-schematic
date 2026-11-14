@@ -8,6 +8,7 @@ printed sheet. The source document does not provide verified component poses.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from decimal import Decimal
 from pathlib import Path
@@ -27,6 +28,7 @@ from gost_schematic.model.quantities import Quantity, QuantityKind
 
 FROZEN_SOURCE_COMMIT = "e695c415fdced164b0e0c39c5249d030795a0aa6"
 FROZEN_SOURCE_BLOB = "c4cfd515782bf856a7a44fbe2c2ceacd303208d6"
+FROZEN_FIXTURE_GIT_BLOB_SHA1 = "a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65"
 FROZEN_FIXTURE = (
     Path(__file__).resolve().parents[1]
     / "tests/fixtures/tl494_photo_23_frozen_cycle9.json"
@@ -54,7 +56,13 @@ _NOMINAL_KIND_BY_PART = {
 
 
 def load_frozen_source(path: Path = FROZEN_FIXTURE) -> dict:
-    value = json.loads(path.read_text(encoding="utf-8"))
+    data = path.read_bytes()
+    # Git's immutable blob ID, pinned OUTSIDE the fixture itself. Reject
+    # changed same-count/same-Net-count source, not merely missing items.
+    header = b"blob " + str(len(data)).encode("ascii") + b"\\0"
+    if hashlib.sha1(header + data).hexdigest() != FROZEN_FIXTURE_GIT_BLOB_SHA1:
+        raise ValueError("TL494_FROZEN_PHOTO_FIXTURE_BYTES_CHANGED")
+    value = json.loads(data.decode("utf-8"))
     if (
         value.get("schema_version") != 1
         or value.get("source_commit") != FROZEN_SOURCE_COMMIT
