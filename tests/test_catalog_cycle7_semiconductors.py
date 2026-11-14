@@ -289,6 +289,16 @@ def test_single_combined_gallery_exactly_matches_15_real_physical_roles(tmp_path
             assert g.get("data-physical-roles").split(",") == list(
                 item["physical_pin_role"].values()
             )
+            if kind == "diagnostic":
+                assert len(g.findall(f"./{SVG}circle")) == len(
+                    item["physical_pin_role"]
+                ), "Every real physical PortRef must have a diagnostic marker"
+                assert len(g.findall(f"./{SVG}rect")) == 1, (
+                    "Missing the actual symbolic body keepout rectangle"
+                )
+            else:
+                assert not g.findall(f"./{SVG}circle")
+                assert not g.findall(f"./{SVG}rect")
         assert not root.findall(f".//{SVG}image")
         assert len(root.findall(f".//{SVG}text")) == (30 if kind == "diagnostic" else 15)
     second = generate(tmp_path)

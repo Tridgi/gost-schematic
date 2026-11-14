@@ -51,6 +51,14 @@ def verify(directory: Path) -> dict:
                 raise ValueError(f"{sid}: graphic/physical PinRef disagreement")
             if not item.findall(f".//{SVG}line"):
                 raise ValueError(f"{sid}: no genuine SVG geometry strokes")
+            # Overlay ink is a review-only layer, never a hidden terminal.
+            markers = item.findall(f"./{SVG}circle")
+            region = item.findall(f"./{SVG}rect")
+            if kind == "diagnostic":
+                if len(markers) != len(roles) or len(region) != 1:
+                    raise ValueError(f"{sid}: missing exact review pin/keepout marks")
+            elif markers or region:
+                raise ValueError(f"{sid}: clean gallery includes diagnostics")
         if root.findall(f".//{SVG}image"):
             raise ValueError("Embedded raster substitution detected")
         with Image.open(png_path) as img:

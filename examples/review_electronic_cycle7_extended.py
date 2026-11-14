@@ -110,7 +110,12 @@ def generate(directory: Path) -> dict:
                 "transform": f"translate({cx - midx:g},{cy - midy:g})",
             })
             for child in source:
-                if child.tag == SVG + "g":
+                # The standalone diagnostic SVG places stroked keepout and real
+                # pin marker circles next to (not inside) the graphics group.
+                # Preserve them in the transformed gallery cell, too.
+                if child.tag == SVG + "g" or (
+                    diagnostic and child.tag in (SVG + "rect", SVG + "circle")
+                ):
                     item.append(child)
             ET.SubElement(root, SVG + "text", {
                 "x": f"{col * 55 + 27.5:g}", "y": f"{row * 60 + 51:g}",
