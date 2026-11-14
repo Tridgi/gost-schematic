@@ -655,3 +655,183 @@ def test_independent_rotation_1um_guard_and_actual_transform_bounds():
         _rotated_function_placement(
             "main.0", "A", too_narrow, STYLE, FixedInk(), IcRenderingPolicy(),
         )
+
+
+# New independent regressions: owner geometry stays frozen, no text/layout
+# downgrade is permitted merely to make long PWM_CONTROLLER pass.
+@pytest.mark.parametrize("word", ("PWM_CONTROLLER", "КОНТРОЛЛЕР_ШИМ"))
+@pytest.mark.parametrize("count", (8, 14, 40, 64))
+@pytest.mark.parametrize("pose,mirror", (
+    (0, False), (90, False), (180, False), (270, False),
+    (0, True), (90, True), (180, True), (270, True),
+))
+def test_long_center_word_common_0_90_envelope_all_d4(count, word, pose, mirror):
+    from gost_schematic.rendering.ic_rectangular import IcTypographyProfile
+
+    physical, _ = specimen(
+        count, function=word, transform=Transform(pose, mirror),
+        extra_rows=("ПИТАНИЕ_И_УПРАВЛЕНИЕ", "STATUS"),
+    )
+    candidate = physical.select_typography_profile(
+        IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT,
+    )
+    p90 = propose_ic_dimensions(
+        candidate.content, candidate.pins, STYLE, FixedInk(),
+        function_rotation=90, shared_function_envelope=True,
+    )
+    p0 = propose_ic_dimensions(
+        candidate.content, candidate.pins, STYLE, FixedInk(),
+        function_rotation=0, shared_function_envelope=True,
+    )
+    assert p0.function_row_span == p90.function_row_span
+    assert p0.width_um == p90.width_um
+    assert p0.height_um == p90.height_um
+    # Author a NEW geometry revision before placing any real connections.
+    # It is not a renderer-internal edit to an accepted/connected circuit.
+    pitch = p90.row_pitch_um
+    assert pitch == p0.row_pitch_um
+    width = p90.width_um
+    height = max(p90.height_um, width + pitch)
+    height = ((height + pitch - 1) // pitch) * pitch
+    body = Box(0, 0, width, height)
+    new_pins = []
+    for pin in candidate.pins:
+        loc = Point(0 if pin.side is Side.LEFT else width,
+                    pin.row * pitch + pitch // 2)
+        frame = candidate.transform.apply(loc) + candidate.origin
+        normal = SIDE_VECTORS[candidate.transform.side(pin.side)]
+        new_pins.append(replace(
+            pin, anchor=Point(
+                frame.x + normal.x * p90.lead_length_um,
+                frame.y + normal.y * p90.lead_length_um,
+            ),
+        ))
+    resolved = replace(candidate, pins=tuple(new_pins), body=body)
+    a = render_resolved_ic(resolved, STYLE, FixedInk())
+    b = render_resolved_ic(
+        replace(resolved, function_rotation=0), STYLE, FixedInk(),
+    )
+    assert a.pin_anchors == b.pin_anchors
+    assert a.body_world == b.body_world
+    assert p0.function_row_span >= 2
+    for built in (a, b):
+        ink = next(x.box for x in built.ink if x.kind == "function")
+        separators = [
+            x.box for x in built.ink
+            if x.kind in ("field-divider", "zone-divider", "pin-lead", "outer-stroke")
+        ]
+        assert all(not ink.expanded(1000).overlaps(x) for x in separators)
+        assert word in built.svg
+    root90, root0 = ET.fromstring(a.svg), ET.fromstring(b.svg)
+    func90 = root90.find(f".//{NS}text[@data-kind='function']")
+    func0 = root0.find(f".//{NS}text[@data-kind='function']")
+    assert func90 is not None and func0 is not None
+    assert func90.get("transform", "").startswith("matrix(")
+    assert func0.get("transform") is None
+    for layer in ("ic-outline", "ic-physical-pin-leads"):
+        assert ET.tostring(root90.find(f".//{NS}g[@data-layer='{layer}']")) == (
+            ET.tostring(root0.find(f".//{NS}g[@data-layer='{layer}']"))
+        )
+
+
+def test_accepted_undersized_long_pwm_d4_must_request_electrik_revision():
+    from gost_schematic.rendering.ic_rectangular import IcTypographyProfile
+
+    sample, _ = specimen(
+        8, transform=Transform(90, False), function="PWM_CONTROLLER",
+    )
+    portrait = sample.select_typography_profile(
+        IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT,
+    )
+    with pytest.raises(ValueError, match="IC_TEXT_OVERFLOW"):
+        render_resolved_ic(
+            replace(portrait, function_rotation=0), STYLE, FixedInk(),
+        )
+
+
+@pytest.mark.parametrize("count", (4, 8, 14, 40, 64))
+def test_real_source_synthetic_nc_power_target_metadata_at_each_external_end(count):
+    from decimal import Decimal
+
+    from examples.review_ic_cycle7 import (
+        _declared_synthetic_targets,
+        _fixture,
+    )
+
+    kind = "analog" if count == 8 else "digital"
+    unit, _ = _fixture(count, kind, STYLE, FixedInk())
+    targets, circuit = _declared_synthetic_targets(unit)
+    assert len(targets) == count
+    assert all(t.pin_ref.number == p.number and t.anchor == p.anchor
+               for t, p in zip(targets, unit.pins, strict=True))
+    assert sum(not t.connectable for t in targets) == 1
+    nc = next(pin for pin in unit.pins if pin.label == "NC")
+    assert nc.role == "nc"
+    assert next(t for t in targets if t.pin_id == nc.pin_id).reason
+    assert any(pin.role == "power" for pin in unit.pins)
+    names = {net.name for net in circuit.nets}
+    assert {"TEST_SIGNAL", "TEST_SUPPLY"} <= names
+    clean = render_resolved_ic(
+        unit, STYLE, FixedInk(), editor_targets=targets,
+    )
+    visible = render_resolved_ic(
+        unit, STYLE, FixedInk(), review_overlay=True,
+        editor_targets=targets, editor_overlay=True,
+    )
+    assert clean.pin_anchors == visible.pin_anchors
+    assert "editor-connection-targets" not in clean.svg
+    assert "#148645" not in clean.svg and "#8b1e27" not in clean.svg
+    svg = ET.fromstring(visible.svg)
+    leaves = {
+        element.get("data-pin-id"): element
+        for element in svg.findall(f".//{NS}line[@data-pin-id]")
+    }
+    marks = svg.findall(
+        f".//{NS}g[@data-layer='editor-connection-targets']/{NS}rect",
+    )
+    assert len(marks) == len(leaves) == count
+    for target, mark in zip(targets, marks, strict=True):
+        line = leaves[target.pin_id]
+        assert mark.get("data-pin-ref") == (
+            f"{target.pin_ref.reference}.{target.pin_ref.number}"
+        )
+        assert mark.get("data-pin-number") == target.pin_ref.number
+        assert mark.get("data-net-id") == (target.net_id or "")
+        assert mark.get("data-reason") == (target.reason or "")
+        assert mark.get("data-pin-id") == target.pin_id
+        assert mark.get("data-external-anchor-x-um") == str(target.anchor.x)
+        assert mark.get("data-external-anchor-y-um") == str(target.anchor.y)
+        assert (line.get("x2"), line.get("y2")) == (
+            format_mm(target.anchor.x), format_mm(target.anchor.y),
+        )
+        # A true endpoint-centered square, never one drawn at the UGO body.
+        assert int(Decimal(mark.get("x")) * 1000) + 350 == target.anchor.x
+        assert int(Decimal(mark.get("y")) * 1000) + 350 == target.anchor.y
+        assert mark.get("width") == mark.get("height") == "0.7"
+        assert mark.get("fill") == (
+            "#148645" if target.connectable else "#8b1e27"
+        )
+
+
+@pytest.mark.parametrize("angle,mirror", (
+    (0, False), (90, False), (180, False), (270, False),
+    (0, True), (90, True), (180, True), (270, True),
+))
+def test_hotspot_follows_d4_external_anchor_not_body_boundary(angle, mirror):
+    from decimal import Decimal
+
+    from examples.review_ic_cycle7 import _declared_synthetic_targets
+
+    unit, _ = specimen(14, transform=Transform(angle, mirror), function="PWM")
+    targets, _ = _declared_synthetic_targets(unit)
+    svg = ET.fromstring(render_resolved_ic(
+        unit, STYLE, FixedInk(),
+        editor_targets=targets, editor_overlay=True,
+    ).svg)
+    squares = svg.findall(
+        f".//{NS}g[@data-layer='editor-connection-targets']/{NS}rect",
+    )
+    assert len(squares) == len(targets) == 14
+    for mark, target in zip(squares, targets, strict=True):
+        assert int(Decimal(mark.get("x")) * 1000) + 350 == target.anchor.x
+        assert int(Decimal(mark.get("y")) * 1000) + 350 == target.anchor.y
