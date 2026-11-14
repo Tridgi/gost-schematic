@@ -125,7 +125,7 @@ jobs:
           assert crops["enlargement_count"]==21
           for svg in folder.glob("*.svg"):
               root=ET.fromstring(svg.read_text())
-              assert len(root.findall("./{http://www.w3.org/2000/svg}g[@data-layer='symbols']"))==23
+              assert len(root.findall(".//{http://www.w3.org/2000/svg}g[@data-layer='symbols']"))==23, svg.name
               assert len(root.findall(".//{http://www.w3.org/2000/svg}line[@data-layer='wires']"))==91
               png=folder/(svg.stem+"-300dpi.png")
               with Image.open(png) as im:
