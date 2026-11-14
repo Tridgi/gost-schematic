@@ -121,6 +121,39 @@ def parallel_clearance_um(a, b):
     return None
 
 
+def parallel_endpoint_clearance_um(a, b):
+    """Stroke-to-stroke Euclidean clearance for parallel non-overlapping spans.
+
+    Separate from the GOST 3mm *adjacent parallel* long-run rule.
+    Catches R5/R6 1mm near-end gaps without misquoting §5.3.4.
+    """
+    ah, bh = a["y1"] == a["y2"], b["y1"] == b["y2"]
+    av, bv = a["x1"] == a["x2"], b["x1"] == b["x2"]
+    if ah and bh:
+        first = sorted((a["x1"], a["x2"]))
+        second = sorted((b["x1"], b["x2"]))
+        projected_overlap = min(first[1], second[1]) - max(
+            first[0], second[0]
+        )
+        if projected_overlap > 0:
+            return None
+        dx = max(0, max(first[0], second[0]) - min(first[1], second[1]))
+        center_dist = math.hypot(dx, a["y1"] - b["y1"])
+    elif av and bv:
+        first = sorted((a["y1"], a["y2"]))
+        second = sorted((b["y1"], b["y2"]))
+        projected_overlap = min(first[1], second[1]) - max(
+            first[0], second[0]
+        )
+        if projected_overlap > 0:
+            return None
+        dy = max(0, max(first[0], second[0]) - min(first[1], second[1]))
+        center_dist = math.hypot(dy, a["x1"] - b["x1"])
+    else:
+        return None
+    return center_dist - (a["stroke_um"] + b["stroke_um"]) / 2
+
+
 def orthogonal_crossing(a, b):
     """World coordinate in µm of crossing; topology does not change."""
     ah = a["y1"] == a["y2"]
@@ -355,6 +388,7 @@ def geometry_gate(ctx, svg):
     check(all(x["stroke_um"] == 300 for x in lines),
           "TL494_WIRES_LINE_WIDTH_NOT_0_3MM")
     pairs = []
+    endpoint_near_misses = []
     crossings = []
     for i, a in enumerate(lines):
         check(a["x1"] == a["x2"] or a["y1"] == a["y2"],
@@ -374,6 +408,16 @@ def geometry_gate(ctx, svg):
                     "a_um": [a["x1"], a["y1"], a["x2"], a["y2"]],
                     "b_um": [b["x1"], b["y1"], b["x2"], b["y2"]],
                 })
+            endpoint_gap = parallel_endpoint_clearance_um(a, b)
+            if endpoint_gap is not None and endpoint_gap < 3000:
+                endpoint_near_misses.append({
+                    "line_a": a["index"], "line_b": b["index"],
+                    "net_a": a["net"], "net_b": b["net"],
+                    "edge_gap_mm": round(endpoint_gap / 1000, 6),
+                    "kind": "NEAR_PARALLEL_ENDPOINTS_NOT_LONG_RUN_GOST_3MM",
+                    "a_um": [a["x1"], a["y1"], a["x2"], a["y2"]],
+                    "b_um": [b["x1"], b["y1"], b["x2"], b["y2"]],
+                })
             xy = orthogonal_crossing(a, b)
             if xy is not None:
                 crossings.append({
@@ -382,6 +426,7 @@ def geometry_gate(ctx, svg):
                     "coordinate_um": xy,
                 })
     pairs.sort(key=lambda x: x["edge_clearance_um"])
+    endpoint_near_misses.sort(key=lambda x: x["edge_gap_mm"])
     check(not any(c["coordinate_um"] in [
         [x.x, x.y] for x in graph.junctions
     ] for c in crossings), "TL494_DIFFERENT_NET_JUNCTION_DOT_SHOWN")
@@ -390,6 +435,10 @@ def geometry_gate(ctx, svg):
     # A2 landscape width 594 mm; source is substantially wider.
     status = {
         "parallel_3mm": "PASS" if not pairs else "FAIL",
+        "dangerous_parallel_endpoint_below_1mm": (
+            "FAIL" if any(x["edge_gap_mm"] < 1.0
+                          for x in endpoint_near_misses) else "PASS"
+        ),
         "unmarked_crossing_print": "PASS" if not crossings else "FAIL",
         "line_weight": "PASS" if all(.2 <= w <= 1 for w in widths) else "FAIL",
         "a3_fit": "PASS" if width <= 420 and height <= 297 else "FAIL",
@@ -412,6 +461,10 @@ def geometry_gate(ctx, svg):
             l["net"] for l in lines
         }), "parallel_wire_violations": pairs,
         "parallel_violations_count": len(pairs),
+        "distinct_net_near_endpoint_gaps": endpoint_near_misses,
+        "near_endpoint_below_1mm": [
+            x for x in endpoint_near_misses if x["edge_gap_mm"] < 1
+        ],
         "min_parallel_edge_clearance_mm":
             min([x["edge_clearance_mm"] for x in pairs], default=None),
         "different_net_orthogonal_crossings": crossings,
@@ -526,14 +579,13 @@ def visual_gate(ctx, clean_svg, debug_svg, args):
     clean_data = "TL494_23_real_clean_300dpi.png"
     if has_photo:
         from PIL import ImageOps
-        with Image.open(real_src) as photo:
-            with Image.open(out / clean_data) as drawing:
-                a = ImageOps.contain(photo.convert("RGB"), (1280, 840))
-                b = ImageOps.contain(drawing.convert("RGB"), (1280, 840))
-                canvas = Image.new("RGB", (2560, 840), "white")
-                canvas.paste(a, (0, 0))
-                canvas.paste(b, (1280, 0))
-                canvas.save(out / "photo_vs_actual_23_part_svg.png")
+        with Image.open(real_src) as photo, Image.open(out / clean_data) as drawing:
+            a = ImageOps.contain(photo.convert("RGB"), (1280, 840))
+            b = ImageOps.contain(drawing.convert("RGB"), (1280, 840))
+            canvas = Image.new("RGB", (2560, 840), "white")
+            canvas.paste(a, (0, 0))
+            canvas.paste(b, (1280, 0))
+            canvas.save(out / "photo_vs_actual_23_part_svg.png")
         photo_status = "PASS_REAL_ORIGINAL_USER_IMAGE_COMPARED"
     else:
         photo_status = PHOTO_NOT_EMBEDDED
@@ -610,7 +662,8 @@ def main():
             result[name] = {"status": status, "evidence": evidence}
             if status == "FAIL":
                 mandatory_fail.append(name)
-        except Exception as exc:
+        except (AssertionError, ValueError, TypeError, KeyError, OSError,
+                RuntimeError, ImportError, AttributeError) as exc:
             traceback.print_exc()
             result[name] = {"status": "FAIL", "error": repr(exc)}
             mandatory_fail.append(name)
@@ -635,7 +688,8 @@ def main():
         gate("P4_REAL_IMAGES", lambda: visual_gate(
             typed, clean, diag, args
         ))
-    except Exception as exc:
+    except (AssertionError, ValueError, TypeError, KeyError, OSError,
+                RuntimeError, ImportError, AttributeError) as exc:
         traceback.print_exc()
         result["SOURCE_REAL_REGENERATION"] = {
             "status": "FAIL", "error": repr(exc)
