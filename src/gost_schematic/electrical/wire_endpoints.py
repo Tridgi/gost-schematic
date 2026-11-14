@@ -161,16 +161,30 @@ def _positive_collinear_overlap(first: WireSegment, second: WireSegment) -> bool
 
 
 def _crossing(first: WireSegment, second: WireSegment) -> Point | None:
-    """Only proper orthogonal interior/interior intersections (no T or overlap)."""
-    a_horizontal = first.start.y == first.end.y
-    b_horizontal = second.start.y == second.end.y
-    if a_horizontal == b_horizontal:
+    """Exact integer-µm proper segment X; no floats and no implied junction.
+
+    Diagonal nonconnecting X is supported too. A sub-µm fractional
+    intersection has no exact Point in this engine and is not represented
+    as a falsely snapped/rounded editor target.
+    """
+    p, q = first.start, second.start
+    rx, ry = first.end.x - p.x, first.end.y - p.y
+    sx, sy = second.end.x - q.x, second.end.y - q.y
+    denominator = rx * sy - ry * sx
+    if denominator == 0:
         return None
-    h, v = (first, second) if a_horizontal else (second, first)
-    if v.start.x != v.end.x:
+    delta_x, delta_y = q.x - p.x, q.y - p.y
+    t_num = delta_x * sy - delta_y * sx
+    u_num = delta_x * ry - delta_y * rx
+    if denominator < 0:
+        denominator, t_num, u_num = -denominator, -t_num, -u_num
+    if not (0 < t_num < denominator and 0 < u_num < denominator):
         return None
-    p = Point(v.start.x, h.start.y)
-    return p if _interior(h, p) and _interior(v, p) else None
+    x_num = p.x * denominator + rx * t_num
+    y_num = p.y * denominator + ry * t_num
+    if x_num % denominator or y_num % denominator:
+        return None
+    return Point(x_num // denominator, y_num // denominator)
 
 
 def _resolve_contacts(
