@@ -323,6 +323,29 @@ def test_unmatched_alias_and_wrong_semantics_fail_at_circuit_adapter_boundary():
         )
 
 
+def test_ti_source_lock_refuses_two_matching_forged_types_and_aliases():
+    """A forged pinout + consistently forged short-label metadata still fails."""
+    binding, _ = _photo()
+    device = replace(binding.record.device, pins=tuple(
+        replace(p, electrical_type=IcPinType.OUTPUT)
+        if p.number == "3" else p for p in binding.record.device.pins
+    ))
+    record = IcLibraryRecord(
+        device, binding.record.specs, binding.record.placements,
+    )
+    aliases = replace(binding.aliases, labels=tuple(
+        replace(a, electrical_type=IcPinType.OUTPUT)
+        if a.physical_number == "3" else a
+        for a in binding.aliases.labels
+    ))
+    aliases.validate_device(device)  # Two forged objects agree; TI table does not.
+    with pytest.raises(ValueError, match="TL494_TI_PIN_FUNCTION_OR_ELECTRICAL_TYPE"):
+        bind_ic_circuit(
+            record, binding.circuit, aliases=aliases,
+            external_pin_numbers=dict(binding.external_pin_numbers),
+        )
+
+
 def test_missing_unknown_multisection_pin_unit_and_duplicate_pin_owned_fail():
     source = synthetic_ic(14, IcKind.DIGITAL)
     # Common legacy ElectricalType has no NC; change only synthetic last pin
