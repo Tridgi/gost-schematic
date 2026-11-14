@@ -535,7 +535,11 @@ def route_multi_terminal_net(
                 key=lambda p: (p.x, p.y),
             )),
         )
-        result = audit_route_drc(circuit, trial, stroke_um=stroke_um)
+        result = audit_route_drc(
+            circuit, trial, stroke_um=stroke_um,
+            symbols_by_part=symbols,
+            annotation_placements=annotation_placements,
+        )
         if not result.valid:
             reasons = tuple(sorted({f.code for f in result.findings
                                     if f.severity == "error"}))
