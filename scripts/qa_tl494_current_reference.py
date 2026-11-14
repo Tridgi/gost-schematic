@@ -27,8 +27,8 @@ from gost_schematic.model.circuit import PinRef
 
 NS = "{http://www.w3.org/2000/svg}"
 SOURCE_SHA = "e695c415fdced164b0e0c39c5249d030795a0aa6"
-OWNER_PAINT_SHA = "8ab01a2e2d01237a3ccb83dc6d3bcec397e0b3f4"
-OWNER_ELEKTRIK_SHA = "55eaeffe5f4220813abacf94f17866c74ae1cee0"
+OWNER_PAINT_SHA = "ca3ab815fa5d79756a7f34f06520f760fcb8674d"
+OWNER_ELEKTRIK_SHA = "a9a03b247811019538b731563a32991b30f8c4a2"
 SOURCE_BLOBS = {
     "examples/tl494_named_photo_sheet.py":
         "990a1aca651f34dcae991575dddfa28b2acae813",
@@ -952,6 +952,129 @@ img{{max-width:100%;height:auto}}section{{overflow:auto;border:1px solid #555;pa
             "print_full_scale": "PASS_MM_TO_DPI_WITHOUT_FIT_OR_DOWNSCALE"}
 
 
+
+def current_full_native_23_owner_sheet(font, destination):
+    """Independently inspect current PAINT's REAL whole-Circuit render.
+
+    The original wire graph is KNOWN-BAD. Passing native composition is not
+    the same as acceptable 3mm print clearance or new routing.
+    """
+    from examples.render_tl494_full_native_cycle9 import (
+        _render_variant,
+        construct_native_paint,
+    )
+    from examples.tl494_named_photo_sheet import photo_nets
+    from gost_schematic.rendering.ic_rectangular import IcFunctionReading
+
+    (circuit, graph, _symbols, model, _old, style, measure,
+     policy, _pair, record, catalog) = construct_native_paint(font)
+    check(len(circuit.components) == 23 and len(circuit.nets) == 15,
+          "CURRENT_PAINT_WHOLE_CIRCUIT_NOT_23_15")
+    check(len(graph.segments) == 91 and len(graph.junctions) == 37,
+          "CURRENT_PAINT_CHANGED_KNOWN_BAD_REFERENCE_GRAPH")
+    check(tuple((n.name, n.members) for n in circuit.nets) ==
+          tuple((n.name, n.members) for n in photo_nets()),
+          "CURRENT_PAINT_REAL_PHYSICAL_NET_DELTA")
+    check(record.device.pin_map["3"].electrical_type.value == "input" and
+          record.device.pin_map["13"].electrical_type.value == "input",
+          "CURRENT_PAINT_REAL_IC_SOURCE_ROLE_MISMATCH")
+    check(len(catalog) == 13, "CURRENT_PAINT_CATALOG_NOT_REAL_SOURCE")
+    check(style.em_height_um == 3500, "CURRENT_PAINT_TYPE_A_NOT_3500UM")
+
+    results = {}
+    for diagnostic in (False, True):
+        sheet, _rendered = _render_variant(
+            circuit, graph, _symbols, model, style, measure, policy,
+            diagnostic=diagnostic,
+            reading=IcFunctionReading.BOTTOM_TO_TOP,
+        )
+        root = ET.fromstring(sheet.svg)
+        body = root.find(
+            f".//{NS}g[@data-composed-engine='physical-ic-renderer']"
+        )
+        check(body is not None, "CURRENT_PAINT_NOT_FULL_NATIVE_IC_SHEET")
+        groups = root.findall(f"./{NS}g[@data-layer='symbols']")
+        check(len(groups) == 23, "CURRENT_PAINT_MISSING_NATIVE_SYMBOLS")
+        lines = svg_lines(root)
+        check(len(lines) == len(graph.segments) == 91,
+              "CURRENT_PAINT_MISSING_AUTHORED_REAL_WIRES")
+        for row, actual in zip(lines, graph.segments, strict=True):
+            check(
+                (row["net"], row["x1"], row["y1"], row["x2"], row["y2"]) ==
+                (actual.net_name, actual.start.x, actual.start.y,
+                 actual.end.x, actual.end.y),
+                "CURRENT_PAINT_MANUALLY_REWIRED_SOURCE_SVG",
+            )
+        lead_nodes = body.findall(
+            f".//{NS}g[@data-layer='ic-physical-pin-leads']/{NS}line"
+        )
+        check(len(lead_nodes) == 16, "CURRENT_PAINT_PHYSICAL_16_LEADS_LOST")
+        pin_points = {
+            p.number: (p.anchor.x, p.anchor.y) for p in model.pins
+        }
+        check({l.attrib["data-pin-number"] for l in lead_nodes} ==
+              set(pin_points), "CURRENT_PAINT_LEAD_NUMBER_MISMATCH")
+        for lead in lead_nodes:
+            x, y = pin_points[lead.attrib["data-pin-number"]]
+            check(round(float(lead.attrib["x2"]) * 1000) == x and
+                  round(float(lead.attrib["y2"]) * 1000) == y,
+                  "CURRENT_PAINT_FULL_SHEET_PINREF_COORDINATE_CHANGED")
+        markers = body.findall(
+            f".//{NS}g[@data-layer='editor-connection-targets']/{NS}rect"
+        )
+        check(len(markers) == (16 if diagnostic else 0),
+              "CURRENT_PAINT_GREEN_HOTSPOT_POLICY")
+        if diagnostic:
+            for marker in markers:
+                number = marker.attrib["data-pin-number"]
+                check((
+                    int(marker.attrib["data-external-anchor-x-um"]),
+                    int(marker.attrib["data-external-anchor-y-um"]),
+                ) == pin_points[number],
+                      "CURRENT_PAINT_GREEN_MARKER_NOT_AT_REAL_LEAD_END")
+        labels = body.findall(f".//{NS}text[@data-kind='pin-label']")
+        names = {l.attrib["data-physical-pin-number"]: l.text for l in labels}
+        check(len(names) == 16 and names["3"] == "FB" and
+              names["13"] == "OC" and
+              all(v and len(v) <= 6 for v in names.values()),
+              "CURRENT_PAINT_FULL_SHEET_VISIBLE_PIN_ALIASES")
+        pwm = body.findall(f".//{NS}text[@data-kind='function']")
+        check(len(pwm) == 1 and pwm[0].text == "PWM" and
+              pwm[0].attrib.get("transform", "").startswith(
+                  "matrix(0 -1 1 0 "
+              ), "CURRENT_PAINT_FULL_SHEET_PWM_NOT_BOTTOM_UP")
+        width_mm, height_mm, _vb = svg_attrs(root)
+        px = round(width_mm * 300 / 25.4)
+        py = round(height_mm * 300 / 25.4)
+        filename = ("current_real_23_native_diagnostic" if diagnostic
+                    else "current_real_23_native_clean")
+        (destination / (filename + ".svg")).write_text(
+            sheet.svg, encoding="utf-8"
+        )
+        png = destination / (filename + ".png")
+        cairosvg.svg2png(bytestring=sheet.svg.encode("utf-8"),
+                         write_to=str(png),
+                         output_width=px, output_height=py)
+        with Image.open(png) as img:
+            check(img.size == (px, py),
+                  "CURRENT_PAINT_300_DPI_PHYSICAL_SIZE_WRONG")
+        results[filename] = {
+            "native_components": 23, "Circuit_Nets": 15,
+            "original_wire_segments": 91, "manufacturer_IC_pins": 16,
+            "green_editor_squares": len(markers),
+            "SVG_mm": [width_mm, height_mm],
+            "raster_300dpi_px": [px, py],
+            "whole_sheet_new_render_from_Circuit": True,
+        }
+    return {
+        "production_source": "CURRENT_PAINT_REAL_23_COMPONENT_SHEET",
+        "source_original_91_wire_DRC": "FAIL_KNOWN_BAD_NOT_REROUTED",
+        "actual_print_release": "NO_GO",
+        "full_native_draft_composition": results,
+        "no_manual_svg_edit": True,
+    }
+
+
 def write_report(args, results):
     summary = {
         "issue": 92, "epic": 107,
@@ -1063,6 +1186,10 @@ def main():
         gate("P2_CURRENT_OWNER_PAINT_ON_ACTUAL_DA1",
              lambda: actual_new_owner_paint_on_original_23_sheet(
                  typed, args.output_dir
+             ))
+        gate("P2_REAL_FULL_NATIVE_OWNER_SHEET", lambda:
+             current_full_native_23_owner_sheet(
+                 args.font_file, args.output_dir
              ))
         gate("P2_TI_PIN_ALIASES_AND_PWM", lambda: ic_gate(typed, svg))
         gate("P3_STROKE_AWARE_DRC", lambda: geometry_gate(typed, svg))
