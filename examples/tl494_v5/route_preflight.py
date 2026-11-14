@@ -101,7 +101,7 @@ def _owner_ic_obstacle(view, clean_svg: str, instance):
     return symbol
 
 
-def audit_source_route(font_file: Path, output: Path, *, node_cap=5000) -> dict:
+def audit_source_route(font_file: Path, output: Path, *, node_cap=25000) -> dict:
     """Route preflight (possibly failed) from frozen native 23/15 Circuit.
 
     Any partial route is always a nonprintable report. Fail closed on pin move,
@@ -178,14 +178,27 @@ def audit_source_route(font_file: Path, output: Path, *, node_cap=5000) -> dict:
     measured = actual_component_occupied_mm(source, symbols)
     record["compact_A3"] = measured
     record["a3_print_fit"] = measured["A3_capacity_fit"]
-    record["print_after_released"] = bool(
+    record["technical_route_eligible"] = bool(
         result.print_pass and label_layout.valid and record["a3_print_fit"]
     )
+    # This component/model preflight is not the final sheet assembler.
+    # Only an independent QA-approved PRINT stage may release SVG/PNG.
+    record["print_after_released"] = False
     record["decision"] = (
+        "QA_RELEASE_STILL_REQUIRED" if record["technical_route_eligible"] else
         "BLOCKED until all 15 Net trees, DRC and print-scale compact A3 gate pass"
-        if not record["print_after_released"] else
-        "ROUTER_EVIDENCE_PASS_PENDING_INDEPENDENT_QA"
     )
+    record["incomplete_nets"] = [
+        {
+            "name": tree.net_name,
+            "connected": [
+                f"{p.reference}.{p.number}" for p in tree.completed_pins
+            ],
+            "declared_contacts": len(tree.pin_refs),
+            "diagnostics": list(tree.diagnostics),
+        }
+        for tree in result.net_trees if not tree.complete
+    ]
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
         json.dumps(record, ensure_ascii=False, sort_keys=True, indent=2)
