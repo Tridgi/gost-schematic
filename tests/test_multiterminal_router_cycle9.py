@@ -4,6 +4,7 @@ from dataclasses import replace
 import pytest
 
 from gost_schematic.core.geometry import Box, Line, Point, Rectangle, Side
+from gost_schematic.core.transforms import Transform
 from gost_schematic.engines.multiterminal_router import (
     route_circuit_net_trees,
     route_multi_terminal_net,
@@ -142,6 +143,74 @@ def test_small_page_rejects_without_fabricating_or_dropping_pin_refs():
     assert not planned.complete and not planned.print_pass
     assert len(planned.source_circuit.nets) == 1
     assert planned.source_circuit.nets[0] == circuit.nets[0]
+
+
+@pytest.mark.parametrize("rotation", (0, 90, 180, 270))
+@pytest.mark.parametrize("mirror", (False, True))
+def test_eight_D4_poses_preserve_real_multi_pin_net_and_one_T(rotation, mirror):
+    circuit, parts, symbols = native_three_terminal()
+    tx = Transform(rotation, mirror)
+    transformed = replace(
+        circuit, components=tuple(
+            replace(component, origin=tx.apply(component.origin), transform=tx)
+            for component in circuit.components
+        ),
+    )
+    tree = route_circuit_net_trees(
+        transformed, parts, symbols,
+        page_box=Box(-100000, -100000, 100000, 100000),
+    )
+    assert tree.complete, tree.diagnostics
+    assert len(tree.graph.junctions) == 1
+    assert tree.graph.junctions[0] == tx.apply(Point(33000, 17000))
+    assert tree.drc is not None and tree.drc.valid
+    assert tree.source_circuit.nets == circuit.nets
+
+
+def test_four_real_physical_contacts_reuse_one_shared_authored_junction():
+    circuit, parts, symbols = native_three_terminal()
+    sym = SymbolDefinition(
+        "terminal-top", 1,
+        (Rectangle(Box(0, 0, 4000, 4000)),
+         Line(Point(2000, 0), Point(2000, -3000))),
+        (GraphicPin("1", Point(2000, -3000), Side.TOP),),
+        Box(0, 0, 4000, 4000), 300,
+    )
+    parts = {**parts, "terminal-top": PartDefinition(
+        "terminal-top", "X", "terminal-top",
+        (PhysicalPin("1", "P", ElectricalType.PASSIVE),),
+    )}
+    symbols = {**symbols, sym.identifier: sym}
+    circuit = replace(
+        circuit,
+        components=(*circuit.components,
+                    ComponentInstance("X4", "terminal-top", Point(31000, 25000))),
+        nets=(replace(
+            circuit.nets[0],
+            members=(*circuit.nets[0].members, PinRef("X4", "1")),
+        ),),
+    )
+    result = route_circuit_net_trees(
+        circuit, parts, symbols, page_box=Box(0, 0, 90000, 60000),
+    )
+    assert result.complete, result.diagnostics
+    assert result.net_trees[0].complete
+    assert len(result.graph.segments) == 3
+    assert result.graph.junctions == (Point(33000, 17000),)
+    assert not [d for d in validate_external_wires(circuit, result.graph,
+                                                    parts, symbols)
+                if d.severity.value == "error"]
+    assert result.drc is not None and result.drc.valid
+
+
+def test_grid_overflow_and_invalid_sheet_are_typed_fail_closed():
+    circuit, parts, symbols = native_three_terminal()
+    result = route_circuit_net_trees(
+        circuit, parts, symbols,
+        page_box=Box(0, 0, 90000, 60000), search_node_cap=4,
+    )
+    assert not result.complete and not result.print_pass
+    assert "ROUTE_GRID_TOO_DENSE" in " ".join(result.diagnostics)
 
 
 def test_actual_source_negative_baseline_is_never_print_pass():
