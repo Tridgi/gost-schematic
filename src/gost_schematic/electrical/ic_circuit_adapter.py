@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 from gost_schematic.core.geometry import Box, Line, Point, Rectangle, Side
@@ -726,4 +727,51 @@ def bind_ic_circuit(
         record, circuit, aliases,
         tuple(sorted(external.items())),
         part, symbol, contacts,
+    )
+
+
+def bind_ic_circuit_from_catalog(
+    record: IcLibraryRecord,
+    circuit: Circuit,
+    parts_by_id: Mapping[str, PartDefinition],
+    *,
+    aliases: IcPinAliasProfile | None = None,
+) -> IcCircuitBinding:
+    """#115 A3 adapter: source-owned catalog pin numbers, never guessed.
+
+    The entire source Circuit is passed unchanged. For every external
+    component, the caller must supply its real typed PartDefinition. A
+    catalog with a missing or mismatched PartDefinition fails closed, as
+    does any mismatched Circuit.Net physical reference; the IC's own pins
+    always come from its verified manufacturer model instead.
+    """
+    if not isinstance(record, IcLibraryRecord) or not isinstance(circuit, Circuit):
+        raise TypeError("IC_ADAPTER_CATALOG_REQUIRES_TYPED_RECORD_AND_CIRCUIT")
+    if not isinstance(parts_by_id, Mapping):
+        raise TypeError("IC_ADAPTER_CATALOG_MAPPING_REQUIRED")
+    ref = record.placements[0].component_ref
+    ic_instances = [c for c in circuit.components if c.reference == ref]
+    if len(ic_instances) != 1 or (
+        ic_instances[0].part_id != record.device.identifier
+    ):
+        raise ValueError("IC_ADAPTER_CATALOG_IC_PART_ID_MISMATCH")
+    external: dict[str, tuple[str, ...]] = {}
+    for instance in circuit.components:
+        if instance.reference == ref:
+            continue
+        part = parts_by_id.get(instance.part_id)
+        if part is None:
+            raise ValueError(
+                f"IC_ADAPTER_CATALOG_PART_NOT_FOUND: {instance.part_id}"
+            )
+        if not isinstance(part, PartDefinition) or (
+            part.identifier != instance.part_id
+        ):
+            raise ValueError(
+                f"IC_ADAPTER_CATALOG_FOREIGN_PART_ID: {instance.part_id}"
+            )
+        external[instance.reference] = tuple(p.number for p in part.pins)
+    return bind_ic_circuit(
+        record, circuit, aliases=aliases,
+        external_pin_numbers=external,
     )
