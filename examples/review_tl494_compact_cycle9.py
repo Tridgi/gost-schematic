@@ -267,8 +267,26 @@ def produce(
         )
         if mode == "clean" and layer is not None:
             raise ValueError("COMPACT_EDITOR_PIN_SQUARES_LEAKED_TO_CLEAN")
-        if mode == "diagnostic" and layer is None:
-            raise ValueError("COMPACT_EDITOR_16_PIN_SQUARES_MISSING")
+        if mode == "diagnostic":
+            if layer is None:
+                raise ValueError("COMPACT_EDITOR_16_PIN_SQUARES_MISSING")
+            squares = layer.findall(_SVG + "rect")
+            refs = [item.get("data-pin-ref") for item in squares]
+            if (
+                len(squares) != 16 or
+                sorted(refs) != sorted(
+                    f"DA1.{i}" for i in range(1, 17)
+                ) or any(
+                    square.get("fill") != "#148645" or
+                    square.get("data-editor-only") is not None
+                    for square in squares
+                )
+            ):
+                raise ValueError(
+                    "COMPACT_EDITOR_16_GREEN_PHYSICAL_CONTACTS_WRONG"
+                )
+            if layer.get("data-physical-print") != "false":
+                raise ValueError("COMPACT_EDITOR_OVERLAY_PRINT_POLICY_INVALID")
         rendered = root.findall(
             f".//{_SVG}line[@data-layer='wires']"
         )
