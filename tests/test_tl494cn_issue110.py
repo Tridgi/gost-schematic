@@ -272,6 +272,31 @@ def test_tl494_source_symbol_body_always_portrait():
     assert spec.profile.function_angle is IcTextAngle.BOTTOM_TO_TOP
 
 
+def test_tl494_1um_physical_lead_drift_requires_new_geometry_consent():
+    """A label editor cannot move a connected or free real physical endpoint."""
+    record, _ = tl494cn_record()
+    spec = record.specs[0]
+    first, *rest = spec.rows
+    hostile = replace(
+        spec, revision=spec.revision + 1,
+        rows=(replace(
+            first, anchor=Point(first.anchor.x - 1, first.anchor.y),
+        ), *rest),
+    )
+    mutated = IcLibraryRecord(
+        record.device, (hostile,), record.placements,
+    )
+    assert mutated.device is record.device
+    assert mutated.specs[0].rows[0].number == "1"
+    with pytest.raises(ValueError, match="IC_GEOMETRY_REAUTHORIZATION_REQUIRED"):
+        validate_ic_graphic_revision(record, mutated)
+    assert resolve_ic_pin_positions(
+        record.device, record.specs, record.placements,
+    )[PinRef("DA1", "1")] != resolve_ic_pin_positions(
+        mutated.device, mutated.specs, mutated.placements,
+    )[PinRef("DA1", "1")]
+
+
 def _actual_font():
     pytest.importorskip("gost_schematic.rendering.ic_rectangular")
     source = os.environ.get("IC_TYPE_A_FONT_PATH")
