@@ -17,7 +17,7 @@ The pre-existing `Circuit.Net` (exact `PinRef` members) is the **sole electrical
 | Named off-sheet continuation | Existing strict validated `NetContinuationProject` endpoint/pair/stub tied to exact `net_id` | `WireTermination.CONTINUATION`, `NONPHYSICAL`; never a free target or a connector | **No** |
 | XP/XS physical connector | Real `PartDefinition.reference_prefix` XP/XS plus genuine mapped `PinRef` and resolved world point | `CONNECTOR_CONTACT` / distinct `physical-connector-contact`; no counterfeit from a text prefix | **No** |
 
-An explicitly connected common endpoint of two wires is `WireTermination.JOINED_WIRE`, not a free end. A graphic endpoint touching the **interior** of another wire without `graph.junctions` is `UNMARKED_TOUCH` / `BLOCKED`, not a silently created T. Foreign-net collinear overlap is rejected. A proper X may be drawn across two Net IDs without joining them; putting an actual junction on the foreign-net X is an error.
+An explicitly connected common endpoint of two wires is `WireTermination.JOINED_WIRE`, not a free end. A graphic endpoint touching the **interior** of another wire without `graph.junctions` is `UNMARKED_TOUCH` / `BLOCKED`, not a silently created T. Foreign-net collinear overlap is rejected. A proper orthogonal or diagonal X may be drawn across two Net IDs without joining them; putting an actual junction on the foreign-net X is an error. Geometric intersections are computed with exact integer arithmetic; fractional sub-µm crossings are never rounded into a false connection target.
 
 ### P0 typed model and provenance
 
@@ -62,5 +62,5 @@ Future `ProjectService` must store *the entire source-authorized graph plus stab
 
 ### Independent QA gates
 
-- `test_wire_endpoints_cycle8.py`: real/physical/connector/free/junction/crossing/continuation types, strict authority, same/foreign Net overlap, no false X/T, unattached orphan blocking, exact 1 µm, duplicate and stale IDs, missing pin map, D4 eight transforms, XML import-order, and raster green-only-when-opted-in.
+- `test_wire_endpoints_cycle8.py`: real/physical/connector/free/junction/crossing/continuation types, strict authority, same/foreign Net overlap, no false X/T, unattached orphan blocking, exact 1 µm, duplicate and stale IDs, missing pin map, D4 eight transforms, XML import-order, and raster green-only-when-opted-in, plus diagonal integer-µm X versus fractional sub-µm non-snap.
 - **Future release blocks:** joint PAINT #88 physical IC 4/8/14/40/64 pin galley; QA #92 combined source branch; P0 PWM D4 90°/270° text overflow; actual manufacturer XP/XS pin map; interactive edit logic, accessibility and CAS ProjectService. No merge from this owner branch until MAIN2/QA approval.
