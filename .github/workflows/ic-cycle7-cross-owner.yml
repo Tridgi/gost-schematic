@@ -32,6 +32,7 @@ jobs:
           git fetch --no-tags origin "$ELEKTRIK_SHA" --depth=1
           git archive "$ELEKTRIK_SHA" \
             src/gost_schematic/electrical \
+            examples/review_ic_cycle7.py \
             tests/test_ic_paint_joint_cycle7.py \
             tests/fixtures/electrical-ic-cycle7 \
             | tar -xf -
