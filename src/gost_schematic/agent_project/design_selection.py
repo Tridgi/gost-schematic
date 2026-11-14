@@ -6,11 +6,9 @@ GOST DRAFT symbols. ProjectService is authoritative for saved physical snapshots
 import re
 from typing import Any
 
-from gost_schematic.core.geometry import Point, primitive_bounds
+from gost_schematic.core.geometry import Line, Point
 from gost_schematic.core.transforms import Transform
-from gost_schematic.model.circuit import PinRef
 from gost_schematic.model.obstacles import WireObstacle, wire_intersects_box
-from gost_schematic.core.geometry import Line
 
 from .catalog import CatalogResolver, ProjectError
 from .contracts import SchematicProject
