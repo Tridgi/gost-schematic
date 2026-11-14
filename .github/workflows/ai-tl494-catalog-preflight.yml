@@ -156,14 +156,20 @@ jobs:
         run: |
           mkdir -p output/cycle11-owner
           git fetch --no-tags --depth=1 origin \
-            1e4baf7ea713f649e0dabb4d6119e97281901f03 \
-            c58e224700b318892ee92197f8bfd391807a7325
-          git show 1e4baf7ea713f649e0dabb4d6119e97281901f03:tests/fixtures/tl494_photo_23_frozen_cycle9.json \
+            c8991bf232428645cad6e8b402d70abccf12a546 \
+            65b68cdd89ac0c2ae0b137228da61a17ac78d339
+          git show c8991bf232428645cad6e8b402d70abccf12a546:tests/fixtures/tl494_photo_23_frozen_cycle9.json \
             > output/cycle11-owner/frozen-IC97-source.json
-          git show 1e4baf7ea713f649e0dabb4d6119e97281901f03:src/gost_schematic/electrical/tl494cn.py \
+          git show c8991bf232428645cad6e8b402d70abccf12a546:src/gost_schematic/electrical/tl494cn.py \
             > output/cycle11-owner/IC97-tl494cn.py
-          git show c58e224700b318892ee92197f8bfd391807a7325:examples/tl494_v5/native_circuit.py \
+          git show 65b68cdd89ac0c2ae0b137228da61a17ac78d339:examples/tl494_v5/native_circuit.py \
             > output/cycle11-owner/RECON115-native-circuit.py
+          git show c8991bf232428645cad6e8b402d70abccf12a546:examples/tl494_cycle9_circuit_integration.py \
+            > output/cycle11-owner/IC97-typed-integration.py
+          git show 65b68cdd89ac0c2ae0b137228da61a17ac78d339:examples/tl494_v5/cycle11_ti_bridge.py \
+            > output/cycle11-owner/RECON115-typed-ti-bridge.py
+          git show 65b68cdd89ac0c2ae0b137228da61a17ac78d339:examples/tl494_v5/cycle11_b_continuation.py \
+            > output/cycle11-owner/RECON115-typed-b-continuation.py
           test "$(git hash-object output/cycle11-owner/frozen-IC97-source.json)" = \
             "a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65"
           test "$(git hash-object src/gost_schematic/agent_project/data/tl494_ic97_frozen_source.json)" = \
@@ -175,6 +181,9 @@ jobs:
             --owner-fixture output/cycle11-owner/frozen-IC97-source.json \
             --ic-header output/cycle11-owner/IC97-tl494cn.py \
             --recon-header output/cycle11-owner/RECON115-native-circuit.py \
+            --ic-integration output/cycle11-owner/IC97-typed-integration.py \
+            --recon-ti-bridge output/cycle11-owner/RECON115-typed-ti-bridge.py \
+            --recon-b-continuation output/cycle11-owner/RECON115-typed-b-continuation.py \
             --out output/cycle11-original-source-proof \
             > output/cycle11-source-pipeline-report.json
           python - <<'PY'
@@ -195,6 +204,16 @@ jobs:
           assert proof["missing_net_reject_code"] == "SOURCE_NET_INVENTORY_INCOMPLETE"
           assert proof["missing_net_reject_exit"] == 3
           assert proof["owner_part_id_bridge"]["reversible"]
+          assert proof["owner_cycle11_bridge"]["status"] == "PINNED_OWNER_AST_INTERFACES_MATCH"
+          assert proof["owner_cycle11_bridge"]["owner_code_imported_or_executed"] is False
+          assert proof["owner_cycle11_bridge"]["source_b_nonphysical_marker_bindings"] == {
+              "b-X2": "X2.1", "b-R5": "R5.2"
+          }
+          assert proof["owner_cycle11_bridge"]["b_physical_pins"] == [
+              "FU1.2", "R5.2", "X2.1"
+          ]
+          assert proof["typed_readiness"]["frozen_original_nominals_verified"]
+          assert proof["typed_readiness"]["frozen_original_bom_part_ids_verified"]
           assert proof["reversible_net_display"][
               "reversible_to_original_physical_15_net_memberships"
           ]
