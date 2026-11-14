@@ -158,6 +158,9 @@ def test_readonly_placement_keeps_true_pinrefs_and_blocks_connected_net(tmp_path
         "1", "2",
     }
     assert result["original_net_membership"]
+    original_net_ids = set(project.net_ids)
+    assert all(item["original_net_id"] in original_net_ids
+               for item in result["original_net_membership"])
     assert project.to_record() == before
     assert head_path.read_bytes() == original_head
     assert service.open_project(PID, project.revision).project.to_record() == before
