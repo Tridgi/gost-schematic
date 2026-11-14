@@ -295,9 +295,10 @@ def _check_physical_svg(root: ET.Element, manifest: dict,
     }
 
 
-def _verify_png(png_file: Path, width_mm: float) -> dict:
+def _verify_png(png_file: Path, width_mm: float, root: ET.Element, *,
+                diagnostic: bool) -> dict:
     try:
-        from PIL import Image
+        from PIL import Image, ImageChops
     except ImportError as exc:
         raise PrintEvidenceError("PIL_REQUIRED_FOR_ACTUAL_PRINT_RASTER") from exc
     _insist(png_file.is_file(), f"PNG_300DPI_MISSING:{png_file.name}")
@@ -306,11 +307,59 @@ def _verify_png(png_file: Path, width_mm: float) -> dict:
         declared_dpi = im.info.get("dpi")
         _insist(abs(im.width - round(width_mm * 300 / 25.4)) <= 1,
                 "PNG_RASTER_NOT_PHYSICALLY_300DPI")
-        # TIFF/PNG writer may omit metadata, but pixel mm remains verifiable.
+        raster = im.convert("RGB")
+        if not diagnostic:
+            red, green, blue = raster.split()
+            _insist(ImageChops.difference(red, green).getbbox() is None
+                    and ImageChops.difference(red, blue).getbbox() is None,
+                    "PNG_CLEAN_COLORED_EDITOR_INK")
+            green_samples = 0
+        else:
+            real_leads = {
+                el.get("data-pin-number"): el
+                for el in root.findall(
+                    f".//{SVG}g[@data-layer='ic-physical-pin-leads']/{SVG}line"
+                )
+            }
+            markers = root.findall(
+                f".//{SVG}g[@data-layer='editor-connection-targets']/{SVG}rect"
+            )
+            viewport = [float(v) for v in root.get("viewBox", "").split()]
+            _insist(len(viewport) == 4 and len(markers) == 16,
+                    "PNG_REAL_16_PIN_DEBUG_SOURCE_REQUIRED")
+            green_samples = 0
+            for marker in markers:
+                number = marker.get("data-pin-number")
+                _insist(number in real_leads, "PNG_MARKER_FOREIGN_PIN")
+                _insist(marker.get("data-pin-ref") == f"DA1.{number}"
+                        and marker.get("data-connectable") == "true"
+                        and marker.get("data-manufacturer-electrical-type")
+                        and marker.get("data-net-id"),
+                        "PNG_MARKER_NOT_VERIFIED_REAL_PINREF")
+                line = real_leads[number]
+                center = (float(marker.get("x", "nan"))
+                          + float(marker.get("width", "nan")) / 2,
+                          float(marker.get("y", "nan"))
+                          + float(marker.get("height", "nan")) / 2)
+                _insist(math.isclose(center[0], float(line.get("x2", "nan")),
+                                       abs_tol=1e-6)
+                        and math.isclose(center[1], float(line.get("y2", "nan")),
+                                         abs_tol=1e-6),
+                        "PNG_GREEN_MARKER_NOT_ACTUAL_PIN_LEAD_END")
+                x = round((center[0] - viewport[0]) * 300 / 25.4)
+                y = round((center[1] - viewport[1]) * 300 / 25.4)
+                _insist(0 <= x < im.width and 0 <= y < im.height,
+                        "PNG_PIN_OUT_OF_PHYSICAL_SHEET")
+                red, green, blue = raster.getpixel((x, y))
+                _insist(green > red + 35 and green > blue + 20,
+                        "PNG_GREEN_ENDPOINT_COVERED_BY_COPPER")
+                green_samples += 1
         return {
             "pixels": list(measured_px),
             "dpi_metadata": list(declared_dpi) if declared_dpi else None,
             "physical_width_mm": width_mm,
+            "real_green_pin_pixels": green_samples,
+            "clean_monochrome": not diagnostic,
         }
 
 
@@ -353,7 +402,8 @@ def audit(folder: Path, profile_path: Path, *,
         details["correct_editorial_pwm_direction"] = True
         if verify_png:
             png = folder / f"{PAINT_BASE}_{suffix}-300dpi.png"
-            details["raster"] = _verify_png(png, details["physical_width_mm"])
+            details["raster"] = _verify_png(png, details["physical_width_mm"], root,
+                                            diagnostic=is_diagnostic)
         actual[suffix] = details
     _insist(actual["clean"]["physical_width_mm"] ==
             actual["diagnostic"]["physical_width_mm"]
