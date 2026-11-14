@@ -17,7 +17,10 @@ from gost_schematic.model.circuit import Circuit
 from gost_schematic.model.obstacles import WireObstacle
 from gost_schematic.model.symbol import SymbolDefinition
 from gost_schematic.rendering.ic_rectangular import IcRendered
-from gost_schematic.rendering.ic_sheet_composition import compose_authoritative_ic_layers
+from gost_schematic.rendering.ic_sheet_composition import (
+    append_verified_sheet_continuations,
+    compose_authoritative_ic_layers,
+)
 from gost_schematic.rendering.sheet_svg import render_sheet_svg
 from gost_schematic.validation.external_wire_checks import ExternalWireGraph, WireSegment
 
@@ -84,6 +87,7 @@ def render_external_wire_sheet(
     junction_radius_um: int = 550,
     strict_layout: bool = True,
     physical_ic_renderings: Mapping[str, IcRendered] | None = None,
+    source_continuation_project: object | None = None,
 ) -> ExternalWireSheet:
     """Render existing Circuit and exact authored ExternalWireGraph, without edits.
 
@@ -160,6 +164,11 @@ def render_external_wire_sheet(
         })
     if len(marks) != len(graph.junctions):
         raise ValueError("Sheet SVG silently omitted explicitly authored junctions")
+    if source_continuation_project is not None:
+        append_verified_sheet_continuations(
+            root, circuit, source_continuation_project, style,
+            diagnostic=diagnostic,
+        )
     if diagnostic:
         annotations = ET.SubElement(root, _SVG + "metadata", {
             "data-layer": "external-wire-layout-diagnostics",
