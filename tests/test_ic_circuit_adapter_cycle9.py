@@ -26,6 +26,7 @@ from gost_schematic.electrical.ic import (
 from gost_schematic.electrical.ic_circuit_adapter import (
     IcCircuitBinding,
     bind_ic_circuit,
+    bind_ic_circuit_from_catalog,
 )
 from gost_schematic.electrical.ic_graphic_revision import (
     revise_ic_text_orientation,
@@ -36,7 +37,8 @@ from gost_schematic.electrical.tl494cn import (
     tl494cn_device,
 )
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
-from gost_schematic.model.pins import ElectricalType
+from gost_schematic.model.part import PartDefinition
+from gost_schematic.model.pins import ElectricalType, PhysicalPin
 from gost_schematic.validation.symbol_checks import validate_symbol
 
 
@@ -151,6 +153,81 @@ def test_single_native_symbol_has_same_16_world_terminals_and_no_ink_claim():
         problem for problem in validate_symbol(native)
         if problem.severity.value == "error"
     ]
+
+
+def _synthetic_catalog_only_for_electrical_inventory(binding):
+    """TEST ONLY: #115 must supply real PartDefinitions from source catalog."""
+    inventory = dict(binding.external_pin_numbers)
+    parts = {}
+    for comp in binding.circuit.components:
+        if comp.reference == "DA1":
+            continue
+        nums = inventory[comp.reference]
+        if comp.part_id in parts:
+            assert {p.number for p in parts[comp.part_id].pins} == set(nums)
+            continue
+        parts[comp.part_id] = PartDefinition(
+            identifier=comp.part_id,
+            reference_prefix="T",
+            symbol_id="synthetic.geometry.not.printable",
+            pins=tuple(
+                PhysicalPin(number, f"TEST PIN {number}", ElectricalType.PASSIVE)
+                for number in nums
+            ),
+        )
+    return parts
+
+
+def test_reconstructor_a3_23_part_catalog_adapter_preserves_complete_nets():
+    binding, source = _photo()
+    parts = _synthetic_catalog_only_for_electrical_inventory(binding)
+    candidate = bind_ic_circuit_from_catalog(
+        binding.record, binding.circuit, parts,
+        aliases=binding.aliases,
+    )
+    assert candidate == binding
+    assert candidate.circuit is binding.circuit
+    assert candidate.contacts == binding.contacts
+    assert_frozen_photo_topology(candidate, source)
+    assert IcCircuitBinding.from_json(candidate.to_json()) == candidate
+
+
+def test_reconstructor_catalog_foreign_missing_unknown_pin_rejected():
+    binding, _ = _photo()
+    parts = _synthetic_catalog_only_for_electrical_inventory(binding)
+    absent = dict(parts)
+    del absent["resistor.variable"]
+    with pytest.raises(ValueError, match="IC_ADAPTER_CATALOG_PART_NOT_FOUND"):
+        bind_ic_circuit_from_catalog(
+            binding.record, binding.circuit, absent,
+            aliases=binding.aliases,
+        )
+    fake = dict(parts)
+    fake["resistor.fixed"] = replace(
+        fake["resistor.fixed"], identifier="foreign.resistor.kind",
+    )
+    with pytest.raises(ValueError, match="IC_ADAPTER_CATALOG_FOREIGN_PART_ID"):
+        bind_ic_circuit_from_catalog(
+            binding.record, binding.circuit, fake,
+            aliases=binding.aliases,
+        )
+    truncated = dict(parts)
+    truncated["resistor.fixed"] = replace(
+        truncated["resistor.fixed"],
+        pins=truncated["resistor.fixed"].pins[:1],
+    )
+    with pytest.raises(
+        ValueError, match="IC_ADAPTER_FOREIGN_OR_UNKNOWN_EXTERNAL_PIN",
+    ):
+        bind_ic_circuit_from_catalog(
+            binding.record, binding.circuit, truncated,
+            aliases=binding.aliases,
+        )
+    with pytest.raises(TypeError, match="IC_ADAPTER_CATALOG_MAPPING_REQUIRED"):
+        bind_ic_circuit_from_catalog(
+            binding.record, binding.circuit, None,
+            aliases=binding.aliases,
+        )
 
 
 def test_strict_adapter_serialization_is_exact_idempotent_with_all_23_parts():
