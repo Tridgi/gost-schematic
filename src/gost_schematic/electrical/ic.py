@@ -186,6 +186,54 @@ class IcDeviceDefinition:
         )
 
 
+class IcPortLayout(str, Enum):
+    """Logical pin-side arrangement, independent from body or text rotation."""
+
+    LEFT_RIGHT = "left_right"
+    TOP_BOTTOM = "top_bottom"
+
+
+class IcBodyAxis(str, Enum):
+    """Graphical rectangle aspect intent; NOT a physical package footprint."""
+
+    AUTO = "auto"
+    PORTRAIT = "portrait"
+    LANDSCAPE = "landscape"
+
+
+class IcTextAngle(int, Enum):
+    """DRAFT display angle in untransformed local coordinates (degrees)."""
+
+    HORIZONTAL = 0
+    VERTICAL = 90
+
+
+@dataclass(frozen=True, slots=True)
+class IcGraphicProfile:
+    """Independent source-view choices. This is NOT an ESKD signoff.
+
+    Port layout, rectangle aspect, central function and remaining field text
+    are four independent attributes. In particular LEFT_RIGHT + VERTICAL
+    function text is representable and serializable even while PAINT #93
+    refuses to print that experimental combination.
+    """
+
+    port_layout: IcPortLayout = IcPortLayout.LEFT_RIGHT
+    body_axis: IcBodyAxis = IcBodyAxis.AUTO
+    function_angle: IcTextAngle = IcTextAngle.HORIZONTAL
+    other_text_angle: IcTextAngle = IcTextAngle.HORIZONTAL
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.port_layout, IcPortLayout):
+            raise TypeError("IC_PORT_LAYOUT_TYPED_REQUIRED")
+        if not isinstance(self.body_axis, IcBodyAxis):
+            raise TypeError("IC_BODY_AXIS_TYPED_REQUIRED")
+        if not isinstance(self.function_angle, IcTextAngle) or not isinstance(
+            self.other_text_angle, IcTextAngle,
+        ):
+            raise TypeError("IC_TEXT_ANGLE_TYPED_REQUIRED")
+
+
 class IcField(str, Enum):
     MAIN = "main"
     AUX_LEFT = "aux_left"
@@ -235,6 +283,7 @@ class IcSymbolSpec:
     aux_left: str | None = None
     aux_right: str | None = None
     revision: int = 1
+    profile: IcGraphicProfile = field(default_factory=IcGraphicProfile)
 
     def __post_init__(self) -> None:
         _name(self.device_id, "symbol device_id")
@@ -244,6 +293,23 @@ class IcSymbolSpec:
         _name(self.main_field, "main field text")
         if type(self.revision) is not int or self.revision < 1:
             raise ValueError("Symbol revision must be positive integer")
+        if not isinstance(self.profile, IcGraphicProfile):
+            raise TypeError("IC_GRAPHIC_PROFILE_TYPED_REQUIRED")
+        w = self.body.max_x - self.body.min_x
+        h = self.body.max_y - self.body.min_y
+        if (
+            self.profile.body_axis is IcBodyAxis.PORTRAIT and h <= w
+        ) or (
+            self.profile.body_axis is IcBodyAxis.LANDSCAPE and w <= h
+        ):
+            raise ValueError("IC_BODY_AXIS_GEOMETRY_MISMATCH")
+        allowed = (
+            (Side.LEFT, Side.RIGHT)
+            if self.profile.port_layout is IcPortLayout.LEFT_RIGHT
+            else (Side.TOP, Side.BOTTOM)
+        )
+        if any(row.side not in allowed for row in self.rows):
+            raise ValueError("IC_PORT_LAYOUT_MISMATCH: explicit side profile")
         for aux in (self.aux_left, self.aux_right):
             if aux is not None:
                 _name(aux, "auxiliary field text")
