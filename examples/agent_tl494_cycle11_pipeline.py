@@ -209,9 +209,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     display = verify_owner_reversible_display(source, owner)
     output = args.out
-    if output.exists():
-        if output.is_symlink() or (hasattr(output, "is_junction") and output.is_junction()):
-            raise AssertionError("Redirected evidence directory is forbidden")
+    if output.exists() and (
+        output.is_symlink()
+        or (hasattr(output, "is_junction") and output.is_junction())
+    ):
+        raise AssertionError("Redirected evidence directory is forbidden")
     output.mkdir(parents=True, exist_ok=True)
     samples = asyncio.run(_native_mcp_catalog(output, source))
     req = _request(source)
