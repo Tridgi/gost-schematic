@@ -1,0 +1,169 @@
+{
+  "schema_version": 1,
+  "id": "resistor.trimmer",
+  "revision": 1,
+  "status": "draft",
+  "standard_refs": [
+    "ГОСТ 2.728-74, таблица 1, поз. 9 — резистор подстроечный: контакт от верхней кромки к независимому правому выводу; PDF С.6, page=6",
+    "ГОСТ 2.728-74, таблица 6, поз. 5 — графика и размеры подстроечного резистора; PDF С.20, page=20",
+    "EDITORIAL_ASSUMPTION: отдельный W контакт справа сверху, 5 мм от бокового контакта, длина 9 мм, stroke 0.3 мм, защитные области и номера 1/2/3 условные; не аналог datasheet.",
+    "EDITORIAL_SHEET_LABEL_CLEARANCE: body_keepout extends to y=-9mm above actual 10x4mm resistor body; prevents refdes overlapping real stepped W contact y=-5 and pin escape after D4. This is text reserve, not GOST resistor height."
+  ],
+  "line_width_mm": 0.3,
+  "body_keepout_mm": [
+    -5,
+    -9,
+    5,
+    2
+  ],
+  "geometry": {
+    "rectangles": [
+      [
+        -5,
+        -2,
+        5,
+        2
+      ]
+    ],
+    "lines": [
+      [
+        [
+          -9,
+          0
+        ],
+        [
+          -5,
+          0
+        ]
+      ],
+      [
+        [
+          5,
+          0
+        ],
+        [
+          9,
+          0
+        ]
+      ],
+      [
+        [
+          0,
+          -2
+        ],
+        [
+          0,
+          -5
+        ]
+      ],
+      [
+        [
+          0,
+          -5
+        ],
+        [
+          9,
+          -5
+        ]
+      ]
+    ],
+    "circles": []
+  },
+  "pins": [
+    {
+      "number": "1",
+      "at_mm": [
+        -9,
+        0
+      ],
+      "side": "left",
+      "label": "A"
+    },
+    {
+      "number": "2",
+      "at_mm": [
+        9,
+        0
+      ],
+      "side": "right",
+      "label": "B"
+    },
+    {
+      "number": "3",
+      "at_mm": [
+        9,
+        -5
+      ],
+      "side": "right",
+      "label": "W"
+    }
+  ],
+  "annotations": [
+    {
+      "key": "refdes",
+      "role": "refdes",
+      "required": true,
+      "candidates": [
+        {
+          "at_mm": [
+            -12,
+            -4
+          ],
+          "horizontal": "right",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            12,
+            -7
+          ],
+          "horizontal": "left",
+          "vertical": "bottom"
+        }
+      ]
+    },
+    {
+      "key": "value",
+      "role": "value",
+      "required": false,
+      "candidates": [
+        {
+          "at_mm": [
+            0,
+            5
+          ],
+          "horizontal": "center",
+          "vertical": "top"
+        },
+        {
+          "at_mm": [
+            -12,
+            5
+          ],
+          "horizontal": "right",
+          "vertical": "top"
+        }
+      ]
+    }
+  ],
+  "conductor_topology": {
+    "indices": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "junctions_mm": [],
+    "pin_groups": [
+      [
+        "1"
+      ],
+      [
+        "2"
+      ],
+      [
+        "3"
+      ]
+    ]
+  }
+}

@@ -245,16 +245,16 @@ def test_catalog_audit_reports_21_independent_draft_ugo_and_both_real_diode_part
     from scripts.audit_symbol_catalog import audit_catalog
 
     report = audit_catalog()
-    assert report["total_symbols"] == report["draft_count"] == 21
+    assert report["total_symbols"] == report["draft_count"] >= 21
     assert report["hard_errors"] == 0
     assert not report["without_physical_part"]
-    assert report["topologies_verified"] == 21
+    assert report["topologies_verified"] == report["total_symbols"]
     assert report["symbols_with_checked_dimensions"] == 3
     diode_entries = {
         row["id"]: row for row in report["entries"]
         if row["id"].startswith("diode.")
     }
-    assert set(diode_entries) == set(IDS)
+    assert set(IDS).issubset(diode_entries)  # retain both original diodes as catalog grows
     for entry in diode_entries.values():
         assert entry["approval"] == "draft"
         assert entry["physical_part_mapped"] is True

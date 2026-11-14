@@ -1,0 +1,189 @@
+{
+  "schema_version": 1,
+  "id": "transistor.bjt_npn.with_case",
+  "revision": 1,
+  "status": "draft",
+  "standard_refs": [
+    "ГОСТ 2.730-73, май 2002, изменения №1–4; https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf; §2 табл.1 поз.2 электроды; §8 табл.7 поз.1а PNP; примечание табл.7: зеркальная графика и изображение корпуса",
+    "EXPERIMENTAL_DERIVED_NOT_SOURCE_FIGURE: ordinary three-terminal NPN arrow-out derived from table1 N-emitter; table7/1б HAS EXTRA SHIELD and must not be cited as ordinary NPN",
+    "EDITORIAL_ASSUMPTION: schematic case circle=true; coordinates, arrow, stroke 0.3mm, numbers 1=B/2=C/3=E abstract; NOT manufacturer footprint; no approved absolute mm",
+    "EDITORIAL_SHEET_LABEL_CLEARANCE: body_keepout top expanded to -13mm (not physical case radius) to reserve legible global refdes above collector lead y=-10mm under all D4 poses."
+  ],
+  "line_width_mm": 0.3,
+  "body_keepout_mm": [
+    -8,
+    -13,
+    8,
+    8
+  ],
+  "geometry": {
+    "rectangles": [],
+    "lines": [
+      [
+        [
+          -11,
+          0
+        ],
+        [
+          -2,
+          0
+        ]
+      ],
+      [
+        [
+          9,
+          -10
+        ],
+        [
+          -2,
+          -2
+        ]
+      ],
+      [
+        [
+          -2,
+          2
+        ],
+        [
+          9,
+          10
+        ]
+      ],
+      [
+        [
+          -2,
+          -3
+        ],
+        [
+          -2,
+          3
+        ]
+      ],
+      [
+        [
+          4.25,
+          7.5
+        ],
+        [
+          6.25,
+          8
+        ]
+      ],
+      [
+        [
+          5,
+          6.4
+        ],
+        [
+          6.25,
+          8
+        ]
+      ]
+    ],
+    "circles": [
+      {
+        "center_mm": [
+          0,
+          0
+        ],
+        "radius_mm": 8
+      }
+    ]
+  },
+  "pins": [
+    {
+      "number": "1",
+      "at_mm": [
+        -11,
+        0
+      ],
+      "side": "left",
+      "label": "B"
+    },
+    {
+      "number": "2",
+      "at_mm": [
+        9,
+        -10
+      ],
+      "side": "right",
+      "label": "C"
+    },
+    {
+      "number": "3",
+      "at_mm": [
+        9,
+        10
+      ],
+      "side": "right",
+      "label": "E"
+    }
+  ],
+  "annotations": [
+    {
+      "key": "refdes",
+      "role": "refdes",
+      "required": true,
+      "candidates": [
+        {
+          "at_mm": [
+            17,
+            0
+          ],
+          "horizontal": "left",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            0,
+            -19
+          ],
+          "horizontal": "center",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            -18,
+            -17
+          ],
+          "horizontal": "right",
+          "vertical": "bottom"
+        }
+      ]
+    },
+    {
+      "key": "value",
+      "role": "value",
+      "required": false,
+      "candidates": [
+        {
+          "at_mm": [
+            13,
+            12
+          ],
+          "horizontal": "left",
+          "vertical": "top"
+        }
+      ]
+    }
+  ],
+  "conductor_topology": {
+    "indices": [
+      0,
+      1,
+      2
+    ],
+    "junctions_mm": [],
+    "pin_groups": [
+      [
+        "1"
+      ],
+      [
+        "2"
+      ],
+      [
+        "3"
+      ]
+    ]
+  }
+}

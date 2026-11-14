@@ -1,0 +1,207 @@
+{
+  "schema_version": 1,
+  "revision": 1,
+  "status": "draft",
+  "line_width_mm": 0.3,
+  "body_keepout_mm": [
+    -4,
+    -5.3,
+    5,
+    5.5
+  ],
+  "geometry": {
+    "rectangles": [],
+    "lines": [
+      [
+        [
+          -10,
+          0
+        ],
+        [
+          -2.5,
+          0
+        ]
+      ],
+      [
+        [
+          2.5,
+          0
+        ],
+        [
+          10,
+          0
+        ]
+      ],
+      [
+        [
+          -2.5,
+          -3
+        ],
+        [
+          2.5,
+          0
+        ]
+      ],
+      [
+        [
+          2.5,
+          0
+        ],
+        [
+          -2.5,
+          3
+        ]
+      ],
+      [
+        [
+          -2.5,
+          3
+        ],
+        [
+          -2.5,
+          -3
+        ]
+      ],
+      [
+        [
+          2.5,
+          -3.3
+        ],
+        [
+          2.5,
+          3.3
+        ]
+      ],
+      [
+        [
+          2.5,
+          -3.3
+        ],
+        [
+          4.2,
+          -3.3
+        ]
+      ],
+      [
+        [
+          4.2,
+          -3.3
+        ],
+        [
+          4.2,
+          -1.8
+        ]
+      ],
+      [
+        [
+          2.5,
+          3.3
+        ],
+        [
+          0.8,
+          3.3
+        ]
+      ],
+      [
+        [
+          0.8,
+          3.3
+        ],
+        [
+          0.8,
+          4.8
+        ]
+      ]
+    ],
+    "circles": []
+  },
+  "pins": [
+    {
+      "number": "1",
+      "at_mm": [
+        -10,
+        0
+      ],
+      "side": "left",
+      "label": "A"
+    },
+    {
+      "number": "2",
+      "at_mm": [
+        10,
+        0
+      ],
+      "side": "right",
+      "label": "K"
+    }
+  ],
+  "annotations": [
+    {
+      "key": "refdes",
+      "role": "refdes",
+      "required": true,
+      "candidates": [
+        {
+          "at_mm": [
+            0,
+            -7.2
+          ],
+          "horizontal": "center",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            13,
+            -6
+          ],
+          "horizontal": "left",
+          "vertical": "bottom"
+        }
+      ]
+    },
+    {
+      "key": "value",
+      "role": "value",
+      "required": false,
+      "candidates": [
+        {
+          "at_mm": [
+            0,
+            7.2
+          ],
+          "horizontal": "center",
+          "vertical": "top"
+        },
+        {
+          "at_mm": [
+            13,
+            7.2
+          ],
+          "horizontal": "left",
+          "vertical": "top"
+        }
+      ]
+    }
+  ],
+  "conductor_topology": {
+    "indices": [
+      0,
+      1
+    ],
+    "junctions_mm": [],
+    "pin_groups": [
+      [
+        "1"
+      ],
+      [
+        "2"
+      ]
+    ]
+  },
+  "id": "diode.schottky",
+  "standard_refs": [
+    "ГОСТ 2.730-73 (май 2002, изм. №1–4), §6 таблица 5, поз. 9 — диод Шоттки; https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf; PDF page 4",
+    "ГОСТ 2.730-73, табл. 1 и справочное приложение 2, модульное построение; абсолютные миллиметры из справочной сетки НЕ выводить",
+    "EDITORIAL_ASSUMPTION: outline diode triangle/cathode as existing diode.general, differentiated schottky feature coordinates in mm, stroke 0.3mm, keepout and labels are DRAFT; physical 1=A/2=K abstract; "
+  ]
+}

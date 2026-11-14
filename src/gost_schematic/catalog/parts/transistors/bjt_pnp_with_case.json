@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "id": "transistor.bjt_pnp.with_case",
+  "reference_prefix": "VT",
+  "symbol_id": "transistor.bjt_pnp.with_case",
+  "nominal_kind": null,
+  "voltage_orientation_rule": "none",
+  "pins": [
+    {
+      "number": "1",
+      "name": "B",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    },
+    {
+      "number": "2",
+      "name": "C",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    },
+    {
+      "number": "3",
+      "name": "E",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    }
+  ]
+}

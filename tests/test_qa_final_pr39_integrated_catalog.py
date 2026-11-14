@@ -1,4 +1,4 @@
-"""Post-merge QA: test the REAL integrated modules against all 21 real draft parts.
+"""Post-merge QA: test the REAL integrated modules against 21+ draft parts.
 
 Unlike frozen-source review, every routing import here resolves from the
 installed gost_schematic package. No mocked physical contacts, no SVG net
@@ -38,7 +38,7 @@ def all_parts():
         item = load_inductor(path)
         parts[item.part.identifier] = item.part
         symbols[item.symbol.identifier] = item.symbol
-    assert len(parts) == len(symbols) == 21
+    assert len(parts) == len(symbols) >= 21  # 21 baseline, extendable catalog
     assert set(parts) == set(symbols)
     assert {"diode.general", "diode.zener"}.issubset(parts)
     return parts, symbols
@@ -58,7 +58,7 @@ def _place(parts, symbols, name, part_id, pin_number, at, transform):
 def test_all_21_draft_physical_pin_passports_and_transforms(
     all_parts, angle, mirror,
 ):
-    """21 actual symbol/part pairs × 8 D4 transforms, with stable pin identity."""
+    """All discovered symbol/part pairs × 8 D4 transforms, with stable pin identity."""
     parts, symbols = all_parts
     transform = Transform(angle, mirror)
     for identifier, part in sorted(parts.items()):
@@ -83,8 +83,8 @@ def test_installed_catalog_is_exactly_21_draft_and_has_no_hard_errors(
 ):
     parts, symbols = all_parts
     report = audit_catalog()
-    assert report["total_symbols"] == 21
-    assert report["draft_count"] == 21
+    assert report["total_symbols"] == len(parts)
+    assert report["draft_count"] == len(parts)
     assert report["hard_errors"] == 0
     assert report["without_physical_part"] == []
     assert {entry["id"] for entry in report["entries"]} == set(parts)
@@ -97,7 +97,7 @@ def test_installed_catalog_is_exactly_21_draft_and_has_no_hard_errors(
 def test_installed_safe_adapter_keeps_all_21_real_pin_families_out_of_link(
     all_parts, angle, mirror,
 ):
-    """21 physical families × 8 transforms routed against integrated adapter."""
+    """All discovered physical families × 8 transforms routed against integrated adapter."""
     parts, symbols = all_parts
     transform = Transform(angle, mirror)
     start = transform.apply(Point(0, -60000))
