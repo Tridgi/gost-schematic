@@ -66,8 +66,8 @@ def select_physical_part(
 
 def preview_placement(
     project: SchematicProject, catalog: CatalogResolver, *,
-    reference: str, x_um: int, y_um: int, rotation: int,
-    mirror_x: bool, api_version: int = 1,
+    reference: str, x_um: int, y_um: int, rotation: int = 0,
+    mirror_x: bool = False, api_version: int = 1,
 ) -> dict[str, Any]:
     """Probe a change to an EXISTING component without editing a snapshot.
 
