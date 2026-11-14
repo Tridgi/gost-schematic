@@ -117,6 +117,20 @@ async def query_real_mcp(workspace: Path, project_id: str, revision: str) -> dic
                 raise AssertionError("SVG/PNG SHA mismatch")
             if "editor-connection-targets" in source_svg:
                 raise AssertionError("Editor-only hotspot leaked into rendered sheet")
+            # Trusted local CLIENT evidence only; no MCP tool can write a file.
+            evidence = workspace / "client-evidence"
+            if (evidence.is_symlink()
+                    or (hasattr(evidence, "is_junction") and evidence.is_junction())):
+                raise AssertionError("Redirected evidence path is not trusted")
+            evidence.mkdir(exist_ok=True)
+            svg_file = evidence / "c3-diagnostic.svg"
+            png_file = evidence / "c3-diagnostic.png"
+            svg_file.write_text(source_svg, encoding="utf-8")
+            png_file.write_bytes(image)
+            if (hashlib.sha256(svg_file.read_bytes()).hexdigest() != meta["view_svg_sha256"]
+                    or hashlib.sha256(png_file.read_bytes()).hexdigest()
+                    != meta["png_sha256"]):
+                raise AssertionError("Trusted client artifact SHA mismatch")
             return {
                 "real_transport": "mcp.ClientSession + stdio_client",
                 "project_id": project_id,
@@ -136,6 +150,10 @@ async def query_real_mcp(workspace: Path, project_id: str, revision: str) -> dic
                 "hover_creates_net": data["hover_creates_net"],
                 "mcp_created_or_modified_project": False,
                 "diagnostics": diagnostics,
+                "client_evidence_paths": {
+                    "svg": str(svg_file),
+                    "png": str(png_file),
+                },
                 "png_sha256": meta["png_sha256"],
                 "svg_sha256": meta["view_svg_sha256"],
                 "clean_normative_hotspots": False,
