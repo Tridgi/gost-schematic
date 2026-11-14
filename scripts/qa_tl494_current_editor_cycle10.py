@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 from dataclasses import replace
 from pathlib import Path
 
@@ -26,6 +27,7 @@ from gost_schematic.standards.type_a_font import inspect_type_a_font
 
 FROZEN_SOURCE = "e695c415fdced164b0e0c39c5249d030795a0aa6"
 IC_CURRENT_SHA = "3c2121ad918e4a877c031d47853f2ba9e74e7a24"
+IC_CYCLE11_LIVE_SHA = "1e4baf7ea713f649e0dabb4d6119e97281901f03"
 
 
 def require(ok, code):
@@ -135,12 +137,18 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--font-file", type=Path, required=True)
     ap.add_argument("--output", type=Path, required=True)
+    ap.add_argument("--cycle11", action="store_true")
     args = ap.parse_args()
+    active = IC_CYCLE11_LIVE_SHA if args.cycle11 else IC_CURRENT_SHA
+    head = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], text=True,
+    ).strip()
+    require(head == active, "QA_IC_EDITOR_WRONG_OWNER_GIT_HEAD")
     data = validate_real_manifest(args.font_file)
     bad = negative_cases(data)
     report = {
         "source": FROZEN_SOURCE,
-        "current_IC_owner_sha": IC_CURRENT_SHA,
+        "current_IC_owner_sha": active,
         "parts": 23, "nets": 15, "PinRef_memberships": 62,
         "manufacturer_TL494_16_contacts": 16,
         "feedback_input": True, "output_ctrl_input": True,
