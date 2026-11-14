@@ -69,10 +69,38 @@ def check_active_owners(out: Path, *, owner_heads: dict[str, str]) -> dict:
     }
     if physical != {PinRef("DA1", str(n)) for n in range(1, 17)}:
         raise ValueError("C11_MANUFACTURER_IC_ALL_16_PHYSICAL_PINS_REQUIRED")
+    bound.validate()
+    if IcCircuitBinding.from_json(bound.to_json()) != bound:
+        raise ValueError("C11_MANUFACTURER_SOURCE_ROUNDTRIP_DRIFT")
+    if (
+        bound.part.identifier != TI_DEVICE_ID
+        or bound.symbol_surrogate is None
+        or bound.part.symbol_id != bound.symbol_surrogate.identifier
+        or len(bound.part.pins) != 16
+    ):
+        raise ValueError("C11_IC_TYPED_PART_OR_SURROGATE_CONTRACT_DRIFT")
     contacts = tuple(bound.contact(PinRef("DA1", str(n)))
                      for n in range(1, 17))
     if len({c.world_anchor for c in contacts}) != 16:
         raise ValueError("C11_IC_WORLD_ANCHOR_COLLISION")
+    # The official IC owner also provides a physical PartDefinition and
+    # strictly DRAFT routing surrogate. Consume those typed values rather
+    # than fabricating a Part ID or manually constructing pseudo-graphics.
+    # Actual artwork must still use PAINT ink and all 16 physical leads.
+    from gost_schematic.engines.orthogonal_route_planner import _resolve_real_pin
+
+    manufacturer_parts = {**source.parts, TI_DEVICE_ID: bound.part}
+    manufacturer_symbols = {
+        **source.symbols, TI_DEVICE_ID: bound.symbol_surrogate,
+    }
+    for pin in physical:
+        resolved, _normal, instance = _resolve_real_pin(
+            bound.circuit, pin, manufacturer_parts, manufacturer_symbols,
+        )
+        if instance.part_id != TI_DEVICE_ID or (
+            resolved != bound.contact(pin).world_anchor
+        ):
+            raise ValueError("C11_NET_ROUTER_TO_TI_CONTACT_WORLD_ENDPOINT_DRIFT")
     if (
         bound.contact(PinRef("DA1", "3")).electrical_type.value != "input"
         or bound.contact(PinRef("DA1", "13")).electrical_type.value != "input"
@@ -134,6 +162,10 @@ def check_active_owners(out: Path, *, owner_heads: dict[str, str]) -> dict:
         "before_part_id": old["DA1"].part_id,
         "after_part_id": new["DA1"].part_id,
         "pose_unchanged": True,
+        "official_IC_part_from_owner": bound.part.identifier,
+        "official_IC_surrogate_draft_only": True,
+        "router_all_16_TI_PinRef_world_anchors_verified": True,
+        "official_IC_binding_json_roundtrip": True,
         "source_reference_membership": {
             name: [f"{p.reference}.{p.number}" for p in members]
             for name, members in before.items()
