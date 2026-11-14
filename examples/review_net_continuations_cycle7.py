@@ -8,7 +8,7 @@ import argparse
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-from gost_schematic.core.geometry import Point
+from gost_schematic.core.geometry import Box, Point
 from gost_schematic.electrical.netrefs import (
     ContinuationDirection,
     ContinuationPair,
@@ -82,10 +82,28 @@ def _elem(parent: ET.Element, tag: str, attrs: dict[str, str]) -> ET.Element:
 def sheet_svg(
     project: NetContinuationProject, sheet_id: str, *,
     font_path: str | Path | None = None, review_overlay: bool = False,
+    external_keepouts: tuple[Box, ...] = (),
+    review_connection_zones: bool = False,
 ) -> str:
-    """View-only SVG; optional measured Type A, never hidden physical wires."""
+    """View-only SVG; measured geometry checks optional actual layout obstacles.
+
+    External keepouts include nearby components, page frame/title block and
+    protected neighboring annotations, excluding authored pin contact openings.
+    Green connection boxes are editor diagnostics, never printed conductors.
+    """
+    if type(external_keepouts) is not tuple or not all(
+        isinstance(region, Box) for region in external_keepouts
+    ):
+        raise TypeError("external_keepouts must be tuple[Box]")
+    if (external_keepouts or review_connection_zones) and font_path is None:
+        raise ValueError("E3_CONT_MEASURED_PROFILE_REQUIRED")
+    if review_connection_zones and not review_overlay:
+        raise ValueError("E3_CONT_EDITOR_ZONES_REQUIRE_REVIEW")
     if font_path is not None:
-        return _measured_sheet_svg(project, sheet_id, font_path, review_overlay)
+        return _measured_sheet_svg(
+            project, sheet_id, font_path, review_overlay,
+            external_keepouts, review_connection_zones,
+        )
     if validate_net_continuations(project):
         raise ValueError("Must validate typed net identity before drawing")
     sheet = next(x for x in project.sheets if x.id == sheet_id)
@@ -153,13 +171,14 @@ def sheet_svg(
 def _measured_sheet_svg(
     project: NetContinuationProject, sheet_id: str,
     font_path: str | Path, review_overlay: bool,
+    external_keepouts: tuple[Box, ...],
+    review_connection_zones: bool,
 ) -> str:
     """Fail-closed OpenGost Type A preview, measured actual ink not character counts.
 
     Arrows and project sheet/zone address notation remain ESKD-review DRAFT.
     Marker/connector geometry never creates or infers a physical PinRef.
     """
-    from gost_schematic.core.geometry import Box
     from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
     from gost_schematic.standards.type_a_font import inspect_type_a_font
 
@@ -194,6 +213,8 @@ def _measured_sheet_svg(
     # Precise text rectangles are drawing keepouts; they cannot establish a Net.
     text_regions: list[tuple[str, Box, Box]] = []
     electrical_regions: list[Box] = []
+    graphic_regions: list[tuple[str, str, Box]] = []
+    connection_zones: list[tuple[str, Box]] = []
 
     def place_text(
         marker: NetContinuationEndpoint, kind: str, content: str,
@@ -255,12 +276,20 @@ def _measured_sheet_svg(
             "data-role": "DRAFT-visual-continuation-marker",
             "data-marker-id": marker.id, "data-net-id": marker.net_id,
         })
-        electrical_regions.append(Box(
+        wire_box = Box(
             min(stub.start.x, stub.end.x) - 150, y - 150,
             max(stub.start.x, stub.end.x) + 150, y + 150,
-        ))
-        electrical_regions.append(Box(
+        )
+        arrow_box = Box(
             min(back, x) - 150, y - 1250, max(back, x) + 150, y + 1250,
+        )
+        electrical_regions.extend((wire_box, arrow_box))
+        graphic_regions.extend((
+            (marker.id, "wire", wire_box),
+            (marker.id, "arrow", arrow_box),
+        ))
+        connection_zones.append((
+            marker.id, Box(x - 1000, y - 1000, x + 1000, y + 1000),
         ))
         place_text(
             marker, "net-label", marker.label, label_font.style,
@@ -270,7 +299,20 @@ def _measured_sheet_svg(
             marker, "remote-address", marker.target_address, address_font.style,
             y + 950, "right-of-arrow" if outward == 1 else "left-of-arrow",
         )
+    for name, role, box in graphic_regions:
+        if not (page_safe.includes(Point(box.min_x, box.min_y))
+                and page_safe.includes(Point(box.max_x, box.max_y))):
+            raise ValueError(f"E3_CONT_GRAPHIC_PAGE_OVERFLOW: {name} {role}")
+        if any(box.overlaps(obstacle) for obstacle in external_keepouts):
+            raise ValueError(f"E3_CONT_GRAPHIC_EXTERNAL_COLLISION: {name} {role}")
+        if any(
+            box.overlaps(other)
+            for owner, _, other in graphic_regions if owner != name
+        ):
+            raise ValueError(f"E3_CONT_GRAPHIC_GRAPHIC_COLLISION: {name} {role}")
     for i, (name, _ink, protected) in enumerate(text_regions):
+        if any(protected.overlaps(obstacle) for obstacle in external_keepouts):
+            raise ValueError(f"E3_CONT_TEXT_EXTERNAL_COLLISION: {name}")
         if any(protected.overlaps(occupied) for occupied in electrical_regions):
             raise ValueError(f"E3_CONT_TEXT_WIRE_COLLISION: {name}")
         if any(
@@ -286,6 +328,17 @@ def _measured_sheet_svg(
                 "fill": "none", "stroke": "#009577",
                 "stroke-width": "120", "stroke-dasharray": "600,400",
                 "data-role": "review-text-keepout", "data-owner": name,
+            })
+    if review_connection_zones:
+        for marker_id, zone in connection_zones:
+            _elem(root, "rect", {
+                "x": str(zone.min_x), "y": str(zone.min_y),
+                "width": str(zone.max_x - zone.min_x),
+                "height": str(zone.max_y - zone.min_y),
+                "stroke": "#009577", "fill": "none",
+                "stroke-width": "120", "stroke-dasharray": "350,250",
+                "data-role": "editor-only-connection-keepout",
+                "data-marker-id": marker_id, "data-print": "false",
             })
     return ET.tostring(root, encoding="unicode") + "\n"
 
