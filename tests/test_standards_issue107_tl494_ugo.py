@@ -71,8 +71,8 @@ def test_twelve_source_project_objects_have_genuine_frozen_git_blob_shas():
 
 def test_all_normative_cards_have_original_pdf_figure_and_negative_test():
     entries = _matrix()["cards"]
-    assert len(entries) == 21
-    assert len({x["id"] for x in entries}) == 21
+    assert len(entries) == 22
+    assert len({x["id"] for x in entries}) == 22
     for item in entries:
         assert item["source"]["url"].startswith("https://")
         assert "#page=" in item["source_figure_url"]
@@ -194,6 +194,36 @@ def test_ground_type_markers_are_not_physical_parts_or_shorting_nets():
     assert d["net-marker.common"]["status_source_shape"] == "BLOCKED"
     assert "protection" not in d["net-marker.common"]["positive_test"].lower()
     assert "PE" in d["net-marker.protective_earth"]["positive_test"]
+
+
+def test_ground_gallery_has_all_six_typed_source_classes_without_creating_nets():
+    root = ET.fromstring(
+        (EVIDENCE / "issue107-ground-marker-source-classes-draft.svg")
+        .read_text(encoding="utf-8")
+    )
+    assert root.get("data-approval") == (
+        "DRAFT_EDITORIAL_NOT_SOURCE_1TO1"
+    )
+    actual = [
+        x for x in root.findall(".//" + SVG + "g")
+        if x.get("data-marker-id")
+    ]
+    assert {x.get("data-marker-id") for x in actual} == {
+        "net-marker.common", "net-marker.earth",
+        "net-marker.noiseless", "net-marker.protective_earth",
+        "net-marker.chassis", "net-marker.equipotential"
+    }
+    assert all(
+        x.get("data-net-count-creation") == "0"
+        and x.get("data-physical-pin-count-creation") == "0"
+        for x in actual
+    )
+    cards = _cards()
+    for x in actual:
+        assert cards[x.get("data-marker-id")]["comparison_svg"].endswith(
+            "issue107-ground-marker-source-classes-draft.svg"
+        )
+    assert cards["net-marker.noiseless"]["status_source_shape"] == "PASS"
 
 
 def test_sheet_continuation_standard_2701_has_different_arrow_policy():
