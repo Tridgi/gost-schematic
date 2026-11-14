@@ -30,6 +30,32 @@ class IcPinSideReflow:
 
 
 @dataclass(frozen=True, slots=True)
+class IcPaintFieldRequirement:
+    """Measured PAINT font geometry, not a universal normative GOST size."""
+
+    unit_id: str
+    port_layout: IcPortLayout
+    main_field_min_dimension_um: int
+    first_aux_field_min_dimension_um: int
+    second_aux_field_min_dimension_um: int
+    body_width_um: int
+    body_height_um: int
+    row_pitch_um: int
+    external_lead_um: int
+    guard_um: int
+
+
+@dataclass(frozen=True, slots=True)
+class IcPaintProtectedTextArea:
+    """World-µm protected rectangle of actual ink plus editorial clearance."""
+
+    unit_id: str
+    owner: str
+    kind: str
+    box: Box
+
+
+@dataclass(frozen=True, slots=True)
 class IcPaintBinding:
     """An explicit revised electrical record and matching PAINT view objects."""
 
@@ -37,6 +63,38 @@ class IcPaintBinding:
     views: tuple[object, ...]
     unit_ids: tuple[str, ...]
     side_reflows: tuple[IcPinSideReflow, ...] = ()
+    requirements: tuple[IcPaintFieldRequirement, ...] = ()
+
+    def protected_text_areas(self, style, measurer, *, policy=None) -> (
+        tuple[IcPaintProtectedTextArea, ...]
+    ):
+        """Read-only PAINT ink envelopes; never modify a Net or a terminal.
+
+        This requires source-compatible PAINT and can fail closed for an
+        unsupported graphic profile. No estimate from glyph char count.
+        """
+        from gost_schematic.rendering.ic_rectangular import (
+            IcRenderingPolicy,
+            render_resolved_ic,
+        )
+
+        if policy is None:
+            policy = IcRenderingPolicy()
+        self.verify_endpoints()
+        result = []
+        text_kinds = {
+            "function", "main-text", "pin-label", "field-text",
+            "pin-number", "refdes",
+        }
+        for unit_id, view in zip(self.unit_ids, self.views, strict=True):
+            rendered = render_resolved_ic(view, style, measurer, policy=policy)
+            for item in rendered.ink:
+                if item.kind in text_kinds:
+                    result.append(IcPaintProtectedTextArea(
+                        unit_id, item.owner, item.kind,
+                        item.box.expanded(policy.ink_padding_um),
+                    ))
+        return tuple(result)
 
     def verify_endpoints(self) -> None:
         """Exact *semantic and geometric* world contract, never just equality.
@@ -55,6 +113,15 @@ class IcPaintBinding:
             or len(self.views) != len(self.unit_ids)
         ):
             raise ValueError("IC_PAINT_UNIT_COUNT_MISMATCH")
+        if self.requirements and (
+            tuple(r.unit_id for r in self.requirements) != expected_units
+            or any(
+                r.body_width_um <= 0 or r.body_height_um <= 0
+                or r.main_field_min_dimension_um <= 0 or r.guard_um <= 0
+                for r in self.requirements
+            )
+        ):
+            raise ValueError("IC_PAINT_MEASURED_REQUIREMENTS_INVALID")
         placement_map = {p.unit_id: p for p in self.record.placements}
         unit_number = {
             u.id: i for i, u in enumerate(self.record.device.units, start=1)
@@ -200,6 +267,7 @@ def propose_ic_paint_binding(
     new_specs = []
     views = []
     side_reflows = []
+    requirements = []
     for spec in record.specs:
         placement = placements[spec.unit_id]
         arrangement = (
@@ -294,6 +362,18 @@ def propose_ic_paint_binding(
             spec.body.min_x + width_um,
             spec.body.min_y + height_um,
         )
+        requirements.append(IcPaintFieldRequirement(
+            unit_id=spec.unit_id,
+            port_layout=spec.profile.port_layout,
+            main_field_min_dimension_um=dimensions.main_width_um,
+            first_aux_field_min_dimension_um=dimensions.left_width_um,
+            second_aux_field_min_dimension_um=dimensions.right_width_um,
+            body_width_um=width_um,
+            body_height_um=height_um,
+            row_pitch_um=dimensions.row_pitch_um,
+            external_lead_um=dimensions.lead_length_um,
+            guard_um=policy.ink_padding_um,
+        ))
         new_rows = []
         for row in layout_rows:
             if row.visual_row >= dimensions.row_count:
@@ -346,6 +426,7 @@ def propose_ic_paint_binding(
     binding = IcPaintBinding(
         updated, tuple(views), tuple(s.unit_id for s in record.specs),
         tuple(side_reflows),
+        tuple(requirements),
     )
     binding.verify_endpoints()
     if tuple(p.number for p in record.device.pins) != tuple(
