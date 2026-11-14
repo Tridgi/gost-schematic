@@ -127,6 +127,29 @@ def produce(
         raise ValueError("COMPACT_MEASURED_TEXT_PROTECTION_MISSING")
     occupancy = actual_component_occupied_mm(model, symbols)
     page = Box(0, 0, *A3_LANDSCAPE_UM)
+    # The footprint WIDTH fitting A3 does NOT prove actual anchored
+    # positions, text ink, or conductors stay within the physical page.
+    # This 10mm margin follows the RECON A3 draft policy, not a generic
+    # assertion that every ESKD sheet has identical margin dimensions.
+    margin = 10000
+    ink_frame = Box(
+        page.min_x + margin, page.min_y + margin,
+        page.max_x - margin, page.max_y - margin,
+    )
+
+    def inside(box: Box) -> bool:
+        return (
+            ink_frame.min_x <= box.min_x
+            and ink_frame.min_y <= box.min_y
+            and box.max_x <= ink_frame.max_x
+            and box.max_y <= ink_frame.max_y
+        )
+
+    component_footprint_in_frame = inside(Box(*occupancy["bbox_um"]))
+    protected_labels_in_frame = all(
+        inside(placement.collision_bounds)
+        for placement in annotations
+    )
     route = route_circuit_with_order_fallback(
         circuit, model.parts, symbols, page_box=page,
         annotation_placements=annotations, search_node_cap=node_cap,
@@ -156,12 +179,23 @@ def produce(
         finding.as_dict() for finding in after_drc.findings
         if finding.severity == "error"
     ]
+    routed_strokes_in_frame = all(
+        ink_frame.includes(w.start) and ink_frame.includes(w.end)
+        for w in route.graph.segments
+    )
+    frame_errors = tuple(
+        code for code, ok in (
+            ("A3_10MM_COMPONENT_BOUNDS", component_footprint_in_frame),
+            ("A3_10MM_MEASURED_TEXT", protected_labels_in_frame),
+            ("A3_10MM_WIRE_ENDPOINTS", routed_strokes_in_frame),
+        ) if not ok
+    )
     geometric_pass = bool(
         route.complete and route.drc is not None
         and route.drc.valid and after_drc.valid
         and source_labels.valid and after_labels.valid
         and occupancy["A3_capacity_fit"]
-        and not erc_errors
+        and not frame_errors and not erc_errors
     )
     output.mkdir(parents=True, exist_ok=True)
     # Genuine renderer uses exactly the newly generated Graph; it is NOT
@@ -217,6 +251,8 @@ def produce(
         "net_members": net_members,
         "paper": "A3_LANDSCAPE_420x297mm_DRAFT",
         "occupied_mm": occupancy,
+        "A3_10mm_editorial_frame_violations": frame_errors,
+        "A3_10mm_editorial_frame_is_not_normative_claim": True,
         "real_PAINT_leads": 16,
         "verified_legacy_illegal_W2": {
             "first": [203460, 138750],
