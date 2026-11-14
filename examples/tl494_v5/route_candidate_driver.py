@@ -17,6 +17,7 @@ from importlib import import_module
 from pathlib import Path
 
 from examples.tl494_v5.cycle11_ti_bridge import bind_verified_compact_ti
+from examples.tl494_v5.cycle11_b_continuation import rebind_true_source_b
 from examples.tl494_v5.compact_layout import (
     A3_LANDSCAPE_UM,
     COMPACT_A3_MM,
@@ -401,6 +402,44 @@ def run_candidate(
             "print_after_released": False,
             "technical_route_eligible": False,
         }
+    # The historical TWO nonphysical b marker locations must be translated
+    # by their *actual old source pin→marker vectors*, never invented from
+    # the photograph or merged into a new electrical wire.
+    try:
+        old_pair = import_module(
+            "examples.tl494_named_photo_sheet"
+        ).compose_circuit(font_file)[-1]
+        rebuilt_b = rebind_true_source_b(
+            old_pair, signed_circuit, symbols,
+        )
+    except (ValueError, AssertionError, TypeError, ImportError, RuntimeError) as error:
+        b_evidence = {
+            "status": "BLOCKED_HISTORICAL_B_NOT_REBOUND",
+            "reason": f"{type(error).__name__}: {error}",
+            "marker_count": 0,
+            "real_b_net": "b_NEGATIVE_OUTPUT",
+            "print_after_released": False,
+        }
+    else:
+        b_evidence = {
+            "status": "VERIFIED_DRAFT_NONPHYSICAL_B_PAIR",
+            "marker_count": len(rebuilt_b.endpoints),
+            "stub_count": len(rebuilt_b.stubs),
+            "real_b_net": rebuilt_b.nets[0].net_name,
+            "physical_members": [
+                f"{p.reference}.{p.number}" for p in rebuilt_b.nets[0].members
+            ],
+            "markers_um": {
+                ep.id: [ep.anchor.x, ep.anchor.y]
+                for ep in rebuilt_b.endpoints
+            },
+            "stub_physical_anchors_um": {
+                f"{stub.pin.reference}.{stub.pin.number}": [
+                    stub.start.x, stub.start.y
+                ] for stub in rebuilt_b.stubs
+            },
+            "print_after_released": False,
+        }
     router = import_module(
         "gost_schematic.engines.multiterminal_router"
     ).route_circuit_net_trees
@@ -437,6 +476,7 @@ def run_candidate(
         and report["drc"] is not None
         and report["drc"]["error_count"] == 0
         and footprint["A3_capacity_fit"] and layout.valid
+        and b_evidence["status"] == "VERIFIED_DRAFT_NONPHYSICAL_B_PAIR"
         and sum(len(tree["connected_pin_refs"])
                 for tree in report["net_trees"]) == 62
     )
@@ -447,6 +487,7 @@ def run_candidate(
             "BLOCKED_PARTIAL_ROUTING_NO_PRINT"
         ),
         "owner_router_report": report,
+        "b_continuation_rebound": b_evidence,
         "manufacturer_binding": {
             "source_part": verified_ti.source_part_id,
             "verified_part": verified_ti.signed_part_id,
