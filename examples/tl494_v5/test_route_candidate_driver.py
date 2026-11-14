@@ -171,6 +171,17 @@ def test_candidate_driver_real_owners_diagnostics_only(
     assert result["bom_count"] == 23
     assert result["net_count"] == 15
     assert result["physical_net_membership_count"] == 62
+    assert len(result["source_BOM"]) == 23
+    assert len(result["original_Netlist"]) == 15
+    assert set(result["original_Netlist"]) == set(REAL_SOURCE_NAMES)
+    metrics = result["before_after_UGO_footprints"]
+    assert metrics["source_original"]["width_mm"] > 600
+    assert metrics["compact_candidate"]["width_mm"] < 400
+    assert metrics["saved_width_mm"] > 200
+    assert metrics["all_UGO_unscaled"] is True
+    assert result["source_photo_comparison"][
+        "photographic_pixel_alignment"
+    ] == "NOT_AVAILABLE_UNVERIFIED"
     assert set(result["original_net_names"]) == set(REAL_SOURCE_NAMES)
     assert result["actual_full_sheet_svg_or_png_emitted"] is False
     assert result["qa_print_release"] == "BLOCKED_INDEPENDENT_QA_AND_ESKD"
