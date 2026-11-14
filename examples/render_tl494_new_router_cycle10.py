@@ -15,8 +15,10 @@ from examples.render_tl494_full_native_cycle9 import (
     _net_pin_id_map,
     _real_dependencies,
     construct_native_paint,
+    transformed_complete_scene,
 )
 from gost_schematic.core.geometry import Box
+from gost_schematic.core.transforms import Transform
 from gost_schematic.model.circuit import PinRef
 from gost_schematic.rendering.ic_hotspots import IcConnectionTarget
 from gost_schematic.rendering.ic_rectangular import (
@@ -35,6 +37,7 @@ NET114_SHA = "b3a8263944c5a687492a49555d8149e538f0902b"
 def render_new_owner_route(
     out: Path, font_file: Path, *,
     search_node_cap: int = 25000,
+    d4: bool = False,
 ) -> dict:
     if type(search_node_cap) is not int or search_node_cap <= 0:
         raise ValueError("PAINT_ROUTE_NODE_CAP_INVALID")
@@ -129,6 +132,73 @@ def render_new_owner_route(
     (out/"TL494_NEW_NET114_candidate_BLOCKED_diagnostic.svg").write_text(
         result.diagnostic_svg, encoding="utf-8",
     )
+    if d4:
+        transformed_cases = {}
+        for angle in (0, 90, 180, 270):
+            for mirror in (False, True):
+                pose = Transform(angle, mirror)
+                moved_circuit, moved_graph, moved_unit = transformed_complete_scene(
+                    circuit, routed.graph, portrait, pose,
+                )
+                assert moved_circuit.nets == circuit.nets
+                assert len(moved_circuit.components) == 23
+                assert len(moved_graph.segments) == len(routed.graph.segments)
+                assert len(moved_graph.junctions) == len(routed.graph.junctions)
+                seen = {
+                    x.pin_id: x.anchor for x in moved_unit.pins
+                }
+                assert seen == {
+                    p.pin_id: pose.apply(p.anchor) for p in portrait.pins
+                }
+                moved_targets = tuple(IcConnectionTarget(
+                    p.pin_id, PinRef("DA1", p.number), p.anchor, True,
+                    net_id=net_ids.get(PinRef("DA1", p.number)),
+                ) for p in moved_unit.pins)
+                viewed = moved_unit.select_function_text_reading(
+                    IcFunctionReading.BOTTOM_TO_TOP,
+                )
+                viewed_clean = render_resolved_ic(
+                    viewed, style, measurer, policy=policy,
+                    editor_targets=moved_targets,
+                    editor_overlay=False, review_overlay=False,
+                )
+                viewed_debug = render_resolved_ic(
+                    viewed, style, measurer, policy=policy,
+                    editor_targets=moved_targets,
+                    editor_overlay=True, review_overlay=True,
+                )
+                moved_result = render_routed_native_sheet(
+                    moved_circuit, moved_graph, parts, symbols,
+                    style, measurer,
+                    physical_ic_renderings_clean={"DA1": viewed_clean},
+                    physical_ic_renderings_diagnostic={"DA1": viewed_debug},
+                    route_preview=None,
+                    source_continuation_project=None,
+                    expected_component_count=23,
+                    expected_net_count=15,
+                    expected_net_pinrefs=62,
+                )
+                name = (
+                    f"TL494_NEW_NET114_D4_{angle}_mirror{int(mirror)}"
+                    "_BLOCKED_clean.svg"
+                )
+                if moved_result.printable_candidate:
+                    raise ValueError("PAINT_D4_PARTIAL_ROUTER_CANNOT_BE_PRINTED")
+                (out/name).write_text(
+                    moved_result.clean_svg, encoding="utf-8",
+                )
+                transformed_cases[name] = {
+                    "transform": [angle, mirror],
+                    "whole_sheet_23": True,
+                    "source_nets_15_unchanged": True,
+                    "all_physical_PinRef_62_unchanged": True,
+                    "new_router_graph": True,
+                    "new_segments": len(moved_graph.segments),
+                    "exact_world_D4_pin_tips": True,
+                    "printable": False,
+                    "graph_sha256": moved_result.graph_sha256,
+                }
+        manifest["whole_routed_sheet_D4"] = transformed_cases
     (out/"TL494_NEW_NET114_vs_source_print_evidence.json").write_text(
         json.dumps(manifest, indent=2, sort_keys=True, ensure_ascii=False)+"\n",
         encoding="utf-8",
@@ -152,9 +222,12 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--font-file", type=Path, required=True)
     parser.add_argument("--node-cap", type=int, default=25000)
+    parser.add_argument("--d4", action="store_true")
     args = parser.parse_args()
-    render_new_owner_route(args.output, args.font_file,
-                           search_node_cap=args.node_cap)
+    render_new_owner_route(
+        args.output, args.font_file,
+        search_node_cap=args.node_cap, d4=args.d4,
+    )
 
 
 if __name__ == "__main__":
