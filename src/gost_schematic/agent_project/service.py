@@ -144,6 +144,23 @@ class ProjectService:
             "electrical_erc": self._report(snapshot.project, snapshot.head.generation),
         }
 
+    def preview_placement(
+        self, project_id: str, revision: str, *, reference: str,
+        x_um: int, y_um: int, rotation: int = 0, mirror_x: bool = False,
+        api_version: int = 1,
+    ) -> dict[str, Any]:
+        """Preflight hypothetical placement, never modify original Net/graph or disk."""
+        from .design_selection import preview_placement
+
+        if type(revision) is not str or len(revision) != 64:
+            raise ProjectError("REVISION_REQUIRED", "Exact immutable SHA required")
+        snapshot = self.open_project(project_id, revision)
+        return preview_placement(
+            snapshot.project, self.catalog, reference=reference,
+            x_um=x_um, y_um=y_um, rotation=rotation,
+            mirror_x=mirror_x, api_version=api_version,
+        )
+
     def render_project(
         self, project_id: str, revision: str, *, mode: str = "clean",
         reference: str | None = None, target_dpi: int = 500,
