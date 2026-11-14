@@ -194,6 +194,7 @@ def _render_variant(
     policy: IcRenderingPolicy, *,
     diagnostic: bool,
     reading: IcFunctionReading,
+    original_full_labels: bool = False,
 ):
     model = visible.select_function_text_reading(reading)
     net_map = _net_pin_id_map(circuit)
@@ -240,7 +241,12 @@ def _render_variant(
         el.get("data-physical-pin-number"): el.text
         for el in native.findall(f".//{SVG}text[@data-kind='pin-label']")
     }
-    assert names["3"] == "FB" and names["13"] == "OC" and len(names) == 16
+    if original_full_labels:
+        assert names["3"] == "FEEDBACK"
+        assert names["13"] == "OUTPUT CTRL"
+    else:
+        assert names["3"] == "FB" and names["13"] == "OC"
+    assert len(names) == 16
     assert len([el for el in native.findall(
         f".//{SVG}text[@data-kind='function']"
     ) if el.text == "PWM"]) == 1
@@ -258,6 +264,7 @@ def generate(output: Path, font_file: Path):
     before = _render_variant(
         circuit, graph, symbol_map, original, style, measure, policy,
         diagnostic=False, reading=IcFunctionReading.TOP_TO_BOTTOM,
+        original_full_labels=True,
     )
     before_file = "TL494_native_23_BEFORE_old_pwm_top_to_bottom.svg"
     (output/before_file).write_text(before[0].svg, encoding="utf-8")
