@@ -228,8 +228,7 @@ def _placed_boxes(project: SchematicProject, catalog: CatalogResolver):
 
 
 def _measured_parallel_wire_gaps(
-    wires: tuple[WireObstacle, ...], project: SchematicProject,
-    placed: dict[str, Any],
+    wires: tuple[WireObstacle, ...], placed: dict[str, Any],
 ) -> list[dict[str, Any]]:
     """Exact stroke-edge gaps for overlapping distinct H/V parallel wires.
 
@@ -353,7 +352,7 @@ def preflight_project(project: SchematicProject, catalog: CatalogResolver, *,
             project.graph.segments, project.wire_ids, strict=True
         ))
     )
-    measured_parallel_gaps = _measured_parallel_wire_gaps(wires, project, placed)
+    measured_parallel_gaps = _measured_parallel_wire_gaps(wires, placed)
     for d in validate_sheet_wire_rules(wires):
         diagnostics.append({"code": d.code, "severity": d.severity.value,
                             "subject": d.subject, "message": d.message,
