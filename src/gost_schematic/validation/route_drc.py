@@ -237,6 +237,100 @@ def _seg_distance_sq(first: WireSegment, second: WireSegment) -> Fraction:
     )
 
 
+
+@dataclass(frozen=True, slots=True)
+class RouteCandidateClearance:
+    """Reusable candidate verdict in the SAME wire-to-wire DRC semantics.
+
+    'valid' denotes the pair geometry only. It never approves the whole sheet.
+    In particular, same-Net T requires an explicit, authored junction Point;
+    a foreign X is nonconnecting and only a visual warning.
+    """
+    valid: bool
+    errors: tuple[str, ...]
+    warnings: tuple[str, ...]
+    edge_gap_um: float
+    parallel_rule_applies: bool
+
+
+def candidate_wire_clearance(
+    candidate: WireSegment,
+    existing: WireSegment,
+    *,
+    candidate_stroke_um: int = 300,
+    existing_stroke_um: int = 300,
+    explicit_junctions: frozenset[Point] = frozenset(),
+    nonparallel_ink_guard_um: int = 500,
+) -> RouteCandidateClearance:
+    """Check one prospective segment vs an existing authored wire.
+
+    Exact Fraction squared distances maintain the 2.999/3.000-mm boundary.
+    The 3mm rule applies ONLY to longitudinally overlapping parallel strokes,
+    except legitimate same-net coincident ink. The additional 0.5mm guard for
+    near but nonintersecting nonparallel strokes is editorial, not ГОСТ 3mm.
+    """
+    if any(type(value) is not int or value < 0 for value in (
+        candidate_stroke_um, existing_stroke_um, nonparallel_ink_guard_um,
+    )) or not candidate_stroke_um or not existing_stroke_um:
+        raise ValueError("DRC_CANDIDATE_STROKE_OR_GUARD_INVALID")
+    same_net = candidate.net_name == existing.net_name
+    parallel = _parallel_overlap(candidate, existing)
+    dist = _seg_distance_sq(candidate, existing)
+    edge = _edge_gap(dist, candidate_stroke_um + existing_stroke_um)
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    if parallel:
+        line_distance = _parallel_squared(candidate, existing)
+        if line_distance == 0:
+            if not same_net:
+                errors.append("DRC_FOREIGN_NET_COLLINEAR_OVERLAP")
+        elif (4 * line_distance < (
+            2 * WIRE_PARALLEL_GAP_UM
+            + candidate_stroke_um + existing_stroke_um
+        ) ** 2):
+            errors.append("DRC_PARALLEL_STROKE_CLEARANCE")
+        # Collinear same-net fragments do not require 3mm spacing.
+    else:
+        crossing = _strict_crossing(candidate, existing)
+        if crossing is not None:
+            if not same_net:
+                if any(Point(*crossing) == p for p in explicit_junctions
+                       if all(c.denominator == 1 for c in crossing)):
+                    errors.append("DRC_FOREIGN_NET_AUTHORED_X_JUNCTION")
+                else:
+                    warnings.append("DRC_UNMARKED_DIFFERENT_NET_X")
+            elif not (
+                all(x.denominator == 1 for x in crossing)
+                and Point(*crossing) in explicit_junctions
+            ):
+                errors.append("DRC_SAME_NET_X_NO_JUNCTION")
+        else:
+            candidate_points = {candidate.start, candidate.end}
+            existing_points = {existing.start, existing.end}
+            touches = {p for p in candidate_points if _on(existing, p)}
+            touches |= {p for p in existing_points if _on(candidate, p)}
+            if touches:
+                for contact in touches:
+                    if not same_net:
+                        errors.append("DRC_FOREIGN_NET_ENDPOINT_CONTACT")
+                    elif (
+                        (_interior(candidate, contact)
+                         or _interior(existing, contact))
+                        and contact not in explicit_junctions
+                    ):
+                        errors.append("DRC_SAME_NET_T_NO_DOT")
+            elif dist < (
+                Fraction(
+                    candidate_stroke_um + existing_stroke_um, 2
+                ) + nonparallel_ink_guard_um
+            ) ** 2:
+                errors.append("DRC_NONPARALLEL_EDITORIAL_INK_GUARD")
+    return RouteCandidateClearance(
+        not errors, tuple(sorted(set(errors))), tuple(sorted(set(warnings))),
+        edge, parallel,
+    )
+
 def _edge_gap(square: Fraction | int, widths: int) -> float:
     return round(sqrt(float(square)) - widths / 2, 3)
 
