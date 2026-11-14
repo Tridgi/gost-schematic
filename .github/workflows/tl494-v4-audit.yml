@@ -1,0 +1,92 @@
+name: TL494 v4 source model + geometry DRC (no render)
+
+on:
+  push:
+    branches: [reference/tl494-audit-v4-20261114]
+    paths:
+      - examples/tl494_v4/**
+      - tests/test_tl494_v4_contract.py
+      - .github/workflows/tl494-v4-audit.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  model-gate:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Pin experimental PAINT #93 without merging
+        run: |
+          set -eux
+          SHA=79ddb2ae57efd9ea621d64914a324988b343061d
+          git fetch origin refs/heads/parallel/rendering-ic-cycle7
+          test "$(git rev-parse FETCH_HEAD)" = "$SHA"
+          for name in ic_rectangular.py ic_hotspots.py ic_orientation.py ic_power_profiles.py; do
+            git show "$SHA:src/gost_schematic/rendering/$name" > "src/gost_schematic/rendering/$name"
+          done
+          python -m examples.tl494_v4.paint_rotation_patch \
+            src/gost_schematic/rendering/ic_rectangular.py
+      - name: Install real OpenGost Type A and test tools
+        run: |
+          set -euxo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq rpm2cpio cpio fontconfig
+          curl --fail --location --retry 3 \
+            https://fr2.rpmfind.net/linux/opensuse/tumbleweed/repo/oss/noarch/opengost-ttf-fonts-0.3-7.32.noarch.rpm \
+            -o /tmp/opengost.rpm
+          mkdir -p /tmp/opengost
+          (cd /tmp/opengost && rpm2cpio /tmp/opengost.rpm | cpio -idm --quiet)
+          FONT="$(find /tmp/opengost -name 'OpenGostTypeA-Regular.ttf' -print -quit)"
+          test -n "$FONT"
+          mkdir -p "$HOME/.local/share/fonts"
+          cp "$FONT" "$HOME/.local/share/fonts/OpenGostTypeA-Regular.ttf"
+          fc-cache -f "$HOME/.local/share/fonts"
+          python -m pip install --disable-pip-version-check 'Pillow>=10,<13' pytest 'ruff>=0.9,<1'
+      - name: 23/15 source gate, negative geometric DRC and Type A IC model
+        id: audit
+        continue-on-error: true
+        run: |
+          set +e
+          mkdir -p examples/tl494_v4/evidence
+          PYTHONPATH=src python -m pytest -q tests/test_tl494_v4_contract.py \
+            > "examples/tl494_v4/evidence/pytest_${{ matrix.python-version }}.txt" 2>&1
+          T=$?
+          python -m ruff check --select F,E4,E7,E9 \
+            examples/tl494_v4/ tests/test_tl494_v4_contract.py \
+            > "examples/tl494_v4/evidence/ruff_${{ matrix.python-version }}.txt" 2>&1
+          R=$?
+          PYTHONPATH=src python -m examples.tl494_v4.audit \
+            --font-file "$HOME/.local/share/fonts/OpenGostTypeA-Regular.ttf" \
+            --output examples/tl494_v4/evidence \
+            > "examples/tl494_v4/evidence/audit_${{ matrix.python-version }}.txt" 2>&1
+          A=$?
+          echo "TEST=$T RUFF=$R AUDIT=$A" | tee -a "examples/tl494_v4/evidence/audit_${{ matrix.python-version }}.txt"
+          cat "examples/tl494_v4/evidence/audit_${{ matrix.python-version }}.txt"
+          cat "examples/tl494_v4/evidence/pytest_${{ matrix.python-version }}.txt"
+          cat "examples/tl494_v4/evidence/ruff_${{ matrix.python-version }}.txt"
+          if [ "$T" -ne 0 ] || [ "$R" -ne 0 ] || [ "$A" -ne 0 ]; then exit 1; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tl494-v4-model-${{ matrix.python-version }}
+          path: examples/tl494_v4/evidence/
+      - name: Save actual 3.12 evidence to isolated branch
+        if: always() && matrix.python-version == '3.12'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f examples/tl494_v4/evidence
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'test(tl494-v4): capture source/model and paper-space DRC evidence'
+          git fetch origin reference/tl494-audit-v4-20261114
+          git rebase FETCH_HEAD
+          git push origin HEAD:reference/tl494-audit-v4-20261114
