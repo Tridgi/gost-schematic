@@ -250,7 +250,15 @@ def _check_physical_svg(root: ET.Element, manifest: dict,
     width_mm, height_mm = _svg_mm(root)
     targets = root.findall(f"./{SVG}g[@data-layer='editor-connection-targets']")
     if diagnostic:
-        _insist(len(targets) == 1 and list(root)[-1] is targets[0],
+        # The PAINT composition appends authored junctions and typed b
+        # after the markers; contract is foreground over ALL WIRE strokes,
+        # not 'last child of root' (which would falsely reject real owner).
+        children = list(root)
+        wire_indices = [i for i, child in enumerate(children)
+                        if child.tag == SVG + "line"
+                        and child.get("data-layer") == "wires"]
+        _insist(len(targets) == 1 and len(wire_indices) == 91
+                and children.index(targets[0]) > max(wire_indices),
                 "EDITOR_HOTSPOTS_NOT_FOREGROUND")
         _insist(targets[0].get("data-layer-order") == "after-all-copper",
                 "EDITOR_FOREGROUND_ORDER_MISSING")
