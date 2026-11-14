@@ -17,6 +17,7 @@ from gost_schematic.electrical.contacts import (
 from gost_schematic.electrical.ic import (
     IcField,
     IcKind,
+    IcPortLayout,
     IcPackage,
     IcPinRow,
     IcPinType,
@@ -375,6 +376,7 @@ def test_explicit_vertical_physical_pinrefs_are_exact_model_only(
             ))
         specs.append(replace(
             spec, body=new_body, rows=tuple(rows),
+            profile=replace(spec.profile, port_layout=IcPortLayout.TOP_BOTTOM),
             revision=spec.revision + 1,
         ))
     placements = tuple(replace(
@@ -419,11 +421,24 @@ def test_explicit_vertical_physical_pinrefs_are_exact_model_only(
 def test_vertical_physical_port_at_frame_corner_fails_closed():
     source = synthetic_ic(8)
     spec = source.specs[0]
+    oriented_rows = tuple(replace(
+        row,
+        side=Side.TOP,
+        anchor=Point(
+            spec.body.min_x + 5000 * (index + 1),
+            spec.body.min_y - 4000,
+        ),
+    ) for index, row in enumerate(spec.rows))
+    wide = Box(
+        spec.body.min_x, spec.body.min_y,
+        spec.body.min_x + (len(spec.rows) + 2) * 5000, spec.body.max_y,
+    )
     with pytest.raises(ValueError, match="IC_ANCHOR_INSIDE"):
-        replace(spec, rows=(
-            replace(
-                spec.rows[0], side=Side.TOP,
-                anchor=Point(spec.body.min_x, -4000),
-            ),
-            *spec.rows[1:],
-        ))
+        replace(
+            spec, body=wide,
+            profile=replace(spec.profile, port_layout=IcPortLayout.TOP_BOTTOM),
+            rows=(replace(
+                oriented_rows[0],
+                anchor=Point(wide.min_x, wide.min_y - 4000),
+            ), *oriented_rows[1:]),
+        )
