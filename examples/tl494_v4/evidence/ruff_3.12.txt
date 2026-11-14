@@ -1,20 +1,3 @@
-F401 [*] `dataclasses.dataclass` imported but unused
- --> examples/tl494_v4/model_contract.py:7:25
-  |
-5 | from __future__ import annotations
-6 |
-7 | from dataclasses import dataclass
-  |                         ^^^^^^^^^
-8 | from hashlib import sha256
-9 | from pathlib import Path
-  |
-help: Remove unused import: `dataclasses.dataclass`
-  |
-6 |
-  - from dataclasses import dataclass
-7 | from hashlib import sha256
-  |
-
 E702 Multiple statements on one line (semicolon)
   --> examples/tl494_v4/wire_drc.py:48:29
    |
@@ -67,5 +50,4 @@ E702 Multiple statements on one line (semicolon)
 92 |     assert "UNAUTHORIZED_CROSS_NET_JUNCTION" in {v["code"] for v in d["violations"]}
    |
 
-Found 6 errors.
-[*] 1 fixable with `--fix`.
+Found 5 errors.
