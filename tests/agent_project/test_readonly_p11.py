@@ -201,28 +201,32 @@ def test_import_invalid_junction_no_published_head(tmp_path):
     assert not (tmp_path / "projects" / PID).exists()
 
 
-def test_40_real_physical_pin_records_supported_without_fake_connectivity():
+@pytest.mark.parametrize("pin_count", (40, 64))
+def test_synthetic_large_ic_pin_inventory_roundtrip_without_fake_connectivity(pin_count):
+    # A type-capacity test, not a manufacturer pinout or split-unit rendering.
     catalog = CatalogResolver()
     physical = tuple(PhysicalPin(str(i), f"PIN{i}", ElectricalType.INPUT)
-                     for i in range(1, 41))
+                     for i in range(1, pin_count + 1))
     graphic = tuple(GraphicPin(str(i), Point(0, i * 1000), Side.LEFT)
-                    for i in range(1, 41))
-    part = PartDefinition("test.40pin", "DD", "test.40pin", physical)
+                    for i in range(1, pin_count + 1))
+    part_id = f"test.synthetic.{pin_count}pin"
+    part = PartDefinition(part_id, "DD", part_id, physical)
     symbol = SymbolDefinition(
-        "test.40pin", 1, (Line(Point(0, 1000), Point(1000, 1000)),),
-        graphic, Box(1000, 0, 5000, 43000), 300,
+        part_id, 1, (Line(Point(0, 1000), Point(1000, 1000)),),
+        graphic, Box(1000, 0, 5000, (pin_count + 3) * 1000), 300,
     )
     catalog.parts[part.identifier] = part
     catalog.symbols[symbol.identifier] = symbol
     circuit = Circuit((ComponentInstance("DD1", part.identifier, Point(20000, 20000)),), ())
     project = SchematicProject.from_circuit(
-        PID, "A typed 40 pin E3 fixture", circuit, ExternalWireGraph(()),
-        catalog, strokes_um=(),
+        PID, f"SYNTHETIC {pin_count}-pin test inventory",
+        circuit, ExternalWireGraph(()), catalog, strokes_um=(),
     )
     pins = project.catalog_lock[0]["physical_pins"]
-    assert len(pins) == 40
-    assert pins[39]["number"] == "40"
-    assert pins[39]["name"] == "PIN40"
+    assert len(pins) == pin_count
+    assert pins[-1]["number"] == str(pin_count)
+    assert pins[-1]["name"] == f"PIN{pin_count}"
+    assert project.circuit.components[0].reference == "DD1"
     restored = SchematicProject.from_record(project.to_record(), catalog)
     assert restored.circuit == circuit
     assert restored.revision == project.revision
