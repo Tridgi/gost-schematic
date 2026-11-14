@@ -13,7 +13,10 @@ from mcp.types import ImageContent, TextContent, ToolAnnotations
 
 from gost_schematic.agent_project.catalog import CatalogResolver, ProjectError
 from gost_schematic.agent_project.design_assistant import (
-    catalog_preview, catalog_search, tl494_alias, tl494_profile,
+    catalog_preview,
+    catalog_search,
+    tl494_alias,
+    tl494_profile,
 )
 from gost_schematic.agent_project.read_access import ReadOnlyProjectAccess
 
