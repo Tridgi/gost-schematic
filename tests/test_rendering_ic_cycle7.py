@@ -829,9 +829,13 @@ def test_hotspot_follows_d4_external_anchor_not_body_boundary(angle, mirror):
 
     from examples.review_ic_cycle7 import _declared_synthetic_targets
 
-    unit, _ = specimen(
-        14, transform=Transform(angle, mirror),
-        function="1", labels=False,
+    from gost_schematic.rendering.ic_rectangular import IcTypographyProfile
+
+    original, _ = specimen(
+        8, transform=Transform(angle, mirror), function="PWM",
+    )
+    unit = original.select_typography_profile(
+        IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT,
     )
     targets, _ = _declared_synthetic_targets(unit)
     svg = ET.fromstring(render_resolved_ic(
@@ -841,7 +845,7 @@ def test_hotspot_follows_d4_external_anchor_not_body_boundary(angle, mirror):
     squares = svg.findall(
         f".//{NS}g[@data-layer='editor-connection-targets']/{NS}rect",
     )
-    assert len(squares) == len(targets) == 14
+    assert len(squares) == len(targets) == 8
     for mark, target in zip(squares, targets, strict=True):
         assert int(Decimal(mark.get("x")) * 1000) + 350 == target.anchor.x
         assert int(Decimal(mark.get("y")) * 1000) + 350 == target.anchor.y
