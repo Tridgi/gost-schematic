@@ -208,21 +208,37 @@ class IcResolvedUnit:
             raise TypeError("IC_ORIENTATION_TYPED_REQUIRED")
         if not isinstance(self.typography_profile, IcTypographyProfile):
             raise TypeError("IC_TYPOGRAPHY_PROFILE_TYPED_REQUIRED")
+        if (self.function_text_reading is not None
+                and not isinstance(self.function_text_reading, IcFunctionReading)):
+            raise TypeError("IC_FUNCTION_READING_TYPED_REQUIRED")
         if self.function_rotation is None:
             default_rotation = (
+                self.function_text_reading.degrees
+                if self.function_text_reading is not None else
+                270 if self.typography_profile is
+                IcTypographyProfile.TL494_PORTRAIT_V3_DRAFT else
                 90 if self.typography_profile is
                 IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT else 0
             )
             object.__setattr__(self, "function_rotation", default_rotation)
         if (type(self.function_rotation) is not int
-                or self.function_rotation not in (0, 90)
+                or self.function_rotation not in (0, 90, 270)
                 or type(self.field_text_rotation) is not int
                 or self.field_text_rotation not in (0, 90)):
-            raise ValueError("IC_TEXT_ROTATION_UNVERIFIED: only 0/90")
+            raise ValueError("IC_TEXT_ROTATION_UNVERIFIED: only 0/90/270")
+        if (self.function_text_reading is not None
+                and self.function_text_reading.degrees != self.function_rotation):
+            raise ValueError("IC_FUNCTION_READING_ROTATION_CONFLICT")
         if self.orientation is IcOrientation.LEFT_RIGHT and self.field_text_rotation:
             raise ValueError("IC_FIELD_ROTATION_REQUIRES_TOP_BOTTOM_PROFILE")
         if not self.reference:
             raise ValueError("IC_REFERENCE_REQUIRED")
+        if self.typography_profile is IcTypographyProfile.TL494_PORTRAIT_V3_DRAFT:
+            labels = [pin.visible_label for pin in self.pins]
+            if any(len(label) > 6 for label in labels):
+                raise ValueError("IC_VISIBLE_PIN_ALIAS_OVER_6")
+            if len(set(labels)) != len(labels):
+                raise ValueError("IC_VISIBLE_PIN_ALIAS_DUPLICATE")
         if len({p.pin_id for p in self.pins}) != len(self.pins):
             raise ValueError("IC_DUPLICATE_PIN_ID")
         if len({p.number for p in self.pins}) != len(self.pins):
@@ -257,7 +273,21 @@ class IcResolvedUnit:
         authored rotation. Choosing a NEW profile resets that choice to the
         new profile default; only text settings change.
         """
-        return replace(self, typography_profile=profile, function_rotation=None)
+        return replace(
+            self, typography_profile=profile, function_rotation=None,
+            function_text_reading=None,
+        )
+
+    def select_function_text_reading(
+        self, reading: IcFunctionReading,
+    ) -> "IcResolvedUnit":
+        """Change only text direction; physical wire anchors remain immutable."""
+        if not isinstance(reading, IcFunctionReading):
+            raise TypeError("IC_FUNCTION_READING_TYPED_REQUIRED")
+        return replace(
+            self, function_rotation=reading.degrees,
+            function_text_reading=reading,
+        )
 
 
 @dataclass(frozen=True, slots=True)
