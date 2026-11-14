@@ -156,7 +156,9 @@ jobs:
             scripts/qa_tl494_cycle10_candidate_gate.py \
             scripts/qa_tl494_current_editor_cycle10.py \
             scripts/qa_tl494_cycle11_native_300dpi.py \
-            scripts/qa_install_opengost_release.py
+            scripts/qa_install_opengost_release.py \
+            tests/test_qa_font_direct_release.py
+          python -m pytest -q tests/test_qa_font_direct_release.py
           python scripts/qa_install_opengost_release.py \
             --directory "$HOME/.local/share/fonts"
           fc-cache -f
