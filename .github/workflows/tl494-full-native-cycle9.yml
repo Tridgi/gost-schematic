@@ -7,6 +7,8 @@ on:
       - "src/gost_schematic/rendering/ic_sheet_composition.py"
       - "src/gost_schematic/rendering/external_wire_sheet.py"
       - "examples/render_tl494_full_native_cycle9.py"
+      - "src/gost_schematic/rendering/native_sheet_ink_audit.py"
+      - "scripts/emit_tl494_native_print_crops.py"
       - "tests/test_full_native_cycle9.py"
       - ".github/workflows/tl494-full-native-cycle9.yml"
   workflow_dispatch:
@@ -78,6 +80,8 @@ jobs:
           ruff check src/gost_schematic/rendering/ic_sheet_composition.py \
             src/gost_schematic/rendering/external_wire_sheet.py \
             examples/render_tl494_full_native_cycle9.py \
+            src/gost_schematic/rendering/native_sheet_ink_audit.py \
+            scripts/emit_tl494_native_print_crops.py \
             tests/test_full_native_cycle9.py
           pytest -q tests/test_full_native_cycle9.py
       - name: Render COMPLETE new native 23/15/16/91 before-after from source Circuit
@@ -85,6 +89,10 @@ jobs:
           python -m examples.render_tl494_full_native_cycle9 \
             --font-file "$REVIEW_FONT" \
             --output output/tl494-full-native-cycle9 --d4
+      - name: Print-real 1:1 A3 review tiles and zoom of full native Circuit
+        run: |
+          python -m scripts.emit_tl494_native_print_crops \
+            --output output/tl494-full-native-cycle9
       - name: Raster original FULL native 23-part clean/diagnostic 300 DPI
         run: |
           for f in output/tl494-full-native-cycle9/*.svg; do
@@ -107,7 +115,10 @@ jobs:
           assert sum("D4" in name for name in proof["variants"])==8
           assert proof["font_sha256"]=="f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a"
           pictures=list(folder.glob("*-300dpi.png"))
-          assert len(pictures)==15
+          assert len(pictures)==42
+          crops=json.loads((folder/"TL494_native_23_A3_and_details_manifest.json").read_text())
+          assert crops["A3_1_to_1_count"]==6
+          assert crops["enlargement_count"]==21
           for svg in folder.glob("*.svg"):
               root=ET.fromstring(svg.read_text())
               assert len(root.findall("./{http://www.w3.org/2000/svg}g[@data-layer='symbols']"))==23
