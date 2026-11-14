@@ -135,6 +135,7 @@ def generate(
         circuit, parts, by_part, page_box=page_boxes[page],
         annotation_placements=empty_annotations.placements,
         search_node_cap=node_limit, max_detour_ratio=3.0,
+        stop_on_first_failure=False, max_order_restarts=1,
     )
     # Post-route independent full DRC is always applied, even if routing
     # stopped early. Re-layout with actual AFTER wires before coverage.
