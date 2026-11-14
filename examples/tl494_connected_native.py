@@ -174,6 +174,16 @@ def generate(output:Path,font_file:Path):
     )
     electrical=validate_external_wires(circuit,graph,parts,symbols)
     erc=validate_circuit(circuit,parts,symbols)
+    wire_errors=[d for d in electrical if d.severity.value=="error"]
+    erc_errors=[d for d in erc if d.severity.value=="error"]
+    if wire_errors or erc_errors:
+        raise AssertionError(
+            "Fail closed: invalid native integrated geometry, "
+            + "; ".join(d.code+": "+d.message for d in (*wire_errors,*erc_errors))
+        )
+    if any(c.part_id!="capacitor.polarized" for c in circuit.components
+           if c.reference in {"C1","C2","C5","C6"}):
+        raise AssertionError("Wrong capacitor family for supplied source photo")
     bypart={pid:symbols[part.symbol_id] for pid,part in parts.items()}
     output.mkdir(parents=True,exist_ok=True)
     variants={}
@@ -189,6 +199,8 @@ def generate(output:Path,font_file:Path):
         expected=tuple((p.pin_id,p.anchor) for p in unit.pins)
         if ic.pin_anchors!=expected:
             raise AssertionError("PAINT moved physical endpoints during sheet composition")
+        if not sheet.layout.valid:
+            raise AssertionError("Native sheet annotation layout became invalid")
         svg=ET.fromstring(sheet.svg)
         placeholder=svg.find(f"./{TAG}g[@data-reference='DA1']")
         if placeholder is None:
