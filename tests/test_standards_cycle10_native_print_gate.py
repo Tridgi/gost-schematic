@@ -277,3 +277,80 @@ def test_profile_narrowly_remains_draft():
     profile["profiles"][0]["normative_verdict"] = "APPROVED"
     with pytest.raises(gate.PrintEvidenceError, match="UNPROVEN_NORMATIVE"):
         gate._source_profile(profile)
+
+
+def _real_numeric_svg_wires(*, first_neighbor_y_mm: float,
+                            neighboring_net: str = "NET_B",
+                            make_crossing: bool = False) -> ET.Element:
+    root = ET.Element(SRC + "svg")
+    for i in range(91):
+        if i == 0:
+            coords = (0.0, 0.0, 10.0, 0.0)
+            net = "NET_A"
+        elif i == 1:
+            coords = (
+                (5.0, -4.0, 5.0, 4.0)
+                if make_crossing else
+                (0.0, first_neighbor_y_mm, 10.0, first_neighbor_y_mm)
+            )
+            net = neighboring_net
+        else:
+            coords = (0.0, float(i * 10 + 100), 10.0, float(i * 10 + 100))
+            net = "OTHER"
+        ET.SubElement(root, SRC + "line", {
+            "data-layer": "wires",
+            "data-wire-index": str(i),
+            "data-net": net,
+            "stroke-width": "0.3",
+            "x1": str(coords[0]), "y1": str(coords[1]),
+            "x2": str(coords[2]), "y2": str(coords[3]),
+        })
+    return root
+
+
+@pytest.mark.parametrize(("gap_y", "expected"), [
+    (3.3, 0),
+    (3.299, 1),
+    (3.0, 1),
+    (2.0, 1),
+])
+def test_independent_actual_svg_3mm_stroke_ink_boundaries(gap_y, expected):
+    data = gate._actual_svg_3mm_violations(
+        _real_numeric_svg_wires(first_neighbor_y_mm=gap_y)
+    )
+    assert len(data) == expected
+    if expected:
+        assert data[0]["first_segment"] == 0
+        assert data[0]["second_segment"] == 1
+        assert data[0]["edge_gap_um"] == round(gap_y * 1000) - 300
+
+
+def test_3mm_rule_exempts_same_net_parallel_and_nonparallel_x_not_topology():
+    assert not gate._actual_svg_3mm_violations(
+        _real_numeric_svg_wires(first_neighbor_y_mm=0.8,
+                                neighboring_net="NET_A")
+    )
+    assert not gate._actual_svg_3mm_violations(
+        _real_numeric_svg_wires(first_neighbor_y_mm=0.8,
+                                make_crossing=True)
+    )
+
+
+def test_independent_svg_wire_audit_blocks_missing_net_provenance():
+    root = _real_numeric_svg_wires(first_neighbor_y_mm=3.0)
+    first = root.find(f"{SRC}line[@data-layer='wires']")
+    first.attrib.pop("data-wire-index")
+    with pytest.raises(gate.PrintEvidenceError, match="INDEX_PROVENANCE"):
+        gate._actual_svg_3mm_violations(root)
+
+
+def test_independent_svg_wire_audit_blocks_illegal_stroke_or_oblique():
+    root = _real_numeric_svg_wires(first_neighbor_y_mm=3.0)
+    first = root.find(f"{SRC}line[@data-layer='wires']")
+    first.set("stroke-width", "0.1")
+    with pytest.raises(gate.PrintEvidenceError, match="STROKE_OUT_OF_GOST"):
+        gate._actual_svg_3mm_violations(root)
+    first.set("stroke-width", "0.3")
+    first.set("y2", "2.0")
+    with pytest.raises(gate.PrintEvidenceError, match="NONZERO_ORTHOGONAL"):
+        gate._actual_svg_3mm_violations(root)
