@@ -57,12 +57,6 @@ def test_ambiguous_coil_is_not_forced_to_ferromagnetic():
     assert options["selection_required"]
 
 
-@pytest.mark.parametrize(("word", "expected"), [
-    ("ferromagnetic inductor", "inductor.ferromagnetic"),
-    ("диод шоттки", "diode.schottky"),
-    ("n channel enhancement mosfet", "transistor.mosfet_n_enh"),
-    ("предохранитель", "fuse.general"),
-])
 def test_generic_mosfet_excludes_unrelated_bjt_shapes():
     options = catalog_search(CatalogResolver(), "mosfet")
     assert options["candidate_count"] >= 2
@@ -70,6 +64,12 @@ def test_generic_mosfet_excludes_unrelated_bjt_shapes():
                for row in options["candidates"])
 
 
+@pytest.mark.parametrize(("word", "expected"), [
+    ("ferromagnetic inductor", "inductor.ferromagnetic"),
+    ("диод шоттки", "diode.schottky"),
+    ("n channel enhancement mosfet", "transistor.mosfet_n_enh"),
+    ("предохранитель", "fuse.general"),
+])
 def test_explicit_phrase_only_returns_existing_part(word, expected):
     report = catalog_search(CatalogResolver(), word)
     assert [row["part_id"] for row in report["candidates"]] == [expected]
