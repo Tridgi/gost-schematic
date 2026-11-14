@@ -113,7 +113,7 @@ jobs:
           test "$(git -C _qa_sources/ic rev-parse HEAD)" = b28428d94218cac777a28897ce9176285d0fab0b
           test "$(git -C _qa_sources/paint rev-parse HEAD)" = 161c31bd0b538c6e827341ae465c3b3a59f6637d
           test "$(git -C _qa_sources/catalog rev-parse HEAD)" = edc71a48035723d48a203ae2ea12588701f68ba8
-          cp scripts/qa_tl494_router_contract.py scripts/qa_tl494_next_route_gate.py _qa_sources/original/scripts/
+          cp scripts/qa_tl494_router_contract.py scripts/qa_tl494_next_route_gate.py scripts/qa_tl494_cycle10_candidate_gate.py _qa_sources/original/scripts/
           python - <<'PY'
           from pathlib import Path
           from shutil import copy2
