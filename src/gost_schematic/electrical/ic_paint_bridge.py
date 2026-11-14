@@ -11,6 +11,7 @@ from gost_schematic.core.geometry import SIDE_VECTORS, Box, Point, Side
 from gost_schematic.electrical.ic import (
     IcField,
     IcKind,
+    IcPortLayout,
     IcPinType,
     resolve_ic_pin_positions,
 )
@@ -72,6 +73,9 @@ class IcPaintBinding:
                 or view.origin != placement.origin
                 or view.transform != placement.transform
                 or view.content != _content(spec, self.record.device)
+                or view.orientation.value != spec.profile.port_layout.value
+                or view.function_rotation != spec.profile.function_angle.value
+                or view.field_text_rotation != spec.profile.other_text_angle.value
             ):
                 raise ValueError(f"IC_PAINT_VIEW_SEMANTIC_MISMATCH: {spec.unit_id}")
             if len(view.pins) != len(spec.rows):
@@ -179,6 +183,7 @@ def propose_ic_paint_binding(
     datasheet pinout, or automatic public circuit upgrade.
     """
     from gost_schematic.rendering.ic_rectangular import (
+        IcOrientation,
         IcRenderingPolicy,
         IcResolvedUnit,
         propose_ic_dimensions,
@@ -197,17 +202,42 @@ def propose_ic_paint_binding(
     side_reflows = []
     for spec in record.specs:
         placement = placements[spec.unit_id]
-        if any(row.side not in (Side.LEFT, Side.RIGHT) for row in spec.rows):
-            raise ValueError("IC_UNSUPPORTED_VERTICAL_PORT: ESKD signoff required")
+        arrangement = (
+            IcOrientation.LEFT_RIGHT
+            if spec.profile.port_layout is IcPortLayout.LEFT_RIGHT
+            else IcOrientation.TOP_BOTTOM
+        )
+        # PAINT #93 currently permits rotation of central function only
+        # under TOP_BOTTOM. For LEFT_RIGHT this model is valid but printing
+        # requires a separately reviewed source-backed PAINT ink profile.
+        if (
+            arrangement is IcOrientation.LEFT_RIGHT
+            and (spec.profile.function_angle.value
+                 or spec.profile.other_text_angle.value)
+        ):
+            raise ValueError(
+                "IC_PAINT_LEFT_RIGHT_TEXT_ROTATION_BLOCKED:"
+                " typed experimental profile survives but cannot be printed"
+            )
+        expected_sides = (
+            (Side.LEFT, Side.RIGHT)
+            if arrangement is IcOrientation.LEFT_RIGHT
+            else (Side.TOP, Side.BOTTOM)
+        )
+        if any(row.side not in expected_sides for row in spec.rows):
+            raise ValueError("IC_PORT_LAYOUT_MISMATCH: source physical sides")
         # Functional units may start at an even physical pin. Reflow their
         # graphical sides explicitly: an OUTPUT on LEFT, or INPUT on RIGHT,
         # is not an acceptable default PAINT presentation. These are NEW
         # view specs, not altered physical pins or altered Circuit.Nets.
-        layout_rows = tuple(replace(
-            row, side=_drawing_side(
-                record.device.pin_map[row.number].electrical_type, row.side,
-            ),
-        ) for row in spec.rows)
+        layout_rows = (
+            tuple(replace(
+                row, side=_drawing_side(
+                    record.device.pin_map[row.number].electrical_type, row.side,
+                ),
+            ) for row in spec.rows)
+            if arrangement is IcOrientation.LEFT_RIGHT else spec.rows
+        )
         for old, revised_row in zip(spec.rows, layout_rows, strict=True):
             if old.side != revised_row.side:
                 side_reflows.append(IcPinSideReflow(
@@ -231,7 +261,10 @@ def propose_ic_paint_binding(
             )
         )
         content = _content(spec, record.device)
-        dimensions = propose_ic_dimensions(content, prelim, style, measurer, policy)
+        dimensions = propose_ic_dimensions(
+            content, prelim, style, measurer, policy,
+            orientation=arrangement,
+        )
         # PAINT returns the minimum measured geometry. The original rectangle
         # is not silently edited. Instead produce a freshly versioned record.
         # Never silently shrink an author's existing declared rectangle;
@@ -244,11 +277,17 @@ def propose_ic_paint_binding(
             raise ValueError("IC_GRID_MISMATCH: source body origin off module")
         width_um = ceil_multiple(
             max(spec.body.max_x - spec.body.min_x, dimensions.width_um),
-            policy.module_um,
+            (
+                policy.module_um if arrangement is IcOrientation.LEFT_RIGHT
+                else dimensions.row_pitch_um
+            ),
         )
         height_um = ceil_multiple(
             max(spec.body.max_y - spec.body.min_y, dimensions.height_um),
-            dimensions.row_pitch_um,
+            (
+                dimensions.row_pitch_um if arrangement is IcOrientation.LEFT_RIGHT
+                else policy.module_um
+            ),
         )
         body = Box(
             spec.body.min_x, spec.body.min_y,
@@ -259,11 +298,23 @@ def propose_ic_paint_binding(
         for row in layout_rows:
             if row.visual_row >= dimensions.row_count:
                 raise ValueError("IC_PIN_ROW_OVERFLOW")
-            boundary = Point(
-                body.min_x if row.side is Side.LEFT else body.max_x,
-                body.min_y + row.visual_row * dimensions.row_pitch_um
-                + dimensions.row_pitch_um // 2,
-            )
+            if arrangement is IcOrientation.LEFT_RIGHT:
+                boundary = Point(
+                    body.min_x if row.side is Side.LEFT else body.max_x,
+                    body.min_y + row.visual_row * dimensions.row_pitch_um
+                    + dimensions.row_pitch_um // 2,
+                )
+            else:
+                # PAINT's vertical_as_canonical maps TOP/BOTTOM to a
+                # reverse-indexed left/right canonical row. Derive x from
+                # the same exact integer grid, not a pixel or SVG shift.
+                last_column = max(r.visual_row for r in layout_rows)
+                canon_row = last_column + 1 - row.visual_row
+                boundary = Point(
+                    body.max_x - canon_row * dimensions.row_pitch_um
+                    - dimensions.row_pitch_um // 2,
+                    body.min_y if row.side is Side.TOP else body.max_y,
+                )
             normal = SIDE_VECTORS[row.side]
             anchor = Point(
                 boundary.x + normal.x * dimensions.lead_length_um,
@@ -287,6 +338,9 @@ def propose_ic_paint_binding(
             content=content,
             origin=placement.origin,
             transform=placement.transform,
+            orientation=arrangement,
+            function_rotation=spec.profile.function_angle.value,
+            field_text_rotation=spec.profile.other_text_angle.value,
         ))
     updated = IcLibraryRecord(record.device, tuple(new_specs), record.placements)
     binding = IcPaintBinding(
