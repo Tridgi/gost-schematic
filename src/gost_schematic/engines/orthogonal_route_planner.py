@@ -19,8 +19,9 @@ from gost_schematic.validation.external_wire_checks import (
     WireSegment,
 )
 from gost_schematic.validation.route_drc import (
-    _seg_distance_sq,
+    _strict_crossing,
     _symbol_boxes,
+    candidate_wire_clearance,
 )
 
 PAGES = (
@@ -75,6 +76,7 @@ class RoutePreview:
     crossings: int
     diagnostics: tuple[str, ...]
     preview_only: bool = True
+    print_pass: bool = False  # never infer print approval from a preview
 
     @property
     def valid(self) -> bool:
@@ -202,21 +204,24 @@ def _resolve_real_pin(
 def _legality(
     first: Point, second: Point, *,
     bounds: Box, boxes: tuple[Box, ...], graph: ExternalWireGraph,
-    wire_radius_um: int,
+    stroke_um: int,
+    net_name: str,
+    annotation_boxes: tuple[Box, ...] = (),
 ) -> bool:
     if first == second or not bounds.includes(first) or not bounds.includes(second):
         return False
     if first.x != second.x and first.y != second.y:
         return False
     line = Line(first, second)
-    if any(segment_intersects_box(line, b) for b in boxes):
+    if any(segment_intersects_box(line, b) for b in boxes + annotation_boxes):
         return False
-    candidate = WireSegment(first, second, "__PREVIEW_ONLY__")
-    # Distances are exact squared Fractions from authored source lines;
-    # no drawing intersection may silently become a real T or junction.
-    threshold = wire_radius_um * 2 + 500
-    return all(_seg_distance_sq(candidate, other) >= threshold ** 2
-               for other in graph.segments)
+    candidate = WireSegment(first, second, net_name)
+    return all(candidate_wire_clearance(
+        candidate, other,
+        candidate_stroke_um=stroke_um,
+        existing_stroke_um=stroke_um,
+        explicit_junctions=frozenset(graph.junctions),
+    ).valid for other in graph.segments)
 
 
 def preview_orthogonal_route(
@@ -234,6 +239,7 @@ def preview_orthogonal_route(
     obstacle_gap_um: int = 1000,
     max_grid_nodes: int = 12000,
     max_detour_ratio: float = 2.5,
+    annotation_placements: tuple = (),
 ) -> RoutePreview:
     """Costed visibility-grid H/V route with immutable net+pin provenance.
 
@@ -358,7 +364,11 @@ def preview_orthogonal_route(
                 continue
             if not _legality(
                 a, b, bounds=inner, boxes=tuple(obstacles),
-                graph=graph, wire_radius_um=(stroke_um + 1) // 2,
+                graph=graph, stroke_um=stroke_um, net_name=net_name,
+                annotation_boxes=tuple(
+                    placement.collision_bounds.expanded((stroke_um + 1) // 2)
+                    for placement in annotation_placements
+                ),
             ):
                 continue
             increment = abs(b.x - a.x) + abs(b.y - a.y)
@@ -399,9 +409,15 @@ def preview_orthogonal_route(
         return refuse("ROUTE_EXCESSIVE_DETOUR_REPLACE_LAYOUT")
     # A preview may be EMPTY by refusal. It must never alter the underlying
     # Circuit or ExternalWireGraph, no matter how plausible its lines look.
+    crossings = sum(
+        _strict_crossing(WireSegment(a, b, net_name), old) is not None
+        and net_name != old.net_name
+        for a, b in pairwise(result)
+        for old in graph.segments
+    )
     return RoutePreview(
         net_name, first, second, tuple(result),
-        length_um, len(result) - 2, 0, (),
+        length_um, len(result) - 2, crossings, (),
     )
 
 
@@ -419,4 +435,6 @@ def preview_metrics(preview: RoutePreview) -> dict:
         "bends": preview.bends, "crossings": preview.crossings,
         "diagnostics": list(preview.diagnostics),
         "electrical_modifications": 0,
+        "print_pass": preview.print_pass,
+        "status_note": "Geometric PREVIEW only; independent complete route DRC required",
     }
