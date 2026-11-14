@@ -8,7 +8,6 @@ from examples.tl494_v5.compact_layout import compact_source_assembly
 from examples.tl494_v5.cycle11_ti_bridge import (
     PHYSICAL_REF,
     SOURCE_PART_ID,
-    VerifiedCompactTiBinding,
     bind_verified_compact_ti,
 )
 from examples.tl494_v5.route_candidate_driver import (
@@ -154,7 +153,7 @@ def test_real_16_pin_signed_paint_overlay_and_wrong_record_fails(
     targets = {t.pin_ref: t for t in witness.per_unit_targets[0]}
     assert len(targets) == 16
     for number in range(1, 17):
-        item = verified.signed.contact(PinRef("DA1", str(number)))
+        item = signed_paint.contact(PinRef("DA1", str(number)))
         assert targets[item.pin_ref].anchor == item.world_anchor
         assert targets[item.pin_ref].net_id == item.net_id
     # Never accept a changed full source Circuit as authority for a cached seal.
