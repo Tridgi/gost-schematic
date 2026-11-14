@@ -10,6 +10,7 @@ from gost_schematic.engines.multiterminal_router import (
     _source_ink_collision,
     _source_ink_obstacles,
     route_circuit_net_trees,
+    route_circuit_with_order_fallback,
     route_multi_terminal_net,
 )
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
@@ -57,6 +58,40 @@ def native_three_terminal():
         PinRef("X1", "1"), PinRef("X2", "1"), PinRef("X3", "1"),
     )),))
     return circuit, parts, geometries
+
+
+def test_global_functional_order_restart_is_deterministic_and_readonly():
+    circuit, parts, symbols = native_three_terminal()
+    a = route_circuit_with_order_fallback(
+        circuit, parts, symbols,
+        page_box=Box(0, 0, 90000, 60000),
+        try_priorities=3, max_order_restarts=1,
+    )
+    b = route_circuit_with_order_fallback(
+        circuit, parts, symbols,
+        page_box=Box(0, 0, 90000, 60000),
+        try_priorities=3, max_order_restarts=1,
+    )
+    assert a.source_circuit == b.source_circuit == circuit
+    assert a.graph == b.graph
+    assert a.routing_strategy == b.routing_strategy == "SOURCE_FUNCTIONAL"
+    assert len(a.route_order_trials) == 3
+    assert all(x[1] == 1 and x[2] == 0
+               for x in a.route_order_trials)
+    assert a.as_dict()["route_order_trials"][1]["strategy"] == "COMMON_FIRST"
+    assert all(x.net_name == "A" for x in a.graph.segments)
+    assert not a.print_pass
+
+
+@pytest.mark.parametrize("n", (0, -1, 4, 99, 2.5))
+def test_route_priority_trial_count_rejects_invalid_or_unbounded_inputs(n):
+    circuit, parts, symbols = native_three_terminal()
+    with pytest.raises(ValueError, match="ROUTE_INVALID_FUNCTIONAL_ORDER"):
+        route_circuit_with_order_fallback(
+            circuit, parts, symbols,
+            page_box=Box(0, 0, 90000, 60000),
+            try_priorities=n,
+        )
 
 
 def test_full_three_terminal_tree_creates_real_authored_T_dot_without_net_change():
