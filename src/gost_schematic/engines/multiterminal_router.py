@@ -443,6 +443,7 @@ def _visibility_path(
         for goal in goals
     )
     cache: dict[tuple[Point, Point, bool], tuple[bool, int]] = {}
+    ink_rejections: dict[tuple[str, int, str], tuple[Point, Point]] = {}
     while heap:
         score, bends, crossings, length, ix, iy, direction = heappop(heap)
         state = (ix, iy, direction)
@@ -464,10 +465,20 @@ def _visibility_path(
                 segment_intersects_box(Line(here, to), box) for box in boxes
             ):
                 continue
-            if _source_ink_collision(
+            ink_error = _source_ink_collision(
                 WireSegment(here, to, net_name),
                 ink_obstacles, authorized_pins=authorized_pins,
-            ) is not None:
+            )
+            if ink_error is not None:
+                key = (
+                    ink_error.owner,
+                    ink_error.primitive_index,
+                    (f"{ink_error.permitted_pin.reference}."
+                     f"{ink_error.permitted_pin.number}"
+                     if ink_error.permitted_pin else "UGO_BODY"),
+                )
+                if key not in ink_rejections:
+                    ink_rejections[key] = (here, to)
                 continue
             if state == start and (
                 (to.x - here.x) * normal.x
@@ -522,7 +533,16 @@ def _visibility_path(
                 predecessor[next_state] = state
                 heappush(heap, (*improved, *next_state))
     if reached is None:
-        return (), "ROUTE_NO_CLEAR_ORTHOGONAL_TREE_PATH"
+        # Route-search diagnostics retain the actual source primitive and
+        # candidate coordinates; never call the reject a successful Net.
+        details = tuple(
+            f"{owner}#{index}:{pin}:{a.x},{a.y}->{b.x},{b.y}"
+            for (owner, index, pin), (a, b) in sorted(ink_rejections.items())
+        )
+        reason = "ROUTE_NO_CLEAR_ORTHOGONAL_TREE_PATH"
+        if details:
+            reason += ":INK_VETO=" + ";".join(details[:6])
+        return (), reason
     points = []
     state = reached
     while state != start:
