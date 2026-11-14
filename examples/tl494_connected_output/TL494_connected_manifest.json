@@ -1,0 +1,180 @@
+{
+  "TL494_connected_pin_numbers": [
+    "1",
+    "7",
+    "9",
+    "10",
+    "16"
+  ],
+  "TL494_unconnected_physical_pins": [
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "8",
+    "11",
+    "12",
+    "13",
+    "14",
+    "15"
+  ],
+  "component_count": 13,
+  "erc_diagnostics": [
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol reference.connector.x1 is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol inductor.air_core is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol transistor.mosfet_n_enh is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol capacitor.polarized is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol capacitor.polarized is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol diode.schottky is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol inductor.air_core is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol capacitor.polarized is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol capacitor.polarized is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol fuse.general is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol reference.connector.x2 is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol reference.tl494cn is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "UNAPPROVED_SYMBOL",
+      "message": "Symbol resistor.fixed is draft, not approved",
+      "severity": "warning"
+    },
+    {
+      "code": "POLARITY_UNVERIFIABLE",
+      "message": "C1 (1:+ on SWITCH, 2:- on ENERGY_TRANSFER): Both terminals are connected, but no potentials were supplied",
+      "severity": "warning"
+    },
+    {
+      "code": "POLARITY_UNVERIFIABLE",
+      "message": "C2 (1:+ on SWITCH, 2:- on ENERGY_TRANSFER): Both terminals are connected, but no potentials were supplied",
+      "severity": "warning"
+    },
+    {
+      "code": "POLARITY_UNVERIFIABLE",
+      "message": "C5 (1:+ on COMMON, 2:- on OUT_BEFORE_FUSE): Both terminals are connected, but no potentials were supplied",
+      "severity": "warning"
+    },
+    {
+      "code": "POLARITY_UNVERIFIABLE",
+      "message": "C6 (1:+ on COMMON, 2:- on OUT_BEFORE_FUSE): Both terminals are connected, but no potentials were supplied",
+      "severity": "warning"
+    }
+  ],
+  "font_family": "OpenGost Type A TT",
+  "font_sha256": "f5c539d432e2fceae137ad746d4acfdcca941d2c7349f013a5bf60231d3e6d01",
+  "next_requirement": "Integrate 10 remaining control elements and source a/b continuations",
+  "not_full_e3": true,
+  "segment_count": 35,
+  "source": "native Circuit/PinRef + catalogue UGO + real PAINT IC drawing",
+  "status": "DRAFT_REAL_INTEGRATED_ENGINE_PARTIAL",
+  "variants": {
+    "TL494_connected_clean.svg": {
+      "full_circuit_components": 13,
+      "native_layout_valid": true,
+      "physical_tl494_ports": 16,
+      "source_ic": "PAINT PR#93 real renderer",
+      "wire_count": 35
+    },
+    "TL494_connected_diagnostic.svg": {
+      "full_circuit_components": 13,
+      "native_layout_valid": true,
+      "physical_tl494_ports": 16,
+      "source_ic": "PAINT PR#93 real renderer",
+      "wire_count": 35
+    }
+  },
+  "wire_diagnostics": [
+    {
+      "code": "WIRE_JUNCTION_DANGLING",
+      "message": "Junction Point(x=42000, y=0) has fewer than two wires and no pin",
+      "severity": "error"
+    },
+    {
+      "code": "WIRE_JUNCTION_DANGLING",
+      "message": "Junction Point(x=150000, y=0) has fewer than two wires and no pin",
+      "severity": "error"
+    },
+    {
+      "code": "WIRE_PIN_CONTACT_UNDECLARED",
+      "message": "R8.1 touches a wire interior without junction",
+      "severity": "error"
+    },
+    {
+      "code": "WIRE_NET_SHORT",
+      "message": "Conductors join distinct nets: COMMON, GATE_DRIVE",
+      "severity": "error"
+    },
+    {
+      "code": "WIRE_NET_DISCONNECTED",
+      "message": "Net COMMON does not form one physical wire island",
+      "severity": "error"
+    },
+    {
+      "code": "WIRE_DANGLING_END",
+      "message": "Wire 27 has an unconnected endpoint at 42000,143250",
+      "severity": "error"
+    },
+    {
+      "code": "WIRE_DANGLING_END",
+      "message": "Wire 28 has an unconnected endpoint at 42000,150750",
+      "severity": "error"
+    },
+    {
+      "code": "WIRE_DANGLING_END",
+      "message": "Wire 29 has an unconnected endpoint at 42000,0",
+      "severity": "error"
+    },
+    {
+      "code": "WIRE_DANGLING_END",
+      "message": "Wire 30 has an unconnected endpoint at 150000,0",
+      "severity": "error"
+    }
+  ]
+}
