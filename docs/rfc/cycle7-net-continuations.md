@@ -102,3 +102,127 @@ base CI does not claim to run font-measured tests without that asset.
 
 **RELEASE STATUS: DRAFT / experimental integration only. No merge, no
 approval of new UGO, no GOST certification.**
+
+
+## 2026-11-14 — source-checked address contract and v2 opt-in (ELEKTRIK NET)
+
+### ГОСТ source scope — do not confuse graphic navigation with a physical link
+
+- ГОСТ 2.721-74 §7, table **6в, position 8**: the **line break** arrow
+  uses placeholder X for necessary continuation information. It is not an
+  XP/XS connector and its printed mark alone is not an ERC net join.
+  Source: https://e-ecolog.ru/docs/qO9rMExlXIL-CffRN3D7U
+- ГОСТ 2.709-89 **§5.13**: circuit designation is normally above a
+  horizontal run or left of a vertical run, near its end or midpoint.
+  **§5.14**: reciprocal **addresses of actual connecting elements, devices,
+  or functional groups**, with optional combined net+address form. Figure 11
+  illustrates A7/X16 ↔ A4/X11; it does not prescribe a single sheet-zone
+  syntax. Sources: https://e-ecolog.ru/docs/bujAS0DLkZo5zQovKPCJN
+  and ESKD #91 PR #95 deep-source audit.
+- `1/D4` and `2/B7` are an **editorial project sheet/zone profile**,
+  not the universal normative continuation-address grammar. The
+  `DD3.1` ↔ `DA1.2` pair in the new three-sheet example demonstrates
+  the physical contact-address alternative. No syntax regex can itself
+  establish or merge an electrical network.
+- The marker's filled arrow dimensions and sheet-zone presentation remain
+  **DRAFT** until ESKD/PAINT compare the final glyph one-to-one with the
+  original figure, including opposite arrow orientation and legibility.
+
+### Address provenance schema v2 — strict and backward compatible
+
+The existing exact `DRAFT_E3_NET_CONTINUATIONS` **v1** remains unchanged
+and byte-for-byte roundtrippable. New v2 is explicit opt-in and requires
+a `ContinuationAddressBinding` for **every** endpoint; no partial v2
+arrays or silent auto-upgrades are allowed. Each binding is identified
+by `endpoint_id` and carries `kind`, `owner_ref` and an optional
+`physical_pin` reference. A binding is *descriptive evidence* of the
+locally displayed address, not an edge of a new Net.
+
+| Address kind | Evidence and validation | Release implication |
+|---|---|---|
+| `sheet_zone` | `owner_ref` matches exact declared `sheet_id`; recognized numeric sheet-prefix matches real page; **no** physical pin | Project navigation, NOT itself GOST §5.14 physical address |
+| `element_pin` | exact `PinRef` matches the local visible `ContinuationStub.pin`; element reference and printed `DD3.1`/ `DA1.2` match the real contact | A concrete physical contact can be verified against existing Circuit |
+| `device_contact` | exact `PinRef`, plus external authoritative `(kind, owner_ref) → frozenset[PinRef]` ownership | **BLOCKED** without verified inventory |
+| `functional_group_contact` | same external membership requirement; e.g. A7:X16 may name the group but only a *resolved actual PinRef* establishes contact evidence | **BLOCKED** without verified inventory |
+
+`netrefs_to_json(..., verified_address_owners=...)` and
+`netrefs_from_json(..., verified_address_owners=...)` fail closed on
+an unresolved device/group. The caller must supply the *actual*
+authoritative group/device inventory, not a map inferred from printed
+addresses. The external map is rechecked at import. `schema_version=1`
+forbids `address_bindings`; v2 without all bindings is invalid.
+The decoder always requires the original real Circuit with its
+exact immutable PinRef membership; no editing of `Circuit.Net` occurs.
+
+### Layout / measured graphic protection
+
+`sheet_svg(project, sheet_id, font_path=...,
+external_keepouts=(Box(...),), review_overlay=...,
+review_connection_zones=...)` now checks **actual OpenGost Type A
+ink** (the exact existing measured font path / hash), its padding,
+the short H/V conductor stroke, the termination arrow polygon including
+stroke, other continuation marker graphics, and caller-authored external
+Box obstacles (nearby DA/DD/VT outlines, annotations, frame or title
+block). A conservative 10mm A4 interior remains **editorial** and is
+NOT asserted as the ESKD mandatory print margin. Actual A4 dimensions,
+real baseline, real glyph ink and 300 DPI raster remain independently
+checked in CI.
+
+`external_keepouts` must exclude the explicitly authored contact aperture
+at the start of a local wire so the component's genuine pin can connect.
+A violation yields typed `E3_CONT_GRAPHIC_EXTERNAL_COLLISION`,
+`E3_CONT_TEXT_EXTERNAL_COLLISION`,
+`E3_CONT_GRAPHIC_GRAPHIC_COLLISION`,
+`E3_CONT_GRAPHIC_PAGE_OVERFLOW` or the preexisting text/line errors.
+No external keepouts are permitted with unmeasured font preview.
+`review_connection_zones` requires both a measured font and
+`review_overlay=True`; green endpoint rectangles are flagged
+`data-print=false` and **never** emitted in clean SVG/PDF.
+These are editor hit targets, not a GOST mark, a fake connector or a Net.
+
+### Three-sheet multi-Net witness
+
+`examples.review_net_continuations_cycle7 --three-sheet --font-file ...`
+creates three A4 pages, three distinct real Circuit.Nets
+(`CTRL`, `REF`, `ENABLE`), four explicit pairs (including two
+`CTRL` pairs spanning **all three** sheets), eight visible local real
+PinRef wire stubs, synthetic physical DD/DA/VT components and exact
+strict JSON v2. It deliberately contains **no** hidden cross-sheet
+SVG conductor. Each page has only its own two or three short stubs.
+An attempted *second* Net with the same visible CTRL label fails as
+`E3_CONT_LABEL_AMBIGUOUS`, without modifying Circuit or joining Nets.
+The example still uses synthetic reference designations and is
+**not** a manufacturer physical-pin certification.
+
+### Minimal ProjectService handoff; no unsafe string-based net merger
+
+Future `ProjectService` must persist an opaque, revisioned envelope
+that references the **existing authoritative Circuit** independently.
+A minimal contract is:
+
+```json
+{
+  "record_type": "E3_CONTINUATION_ENVELOPE_DRAFT",
+  "envelope_version": 1,
+  "circuit_revision_sha256": "<sha256 of canonical, authoritative real Circuit>",
+  "netrefs_overlay_schema_version": 2,
+  "netrefs_overlay": "<strict netrefs_to_json v2 document>",
+  "verified_address_owner_inventory_revision": "<required for device/group addresses>",
+  "mutation_policy": "read_only_until_typed_atomic_transaction"
+}
+```
+
+Here angle-bracketed values are **placeholders**, not actual hashes.
+The overlay itself contains the stable net IDs, exact frozen member PinRefs,
+sheet IDs/numbers, every endpoint's local/remote address+anchor+direction,
+typed address bindings, reciprocal explicit pair IDs and local real stubs.
+The envelope revision must be compared against the actual current Circuit
+before deserializing. A stale revision, new/unrecognized field, unverified
+group membership or ambiguous equal-label multi-Net project is rejected.
+
+A future `AttachNetContinuation` typed transaction may add **only**
+endpoints/pairs/stubs to an existing validated `net_id` after a revision
+compare-and-swap and full revalidation; *never* alter `Net.members`,
+create PartDefinitions, or join Nets by matching `label`, `address`,
+SVG proximity or bare user-provided JSON. New project formats need an
+explicit schema migration; v1 ProjectService must not silently import v2.
