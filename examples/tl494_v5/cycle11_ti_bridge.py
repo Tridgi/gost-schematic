@@ -42,7 +42,7 @@ class VerifiedCompactTiBinding:
         source = self.source_circuit
         signed = self.signed.circuit
         if (
-            len(source.components) != len(signed.components) != 23
+            len(source.components) != 23 or len(signed.components) != 23
             or len(source.nets) != len(signed.nets) != 15
             or source.nets is not signed.nets
         ):
