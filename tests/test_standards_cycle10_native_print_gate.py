@@ -355,3 +355,75 @@ def test_independent_svg_wire_audit_blocks_illegal_stroke_or_oblique():
     first.set("y2", "2.0")
     with pytest.raises(gate.PrintEvidenceError, match="NONZERO_ORTHOGONAL"):
         gate._actual_svg_3mm_violations(root)
+
+
+def _png_fixture(tmp_path, *, diagnostic: bool):
+    from PIL import Image
+
+    root = ET.Element(SRC + "svg", {"viewBox": "0 0 10 10"})
+    g = ET.SubElement(root, SRC + "g", {
+        "data-layer": "ic-physical-pin-leads",
+    })
+    marks = ET.SubElement(root, SRC + "g", {
+        "data-layer": "editor-connection-targets",
+    })
+    image = Image.new("RGB", (round(10 * 300 / 25.4),) * 2, "white")
+    for i in range(1, 17):
+        x = i * 0.4
+        y = 2.0
+        ET.SubElement(g, SRC + "line", {
+            "data-pin-number": str(i),
+            "x2": str(x), "y2": str(y),
+        })
+        ET.SubElement(marks, SRC + "rect", {
+            "data-pin-number": str(i),
+            "data-pin-ref": f"DA1.{i}",
+            "data-connectable": "true",
+            "data-manufacturer-electrical-type": "input",
+            "data-net-id": "REAL_NET",
+            "x": str(x - 0.35), "y": str(y - 0.35),
+            "width": "0.7", "height": "0.7",
+        })
+        if diagnostic:
+            image.putpixel(
+                (round(x * 300 / 25.4), round(y * 300 / 25.4)),
+                (10, 180, 40),
+            )
+    path = tmp_path / "real_pixels.png"
+    image.save(path, dpi=(300, 300))
+    return path, root
+
+
+def test_png_physical_pixel_check_and_sixteen_real_sample_green(tmp_path):
+    clean_path, root = _png_fixture(tmp_path, diagnostic=False)
+    clean = gate._verify_png(clean_path, 10, root, diagnostic=False)
+    assert clean["real_green_pin_pixels"] == 0
+    diagnostic_path, root = _png_fixture(tmp_path, diagnostic=True)
+    debug = gate._verify_png(diagnostic_path, 10, root, diagnostic=True)
+    assert debug["real_green_pin_pixels"] == 16
+
+
+def test_png_clean_rejects_actual_colored_editor_ink(tmp_path):
+    from PIL import Image
+
+    path, root = _png_fixture(tmp_path, diagnostic=False)
+    with Image.open(path) as image:
+        data = image.convert("RGB")
+    data.putpixel((5, 5), (180, 0, 0))
+    data.save(path)
+    with pytest.raises(gate.PrintEvidenceError, match="CLEAN_COLORED_EDITOR_INK"):
+        gate._verify_png(path, 10, root, diagnostic=False)
+
+
+def test_png_diagnostic_rejects_pin_center_covered_by_copper(tmp_path):
+    from PIL import Image
+
+    path, root = _png_fixture(tmp_path, diagnostic=True)
+    with Image.open(path) as image:
+        data = image.convert("RGB")
+    data.putpixel((round(0.4 * 300 / 25.4), round(2 * 300 / 25.4)),
+                  (0, 0, 0))
+    data.save(path)
+    with pytest.raises(gate.PrintEvidenceError,
+                       match="GREEN_ENDPOINT_COVERED_BY_COPPER"):
+        gate._verify_png(path, 10, root, diagnostic=True)
