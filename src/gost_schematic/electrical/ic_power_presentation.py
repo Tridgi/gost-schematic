@@ -11,10 +11,9 @@ from dataclasses import dataclass
 from enum import Enum
 
 from gost_schematic.core.geometry import Side
-from gost_schematic.electrical.ic import IcKind, IcPinType, PinoutOrigin
+from gost_schematic.electrical.ic import IcKind, IcPinType, PinoutOrigin, validate_ic_circuit
 from gost_schematic.electrical.ic_serde import IcLibraryRecord
-from gost_schematic.model.circuit import Circuit, PinRef
-from gost_schematic.electrical.ic import validate_ic_circuit
+from gost_schematic.model.circuit import Circuit
 
 
 class IcPowerMode(str, Enum):
@@ -168,11 +167,8 @@ def validate_ic_power_presentation(
             )
             if row.side not in (Side.LEFT, Side.RIGHT):
                 raise ValueError("IC_POWER_NONLOGICAL_SIDE_MUST_BE_LR")
-    if presentation.mode is IcPowerMode.IN_ONE_SECTION:
-        if len(units) < 2:
-            raise ValueError("IC_POWER_ONE_SECTION_NEEDS_SPLIT_IC")
-        # Power physically belongs to its own unit, independently of the
-        # common field drawn inside one chosen graphical section.
+    if presentation.mode is IcPowerMode.IN_ONE_SECTION and len(units) < 2:
+        raise ValueError("IC_POWER_ONE_SECTION_NEEDS_SPLIT_IC")
     if device.package.origin is PinoutOrigin.SYNTHETIC and not (
         device.identifier.startswith("TEST_IC_")
     ):
