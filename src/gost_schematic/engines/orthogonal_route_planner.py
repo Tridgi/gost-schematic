@@ -7,8 +7,9 @@ placement and explicit branch routing after independent QA acceptance.
 """
 from dataclasses import dataclass
 from heapq import heappop, heappush
+from itertools import pairwise
 
-from gost_schematic.core.geometry import Box, Line, Point, SIDE_VECTORS
+from gost_schematic.core.geometry import SIDE_VECTORS, Box, Line, Point
 from gost_schematic.core.intersections import segment_intersects_box
 from gost_schematic.model.circuit import Circuit, ComponentInstance, PinRef
 from gost_schematic.model.part import PartDefinition
@@ -381,7 +382,7 @@ def preview_orthogonal_route(
     sequence.reverse()
     # Remove inline intermediate nodes; only TRUE bends survive.
     result = [sequence[0]]
-    for current, nxt in zip(sequence[1:-1], sequence[2:]):
+    for current, nxt in pairwise(sequence[1:]):
         previous_point = result[-1]
         if (
             (current.x - previous_point.x) * (nxt.y - current.y) ==
@@ -391,7 +392,7 @@ def preview_orthogonal_route(
         result.append(current)
     result.append(sequence[-1])
     length_um = sum(
-        abs(b.x - a.x) + abs(b.y - a.y) for a, b in zip(result, result[1:])
+        abs(b.x - a.x) + abs(b.y - a.y) for a, b in pairwise(result)
     )
     manhattan = abs(target.x - start.x) + abs(target.y - start.y)
     if manhattan and length_um > manhattan * max_detour_ratio:
