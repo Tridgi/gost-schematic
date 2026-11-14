@@ -156,7 +156,7 @@ jobs:
             cp "cycle9-source-reference/examples/$F.py" "examples/$F.py"
           done
           test "$(git -C cycle9-paint-owner rev-parse HEAD)" = "ca3ab815fa5d79756a7f34f06520f760fcb8674d"
-          for F in ic_rectangular ic_hotspots; do
+          for F in ic_rectangular ic_hotspots ic_orientation ic_power_profiles ic_tl494_profile ic_electrical_binding ic_sheet_composition; do
             cp "cycle9-paint-owner/src/gost_schematic/rendering/$F.py" \
               "src/gost_schematic/rendering/$F.py"
           done
