@@ -65,7 +65,10 @@ jobs:
         run: |
           python scripts/install_opengost_type_a.py --directory "$HOME/.local/share/fonts" --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a
           fc-cache -f
-          fc-match -f '%{family}\n' 'OpenGost Type A' | grep -F 'OpenGost Type A'
+          FONT_FILE="$(find "$HOME/.local/share/fonts" -type f -iname '*TypeA*.ttf' | head -1)"
+          VIEWER_FONT="$(fc-match -f '%{file}' 'OpenGost Type A')"
+          test -n "$FONT_FILE" && test -f "$FONT_FILE"
+          test "$(realpath "$FONT_FILE")" = "$(realpath "$VIEWER_FONT")"
       - name: Generate 13 source positions and 64 extra D4 real SVG
         if: matrix.python-version == '3.12'
         run: python -m examples.review_tl494_ugo_source_cycle9 --output-dir output/tl494-cycle9
