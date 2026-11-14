@@ -133,8 +133,8 @@ def _on(a, b, p):
 
 
 def _overlap(a, b):
-    x, y = a[:2], a[2:]
-    u, v = b[:2], b[2:]
+    x, y = a[0], a[1]
+    u, v = b[0], b[1]
     if not _on(x, y, u) or not _on(x, y, v):
         return False
     axis = 0 if x[0] != y[0] else 1
@@ -248,7 +248,8 @@ def validate_router_geometry(candidate, pin_owners):
                 touched = [i for i in ids if _on(wires[i][0], wires[i][1], p)]
                 demand(bool(touched), "CANDIDATE_UNROUTED_PIN")
                 pin_roots.update(root(i) for i in touched)
-        demand(len(pin_roots) == 1, "CANDIDATE_DISCONNECTED_MULTITERMINAL_NET")
+        demand(len(pin_roots) == 1 and len({root(i) for i in ids}) == 1,
+               "CANDIDATE_DISCONNECTED_MULTITERMINAL_NET")
     return {"wires": len(wires), "all_15_nets_routed": True,
             "parallel_3mm_violations": 0, "different_net_crossings_review": crossings,
             "pinrefs_physically_on_declared_net": True,
