@@ -183,7 +183,12 @@ def test_unmarked_X_not_a_junction_and_cross_net_T_is_blocked():
         )
     # Move a foreign AUX wire endpoint exactly onto the CTRL free tip.
     foreign = replace(graph.segments[2], end=Point(60000, 40000))
-    touched = replace(graph, segments=(*graph.segments[:2], foreign, *graph.segments[3:]))
+    # The original authored T no longer lies on the shortened AUX wire;
+    # deliberately remove it in this isolated foreign-endpoint scenario.
+    touched = replace(
+        graph, segments=(*graph.segments[:2], foreign, *graph.segments[3:]),
+        junctions=(),
+    )
     shot = collect_wire_endpoints(circuit, touched, nets, ids, parts, symbols)
     a = next(e for e in shot.wire_endpoints if e.id == "W-CTRL-A:end")
     b = next(e for e in shot.wire_endpoints if e.id == "W-AUX:end")
@@ -354,9 +359,9 @@ def test_rasterized_png_has_green_only_in_explicit_review_not_clean():
     b = resvg_py.svg_to_bytes(svg_string=reviewed, dpi=300)
     with Image.open(BytesIO(a)) as image:
         assert image.format == "PNG" and image.width > 500 and image.height > 250
-        pixels = list(image.convert("RGB").getdata())
+        pixels = list(image.convert("RGB").get_flattened_data())
         assert not any(g > r + 45 and g > blue + 15 for r, g, blue in pixels)
     with Image.open(BytesIO(b)) as image:
         assert image.format == "PNG" and image.width > 500 and image.height > 250
-        pixels = list(image.convert("RGB").getdata())
+        pixels = list(image.convert("RGB").get_flattened_data())
         assert any(g > r + 45 and g > blue + 15 for r, g, blue in pixels)
