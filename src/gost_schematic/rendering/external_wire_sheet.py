@@ -4,6 +4,7 @@ The graph's segments/junctions are the ONLY source of wire ink and node dots.
 T/X crossings are never inferred from SVG geometry or converted into nets.
 The existing sheet layout and SVG renderer remain the rendering authorities.
 """
+from collections.abc import Mapping
 from dataclasses import dataclass
 from xml.etree import ElementTree as ET
 
@@ -15,6 +16,8 @@ from gost_schematic.model.annotations import TextStyle
 from gost_schematic.model.circuit import Circuit
 from gost_schematic.model.obstacles import WireObstacle
 from gost_schematic.model.symbol import SymbolDefinition
+from gost_schematic.rendering.ic_rectangular import IcRendered
+from gost_schematic.rendering.ic_sheet_composition import compose_authoritative_ic_layers
 from gost_schematic.rendering.sheet_svg import render_sheet_svg
 from gost_schematic.validation.external_wire_checks import ExternalWireGraph, WireSegment
 
@@ -80,6 +83,7 @@ def render_external_wire_sheet(
     stroke_um: int = 300,
     junction_radius_um: int = 550,
     strict_layout: bool = True,
+    physical_ic_renderings: Mapping[str, IcRendered] | None = None,
 ) -> ExternalWireSheet:
     """Render existing Circuit and exact authored ExternalWireGraph, without edits.
 
@@ -109,6 +113,11 @@ def render_external_wire_sheet(
         circuit, symbols_by_part, layout,
         wires=wires, review_overlay=diagnostic,
     ))
+    if physical_ic_renderings is not None:
+        compose_authoritative_ic_layers(
+            root, circuit, symbols_by_part, physical_ic_renderings,
+            diagnostic=diagnostic,
+        )
     root.set("data-approval-status", "DRAFT")
     root.set("data-wire-source", "authored-external-wire-graph")
     root.set("data-explicit-junction-count", str(len(graph.junctions)))
