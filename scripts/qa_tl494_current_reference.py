@@ -1026,7 +1026,11 @@ def current_full_native_23_owner_sheet(font, destination):
         markers = body.findall(
             f".//{NS}g[@data-layer='editor-connection-targets']/{NS}rect"
         )
-        check(len(markers) == (16 if diagnostic else 0),
+        all_markers = root.findall(
+            f".//{NS}g[@data-layer='editor-connection-targets']/{NS}rect"
+        )
+        check(len(markers) == len(all_markers) ==
+              (16 if diagnostic else 0),
               "CURRENT_PAINT_GREEN_HOTSPOT_POLICY")
         if diagnostic:
             real_net_names = {
@@ -1086,6 +1090,13 @@ def current_full_native_23_owner_sheet(font, destination):
         with Image.open(png) as img:
             check(img.size == (px, py),
                   "CURRENT_PAINT_300_DPI_PHYSICAL_SIZE_WRONG")
+            # CairoSVG output dimensions alone do not guarantee pHYs/DPI
+            # metadata. Save the actual pixels with the physical 300DPI tag.
+            img.convert("RGB").save(png, dpi=(300, 300))
+        with Image.open(png) as img:
+            actual_dpi = img.info.get("dpi", (0, 0))
+            check(all(abs(value - 300) <= 1 for value in actual_dpi),
+                  "CURRENT_PAINT_PNG_HAS_NO_TRUE_300DPI_METADATA")
         results[filename] = {
             "native_components": 23, "Circuit_Nets": 15,
             "original_wire_segments": 91, "manufacturer_IC_pins": 16,
