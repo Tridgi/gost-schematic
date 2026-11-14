@@ -72,18 +72,41 @@ def check_active_owners(out: Path, *, owner_heads: dict[str, str]) -> dict:
         raise ValueError("C11_SOURCE_23_15_62_DRIFT")
     from examples.tl494_cycle9_circuit_integration import (
         bind_positioned_photo_circuit_from_catalog,
-        load_frozen_source,
     )
-    historical = load_frozen_source()
-    source_named = _source_named_circuit(circuit)
-    if {
-        net.name: tuple(
-            f"{pin.reference}.{pin.number}" for pin in net.members
-        ) for net in source_named.nets
-    } != {
-        name: tuple(members) for name, members in historical["nets"].items()
-    }:
-        raise ValueError("C11_CROSS_OWNER_ALIAS_DID_NOT_MATCH_SOURCE_FIXTURE")
+    from examples.tl494_v5.route_candidate_driver import (
+        load_original_owner_fixture,
+        restore_original_named_nets,
+    )
+    from examples.tl494_v5.cycle11_ti_bridge import (
+        bind_verified_compact_ti,
+    )
+
+    historical, historical_binding = load_original_owner_fixture()
+    source_named = restore_original_named_nets(source, historical)
+    source_named_independent = _source_named_circuit(circuit)
+    if (
+        source_named.components is not circuit.components
+        or {
+            net.name: net.members for net in source_named.nets
+        } != {
+            net.name: net.members for net in source_named_independent.nets
+        }
+        or {
+            net.name: tuple(
+                f"{pin.reference}.{pin.number}" for pin in net.members
+            ) for net in source_named.nets
+        } != {
+            name: tuple(members)
+            for name, members in historical["nets"].items()
+        }
+        or {
+            net.name: net.members for net in source_named.nets
+        } != {
+            net.name: net.members
+            for net in historical_binding.circuit.nets
+        }
+    ):
+        raise ValueError("C11_CURRENT_RECON_OWNER_SOURCE_NET_IDENTITY_DRIFT")
     from gost_schematic.electrical.ic_circuit_adapter import (
         IcCircuitBinding,
     )
@@ -92,12 +115,18 @@ def check_active_owners(out: Path, *, owner_heads: dict[str, str]) -> dict:
         render_routed_native_sheet,
     )
 
-    bound = bind_positioned_photo_circuit_from_catalog(
+    # The RECON owner owns physical BOM restoration and reversible
+    # manufacturer bridge. We use that proven contract directly rather
+    # than inventing a second weaker substitute for its acceptance gate.
+    recon_verified = bind_verified_compact_ti(source, source_named)
+    recon_verified.verify()
+    bound = recon_verified.signed
+    independent = bind_positioned_photo_circuit_from_catalog(
         source_named, source.owner_ic_record, source.parts,
         aliases=source.owner_aliases,
     )
-    if not isinstance(bound, IcCircuitBinding):
-        raise TypeError("C11_IC_BRIDGE_NOT_OWNER_TYPED_BINDING")
+    if not isinstance(bound, IcCircuitBinding) or bound != independent:
+        raise TypeError("C11_RECON_SIGNED_OWNER_AND_IC_PART_BRIDGE_DRIFT")
     if bound.circuit.nets is not source_named.nets:
         raise ValueError("C11_OWNER_ADAPTER_CLONED_OR_REWROTE_NETS")
     if before != {
@@ -107,7 +136,7 @@ def check_active_owners(out: Path, *, owner_heads: dict[str, str]) -> dict:
             "TRANSFER": "ENERGY_TRANSFER",
         }.get(n.name, n.name): n.members
         for n in bound.circuit.nets
-    }:
+    } or recon_verified.reverse_source() is not source_named:
         raise ValueError("C11_OWNER_ADAPTER_CHANGED_PHYSICAL_PINREFS")
     old = {c.reference: c for c in circuit.components}
     new = {c.reference: c for c in bound.circuit.components}
@@ -230,6 +259,8 @@ def check_active_owners(out: Path, *, owner_heads: dict[str, str]) -> dict:
         "official_IC_surrogate_draft_only": True,
         "router_all_16_TI_PinRef_world_anchors_verified": True,
         "official_IC_binding_json_roundtrip": True,
+        "current_RECON_verified_compact_ti_used": True,
+        "current_RECON_original_named_restoration_validated": True,
         "source_reference_membership": {
             name: [f"{p.reference}.{p.number}" for p in members]
             for name, members in before.items()
