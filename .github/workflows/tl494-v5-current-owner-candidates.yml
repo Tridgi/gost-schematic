@@ -3,6 +3,10 @@ on:
   push:
     branches: [reference/tl494-audit-v4-20261114]
     paths:
+      - examples/tl494_v5/cycle11_ti_bridge.py
+      - examples/tl494_v5/test_cycle11_ti_bridge.py
+      - examples/tl494_v5/cycle11_b_continuation.py
+      - examples/tl494_v5/test_cycle11_b_continuation.py
       - examples/tl494_v5/route_candidate_driver.py
       - examples/tl494_v5/test_route_candidate_driver.py
       - examples/tl494_v5/routed_graph_contract.py
@@ -29,10 +33,10 @@ jobs:
       - name: Pin all four unmerged current-owner source HEADs (never merge)
         run: |
           set -euxo pipefail
-          IC=19d14c4b660c9ad490a65cd1eab644f1637bc334
-          PAINT=32f2efb2cdcb561cb2567a54448381de3cb87832
-          CATALOG=eb16121e07efec71de77dfc7b8123bc09f66ddd6
-          ROUTER=5033659747f01fdc03adc084b846f47b05001963
+          IC=9242fa83606a881b8ff277ff051c7b46a5b63a22
+          PAINT=b182d5f089a9b5a1a4234b000a3caa39169dede8
+          CATALOG=1b0439315a4d534983684e4654830b2f7c367f1a
+          ROUTER=e38628244e5819c904ab21e9645450d5fd232d0f
           SOURCE=e695c415fdced164b0e0c39c5249d030795a0aa6
           for sha in "$IC" "$PAINT" "$CATALOG" "$ROUTER" "$SOURCE"; do
             git fetch origin "$sha"
@@ -51,6 +55,7 @@ jobs:
           mkdir -p src/gost_schematic/catalog/source_profiles
           git show "$CATALOG:src/gost_schematic/catalog/source_profiles.py" > src/gost_schematic/catalog/source_profiles.py
           git show "$CATALOG:src/gost_schematic/catalog/source_footprints.py" > src/gost_schematic/catalog/source_footprints.py
+          git show "$CATALOG:scripts/install_opengost_type_a.py" > scripts/install_opengost_type_a.py
           git show "$CATALOG:src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json" > src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json
           for f in orthogonal_route_planner.py multiterminal_router.py; do
             git show "$ROUTER:src/gost_schematic/engines/$f" > "src/gost_schematic/engines/$f"
@@ -74,7 +79,9 @@ jobs:
             examples/tl494_v5/test_native_circuit.py \
             examples/tl494_v5/test_compact_layout.py \
             examples/tl494_v5/test_route_candidate_driver.py \
-            examples/tl494_v5/test_routed_graph_contract.py
+            examples/tl494_v5/test_routed_graph_contract.py \
+            examples/tl494_v5/test_cycle11_ti_bridge.py \
+            examples/tl494_v5/test_cycle11_b_continuation.py
       - name: Compare original source 23/15/62 and run two order candidates
         run: |
           set -euxo pipefail
@@ -96,6 +103,20 @@ jobs:
           assert not m["actual_full_sheet_svg_or_png_emitted"]
           for trial in m["candidates"]:
               assert trial["routes_attempted"] == 15
+              assert trial["manufacturer_binding"]["source_part"] == "reference.tl494cn"
+              assert trial["manufacturer_binding"]["verified_part"] == "ti.tl494cn.pdip16"
+              assert trial["manufacturer_binding"]["verified_physical_pin_count"] == 16
+              assert trial["manufacturer_binding"]["source_original_15_Net_tuple_preserved"]
+              assert trial["manufacturer_binding"]["PAINT_trusted_all16_targets_verified"]
+              assert trial["b_continuation_rebound"]["status"] in (
+                  "VERIFIED_DRAFT_NONPHYSICAL_B_PAIR",
+                  "BLOCKED_HISTORICAL_B_NOT_REBOUND",
+              )
+              if trial["b_continuation_rebound"]["status"] != (
+                  "VERIFIED_DRAFT_NONPHYSICAL_B_PAIR"
+              ):
+                  assert trial["print_after_released"] is False
+                  assert not trial["technical_route_eligible"]
               assert trial["source_unchanged"]
               assert trial["Net_membership_SHA256"] == m["original_nets_SHA256"]
               assert set(trial["named_net_status"]) == set(m["original_net_names"])
