@@ -227,6 +227,32 @@ def _source_ink_collision(
     return None
 
 
+def _nearest_net_order(
+    pins: tuple[PinRef, ...],
+    positions: dict[PinRef, tuple[Point, Point]],
+) -> tuple[PinRef, ...]:
+    """Deterministic Prim order from physical PinRef, not Net-list order.
+
+    The first contact stays source-owned. Each next real contact minimizes
+    Manhattan distance to ANY already selected contact, avoiding a 400mm
+    X1.2→X2.2 initial trunk for COMMON.
+    """
+    visited = [pins[0]]
+    remaining = set(pins[1:])
+    while remaining:
+        next_pin = min(remaining, key=lambda candidate: (
+            min(
+                abs(positions[candidate][0].x - positions[old][0].x)
+                + abs(positions[candidate][0].y - positions[old][0].y)
+                for old in visited
+            ),
+            candidate.reference, candidate.number,
+        ))
+        visited.append(next_pin)
+        remaining.remove(next_pin)
+    return tuple(visited)
+
+
 def _empty_graph() -> ExternalWireGraph:
     return ExternalWireGraph(())
 
@@ -426,7 +452,10 @@ def _visibility_path(
         y_set.update((point.y - grid_um, point.y + grid_um))
     xs = sorted(x for x in x_set if window.min_x <= x <= window.max_x)
     ys = sorted(y for y in y_set if window.min_y <= y <= window.max_y)
-    if len(xs) * len(ys) > search_node_cap:
+    # The Cartesian visibility lattice is sparse in practice: only states
+    # actually expanded from the source allocate nodes. Reject enormous
+    # lattices but do not confuse potential cells with 25k actual visits.
+    if len(xs) * len(ys) > search_node_cap * 8:
         return (), "ROUTE_GRID_TOO_DENSE"
     x_idx = {x: i for i, x in enumerate(xs)}
     y_idx = {y: i for i, y in enumerate(ys)}
@@ -582,10 +611,13 @@ def route_multi_terminal_net(
     if not 200 <= stroke_um <= 1000 or grid_um <= 0:
         raise ValueError("ROUTE_INVALID_STROKE_OR_GRID")
     pins = net.members
-    order = terminal_order if terminal_order is not None else pins
+    locations = _pin_catalog(circuit, net, parts, symbols)
+    order = (
+        terminal_order if terminal_order is not None else
+        _nearest_net_order(pins, locations) if len(pins) >= 5 else pins
+    )
     if len(order) != len(pins) or set(order) != set(pins):
         raise ValueError("ROUTE_TERMINAL_ORDER_MUST_MATCH_REAL_SOURCE_PINREF")
-    locations = _pin_catalog(circuit, net, parts, symbols)
     if any(not page_box.includes(point) for point, _ in locations.values()):
         return NetTreePreview(
             net.name, pins, (), (), 0, 0, 0,
@@ -801,7 +833,7 @@ def route_circuit_net_trees(
                     page_box=page_box, occupied_graph=graph,
                     annotation_placements=annotation_placements,
                     stroke_um=stroke_um, search_node_cap=search_node_cap,
-                    max_detour_ratio=max_detour_ratio,
+                    max_detour_ratio=min(max_detour_ratio * 1.6, 6.0),
                     grid_um=5000 if attempts == 1 else 10000,
                     terminal_order=order,
                 )
