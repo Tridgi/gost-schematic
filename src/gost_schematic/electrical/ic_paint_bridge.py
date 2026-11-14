@@ -10,6 +10,7 @@ from dataclasses import dataclass, replace
 from gost_schematic.core.geometry import SIDE_VECTORS, Box, Point, Side
 from gost_schematic.electrical.ic import (
     IcField,
+    IcBodyAxis,
     IcKind,
     IcPinType,
     IcPortLayout,
@@ -43,6 +44,7 @@ class IcPaintFieldRequirement:
     row_pitch_um: int
     external_lead_um: int
     guard_um: int
+    function_row_span: int = 1
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,6 +145,7 @@ class IcPaintBinding:
                 or view.orientation.value != spec.profile.port_layout.value
                 or view.function_rotation != spec.profile.function_angle.value
                 or view.field_text_rotation != spec.profile.other_text_angle.value
+                or view.typography_profile.value != _paint_typography(spec.profile)
             ):
                 raise ValueError(f"IC_PAINT_VIEW_SEMANTIC_MISMATCH: {spec.unit_id}")
             if len(view.pins) != len(spec.rows):
@@ -206,6 +209,53 @@ def _drawing_side(role: IcPinType, side: Side) -> Side:
     return side
 
 
+def _paint_typography(profile) -> str:
+    # Explicit versioned V2 is a drawing preset, not ESKD APPROVED.
+    # Keeping the source profile owned by ELEKTRIK avoids PAINT-side
+    # implicit selection based only on body aspect.
+    return (
+        "portrait_function_v2_draft"
+        if profile.body_axis is IcBodyAxis.PORTRAIT else "legacy_v1"
+    )
+
+
+def bind_ic_paint_text_only(
+    original: IcPaintBinding, revised: IcLibraryRecord,
+) -> IcPaintBinding:
+    """Rebind a new function-angle revision WITHOUT measuring/moving ports.
+
+    Caller must render to validate actual new glyph ink against the unchanged
+    frame. If it does not fit, PAINT raises an overflow; this function never
+    silently asks for new coordinates.
+    """
+    from gost_schematic.electrical.ic_graphic_revision import (
+        validate_ic_graphic_revision,
+    )
+    from gost_schematic.rendering.ic_rectangular import IcTypographyProfile
+
+    original.verify_endpoints()
+    delta = validate_ic_graphic_revision(original.record, revised)
+    if delta.moved or any(
+        old.body != new.body or old.rows != new.rows
+        for old, new in zip(original.record.specs, revised.specs, strict=True)
+    ):
+        raise ValueError("IC_TEXT_ONLY_GEOMETRY_CHANGED")
+    by_unit = {spec.unit_id: spec for spec in revised.specs}
+    views = tuple(replace(
+        view,
+        function_rotation=by_unit[uid].profile.function_angle.value,
+        field_text_rotation=by_unit[uid].profile.other_text_angle.value,
+        typography_profile=IcTypographyProfile(
+            _paint_typography(by_unit[uid].profile),
+        ),
+    ) for uid, view in zip(original.unit_ids, original.views, strict=True))
+    result = IcPaintBinding(
+        revised, views, original.unit_ids, original.side_reflows,
+    )
+    result.verify_endpoints()
+    return result
+
+
 def _content(spec, device):
     # Exact visual text is explicitly supplied, not reconstructed from pin
     # numbers or guessed from a device name. No fixed character limit.
@@ -252,6 +302,7 @@ def propose_ic_paint_binding(
     from gost_schematic.rendering.ic_rectangular import (
         IcOrientation,
         IcRenderingPolicy,
+        IcTypographyProfile,
         IcResolvedUnit,
         propose_ic_dimensions,
     )
@@ -275,17 +326,14 @@ def propose_ic_paint_binding(
             if spec.profile.port_layout is IcPortLayout.LEFT_RIGHT
             else IcOrientation.TOP_BOTTOM
         )
-        # PAINT #93 currently permits rotation of central function only
-        # under TOP_BOTTOM. For LEFT_RIGHT this model is valid but printing
-        # requires a separately reviewed source-backed PAINT ink profile.
+        # PAINT HEAD db53e0 adds independent central PWM rotation for
+        # LEFT_RIGHT, but remaining field text 90 still lacks an LR profile.
         if (
             arrangement is IcOrientation.LEFT_RIGHT
-            and (spec.profile.function_angle.value
-                 or spec.profile.other_text_angle.value)
+            and spec.profile.other_text_angle.value
         ):
             raise ValueError(
-                "IC_PAINT_LEFT_RIGHT_TEXT_ROTATION_BLOCKED:"
-                " typed experimental profile survives but cannot be printed"
+                "IC_PAINT_LEFT_RIGHT_FIELD_ROTATION_BLOCKED"
             )
         expected_sides = (
             (Side.LEFT, Side.RIGHT)
@@ -332,6 +380,7 @@ def propose_ic_paint_binding(
         dimensions = propose_ic_dimensions(
             content, prelim, style, measurer, policy,
             orientation=arrangement,
+            function_rotation=spec.profile.function_angle.value,
         )
         # PAINT returns the minimum measured geometry. The original rectangle
         # is not silently edited. Instead produce a freshly versioned record.
@@ -373,6 +422,7 @@ def propose_ic_paint_binding(
             row_pitch_um=dimensions.row_pitch_um,
             external_lead_um=dimensions.lead_length_um,
             guard_um=policy.ink_padding_um,
+            function_row_span=dimensions.function_row_span,
         ))
         new_rows = []
         for row in layout_rows:
@@ -421,6 +471,9 @@ def propose_ic_paint_binding(
             orientation=arrangement,
             function_rotation=spec.profile.function_angle.value,
             field_text_rotation=spec.profile.other_text_angle.value,
+            typography_profile=IcTypographyProfile(
+                _paint_typography(spec.profile),
+            ),
         ))
     updated = IcLibraryRecord(record.device, tuple(new_specs), record.placements)
     binding = IcPaintBinding(
