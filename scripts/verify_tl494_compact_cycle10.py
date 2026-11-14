@@ -20,8 +20,21 @@ def verify(folder: Path) -> dict:
     assert (proof["source_components"], proof["source_nets"],
             proof["source_net_pinrefs"]) == (23, 15, 62)
     assert proof["model_source"] == "e695c415fdced164b0e0c39c5249d030795a0aa6"
-    assert proof["NET114_owner_sha"] == "2c4596e3e2897c5a34618169e4cfa5c3b8c38b43"
-    assert proof["RECON115_owner_sha"] == "10f22cea8d5908605b52853113b0c75bf91eec75"
+    assert proof["NET114_owner_sha"] == "8499d2311681b60f3c510ad65bd4ee5cbc61882a"
+    assert proof["RECON115_owner_sha"] == "8f8b3645beacdc3b7c4382ec97b12268624fdd76"
+    assert proof["IC97_owner_sha"] == "a640f2c5e78bd37506d438d5f533382ec75f4666"
+    assert proof["canonical_ti_part_id_verified"] == "ti.tl494cn.pdip16"
+    assert proof["trusted_97_part_rebinding"]
+    assert proof["legacy_part_id_preserved_only_in_frozen_fixture"]
+    source_names = {
+        "a_INPUT_PLUS", "SWITCH", "TRANSFER", "OUT_BEFORE_FUSE",
+        "b_NEGATIVE_OUTPUT", "GATE_DRIVE", "CONTROL_REFERENCE",
+        "SOFT_START", "ERROR_INPUT", "RC_CORRECTION", "FEEDBACK",
+        "ADJUSTED_DIVIDER", "OSCILLATOR_CT", "OSCILLATOR_RT", "COMMON",
+    }
+    assert len(proof["original_named_nets_verified"]) == 15
+    assert set(proof["original_named_nets_verified"]) == source_names
+    assert "PE" not in source_names and "CHASSIS" not in source_names
     assert proof["A3_true_catalog_bounds"]["A3_capacity_fit"]
     assert proof["status"] == "BLOCKED" and not proof["real_print_release"]
     assert not proof["printable_candidate"]
