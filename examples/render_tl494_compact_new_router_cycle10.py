@@ -29,9 +29,9 @@ from gost_schematic.rendering.routed_native_sheet import render_routed_native_sh
 from gost_schematic.standards.type_a_font import inspect_type_a_font
 
 SOURCE = "e695c415fdced164b0e0c39c5249d030795a0aa6"
-IC = "809616e6ab58b80b6386c664405cdb8ef6a99196"
-NET = "2c4596e3e2897c5a34618169e4cfa5c3b8c38b43"
-RECON = "10f22cea8d5908605b52853113b0c75bf91eec75"
+IC = "a640f2c5e78bd37506d438d5f533382ec75f4666"
+NET = "8499d2311681b60f3c510ad65bd4ee5cbc61882a"
+RECON = "8f8b3645beacdc3b7c4382ec97b12268624fdd76"
 
 
 def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 25000):
