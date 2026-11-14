@@ -14,7 +14,8 @@ from mcp.types import ImageContent, TextContent, ToolAnnotations
 from gost_schematic.agent_project.catalog import ProjectError
 from gost_schematic.agent_project.read_access import ReadOnlyProjectAccess
 
-def _safe_read[_T](call: Callable[[], _T]) -> _T:
+
+def _safe_read[T](call: Callable[[], T]) -> T:
     """Only stable machine-readable failure code; no filesystem disclosure."""
     try:
         return call()
