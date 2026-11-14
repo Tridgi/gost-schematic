@@ -225,7 +225,7 @@ def validate_router_geometry(candidate, pin_owners):
     for net, ids in per_net.items():
         parent = {i: i for i in ids}
 
-        def root(i):
+        def root(i, parent=parent):
             while parent[i] != i:
                 parent[i] = parent[parent[i]]
                 i = parent[i]
