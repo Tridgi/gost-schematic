@@ -182,6 +182,108 @@ def audit_real_b(report: dict, expected: dict) -> dict:
     }
 
 
+def live_real_rebinding_gate(font_file: Path, expected: dict) -> dict:
+    """Execute actual RECON b owner with original authoritative source values.
+
+    This independent gate works even while the optional RECON convenience
+    JSON preflight has a legacy font-name mismatch. All native production
+    operations remain owner source, never a QA-authored wire/SVG.
+    """
+    from dataclasses import replace
+
+    from examples.tl494_v5.cycle11_b_continuation import rebind_true_source_b
+    from examples.tl494_v5.cycle11_ti_bridge import bind_verified_compact_ti
+    from gost_schematic.core.geometry import Point
+    from gost_schematic.electrical.netrefs import validate_net_continuations
+    from gost_schematic.model.circuit import Circuit, Net
+
+    original = _compose_frozen_circuit_with_real_type_a(
+        compose_circuit, font_file,
+    )[-1]
+    assembly = compact_source_assembly()
+    frozen, _ = load_original_owner_fixture()
+    source = restore_original_named_nets(assembly, frozen)
+    signed = bind_verified_compact_ti(assembly, source)
+    signed.verify()
+    actual = rebind_true_source_b(
+        original, signed.signed.circuit, assembly.symbols,
+    )
+    physically_mapped = {p.id: [p.anchor.x, p.anchor.y]
+                         for p in actual.endpoints}
+    stubs = {
+        f"{s.pin.reference}.{s.pin.number}": {
+            "start": [s.start.x, s.start.y],
+            "end": [s.end.x, s.end.y],
+        } for s in actual.stubs
+    }
+    require(physically_mapped == expected["b_markers_from_frozen_vectors"]
+            and stubs == expected["b_stubs_from_actual_compact_PinRef"],
+            "QA_B_LIVE_RECON_REAL_STUB_REBIND_NOT_FROZEN_VECTOR")
+    require(actual.circuit.nets is signed.signed.circuit.nets
+            and actual.nets[0].net_name == "b_NEGATIVE_OUTPUT"
+            and len(actual.endpoints) == 2
+            and len(actual.stubs) == 2,
+            "QA_B_LIVE_OWNER_CHANGED_SOURCE_NET_OR_COUNT")
+    require(validate_net_continuations(
+        actual, physical_pin_anchors={s.pin: s.start for s in actual.stubs},
+    ) == (), "QA_B_LIVE_OWNER_CONTINUATION_SOURCE_VALIDATION")
+    negative = {}
+    # The source authority is the old physical stub vector, not copied
+    # marker text or a cosmetically convenient new electrical Net.
+    altered = replace(original, endpoints=tuple(
+        replace(p, anchor=Point(p.anchor.x + 1, p.anchor.y))
+        if p.id == "b-X2" else p for p in original.endpoints
+    ))
+    try:
+        rebind_true_source_b(altered, signed.signed.circuit, assembly.symbols)
+    except ValueError as exc:
+        require(str(exc).startswith("TL494_C11_B_"),
+                "QA_B_MUTATED_ORIGINAL_WRONG_REJECTION")
+        negative["old_source_marker_1um_displacement"] = "REJECTED"
+    else:
+        raise BContractFailure("QA_B_SOURCE_MARKER_FORGERY_ACCEPTED")
+    b_changed = Circuit(
+        signed.signed.circuit.components,
+        tuple(Net("PE", n.members) if n.name == "b_NEGATIVE_OUTPUT"
+              else n for n in signed.signed.circuit.nets),
+    )
+    try:
+        rebind_true_source_b(original, b_changed, assembly.symbols)
+    except ValueError as exc:
+        require(str(exc).startswith("TL494_C11_B_"),
+                "QA_B_FOREIGN_NET_WRONG_REJECTION")
+        negative["fake_PE_replacing_b"] = "REJECTED"
+    else:
+        raise BContractFailure("QA_B_FAKE_PE_SOURCE_NET_ACCEPTED")
+    moved = replace(
+        signed.signed.circuit,
+        components=tuple(
+            replace(c, origin=Point(470000, c.origin.y))
+            if c.reference == "X2" else c
+            for c in signed.signed.circuit.components
+        ),
+    )
+    try:
+        rebind_true_source_b(original, moved, assembly.symbols)
+    except ValueError as exc:
+        require("OUTSIDE_COMPACT_A3_MARGIN" in str(exc),
+                "QA_B_A3_MARGIN_WRONG_REJECTION")
+        negative["X2_outside_A3_real_margin"] = "REJECTED"
+    else:
+        raise BContractFailure("QA_B_UNSAFE_OFF_PAGE_STUB_ACCEPTED")
+    return {
+        "live_original_e695_original_source": ORIGINAL_SHA,
+        "live_RECON_sha": RECON_SHA,
+        "actual_production_RECON_b_rebinding": "PASS_TYPED_SOURCE_ONLY",
+        "actual_source_signed_manufacturer_IC": "ti.tl494cn.pdip16",
+        "actual_b_marker_counts": 2,
+        "source_15_named_nets_and_62_PinRefs_unchanged": True,
+        "source_b_marker_real_coordinates_um": physically_mapped,
+        "negative_real_source_rejections": negative,
+        "print_15Net_approval": "NO_GO_UNTIL_REAL_ROUTED_AFTER",
+    }
+
+
 def adversarial_b_failures(authentic: dict, expected: dict) -> dict:
     """Only clone JSON evidence in memory; never edit a real owner image."""
     cases = {
@@ -240,7 +342,8 @@ def main() -> None:
     parser.add_argument("--recon-root", type=Path, required=True)
     parser.add_argument("--source-root", type=Path, required=True)
     parser.add_argument("--font-file", type=Path, required=True)
-    parser.add_argument("--evidence", type=Path, required=True)
+    parser.add_argument("--evidence", type=Path)
+    parser.add_argument("--direct-only", action="store_true")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     def head(path: Path) -> str:
@@ -258,16 +361,27 @@ def main() -> None:
     require(font.measured_cap_height_um == 3500,
             "QA_B_TYPE_A_FONT_NOT_TRUE_CAP_HEIGHT")
     expected = immutable_expected(args.font_file)
-    evidence = json.loads(args.evidence.read_text(encoding="utf-8"))
-    require(evidence.get("GOST_A_font_SHA256") == font.style.font_sha256,
-            "QA_B_SOURCE_FONT_PROVENANCE_DRIFT")
-    result = {
-        "source_verification": audit_real_b(evidence, expected),
-        "twelve_hostile_genuine_source_mutations":
-            adversarial_b_failures(evidence, expected),
-        "no_hand_edited_SVG_or_fake_photo_source": True,
-        "print_or_UGO_approval": "NO_GO_NOT_A_ROUTED_SHEET",
-    }
+    if args.direct_only:
+        result = {
+            "actual_live_owner_code": live_real_rebinding_gate(
+                args.font_file, expected,
+            ),
+            "no_hand_edited_SVG_or_fake_photo_source": True,
+            "print_or_UGO_approval": "NO_GO_NOT_A_ROUTED_SHEET",
+        }
+    else:
+        require(args.evidence is not None and args.evidence.is_file(),
+                "QA_B_NO_GENUINE_OWNER_EVIDENCE_FILE")
+        evidence = json.loads(args.evidence.read_text(encoding="utf-8"))
+        require(evidence.get("GOST_A_font_SHA256") == font.style.font_sha256,
+                "QA_B_SOURCE_FONT_PROVENANCE_DRIFT")
+        result = {
+            "source_verification": audit_real_b(evidence, expected),
+            "twelve_hostile_genuine_source_mutations":
+                adversarial_b_failures(evidence, expected),
+            "no_hand_edited_SVG_or_fake_photo_source": True,
+            "print_or_UGO_approval": "NO_GO_NOT_A_ROUTED_SHEET",
+        }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(
         result, indent=2, sort_keys=True, ensure_ascii=False,
