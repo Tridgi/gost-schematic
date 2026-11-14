@@ -9,6 +9,7 @@ from gost_schematic.core.geometry import Point
 from gost_schematic.model.part import PartDefinition
 from gost_schematic.model.pins import ElectricalType, PhysicalPin
 from gost_schematic.rendering.routed_native_sheet import (
+    _is_real_branch,
     render_routed_native_sheet,
 )
 from gost_schematic.validation.external_wire_checks import (
@@ -162,3 +163,33 @@ def test_debug_layer_is_truly_foreground_after_all_new_wire_and_junction_ink():
     )
     assert all(marker.get("data-pin-ref").startswith("DD1.")
                for marker in layer[0].findall(f"./{NS}rect"))
+
+
+@pytest.mark.parametrize("segments", (
+    (
+        WireSegment(Point(-2000, 0), Point(0, 0), "A"),
+        WireSegment(Point(0, 0), Point(2000, 0), "A"),
+    ),
+    (
+        WireSegment(Point(-2000, 0), Point(0, 0), "A"),
+        WireSegment(Point(0, 0), Point(0, 2000), "A"),
+    ),
+))
+def test_reject_nonbranch_splice_or_elbow_artwork_dot(segments):
+    circuit, _, parts, symbols, clean, diag = _case()
+    graph = ExternalWireGraph(segments, (Point(0, 0),))
+    assert not _is_real_branch(segments, Point(0, 0))
+    with pytest.raises(ValueError, match="ROUTED_SHEET_FOREIGN_OR_DANGLING_JUNCTION"):
+        _render(circuit, graph, parts, symbols, clean, diag)
+
+
+def test_real_three_arm_t_and_four_arm_x_are_genuine_junction_geometry():
+    at = Point(0, 0)
+    straight = WireSegment(Point(-2000, 0), Point(2000, 0), "A")
+    branch = WireSegment(at, Point(0, 1000), "A")
+    crossing = WireSegment(Point(0, -1000), Point(0, 1000), "A")
+    # Geometry proof only; Circuit.Net identity, same-Net membership and
+    # physical PinRef constraints remain independently checked by the renderer.
+    assert _is_real_branch((straight, branch), at)
+    assert _is_real_branch((straight, crossing), at)
+    assert not _is_real_branch((straight, straight), at)
