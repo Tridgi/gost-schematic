@@ -19,11 +19,10 @@ from gost_schematic.agent_project.agent_readiness import (
 from gost_schematic.agent_project.catalog import CatalogResolver, ProjectError
 from gost_schematic.agent_project.design_assistant import (
     TL494_FROZEN_SOURCE_SHA,
-    TL494_GROUPS,
     TL494_REQUIRED_PARTS,
 )
-from gost_schematic.agent_project.trusted_import import import_six_part
 from gost_schematic.agent_project.owner_source_contract import verify_frozen_owner_fixture
+from gost_schematic.agent_project.trusted_import import import_six_part
 
 PID = "96bc492b-1635-493c-855e-3f6470a57548"
 KEY = "75c5b15e-7053-49e8-a059-4ffdf0a8760a"
