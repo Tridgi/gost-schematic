@@ -9,6 +9,7 @@ import json
 import subprocess
 import sys
 import tempfile
+import traceback
 from dataclasses import replace
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -273,6 +274,7 @@ def ic_text_gallery(output, font):
     face = inspect_type_a_font(font, h_um=2500)
     measurer = PillowTextMeasurer()
     imgs, cases = {}, {}
+    blocked = {}
     require(face.style.font_sha256 == hashlib.sha256(Path(font).read_bytes()).hexdigest(),
             "OPENGOST_HASH_MISMATCH")
     for count in (8, 14, 40, 64):
@@ -282,10 +284,21 @@ def ic_text_gallery(output, font):
                     trans = Transform(angle, mirror)
                     primary = _port_fixture(paint, count, face.style, measurer, word, trans)
                     flipped = replace(primary, function_rotation=0)
-                    a = paint.render_resolved_ic(primary, face.style, measurer,
-                                                  glyph_detail=True)
-                    b = paint.render_resolved_ic(flipped, face.style, measurer,
-                                                  glyph_detail=True)
+                    label = f"ic-{count}-{word.replace('_', '-')}-{angle}-m{int(mirror)}"
+                    a = None
+                    try:
+                        a = paint.render_resolved_ic(primary, face.style, measurer,
+                                                      glyph_detail=True)
+                        b = paint.render_resolved_ic(flipped, face.style, measurer,
+                                                      glyph_detail=True)
+                    except ValueError as exc:
+                        blocked[label] = str(exc)
+                        cases[label] = {"status": "BLOCKED", "reason": str(exc)}
+                        if a is not None and angle == 0 and not mirror:
+                            file_90, _size = _save_svg_png(
+                                a.svg, output, label + "-only-90", count=20)
+                            imgs.update(file_90)
+                        continue
                     require(a.body_world == b.body_world and
                             a.pin_anchors == b.pin_anchors, "TEXT_TOGGLE_MOVED_COPPER")
                     require(len(a.pin_anchors) == count, "TEXT_TOGGLE_LOST_CONTACT")
@@ -302,7 +315,6 @@ def ic_text_gallery(output, font):
                     require(va.attrib.get("transform", "").startswith("matrix(")
                             and not vb.attrib.get("transform"), "TEXT_TOGGLE_ROTATION_WRONG")
                     require(a.glyph_ink and b.glyph_ink, "NO_REAL_GLYPH_INK")
-                    label = f"ic-{count}-{word.replace('_', '-')}-{angle}-m{int(mirror)}"
                     cases[label] = {"function_90": True, "same_pinref": True,
                                     "same_body": True, "d4": [angle, mirror]}
                     if angle == 0 and not mirror:
@@ -364,8 +376,18 @@ def ic_text_gallery(output, font):
             (paint.render_resolved_ic(v, face.style, measurer)
              for v in rebound.views), strict=True
         ))
-    return {"cases": len(cases), "real_font_sha256": face.style.font_sha256,
-            "files": imgs, "visual_default": "EXPLICIT_PORTRAIT_V2_ONLY",
+    evidence = {"cases": cases, "blocked": blocked,
+                "real_font_sha256": face.style.font_sha256, "files": imgs,
+                "visual_default": "EXPLICIT_PORTRAIT_V2_ONLY",
+                "global_default": "BLOCKED_LEGACY_HORIZONTAL"}
+    (output / "qa-cycle7-independent-ic-pwm.json").write_text(
+        json.dumps(evidence, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    require(not blocked, "IC_FUNCTION_90_TO_0_BLOCKED: " +
+            repr(list(blocked.items())[:4]))
+    return {"cases": len(cases), "blocked": 0,
+            "real_font_sha256": face.style.font_sha256, "files": imgs,
             "global_default": "BLOCKED_LEGACY_HORIZONTAL"}
 
 
@@ -472,7 +494,9 @@ def main():
     args.output_dir.mkdir(parents=True, exist_ok=True)
     report = {"issue": 92, "owner_commits": OWNER, "draft_only": True,
               "real_production_code_staged_ephemerally": True, "gates": {}}
-    # Stagewise assertions intentionally fail the workflow on any real regression.
+    # Every independent gate executes even if an earlier owner implementation
+    # fails. The workflow remains RED when any gate fails; never hide defects.
+    errors = []
     for label, action in (
         ("provenance_eskd", provenance),
         ("catalog_15", lambda: catalog_gallery(args.output_dir)),
@@ -483,15 +507,18 @@ def main():
         try:
             report["gates"][label] = {"status": "PASS", "evidence": action()}
         except Exception as exc:
+            traceback.print_exc()
             report["gates"][label] = {"status": "FAIL", "error": repr(exc)}
-            (args.output_dir / "qa-cycle7-current-matrix.json").write_text(
-                json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True)+"\n")
-            raise
-        print("INDEPENDENT_QA_GATE", label, "PASS", flush=True)
+            errors.append(label)
+            print("INDEPENDENT_QA_GATE", label, "FAIL", repr(exc), flush=True)
+        else:
+            print("INDEPENDENT_QA_GATE", label, "PASS", flush=True)
     (args.output_dir / "qa-cycle7-current-matrix.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True)+"\n")
     print("QA_CYCLE7_INDEPENDENT_COMPLETE", json.dumps(
         {k: v["status"] for k, v in report["gates"].items()}))
+    if errors:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
