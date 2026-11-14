@@ -165,3 +165,94 @@ when CI actually succeeds at its final HEAD.
 multi-unit **legacy** `PartDefinition` adapter (the common `ElectricalType`
 has no NC; error `IC_ADAPTER_UNSUPPORTED_LEGACY_NC_PIN`), and PAINT owner
 SHA migration without a newly pinned test. Nothing is merged.
+
+
+## MAIN 3 Next integration sprint (2026-11-15): trusted PAINT 161c31bd and sheet composer
+
+The new exact PAINT owner dependency is
+`161c31bd0b538c6e827341ae465c3b3a59f6637d` (PR #93),
+not the older `67b1aaabee45327416bcdea246dd6a3b51118db4`.
+The actual `ic_hotspots.verify_ic_connection_targets` intentionally
+supports **partial unverified read-only cosmetic previews**. Even when
+it validates the physical reference/coordinate, it has **no trusted
+`Circuit.Net` input**, cannot determine that an active pin was forged NC,
+and does not certify a complete 16-tip overlay. A direct raw PAINT
+`IcConnectionTarget` is **UNVERIFIED**, never permission for Net changes.
+
+### Rechecked trust boundary (code, not a future promise)
+
+`IcCircuitBinding.seal_paint_overlay(actual_ic_paint_binding)` now
+rebuilds the `IcEditorContactManifest` from full source `Circuit`, confirms
+all 16 real manufacturer `PinRef`, unit ownership, full original Net
+identities, actual integer-µm tips, NC/active semantics and complete
+per-unit targets. It returns frozen `IcVerifiedPaintSnapshot` with a
+**non-secret audit SHA256** of the serialized typed source. No user
+target list is accepted as a proof. Calling `verify_against(source,
+paint_binding)` re-derives all rows before comparing:
+`IC_TRUSTED_OVERLAY_PROVENANCE_OR_TARGET_MISMATCH` rejects
+forged/missing/duplicate/foreign 16-point targets and wrong networks.
+`IcVerifiedPaintSnapshot.render(...,diagnostics=True)` enforces the
+check again, renders from **actual PAINT** with fully source-verified
+target list, parses the generated SVG to compare **all physical lead
+tips and manufacturer roles at 0 µm tolerance**, and verifies all
+16 final green diagnostic marks by `data-pin-ref`, original
+`data-net-id` and exact integer-µm center. Clean mode omits these
+editor-only squares. No operation mutates `Circuit.Net` or wires.
+
+A separate previously-unnoticed source metadata drift was corrected:
+`ResolvedIcPin.label` is now the **full immutable manufacturer name**
+(`FEEDBACK`, `OUTPUT CTRL`) and `display_alias` is the *editable*
+short on-paper label (`FB`, `OC`). The independent
+`manufacturer_electrical_type` is now always transmitted to
+PAINT and verified. `IcPaintBinding.verify_endpoints` rejects
+counterfeit full names, alias swaps or false factory electrical roles
+even when number/coordinate/short text still look valid. Actual SVG
+`data-full-manufacturer-name`/`data-visible-pin-alias`/
+`data-manufacturer-electrical-type` are verified by tests; the visible
+glyphs and all physical endpoints remain unchanged.
+
+With PAINT's newly implemented
+`rendering.ic_sheet_composition.compose_authoritative_ic_layers`,
+the user/QA/reconstructor must supply the **same** `Circuit` and
+its matching `PartDefinition/SymbolDefinition` when composing
+the full sheet. The composer independently verifies the complete
+PAINT `IcRendered.connection_targets` against `Circuit.Net`,
+physical world `PinRef`, actual SVG strokes and markers. The
+new tests run both **clean** and **diagnostic** composition with
+the 23/15/62 locked Circuit and adversarial alterations to
+the actual PAINT `IcRendered`. This is an integration boundary
+test using a real physical 16-pin rendered symbol plus the actual
+`Circuit`, **not** a newly routed complete photo A3 E3 sheet.
+
+```python
+# Only after resolving PAINT from its exact owner source and validating
+# the revised physical IcSymbolSpec via explicit IcGeometryConsent:
+trusted = updated_circuit_binding.seal_paint_overlay(paint_binding)
+trusted.verify_against(updated_circuit_binding, paint_binding)
+clean_ugo = trusted.render(
+    updated_circuit_binding, paint_binding, style, measurer,
+    diagnostics=False,
+)
+debug_ugo = trusted.render(
+    updated_circuit_binding, paint_binding, style, measurer,
+    diagnostics=True,
+)
+# The read-only real PAINT composer may now accept the actual 23-part
+# Circuit, native symbol surrogate, and the corresponding IcRendered.
+# Never infer an electrical Net from a green square, text label or SVG path.
+```
+
+**New negative matrix:** `tests/test_ic_trusted_paint_cycle9.py`
+checks the actual current PAINT module, source-locked real 23/15/62,
+wrong component, wrong Net, active-faked-NC, missing and duplicate
+16-point targets, wrong contact number and +1 µm tip, fake source
+revision/checksum, mutable manifest forge, illegitimate source-Net
+revision, PAINT-sheet compositor forged/partial overlay, tampered
+lead SVG/marker and independent PWM 0/90/270° word rotations.
+
+**Important remaining BLOCKED:** New printed A3 layout currently has
+failed `DA1.12 INPUT_POS` lead-forest routing and 7 Nets incomplete
+according to MAIN 3 audit #6885041804. Neither the typed overlay nor
+the current PAINT compositor fixes router #114's physical paths, sheet
+ink collisions or old source 9 ERROR/32 WARNING, and no independent
+QA #99 acceptance or GOST approval is implied. All output DRAFT.
