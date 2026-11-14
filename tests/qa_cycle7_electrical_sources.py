@@ -9,7 +9,7 @@ import sys
 import tempfile
 from contextlib import contextmanager
 from hashlib import sha1
-from importlib import import_module, util
+from importlib import import_module, invalidate_caches, util
 from pathlib import Path
 
 import gost_schematic
@@ -63,60 +63,87 @@ def _load(name, path):
 @contextmanager
 def real_electrical_sources():
     verified()
-    assert "gost_schematic.electrical" not in sys.modules, (
-        "Independent QA cannot import accidentally installed owner code"
-    )
-    with tempfile.TemporaryDirectory(prefix="qa-cycle7-electric-") as tmp:
-        root = Path(tmp)
-        folder = root / "gost_schematic" / "electrical"
-        folder.mkdir(parents=True)
-        sources = {
-            "__init__": "qa_cycle7_electric87/electrical/__init__.txt",
-            "contacts": "qa_cycle7_electric87/electrical/contacts.txt",
-            "ic": "qa_cycle7_electric87/electrical/ic.txt",
-            "ic_serde": "qa_cycle7_electric87/electrical/ic_serde.txt",
-            "netrefs": "qa_cycle7_electric90/electrical/netrefs.txt",
-            "netrefs_serde": "qa_cycle7_electric90/electrical/netrefs_serde.txt",
-        }
-        for filename, source in sources.items():
-            (folder / (filename + ".py")).write_bytes(
-                (ROOT / source).read_bytes()
-            )
-        examples = {
-            "_qa_cycle7_ic_owner_demo":
-                "qa_cycle7_electric87/review_ic_cycle7.txt",
-            "_qa_cycle7_net_owner_demo":
-                "qa_cycle7_electric90/review_net_continuations.txt",
-        }
-        guest = {}
-        for name, source in examples.items():
-            dst = root / (name + ".py")
-            dst.write_bytes((ROOT / source).read_bytes())
-            guest[name] = dst
-        target = str(root / "gost_schematic")
-        gost_schematic.__path__.append(target)
-        try:
-            ic = import_module("gost_schematic.electrical.ic")
-            ic_serde = import_module("gost_schematic.electrical.ic_serde")
-            net = import_module("gost_schematic.electrical.netrefs")
-            net_serde = import_module("gost_schematic.electrical.netrefs_serde")
-            demo_ic = _load("_qa_cycle7_ic_owner_demo", guest[
-                "_qa_cycle7_ic_owner_demo"
-            ])
-            demo_net = _load("_qa_cycle7_net_owner_demo", guest[
-                "_qa_cycle7_net_owner_demo"
-            ])
-            yield ic, ic_serde, demo_ic, net, net_serde, demo_net
-        finally:
-            gost_schematic.__path__.remove(target)
-            for name in examples:
-                sys.modules.pop(name, None)
-            for name in tuple(sys.modules):
-                if name == "gost_schematic.electrical" or name.startswith(
-                    "gost_schematic.electrical."
-                ):
+    # Other tests in the merged integration can legitimately import the
+    # installed electrical package before this exact-blob QA fixture. Save
+    # their modules, run our byte-pinned originals under a fresh import,
+    # and restore all prior objects without changing production code.
+    namespace = "gost_schematic.electrical"
+    existing = {
+        name: module for name, module in sys.modules.items()
+        if name == namespace or name.startswith(namespace + ".")
+    }
+    for name in existing:
+        sys.modules.pop(name)
+    parent_was_set = hasattr(gost_schematic, "electrical")
+    original_parent = getattr(gost_schematic, "electrical", None)
+    if parent_was_set:
+        delattr(gost_schematic, "electrical")
+    try:
+        with tempfile.TemporaryDirectory(prefix="qa-cycle7-electric-") as tmp:
+            root = Path(tmp)
+            folder = root / "gost_schematic" / "electrical"
+            folder.mkdir(parents=True)
+            sources = {
+                "__init__": "qa_cycle7_electric87/electrical/__init__.txt",
+                "contacts": "qa_cycle7_electric87/electrical/contacts.txt",
+                "ic": "qa_cycle7_electric87/electrical/ic.txt",
+                "ic_serde": "qa_cycle7_electric87/electrical/ic_serde.txt",
+                "netrefs": "qa_cycle7_electric90/electrical/netrefs.txt",
+                "netrefs_serde": "qa_cycle7_electric90/electrical/netrefs_serde.txt",
+            }
+            for filename, source in sources.items():
+                (folder / (filename + ".py")).write_bytes(
+                    (ROOT / source).read_bytes()
+                )
+            examples = {
+                "_qa_cycle7_ic_owner_demo":
+                    "qa_cycle7_electric87/review_ic_cycle7.txt",
+                "_qa_cycle7_net_owner_demo":
+                    "qa_cycle7_electric90/review_net_continuations.txt",
+            }
+            guest = {}
+            for name, source in examples.items():
+                dst = root / (name + ".py")
+                dst.write_bytes((ROOT / source).read_bytes())
+                guest[name] = dst
+            target = str(root / "gost_schematic")
+            # Pinned fixtures, not coincidentally installed owner code,
+            # are authoritative inside this temporary independent QA scope.
+            gost_schematic.__path__.insert(0, target)
+            invalidate_caches()
+            try:
+                ic = import_module("gost_schematic.electrical.ic")
+                ic_serde = import_module("gost_schematic.electrical.ic_serde")
+                net = import_module("gost_schematic.electrical.netrefs")
+                net_serde = import_module("gost_schematic.electrical.netrefs_serde")
+                demo_ic = _load("_qa_cycle7_ic_owner_demo", guest[
+                    "_qa_cycle7_ic_owner_demo"
+                ])
+                demo_net = _load("_qa_cycle7_net_owner_demo", guest[
+                    "_qa_cycle7_net_owner_demo"
+                ])
+                yield ic, ic_serde, demo_ic, net, net_serde, demo_net
+            finally:
+                gost_schematic.__path__.remove(target)
+                invalidate_caches()
+                for name in examples:
                     sys.modules.pop(name, None)
+                for name in tuple(sys.modules):
+                    if name == "gost_schematic.electrical" or name.startswith(
+                        "gost_schematic.electrical."
+                    ):
+                        sys.modules.pop(name, None)
 
+    finally:
+        for name in tuple(sys.modules):
+            if name == namespace or name.startswith(namespace + "."):
+                sys.modules.pop(name, None)
+        sys.modules.update(existing)
+        if parent_was_set:
+            gost_schematic.electrical = original_parent
+        elif hasattr(gost_schematic, "electrical"):
+            delattr(gost_schematic, "electrical")
+        invalidate_caches()
 
 def original_json(kind):
     name = {
