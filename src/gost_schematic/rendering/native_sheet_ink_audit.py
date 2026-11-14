@@ -109,3 +109,59 @@ def audit_full_native_sheet_ink(
                      actual_ink.max_x, actual_ink.max_y),
                 ))
     return tuple(findings)
+
+
+@dataclass(frozen=True, slots=True)
+class ParallelWireStrokeFinding:
+    first_segment: int
+    second_segment: int
+    first_net: str
+    second_net: str
+    edge_gap_um: int
+    required_gap_um: int
+
+
+def audit_native_parallel_wire_strokes(
+    graph: ExternalWireGraph, *, stroke_um: int = 300,
+    required_gap_um: int = 3000,
+) -> tuple[ParallelWireStrokeFinding, ...]:
+    """Exact SOURCE graphical parallel gap, including both half stroke widths.
+
+    This is the contextual neighbor-parallel rule ONLY. Perpendicular X
+    crossings are NOT put through the same 3mm test, and same-Net T
+    junctions are not treated as different conductor spacing failures.
+    """
+    if not isinstance(graph, ExternalWireGraph):
+        raise TypeError("NATIVE_PARALLEL_TYPED_WIRE_GRAPH_REQUIRED")
+    if type(stroke_um) is not int or stroke_um <= 0 or (
+        type(required_gap_um) is not int or required_gap_um <= 0
+    ):
+        raise ValueError("NATIVE_PARALLEL_CLEARANCE_TYPED_DIMENSIONS_REQUIRED")
+    failures = []
+    for first, a in enumerate(graph.segments):
+        for second in range(first+1, len(graph.segments)):
+            b = graph.segments[second]
+            if a.net_name == b.net_name:
+                continue
+            same_y = a.start.y == a.end.y and b.start.y == b.end.y
+            same_x = a.start.x == a.end.x and b.start.x == b.end.x
+            distance = None
+            if same_y and a.start.y != b.start.y and (
+                max(min(a.start.x, a.end.x), min(b.start.x, b.end.x))
+                < min(max(a.start.x, a.end.x), max(b.start.x, b.end.x))
+            ):
+                distance = abs(a.start.y - b.start.y)
+            elif same_x and a.start.x != b.start.x and (
+                max(min(a.start.y, a.end.y), min(b.start.y, b.end.y))
+                < min(max(a.start.y, a.end.y), max(b.start.y, b.end.y))
+            ):
+                distance = abs(a.start.x - b.start.x)
+            if distance is None:
+                continue
+            gap = distance - stroke_um
+            if gap < required_gap_um:
+                failures.append(ParallelWireStrokeFinding(
+                    first, second, a.net_name, b.net_name,
+                    gap, required_gap_um,
+                ))
+    return tuple(failures)
