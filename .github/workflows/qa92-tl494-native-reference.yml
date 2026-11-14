@@ -65,6 +65,8 @@ jobs:
           done
           cp _qa_sources/paint/src/gost_schematic/rendering/external_wire_sheet.py \
             _qa_sources/reference/src/gost_schematic/rendering/
+          cp _qa_sources/paint/src/gost_schematic/rendering/sheet_svg.py \
+            _qa_sources/reference/src/gost_schematic/rendering/
           cp _qa_sources/paint/src/gost_schematic/rendering/native_sheet_ink_audit.py \
             _qa_sources/reference/src/gost_schematic/rendering/
           cp _qa_sources/paint/examples/render_tl494_full_native_cycle9.py \
