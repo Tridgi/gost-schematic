@@ -26,10 +26,10 @@ jobs:
         python-version: ["3.12", "3.13"]
     env:
       SOURCE_SHA: e695c415fdced164b0e0c39c5249d030795a0aa6
-      IC_SHA: 809616e6ab58b80b6386c664405cdb8ef6a99196
-      YGO_SHA: 779dc0eabbd2d8f2f1ef9289cb683fcab1414bf1
-      NET_SHA: 2c4596e3e2897c5a34618169e4cfa5c3b8c38b43
-      RECON_SHA: 10f22cea8d5908605b52853113b0c75bf91eec75
+      IC_SHA: a640f2c5e78bd37506d438d5f533382ec75f4666
+      YGO_SHA: 5a79ea6039f495e19a7b22deece24eb2af6ed8e5
+      NET_SHA: 8499d2311681b60f3c510ad65bd4ee5cbc61882a
+      RECON_SHA: 8f8b3645beacdc3b7c4382ec97b12268624fdd76
       PAINT_PINNED_NATIVE_REQUIRED: "1"
     steps:
       - uses: actions/checkout@v4
@@ -55,8 +55,11 @@ jobs:
             mkdir -p "$(dirname "$p")"
             git show "$IC_SHA:$p" > "$p"
           done
+          git show "$IC_SHA:examples/tl494_cycle9_circuit_integration.py" \
+            > examples/tl494_cycle9_circuit_integration.py
           for p in \
             src/gost_schematic/catalog/source_profiles.py \
+            src/gost_schematic/catalog/source_footprints.py \
             src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json; do
             mkdir -p "$(dirname "$p")"
             git show "$YGO_SHA:$p" > "$p"
@@ -76,6 +79,10 @@ jobs:
           test -f examples/tl494_v5/route_preflight.py
           test -f src/gost_schematic/electrical/ic_editor_targets.py
           test -f src/gost_schematic/electrical/ic_circuit_adapter.py
+          test -f examples/tl494_cycle9_circuit_integration.py
+          test -f examples/tl494_v5/cycle11_ti_bridge.py
+          test -f examples/tl494_v5/route_candidate_driver.py
+          test -f src/gost_schematic/catalog/source_footprints.py
           test -f src/gost_schematic/engines/multiterminal_router.py
       - name: Real Type A 3500um, pinned face, librsvg 300DPI
         env:
@@ -98,7 +105,8 @@ jobs:
             examples/render_tl494_compact_new_router_cycle10.py \
             scripts/verify_tl494_compact_cycle10.py \
             tests/test_routed_native_sheet_cycle10.py
-          pytest -q tests/test_routed_native_sheet_cycle10.py
+          pytest -q tests/test_routed_native_sheet_cycle10.py \
+            examples/tl494_v5/test_cycle11_ti_bridge.py
       - name: Genuine new NET114 graph -> PAINT full native engine, no old 91 wire reuse
         run: |
           python -m examples.render_tl494_new_router_cycle10 \
