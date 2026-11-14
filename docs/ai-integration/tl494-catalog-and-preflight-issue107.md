@@ -105,6 +105,9 @@ independent PAINT/ESKD/QA release gates exist.
 1. Original immutable revision SHA and catalog lock through ProjectService,
    exact \`Circuit\` physical component part IDs, real physical pin positions
    and each \`Net\` ID/members — no raster reverse engineering.
+   The service also includes the full original `electrical_erc` (independent
+   `validate_circuit` and `validate_external_wires`) at that exact revision.
+   A clean ERC never implies that all print-layout checks have passed.
 2. Source-pinned TL494 12-reference matrix compared with the **actual**
    saved component \`part_id\`, reporting
    \`TL494_REQUIRED_COMPONENT_MISSING\` or
