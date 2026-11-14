@@ -7,13 +7,17 @@ from gost_schematic.core.geometry import Box, Point, Side
 from gost_schematic.core.transforms import Transform
 from gost_schematic.electrical.ic import (
     IcDeviceDefinition,
+    IcBodyAxis,
     IcField,
+    IcGraphicProfile,
     IcKind,
     IcPackage,
     IcPhysicalPin,
     IcPinRow,
     IcPinType,
+    IcPortLayout,
     IcSymbolSpec,
+    IcTextAngle,
     IcUnit,
     IcUnitPlacement,
     PinoutOrigin,
@@ -75,10 +79,12 @@ def _forbid_constant(value: str) -> None:
 def ic_to_json(record: IcLibraryRecord) -> str:
     if not isinstance(record, IcLibraryRecord):
         raise TypeError("Expected IcLibraryRecord")
+    extended = any(s.profile != IcGraphicProfile() for s in record.specs)
     d = record.device
     p = d.package
     value = {
-        "schema_version": 1, "record_type": "DRAFT_E3_IC",
+        "schema_version": 2 if extended else 1,
+        "record_type": "DRAFT_E3_IC",
         "device": {
             "identifier": d.identifier, "kind": d.kind.value,
             "package": {
@@ -101,6 +107,12 @@ def ic_to_json(record: IcLibraryRecord) -> str:
             "body_um": [s.body.min_x, s.body.min_y, s.body.max_x, s.body.max_y],
             "main_field": s.main_field, "aux_left": s.aux_left,
             "aux_right": s.aux_right, "revision": s.revision,
+            **({"graphic_profile": {
+                "port_layout": s.profile.port_layout.value,
+                "body_axis": s.profile.body_axis.value,
+                "function_angle": s.profile.function_angle.value,
+                "other_text_angle": s.profile.other_text_angle.value,
+            }} if extended else {}),
             "rows": [{
                 "number": row.number, "side": row.side.value,
                 "anchor_um": _point(row.anchor), "row_key": row.row_key,
@@ -125,7 +137,8 @@ def ic_from_json(data: str) -> IcLibraryRecord:
         json.loads(data, object_pairs_hook=_pairs, parse_constant=_forbid_constant),
         {"schema_version", "record_type", "device", "specs", "placements"},
     )
-    if type(raw["schema_version"]) is not int or raw["schema_version"] != 1:
+    version = raw["schema_version"]
+    if type(version) is not int or version not in (1, 2):
         raise ValueError("Unsupported IC schema version")
     if raw["record_type"] != "DRAFT_E3_IC":
         raise ValueError("Not a DRAFT physical E3 IC record")
@@ -154,10 +167,27 @@ def ic_from_json(data: str) -> IcLibraryRecord:
     )
     specs = []
     for s in _array(raw["specs"]):
-        s = _object(s, {
+        expected = {
             "device_id", "unit_id", "body_um", "main_field",
             "aux_left", "aux_right", "revision", "rows",
-        })
+        }
+        if version == 2:
+            expected.add("graphic_profile")
+        s = _object(s, expected)
+        profile = IcGraphicProfile()
+        if version == 2:
+            g = _object(s["graphic_profile"], {
+                "port_layout", "body_axis", "function_angle", "other_text_angle",
+            })
+            for field_name in ("function_angle", "other_text_angle"):
+                if type(g[field_name]) is not int:
+                    raise ValueError("IC_TEXT_ANGLE_TYPED_REQUIRED")
+            profile = IcGraphicProfile(
+                port_layout=IcPortLayout(g["port_layout"]),
+                body_axis=IcBodyAxis(g["body_axis"]),
+                function_angle=IcTextAngle(g["function_angle"]),
+                other_text_angle=IcTextAngle(g["other_text_angle"]),
+            )
         rows = []
         for row in _array(s["rows"]):
             row = _object(row, {
@@ -174,7 +204,7 @@ def ic_from_json(data: str) -> IcLibraryRecord:
             device_id=s["device_id"], unit_id=s["unit_id"],
             body=_b(s["body_um"]), main_field=s["main_field"], rows=tuple(rows),
             aux_left=s["aux_left"], aux_right=s["aux_right"],
-            revision=s["revision"],
+            revision=s["revision"], profile=profile,
         ))
     placements = []
     for p in _array(raw["placements"]):
