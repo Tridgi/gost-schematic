@@ -477,3 +477,39 @@ def test_portrait_left_right_paint_0_and_90_contract_proof(count):
         ValueError, match="IC_PAINT_LEFT_RIGHT_TEXT_ROTATION_BLOCKED",
     ):
         propose_ic_paint_binding(vertical_text, style, measure)
+
+
+@pytest.mark.parametrize("count", (8, 14, 40, 64))
+def test_real_paint_exports_measured_field_requirements_and_ink_guards(count):
+    paint = pytest.importorskip("gost_schematic.rendering.ic_rectangular")
+    from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
+    from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
+    from gost_schematic.standards.type_a_font import inspect_type_a_font
+
+    font = os.environ.get("IC_TYPE_A_FONT_PATH")
+    assert font and Path(font).is_file()
+    style = inspect_type_a_font(Path(font), h_um=3500).style
+    measurer = PillowTextMeasurer()
+    measured = propose_ic_paint_binding(synthetic_ic(count), style, measurer)
+    measured.verify_endpoints()
+    assert len(measured.requirements) == len(measured.views)
+    for spec, required in zip(
+        measured.record.specs, measured.requirements, strict=True,
+    ):
+        assert spec.unit_id == required.unit_id
+        assert required.port_layout is IcPortLayout.LEFT_RIGHT
+        assert spec.body.max_x - spec.body.min_x == required.body_width_um
+        assert spec.body.max_y - spec.body.min_y == required.body_height_um
+        assert required.main_field_min_dimension_um >= 15000
+        assert required.external_lead_um >= 8000
+        assert required.guard_um == 1000
+    protected = measured.protected_text_areas(style, measurer)
+    assert any(p.kind == "function" for p in protected)
+    assert any(p.kind == "pin-number" for p in protected)
+    for item in protected:
+        assert item.unit_id in measured.unit_ids
+        assert item.box.max_x > item.box.min_x
+        assert item.box.max_y > item.box.min_y
+    assert paint.IcOrientation.LEFT_RIGHT.value == (
+        measured.views[0].orientation.value
+    )
