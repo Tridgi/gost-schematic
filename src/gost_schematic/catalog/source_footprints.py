@@ -91,9 +91,13 @@ def source_footprint(binding: SourceGlyphBinding) -> SourceFootprint:
          if item["reference"] == binding.reference), None
     )
     if (row is None or row["symbol_id"] != symbol.identifier
+        or [p.number for p in part.pins] != row["expected_pin_numbers"]
+        or [p.number for p in symbol.pins] != row["expected_pin_numbers"]
         or [p.name for p in part.pins] != row["expected_physical_roles"]
         or [p.label for p in symbol.pins] != row["expected_graphic_labels"]):
-        raise SymbolProfileMismatch("Footprint violates source-locked ID/roles")
+        raise SymbolProfileMismatch(
+            "Footprint violates source-locked physical/graphic pin IDs and roles"
+        )
     rendered_symbol = source_reference_symbol(symbol, binding.reference)
     numbers = tuple(pin.number for pin in part.pins)
     if (tuple(ref.number for ref in binding.pin_refs) != numbers

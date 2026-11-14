@@ -47,3 +47,22 @@ The first 13 source positions were locked to real packaged `SymbolDefinition` an
 ## Explicit original-source versus new-A3 poses
 
 `bind_tl494_source(..., allow_relayout=False)` now checks exact original reference branch **position AND D4**, as well as locked UGO ID and actual physical roles. It fails on a moved original symbol, including VD1. To build a distinct documented **new A3** placement, the consumer MUST opt in via `allow_relayout=True`; all physical `PinRef` numbers and symbolic pin roles are still source-locked and every new point/obstacle is recomputed from the actual moved `ComponentInstance`. This prevents copying obstacles from an old sheet or silently treating A3 re-layout as a byte-identical photo fixture. Boolean values are type checked; no generic "best fit" fallback.
+
+
+## Cycle 11 pin-number parity (negative safety gate)
+
+Each of the 13 source entries now pins ordered expected_pin_numbers
+as well as physical role names and graphical labels. This distinguishes
+A(number 1)/K(number 2) from A(number 2)/K(number 1):
+the same set of physical terminals is NOT a valid equivalent part map.
+Identical protection applies to MOS G/D/S, R5 wiper, polarized capacitor
+PLUS/MINUS and ferromagnetic winding START/END.
+
+Both bind_tl494_source() and source_footprint() reject manipulated
+physical/graphic numbers and their ordering before publishing a signed
+footprint. New negative tests refuse any speculative fourth MOS BODY
+contact, extra diode contact or phantom magnetic-core pin.
+The original source photographs and Circuit.Net memberships are unchanged.
+Abstract schematic pin 1/2/3 must not be presented as an independently
+verified manufacturer package pinout (IRFZ44N, 1N5822); that is a separate
+device-specific ESKD/IC approval gate.

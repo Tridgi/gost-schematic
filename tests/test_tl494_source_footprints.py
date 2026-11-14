@@ -25,6 +25,7 @@ from gost_schematic.core.transforms import Transform
 from gost_schematic.engines.routing.clearance import validate_wire_clearance
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
 from gost_schematic.model.obstacles import WireObstacle
+from gost_schematic.model.pins import ElectricalType, PhysicalPin
 
 
 def _scene():
@@ -271,3 +272,68 @@ def test_frozen_source_pose_cannot_move_but_opt_in_new_A3_may_relocate():
     assert record["physical_pin_roles"][1]["name"] == "K"
     with pytest.raises(TypeError, match="boolean"):
         bind_tl494_source(original, parts, symbols, allow_relayout="yes")
+
+
+
+@pytest.mark.parametrize("which", ("VD1", "VT1", "FU1", "R5"))
+def test_swapped_same_set_physical_numbers_are_not_a_role_preserving_pinmap(which):
+    binding = next(item for item in _scene() if item.reference == which)
+    part = binding.part
+    assert len(part.pins) >= 2
+    swapped = replace(part, pins=(
+        replace(part.pins[0], number=part.pins[1].number),
+        replace(part.pins[1], number=part.pins[0].number),
+        *part.pins[2:],
+    ))
+    # Same number SET, same role ORDER: a set-only check would silently
+    # claim A=2/K=1, or MOS G=2/D=1. Both MUST be rejected.
+    assert {p.number for p in swapped.pins} == {p.number for p in part.pins}
+    assert tuple(p.name for p in swapped.pins) == tuple(
+        p.name for p in part.pins
+    )
+    with pytest.raises(SymbolProfileMismatch):
+        source_footprint(replace(binding, part=swapped))
+
+
+@pytest.mark.parametrize("which", ("VD1", "VT1", "C1", "L1"))
+def test_swapped_graphic_terminal_numbers_preserving_names_also_blocked(which):
+    binding = next(item for item in _scene() if item.reference == which)
+    symbol = binding.symbol
+    swapped = replace(symbol, pins=(
+        replace(symbol.pins[0], number=symbol.pins[1].number),
+        replace(symbol.pins[1], number=symbol.pins[0].number),
+        *symbol.pins[2:],
+    ))
+    assert tuple(pin.label for pin in swapped.pins) == tuple(
+        pin.label for pin in symbol.pins
+    )
+    with pytest.raises(SymbolProfileMismatch):
+        source_footprint(replace(binding, symbol=swapped))
+
+
+@pytest.mark.parametrize("which", ("VD1", "VT1", "L1"))
+def test_forged_fourth_physical_contact_or_extra_mos_body_pin_rejected(which):
+    binding = next(item for item in _scene() if item.reference == which)
+    part = replace(binding.part, pins=(
+        *binding.part.pins,
+        PhysicalPin("99", "IMAGINARY_BODY", ElectricalType.PASSIVE),
+    ))
+    with pytest.raises(SymbolProfileMismatch):
+        source_footprint(replace(binding, part=part))
+
+
+def test_all_13_source_records_pinmap_is_explicit_and_unique():
+    meta = read_source_manifest()
+    assert len(meta["profiles"]) == 13
+    for row in meta["profiles"]:
+        sym, part = load_catalog_pair(row["symbol_id"])
+        assert row["expected_pin_numbers"] == [pin.number for pin in part.pins]
+        assert row["expected_pin_numbers"] == [pin.number for pin in sym.pins]
+        assert len(set(row["expected_pin_numbers"])) == len(part.pins)
+        assert len(row["expected_pin_numbers"]) == len(row["expected_physical_roles"])
+    assert {
+        row["reference"]: row["expected_pin_numbers"]
+        for row in meta["profiles"] if row["reference"] in ("VD1", "VT1", "R5")
+    } == {
+        "VD1": ["1", "2"], "VT1": ["1", "2", "3"], "R5": ["1", "2", "3"],
+    }

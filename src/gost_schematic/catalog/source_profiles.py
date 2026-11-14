@@ -57,6 +57,18 @@ def read_source_manifest() -> dict:
         raise SymbolProfileMismatch("Source 13-symbol order, ID or inventory changed")
     if len({row["reference"] for row in records}) != len(records):
         raise SymbolProfileMismatch("Duplicate reference")
+    for row in records:
+        expected = row.get("expected_pin_numbers")
+        roles = row.get("expected_physical_roles")
+        labels = row.get("expected_graphic_labels")
+        if (not isinstance(expected, list) or not expected
+            or len(expected) != len(set(expected))
+            or len(expected) != len(roles) or len(expected) != len(labels)
+            or any(not isinstance(pin, str) or not pin.strip()
+                   for pin in expected)):
+            raise SymbolProfileMismatch(
+                f"{row['reference']}: missing or ambiguous source terminal number map"
+            )
     return content
 
 
@@ -250,6 +262,13 @@ def bind_tl494_source(
         if part is None or symbol is None:
             raise SymbolProfileMismatch(f"{reference}: unknown actual physical catalog pair")
         check_ink_contract(symbol, part)
+        physical = tuple(pin.number for pin in part.pins)
+        graphical = tuple(pin.number for pin in symbol.pins)
+        allowed = tuple(entry["expected_pin_numbers"])
+        if physical != allowed or graphical != allowed:
+            raise SymbolProfileMismatch(
+                f"{reference}: physical/graphic source terminal-number mapping changed"
+            )
         if [pin.name for pin in part.pins] != entry["expected_physical_roles"]:
             raise SymbolProfileMismatch(f"{reference}: fake PhysicalPin role or number")
         if [pin.label for pin in symbol.pins] != entry["expected_graphic_labels"]:
