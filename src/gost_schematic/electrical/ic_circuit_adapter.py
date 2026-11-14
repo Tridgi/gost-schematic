@@ -534,7 +534,7 @@ def bind_ic_circuit(
         )
         native_points = physical_instance.pin_positions(symbol)
         if native_points != {
-            pin.number: positions[pin.pin_ref] for pin in contacts
+            pin.pin_ref.number: positions[pin.pin_ref] for pin in contacts
         }:
             raise ValueError("IC_ADAPTER_NATIVE_GRAPHIC_WORLD_DRIFT")
         if {pin.number: pin.name for pin in part.pins} != physical_names:
