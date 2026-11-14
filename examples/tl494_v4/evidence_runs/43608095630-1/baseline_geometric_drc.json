@@ -1,0 +1,513 @@
+{
+  "crossings": [
+    {
+      "a": 1,
+      "at_mm": [
+        30.0,
+        86.0
+      ],
+      "b": 41,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "COMMON",
+        "CONTROL_REFERENCE"
+      ]
+    },
+    {
+      "a": 1,
+      "at_mm": [
+        30.0,
+        117.0
+      ],
+      "b": 49,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "COMMON",
+        "SOFT_START"
+      ]
+    },
+    {
+      "a": 1,
+      "at_mm": [
+        30.0,
+        125.0
+      ],
+      "b": 55,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "COMMON",
+        "ERROR_INPUT"
+      ]
+    },
+    {
+      "a": 1,
+      "at_mm": [
+        30.0,
+        141.0
+      ],
+      "b": 62,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "COMMON",
+        "FEEDBACK"
+      ]
+    },
+    {
+      "a": 1,
+      "at_mm": [
+        30.0,
+        149.0
+      ],
+      "b": 71,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "COMMON",
+        "OSCILLATOR_CT"
+      ]
+    },
+    {
+      "a": 26,
+      "at_mm": [
+        53.0,
+        135.75
+      ],
+      "b": 63,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "COMMON",
+        "FEEDBACK"
+      ]
+    },
+    {
+      "a": 26,
+      "at_mm": [
+        46.0,
+        135.75
+      ],
+      "b": 72,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "COMMON",
+        "OSCILLATOR_CT"
+      ]
+    },
+    {
+      "a": 27,
+      "at_mm": [
+        46.0,
+        143.25
+      ],
+      "b": 72,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "COMMON",
+        "OSCILLATOR_CT"
+      ]
+    },
+    {
+      "a": 29,
+      "at_mm": [
+        42.0,
+        141.0
+      ],
+      "b": 62,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "COMMON",
+        "FEEDBACK"
+      ]
+    },
+    {
+      "a": 29,
+      "at_mm": [
+        42.0,
+        149.0
+      ],
+      "b": 71,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "COMMON",
+        "OSCILLATOR_CT"
+      ]
+    },
+    {
+      "a": 35,
+      "at_mm": [
+        50.0,
+        55.0
+      ],
+      "b": 77,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "INPUT_POS",
+        "OSCILLATOR_RT"
+      ]
+    },
+    {
+      "a": 36,
+      "at_mm": [
+        59.0,
+        75.0
+      ],
+      "b": 78,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "INPUT_POS",
+        "OSCILLATOR_RT"
+      ]
+    },
+    {
+      "a": 38,
+      "at_mm": [
+        140.0,
+        98.25
+      ],
+      "b": 42,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "INPUT_POS",
+        "CONTROL_REFERENCE"
+      ]
+    },
+    {
+      "a": 38,
+      "at_mm": [
+        138.0,
+        98.25
+      ],
+      "b": 85,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "INPUT_POS",
+        "COMMON"
+      ]
+    },
+    {
+      "a": 41,
+      "at_mm": [
+        -5.0,
+        86.0
+      ],
+      "b": 76,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "CONTROL_REFERENCE",
+        "OSCILLATOR_RT"
+      ]
+    },
+    {
+      "a": 41,
+      "at_mm": [
+        59.0,
+        86.0
+      ],
+      "b": 78,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "CONTROL_REFERENCE",
+        "OSCILLATOR_RT"
+      ]
+    },
+    {
+      "a": 41,
+      "at_mm": [
+        138.0,
+        86.0
+      ],
+      "b": 85,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "CONTROL_REFERENCE",
+        "COMMON"
+      ]
+    },
+    {
+      "a": 43,
+      "at_mm": [
+        138.0,
+        113.25
+      ],
+      "b": 85,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "CONTROL_REFERENCE",
+        "COMMON"
+      ]
+    },
+    {
+      "a": 44,
+      "at_mm": [
+        138.0,
+        105.75
+      ],
+      "b": 85,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "CONTROL_REFERENCE",
+        "COMMON"
+      ]
+    },
+    {
+      "a": 49,
+      "at_mm": [
+        45.0,
+        117.0
+      ],
+      "b": 56,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "SOFT_START",
+        "ERROR_INPUT"
+      ]
+    },
+    {
+      "a": 49,
+      "at_mm": [
+        -55.0,
+        117.0
+      ],
+      "b": 58,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "SOFT_START",
+        "ERROR_INPUT"
+      ]
+    },
+    {
+      "a": 49,
+      "at_mm": [
+        -5.0,
+        117.0
+      ],
+      "b": 76,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "SOFT_START",
+        "OSCILLATOR_RT"
+      ]
+    },
+    {
+      "a": 52,
+      "at_mm": [
+        -105.0,
+        125.0
+      ],
+      "b": 55,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "SOFT_START",
+        "ERROR_INPUT"
+      ]
+    },
+    {
+      "a": 52,
+      "at_mm": [
+        -105.0,
+        141.0
+      ],
+      "b": 61,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "SOFT_START",
+        "RC_CORRECTION"
+      ]
+    },
+    {
+      "a": 55,
+      "at_mm": [
+        -5.0,
+        125.0
+      ],
+      "b": 76,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "ERROR_INPUT",
+        "OSCILLATOR_RT"
+      ]
+    },
+    {
+      "a": 62,
+      "at_mm": [
+        46.0,
+        141.0
+      ],
+      "b": 72,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "FEEDBACK",
+        "OSCILLATOR_CT"
+      ]
+    },
+    {
+      "a": 62,
+      "at_mm": [
+        -5.0,
+        141.0
+      ],
+      "b": 76,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "FEEDBACK",
+        "OSCILLATOR_RT"
+      ]
+    },
+    {
+      "a": 63,
+      "at_mm": [
+        53.0,
+        120.75
+      ],
+      "b": 73,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "FEEDBACK",
+        "OSCILLATOR_CT"
+      ]
+    },
+    {
+      "a": 71,
+      "at_mm": [
+        -5.0,
+        149.0
+      ],
+      "b": 76,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "OSCILLATOR_CT",
+        "OSCILLATOR_RT"
+      ]
+    },
+    {
+      "a": 76,
+      "at_mm": [
+        -5.0,
+        82.0
+      ],
+      "b": 86,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "OSCILLATOR_RT",
+        "COMMON"
+      ]
+    },
+    {
+      "a": 78,
+      "at_mm": [
+        59.0,
+        82.0
+      ],
+      "b": 86,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "OSCILLATOR_RT",
+        "COMMON"
+      ]
+    },
+    {
+      "a": 88,
+      "at_mm": [
+        -135.0,
+        212.0
+      ],
+      "b": 90,
+      "classification": "UNMARKED_DISTINCT_NET_X",
+      "nets": [
+        "COMMON",
+        "OUTPUT_NEG"
+      ]
+    }
+  ],
+  "distinct_net_x_crossings": 32,
+  "distinct_nets_with_ink": 15,
+  "estimated_orthogonal_bends": 44,
+  "limitations": [
+    "P0: perpendicular crossing without junction is electrically separate, yet requires route/visual review",
+    "P0: this module does not implement full symbol-stroke/text-ink clearance or automatic routing",
+    "P0: an acceptable numeric parallel report alone cannot approve E3 or prove circuit functionality"
+  ],
+  "net_segments": {
+    "ADJUSTED_DIVIDER": 5,
+    "COMMON": 23,
+    "CONTROL_REFERENCE": 7,
+    "ENERGY_TRANSFER": 6,
+    "ERROR_INPUT": 6,
+    "FEEDBACK": 3,
+    "GATE_DRIVE": 4,
+    "INPUT_POS": 7,
+    "OSCILLATOR_CT": 4,
+    "OSCILLATOR_RT": 6,
+    "OUTPUT_NEG": 2,
+    "OUT_BEFORE_FUSE": 3,
+    "RC_CORRECTION": 1,
+    "SOFT_START": 7,
+    "SWITCH": 7
+  },
+  "parallel_violation_count": 5,
+  "required_parallel_edge_clearance_mm": 3.0,
+  "status": "FAIL",
+  "stroke_mm": 0.3,
+  "total_wire_length_mm": 4691.25,
+  "violations": [
+    {
+      "a": 27,
+      "b": 62,
+      "clearance_mm": 1.95,
+      "code": "WIRE_PARALLEL_CLEARANCE",
+      "location_mm": null,
+      "nets": [
+        "COMMON",
+        "FEEDBACK"
+      ],
+      "required_mm": 3.0
+    },
+    {
+      "a": 28,
+      "b": 71,
+      "clearance_mm": 1.45,
+      "code": "WIRE_PARALLEL_CLEARANCE",
+      "location_mm": null,
+      "nets": [
+        "COMMON",
+        "OSCILLATOR_CT"
+      ],
+      "required_mm": 3.0
+    },
+    {
+      "a": 42,
+      "b": 85,
+      "clearance_mm": 1.7,
+      "code": "WIRE_PARALLEL_CLEARANCE",
+      "location_mm": null,
+      "nets": [
+        "CONTROL_REFERENCE",
+        "COMMON"
+      ],
+      "required_mm": 3.0
+    },
+    {
+      "a": 54,
+      "b": 63,
+      "clearance_mm": 1.7,
+      "code": "WIRE_PARALLEL_CLEARANCE",
+      "location_mm": null,
+      "nets": [
+        "SOFT_START",
+        "FEEDBACK"
+      ],
+      "required_mm": 3.0
+    },
+    {
+      "a": 56,
+      "b": 72,
+      "clearance_mm": 0.7,
+      "code": "WIRE_PARALLEL_CLEARANCE",
+      "location_mm": null,
+      "nets": [
+        "ERROR_INPUT",
+        "OSCILLATOR_CT"
+      ],
+      "required_mm": 3.0
+    }
+  ],
+  "wire_count": 91
+}
