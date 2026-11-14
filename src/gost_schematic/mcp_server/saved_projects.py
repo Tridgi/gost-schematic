@@ -6,7 +6,7 @@ There are deliberately NO project creation, file write or topology edit tools.
 import base64
 import json
 from collections.abc import Callable
-from typing import Any, TypeVar
+from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ImageContent, TextContent, ToolAnnotations
@@ -14,16 +14,13 @@ from mcp.types import ImageContent, TextContent, ToolAnnotations
 from gost_schematic.agent_project.catalog import ProjectError
 from gost_schematic.agent_project.read_access import ReadOnlyProjectAccess
 
-_T = TypeVar("_T")
-
-
-def _safe_read(call: Callable[[], _T]) -> _T:
+def _safe_read[_T](call: Callable[[], _T]) -> _T:
     """Only stable machine-readable failure code; no filesystem disclosure."""
     try:
         return call()
     except ProjectError as exc:
         raise ValueError(f"{exc.code}: saved-project read rejected") from None
-    except (OSError, ValueError, TypeError) as exc:
+    except (OSError, ValueError, TypeError):
         raise ValueError("PROJECT_READ_FAILED: saved-project read rejected") from None
 
 
