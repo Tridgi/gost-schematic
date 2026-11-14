@@ -27,8 +27,8 @@ from gost_schematic.model.circuit import PinRef
 
 NS = "{http://www.w3.org/2000/svg}"
 SOURCE_SHA = "e695c415fdced164b0e0c39c5249d030795a0aa6"
-OWNER_PAINT_SHA = "8623d2c9ea11963ed0d795575e4e95666ab69f7a"
-OWNER_ELEKTRIK_SHA = "8451a87bfa17344670017a6a07b460b8b4cf4835"
+OWNER_PAINT_SHA = "e3ea841dbe087952577121d5690fe41e9a9a5c83"
+OWNER_ELEKTRIK_SHA = "6161e9102cbc0c9e0491fb27ed7a496dc0b274bc"
 SOURCE_BLOBS = {
     "examples/tl494_named_photo_sheet.py":
         "990a1aca651f34dcae991575dddfa28b2acae813",
