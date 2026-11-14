@@ -182,6 +182,7 @@ jobs:
             tests/test_routed_native_sheet_cycle10.py \
             tests/test_tl494_source_footprints.py
       - name: Current exact HEAD 23-15-62 candidate and all 15 originally named Nets
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
@@ -192,6 +193,7 @@ jobs:
             --output-file "../../output/qa92-cycle11-${{ matrix.python-version }}/actual-recon-15-net-candidate.json" \
             --variants source --node-cap 5000
       - name: Separate independent QA of real accepted conductor graph and 8 source forgery negatives
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
@@ -205,6 +207,7 @@ jobs:
             --candidate-report "../../output/qa92-cycle11-${{ matrix.python-version }}/actual-recon-15-net-candidate.json" \
             --output "../../output/qa92-cycle11-${{ matrix.python-version }}/independent-cycle11-source-matrix.json"
       - name: Current manufacturer #97 full typed 16 terminal/Net positive and 8 active negative cases
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
@@ -213,6 +216,7 @@ jobs:
             --cycle11 --font-file "$QA_C11_GOST_FONT" \
             --output "../../output/qa92-cycle11-${{ matrix.python-version }}/independent-TI-editor-matrix.json"
       - name: Authoritative real TI partID adapter on true 23/15/62 with seven negative source mutations
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
