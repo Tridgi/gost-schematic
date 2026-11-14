@@ -352,6 +352,14 @@
         {
           "reference": "DA1",
           "number": "2"
+        },
+        {
+          "reference": "C4",
+          "number": "1"
+        },
+        {
+          "reference": "R4",
+          "number": "1"
         }
       ]
     },
@@ -378,19 +386,6 @@
         {
           "reference": "C4",
           "number": "2"
-        }
-      ]
-    },
-    {
-      "name": "R4_TOP",
-      "members": [
-        {
-          "reference": "C4",
-          "number": "1"
-        },
-        {
-          "reference": "R4",
-          "number": "1"
         }
       ]
     },
@@ -495,6 +490,7 @@
     "Low-resolution photograph: orientation and precise point of VD1 should be manually compared",
     "DA1.12 VCC appears open; do not silently connect it to input",
     "DA1.8/11 also seem to end at an open testpoint",
-    "Some source paths are drawn crossing without junction dots."
+    "Some source paths are drawn crossing without junction dots.",
+    "Source R4/C4 control node crosses R1/R6 without electrical junction; no-contact jumper required at x135 y170"
   ]
 }
