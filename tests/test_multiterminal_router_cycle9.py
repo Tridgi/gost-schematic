@@ -6,6 +6,7 @@ import pytest
 from gost_schematic.core.geometry import Box, Line, Point, Rectangle, Side
 from gost_schematic.core.transforms import Transform
 from gost_schematic.engines.multiterminal_router import (
+    _nearest_net_order,
     _source_ink_collision,
     _source_ink_obstacles,
     route_circuit_net_trees,
@@ -214,6 +215,41 @@ def test_grid_overflow_and_invalid_sheet_are_typed_fail_closed():
     )
     assert not result.complete and not result.print_pass
     assert "ROUTE_GRID_TOO_DENSE" in " ".join(result.diagnostics)
+
+
+def test_large_common_net_prims_nearest_contacts_before_far_same_net_tip():
+    pins = tuple(PinRef(f"X{i}", "1") for i in range(1, 7))
+    places = (
+        Point(30000, 60000),  # X1.2 entrance
+        Point(450000, 60000),  # X2.2 long-range return
+        Point(60000, 120000),
+        Point(90000, 130000),
+        Point(135000, 155000),
+        Point(385000, 170000),
+    )
+    positions = {pin: (at, Point(1, 0))
+                 for pin, at in zip(pins, places, strict=True)}
+    expected = (pins[0], pins[2], pins[3], pins[4], pins[5], pins[1])
+    assert _nearest_net_order(pins, positions) == expected
+    assert _nearest_net_order(pins, positions) == expected
+    assert set(expected) == set(pins)
+
+
+def test_own_lead_ink_guard_rejects_nearby_noncontact_parallel_trunk():
+    circuit, _, symbols = _mock_real_tl494_lead_forest()
+    ink = _source_ink_obstacles(circuit, symbols, stroke_um=300)
+    # 1 mm to the LEFT of real physical lead tip is still on actual lead ink;
+    # an owned DA1 pin elsewhere cannot waive this source primitive.
+    across = WireSegment(
+        Point(204000, 130000), Point(204000, 163000), "INPUT_POS",
+    )
+    conflict = _source_ink_collision(
+        across, ink,
+        authorized_pins=frozenset({PinRef("DA1", "12")}),
+    )
+    assert conflict is not None
+    assert conflict.primitive_kind == "Line"
+    assert conflict.owner == "DA1"
 
 
 def _mock_real_tl494_lead_forest():
