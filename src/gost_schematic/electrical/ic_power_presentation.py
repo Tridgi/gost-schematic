@@ -110,10 +110,10 @@ def validate_ic_power_presentation(
         if pin.electrical_type in (IcPinType.POWER_INPUT, IcPinType.POWER_OUTPUT)
     }
     all_marked = {entry.physical_number for entry in presentation.labels}
-    if not expected_power <= all_marked:
-        raise ValueError("IC_POWER_REQUIRED_SUPPLY_PIN_MISSING")
     if not all_marked <= set(map_pin):
         raise ValueError("IC_POWER_UNKNOWN_PHYSICAL_NUMBER")
+    if not expected_power <= all_marked:
+        raise ValueError("IC_POWER_REQUIRED_SUPPLY_PIN_MISSING")
     for entry in presentation.labels:
         if entry.unit_id not in units or entry.physical_number not in (
             units[entry.unit_id]
