@@ -219,6 +219,17 @@ class IcResolvedUnit:
                 )
             raise ValueError("IC_MIXED_SIDE_PROFILE: requires source-specific ESKD card")
 
+    def select_typography_profile(
+        self, profile: IcTypographyProfile,
+    ) -> "IcResolvedUnit":
+        """Explicit UI-facing profile selection with its versioned defaults.
+
+        dataclasses.replace by itself intentionally retains a previously
+        authored rotation. Choosing a NEW profile resets that choice to the
+        new profile default; only text settings change.
+        """
+        return replace(self, typography_profile=profile, function_rotation=None)
+
 
 @dataclass(frozen=True, slots=True)
 class IcInkBox:
@@ -636,7 +647,13 @@ def render_resolved_ic(
         if not text:
             return
         follow = (
-            _rotate_function if kind == "function" else _rotate_fields
+            _rotate_function if kind == "function" else (
+                _rotate_fields or (
+                    unit.typography_profile is
+                    IcTypographyProfile.PORTRAIT_FUNCTION_V2_DRAFT
+                    and unit.transform.rotation in (90, 270)
+                )
+            )
         )
         if (kind == "function" and unit.function_rotation == 90
                 and not _vertical_internal):
