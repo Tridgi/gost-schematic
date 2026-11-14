@@ -78,6 +78,8 @@ jobs:
           print("SOURCE 23/15/16/91 pinned; all wire DRC violations retained, not hidden")
           PY
       - name: Install pinned real OpenGost Type A
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           python scripts/install_opengost_type_a.py \
             --directory "$HOME/.local/share/fonts"
@@ -132,6 +134,13 @@ jobs:
           ref: e695c415fdced164b0e0c39c5249d030795a0aa6
           path: cycle9-source-reference
           persist-credentials: false
+      - name: Checkout isolated PAINT source engine HEAD (not merged)
+        uses: actions/checkout@v4
+        with:
+          repository: Tridgi/gost-schematic
+          ref: ca3ab815fa5d79756a7f34f06520f760fcb8674d
+          path: cycle9-paint-owner
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
@@ -145,6 +154,11 @@ jobs:
           test "$(git -C cycle9-source-reference rev-parse HEAD)" = "e695c415fdced164b0e0c39c5249d030795a0aa6"
           for F in tl494_native_rework tl494_connected_native tl494_full_native_model tl494_ic_paint_reference tl494_named_photo_sheet; do
             cp "cycle9-source-reference/examples/$F.py" "examples/$F.py"
+          done
+          test "$(git -C cycle9-paint-owner rev-parse HEAD)" = "ca3ab815fa5d79756a7f34f06520f760fcb8674d"
+          for F in ic_rectangular ic_hotspots; do
+            cp "cycle9-paint-owner/src/gost_schematic/rendering/$F.py" \
+              "src/gost_schematic/rendering/$F.py"
           done
           python -m compileall -q examples/review_tl494_multi_route.py examples/tl494_named_photo_sheet.py
       - name: Install and pin the real OpenGost Type A font
