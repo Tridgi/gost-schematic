@@ -36,8 +36,12 @@ class IcConnectionTarget:
             raise ValueError("IC_EDITOR_DISABLED_TARGET_NEEDS_REASON")
 
 
-def verify_ic_connection_targets(pins, provided):
-    """Strict read-only association; no invented pin or guessed net."""
+def verify_ic_connection_targets(pins, provided, *, expected_component_ref=None):
+    """Strict read-only association; no invented pin or guessed net.
+
+    The typed physical owner has an explicit component reference, NOT the
+    number of the section image (DD1.2 stays real PinRef("DD1", "n")).
+    """
     pins_by_id = {p.pin_id: p for p in pins}
     selected = {}
     for target in provided:
@@ -46,6 +50,11 @@ def verify_ic_connection_targets(pins, provided):
         if target.pin_id not in pins_by_id or target.pin_id in selected:
             raise ValueError("IC_EDITOR_UNKNOWN_OR_DUPLICATE_PIN")
         pin = pins_by_id[target.pin_id]
+        if (
+            expected_component_ref is not None
+            and target.pin_ref.reference != expected_component_ref
+        ):
+            raise ValueError("IC_EDITOR_PINREF_COMPONENT_MISMATCH")
         if target.anchor != pin.anchor or target.pin_ref.number != pin.number:
             raise ValueError("IC_EDITOR_PINREF_ENDPOINT_MISMATCH")
         if pin.role == "nc" and (
