@@ -61,10 +61,6 @@ jobs:
           fc-cache -f
       - name: Ruff (owner-owned new files and joint tests)
         run: ruff check src/gost_schematic/electrical/ic.py src/gost_schematic/electrical/ic_serde.py src/gost_schematic/electrical/ic_graphic_revision.py src/gost_schematic/electrical/ic_agent_snapshot.py src/gost_schematic/electrical/ic_paint_bridge.py src/gost_schematic/electrical/ic_editor_targets.py src/gost_schematic/electrical/ic_power_presentation.py tests/test_ic_paint_joint_cycle7.py tests/test_ic_graphic_profile_cycle7.py tests/test_ic_editor_power_cycle7.py examples/review_ic_paint_joint_cycle7.py examples/review_ic_text_profile_cycle7.py examples/review_ic_editor_cycle7.py scripts/verify_ic_joint_visual_evidence.py scripts/verify_ic_editor_raster_cycle7.py scripts/stamp_ic_joint_300dpi_metadata.py
-      - name: Assert both packages exist and execute true 1um boundary tests
-        run: |
-          python -c 'import gost_schematic.electrical.ic_paint_bridge, gost_schematic.rendering.ic_rectangular'
-          pytest -q -ra tests/test_ic_paint_joint_cycle7.py tests/test_ic_graphic_profile_cycle7.py tests/test_ic_editor_power_cycle7.py
       - name: Reproduce joint DA8 and split DD14/DD40/DD64 SVG + physical Circuit QA manifest
         if: matrix.python-version == '3.12'
         run: |
@@ -123,3 +119,7 @@ jobs:
           name: draft-cycle7-real-model-paint-joint-qa
           path: output/ic-paint-joint-cycle7/
           if-no-files-found: error
+      - name: Assert both packages exist and execute true 1um boundary tests
+        run: |
+          python -c 'import gost_schematic.electrical.ic_paint_bridge, gost_schematic.rendering.ic_rectangular'
+          pytest -q -ra tests/test_ic_paint_joint_cycle7.py tests/test_ic_graphic_profile_cycle7.py tests/test_ic_editor_power_cycle7.py
