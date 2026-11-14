@@ -510,7 +510,15 @@ def render_resolved_ic(
     """
     from gost_schematic.rendering.ic_hotspots import verify_ic_connection_targets
 
-    targets = verify_ic_connection_targets(unit.pins, editor_targets)
+    # A logical drawing section "DD1.2" is still the physical component
+    # "DD1"; reject PinRef("FOREIGN", same number/Point), never infer a Net.
+    physical_ref, dot, suffix = unit.reference.rpartition(".")
+    physical_ref = (
+        physical_ref if dot and suffix.isdecimal() else unit.reference
+    )
+    targets = verify_ic_connection_targets(
+        unit.pins, editor_targets, expected_component_ref=physical_ref,
+    )
     power_audit = None
     if power_profile is not None:
         from gost_schematic.rendering.ic_power_profiles import (
