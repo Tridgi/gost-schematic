@@ -153,13 +153,28 @@ jobs:
           done
           python - <<'PY'
           from pathlib import Path
+          from xml.etree import ElementTree as ET
           from PIL import Image
+
           for mode in ("clean", "diagnostic"):
-              path=Path(f"output/compact-A3/TL494-compact-A3-{mode}-300dpi.png")
+              prefix = Path(f"output/compact-A3/TL494-compact-A3-{mode}")
+              svg = ET.parse(prefix.with_suffix(".svg")).getroot()
+              width, height = (svg.get("width"), svg.get("height"))
+              assert width.endswith("mm") and height.endswith("mm")
+              path = Path(str(prefix) + "-300dpi.png")
               with Image.open(path) as image:
                   assert image.format == "PNG"
                   assert image.width > 1000 and image.height > 1000
-          print("Native geometric schematic diagnostic PNG generated at 300DPI")
+                  expected = (round(float(width[:-2]) / 25.4 * 300),
+                              round(float(height[:-2]) / 25.4 * 300))
+                  assert abs(image.width - expected[0]) < 4
+                  assert abs(image.height - expected[1]) < 4
+                  image.save(path, dpi=(300, 300))
+              with Image.open(path) as checked:
+                  density = checked.info.get("dpi")
+                  assert density is not None
+                  assert all(abs(x-300) < 1 for x in density)
+          print("Native SVG physical millimetres + real 300DPI PNG metadata verified")
           PY
       - uses: actions/upload-artifact@v4
         if: always()
