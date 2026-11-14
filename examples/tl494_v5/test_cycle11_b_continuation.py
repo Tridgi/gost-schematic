@@ -124,3 +124,46 @@ def test_negative_outside_A3_does_not_reposition_marker_by_guess(
         rebind_true_source_b(
             old, Circuit(moved, signed.nets), a3.symbols,
         )
+
+
+def test_negative_forged_whole_old_source_ref_or_pin_membership(
+    actual_source_and_a3,
+):
+    old, a3, signed = actual_source_and_a3
+    # The two source markers may be intact, but the *rest* of the old
+    # source is not then authoritative. Reject a same-count Net mutation.
+    modified = tuple(
+        Net(net.name, tuple(
+            PinRef("DA1", "3") if p == PinRef("DA1", "4") else p
+            for p in net.members
+        )) if net.name == "SOFT_START" else net
+        for net in old.circuit.nets
+    )
+    with pytest.raises(ValueError, match="HISTORICAL_23_15_62_SOURCE_NOT_AUTHENTIC"):
+        rebind_true_source_b(
+            replace(old, circuit=Circuit(old.circuit.components, modified)),
+            signed, a3.symbols,
+        )
+    altered = tuple(
+        replace(comp, part_id="forged.resistor")
+        if comp.reference == "R6" else comp
+        for comp in old.circuit.components
+    )
+    with pytest.raises(ValueError, match="HISTORICAL_23_15_62_SOURCE_NOT_AUTHENTIC"):
+        rebind_true_source_b(
+            replace(old, circuit=Circuit(altered, old.circuit.nets)),
+            signed, a3.symbols,
+        )
+
+
+def test_negative_b_source_address_reciprocity_cannot_be_rewritten(
+    actual_source_and_a3,
+):
+    old, a3, signed = actual_source_and_a3
+    incorrect = replace(old, endpoints=tuple(
+        replace(ep, target_address="DA1.12")
+        if ep.id == "b-X2" else ep
+        for ep in old.endpoints
+    ))
+    with pytest.raises(ValueError, match="SOURCE_B_MARKER_ADDRESS_DRIFT"):
+        rebind_true_source_b(incorrect, signed, a3.symbols)
