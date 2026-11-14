@@ -170,6 +170,9 @@ def make_review_svg(source: dict, *, max_highlights: int = 120) -> str:
         "source_wires_untouched": 91,
         "not_normatively_approved": True,
     }, sort_keys=True)
+    # The existing printer requires exactly one default SVG namespace.
+    # ET otherwise chooses ns0:svg in this standalone diagnostic entrypoint.
+    ET.register_namespace("", _URI)
     return ET.tostring(root, encoding="unicode") + "\n"
 
 
