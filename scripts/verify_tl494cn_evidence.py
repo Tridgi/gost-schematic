@@ -50,7 +50,7 @@ def verify(folder: Path) -> dict:
             if len(viewbox) != 4:
                 raise ValueError("TL494_WRONG_SVG_VIEWPORT")
             function = [
-                n for n in root.iter() if n.get("data-kind") == "function"
+                n for n in root.iter() if n.tag.endswith("text") and n.get("data-kind") == "function"
             ]
             if len(function) != 1 or function[0].text != "PWM":
                 raise ValueError("TL494_MISSING_WHOLE_PWM_WORD")
@@ -61,7 +61,7 @@ def verify(folder: Path) -> dict:
             elif transform:
                 raise ValueError("TL494_HORIZONTAL_HAS_UNWANTED_TRANSFORM")
             fields = [
-                n for n in root.iter() if n.get("data-kind") == "pin-label"
+                n for n in root.iter() if n.tag.endswith("text") and n.get("data-kind") == "pin-label"
             ]
             actual_labels = [n.text for n in fields]
             if len(actual_labels) != 16 or (
@@ -72,7 +72,7 @@ def verify(folder: Path) -> dict:
             if any(x in actual_labels for x in ("FEEDBACK", "OUTPUT CTRL")):
                 raise ValueError("TL494_MANUFACTURER_TEXT_OVERFLOWED_LABELS")
             numbers = [
-                n for n in root.iter() if n.get("data-kind") == "pin-number"
+                n for n in root.iter() if n.tag.endswith("text") and n.get("data-kind") == "pin-number"
             ]
             if len(numbers) != 16 or {
                 n.text for n in numbers
