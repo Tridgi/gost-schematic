@@ -226,9 +226,7 @@ def test_actual_mcp_client_rejects_redirected_workspace(tmp_path):
         pytest.skip("Symlink creation unavailable")
 
     async def verify():
-        async with stdio_client(_stdio(_env(tmp_path / "redirect"))) as (
-            read, write,
-        ):  # noqa: SIM117
+        async with stdio_client(_stdio(_env(tmp_path / "redirect"))) as (read, write):  # noqa: SIM117
             async with ClientSession(read, write) as session:
                 await session.initialize()
                 result = await session.call_tool("schematic_list_projects", {})
