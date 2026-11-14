@@ -331,7 +331,21 @@ def generate(
         "completed_nets": sum(t.complete for t in planned.net_trees),
         "target_nets": len(circuit.nets),
         "blocked": not print_pass,
-        "reason": planned.diagnostics[:4],
+        "reason": planned.diagnostics[:20],
+        "source_net_route_status": {
+            t.net_name: {
+                "complete": t.complete,
+                "connected": len(t.completed_pins),
+                "required": len(t.pin_refs),
+                "segments": len(t.segments),
+                "restarts": t.search_restarts,
+                "diagnostics": list(t.diagnostics),
+            } for t in planned.net_trees
+        },
+        "new_drc_error_records": [
+            {"code": f.code, "first": f.first, "second": f.second}
+            for f in after.findings if f.severity == "error"
+        ],
     }, sort_keys=True))
     return report
 
