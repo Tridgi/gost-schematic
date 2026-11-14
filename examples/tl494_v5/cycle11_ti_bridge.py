@@ -96,11 +96,56 @@ class VerifiedCompactTiBinding:
         return self.source_circuit
 
     def seal_paint(self, paint_binding):
-        """One signed 16-contact overlay; raw partial hotspots are not trusted."""
+        """Explicit #97 geometry consent before sealing all 16 PAINT contacts.
+
+        The owner painter may legitimately revise SVG terminal locations.
+        Every moved *physical* PinRef requires consent tied to the exact
+        signed original record; the complete Circuit and Nets never change.
+        """
+        from gost_schematic.electrical.ic import resolve_ic_pin_positions
+        from gost_schematic.electrical.ic_graphic_revision import (
+            IcGeometryConsent,
+            ic_record_fingerprint,
+        )
+
         self.verify()
-        result = self.signed.seal_paint_overlay(paint_binding)
-        result.verify_against(self.signed, paint_binding)
-        return result
+        old = resolve_ic_pin_positions(
+            self.signed.record.device,
+            self.signed.record.specs,
+            self.signed.record.placements,
+        )
+        proposed = resolve_ic_pin_positions(
+            paint_binding.record.device,
+            paint_binding.record.specs,
+            paint_binding.record.placements,
+        )
+        if set(old) != set(proposed) or len(old) != 16:
+            raise ValueError("TL494_C11_PAINT_PROPOSED_PHYSICAL_PIN_LOSS")
+        moved = tuple(ref for ref in old if old[ref] != proposed[ref])
+        active = {
+            pin for net in self.signed.circuit.nets
+            for pin in net.members if pin in old
+        }
+        consent = IcGeometryConsent(
+            ic_record_fingerprint(self.signed.record),
+            moved,
+            tuple(ref for ref in moved if ref in active),
+        )
+        revised, delta = self.signed.revise(
+            paint_binding.record, consent=consent,
+        )
+        if set(delta.moved) != set(moved) or (
+            revised.circuit is not self.signed.circuit
+            or revised.circuit.nets is not self.source_circuit.nets
+        ):
+            raise ValueError("TL494_C11_PAINT_REVISE_SOURCE_NET_DRIFT")
+        result = revised.seal_paint_overlay(paint_binding)
+        result.verify_against(revised, paint_binding)
+        if len(result.per_unit_targets) != 1 or (
+            len(result.per_unit_targets[0]) != 16
+        ):
+            raise ValueError("TL494_C11_PAINT_NOT_16_SIGNED_TARGETS")
+        return revised, result
 
 
 def bind_verified_compact_ti(
