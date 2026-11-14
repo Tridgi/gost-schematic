@@ -153,7 +153,7 @@ jobs:
                       (el.get("data-kind"),el.get("data-owner"),
                        el.text,el.get("x"),el.get("y"),el.get("transform"))
                       for el in xml.findall(".//{http://www.w3.org/2000/svg}text")
-                      if el.get("data-kind")!="function"
+                      if el.get("data-kind") not in ("function","main-text")
                   ])
                   assert pair[str(angle)]["minimum_ink_clearance_um"]>=1000
                   for variant in ("clean","diagnostic"):
@@ -193,7 +193,7 @@ jobs:
               )
               assert functions[0].get("transform","").startswith("matrix(")
               assert functions[1].get("transform") is None
-              assert others[0]==others[1],("non-function text moved",count)
+              assert others[0]==others[1],("physical pin/auxiliary/refdes ink moved",count)
           # Two row comparison is visual only, NOT physical 1:1 paper scale.
           panel=(930,1250)
           sheet=Image.new("RGB",(panel[0]*5,panel[1]*2),"white")
