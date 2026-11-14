@@ -174,7 +174,12 @@ def test_source_freeze_has_exact_all_91_real_wires_and_16_DA_pin_refs():
     assert result["wire_count"] == 91 and result["net_count"] == 15
     assert result["total_wire_length_um"] > 1000000
     assert result["parallel_measurements"]
-    assert result["error_count"] > 0  # Unreadable source must NOT get false green.
+    assert result["pair_distance_count"] == 91 * 90 // 2 == 4095
+    assert len(result["wire_lengths_um"]) == 91
+    assert result["net_lengths_um"]["COMMON"] == 1995000
+    assert sum(f["code"] == "DRC_PARALLEL_STROKE_CLEARANCE"
+               for f in result["findings"]) == 5
+    assert result["error_count"] == 6  # DRAFT source is definitely not clearance-safe.
     assert not result["full_3_2_1mm_sheet_certified"]
     assert not result["checked_symbol_geometry"]
     assert not result["checked_measured_text"]
@@ -223,6 +228,38 @@ def test_common_view_marker_never_treats_source_COMMON_as_PE():
         validate_reference_markers(circuit, graph, (identity,), (
             replace(label, wire_index=0),
         ))
+
+
+def test_chassis_pe_cannot_be_forged_on_arbitrary_signal_net():
+    circuit, graph, _ = load_frozen_source()
+    actual = next(n for n in circuit.nets if n.name == "INPUT_POS")
+    identity = NetIdentity("N-INPUT", actual.name, actual.members)
+    fake = NetReferenceMarker(
+        "FORGED-PE", identity.id, ReferenceRole.PROTECTIVE_EARTH,
+        graph.segments[0].start, ReferenceAnchor.AUTHORED_WIRE,
+        wire_index=0, source_evidence="Unverified text label cannot create PE",
+    )
+    with pytest.raises(ValueError, match="REFERENCE_MARKER_PE_DOMAIN_NOT_DECLARED"):
+        validate_reference_markers(circuit, graph, (identity,), (fake,))
+    with pytest.raises(ValueError, match="REFERENCE_MARKER_CHASSIS_DOMAIN_NOT_DECLARED"):
+        validate_reference_markers(circuit, graph, (identity,), (
+            replace(fake, role=ReferenceRole.CHASSIS),
+        ))
+    assert circuit.nets == load_frozen_source()[0].nets
+
+
+def test_two_different_ids_cannot_claim_same_physical_common_net():
+    circuit, graph, _ = load_frozen_source()
+    common = next(n for n in circuit.nets if n.name == "COMMON")
+    first = NetIdentity("N-COMMON-A", common.name, common.members)
+    second = NetIdentity("N-COMMON-B", common.name, common.members)
+    marker = NetReferenceMarker(
+        "GND-1", first.id, ReferenceRole.COMMON_0V,
+        graph.segments[1].end, ReferenceAnchor.AUTHORED_WIRE,
+        wire_index=1, source_evidence="TL494 original COMMON",
+    )
+    with pytest.raises(ValueError, match="MULTIPLE_IDS_FOR_ONE_REAL_NET"):
+        validate_reference_markers(circuit, graph, (first, second), (marker,))
 
 
 def _route_fixture(obstacle=False):
