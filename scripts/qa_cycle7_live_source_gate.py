@@ -506,7 +506,10 @@ def main():
     ):
         try:
             report["gates"][label] = {"status": "PASS", "evidence": action()}
-        except Exception as exc:
+        except (
+            AssertionError, ValueError, TypeError, AttributeError, RuntimeError,
+            OSError, KeyError, ImportError, subprocess.SubprocessError,
+        ) as exc:
             traceback.print_exc()
             report["gates"][label] = {"status": "FAIL", "error": repr(exc)}
             errors.append(label)
