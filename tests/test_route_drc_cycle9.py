@@ -252,7 +252,7 @@ def _route_fixture(obstacle=False):
 def test_deterministic_straight_orthogonal_two_physical_pin_preview():
     circuit, graph, parts, symbols = _route_fixture()
     untouched = (circuit, graph)
-    kwargs = dict(page_box=Box(0, 0, 100000, 80000))
+    kwargs = {"page_box": Box(0, 0, 100000, 80000)}
     a = preview_orthogonal_route(
         circuit, graph, PinRef("X1", "1"), PinRef("X2", "2"),
         "A", parts, symbols, **kwargs,
