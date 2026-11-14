@@ -136,6 +136,69 @@ def _owner_facts(manifest: dict, profile: dict[str, dict]) -> None:
             "SOURCE_PARALLEL_NEGATIVE_GAP_CHANGED_OR_WAIVED")
 
 
+
+def _actual_svg_3mm_violations(root: ET.Element) -> list[dict]:
+    """Independent integer-micrometre reread of the ACTUAL owner printed lines.
+
+    Applies 3mm to distinct-net parallel strokes with positive projected
+    overlap only.  Crossings and same-Net T are not certified by this rule.
+    """
+    wires = root.findall(f".//{SVG}line[@data-layer='wires']")
+    _insist(len(wires) == 91, "SVG_WIRE_DRC_REQUIRES_91_REAL_SEGMENTS")
+    typed = []
+    for index, line in enumerate(wires):
+        _insist(line.get("data-wire-index") == str(index),
+                "SVG_WIRE_INDEX_PROVENANCE_MISSING")
+        _insist(line.get("data-net"), "SVG_WIRE_NET_MISSING")
+        try:
+            coords = tuple(round(float(line.get(key, "")) * 1000)
+                           for key in ("x1", "y1", "x2", "y2"))
+            stroke = round(float(line.get("stroke-width", "")) * 1000)
+        except ValueError as exc:
+            raise PrintEvidenceError("SVG_WIRE_GEOMETRY_NOT_NUMERIC") from exc
+        _insist(stroke > 0 and 200 <= stroke <= 1000,
+                "SVG_WIRE_STROKE_OUT_OF_GOST_0_2_TO_1_0_MM")
+        x1, y1, x2, y2 = coords
+        _insist((x1 == x2) != (y1 == y2),
+                "SVG_WIRE_NOT_NONZERO_ORTHOGONAL")
+        typed.append((coords, stroke, line.get("data-net")))
+    failures = []
+    for i, (a, wa, net_a) in enumerate(typed):
+        x1, y1, x2, y2 = a
+        for j in range(i + 1, len(typed)):
+            b, wb, net_b = typed[j]
+            if net_a == net_b:
+                continue
+            xx1, yy1, xx2, yy2 = b
+            center_distance = None
+            if y1 == y2 and yy1 == yy2 and y1 != yy1:
+                overlap = (min(max(x1, x2), max(xx1, xx2))
+                           - max(min(x1, x2), min(xx1, xx2)))
+                if overlap > 0:
+                    center_distance = abs(y1 - yy1)
+            elif x1 == x2 and xx1 == xx2 and x1 != xx1:
+                overlap = (min(max(y1, y2), max(yy1, yy2))
+                           - max(min(y1, y2), min(yy1, yy2)))
+                if overlap > 0:
+                    center_distance = abs(x1 - xx1)
+            if center_distance is None:
+                continue
+            sum_widths = wa + wb
+            _insist(sum_widths % 2 == 0,
+                    "SVG_WIRE_STROKE_HALF_UM_NOT_REPRESENTABLE")
+            gap = center_distance - sum_widths // 2
+            if gap < 3000:
+                failures.append({
+                    "first_segment": i,
+                    "second_segment": j,
+                    "first_net": net_a,
+                    "second_net": net_b,
+                    "edge_gap_um": gap,
+                    "required_gap_um": 3000,
+                })
+    return failures
+
+
 def _check_physical_svg(root: ET.Element, manifest: dict,
                         diagnostic: bool) -> dict:
     parts = root.findall(f"./{SVG}g[@data-layer='symbols']")
@@ -293,8 +356,19 @@ def audit(folder: Path, profile_path: Path, *,
         "status": "PASS_DRAFT_REAL_OWNER_SVG",
         "details": actual,
     }
+    actual_3mm = _actual_svg_3mm_violations(
+        _parse_svg(folder / f"{PAINT_BASE}_clean.svg")
+    )
+    _insist(len(actual_3mm) == 5
+            and sorted(item["edge_gap_um"] for item in actual_3mm) == SOURCE_GAPS_UM,
+            "REAL_SVG_3MM_GAPS_DISAGREE_WITH_SOURCE_FIVE")
+    owner_3mm = manifest["source_3mm_parallel_wire_details"]
+    _insist(actual_3mm == owner_3mm,
+            "REAL_SVG_3MM_NET_AND_SEGMENT_PROVENANCE_MISMATCH")
     result["checks"]["print_hard_3mm_parallel_gaps"] = {
         "status": "FAIL_FROZEN_91_WIRES",
+        "independent_actual_svg_pairwise_comparisons": 4095,
+        "independent_actual_svg_failed_pairs": actual_3mm,
         "real_min_gaps_mm": [g / 1000 for g in SOURCE_GAPS_UM],
         "worst_actual_mm": 0.7,
         "source_five_negative_preserved": True,
