@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from gost_schematic.core.geometry import Box, Point, Side
 from gost_schematic.core.transforms import Transform
 from gost_schematic.electrical.ic import (
-    IcDeviceDefinition,
     IcBodyAxis,
+    IcDeviceDefinition,
     IcField,
     IcGraphicProfile,
     IcKind,
