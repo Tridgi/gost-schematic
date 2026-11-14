@@ -25,7 +25,13 @@ def test_real_native_power_stage_and_graph():
 
 def test_authoritative_diode_direction():
     _, _, _, coords = build_power()
-    assert coords["VD1"]["2"][1] < coords["VD1"]["1"][1]
+    assert coords["VD1"]["1"][1] < coords["VD1"]["2"][1]
+
+
+def test_magnetic_cores_are_kept_from_source_photo():
+    circuit, _, _, _ = build_power()
+    coils = {part.part_id for part in circuit.components if part.reference in ("L1", "L2")}
+    assert coils == {"inductor.ferromagnetic"}
 
 
 def test_negative_output_capacitors_are_not_reversed_in_source_model():
