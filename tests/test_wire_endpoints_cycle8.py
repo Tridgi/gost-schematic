@@ -198,6 +198,33 @@ def test_unmarked_X_not_a_junction_and_cross_net_T_is_blocked():
     assert shot.circuit.nets == circuit.nets
 
 
+def test_diagonal_X_is_exact_nonjoining_metadata_without_rounded_fake_node():
+    circuit, graph, nets, ids, parts, symbols, _, _ = data()
+    first = WireSegment(Point(0, 0), Point(10000, 10000), "CTRL")
+    second = WireSegment(Point(0, 10000), Point(10000, 0), "SHIELD")
+    altered = replace(graph, segments=(
+        first, graph.segments[1], graph.segments[2],
+        second, graph.segments[4],
+    ))
+    shot = collect_wire_endpoints(circuit, altered, nets, ids, parts, symbols)
+    assert len(shot.nonjoining_crossings) == 1
+    crossing = shot.nonjoining_crossings[0]
+    assert crossing.point == Point(5000, 5000)
+    assert crossing.first_net_id != crossing.second_net_id
+    assert all(e.point != crossing.point for e in shot.wire_endpoints)
+    assert Point(5000, 5000) not in altered.junctions
+    # A half-micrometre X cannot be rounded to an invented exact µm node.
+    frac = replace(altered, segments=(
+        WireSegment(Point(0, 0), Point(3, 3), "CTRL"),
+        altered.segments[1], altered.segments[2],
+        WireSegment(Point(0, 3), Point(3, 0), "SHIELD"),
+        altered.segments[4],
+    ))
+    fractional = collect_wire_endpoints(circuit, frac, nets, ids, parts, symbols)
+    assert fractional.nonjoining_crossings == ()
+    assert fractional.circuit.nets == circuit.nets
+
+
 def test_partial_foreign_net_collinear_overlap_fails_closed():
     circuit, graph, nets, ids, parts, symbols, _, _ = data()
     foreign = replace(graph.segments[3],
