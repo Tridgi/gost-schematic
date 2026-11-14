@@ -13,6 +13,7 @@ from examples.tl494_cycle9_circuit_integration import (
     FROZEN_SOURCE_BLOB,
     FROZEN_SOURCE_COMMIT,
     assert_frozen_photo_topology,
+    bind_positioned_photo_circuit_from_catalog,
     build_frozen_photo_23,
 )
 from gost_schematic.core.geometry import Point, Side
@@ -227,6 +228,99 @@ def test_reconstructor_catalog_foreign_missing_unknown_pin_rejected():
         bind_ic_circuit_from_catalog(
             binding.record, binding.circuit, None,
             aliases=binding.aliases,
+        )
+
+
+def _source_legacy_part_id(binding):
+    return replace(binding.circuit, components=tuple(
+        replace(c, part_id="reference.tl494cn")
+        if c.reference == "DA1" else c
+        for c in binding.circuit.components
+    ))
+
+
+def test_reconstructor_photo_legacy_tl494_model_is_upgraded_without_net_changes():
+    signed, original = _photo()
+    source = _source_legacy_part_id(signed)
+    before_nets = source.nets
+    before_components = source.components
+    catalog = _synthetic_catalog_only_for_electrical_inventory(signed)
+    upgraded = bind_positioned_photo_circuit_from_catalog(
+        source, signed.record, catalog, aliases=signed.aliases,
+    )
+    assert source.nets is before_nets
+    assert source.components is before_components
+    assert next(
+        c for c in source.components if c.reference == "DA1"
+    ).part_id == "reference.tl494cn"
+    assert next(
+        c for c in upgraded.circuit.components if c.reference == "DA1"
+    ).part_id == TI_DEVICE_ID
+    assert upgraded.circuit.nets is source.nets
+    assert upgraded.contacts == signed.contacts
+    assert upgraded == signed
+    assert_frozen_photo_topology(upgraded, original)
+    assert IcCircuitBinding.from_json(upgraded.to_json()) == upgraded
+
+
+@pytest.mark.parametrize("kind", (
+    "wrong_photo_net", "wrong_da1_part", "foreign_part",
+    "moved_da1", "wrong_unit_pose", "missing_part", "changed_nominal",
+))
+def test_reconstructor_photo_catalog_rebind_refuses_forged_source(kind):
+    signed, _ = _photo()
+    legacy = _source_legacy_part_id(signed)
+    parts = _synthetic_catalog_only_for_electrical_inventory(signed)
+    record = signed.record
+    if kind == "wrong_photo_net":
+        change = next(n for n in legacy.nets if n.name == "FEEDBACK")
+        legacy = replace(legacy, nets=tuple(
+            replace(n, members=tuple(
+                PinRef("DA1", "4") if p == PinRef("DA1", "3")
+                else PinRef("DA1", "3") if p == PinRef("DA1", "4")
+                else p for p in n.members
+            )) if n == change else n
+            for n in legacy.nets
+        ))
+    elif kind in ("wrong_da1_part", "foreign_part", "moved_da1", "changed_nominal"):
+        component_ref = "DA1" if kind in ("wrong_da1_part", "moved_da1") else "R1"
+        legacy = replace(legacy, components=tuple(
+            replace(
+                c, **(
+                    {"part_id": "UNKNOWN_FACTORY"}
+                    if kind in ("wrong_da1_part", "foreign_part")
+                    else {"origin": Point(c.origin.x + 1, c.origin.y)}
+                    if kind == "moved_da1"
+                    else {"nominal": None}
+                ),
+            ) if c.reference == component_ref else c
+            for c in legacy.components
+        ))
+        if kind == "changed_nominal":
+            legacy = replace(legacy, components=tuple(
+                replace(c, nominal=None) if c.reference == "R1" else c
+                for c in legacy.components
+            ))
+    elif kind == "wrong_unit_pose":
+        record = IcLibraryRecord(
+            record.device, record.specs,
+            tuple(replace(p, origin=Point(p.origin.x + 1, p.origin.y))
+                  for p in record.placements),
+        )
+    else:
+        del parts["resistor.variable"]
+    expected = {
+        "wrong_photo_net": "NET_IDENTITY_OR_MEMBERSHIP_CHANGED",
+        "wrong_da1_part": "DA1_PART_OR_POSE_MISMATCH",
+        "foreign_part": "NON_IC_PART_CHANGED",
+        "moved_da1": "DA1_PART_OR_POSE_MISMATCH",
+        "wrong_unit_pose": "DA1_PART_OR_POSE_MISMATCH",
+        "missing_part": "IC_ADAPTER_CATALOG_PART_NOT_FOUND",
+        "changed_nominal": "BOM_NOMINAL_DRIFT",
+    }[kind]
+    with pytest.raises(ValueError, match=expected):
+        bind_positioned_photo_circuit_from_catalog(
+            legacy, record, parts, aliases=signed.aliases,
         )
 
 
