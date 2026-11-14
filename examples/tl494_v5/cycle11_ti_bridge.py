@@ -43,7 +43,7 @@ class VerifiedCompactTiBinding:
         signed = self.signed.circuit
         if (
             len(source.components) != 23 or len(signed.components) != 23
-            or len(source.nets) != len(signed.nets) != 15
+            or len(source.nets) != 15 or len(signed.nets) != 15
             or source.nets is not signed.nets
         ):
             raise ValueError("TL494_C11_SOURCE_NET_TUPLE_CHANGED")
