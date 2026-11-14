@@ -148,13 +148,12 @@ def _interior(wire: WireSegment, point: Point) -> bool:
 
 
 def _positive_collinear_overlap(first: WireSegment, second: WireSegment) -> bool:
-    if not _on(first, second.start) and not _on(first, second.end):
-        # Check collinearity of supporting lines, not endpoints confined to
-        # the segment (partial overlaps need not contain either whole wire).
-        a, b = first.start, first.end
-        for p in (second.start, second.end):
-            if (b.x - a.x) * (p.y - a.y) != (b.y - a.y) * (p.x - a.x):
-                return False
+    # Check the two whole supporting lines, including partial overlap.
+    # A single crossing endpoint is not evidence of collinearity.
+    a, b = first.start, first.end
+    for p in (second.start, second.end):
+        if (b.x - a.x) * (p.y - a.y) != (b.y - a.y) * (p.x - a.x):
+            return False
     axis = "x" if first.start.x != first.end.x else "y"
     f = sorted((getattr(first.start, axis), getattr(first.end, axis)))
     g = sorted((getattr(second.start, axis), getattr(second.end, axis)))
