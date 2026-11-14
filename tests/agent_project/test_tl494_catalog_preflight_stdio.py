@@ -94,7 +94,7 @@ def test_real_mcp_client_curated_ugo_alias_preflight_and_exact_image(tmp_path):
                 matrix = _data(await client.call_tool(
                     "schematic_tl494_selection_profile", {},
                 ))
-                assert len(matrix["required_variants"]) == 12
+                assert len(matrix["required_variants"]) == 13
                 assert matrix["tl494_device_catalog"] == "NOT_IN_INSTALLED_P11_CATALOG"
                 alias = _data(await client.call_tool(
                     "schematic_tl494_pin_alias", {"full_name": "FEEDBACK"},
