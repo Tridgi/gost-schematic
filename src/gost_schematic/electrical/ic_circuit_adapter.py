@@ -409,6 +409,15 @@ def bind_ic_circuit(
     """Fail closed on all typed source + complete external Net references."""
     if not isinstance(record, IcLibraryRecord) or not isinstance(circuit, Circuit):
         raise TypeError("IC_ADAPTER_REQUIRES_TYPED_RECORD_AND_CIRCUIT")
+    # A hostile caller may forge BOTH the pin table and its UI alias object.
+    # Neither ERC nor two mutually matching edited objects establish TI truth.
+    from gost_schematic.electrical.tl494cn import (
+        TI_DEVICE_ID,
+        verify_tl494cn_ti_pinout,
+    )
+
+    if record.device.identifier == TI_DEVICE_ID:
+        verify_tl494cn_ti_pinout(record.device)
     ref = record.placements[0].component_ref
     validate_ic_circuit(record.device, circuit, ref)
     if len({c.reference for c in circuit.components}) != len(circuit.components):
