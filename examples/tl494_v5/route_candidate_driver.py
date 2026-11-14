@@ -26,6 +26,7 @@ from examples.tl494_v5.native_circuit import (
     NativeV5Assembly,
     assemble_native_v5,
 )
+from examples.tl494_v5.routed_graph_contract import rehydrate_verified_route_graph
 from examples.tl494_v5.route_preflight import (
     MeasuredInkGuard,
     _owner_ic_obstacle,
@@ -445,6 +446,11 @@ def drive_candidates(
         )
         for key in variants
     ]
+    # Verify each serialized accepted graph is a genuine typed PAINT input.
+    # This is NOT a print approval; incomplete graphs stay blocked.
+    for trial in trials:
+        if trial.get("status") != "BLOCKED_LAYOUT_NO_ROUTE_ATTEMPT":
+            rehydrate_verified_route_graph(trial, frozen["nets"])
     ranked = sorted(
         trials,
         key=lambda trial: (
