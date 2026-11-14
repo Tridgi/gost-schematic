@@ -637,3 +637,56 @@ def test_malicious_contact_dataclass_payload_detected_by_revalidation():
     ))
     with pytest.raises(ValueError, match="IC_ADAPTER_INTEGRITY_MISMATCH"):
         hostile.validate()
+
+
+def test_real_recon115_three_net_labels_are_reversible_only_as_complete_source():
+    """Only exact three pinned #115 aliases + same 62 source members are legal."""
+    signed, source = _photo()
+    legacy = _source_legacy_part_id(signed)
+    names = {
+        "a_INPUT_PLUS": "INPUT_POS",
+        "b_NEGATIVE_OUTPUT": "OUTPUT_NEG",
+        "TRANSFER": "ENERGY_TRANSFER",
+    }
+    reconstructed = replace(legacy, nets=tuple(
+        replace(net, name=names.get(net.name, net.name))
+        for net in legacy.nets
+    ))
+    catalog = _synthetic_catalog_only_for_electrical_inventory(signed)
+    accepted = bind_positioned_photo_circuit_from_catalog(
+        reconstructed, signed.record, catalog, aliases=signed.aliases,
+    )
+    assert accepted.circuit.nets is reconstructed.nets
+    assert accepted.circuit.nets != legacy.nets
+    assert len(accepted.circuit.nets) == 15
+    assert sum(len(net.members) for net in accepted.circuit.nets) == 62
+    assert accepted.circuit.components[-1].part_id == TI_DEVICE_ID
+    assert_frozen_photo_topology(accepted, source)
+    reverse = {value: key for key, value in names.items()}
+    restored = replace(accepted.circuit, nets=tuple(
+        replace(net, name=reverse.get(net.name, net.name))
+        for net in accepted.circuit.nets
+    ))
+    assert restored.nets == legacy.nets
+    assert restored.components != legacy.components  # only DA1 ID upgraded
+    assert IcCircuitBinding.from_json(accepted.to_json()) == accepted
+
+    half = replace(reconstructed, nets=tuple(
+        replace(net, name="a_INPUT_PLUS") if net.name == "INPUT_POS"
+        else net for net in reconstructed.nets
+    ))
+    with pytest.raises(ValueError, match="NET_IDENTITY_OR_MEMBERSHIP_CHANGED"):
+        bind_positioned_photo_circuit_from_catalog(
+            half, signed.record, catalog, aliases=signed.aliases,
+        )
+    tampered = replace(reconstructed, nets=tuple(
+        replace(net, members=tuple(
+            PinRef("DA1", "4") if pin == PinRef("DA1", "3") else pin
+            for pin in net.members
+        )) if net.name == "FEEDBACK" else net
+        for net in reconstructed.nets
+    ))
+    with pytest.raises(ValueError, match="NET_IDENTITY_OR_MEMBERSHIP_CHANGED"):
+        bind_positioned_photo_circuit_from_catalog(
+            tampered, signed.record, catalog, aliases=signed.aliases,
+        )
