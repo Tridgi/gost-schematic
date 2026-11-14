@@ -115,6 +115,42 @@ jobs:
           pytest -q tests/test_full_native_cycle9.py
           python -m examples.render_tl494_full_native_cycle9 \
             --font-file "$REVIEW_FONT" --output output/eskd-cycle10-real-paint
+          # Rebuild the ACTUAL typed frozen Circuit, independent of rendered
+          # SVG and of the owner-produced declarative manifest. Fail if the
+          # original 62 physical PinRefs or 16 DA1 numbers are lost.
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          from examples.render_tl494_full_native_cycle9 import construct_native_paint
+          source = construct_native_paint(Path(os.environ["REVIEW_FONT"]))
+          circuit, graph, _, _, _, _, _, _, continuation, _, _ = source
+          facts = {
+              "source_sha": os.environ["SOURCE_SHA"],
+              "components": sorted(part.reference for part in circuit.components),
+              "nets": [
+                  {
+                      "name": net.name,
+                      "members": sorted(f"{m.reference}.{m.number}" for m in net.members)
+                  } for net in circuit.nets
+              ],
+              "wire_segments": len(graph.segments),
+              "junctions": len(graph.junctions),
+              "nonphysical_b": [end.id for end in continuation.endpoints],
+              "all_15_nets_routed": False,
+          }
+          refs = [r for n in facts["nets"] for r in n["members"]]
+          assert len(facts["components"]) == 23
+          assert len(facts["nets"]) == 15
+          assert len(refs) == len(set(refs)) == 62
+          assert len(graph.segments) == 91 and len(graph.junctions) == 37
+          assert {r.split(".", 1)[1] for r in refs if r.startswith("DA1.")} == {
+              str(i) for i in range(1,17)
+          }
+          path = Path("output/eskd-cycle10-real-paint/TL494_real_source_62_pinrefs.json")
+          path.write_text(json.dumps(facts, indent=2, sort_keys=True)+"\\n")
+          print("PASS independent true source: 23 parts, 15 Nets, 62 PinRef, 16 DA1")
+          PY
           for mode in clean diagnostic; do
             svg="output/eskd-cycle10-real-paint/TL494_native_23_bottom_to_top_${mode}.svg"
             test -s "$svg"
@@ -128,13 +164,16 @@ jobs:
             --folder output/eskd-cycle10-real-paint \
             --profile src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json \
             --out "$GITHUB_WORKSPACE/output/eskd_cycle10_native_print_gate.json" \
-            --verify-png --expect-source-blocked
+            --verify-png \
+            --typed-inventory output/eskd-cycle10-real-paint/TL494_real_source_62_pinrefs.json \
+            --expect-source-blocked
       - uses: actions/upload-artifact@v4
         with:
           name: ESKD-real-native-NOGO-${{ matrix.python-version }}
           path: |
             output/eskd_cycle10_native_print_gate.json
             ${{ env.PAINT_OWNER_ROOT }}/output/eskd-cycle10-real-paint/TL494_full_native_23_engine_manifest.json
+            ${{ env.PAINT_OWNER_ROOT }}/output/eskd-cycle10-real-paint/TL494_real_source_62_pinrefs.json
             ${{ env.PAINT_OWNER_ROOT }}/output/eskd-cycle10-real-paint/TL494_native_23_bottom_to_top_clean.svg
             ${{ env.PAINT_OWNER_ROOT }}/output/eskd-cycle10-real-paint/TL494_native_23_bottom_to_top_diagnostic.svg
             ${{ env.PAINT_OWNER_ROOT }}/output/eskd-cycle10-real-paint/TL494_native_23_bottom_to_top_clean-300dpi.png
