@@ -135,10 +135,30 @@ def compose_authoritative_ic_layers(
             "data-physical-pin-count": str(len(authoritative)),
             "data-typed-net-count": str(len(circuit.nets)),
         })
+        target_layer = None
         for child in paint_xml:
-            if child.tag != _NS+"title":
-                native.append(child)
+            if child.tag == _NS+"title":
+                continue
+            if child.get("data-layer") == "editor-connection-targets":
+                if not diagnostic or target_layer is not None:
+                    raise ValueError("SHEET_IC_EDITOR_LAYER_MULTIPLE_OR_IN_CLEAN")
+                target_layer = child
+                continue
+            native.append(child)
+        if diagnostic and target_layer is None:
+            raise ValueError("SHEET_IC_VERIFIED_EDITOR_LAYER_MISSING")
         root.insert(index, native)
+        # Original native renderer prints wires *after* symbol groups. If
+        # the verified pin squares stayed in this symbol group, the real
+        # copper line would paint BLACK across each 0.7mm green square's
+        # center. In the genuinely interactive diagnostic overlay, physical
+        # contact targets MUST be the final foreground layer, and MUST NOT
+        # be duplicated or leak into clean print SVG/PDF.
+        if target_layer is not None:
+            target_layer.set("data-reference", reference)
+            target_layer.set("data-layer-order", "after-all-copper")
+            target_layer.set("data-circuit-provenance", "verified-pinrefs-and-nets")
+            root.append(target_layer)
         for text in list(root):
             if (text.tag == _NS+"text"
                     and text.get("data-layer") == "annotations"
