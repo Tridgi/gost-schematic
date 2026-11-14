@@ -56,6 +56,13 @@ jobs:
               --output "$OUTPUT" "$INPUT"
           done
           test "$(find output/ic-cycle7 -name 'ic-*-300dpi.png' | wc -l)" -eq 20
+          for INPUT in output/ic-cycle7/portrait-*-clean.svg output/ic-cycle7/portrait-*-diagnostic.svg; do
+            test -f "$INPUT"
+            OUTPUT="${INPUT%.svg}-300dpi.png"
+            rsvg-convert --background-color white --dpi-x 300 --dpi-y 300 \
+              --output "$OUTPUT" "$INPUT"
+          done
+          test "$(find output/ic-cycle7 -name 'portrait-*-300dpi.png' | wc -l)" -eq 16
       - name: Verify DPI, text/stroke distances, anchors and create comparison
         run: |
           python - <<'PY'
@@ -121,6 +128,72 @@ jobs:
                                   found+=1
                               assert found>=5
                               imgs.append((f"{count} pins | {group}",pic.convert("RGB").copy()))
+          # Four PORTRAIT source-immutable 90/0 pairs, two layers and 300DPI.
+          assert len(report["portrait_cases"])==4
+          for count in (8,14,40,64):
+              pair=report["portrait_cases"][str(count)]
+              assert pair["90"]["source_anchors"]==pair["0"]["source_anchors"]
+              assert pair["90"]["body_width_um"]==pair["0"]["body_width_um"]
+              assert pair["90"]["body_height_um"]==pair["0"]["body_height_um"]
+              assert pair["90"]["body_height_um"]>pair["90"]["body_width_um"]
+              functions=[]
+              others=[]
+              for angle in (90,0):
+                  key=f"portrait-{count:02d}-function-{angle:02d}"
+                  source=root/f"{key}-clean.svg"
+                  xml=ET.fromstring(source.read_text())
+                  assert xml.get("data-typography-profile")=="portrait_function_v2_draft"
+                  assert xml.get("data-orientation")=="left_right"
+                  assert xml.get("data-approval")=="DRAFT"
+                  assert xml.get("data-font-sha256")==report["font"]["sha256"]
+                  leads=xml.findall(".//{http://www.w3.org/2000/svg}line[@data-pin-id]")
+                  assert len(leads)==count
+                  functions.append(xml.find(".//{http://www.w3.org/2000/svg}text[@data-kind='function']"))
+                  others.append([
+                      (el.get("data-kind"),el.get("data-owner"),
+                       el.text,el.get("x"),el.get("y"),el.get("transform"))
+                      for el in xml.findall(".//{http://www.w3.org/2000/svg}text")
+                      if el.get("data-kind")!="function"
+                  ])
+                  assert pair[str(angle)]["minimum_ink_clearance_um"]>=1000
+                  for variant in ("clean","diagnostic"):
+                      svg=ET.fromstring((root/f"{key}-{variant}.svg").read_text())
+                      w=float(svg.get("width").removesuffix("mm"))
+                      h=float(svg.get("height").removesuffix("mm"))
+                      png=root/f"{key}-{variant}-300dpi.png"
+                      with Image.open(png) as original:
+                          assert all(abs(a-b)<=1 for a,b in zip(
+                              original.size,(round(w*300/25.4),round(h*300/25.4))
+                          ))
+                          original.save(png,dpi=(300,300))
+                      with Image.open(png) as raster:
+                          assert all(abs(a-300)<.2 for a in raster.info["dpi"])
+                          assert raster.convert("L").getextrema()[0]<150
+                          if variant=="clean":
+                              x0,y0,*_=map(float,svg.get("viewBox").split())
+                              grey=raster.convert("L")
+                              boxes=pair[str(angle)]["glyph_ink_boxes"]
+                              assert boxes
+                              found=0
+                              for glyph in boxes[::max(1,len(boxes)//60)]:
+                                  _,_,x1,y1,x2,y2=glyph
+                                  factor=300/25.4/1000
+                                  crop=(
+                                      max(0,int((x1-1000*x0)*factor)-3),
+                                      max(0,int((y1-1000*y0)*factor)-3),
+                                      min(raster.width,int((x2-1000*x0)*factor)+4),
+                                      min(raster.height,int((y2-1000*y0)*factor)+4),
+                                  )
+                                  assert crop[0]<crop[2] and crop[1]<crop[3]
+                                  assert grey.crop(crop).getextrema()[0]<150,(key,glyph)
+                                  found+=1
+                              assert found>=5
+              assert functions[0].text==functions[1].text==(
+                  "ADC" if count==8 else "PWM"
+              )
+              assert functions[0].get("transform","").startswith("matrix(")
+              assert functions[1].get("transform") is None
+              assert others[0]==others[1],("non-function text moved",count)
           # Two row comparison is visual only, NOT physical 1:1 paper scale.
           panel=(930,1250)
           sheet=Image.new("RGB",(panel[0]*5,panel[1]*2),"white")
