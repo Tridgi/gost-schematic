@@ -21,6 +21,10 @@ from gost_schematic.electrical.ic import (
     resolve_ic_pin_positions,
     validate_ic_circuit,
 )
+from gost_schematic.electrical.ic_agent_snapshot import (
+    snapshot_ic_for_agent,
+    verify_agent_ic_snapshot,
+)
 from gost_schematic.electrical.ic_graphic_revision import (
     IcGeometryConsent,
     ic_record_fingerprint,
@@ -232,12 +236,13 @@ def test_graphic_revision_gate_requires_exact_pin_specific_consent(count):
 def test_text_only_and_geometry_revisions_fail_on_circuit_identity_mutation():
     record = synthetic_ic(14)
     new = revise_ic_text_orientation(record, IcTextAngle.VERTICAL)
-    foreign = replace(new, device=replace(
-        new.device, identifier="TEST_IC_DIGITAL_MALICIOUS",
-    ))
-    # IcLibraryRecord rejects foreign device before revision gate can read it.
+    # IcLibraryRecord rejects a foreign device even before the revision
+    # gate can be invoked: no phantom component or dropped physical pin.
     with pytest.raises(ValueError):
-        IcLibraryRecord(foreign.device, new.specs, new.placements)
+        IcLibraryRecord(
+            replace(new.device, identifier="TEST_IC_DIGITAL_MALICIOUS"),
+            new.specs, new.placements,
+        )
     with pytest.raises(ValueError, match="IC_REVISION_PHYSICAL_IDENTITY_CHANGED"):
         validate_ic_graphic_revision(record, replace(
             new, placements=tuple(replace(
@@ -328,3 +333,65 @@ def test_real_paint_top_bottom_text_poses_preserve_true_physical_side(count, ang
             )), str(error)
         else:
             assert len(outcome.pin_anchors) == len(view.pins)
+
+
+@pytest.mark.parametrize("count", COUNTS)
+def test_agent_lossless_ic_archive_keeps_nc_oc_power_units_and_nets(count):
+    source = synthetic_ic(count)
+    physical = _network(source)
+    cached = physical.nets
+    first = snapshot_ic_for_agent(source, physical)
+    encoded = first.to_json()
+    recovered = verify_agent_ic_snapshot(encoded, physical)
+    assert recovered == first
+    assert recovered.record == source
+    assert recovered.record.device.units == source.device.units
+    assert recovered.record.device.pins == source.device.pins
+    assert len(recovered.record.device.units) == (2 if count >= 14 else 1)
+    assert source.device.pin_map[str(count)].electrical_type.value == "nc"
+    assert source.device.pin_map[str(count - 1)].electrical_type.value == "power_input"
+    assert source.device.pin_map[str(count - 2)].electrical_type.value == "open_collector"
+    assert physical.nets is cached
+    assert all(not p.reference.endswith(".1") for net in physical.nets
+               for p in net.members)
+    # #96 ProjectService v1 cannot store multi-unit/NC via legacy PartDefinition.
+    with pytest.raises(ValueError, match="IC_UNSAFE_LEGACY_ADAPTER"):
+        source.device.to_legacy_part("unsafe-legacy-ic")
+
+
+def test_agent_archive_corruption_wrong_nets_or_stale_revision_fails():
+    record = synthetic_ic(14)
+    circuit = _network(record)
+    stored = snapshot_ic_for_agent(record, circuit).to_json()
+    json_doc = json.loads(stored)
+    json_doc["ic_record_sha256"] = "0" * 64
+    with pytest.raises(ValueError, match="IC_AGENT_RECORD_HASH_MISMATCH"):
+        verify_agent_ic_snapshot(json.dumps(json_doc), circuit)
+    json_doc = json.loads(stored)
+    json_doc["connected_nets"][0]["numbers"][0] = "14"
+    with pytest.raises(ValueError, match="IC_AGENT_NET_PINREF_INVALID"):
+        verify_agent_ic_snapshot(json.dumps(json_doc), circuit)
+    other = Circuit(
+        circuit.components,
+        (Net("CHANGED", (PinRef("DD1", "1"),)),),
+    )
+    with pytest.raises(ValueError, match="IC_AGENT_REAL_NET_MEMBERSHIP_CHANGED"):
+        verify_agent_ic_snapshot(stored, other)
+    with pytest.raises(ValueError, match="IC_AGENT_DUPLICATE_JSON_KEY"):
+        verify_agent_ic_snapshot('{"format":"a","format":"b"}', circuit)
+    with pytest.raises(ValueError, match="IC_AGENT_NONINTEGER_JSON"):
+        verify_agent_ic_snapshot('{"format":1.0}', circuit)
+
+
+def test_agent_archive_preserves_function_angle_v2_without_legacy_downcast():
+    source = synthetic_ic(14)
+    switched = revise_ic_text_orientation(source, IcTextAngle.VERTICAL)
+    circuit = _network(switched)
+    saved = snapshot_ic_for_agent(switched, circuit).to_json()
+    loaded = verify_agent_ic_snapshot(saved, circuit)
+    assert all(
+        s.profile.function_angle is IcTextAngle.VERTICAL
+        for s in loaded.record.specs
+    )
+    assert json.loads(ic_to_json(loaded.record))["schema_version"] == 2
+    assert loaded.record.device.pin_map["14"].electrical_type.value == "nc"
