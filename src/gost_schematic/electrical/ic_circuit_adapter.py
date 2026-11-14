@@ -419,6 +419,8 @@ def bind_ic_circuit(
     if record.device.identifier == TI_DEVICE_ID:
         verify_tl494cn_ti_pinout(record.device)
     ref = record.placements[0].component_ref
+    if len({n.name for n in circuit.nets}) != len(circuit.nets):
+        raise ValueError("IC_ADAPTER_DUPLICATE_NET")
     # The common IC validator does not distinguish duplicate entries in a
     # single Net from ownership across two Nets. Preserve typed error cases
     # BEFORE running the older IC-only validator; neither may be ignored.
