@@ -30,6 +30,7 @@ jobs:
       YGO_SHA: 5a79ea6039f495e19a7b22deece24eb2af6ed8e5
       NET_SHA: 8499d2311681b60f3c510ad65bd4ee5cbc61882a
       RECON_SHA: 8f8b3645beacdc3b7c4382ec97b12268624fdd76
+      NETREF_SHA: 2d9668966bc5dbe023608d42340dcfb46e31234d
       PAINT_PINNED_NATIVE_REQUIRED: "1"
     steps:
       - uses: actions/checkout@v4
@@ -39,7 +40,7 @@ jobs:
       - name: Stage EXACT source and latest complete TI/NET/YGO owner HEADs
         run: |
           set -euo pipefail
-          for ref in "$SOURCE_SHA" "$IC_SHA" "$YGO_SHA" "$NET_SHA" "$RECON_SHA"; do
+          for ref in "$SOURCE_SHA" "$IC_SHA" "$YGO_SHA" "$NET_SHA" "$RECON_SHA" "$NETREF_SHA"; do
             git fetch --no-tags --depth=1 origin "$ref"
             test "$(git rev-parse "$ref")" = "$ref"
           done
@@ -57,6 +58,10 @@ jobs:
           done
           git show "$IC_SHA:examples/tl494_cycle9_circuit_integration.py" \
             > examples/tl494_cycle9_circuit_integration.py
+          # Frozen original source uses the real typed b NetContinuationProject
+          # from the independent NETREF owner; it does not exist in base PAINT.
+          git show "$NETREF_SHA:src/gost_schematic/electrical/netrefs.py" \
+            > src/gost_schematic/electrical/netrefs.py
           for p in \
             src/gost_schematic/catalog/source_profiles.py \
             src/gost_schematic/catalog/source_footprints.py \
@@ -80,6 +85,7 @@ jobs:
           test -f src/gost_schematic/electrical/ic_editor_targets.py
           test -f src/gost_schematic/electrical/ic_circuit_adapter.py
           test -f examples/tl494_cycle9_circuit_integration.py
+          test -f src/gost_schematic/electrical/netrefs.py
           test -f examples/tl494_v5/cycle11_ti_bridge.py
           test -f examples/tl494_v5/route_candidate_driver.py
           test -f src/gost_schematic/catalog/source_footprints.py
