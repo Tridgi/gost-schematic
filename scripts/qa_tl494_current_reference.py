@@ -27,8 +27,8 @@ from gost_schematic.model.circuit import PinRef
 
 NS = "{http://www.w3.org/2000/svg}"
 SOURCE_SHA = "e695c415fdced164b0e0c39c5249d030795a0aa6"
-OWNER_PAINT_SHA = "79ddb2ae57efd9ea621d64914a324988b343061d"
-OWNER_ELEKTRIK_SHA = "66458de0e56474800e70f5d4fd1fd88b16b210f9"
+OWNER_PAINT_SHA = "8623d2c9ea11963ed0d795575e4e95666ab69f7a"
+OWNER_ELEKTRIK_SHA = "8451a87bfa17344670017a6a07b460b8b4cf4835"
 SOURCE_BLOBS = {
     "examples/tl494_named_photo_sheet.py":
         "990a1aca651f34dcae991575dddfa28b2acae813",
@@ -485,6 +485,195 @@ def geometry_gate(ctx, svg):
     }
 
 
+def _as_um(value):
+    return round(float(value) * 1000)
+
+
+def _point_segment_um(px, py, first, last):
+    dx, dy = last[0] - first[0], last[1] - first[1]
+    t = ((px - first[0]) * dx + (py - first[1]) * dy) / (
+        dx * dx + dy * dy
+    )
+    t = max(0.0, min(1.0, t))
+    return math.hypot(px - first[0] - t * dx, py - first[1] - t * dy)
+
+
+def _cross2(a, b, p):
+    return (b[0] - a[0]) * (p[1] - a[1]) - (
+        b[1] - a[1]
+    ) * (p[0] - a[0])
+
+
+def _segments_intersect(a, b, c, d):
+    c1, c2, c3, c4 = (
+        _cross2(a, b, c), _cross2(a, b, d),
+        _cross2(c, d, a), _cross2(c, d, b),
+    )
+    if c1 * c2 > 0 or c3 * c4 > 0:
+        return False
+    return (
+        max(min(a[0], b[0]), min(c[0], d[0]))
+        <= min(max(a[0], b[0]), max(c[0], d[0]))
+        and max(min(a[1], b[1]), min(c[1], d[1]))
+        <= min(max(a[1], b[1]), max(c[1], d[1]))
+    )
+
+
+def _strokes_gap_um(wire, glyph, glyph_stroke_um):
+    a = (wire["x1"], wire["y1"])
+    b = (wire["x2"], wire["y2"])
+    c, d = glyph
+    if _segments_intersect(a, b, c, d):
+        distance = 0.0
+    else:
+        distance = min(
+            _point_segment_um(*a, c, d),
+            _point_segment_um(*b, c, d),
+            _point_segment_um(*c, a, b),
+            _point_segment_um(*d, a, b),
+        )
+    return distance - (wire["stroke_um"] + glyph_stroke_um) / 2
+
+
+def _segment_through_open_box(w, bounds):
+    """Return true only for positive wire length inside the *open* box."""
+    xlo, ylo, xhi, yhi = bounds
+    if w["y1"] == w["y2"]:
+        return (
+            ylo < w["y1"] < yhi
+            and min(w["x2"], xhi) > max(w["x1"], xlo)
+            if w["x1"] < w["x2"] else
+            ylo < w["y1"] < yhi
+            and min(w["x1"], xhi) > max(w["x2"], xlo)
+        )
+    if w["x1"] == w["x2"]:
+        return (
+            xlo < w["x1"] < xhi
+            and min(max(w["y1"], w["y2"]), yhi)
+            > max(min(w["y1"], w["y2"]), ylo)
+        )
+    return False
+
+
+def symbol_and_ic_obstacle_gate(ctx, svg):
+    """Independent measured PAINT/body and real UGO strokes vs authored wires.
+
+    Supports exact SVG line primitives and PAINT's real measured text ink.
+    Curved/arc geometry is explicitly unapproved, not assumed clear.
+    """
+    circuit, graph, parts, symbols, poses, unit, *_ = ctx
+    wires = svg_lines(svg)
+    members = {
+        (p.reference, p.number): net.name
+        for net in circuit.nets for p in net.members
+    }
+    byref = {c.reference: c for c in circuit.components}
+    line_clashes, legal_pin_contacts, unsupported = [], [], []
+    for group in svg.iter(NS + "g"):
+        ref = group.get("data-reference")
+        if not ref or ref not in byref:
+            continue
+        expected = {
+            (point.x, point.y): (ref, num, members.get((ref, num)))
+            for num, point in poses[ref].items()
+        }
+        for idx, glyph in enumerate(group):
+            if glyph.tag != NS + "line":
+                if glyph.tag in (NS + "path", NS + "circle"):
+                    unsupported.append({
+                        "ref": ref, "tag": glyph.tag.split("}")[-1]
+                    })
+                continue
+            a = glyph.attrib
+            glyph_stroke = _as_um(a.get(
+                "stroke-width", group.get("stroke-width", "0.3")
+            ))
+            segment = (
+                (_as_um(a["x1"]), _as_um(a["y1"])),
+                (_as_um(a["x2"]), _as_um(a["y2"])),
+            )
+            for w in wires:
+                gap = _strokes_gap_um(w, segment, glyph_stroke)
+                if gap >= 1000:
+                    continue
+                # A genuine contact to its OWN physical source terminal
+                # is legal only if both the actual wire and glyph touch
+                # that same endpoint with exact integer-µm identity.
+                own = [
+                    (num, pt) for pt, (device, num, net) in expected.items()
+                    if device == ref and net == w["net"]
+                    and pt in segment
+                    and pt in ((w["x1"], w["y1"]),
+                               (w["x2"], w["y2"]))
+                ]
+                case = {
+                    "ref": ref, "glyph_line": idx, "wire": w["index"],
+                    "net": w["net"], "stroke_edge_gap_mm":
+                        round(gap / 1000, 6),
+                    "symbol_line_um": [list(segment[0]), list(segment[1])],
+                    "wire_um": [w["x1"], w["y1"], w["x2"], w["y2"]],
+                }
+                if own and gap >= -(
+                    w["stroke_um"] + glyph_stroke
+                ) / 2:
+                    legal_pin_contacts.append(case)
+                else:
+                    line_clashes.append(case)
+    # The central 16-pin PAINT housing is NOT represented by the 22
+    # standard catalog <g data-reference> groups above.
+    body = (
+        unit.origin.x + unit.body.min_x,
+        unit.origin.y + unit.body.min_y,
+        unit.origin.x + unit.body.max_x,
+        unit.origin.y + unit.body.max_y,
+    )
+    through_body = [
+        {"wire": w["index"], "net": w["net"],
+         "geometry_um": [w["x1"], w["y1"], w["x2"], w["y2"]]}
+        for w in wires if _segment_through_open_box(w, body)
+    ]
+    text_ink_hits = []
+    text_nodes = list(svg.findall(f".//{NS}text[@data-ink-um]"))
+    for t in text_nodes:
+        box = tuple(int(x) for x in t.attrib["data-ink-um"].split(","))
+        if len(box) != 4:
+            raise AssertionError("IC_PAINT_TEXT_INK_BOX_INVALID")
+        text_ink_hits.extend({
+            "wire": w["index"], "net": w["net"],
+            "text": t.text, "region": t.get("data-owner"),
+            "measured_ink_um": list(box),
+        } for w in wires if _segment_through_open_box(w, box))
+    line_clashes.sort(key=lambda x: x["stroke_edge_gap_mm"])
+    return {
+        "source_body_um": list(body),
+        "line_ugo_obstacle_hits_below_1mm": line_clashes[:250],
+        "line_ugo_obstacle_count": len(line_clashes),
+        "legal_original_pin_join_count": len(legal_pin_contacts),
+        "DA1_frame_internal_wire_count": len(through_body),
+        "DA1_frame_internal_wires": through_body[:50],
+        "true_opengost_measured_text_ink_boxes": len(text_nodes),
+        "measured_text_ink_wire_intrusions": text_ink_hits[:60],
+        "ink_wire_intrusion_count": len(text_ink_hits),
+        "curves_not_approvable_from_line_only_DRC": len(unsupported),
+        "curves_by_reference": dict(Counter(x["ref"] for x in unsupported)),
+        "status": {
+            "unlicensed_ugo_stroke_intrusions": (
+                "FAIL" if any(x["stroke_edge_gap_mm"] < 0
+                              for x in line_clashes) else "BLOCKED"
+            ),
+            "DA1_physical_body_unlicensed_wires": (
+                "FAIL" if through_body else "PASS"
+            ),
+            "measured_text_ink_intrusions": (
+                "FAIL" if text_ink_hits else "PASS"
+            ),
+            "full_ugo_ink_normative_1to1": (
+                "BLOCKED_CURVES_AND_NON_IC_ANNOTATION_METRICS"
+            ),
+        },
+    }
+
+
 def pixel_box(bounds_mm, vb, png_wh):
     x0, y0, x1, y1 = bounds_mm
     factorx = png_wh[0] / vb[2]
@@ -652,6 +841,9 @@ def main():
             if name == "P2_TI_PIN_ALIASES_AND_PWM":
                 status = ("FAIL" if "FAIL" in evidence["checks"].values()
                           else "PASS")
+            if name == "P3_SYMBOL_AND_DA1_OBSTACLES":
+                status = ("FAIL" if "FAIL" in evidence["status"].values()
+                          else "BLOCKED")
             if name == "P3_STROKE_AWARE_DRC":
                 status = ("FAIL" if "FAIL" in evidence["status"].values()
                           else "PASS")
@@ -684,6 +876,9 @@ def main():
         gate("P1_REAL_CATALOG_AND_48_D4", lambda: part_gate(typed))
         gate("P2_TI_PIN_ALIASES_AND_PWM", lambda: ic_gate(typed, svg))
         gate("P3_STROKE_AWARE_DRC", lambda: geometry_gate(typed, svg))
+        gate("P3_SYMBOL_AND_DA1_OBSTACLES", lambda: symbol_and_ic_obstacle_gate(
+            typed, svg
+        ))
         gate("P3_NEGATIVE_EXACT_UM", run_negative_spacing)
         gate("P4_REAL_IMAGES", lambda: visual_gate(
             typed, clean, diag, args
