@@ -171,8 +171,8 @@ def generate(output: Path, font_file: Path) -> dict:
             for item in vertical.record.device.pins
         },
         "short_labels": TI_SHORT_LABELS,
-        "pin_group_left": TI_E3_LEFT,
-        "pin_group_right": TI_E3_RIGHT,
+        "pin_group_left": list(TI_E3_LEFT),
+        "pin_group_right": list(TI_E3_RIGHT),
         "source_photo_pin_order_reproduced": False,
         "photo_routing_untouched": True,
         "net_assignment_verified": False,
