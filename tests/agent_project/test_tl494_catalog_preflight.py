@@ -51,8 +51,9 @@ def test_ambiguous_coil_is_not_forced_to_ferromagnetic():
     choices = {row["part_id"] for row in options["candidates"]}
     assert "inductor.ferromagnetic" in choices
     assert "inductor.ferrite" in choices
-    assert "inductor.air_core" in choices
-    assert len(choices) > 2
+    assert "inductor.air_core" not in choices
+    assert "inductor.variable" not in choices
+    assert len(choices) >= 3
     assert options["selection_required"]
 
 
@@ -62,6 +63,13 @@ def test_ambiguous_coil_is_not_forced_to_ferromagnetic():
     ("n channel enhancement mosfet", "transistor.mosfet_n_enh"),
     ("предохранитель", "fuse.general"),
 ])
+def test_generic_mosfet_excludes_unrelated_bjt_shapes():
+    options = catalog_search(CatalogResolver(), "mosfet")
+    assert options["candidate_count"] >= 2
+    assert all(row["part_id"].startswith("transistor.mosfet")
+               for row in options["candidates"])
+
+
 def test_explicit_phrase_only_returns_existing_part(word, expected):
     report = catalog_search(CatalogResolver(), word)
     assert [row["part_id"] for row in report["candidates"]] == [expected]
