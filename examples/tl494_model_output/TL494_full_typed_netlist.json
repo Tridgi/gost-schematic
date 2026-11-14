@@ -2,27 +2,27 @@
   "elements": [
     {
       "nominal_si": "0.000220",
-      "part_id": "capacitor.electrolytic",
+      "part_id": "capacitor.polarized",
       "ref": "C1"
     },
     {
       "nominal_si": "0.000220",
-      "part_id": "capacitor.electrolytic",
+      "part_id": "capacitor.polarized",
       "ref": "C2"
     },
     {
       "nominal_si": "0.000047",
-      "part_id": "capacitor.electrolytic",
+      "part_id": "capacitor.polarized",
       "ref": "C3"
     },
     {
       "nominal_si": "0.001000",
-      "part_id": "capacitor.electrolytic",
+      "part_id": "capacitor.polarized",
       "ref": "C5"
     },
     {
       "nominal_si": "0.001000",
-      "part_id": "capacitor.electrolytic",
+      "part_id": "capacitor.polarized",
       "ref": "C6"
     },
     {
@@ -120,27 +120,27 @@
   "native_erc_diagnostics": [
     {
       "code": "UNAPPROVED_SYMBOL",
-      "message": "Symbol capacitor.electrolytic is draft, not approved",
+      "message": "Symbol capacitor.polarized is draft, not approved",
       "severity": "warning"
     },
     {
       "code": "UNAPPROVED_SYMBOL",
-      "message": "Symbol capacitor.electrolytic is draft, not approved",
+      "message": "Symbol capacitor.polarized is draft, not approved",
       "severity": "warning"
     },
     {
       "code": "UNAPPROVED_SYMBOL",
-      "message": "Symbol capacitor.electrolytic is draft, not approved",
+      "message": "Symbol capacitor.polarized is draft, not approved",
       "severity": "warning"
     },
     {
       "code": "UNAPPROVED_SYMBOL",
-      "message": "Symbol capacitor.electrolytic is draft, not approved",
+      "message": "Symbol capacitor.polarized is draft, not approved",
       "severity": "warning"
     },
     {
       "code": "UNAPPROVED_SYMBOL",
-      "message": "Symbol capacitor.electrolytic is draft, not approved",
+      "message": "Symbol capacitor.polarized is draft, not approved",
       "severity": "warning"
     },
     {
