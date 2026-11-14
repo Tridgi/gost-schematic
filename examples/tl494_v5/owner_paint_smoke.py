@@ -25,7 +25,7 @@ def generate_da1_only(output: Path, font_file: Path) -> dict:
     assembly = assemble_native_v5()
     inspection = inspect_type_a_font(
         font_file, h_um=3500,
-        family="OpenGost Type A TT", require_family_match=True,
+        family="OpenGOST type A", require_family_match=True,
     )
     style = inspection.style
     measurer = PillowTextMeasurer()
