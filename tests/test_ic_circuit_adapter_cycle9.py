@@ -231,7 +231,7 @@ def test_adapter_missing_foreign_or_duplicate_catalog_and_ic_pin_fail_closed():
     binding, _ = _photo()
     with pytest.raises(ValueError, match="EXTERNAL_PIN_INVENTORY_INCOMPLETE"):
         _bind_revised(binding, inventory={})
-    with pytest.raises(ValueError, match="UNKNOWN_IC_PHYSICAL_PIN"):
+    with pytest.raises(ValueError, match="nonexistent physical IC pin"):
         _bind_revised(binding, circuit=_change_net(
             binding, "FEEDBACK", (PinRef("R3", "2"), PinRef("DA1", "99")),
         ))
@@ -316,7 +316,7 @@ def test_unmatched_alias_and_wrong_semantics_fail_at_circuit_adapter_boundary():
     changed_record = IcLibraryRecord(
         changed_device, binding.record.specs, binding.record.placements,
     )
-    with pytest.raises(ValueError, match="IC_ALIAS_MANUFACTURER_SEMANTIC_MISMATCH"):
+    with pytest.raises(ValueError, match="TL494_TI_PIN_FUNCTION_OR_ELECTRICAL_TYPE"):
         bind_ic_circuit(
             changed_record, binding.circuit, aliases=binding.aliases,
             external_pin_numbers=dict(binding.external_pin_numbers),
