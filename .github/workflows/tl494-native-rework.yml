@@ -1,0 +1,75 @@
+name: TL494 true native engine proof
+
+on:
+  push:
+    branches:
+      - reference/tl494-native-rework-20261114
+    paths:
+      - examples/tl494_native_rework.py
+      - .github/workflows/tl494-native-rework.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  native-reference:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install real OpenGost Type A font and Python dependencies
+        run: |
+          set -euxo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq rpm2cpio cpio fontconfig
+          curl --fail --location --retry 3 \
+            https://fr2.rpmfind.net/linux/opensuse/tumbleweed/repo/oss/noarch/opengost-ttf-fonts-0.3-7.32.noarch.rpm \
+            -o /tmp/opengost.rpm
+          mkdir -p /tmp/opengost
+          (cd /tmp/opengost && rpm2cpio /tmp/opengost.rpm | cpio -idm --quiet)
+          FONT="$(find /tmp/opengost -name 'OpenGostTypeA-Regular.ttf' -print -quit)"
+          test -n "$FONT"
+          mkdir -p "$HOME/.local/share/fonts"
+          cp "$FONT" "$HOME/.local/share/fonts/OpenGostTypeA-Regular.ttf"
+          fc-cache -f "$HOME/.local/share/fonts"
+          fc-match 'OpenGost Type A TT'
+          python -m pip install --disable-pip-version-check 'Pillow>=10,<13' cairosvg
+      - name: Native render, diagnostic manifest and PNG
+        id: render
+        continue-on-error: true
+        run: |
+          set +e
+          mkdir -p examples/tl494_native_output
+          PYTHONPATH=src python -m examples.tl494_native_rework \
+            --font-file "$HOME/.local/share/fonts/OpenGostTypeA-Regular.ttf" \
+            --output examples/tl494_native_output \
+            > examples/tl494_native_output/native_build_log.txt 2>&1
+          RESULT=$?
+          echo "ENGINE_EXIT_CODE=$RESULT" >> examples/tl494_native_output/native_build_log.txt
+          cat examples/tl494_native_output/native_build_log.txt
+          if [ "$RESULT" -ne 0 ]; then exit 1; fi
+          python - <<'PY'
+          from pathlib import Path
+          import cairosvg
+          from PIL import Image
+          root=Path('examples/tl494_native_output')
+          for mode in ['clean','diagnostic']:
+              source=root/f'TL494_native_power_{mode}.svg'
+              target=root/f'TL494_native_power_{mode}.png'
+              cairosvg.svg2png(url=str(source),write_to=str(target),dpi=300)
+              im=Image.open(target)
+              im.save(target,dpi=(300,300))
+              print(mode,im.size,im.info.get('dpi'))
+          PY
+      - name: Always publish actual result and runtime errors to reference branch
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f examples/tl494_native_output/
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "build(reference): record native TL494 power-stage proof and diagnostic output"
+          git push origin HEAD:reference/tl494-native-rework-20261114
