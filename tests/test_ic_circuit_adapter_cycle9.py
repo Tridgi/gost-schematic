@@ -14,7 +14,6 @@ from examples.tl494_cycle9_circuit_integration import (
     FROZEN_SOURCE_COMMIT,
     assert_frozen_photo_topology,
     build_frozen_photo_23,
-    load_frozen_source,
 )
 from gost_schematic.core.geometry import Point, Side
 from gost_schematic.core.transforms import Transform
