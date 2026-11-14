@@ -1,0 +1,133 @@
+name: QA92 real PAINT terminal green squares, ESKD power and merged P3
+
+on:
+  push:
+    branches: ["parallel/qa-electronic-cycle7"]
+  pull_request:
+    branches: ["integration/stage0-12"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-physical-target-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - name: Checkout actual merged experimental integration (read-only pinned SHA)
+        uses: actions/checkout@v4
+        with:
+          ref: 1cdd11a3e72e467573d5d660db923b201be21df9
+          persist-credentials: false
+      - name: Checkout existing QA #99 test file, do not create tests anew
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: _qa_sources/qa
+          persist-credentials: false
+      - name: Checkout actual PAINT #93, immutable source
+        uses: actions/checkout@v4
+        with:
+          ref: 165017630dc911c3006eda35424d8293498db100
+          path: _qa_sources/paint
+          persist-credentials: false
+      - name: Checkout actual ELEKTRIK IC #97, immutable source
+        uses: actions/checkout@v4
+        with:
+          ref: 20bd39c794bc375937fe332c173e17955554d1e1
+          path: _qa_sources/ic
+          persist-credentials: false
+      - name: Verify exact Git SHA and overlay original production files only inside disposable runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = 1cdd11a3e72e467573d5d660db923b201be21df9
+          test "$(git -C _qa_sources/paint rev-parse HEAD)" = 165017630dc911c3006eda35424d8293498db100
+          test "$(git -C _qa_sources/ic rev-parse HEAD)" = 20bd39c794bc375937fe332c173e17955554d1e1
+          python - <<'PY'
+          from pathlib import Path
+          from shutil import copy2
+
+          def staged(owner, pattern, destination):
+              originals = list(Path("_qa_sources", owner).glob(pattern))
+              assert originals, (owner, pattern)
+              for original in originals:
+                  if not original.is_file():
+                      continue
+                  target = Path(destination) / original.name
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  copy2(original, target)
+
+          staged("qa", "scripts/qa_cycle7_pin_squares.py", "scripts")
+          staged("paint", "src/gost_schematic/rendering/ic_*.py",
+                 "src/gost_schematic/rendering")
+          staged("paint", "examples/review_ic_cycle7.py", "examples")
+          staged("ic", "src/gost_schematic/electrical/ic*.py",
+                 "src/gost_schematic/electrical")
+          source = Path("_qa_sources/ic/tests/fixtures/electrical-ic-cycle7")
+          destination = Path("tests/fixtures/electrical-ic-cycle7")
+          destination.mkdir(parents=True, exist_ok=True)
+          copied = 0
+          for path in source.glob("TEST_IC_*.json"):
+              copy2(path, destination / path.name)
+              copied += 1
+          assert copied >= 10, copied
+          print("CI source overlay only; merged integration remains untouched")
+          PY
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install genuine E3 code, QA tools and PDF renderer
+        run: python -m pip install -e ".[dev,mcp,fonts]" cairosvg pillow pymupdf
+      - name: Ruff strict QA test and original application modules
+        run: |
+          ruff check scripts/qa_cycle7_pin_squares.py
+          ruff check src/gost_schematic/rendering/ic_rectangular.py src/gost_schematic/rendering/ic_hotspots.py src/gost_schematic/rendering/ic_electrical_binding.py src/gost_schematic/electrical/ic.py src/gost_schematic/electrical/ic_paint_bridge.py
+      - name: OpenGost real glyph face, SHA-256 verified direct release, no API quota
+        shell: bash
+        run: |
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          from urllib.request import urlopen
+          from scripts.install_opengost_type_a import select_font_asset
+
+          url = "https://github.com/ingenium-am/open-gost-arm/releases/download/v0.7/OpenGOST_TTF_0.7.zip"
+          name, content = select_font_asset(
+              [{"name": "OpenGOST_TTF_0.7.zip", "browser_download_url": url}],
+              getter=lambda u: urlopen(u, timeout=30).read(),
+          )
+          expected = "f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a"
+          assert sha256(content).hexdigest() == expected, "WRONG_REAL_OPENGOST"
+          dest = Path.home() / ".local/share/fonts" / ("OpenGOST-TypeA-" + name)
+          dest.parent.mkdir(parents=True, exist_ok=True)
+          dest.write_bytes(content)
+          print("Verified font hash", expected)
+          PY
+          fc-cache -f
+          FONT_PATH="$(find "$HOME/.local/share/fonts" -type f -iname '*TypeA*.ttf' | head -1)"
+          test -n "$FONT_PATH" && test -f "$FONT_PATH"
+          echo "QA92_FONT=$FONT_PATH" >> "$GITHUB_ENV"
+      - name: Independent original PAINT gallery, typed PinRef/Point, negative Net, 300DPI PNG and clean PDF
+        run: |
+          python -m scripts.qa_cycle7_pin_squares --font-file "$QA92_FONT" --output-dir "output/qa92-green-square-py${{ matrix.python-version }}"
+      - name: Run complete existing merged experimental integration regression suite
+        if: always()
+        run: |
+          pytest -q
+          python scripts/audit_symbol_catalog.py --output "output/qa92-integration-catalog-py${{ matrix.python-version }}.json"
+      - name: Upload exact SVG, real 300DPI PNG, clean PDFs and PASS/FAIL/BLOCKED matrix (NO font files)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa92-terminal-squares-py${{ matrix.python-version }}
+          path: |
+            output/qa92-green-square-py${{ matrix.python-version }}/
+            output/qa92-integration-catalog-py${{ matrix.python-version }}.json
+          if-no-files-found: warn
+          retention-days: 30

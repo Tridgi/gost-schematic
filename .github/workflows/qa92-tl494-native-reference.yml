@@ -1,0 +1,109 @@
+name: QA92 TL494 real 23-part source E3 3mm DRC and 300DPI
+
+on:
+  push:
+    branches: ["parallel/qa-electronic-cycle7"]
+  pull_request:
+    branches: ["integration/stage0-12"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tl494-independent-real-reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - name: Checkout EXISTING independent QA #99, unchanged old gates
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Checkout exact CURRENT 23-part real-source reference e695
+        uses: actions/checkout@v4
+        with:
+          ref: e695c415fdced164b0e0c39c5249d030795a0aa6
+          path: _qa_sources/reference
+          persist-credentials: false
+      - name: Checkout real current PAINT #93 HEAD, not the historical owner snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: e3ea841dbe087952577121d5690fe41e9a9a5c83
+          path: _qa_sources/paint
+          persist-credentials: false
+      - name: Checkout real current ELEKTRIK IC #97 HEAD, not historical source
+        uses: actions/checkout@v4
+        with:
+          ref: 6161e9102cbc0c9e0491fb27ed7a496dc0b274bc
+          path: _qa_sources/ic
+          persist-credentials: false
+      - name: Verify all three commits, stage real owner source ONLY in disposable runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C _qa_sources/reference rev-parse HEAD)" = e695c415fdced164b0e0c39c5249d030795a0aa6
+          test "$(git -C _qa_sources/paint rev-parse HEAD)" = e3ea841dbe087952577121d5690fe41e9a9a5c83
+          test "$(git -C _qa_sources/ic rev-parse HEAD)" = 6161e9102cbc0c9e0491fb27ed7a496dc0b274bc
+          cp scripts/qa_tl494_current_reference.py _qa_sources/reference/scripts/qa_tl494_current_reference.py
+          for file in _qa_sources/paint/src/gost_schematic/rendering/ic_*.py; do
+            cp "$file" _qa_sources/reference/src/gost_schematic/rendering/
+          done
+          for file in _qa_sources/ic/src/gost_schematic/electrical/ic*.py _qa_sources/ic/src/gost_schematic/electrical/tl494cn.py; do
+            test -f "$file"
+            cp "$file" _qa_sources/reference/src/gost_schematic/electrical/
+          done
+          echo "Exact source restaged only inside temp GitHub runner; never merge/edit owner PRs"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install actual reference package and real PNG 300DPI + QA tools
+        run: python -m pip install -e "./_qa_sources/reference[dev,fonts,mcp]" cairosvg numpy pillow
+      - name: Ruff QA-only script must pass
+        run: ruff check scripts/qa_tl494_current_reference.py
+      - name: Install exact original Type A TT font used in pinned reference sheet
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq rpm2cpio cpio fontconfig
+          curl --fail --location --retry 3 \
+            https://fr2.rpmfind.net/linux/opensuse/tumbleweed/repo/oss/noarch/opengost-ttf-fonts-0.3-7.32.noarch.rpm \
+            -o /tmp/qa-tl494-typeA.rpm
+          mkdir -p /tmp/qa-tl494-opengost
+          (cd /tmp/qa-tl494-opengost && rpm2cpio /tmp/qa-tl494-typeA.rpm | cpio -idm --quiet)
+          FONT="$(find /tmp/qa-tl494-opengost -name 'OpenGostTypeA-Regular.ttf' -print -quit)"
+          test -n "$FONT" && test -f "$FONT"
+          mkdir -p "$HOME/.local/share/fonts"
+          cp "$FONT" "$HOME/.local/share/fonts/OpenGostTypeA-Regular.ttf"
+          fc-cache -f "$HOME/.local/share/fonts"
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          file = Path.home()/".local/share/fonts/OpenGostTypeA-Regular.ttf"
+          found=sha256(file.read_bytes()).hexdigest()
+          assert found == "f5c539d432e2fceae137ad746d4acfdcca941d2c7349f013a5bf60231d3e6d01", found
+          print("Actual exact source OpenGost Type A TT font", found)
+          PY
+          echo "QA_TL494_FONT=$HOME/.local/share/fonts/OpenGostTypeA-Regular.ttf" >> "$GITHUB_ENV"
+      - name: Run real source 23/15/16/91, original-owner source, real D4, 3mm DRC, true PNG 300DPI and crops
+        shell: bash
+        run: |
+          cd _qa_sources/reference
+          PYTHONPATH=src:. python scripts/qa_tl494_current_reference.py \
+            --reference-root . \
+            --owner-paint ../paint \
+            --owner-ic ../ic \
+            --font-file "$QA_TL494_FONT" \
+            --output-dir "../../output/qa92-tl494-py${{ matrix.python-version }}"
+      - name: Publish exact committed clean SVG, real regenerated clean/diagnostic PNG, zooms and independent matrix even if red
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa92-real-tl494-23part-py${{ matrix.python-version }}
+          path: output/qa92-tl494-py${{ matrix.python-version }}/
+          if-no-files-found: warn
+          retention-days: 30

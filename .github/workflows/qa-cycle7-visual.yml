@@ -1,0 +1,81 @@
+name: QA Cycle 7 genuine owner SVG and 300 DPI evidence
+
+on:
+  push:
+    branches: ["parallel/qa-electronic-cycle7"]
+  pull_request:
+    branches: ["integration/stage0-12"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reviewed-real-owner-visuals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install source library, actual glyph tools and SVG pixel renderer
+        run: python -m pip install -e ".[dev,fonts]" cairosvg
+      - name: Ruff for executable QA scripts and tests
+        run: |
+          ruff check tests/qa_cycle7_support.py tests/qa_cycle7_discrete_test.py
+          ruff check scripts/qa_cycle7_ic_visual.py scripts/qa_cycle7_discrete_gallery.py
+          ruff check tests/qa_cycle7_electrical_sources.py tests/qa_cycle7_real_electrical_test.py scripts/qa_cycle7_electrical_visual.py
+      - name: Install outside-repository verified real SIL OFL OpenGost Type A face
+        shell: bash
+        run: |
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          from urllib.request import urlopen
+          from scripts.install_opengost_type_a import select_font_asset
+
+          url = (
+              "https://github.com/ingenium-am/open-gost-arm/"
+              "releases/download/v0.7/OpenGOST_TTF_0.7.zip"
+          )
+          name, data = select_font_asset(
+              [{"name": "OpenGOST_TTF_0.7.zip", "browser_download_url": url}],
+              getter=lambda uri: urlopen(uri, timeout=30).read(),
+          )
+          expected = "f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a"
+          assert sha256(data).hexdigest() == expected, "Font SHA256 mismatch"
+          target = Path.home() / ".local/share/fonts" / (
+              "OpenGOST-TypeA-" + name
+          )
+          target.parent.mkdir(parents=True, exist_ok=True)
+          target.write_bytes(data)
+          print("Verified external OpenGost Type A:", expected)
+          PY
+          fc-cache -f
+          FONT_FILE="$(find "$HOME/.local/share/fonts" -type f -iname '*TypeA*.ttf' | head -1)"
+          test -n "$FONT_FILE" && test -f "$FONT_FILE"
+          VIEWER_FONT="$(fc-match -f '%{file}' 'OpenGost Type A')"
+          test "$(realpath "$FONT_FILE")" = "$(realpath "$VIEWER_FONT")"
+          echo "CYCLE7_OPENGOST=$FONT_FILE" >> "$GITHUB_ENV"
+      - name: Real PAINT #88 2 8 14 40 64-pin IC SVG plus per-glyph 300 DPI PNG pixels
+        run: |
+          python scripts/qa_cycle7_ic_visual.py \
+            --font-file "$CYCLE7_OPENGOST" \
+            --output-dir output/qa-cycle7
+      - name: Real YGO2 #89 three DRAFT discrete UGO SVG and 300 DPI PNG
+        run: |
+          python scripts/qa_cycle7_discrete_gallery.py \
+            --output-dir output/qa-cycle7
+      - name: Execute REAL ELEKTRIK 97/98 physical IC + net continuation and 300DPI SVG/PNG without phantom wires
+        run: |
+          python scripts/qa_cycle7_electrical_visual.py \
+            --output-dir output/qa-cycle7
+      - name: Upload reproducible verified source and output image manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-cycle7-real-ic-discrete-images
+          path: output/qa-cycle7/
+          retention-days: 30
+          if-no-files-found: warn
