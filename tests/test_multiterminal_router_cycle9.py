@@ -315,8 +315,11 @@ def test_actual_diagonal_stroke_not_false_blocked_by_empty_AABB(rotation, mirror
     assert _source_ink_collision(
         clear, obstacles, authorized_pins=frozenset(),
     ) is None
+    # Cross y=x at x=1500, not a merely nearby parallel diagonal.
+    # The previous y=x-900 probe had a 636µm true gap and could NOT touch
+    # two 300µm strokes; asserting that collision was a faulty negative test.
     colliding = WireSegment(
-        tx.apply(Point(1000, 100)), tx.apply(Point(2000, 1100)), "A",
+        tx.apply(Point(1000, 900)), tx.apply(Point(2000, 2100)), "A",
     )
     hit = _source_ink_collision(
         colliding, obstacles, authorized_pins=frozenset(),
