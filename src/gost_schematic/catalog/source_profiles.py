@@ -208,8 +208,16 @@ def bind_tl494_source(
     components: Iterable[ComponentInstance],
     parts: Mapping[str, PartDefinition],
     symbols: Mapping[str, SymbolDefinition],
+    *,
+    allow_relayout: bool = False,
 ) -> tuple[SourceGlyphBinding, ...]:
-    """Reject every wrong catalog choice, missing physical pin and changed D4."""
+    """Bind actual source roles. Source coordinates fixed unless explicitly relaid.
+
+    allow_relayout is for a NEW explicitly reviewed A3 layout; it changes
+    only where / how the existing typed symbol is placed, never its identity.
+    """
+    if type(allow_relayout) is not bool:
+        raise TypeError("allow_relayout must be a boolean")
     manifest = read_source_manifest()
     source_components = tuple(components)
     instances = {component.reference: component for component in source_components}
@@ -225,9 +233,17 @@ def bind_tl494_source(
                 f"{reference}: expected {expected}, got "
                 f"{None if inst is None else inst.part_id}"
             )
-        if (inst.transform.rotation != entry["rotation"]
-            or inst.transform.mirror_x != entry["mirror_x"]):
-            raise SymbolProfileMismatch(f"{reference}: source D4 pose changed")
+        source_origin = Point(*(
+            round(value * 1000) for value in entry["source_layout_origin_mm"]
+        ))
+        if not allow_relayout and (
+            inst.origin != source_origin
+            or inst.transform.rotation != entry["rotation"]
+            or inst.transform.mirror_x != entry["mirror_x"]
+        ):
+            raise SymbolProfileMismatch(
+                f"{reference}: frozen source origin/D4 pose changed"
+            )
         select_tl494_symbol(reference, (inst.part_id,))
         part = parts.get(inst.part_id)
         symbol = symbols.get(inst.part_id)

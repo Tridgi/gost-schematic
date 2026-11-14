@@ -233,3 +233,41 @@ def test_wrong_pin_number_is_not_a_valid_alias_of_correct_physical_role():
     ))
     with pytest.raises(SymbolProfileMismatch):
         source_footprint(replace(vd, part=wrong))
+
+
+def test_frozen_source_pose_cannot_move_but_opt_in_new_A3_may_relocate():
+    """New-A3 symbol obstacles must be re-derived, never reuse old 91-wire poses."""
+    manifest = read_source_manifest()
+    parts, symbols, original = {}, {}, []
+    for row in manifest["profiles"]:
+        s, p = load_catalog_pair(row["symbol_id"])
+        parts[p.identifier] = p
+        symbols[s.identifier] = s
+        origin = Point(*[round(x * 1000) for x in row["source_layout_origin_mm"]])
+        original.append(ComponentInstance(
+            row["reference"], p.identifier, origin,
+            Transform(row["rotation"], row["mirror_x"]),
+        ))
+    original = tuple(original)
+    preserved = bind_tl494_source(original, parts, symbols)
+    vd = original[0]
+    moved = (replace(
+        vd, origin=Point(205000, 138750), transform=Transform(270, True)
+    ), *original[1:])
+    with pytest.raises(SymbolProfileMismatch, match="frozen source"):
+        bind_tl494_source(moved, parts, symbols)
+    shifted = bind_tl494_source(
+        moved, parts, symbols, allow_relayout=True
+    )
+    assert shifted[0].pin_refs == preserved[0].pin_refs
+    assert shifted[0].pin_positions != preserved[0].pin_positions
+    pinmap = moved[0].pin_positions(shifted[0].symbol)
+    assert shifted[0].pin_positions == tuple(
+        pinmap[pin.number] for pin in shifted[0].part.pins
+    )
+    record = footprint_record(source_footprint(shifted[0]))
+    assert record["rotation"] == 270 and record["mirror_x"]
+    assert record["physical_pin_roles"][0]["name"] == "A"
+    assert record["physical_pin_roles"][1]["name"] == "K"
+    with pytest.raises(TypeError, match="boolean"):
+        bind_tl494_source(original, parts, symbols, allow_relayout="yes")

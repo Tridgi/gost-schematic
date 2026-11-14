@@ -43,3 +43,7 @@ The first 13 source positions were locked to real packaged `SymbolDefinition` an
 ## Blockers and dependencies
 
 **PASS (this owner's scope only)** if exact-head checks green. **BLOCKED** actual original photograph crop, independent normalized+calibrated ГОСТ↔SVG 1:1 overlay and ESKD figure acceptance; IRFZ44N/1N5822 vendor pin numbers; router 15/15 Net tree; full A3 layout DRC and user print. Current MAIN 3 checkpoint: NET #114 **8/15** only, old original 91-wire route known BAD; this owner will not falsely claim a clean printed TL494 sheet. Main/integration, #105 XP/XS, and frozen user reference unmodified; no merge.
+
+## Explicit original-source versus new-A3 poses
+
+`bind_tl494_source(..., allow_relayout=False)` now checks exact original reference branch **position AND D4**, as well as locked UGO ID and actual physical roles. It fails on a moved original symbol, including VD1. To build a distinct documented **new A3** placement, the consumer MUST opt in via `allow_relayout=True`; all physical `PinRef` numbers and symbolic pin roles are still source-locked and every new point/obstacle is recomputed from the actual moved `ComponentInstance`. This prevents copying obstacles from an old sheet or silently treating A3 re-layout as a byte-identical photo fixture. Boolean values are type checked; no generic "best fit" fallback.
