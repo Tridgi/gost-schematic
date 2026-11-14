@@ -24,9 +24,10 @@ from gost_schematic.agent_project.design_assistant import (
     TL494_REQUIRED_PARTS,
 )
 from gost_schematic.agent_project.owner_source_contract import (
+    verify_cycle11_owner_bridge_surfaces,
     verify_frozen_owner_fixture,
-    verify_pinned_owner_headers,
     verify_owner_reversible_display,
+    verify_pinned_owner_headers,
 )
 
 
@@ -198,6 +199,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--owner-fixture", type=Path, required=True)
     parser.add_argument("--ic-header", type=Path, required=True)
     parser.add_argument("--recon-header", type=Path, required=True)
+    parser.add_argument("--ic-integration", type=Path, required=True)
+    parser.add_argument("--recon-ti-bridge", type=Path, required=True)
+    parser.add_argument("--recon-b-continuation", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args(argv)
     catalog = CatalogResolver()
@@ -208,6 +212,12 @@ def main(argv: list[str] | None = None) -> int:
         _read_trusted(args.ic_header), _read_trusted(args.recon_header),
     )
     display = verify_owner_reversible_display(source, owner)
+    live_bridges = verify_cycle11_owner_bridge_surfaces(
+        _read_trusted(args.ic_integration),
+        _read_trusted(args.recon_ti_bridge),
+        _read_trusted(args.recon_b_continuation),
+        source,
+    )
     output = args.out
     if output.exists() and (
         output.is_symlink()
@@ -250,6 +260,7 @@ def main(argv: list[str] | None = None) -> int:
         "physical_nominal_strings_preserved": source["source_nominals_preserved_as_literals"],
         "real_source_nets": source["source_nets"],
         "owner_part_id_bridge": owner,
+        "owner_cycle11_bridge": live_bridges,
         "reversible_net_display": display,
         "real_UGO_samples": samples,
         "typed_readiness_exit": code,
