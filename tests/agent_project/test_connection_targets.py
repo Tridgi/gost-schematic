@@ -7,11 +7,11 @@ import pytest
 from gost_schematic.agent_project import ProjectError, ProjectService
 from gost_schematic.agent_project.connection_targets import (
     ConnectionTarget,
-    NetIdentity,
     _candidate_reason,
     build_connection_targets,
 )
 from gost_schematic.agent_project.trusted_import import import_six_part
+from gost_schematic.electrical.netrefs import NetIdentity
 from gost_schematic.model.circuit import PinRef
 
 PID = "a8fb3921-48e3-43a4-8ce3-4a0b82e345ec"
@@ -135,8 +135,9 @@ def test_passive_and_directional_roles_are_only_provisional(role):
 
 
 def test_same_printed_vcc_name_never_merges_distinct_net_uuids():
-    net1 = NetIdentity("ea01e706-fbd3-40a8-801a-af3acb132930", "VCC")
-    net2 = NetIdentity("4b7c5e33-b129-4f70-aee0-68c174f2868f", "VCC")
+    pins = (PinRef("DD1", "2"),)
+    net1 = NetIdentity("ea01e706-fbd3-40a8-801a-af3acb132930", "VCC", pins)
+    net2 = NetIdentity("4b7c5e33-b129-4f70-aee0-68c174f2868f", "VCC", pins)
     assert _candidate_reason(
         _target("s", "POWER_INPUT", net1),
         _target("t", "PASSIVE", net2),
