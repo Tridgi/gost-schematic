@@ -309,10 +309,7 @@ def test_real_paint_two_text_poses_same_physical_lr_view(count, angle):
 @pytest.mark.parametrize("angle", (IcTextAngle.HORIZONTAL, IcTextAngle.VERTICAL))
 def test_real_paint_top_bottom_text_poses_preserve_true_physical_side(count, angle):
     paint = pytest.importorskip("gost_schematic.rendering.ic_rectangular")
-    from gost_schematic.electrical.ic_paint_bridge import (
-        bind_ic_paint_text_only,
-        propose_ic_paint_binding,
-    )
+    from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
     from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
     from gost_schematic.standards.type_a_font import inspect_type_a_font
 
@@ -512,10 +509,7 @@ def test_portrait_left_right_paint_0_and_90_contract_proof(count):
 @pytest.mark.parametrize("count", (8, 14, 40, 64))
 def test_real_paint_exports_measured_field_requirements_and_ink_guards(count):
     paint = pytest.importorskip("gost_schematic.rendering.ic_rectangular")
-    from gost_schematic.electrical.ic_paint_bridge import (
-        bind_ic_paint_text_only,
-        propose_ic_paint_binding,
-    )
+    from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
     from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
     from gost_schematic.standards.type_a_font import inspect_type_a_font
 
