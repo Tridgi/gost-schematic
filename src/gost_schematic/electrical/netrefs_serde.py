@@ -8,6 +8,8 @@ import json
 
 from gost_schematic.core.geometry import Point
 from gost_schematic.electrical.netrefs import (
+    ContinuationAddressBinding,
+    ContinuationAddressKind,
     ContinuationDirection,
     ContinuationPair,
     ContinuationScope,
@@ -72,7 +74,7 @@ def netrefs_to_json(project: NetContinuationProject) -> str:
     if issues:
         raise ValueError("; ".join(issue.code for issue in issues))
     value = {
-        "schema_version": 1, "record_type": "DRAFT_E3_NET_CONTINUATIONS",
+        "schema_version": project.schema_version, "record_type": "DRAFT_E3_NET_CONTINUATIONS",
         "nets": [{
             "id": n.id, "net_name": n.net_name,
             "members": [_pin(p) for p in n.members],
@@ -94,19 +96,29 @@ def netrefs_to_json(project: NetContinuationProject) -> str:
             "pin": _pin(s.pin), "start_um": _p(s.start), "end_um": _p(s.end),
         } for s in project.stubs],
     }
+    if project.schema_version == 2:
+        value["address_bindings"] = [{
+            "endpoint_id": record.endpoint_id,
+            "kind": record.kind.value, "owner_ref": record.owner_ref,
+            "physical_pin": _pin(record.physical_pin) if record.physical_pin else None,
+        } for record in project.address_bindings]
     return json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
 
 
 def netrefs_from_json(text: str, circuit: Circuit) -> NetContinuationProject:
     if type(text) is not str or not isinstance(circuit, Circuit):
         raise TypeError("Decoder requires text and REAL existing Circuit")
-    raw = _obj(
-        json.loads(text, object_pairs_hook=_pairs, parse_constant=_constant),
-        {"schema_version", "record_type", "nets", "sheets",
-         "endpoints", "pairs", "stubs"},
-    )
-    if type(raw["schema_version"]) is not int or raw["schema_version"] != 1:
+    raw = json.loads(text, object_pairs_hook=_pairs, parse_constant=_constant)
+    if type(raw) is not dict:
+        raise ValueError("Expected JSON object")
+    version = raw.get("schema_version")
+    if type(version) is not int or version not in (1, 2):
         raise ValueError("Unsupported continuation schema version")
+    keys = {"schema_version", "record_type", "nets", "sheets",
+            "endpoints", "pairs", "stubs"}
+    if version == 2:
+        keys.add("address_bindings")
+    raw = _obj(raw, keys)
     if raw["record_type"] != "DRAFT_E3_NET_CONTINUATIONS":
         raise ValueError("Not an E3 continuation overlay")
     bindings = []
@@ -144,9 +156,22 @@ def netrefs_from_json(text: str, circuit: Circuit) -> NetContinuationProject:
             s["id"], s["endpoint_id"], _decode_pin(s["pin"]),
             _decode_point(s["start_um"]), _decode_point(s["end_um"]),
         ))
+    address_bindings = []
+    if version == 2:
+        for record in _arr(raw["address_bindings"]):
+            record = _obj(record, {
+                "endpoint_id", "kind", "owner_ref", "physical_pin",
+            })
+            address_bindings.append(ContinuationAddressBinding(
+                record["endpoint_id"], ContinuationAddressKind(record["kind"]),
+                record["owner_ref"],
+                _decode_pin(record["physical_pin"])
+                if record["physical_pin"] is not None else None,
+            ))
     project = NetContinuationProject(
         circuit, tuple(bindings), tuple(sheets), tuple(ends),
-        tuple(pairs), tuple(stubs),
+        tuple(pairs), tuple(stubs), schema_version=version,
+        address_bindings=tuple(address_bindings),
     )
     issues = validate_net_continuations(project)
     if issues:
