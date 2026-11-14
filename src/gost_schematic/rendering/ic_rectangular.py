@@ -524,6 +524,11 @@ def render_resolved_ic(
                 "IC_POWER_CONTROL_OUTLINE_SOURCE_REQUIRED: "
                 "source-authored fig6a contour is not an ordinary IC box"
             )
+        if power_audit.layout is IcPowerLayout.FREE_SHEET_TEXT:
+            raise ValueError(
+                "IC_POWER_SHEET_TEXT_SOURCE_REQUIRED: "
+                "do not invent a free-sheet supply note or a power connection"
+            )
     if editor_overlay and not targets:
         raise ValueError("IC_EDITOR_OVERLAY_REQUIRES_EXPLICIT_TARGET_METADATA")
     if unit.orientation is IcOrientation.TOP_BOTTOM:
