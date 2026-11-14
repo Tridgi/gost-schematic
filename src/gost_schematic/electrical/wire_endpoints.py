@@ -147,6 +147,20 @@ def _interior(wire: WireSegment, point: Point) -> bool:
     return _on(wire, point) and point not in (wire.start, wire.end)
 
 
+def _positive_collinear_overlap(first: WireSegment, second: WireSegment) -> bool:
+    if not _on(first, second.start) and not _on(first, second.end):
+        # Check collinearity of supporting lines, not endpoints confined to
+        # the segment (partial overlaps need not contain either whole wire).
+        a, b = first.start, first.end
+        for p in (second.start, second.end):
+            if (b.x - a.x) * (p.y - a.y) != (b.y - a.y) * (p.x - a.x):
+                return False
+    axis = "x" if first.start.x != first.end.x else "y"
+    f = sorted((getattr(first.start, axis), getattr(first.end, axis)))
+    g = sorted((getattr(second.start, axis), getattr(second.end, axis)))
+    return max(f[0], g[0]) < min(f[1], g[1])
+
+
 def _crossing(first: WireSegment, second: WireSegment) -> Point | None:
     """Only proper orthogonal interior/interior intersections (no T or overlap)."""
     a_horizontal = first.start.y == first.end.y
@@ -295,15 +309,57 @@ def collect_wire_endpoints(
         for second in graph.segments[:i]:
             if first.net_name == second.net_name:
                 continue
-            if _on(first, second.start) and _on(first, second.end):
-                raise ValueError("WIRE_END_CROSS_NET_COLLINEAR_SHORT")
-            if _on(second, first.start) and _on(second, first.end):
+            if _positive_collinear_overlap(first, second):
                 raise ValueError("WIRE_END_CROSS_NET_COLLINEAR_SHORT")
 
     for junction in graph.junctions:
         touching = [segment.net_name for segment in graph.segments if _on(segment, junction)]
         if len(touching) < 2 or len(set(touching)) != 1:
             raise ValueError("WIRE_END_INVALID_OR_CROSS_NET_JUNCTION")
+
+    # A Net name on an orphan drawn segment is NOT evidence of an actual
+    # physical connection. Determine same-net islands from AUTHORITATIVE
+    # authored graph rules (shared endpoints, overlap, explicit junctions).
+    # Unmarked T/X contacts do NOT union islands.
+    parents = list(range(len(graph.segments)))
+
+    def find(i: int) -> int:
+        while parents[i] != i:
+            parents[i] = parents[parents[i]]
+            i = parents[i]
+        return i
+
+    def union(a: int, b: int) -> None:
+        x, y = find(a), find(b)
+        parents[max(x, y)] = min(x, y)
+
+    for i, segment in enumerate(graph.segments):
+        for j, earlier in enumerate(graph.segments[:i]):
+            if segment.net_name != earlier.net_name:
+                continue
+            common_endpoint = any(
+                p in (earlier.start, earlier.end)
+                for p in (segment.start, segment.end)
+            )
+            common_junction = any(
+                _on(segment, p) and _on(earlier, p) for p in graph.junctions
+            )
+            if common_endpoint or common_junction or _positive_collinear_overlap(
+                segment, earlier,
+            ):
+                union(i, j)
+    anchored_islands: set[int] = set()
+    net_owners = {
+        n.net_name: frozenset(n.members) for n in nets
+    }
+    for i, segment in enumerate(graph.segments):
+        for pin, point in pin_positions.items():
+            if pin not in net_owners[segment.net_name]:
+                continue
+            if point in (segment.start, segment.end) or (
+                point in graph.junctions and _on(segment, point)
+            ):
+                anchored_islands.add(find(i))
 
     ids = set()
     ends: list[WireEndpoint] = []
@@ -370,11 +426,19 @@ def collect_wire_endpoints(
                         None, None, "WIRE_ENDPOINT_JOIN",
                     )
                 else:
-                    blocked = (wire_id, side) in blocked_wire_ends
-                    termination, state, ref, cont, reason = (
+                    blocked = (
+                        (wire_id, side) in blocked_wire_ends
+                        or find(index) not in anchored_islands
+                    )
+                    reason = (
+                        "UNANCHORED_CONDUCTOR_ISLAND" if find(index) not in anchored_islands
+                        else "POLICY_BLOCKED" if (wire_id, side) in blocked_wire_ends
+                        else "FREE_WIRE_END"
+                    )
+                    termination, state, ref, cont = (
                         WireTermination.FREE,
                         TargetState.BLOCKED if blocked else TargetState.AVAILABLE,
-                        None, None, "POLICY_BLOCKED" if blocked else "FREE_WIRE_END",
+                        None, None,
                     )
             eligible = termination is WireTermination.FREE and state is TargetState.AVAILABLE
             end_id = f"{wire_id}:{side.value}"
