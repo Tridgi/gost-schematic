@@ -332,6 +332,28 @@ def generate(folder: Path, font_file: Path):
             pair["90"]["body_width_um"] == pair["0"]["body_width_um"]
             and pair["90"]["body_height_um"] == pair["0"]["body_height_um"]
         )
+        if count == 64:
+            # The selected A4 drawing zone is too short for this explicit
+            # 64-pin portrait revision; a non-scaled A3 landscape zone fits.
+            try:
+                render_resolved_ic(
+                    p90, style, measure, policy=policy,
+                    page_bounds=Box(20000, 5000, 205000, 237000),
+                )
+            except ValueError as exc:
+                if "IC_PAGE_OVERFLOW" not in str(exc):
+                    raise
+            else:
+                raise AssertionError("IC_A4_OVERFLOW_MUST_FAIL_CLOSED")
+            ok_a3 = render_resolved_ic(
+                p90, style, measure, policy=policy,
+                page_bounds=Box(0, 0, 420000, 297000),
+            )
+            assert len(ok_a3.pin_anchors) == 64
+            pair["page_fit"] = {
+                "A4_selected_zone": "FAIL_IC_PAGE_OVERFLOW",
+                "A3_landscape": "PASS_NO_RESCALE",
+            }
         report["portrait_cases"][str(count)] = pair
 
     (folder / "ic-metric-audit.json").write_text(
