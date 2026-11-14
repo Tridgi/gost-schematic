@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300mm" height="112mm" viewBox="0 0 300 112" data-status="DRAFT_EDITORIAL_RECONSTRUCTION" data-copyright="not-a-copy-of-normative-original" data-primary-source="https://meganorm.ru/Data/190/19085.pdf#page=15">
+<title>ГОСТ 2.743-91 чертёж 6: структурное сравнение вариантов a, б, в — НЕ копия ГОСТ</title>
+<desc>Проектная демонстрационная реконструкция трёх смысловых вариантов отображения питания. Оригинал: печатная страница 14, PDF page 15. Не применять размеры этого рисунка как нормативные.</desc>
+<rect x="0" y="0" width="300" height="112" fill="white"/>
+<g font-family="sans-serif" fill="black" font-size="3.3">
+<text x="50" y="7" text-anchor="middle">6а: общий блок управления</text>
+<text x="150" y="7" text-anchor="middle">6б: питание в одном элементе ИС</text>
+<text x="250" y="7" text-anchor="middle">6в: отдельный контур ИС</text>
+</g>
+<g stroke="black" stroke-width="0.3" fill="none" stroke-linejoin="miter">
+<rect x="30" y="21" width="39" height="38"/>
+<path d="M 19 30 H 30 M19 42 H30 M19 53 H30"/>
+<rect x="30" y="59" width="39" height="6"/>
+<rect x="125" y="21" width="39" height="38"/>
+<path d="M114 30 H125 M114 42 H125 M114 53 H125 M164 40 H174"/>
+<rect x="125" y="75" width="39" height="17"/>
+<path d="M114 83 H125 M164 83 H174"/>
+<rect x="226" y="20" width="35" height="38"/>
+<path d="M215 29 H226 M215 43 H226"/>
+<rect x="262" y="20" width="30" height="19"/>
+<path d="M253 30 H262 M292 30 H298"/>
+<rect x="226" y="70" width="30" height="19"/>
+<path d="M217 79 H226 M256 79 H263"/>
+<rect x="265" y="70" width="29" height="19"/>
+<path d="M258 79 H265 M294 79 H299"/>
+</g>
+<g font-family="sans-serif" fill="black" font-size="3.7">
+<text x="33" y="19">DD1</text>
+<text x="33" y="33">+5V</text>
+<text x="33" y="45">0V</text>
+<text x="33" y="56">EN</text>
+<text x="128" y="19">DD2.1</text>
+<text x="145" y="29">&amp;</text>
+<text x="128" y="44">+5V</text>
+<text x="128" y="56">0V</text>
+<text x="128" y="73">DD2.2</text>
+<text x="143" y="86">&amp;</text>
+<text x="228" y="18">DD3</text>
+<text x="228" y="33">+5V</text>
+<text x="228" y="48">0V</text>
+<text x="264" y="18">DD3.1</text>
+<text x="276" y="32">&amp;</text>
+<text x="228" y="68">DD3.2</text>
+<text x="239" y="81">&amp;</text>
+<text x="265" y="68">DD3.3</text>
+<text x="278" y="81">&amp;</text>
+</g>
+<g fill="#555" font-family="sans-serif" font-size="2.9">
+<text x="50" y="101" text-anchor="middle">Один физический DD1</text>
+<text x="150" y="101" text-anchor="middle">Один DD2, разделённые DD2.n</text>
+<text x="250" y="101" text-anchor="middle">Один DD3, отдельный блок питания</text>
+<text x="150" y="108" text-anchor="middle">СХЕМАТИЧЕСКАЯ ИНТЕРПРЕТАЦИЯ — НЕ ПЕРЕЧЕРЧЕННЫЙ НОРМАТИВНЫЙ ОРИГИНАЛ; длины и пропорции ПРОЕКТНЫЕ</text>
+</g>
+</svg>
