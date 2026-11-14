@@ -11,6 +11,7 @@ on:
       - 'tests/test_ic_graphic_profile_cycle7.py'
       - 'scripts/verify_ic_joint_visual_evidence.py'
       - 'examples/review_ic_paint_joint_cycle7.py'
+      - 'examples/review_ic_text_profile_cycle7.py'
       - '.github/workflows/ic-paint-cross-cycle7.yml'
   workflow_dispatch:
 
@@ -56,7 +57,7 @@ jobs:
           echo "IC_TYPE_A_FONT_PATH=$FONT_PATH" >> "$GITHUB_ENV"
           fc-cache -f
       - name: Ruff (owner-owned new files and joint tests)
-        run: ruff check src/gost_schematic/electrical/ic.py src/gost_schematic/electrical/ic_serde.py src/gost_schematic/electrical/ic_graphic_revision.py src/gost_schematic/electrical/ic_paint_bridge.py tests/test_ic_paint_joint_cycle7.py tests/test_ic_graphic_profile_cycle7.py examples/review_ic_paint_joint_cycle7.py scripts/verify_ic_joint_visual_evidence.py scripts/stamp_ic_joint_300dpi_metadata.py
+        run: ruff check src/gost_schematic/electrical/ic.py src/gost_schematic/electrical/ic_serde.py src/gost_schematic/electrical/ic_graphic_revision.py src/gost_schematic/electrical/ic_agent_snapshot.py src/gost_schematic/electrical/ic_paint_bridge.py tests/test_ic_paint_joint_cycle7.py tests/test_ic_graphic_profile_cycle7.py examples/review_ic_paint_joint_cycle7.py examples/review_ic_text_profile_cycle7.py scripts/verify_ic_joint_visual_evidence.py scripts/stamp_ic_joint_300dpi_metadata.py
       - name: Assert both packages exist and execute true 1um boundary tests
         run: |
           python -c 'import gost_schematic.electrical.ic_paint_bridge, gost_schematic.rendering.ic_rectangular'
@@ -76,6 +77,24 @@ jobs:
           python scripts/stamp_ic_joint_300dpi_metadata.py --output-dir output/ic-paint-joint-cycle7
           python scripts/verify_ic_joint_visual_evidence.py --output-dir output/ic-paint-joint-cycle7
           ( cd output/ic-paint-joint-cycle7 && sha256sum *.svg *.png *.json > SHA256SUMS.txt )
+      - name: Reproduce DRAFT PWM portrait/vertical paired-model evidence
+        if: matrix.python-version == '3.12'
+        run: |
+          python -m examples.review_ic_text_profile_cycle7 --font-file "$IC_TYPE_A_FONT_PATH" --output-dir output/ic-pwm-profile-cycle7
+          images="$(find output/ic-pwm-profile-cycle7 -maxdepth 1 -name '*.svg' -type f | wc -l)"
+          test "$images" -gt 0
+          for src in output/ic-pwm-profile-cycle7/*.svg; do
+            rsvg-convert --dpi-x 300 --dpi-y 300 "$src" -o "${src%.svg}.png"
+          done
+          python scripts/stamp_ic_joint_300dpi_metadata.py --output-dir output/ic-pwm-profile-cycle7 --expected-count "$images"
+          ( cd output/ic-pwm-profile-cycle7 && sha256sum *.svg *.png *.json > SHA256SUMS.txt )
+      - name: Upload paired 0/90 physical-model orientation evidence
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-cycle7-pwm-model-text-0-90-physical-net-proof
+          path: output/ic-pwm-profile-cycle7/
+          if-no-files-found: error
       - name: Upload reproducible joint QA evidence
         if: matrix.python-version == '3.12'
         uses: actions/upload-artifact@v4
