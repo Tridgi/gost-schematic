@@ -120,6 +120,12 @@ def generate(output:Path,font_file:Path):
                 PinRef("DA1","7"),PinRef("DA1","1"),
                 PinRef("DA1","16"),PinRef("R8","2"),
             )))
+        elif net.name=="INPUT_POS":
+            # The photographed letter a connects X1.1 to TL494 VCC
+            # and the linked output collector pins C1/C2 (8 and 11).
+            updated.append(add(net.name,(*net.members,
+                PinRef("DA1","12"),PinRef("DA1","8"),PinRef("DA1","11"),
+            )))
         else:
             updated.append(net)
     updated.append(add("GATE_DRIVE",(
@@ -162,6 +168,23 @@ def generate(output:Path,font_file:Path):
         S("GATE_DRIVE",Gate,Point(gate_x,Gate.y)),
         S("GATE_DRIVE",Point(gate_x,Gate.y),R8A),
     ])
+    # User source terminal "a": draw from X1.1 (input POSITIVE,
+    # not AC phase) to three real physical pins of TL494.
+    a12=pt("DA1","12")
+    a8=pt("DA1","8")
+    a11=pt("DA1","11")
+    a_x=P(145,0).x
+    a_top=P(0,75).y
+    if not (a12.x==a8.x==a11.x and a12.y<a8.y<a11.y):
+        raise AssertionError("Unexpected resolved a-net IC geometry")
+    copper.extend([
+        S("INPUT_POS",P(50,45),P(50,75)),
+        S("INPUT_POS",P(50,75),Point(a_x,a_top)),
+        S("INPUT_POS",Point(a_x,a_top),Point(a_x,a11.y)),
+        S("INPUT_POS",a12,Point(a_x,a12.y)),
+        S("INPUT_POS",a8,Point(a_x,a8.y)),
+        S("INPUT_POS",a11,Point(a_x,a11.y)),
+    ])
     original=source_graph()
     graph=ExternalWireGraph(
         segments=(*original.segments,*copper),
@@ -170,6 +193,7 @@ def generate(output:Path,font_file:Path):
             *(Point(common_x,p.y) for p in groundpins[1:]),
             Point(pt("R8","2").x,common_y),
             Point(gate_x,E1.y),Point(gate_x,E2.y),
+            P(50,45),Point(a_x,a12.y),Point(a_x,a8.y),
         ),
     )
     electrical=validate_external_wires(circuit,graph,parts,symbols)
@@ -244,9 +268,9 @@ def generate(output:Path,font_file:Path):
         "not_full_e3":True,
         "source":"native Circuit/PinRef + catalogue UGO + real PAINT IC drawing",
         "component_count":len(circuit.components),
-        "TL494_connected_pin_numbers":["1","7","9","10","16"],
+        "TL494_connected_pin_numbers":["1","7","8","9","10","11","12","16"],
         "TL494_unconnected_physical_pins":sorted(
-            set(str(i) for i in range(1,17)) - {"1","7","9","10","16"},key=int,
+            set(str(i) for i in range(1,17)) - {"1","7","8","9","10","11","12","16"},key=int,
         ),
         "segment_count":len(graph.segments),
         "font_sha256":style.font_sha256,
@@ -256,7 +280,8 @@ def generate(output:Path,font_file:Path):
         "erc_diagnostics":[{"code":d.code,"severity":d.severity.value,
                             "message":d.message} for d in erc],
         "variants":variants,
-        "next_requirement":"Integrate 10 remaining control elements and source a/b continuations",
+        "next_requirement":"Integrate remaining control elements and b continuation; a source path now connected",
+        "source_a_verified_as":"X1.1 = DA1.12(VCC) = DA1.8(C1) = DA1.11(C2)",
     }
     (output/"TL494_connected_manifest.json").write_text(
         json.dumps(report,ensure_ascii=False,sort_keys=True,indent=2)+"\n",
