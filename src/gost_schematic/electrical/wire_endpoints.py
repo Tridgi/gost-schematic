@@ -285,7 +285,20 @@ def collect_wire_endpoints(
             ]
             if len(matching) != 1 or marker.anchor in marker_by_point:
                 raise ValueError("WIRE_END_CONTINUATION_STUB_UNRESOLVED")
+            if marker.anchor in pin_positions.values():
+                raise ValueError("WIRE_END_CONTINUATION_IS_NOT_A_PHYSICAL_PIN")
             marker_by_point[marker.anchor] = (marker.id, marker.net_id, matching[0])
+
+    # Two foreign nets must never be silently accepted as overlapping copper.
+    # This is a read-only diagnostic rejection, NOT an automatic net repair.
+    for i, first in enumerate(graph.segments):
+        for second in graph.segments[:i]:
+            if first.net_name == second.net_name:
+                continue
+            if _on(first, second.start) and _on(first, second.end):
+                raise ValueError("WIRE_END_CROSS_NET_COLLINEAR_SHORT")
+            if _on(second, first.start) and _on(second, first.end):
+                raise ValueError("WIRE_END_CROSS_NET_COLLINEAR_SHORT")
 
     for junction in graph.junctions:
         touching = [segment.net_name for segment in graph.segments if _on(segment, junction)]
@@ -335,14 +348,21 @@ def collect_wire_endpoints(
                     and other.net_name == segment.net_name
                     for j, other in enumerate(graph.segments)
                 )
+                foreign_end = any(
+                    j != index and point in (other.start, other.end)
+                    and other.net_name != segment.net_name
+                    for j, other in enumerate(graph.segments)
+                )
                 other_interior = any(
                     j != index and _interior(other, point)
                     for j, other in enumerate(graph.segments)
                 )
-                if other_interior:
+                if other_interior or foreign_end:
                     termination, state, ref, cont, reason = (
                         WireTermination.UNMARKED_TOUCH, TargetState.BLOCKED,
-                        None, None, "T_TOUCH_REQUIRES_EXPLICIT_JUNCTION",
+                        None, None,
+                        "FOREIGN_NET_COINCIDENT_ENDPOINT" if foreign_end
+                        else "T_TOUCH_REQUIRES_EXPLICIT_JUNCTION",
                     )
                 elif other_end:
                     termination, state, ref, cont, reason = (
