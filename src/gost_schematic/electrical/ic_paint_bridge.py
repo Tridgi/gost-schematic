@@ -398,7 +398,7 @@ def propose_ic_paint_binding(
                 content, prelim, style, measurer, policy,
                 orientation=arrangement,
                 function_rotation=(
-                    0 if spec.profile.function_angle.value == 90 else 90
+                    0 if spec.profile.function_angle.value in (90, 270) else 270
                 ),
             )
             if alternate.row_pitch_um != dimensions.row_pitch_um:
