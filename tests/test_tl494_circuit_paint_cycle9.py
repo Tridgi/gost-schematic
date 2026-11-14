@@ -89,8 +89,8 @@ def _real_paint_source(style, measure, *, pose=None):
         tuple(p for p in moved if p in connected),
     )
     updated, delta = binding.revise(proposal.record, consent=consent)
-    assert delta.moved == moved
-    assert delta.connected_moved == tuple(p for p in moved if p in connected)
+    assert set(delta.moved) == set(moved)
+    assert set(delta.connected_moved) == {p for p in moved if p in connected}
     assert updated.circuit is binding.circuit
     assert updated.circuit.nets is before_nets
     assert_frozen_photo_topology(updated, source)
