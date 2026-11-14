@@ -427,3 +427,72 @@ def test_png_diagnostic_rejects_pin_center_covered_by_copper(tmp_path):
     with pytest.raises(gate.PrintEvidenceError,
                        match="GREEN_ENDPOINT_COVERED_BY_COPPER"):
         gate._verify_png(path, 10, root, diagnostic=True)
+
+
+def _synthetic_source_62():
+    # Contract-only data, never passed off as PAINT source evidence.
+    refs = [f"DA1.{n}" for n in range(1, 17)]
+    refs.extend(f"{ref}.1" for ref in REFERENCES if ref != "DA1")
+    refs.extend(
+        f"{ref}.2" for ref in REFERENCES if ref != "DA1"
+    )
+    assert len(refs) == 60
+    refs.extend(["R5.3", "X1.3"])
+    assert len(refs) == 62
+    return {
+        "source_sha": gate.FROZEN_SOURCE,
+        "components": sorted(REFERENCES),
+        "nets": [
+            {"name": f"TEST_NET_{i}",
+             "members": [ref for j, ref in enumerate(refs) if j % 15 == i]}
+            for i in range(15)
+        ],
+        "wire_segments": 91,
+        "junctions": 37,
+        "nonphysical_b": ["b-X2", "b-R5"],
+        "all_15_nets_routed": False,
+    }
+
+
+def test_true_typed_source_contract_requires_23_15_62_and_all_16():
+    data = gate._typed_source_62(_synthetic_source_62())
+    assert data["status"] == "PASS_SOURCE_INVENTORY_ONLY"
+    assert data["unique_pinref_memberships"] == 62
+    assert data["legacy_route_complete"] is False
+
+
+@pytest.mark.parametrize(("change", "code"), [
+    ("duplicate_pin", "62_UNIQUE_PINREFS"),
+    ("delete_one_pin", "62_UNIQUE_PINREFS"),
+    ("drop_da1_16", "ALL_16_DA1_PINREFS"),
+    ("unknown_component", "UNKNOWN_PINREF_COMPONENT"),
+    ("falsify_full_route", "ORIGINAL_91_CANNOT_CLAIM_NEW_FULL_ROUTE"),
+    ("change_frozen_source", "SOURCE_SHA_MISMATCH"),
+    ("drop_b", "B_GRAPHIC_NOT_PHYSICAL"),
+])
+def test_typed_source_adversarial_inventory(change, code):
+    facts = _synthetic_source_62()
+    if change == "duplicate_pin":
+        facts["nets"][0]["members"][0] = facts["nets"][1]["members"][0]
+    elif change == "delete_one_pin":
+        facts["nets"][0]["members"].pop()
+    elif change == "drop_da1_16":
+        for net in facts["nets"]:
+            net["members"] = [
+                "X1.8" if ref == "DA1.16" else ref
+                for ref in net["members"]
+            ]
+    elif change == "unknown_component":
+        for net in facts["nets"]:
+            net["members"] = [
+                "UNKNOWN.9" if ref == "DA1.16" else ref
+                for ref in net["members"]
+            ]
+    elif change == "falsify_full_route":
+        facts["all_15_nets_routed"] = True
+    elif change == "change_frozen_source":
+        facts["source_sha"] = "0" * 40
+    elif change == "drop_b":
+        facts["nonphysical_b"] = ["b-X2"]
+    with pytest.raises(gate.PrintEvidenceError, match=code):
+        gate._typed_source_62(facts)
