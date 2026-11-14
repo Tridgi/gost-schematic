@@ -465,7 +465,11 @@ def collect_wire_endpoints(
         unsafe = any(s.net_name != next(
             (n.net_name for n in nets if n.id == owner_net.get(pin)), None,
         ) for s in attached_segments)
-        blocked = pin in blocked_pins or unsafe
+        unmarked_interior = any(
+            _interior(s, point) and point not in graph.junctions
+            for s in graph.segments
+        )
+        blocked = pin in blocked_pins or unsafe or unmarked_interior
         status = (
             TargetState.BLOCKED if blocked else
             TargetState.CONNECTED if attached_segments else TargetState.AVAILABLE
@@ -476,6 +480,7 @@ def collect_wire_endpoints(
             not blocked and not attached_segments and pin in owner_net,
             "PIN_POLICY_BLOCKED" if pin in blocked_pins else
             "FOREIGN_WIRE_CONTACT" if unsafe else
+            "UNMARKED_PIN_WIRE_INTERIOR" if unmarked_interior else
             "ALREADY_CONNECTED" if attached_segments else
             "PHYSICAL_PIN_AVAILABLE" if pin in owner_net else
             "PIN_NOT_IN_DECLARED_NET",
