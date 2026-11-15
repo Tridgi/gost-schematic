@@ -375,6 +375,9 @@ def test_real_115_latest_paint_routed_native_requires_genuine_15_net_graph():
         style, measure,
         physical_ic_renderings_clean={"DA1": clean},
         physical_ic_renderings_diagnostic={"DA1": diagnostic},
+        verified_ic_source=signed,
+        verified_ic_paint_binding=paint,
+        verified_ic_snapshot=verified,
         source_continuation_project=None,
         expected_component_count=23,
         expected_net_count=15,
@@ -389,6 +392,10 @@ def test_real_115_latest_paint_routed_native_requires_genuine_15_net_graph():
     assert result.manifest["blockers"]
     assert result.manifest["gost_approved"] is False
     assert result.manifest["source_graph_mutated"] is False
+    assert result.manifest["signed_manufacturer_ic_16_verified"] is True
+    assert "ROUTED_SHEET_SIGNED_MANUFACTURER_PHYSICAL_BINDING_MISSING" not in (
+        result.manifest["blockers"]
+    )
     assert _expected_marker_count(result.clean_svg) == 0
     assert _expected_marker_count(result.diagnostic_svg) == 16
     assert ET.fromstring(result.clean_svg).get("data-release") == (
@@ -449,6 +456,9 @@ def test_real_115_paint_routed_native_adversarial_source_gate(attack, error_code
             signed.circuit, graph, parts, symbols, style, measure,
             physical_ic_renderings_clean={"DA1": clean},
             physical_ic_renderings_diagnostic={"DA1": diagnostic},
+            verified_ic_source=signed,
+            verified_ic_paint_binding=paint,
+            verified_ic_snapshot=verified,
             source_continuation_project=None,
             expected_component_count=23,
             expected_net_count=15,
@@ -458,6 +468,64 @@ def test_real_115_paint_routed_native_adversarial_source_gate(attack, error_code
     assert len(signed.circuit.nets) == 15
     assert sum(len(net.members) for net in signed.circuit.nets) == 62
     assert signed.circuit.nets is native.circuit.nets
+
+
+@pytest.mark.parametrize(
+    ("attack", "error_code"),
+    (
+        ("unsigned_partial_triple", "ROUTED_SHEET_SIGNED_IC_TRIPLE_REQUIRED"),
+        ("forged_digest", "IC_TRUSTED_OVERLAY_PROVENANCE_OR_TARGET_MISMATCH"),
+        ("forged_clean_ink", "ROUTED_SHEET_SIGNED_IC_SERIALIZED_INK_CHANGED"),
+    ),
+)
+def test_real_115_paint_signed_manufacturer_trust_gate(attack, error_code):
+    """A real 16-tip overlay cannot replace source-signed proof or SVG ink."""
+    renderer = import_module(
+        "gost_schematic.rendering.routed_native_sheet"
+    ).render_routed_native_sheet
+    font = Path(os.environ["IC_TYPE_A_FONT_PATH"])
+    native, signed, paint, verified, style, measure = live_paint(font)
+    clean = verified.render(
+        signed, paint, style, measure, diagnostics=False,
+    )[0]
+    diagnostic = verified.render(
+        signed, paint, style, measure, diagnostics=True,
+    )[0]
+    parts = {**native.parts, signed.part.identifier: signed.part}
+    symbols = {
+        part_id: native.symbols[part.symbol_id]
+        for part_id, part in native.parts.items()
+        if part.symbol_id in native.symbols
+    }
+    assert signed.symbol_surrogate is not None
+    symbols[signed.part.identifier] = signed.symbol_surrogate
+    trust = {
+        "verified_ic_source": signed,
+        "verified_ic_paint_binding": paint,
+        "verified_ic_snapshot": verified,
+    }
+    if attack == "unsigned_partial_triple":
+        trust["verified_ic_paint_binding"] = None
+    elif attack == "forged_digest":
+        trust["verified_ic_snapshot"] = replace(
+            verified, circuit_sha256="0" * 64,
+        )
+    else:
+        clean = replace(clean, svg=clean.svg + "<!-- unauthorized ink -->")
+    with pytest.raises((ValueError, TypeError), match=error_code):
+        renderer(
+            signed.circuit, ExternalWireGraph(()), parts, symbols,
+            style, measure,
+            physical_ic_renderings_clean={"DA1": clean},
+            physical_ic_renderings_diagnostic={"DA1": diagnostic},
+            **trust,
+            expected_component_count=23,
+            expected_net_count=15,
+            expected_net_pinrefs=62,
+            physical_page_box=Box(0, 0, 420000, 297000),
+        )
+    assert signed.circuit.nets is native.circuit.nets
+    assert len(verified.manifest.contacts) == 16
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
