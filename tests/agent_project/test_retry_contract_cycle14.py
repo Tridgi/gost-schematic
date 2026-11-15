@@ -4,6 +4,7 @@ import subprocess
 import sys
 from importlib.resources import files
 
+from examples.agent_tl494_cycle11_pipeline import _request
 from gost_schematic.agent_project.agent_readiness import review_request
 from gost_schematic.agent_project.catalog import CatalogResolver
 from gost_schematic.agent_project.owner_source_contract import verify_frozen_owner_fixture
@@ -11,9 +12,6 @@ from gost_schematic.agent_project.retry_contract import (
     blocked_generation_diagnostics,
     readonly_error_diagnostic,
 )
-
-from examples.agent_tl494_cycle11_pipeline import _request
-
 
 def test_retry_codes_fail_closed_and_only_stale_saved_snapshot_may_be_refetched():
     allowed = readonly_error_diagnostic("REQUEST_STALE_REVISION")
