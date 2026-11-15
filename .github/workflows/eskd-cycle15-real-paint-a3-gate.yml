@@ -1,0 +1,67 @@
+name: ESKD Cycle15 real PAINT signed TL494 A3 end-to-end NO-GO gate
+on:
+  pull_request:
+    branches: [integration/stage0-12]
+    paths:
+      - scripts/eskd_cycle15_real_paint_a3_release_gate.py
+      - scripts/eskd_cycle13_signed_b_print_gate.py
+      - scripts/eskd_cycle12_routed_source_gate.py
+      - .github/workflows/eskd-cycle15-real-paint-a3-gate.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  full-actual-artifact-evidence:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Ruff and source safety tests
+        run: |
+          python -m pip install -e ".[dev]"
+          ruff check scripts/eskd_cycle15_real_paint_a3_release_gate.py scripts/eskd_cycle12_routed_source_gate.py scripts/eskd_cycle13_signed_b_print_gate.py
+          pytest -q tests/test_standards_cycle12_routed_source_gate.py tests/test_standards_cycle13_signed_b_print_gate.py
+      - name: Download REAL PAINT signed native 23-part A3 clean diagnostic SVG PNG and DRC
+        uses: actions/download-artifact@v4
+        with:
+          repository: Tridgi/gost-schematic
+          run-id: 43720996792
+          github-token: ${{ github.token }}
+          name: TL494-PROOF-real-NEW-router-graph-NOT-printable-3.12
+          path: evidence/real-PAINT-C10
+      - name: Independently prove true two b lines, 16 physical DA1 and blocked full release
+        run: |
+          python -m scripts.eskd_cycle15_real_paint_a3_release_gate \
+            --folder evidence/real-PAINT-C10/tl494-C10-compact-A3-new-graph \
+            --artifact-run 43720996792 \
+            --paint-sha 252fed9077351493378348f4c0a0138c5e04c8b5 \
+            --clean-sha b944ac04a217b76599a67a334d8833ac16c691eaca2149d96387e7ccbec1e469 \
+            --out output/ESKD_C15_REAL_PAINT_A3_${{ matrix.python-version }}_BLOCKED.json \
+            --expect-blocked
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          p = next(Path("output").glob("*.json"))
+          x = json.loads(p.read_text(encoding="utf-8"))
+          assert x["actual_new_route"]["routed_nets"] == 6
+          assert x["actual_new_route"]["real_printed_segment_count"] == 37
+          assert x["original_physical_inventory"] == {"components":23,"nets":15,"pinrefs":62,"DA1_pins":16}
+          assert x["real_files"]["clean"]["source_b"]["actual_nonphysical_svg_lines"] == 2
+          assert x["real_files"]["diagnostic"]["source_b"]["actual_electrical_added_nets"] == 0
+          assert x["scope_2mm_distinct_and_1mm_internal_UGO"]["distinct_UGO_count"] == 23
+          assert x["scope_2mm_distinct_and_1mm_internal_UGO"]["separate_UGO_checked_pairs"] == 253
+          assert x["release_verdict"].startswith("NO_GO_")
+          print("TRUE OWNER ARTIFACT BLOCKED AS REQUIRED; no false full-route print PASS")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ESKD-C15-PAINT-REAL-6of15-SIGNED-B-NO-GO-${{ matrix.python-version }}
+          path: output/ESKD_C15_REAL_PAINT_A3_*.json
+          if-no-files-found: error
