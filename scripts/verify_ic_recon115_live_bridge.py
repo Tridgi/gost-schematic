@@ -162,6 +162,39 @@ def test_real_115_owner_verified_compact_ti_consumes_exact_source_tuple():
     ):
         owner.bind_verified_compact_ti(native, unauthorized)
 
+
+def test_real_115_source_b_electrical_net_is_not_continuation_ink():
+    """Two b glyphs must never become an extra PinRef or electrical Net."""
+    native, signed = live_reconstruction()
+    expected = frozenset({
+        PinRef("FU1", "2"), PinRef("X2", "1"), PinRef("R5", "2"),
+    })
+    source_b = next(net for net in native.circuit.nets if net.name == "OUTPUT_NEG")
+    signed_b = next(net for net in signed.circuit.nets if net.name == "OUTPUT_NEG")
+    assert signed_b is source_b
+    assert len(source_b.members) == 3
+    assert frozenset(source_b.members) == expected
+    assert len(native.circuit.nets) == 15
+    assert sum(len(net.members) for net in native.circuit.nets) == 62
+
+    # An invented electrical leg for historic non-electrical b continuation
+    # must be rejected even when the visible glyph could still look correct.
+    counterfeit_b = replace(
+        source_b, members=(*source_b.members, PinRef("X2", "2")),
+    )
+    forged = replace(native.circuit, nets=tuple(
+        counterfeit_b if net is source_b else net
+        for net in native.circuit.nets
+    ))
+    with pytest.raises((ValueError, TypeError), match=(
+        "TL494_PHOTO_REBIND_|IC_ADAPTER_|TL494_|IC_"
+    )):
+        bind_positioned_photo_circuit_from_catalog(
+            forged, native.owner_ic_record, native.parts,
+            aliases=native.owner_aliases,
+        )
+    assert signed.circuit.nets is native.circuit.nets
+
 def test_legacy_id_is_not_implicitly_equivalent_to_ti_manufacturer():
     native = compact_source_assembly()
     with pytest.raises(ValueError, match="IC_ADAPTER_CATALOG_IC_PART_ID_MISMATCH"):
