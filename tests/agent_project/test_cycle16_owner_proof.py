@@ -215,6 +215,8 @@ def test_external_full_15_of_15_still_requires_independent_qa(tmp_path):
     ("fake_15_count", "C16_C15_ROUTE_COUNTS_CONTRADICT"),
     ("forged_tree_pin", "C16_C15_PINREF_MEMBERSHIP_DRIFT"),
     ("fake_dummy", "C16_C15_NET_INVENTORY_DRIFT"),
+    ("dummy_component", "C16_C15_MOVED_FOREIGN_PART"),
+    ("1um_component_shift", "C16_C15_MOVEMENT_PRECISION_VIOLATION"),
     ("path_traversal", "C16_C15_ARTIFACT_SET_INVALID"),
     ("file_sha_tamper", "C16_ARTIFACT_CONTENT_SHA_MISMATCH"),
     ("missing_real_svg", "C16_PROOF_FILE_MISSING_OR_OVERSIZED"),
@@ -246,6 +248,10 @@ def test_c16_untrusted_owner_negative_cases(tmp_path, mutation, code):
         proof["original_named_net_route_progress"]["$d_0"] = {
             "source_pinrefs": [], "complete": True,
         }
+    elif mutation == "dummy_component":
+        proof["route_config"]["component_moves_mm"] = [["$d_0", "0", "2.5"]]
+    elif mutation == "1um_component_shift":
+        proof["route_config"]["component_moves_mm"] = [["DA1", "0.001", "0"]]
     elif mutation == "path_traversal":
         proof["artifacts"]["../../evil.svg"] = {"sha256": "a" * 64}
     elif mutation == "file_sha_tamper":
