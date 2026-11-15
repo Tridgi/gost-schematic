@@ -240,3 +240,90 @@ def test_ygo_source_profile_negative_ugo_cases(change, reason):
         owner["status"] = "APPROVED"
     with pytest.raises(gate.EvidenceError, match=reason):
         gate._source_ygo_current_review(owner, "a" * 40)
+
+
+def _realistic_23_ugo_group_fixture(second_x: float = 20.0) -> ET.Element:
+    root = ET.Element(f"{gate.SVG}svg")
+    refs = sorted(
+        ref for ref in (row["ref"] for row in fixture_source()["elements"])
+        if ref != "DA1"
+    )
+    assert len(refs) == 22
+    for i, ref in enumerate(refs):
+        x = second_x if i == 1 else 20.0 * i
+        group = ET.SubElement(root, f"{gate.SVG}g", {
+            "data-layer": "symbols", "data-reference": ref,
+            "stroke-width": "0.3",
+        })
+        ET.SubElement(group, f"{gate.SVG}line", {
+            "x1": str(x), "y1": "0", "x2": str(x), "y2": "10",
+        })
+    ic = ET.SubElement(root, f"{gate.SVG}g", {
+        "data-owner": "DA1",
+        "data-ink-source": "real-native-PAINT-original-16leads",
+    })
+    stroke = ET.SubElement(ic, f"{gate.SVG}g", {
+        "stroke-width": "0.3", "data-layer": "ic-physical-pin-leads",
+    })
+    ET.SubElement(stroke, f"{gate.SVG}line", {
+        "x1": "440", "y1": "0", "x2": "440", "y2": "10",
+    })
+    return root
+
+
+@pytest.mark.parametrize(("distance", "status", "gap_um"), [
+    (2.299, "BLOCKED_CONSERVATIVE_AABB_NOT_EXACT_INK", 1999),
+    (2.3, "PASS_CONSERVATIVE_2MM_23_UGO_PARTIAL_SOURCE_PRINT", 2000),
+    (2.301, "PASS_CONSERVATIVE_2MM_23_UGO_PARTIAL_SOURCE_PRINT", 2001),
+])
+def test_true_two_mm_distinct_ugo_stroke_edge_threshold(
+    distance, status, gap_um
+):
+    check = gate.distinct_ugo_2mm_envelopes(
+        _realistic_23_ugo_group_fixture(distance)
+    )
+    assert check["actual_distinct_symbol_count"] == 23
+    assert check["all_distinct_symbol_pairs"] == 253
+    assert check["minimum_conservative_ink_gap_um"] == gap_um
+    assert check["verdict"] == status
+    assert check["minimum_pair"] == ["C1", "C2"] or len(
+        check["minimum_pair"]
+    ) == 2
+
+
+def test_2mm_ugo_envelope_excludes_unproved_text_and_rejects_missing_ic():
+    root = _realistic_23_ugo_group_fixture()
+    original = gate.distinct_ugo_2mm_envelopes(root)
+    assert original["minimum_conservative_ink_gap_um"] > 2000
+    ic = next(g for g in root if g.get("data-owner") == "DA1")
+    root.remove(ic)
+    with pytest.raises(gate.EvidenceError, match="UGO_PHYSICAL_DA1_REQUIRED"):
+        gate.distinct_ugo_2mm_envelopes(root)
+
+
+@pytest.mark.parametrize(("primitive", "properties", "reason"), [
+    ("path", {"d": "M 0 0 L 10 10"}, "UGO_ARC_PATH_NOT_SIMPLE_SOURCE_ARC"),
+    ("rect", {"x": "0", "y": "0", "width": "-1", "height": "2"},
+     "UGO_RECT_NONPOSITIVE_SIZE"),
+    ("circle", {"cx": "0", "cy": "0", "r": "-2"},
+     "UGO_CIRCLE_NONPOSITIVE_RADIUS"),
+    ("line", {"x1": "NaN", "y1": "0", "x2": "10", "y2": "0"},
+     "UGO_PRIMITIVE_NONFINITE_GEOMETRY"),
+])
+def test_unknown_ugo_shape_and_unphysical_primitive_fail_closed(
+    primitive, properties, reason
+):
+    group = ET.Element(f"{gate.SVG}g", {"stroke-width": "0.3"})
+    ET.SubElement(group, f"{gate.SVG}{primitive}", properties)
+    with pytest.raises(gate.EvidenceError, match=reason):
+        gate._conservative_ugo_envelope(group)
+
+
+def test_true_source_ferro_inductor_arc_ink_envelope_is_conservative():
+    group = ET.Element(f"{gate.SVG}g", {"stroke-width": "0.3"})
+    ET.SubElement(group, f"{gate.SVG}path", {
+        "d": "M 70 35 A 2 2 0 0 1 74 35",
+    })
+    assert gate._conservative_ugo_envelope(group) == (
+        67850, 32850, 76150, 37150
+    )
