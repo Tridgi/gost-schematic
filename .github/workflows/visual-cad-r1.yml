@@ -2,9 +2,9 @@ name: Visual CAD R1 source gate
 on:
   push:
     branches: [ui/visual-cad-mvp]
-    paths: ['ui/integration/**', '.github/workflows/visual-cad-r1.yml']
+    paths: ['ui/integration/**', 'ui/experiments/r0/**', '.github/workflows/visual-cad-r1.yml']
   pull_request:
-    paths: ['ui/integration/**', '.github/workflows/visual-cad-r1.yml']
+    paths: ['ui/integration/**', 'ui/experiments/r0/**', '.github/workflows/visual-cad-r1.yml']
   workflow_dispatch:
 jobs:
   candidate-v2:
@@ -18,3 +18,18 @@ jobs:
       - run: node --check ui/integration/source-gate.mjs
       - run: node --check ui/integration/source-gate.test.mjs
       - run: node --test ui/integration/source-gate.test.mjs
+
+  r0-editor-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate standalone source
+        run: |
+          node --check ui/experiments/r0/core.mjs
+          node --check ui/experiments/r0/app.mjs
+      - name: R0 UI model regression (NOT React/Tauri acceptance)
+        run: node --test ui/experiments/r0/tests/core.test.mjs
