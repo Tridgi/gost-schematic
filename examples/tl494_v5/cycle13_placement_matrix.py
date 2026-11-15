@@ -56,6 +56,20 @@ def summarize_trial(name: str, trial: dict) -> dict:
         raise ValueError("C13_PLACEMENT_NET_DIAGNOSTICS_MISSING")
     if trial["print_after_released"] is not False:
         raise ValueError("C13_PLACEMENT_UNVERIFIED_PRINT_RELEASE")
+    if trial["technical_route_eligible"] and (
+        count != 15
+        or attempted != 15
+        or not footprint["A3_capacity_fit"]
+        or not footprint["A3_bbox_within_margins"]
+        or not trial["layout_valid"]
+        or trial.get("owner_router_report", {}).get(
+            "drc", {},
+        ).get("error_count") != 0
+        or trial.get("b_continuation_rebound", {}).get("status") != (
+            "VERIFIED_DRAFT_NONPHYSICAL_B_PAIR"
+        )
+    ):
+        raise ValueError("C13_PLACEMENT_FALSE_FULL_GRAPH_ELIGIBILITY")
     return {
         "name": name,
         "status": trial["status"],
