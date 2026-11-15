@@ -8,6 +8,7 @@ CLI exits 0 for a demonstrably BLOCKED source only with --expect-blocked.
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import math
@@ -140,10 +141,15 @@ def _layout_measure(root: ET.Element) -> dict:
     check(len(groups) == len(set(symbol_refs)) == 23
           and "DA1" in symbol_refs,
           "REAL_PAINT_23_PHYSICAL_SYMBOLS_REQUIRED")
-    boxes = {
-        g.get("data-reference"): _conservative_ugo_envelope(g)
-        for g in groups
-    }
+    # The current physical DA1 is nested under data-layer=symbols rather
+    # than the old C12 data-owner=DA1; annotate only an in-memory COPY to
+    # meet the old independent source-ink geometry helper's text contract.
+    boxes = {}
+    for group in groups:
+        probe = copy.deepcopy(group)
+        if probe.get("data-reference") == "DA1":
+            probe.set("data-owner", "DA1")
+        boxes[group.get("data-reference")] = _conservative_ugo_envelope(probe)
     gaps = []
     for left, right in combinations(sorted(boxes), 2):
         a, b = boxes[left], boxes[right]
