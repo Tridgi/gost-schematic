@@ -19,6 +19,7 @@ from examples.tl494_v5.route_preflight import (
     MeasuredInkGuard,
     _owner_ic_obstacle,
 )
+
 from gost_schematic.core.geometry import Box
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.engines.sheet_layout import layout_sheet
@@ -59,7 +60,7 @@ def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 2500
     circuit = signed.signed.circuit
     if circuit.nets != original_named.nets or (
         circuit.components != tuple(
-            replace(component, part_id=TI_DEVICE_ID)
+            replace(component, part_id=signed.signed_part_id)
             if component.reference == "DA1" else component
             for component in original_named.components
         )
