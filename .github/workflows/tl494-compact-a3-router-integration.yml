@@ -167,6 +167,28 @@ jobs:
           assert data["VT1_source_UGO_normative_approved"] is False
           assert len(data["routing"]["net_trees"]) == 15
           assert data["routed_nets"] <= 15
+          assert len(data["blocked_source_pin_handoff"]) == (
+              15 - data["routed_nets"]
+          )
+          all_net_tree = {
+              row["net"]: row for row in data["routing"]["net_trees"]
+          }
+          for witness in data["blocked_source_pin_handoff"]:
+              source_tree = all_net_tree[witness["net"]]
+              assert source_tree["complete"] is False
+              assert set(witness["missing_physical_PinRefs"]) == (
+                  set(source_tree["pin_refs"])
+                  - set(source_tree["connected_pin_refs"])
+              )
+              if witness["missing_physical_PinRefs"]:
+                  assert set(witness["missing_physical_world_anchors"]) == (
+                      set(witness["missing_physical_PinRefs"])
+                  )
+                  assert all(
+                      len(row["physical_tip_um"]) == 2
+                      and len(row["world_outward_normal"]) == 2
+                      for row in witness["missing_physical_world_anchors"].values()
+                  )
           assert data["new_after_drc"]["checked_symbol_geometry"]
           assert data["new_after_drc"]["checked_measured_text"]
           assert data["print_pass"] is False
