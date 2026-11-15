@@ -26,6 +26,9 @@ on:
       - "examples/agent_tl494_catalog_preflight_mcp.py"
       - "examples/agent_readiness_readonly.py"
       - "examples/agent_tl494_cycle11_pipeline.py"
+      - "examples/agent_tl494_cycle13_quickstart.py"
+      - "tests/agent_project/test_agent_tl494_cycle13_quickstart.py"
+      - "docs/ai-integration/cycle13-end-user-quickstart.md"
       - "docs/ai-integration/tl494-catalog-and-preflight-issue107.md"
       - "docs/ai-integration/agent-readiness-cli-v01.md"
       - "docs/ai-integration/agent-cycle11-source-driven-walkthrough.md"
@@ -60,6 +63,7 @@ jobs:
             tests/agent_project/test_tl494_owner_contract_cycle11.py \
             tests/agent_project/test_tl494_owner_pipeline_cycle11.py \
             tests/agent_project/test_owner_api_locks_cycle12.py \
+            tests/agent_project/test_agent_tl494_cycle13_quickstart.py \
             tests/agent_project/test_mcp_saved_stdio.py
       - name: Real native MCP sample gallery and six-part print preflight
         shell: bash
@@ -258,6 +262,41 @@ jobs:
           ])
           print("15/15 route: BLOCKED, no image-only success")
           PY
+      - name: Cycle13 end-user one-command original TL494 native MCP+CLI and 11 refusals
+        shell: bash
+        run: |
+          python -m examples.agent_tl494_cycle13_quickstart --help             > output/cycle13-quickstart-help.txt
+          python -m examples.agent_tl494_cycle13_quickstart             --out output/tl494-cycle13-user             > output/cycle13-quickstart-stdout.json
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          root = Path("output/tl494-cycle13-user")
+          data = json.loads(Path("output/cycle13-quickstart-stdout.json").read_text())
+          assert data == json.loads((root / "source-quickstart-report.json").read_text())
+          assert data["status"] == "BLOCKED_PARTIAL"
+          assert data["source_netlist_user_approval"] == "USER_REVIEW_REQUIRED"
+          assert data["physical_component_count"] == 23
+          assert data["original_net_count"] == 15
+          assert data["original_pinref_member_count"] == 62
+          assert data["actual_native_mcp_client_session"]
+          assert not data["actual_codex_cli_llm_session"]
+          assert data["actual_catalog_ugo_glyphs_svg_png"] == 14
+          assert data["refusal_tests_passed"] == data["refusal_tests_total"] == 11
+          assert not data["full_15_net_route_available"]
+          assert data["new_routed_net_count"] == 0
+          assert not data["full_print_drc_executed"]
+          assert not data["mcp_write_tool_enabled"]
+          assert not data["atomic_write_transactions_available"]
+          for filename, evidence in data["artifacts"].items():
+              raw = (root / filename).read_bytes()
+              assert len(raw) == evidence["bytes"]
+              assert hashlib.sha256(raw).hexdigest() == evidence["sha256"]
+          request = json.loads((root / "source-typed-request.json").read_text())
+          assert len(request["components"]) == 23 and len(request["nets"]) == 15
+          assert sum(len(x["members"]) for x in request["nets"]) == 62
+          print("Cycle13 actual native MCP+typed CLI original source PASS, full print BLOCKED")
+          PY
       - name: Build wheel and verify package payload
         run: |
           python -m pip wheel . --no-deps --wheel-dir dist
@@ -360,5 +399,8 @@ jobs:
             output/cycle11-source-pipeline-report.json
             output/cycle12-fresh-wheel-report.json
             output/cycle11-original-source-proof/
+            output/tl494-cycle13-user/
+            output/cycle13-quickstart-stdout.json
+            output/cycle13-quickstart-help.txt
           if-no-files-found: error
           retention-days: 30
