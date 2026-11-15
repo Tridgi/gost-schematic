@@ -23,6 +23,7 @@ from examples.tl494_cycle9_circuit_integration import (
     load_frozen_source,
 )
 from gost_schematic.core.geometry import Box, Point
+from gost_schematic.core.units import format_mm
 from gost_schematic.core.transforms import Transform
 from gost_schematic.electrical.ic import (
     IcPinType,
@@ -280,6 +281,118 @@ def test_real_115_one_um_connected_pin_requires_exact_reroute_consent(
     assert updated.circuit.nets is native.circuit.nets
     assert len(updated.contacts) == 16
     assert updated.contact(physical).world_anchor == after[physical]
+
+
+def _true_source_b_rendering(font: Path):
+    """Resolve two typed original-name b stubs using live owner sources."""
+    native = compact_source_assembly()
+    driver = import_module("examples.tl494_v5.route_candidate_driver")
+    fixture, _ = driver.load_original_owner_fixture()
+    original_named = driver.restore_original_named_nets(native, fixture)
+    assert set(net.name for net in original_named.nets) == set(
+        load_frozen_source()["nets"]
+    )
+    physical = bind_positioned_photo_circuit_from_catalog(
+        original_named, native.owner_ic_record, native.parts,
+        aliases=native.owner_aliases,
+    )
+    assert physical.circuit.nets is original_named.nets
+    style = inspect_type_a_font(
+        font, h_um=3500, family="OpenGOST type A",
+        require_family_match=True,
+    ).style
+    assert style.font_sha256 == _FONT_SHA256
+    symbols = {
+        part_id: native.symbols[part.symbol_id]
+        for part_id, part in native.parts.items()
+        if part.symbol_id in native.symbols
+    }
+    project = import_module(
+        "examples.render_tl494_compact_new_router_cycle10"
+    )._bind_verified_source_b(font, physical.circuit, symbols)
+    assert project.circuit.nets is original_named.nets
+    assert len(project.endpoints) == len(project.stubs) == 2
+    assert {s.pin for s in project.stubs} == {
+        PinRef("X2", "1"), PinRef("R5", "2"),
+    }
+    return physical, style, project
+
+
+def test_real_current_paint_renders_b_source_stubs_not_electrical_junctions():
+    """Real SOURCE verified X2.1/R5.2 -> 2 b labels: 2 exact SVG lines."""
+    physical, style, project = _true_source_b_rendering(
+        Path(os.environ["IC_TYPE_A_FONT_PATH"])
+    )
+    owner = import_module("gost_schematic.rendering.ic_sheet_composition")
+    for diagnostic in (False, True):
+        root = ET.Element(_NS + "svg")
+        owner.append_verified_sheet_continuations(
+            root, physical.circuit, project, style,
+            diagnostic=diagnostic,
+        )
+        group = next(n for n in root if n.get("data-layer") == (
+            "typed-nonphysical-continuations"
+        ))
+        by_id = {
+            node.get("data-source-stub-id"): node
+            for node in group if node.get("data-layer") == (
+                "nonphysical-continuation-stub"
+            )
+        }
+        assert len(by_id) == 2
+        for stub in project.stubs:
+            line = by_id[stub.id]
+            assert line.tag == _NS + "line"
+            assert line.get("data-nonphysical-net-continuation") == (
+                stub.endpoint_id
+            )
+            assert line.get("data-source-pin-ref") == (
+                f"{stub.pin.reference}.{stub.pin.number}"
+            )
+            assert tuple(line.get(name) for name in ("x1", "y1", "x2", "y2")) == (
+                format_mm(stub.start.x), format_mm(stub.start.y),
+                format_mm(stub.end.x), format_mm(stub.end.y),
+            )
+            assert line.get("data-nonphysical") == "true"
+            assert line.get("data-electrical-junction") == "false"
+            assert line.get("data-connectable") == "false"
+        assert {
+            n.get("data-nonphysical-net-continuation")
+            for n in group if n.tag == _NS + "circle"
+        } == {"b-X2", "b-R5"}
+        assert {
+            n.text for n in group if n.tag == _NS + "text"
+        } == {"b"}
+        assert not any(n.get("data-pin-ref") for n in group.iter())
+    assert len(physical.circuit.components) == 23
+    assert len(physical.circuit.nets) == 15
+    assert sum(len(n.members) for n in physical.circuit.nets) == 62
+
+
+@pytest.mark.parametrize("attack", ("missing_stub", "wrong_physical_pin"))
+def test_real_current_paint_rejects_forged_b_local_stubs(attack):
+    """The two b markers are not free-form decorative wires or fake pins."""
+    physical, style, project = _true_source_b_rendering(
+        Path(os.environ["IC_TYPE_A_FONT_PATH"])
+    )
+    if attack == "missing_stub":
+        forged = replace(project, stubs=project.stubs[:1])
+    else:
+        forged = replace(project, stubs=(
+            replace(project.stubs[0], pin=PinRef("X2", "2")),
+            project.stubs[1],
+        ))
+    root = ET.Element(_NS + "svg")
+    with pytest.raises(
+        ValueError, match="SHEET_CONTINUATION_SOURCE_B_STUB_INVENTORY_DRIFT"
+    ):
+        import_module(
+            "gost_schematic.rendering.ic_sheet_composition"
+        ).append_verified_sheet_continuations(
+            root, physical.circuit, forged, style, diagnostic=False,
+        )
+    assert not list(root)
+    assert project.circuit.nets is physical.circuit.nets
 
 def test_legacy_id_is_not_implicitly_equivalent_to_ti_manufacturer():
     native = compact_source_assembly()
