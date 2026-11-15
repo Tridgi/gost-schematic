@@ -63,7 +63,7 @@ jobs:
       - name: Hostile mutations on REAL downloaded native owner outputs
         run: |
           python - <<'PY'
-          import copy
+          from PIL import Image
           import hashlib
           import json
           import shutil
@@ -85,6 +85,8 @@ jobs:
               ("drop_real_DA1_pin", "TRUE_DA1_16_PIN_SVG_NOT_PRESENT"),
               ("fake_full_release", "PARTIAL_SVG_FAKES_FULL_RELEASE"),
               ("swap_original_non_b_member", "FROZEN_15_EXACT_NET_MEMBER_SETS_REQUIRED"),
+              ("clean_forged_green", "DA1_16_TRUE_GREEN_ONLY_IN_DIAGNOSTIC_PNG"),
+              ("diagnostic_missing_green", "DA1_16_TRUE_GREEN_ONLY_IN_DIAGNOSTIC_PNG"),
           ]:
               with tempfile.TemporaryDirectory() as tmp:
                   target = Path(tmp) / "owner"
@@ -99,6 +101,26 @@ jobs:
                           y["pinrefs"][0], x["pinrefs"][0]
                       )
                       netlist_file.write_text(json.dumps(source_nets), encoding="utf-8")
+                  elif mutation in ("clean_forged_green", "diagnostic_missing_green"):
+                      selected = (
+                          f"{ROOT}_clean-300dpi.png"
+                          if mutation == "clean_forged_green"
+                          else f"{ROOT}_diagnostic-300dpi.png"
+                      )
+                      raster = target / selected
+                      root = ET.parse(clean).getroot()
+                      pin = next(x for x in root.iter(f"{svg_ns}line")
+                                 if x.get("data-real-anchor") == "true")
+                      with Image.open(raster) as source_image:
+                          pixels = source_image.convert("RGB")
+                          px = round(float(pin.get("x2")) / 420 * pixels.width)
+                          py = round(float(pin.get("y2")) / 297 * pixels.height)
+                          pixels.putpixel(
+                              (px, py),
+                              (20, 134, 69) if mutation == "clean_forged_green"
+                              else (0, 0, 0),
+                          )
+                          pixels.save(raster, format="PNG")
                   else:
                       root = ET.parse(clean).getroot()
                       if mutation == "remove_real_b_line":
