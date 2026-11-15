@@ -10,7 +10,11 @@ const toy=()=>({schema_version:2,project_id:'toy',revision:0,source_topology_has
   nets:[{id:'N1',literal_source_name:'SIGNAL',members:[p('R1','1'),p('C1','1')]},
         {id:'N2',literal_source_name:'POWER',members:[p('D1','1'),p('D2','1')]}],
   wires:[],junctions:[],splices:[]});
-const make=(d=toy())=>new ManualWireEngine(d);
+const make=(d=toy())=>{
+ // Every declared source Net must have at least one real PinRef even in negative free-wire fixtures.
+ d.nets.forEach((n,i)=>{if(n.members.length===0){const id=`SEED_${i}`;d.components.push(comp(id,[800000+i*20000,800000]));n.members=[p(id,'1')];}});
+ return new ManualWireEngine(d);
+};
 const w1=()=>constructWire('W1','N1','default',[[0,0],[4000,0],[4000,8000],[14000,8000]],pin('R1','1'),pin('C1','1'));
 const w2=()=>constructWire('W2','N2','default',[[0,14000],[2000,14000],[2000,22000],[14000,22000]],pin('D1','1'),pin('D2','1'));
 const commit=(e,w)=>e.commitWire(e.newTransaction(`add:${w.id}`),w);
@@ -206,4 +210,23 @@ test('explicit visible junction cannot overlap foreign declared physical pin eve
  const e=make(d),before=e.serialize();
  err(()=>e.toggleJunction(tx(e,'invalid-dot'),{id:'J',net_id:'A',layer_id:'default',at_um:[5000,0]},['W1','W2']),'NET_CONFLICT');
  assert.equal(e.serialize(),before);
+});
+
+test('declared source Net must have physical members (no fake 0-pin electric Net)',()=>{
+ const d=toy();d.nets[0].members=[];err(()=>validateDocument(d),'INVALID_NET');
+});
+test('connected source pins with a dangling branch cannot claim VERIFIED',()=>{
+ const e=make();commit(e,w1());commit(e,constructWire('OPEN','N1','default',[[50000,50000],[51000,50000]],free('OPEN','start'),free('OPEN','end')));
+ assert.equal(e.validateNet('N1').status,'partial');
+});
+test('reroute tagged needs_routing_review blocks VERIFIED even with all pins connected',()=>{
+ const d=toy();d.components[0].pins[0].local_at_um=[1000,0];d.components[0].origin_um=[-1000,0];
+ const e=make(d);commit(e,w1());e.rotateAndReanchor(tx(e,'rebuild'),'R1',90,true);
+ assert.equal(e.validateNet('N1').status,'partial');
+});
+
+test('dangling endpoint diagnostic is explicit and scoped to declared Net',()=>{
+ const e=make();commit(e,w1());commit(e,constructWire('OPEN','N1','default',[[50000,50000],[51000,50000]],free('OPEN','start'),free('OPEN','end')));
+ assert.deepEqual(e.danglingEndpoints('N1'),['OPEN:end','OPEN:start']);
+ assert.deepEqual(e.danglingEndpoints('N2'),[]);
 });
