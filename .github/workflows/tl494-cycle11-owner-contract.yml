@@ -26,6 +26,10 @@ on:
       - "examples/review_tl494_ugo_source_cycle9.py"
       - "scripts/verify_tl494_cycle11_owner_strokes.py"
       - "scripts/export_tl494_23_ink_contract.py"
+      - "scripts/verify_tl494_cycle16_ink_contract.py"
+      - "scripts/export_tl494_cycle16_router_obstacles.py"
+      - "tests/test_tl494_cycle16_ink_contract.py"
+      - "tests/test_tl494_cycle16_router_obstacles.py"
       - "reports/tl494-cycle15-true-23-ink.*"
       - ".github/workflows/tl494-cycle11-owner-contract.yml"
   workflow_dispatch:
