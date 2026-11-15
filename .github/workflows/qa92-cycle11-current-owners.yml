@@ -20,10 +20,10 @@ jobs:
         python-version: ["3.12", "3.13"]
     env:
       SOURCE_SHA: e695c415fdced164b0e0c39c5249d030795a0aa6
-      RECON_SHA: 73025965efeb94585e8723ba3f0b636229e8a5de
-      IC_SHA: 7c30c209ea5e97a245844b24a3bbc4d3d30118ea
-      PAINT_SHA: 2e9d3fa41794eb773645e112ec8c44fc273e9f52
-      NET_SHA: 61df41377cc9326f7fa0f594a804d329b447ec69
+      RECON_SHA: e4eb565820e54889456f64d36598b608597ca2c2
+      IC_SHA: 632d5cf4222f188a65d0ec4a6ed22d8dcf1c8617
+      PAINT_SHA: 910e6c7382137f0878a68097d40dd565be5bedbc
+      NET_SHA: a370d637fe67ec44870899d503f53c0a6f8ee3af
       YGO_SHA: 3e47cdf32ccf211ded97e3be1ad874035653e090
     steps:
       - name: Existing Draft QA branch, never modifying original owner trees
@@ -39,25 +39,25 @@ jobs:
       - name: Current RECON owner code, all 23 components and routed graph export
         uses: actions/checkout@v4
         with:
-          ref: 73025965efeb94585e8723ba3f0b636229e8a5de
+          ref: e4eb565820e54889456f64d36598b608597ca2c2
           path: _qa_sources/recon
           persist-credentials: false
       - name: Current true manufacturer TI #97 model and typed adapter
         uses: actions/checkout@v4
         with:
-          ref: 7c30c209ea5e97a245844b24a3bbc4d3d30118ea
+          ref: 632d5cf4222f188a65d0ec4a6ed22d8dcf1c8617
           path: _qa_sources/ic
           persist-credentials: false
       - name: Current PAINT physical IC and routed new full sheet
         uses: actions/checkout@v4
         with:
-          ref: 2e9d3fa41794eb773645e112ec8c44fc273e9f52
+          ref: 910e6c7382137f0878a68097d40dd565be5bedbc
           path: _qa_sources/paint
           persist-credentials: false
       - name: Current NET 15-Net route and strict print DRC
         uses: actions/checkout@v4
         with:
-          ref: 61df41377cc9326f7fa0f594a804d329b447ec69
+          ref: a370d637fe67ec44870899d503f53c0a6f8ee3af
           path: _qa_sources/net
           persist-credentials: false
       - name: Current source-figure 36 DRAFT catalog
@@ -119,6 +119,10 @@ jobs:
           stage("paint", "tests/test_full_native_cycle9.py")
           stage("paint", "tests/test_routed_native_sheet_cycle10.py")
           stage("catalog", "tests/test_tl494_source_footprints.py")
+          # The real YGO owner test imports this own-package module;
+          # without staging it the failure is a missing QA test dependency,
+          # never a validated source-footprint rejection.
+          stage("catalog", "scripts/verify_tl494_cycle11_owner_strokes.py")
           stage("catalog", "examples/review_tl494_ugo_source_cycle9.py")
           for name in ("source_profiles.py", "source_footprints.py",
                        "source_digest.py"):
@@ -217,7 +221,8 @@ jobs:
           set -euo pipefail
           cd _qa_sources/ic
           PYTHONPATH=src:. python scripts/qa_tl494_current_editor_cycle10.py \
-            --cycle11 --font-file "$QA_C11_GOST_FONT" \
+            --cycle11 --expected-owner-sha "$IC_SHA" \
+            --font-file "$QA_C11_GOST_FONT" \
             --output "../../output/qa92-cycle11-${{ matrix.python-version }}/independent-TI-editor-matrix.json"
       - name: Authoritative real TI partID adapter on true 23/15/62 with seven negative source mutations
         if: always()
