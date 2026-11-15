@@ -102,6 +102,75 @@ def test_route_priority_trial_count_rejects_invalid_or_unbounded_inputs(n):
         )
 
 
+def test_cycle13_genuine_same_net_T_direct_outward_preflight_is_one_segment():
+    circuit, _, symbols = native_three_terminal()
+    original = WireSegment(Point(17000, 17000), Point(57000, 17000), "A")
+    source = Point(33000, 10000)
+    at_t = Point(33000, 17000)
+    physical = _source_ink_obstacles(circuit, symbols, stroke_um=300)
+    route, diagnostic = _visibility_path(
+        source, Point(0, 1), (at_t,),
+        net_name="A", occupied=ExternalWireGraph((original,)),
+        tree=(), existing_dots=(), goal_pin_normals={},
+        ink_obstacles=physical, authorized_pins=frozenset({
+            PinRef("X1", "1"), PinRef("X2", "1"), PinRef("X3", "1"),
+        }),
+        boxes=(), page=Box(0, 0, 90000, 60000),
+        stroke_um=300, search_node_cap=25000,
+        grid_um=5000, max_detour_ratio=1.0,
+    )
+    assert diagnostic is None and route == (source, at_t)
+    assert candidate_wire_clearance(
+        WireSegment(*route, "A"), original,
+        explicit_junctions=frozenset({at_t}),
+    ).valid
+
+
+def test_cycle13_outward_fast_T_never_passes_through_foreign_copper():
+    circuit, _, symbols = native_three_terminal()
+    other = WireSegment(
+        Point(33000, 12000), Point(33000, 15000), "FOREIGN"
+    )
+    source, at_t = Point(33000, 10000), Point(33000, 17000)
+    path, reason = _visibility_path(
+        source, Point(0, 1), (at_t,),
+        net_name="A", occupied=ExternalWireGraph((other,)),
+        tree=(), existing_dots=(), goal_pin_normals={},
+        ink_obstacles=_source_ink_obstacles(
+            circuit, symbols, stroke_um=300,
+        ), authorized_pins=frozenset({PinRef("X3", "1")}),
+        boxes=(), page=Box(0, 0, 90000, 60000),
+        stroke_um=300, search_node_cap=25000,
+        grid_um=5000, max_detour_ratio=3.0,
+    )
+    assert path != (source, at_t)
+    if path:
+        assert path[0] == source and path[-1] == at_t
+        assert all(
+            candidate_wire_clearance(
+                WireSegment(a, b, "A"), other,
+            ).valid
+            for a, b in pairwise(path)
+        )
+    else:
+        assert reason is not None
+
+
+def test_cycle13_direct_T_shortcut_cannot_escape_bounded_detour_ratio():
+    source = Point(10000, 10000)
+    goals = (Point(10000, 15000), Point(30000, 10000))
+    result, reason = _visibility_path(
+        source, Point(1, 0), goals,
+        net_name="A", occupied=ExternalWireGraph(()),
+        tree=(), existing_dots=(), goal_pin_normals={},
+        ink_obstacles=(), authorized_pins=frozenset(),
+        boxes=(), page=Box(0, 0, 40000, 30000),
+        stroke_um=300, search_node_cap=25000,
+        grid_um=5000, max_detour_ratio=1.0,
+    )
+    assert result == () and reason is not None
+
+
 def test_cycle13_real_wire_veto_only_generates_source_legal_backtrack_priority():
     """A successful foreign INPUT_POS wire traps GATE_DRIVE at actual DA1.10."""
     pins = (PinRef("DA1", "10"), PinRef("R8", "1"))
