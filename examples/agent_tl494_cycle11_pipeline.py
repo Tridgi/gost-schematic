@@ -32,6 +32,37 @@ from gost_schematic.agent_project.owner_source_contract import (
 )
 
 
+_REQUIRED_CATALOG_TOOLS = frozenset({
+    "schematic_catalog_search", "schematic_catalog_select",
+    "schematic_catalog_preview", "schematic_tl494_selection_profile",
+    "schematic_tl494_pin_alias",
+})
+_FORBIDDEN_WRITE_VERBS = (
+    "commit", "connect_pins", "delete", "edit", "write",
+    "transaction", "execute", "create", "move", "route",
+    "apply", "update", "rename", "undo", "redo", "import",
+)
+
+
+def _assert_readonly_tool_registry(tools: dict) -> None:
+    if not _REQUIRED_CATALOG_TOOLS <= set(tools):
+        raise AssertionError("Missing mandatory native read-only catalog tools")
+    if any(
+        item.annotations is None
+        or item.annotations.readOnlyHint is not True
+        or item.annotations.destructiveHint is not False
+        or item.annotations.openWorldHint is not False
+        for item in tools.values()
+    ):
+        raise AssertionError("Unsafe MCP tool exposed in read-only agent server")
+    if any(
+        token in name.lower()
+        for name in tools
+        for token in _FORBIDDEN_WRITE_VERBS
+    ):
+        raise AssertionError("Agent write tool unexpectedly registered")
+
+
 def _decoded(reply):
     if reply.isError:
         raise AssertionError("Real read-only MCP call returned an error")
@@ -51,34 +82,7 @@ async def _native_mcp_catalog(output: Path, source: dict) -> dict:
         async with ClientSession(read, write) as client:
             await client.initialize()
             tools = {tool.name: tool for tool in (await client.list_tools()).tools}
-            names = {
-                "schematic_catalog_search", "schematic_catalog_select",
-                "schematic_catalog_preview", "schematic_tl494_selection_profile",
-                "schematic_tl494_pin_alias",
-            }
-            if not names <= set(tools) or any(
-                tools[name].annotations is None
-                or tools[name].annotations.readOnlyHint is not True
-                for name in names
-            ):
-                raise AssertionError("Native MCP catalog is not exactly read-only")
-            if any(
-                item.annotations is None
-                or item.annotations.readOnlyHint is not True
-                or item.annotations.destructiveHint is not False
-                or item.annotations.openWorldHint is not False
-                for item in tools.values()
-            ):
-                raise AssertionError("Unsafe MCP tool exposed in read-only agent server")
-            if any(
-                token in name.lower()
-                for name in tools
-                for token in (
-                    "commit", "connect_pins", "delete", "edit",
-                    "write", "transaction", "execute",
-                )
-            ):
-                raise AssertionError("Agent write tool unexpectedly registered")
+            _assert_readonly_tool_registry(tools)
             profile = _decoded(await client.call_tool(
                 "schematic_tl494_selection_profile", {"api_version": 1},
             ))
