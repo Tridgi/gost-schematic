@@ -46,14 +46,14 @@ node --check app.mjs
 - No real external Python process, Tauri/React shell, MSI/EXE, font-locked Type A, production validation, collision engine or full source DRC, no arbitrary manual partial endpoint commits, no bus/label net resolution, no full manual multi-branch junction route re-authoring.
 - Outer docks have pointer/keyboard resize and local preference persistence in code (**browser unverified**); there is no nested tree/inspector resize, command palette or browser E2E completion. Performance of browser UI / Windows installation NOT measured.
 - Browser test in the controlled authoring environment was blocked with `ERR_BLOCKED_BY_ADMINISTRATOR` for both localhost and file access. **The app therefore has not been proven functional in a user browser**; test it on Windows before declaring release acceptance.
-- PNG exporter source is exercised in a unit test for the `pHYs` chunk; the sample raster `sample-export-300dpi.png` was separately generated from the same SVG using CairoSVG and then tagged with that PNG chunk. **That is not evidence of an end-to-end browser PNG download.**
+- PNG exporter source is exercised in a unit test for the `pHYs` chunk; the sample raster `sample-export-300dpi.png` was separately generated from the same SVG using CairoSVG and then tagged with that PNG chunk. **The original raster alone was not E2E evidence; a separate 2026-11-16 Playwright/Chromium browser smoke now verifies the actual PNG button and downloaded pHYs.**
 
 ## Files
 
 - `index.html`, `style.css`, `app.mjs`: standalone browser GUI implementation.
 - `core.mjs`: canonical geometry, typed graph, validation and true SVG/PNG functions.
 - `tests/core.test.mjs`: Node built-in `node:test` unit tests.
-- `sample-project.gscad.json`, `sample-export.svg`, `sample-export-300dpi.png`: real fixture/output generated offline to check geometry and DPI.
+- `sample-project.gscad.json` is checked into the experiment; `sample-export.svg` and `sample-export-300dpi.png` are available in the archived R0 ZIP but intentionally not committed to this lightweight source-only GitHub experiment. Use the in-app SVG/PNG buttons or the browser smoke to recreate exports.
 - `docs/ADR-0001-CANDIDATE.md`: explicitly **provisional** weighted architecture comparison.
 - `docs/MASTER-REPORT.md`: coverage, evidence, risks, integration strategy.
 - `docs/INTEGRATION-CONTRACT-R1.md`: proposed multi-agent ownership and R1→R3 typed handoff gates.

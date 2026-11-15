@@ -1,6 +1,6 @@
 # GOST Schematic — Visual CAD integration worktree
 
-**STATUS as of 2026-11-16:** R1 architecture/contract and independent `ui/integration/` structural gate (17 Node tests). **No integrated React CAD app, signed TL494 source import, Python v2 adapter or Windows Tauri binary.** Never describe this branch as an MVP release until R2–R4 acceptance is demonstrated.
+**STATUS as of 2026-11-16:** R1 architecture/contract and independent `ui/integration/` structural gate (17 Node tests). **No integrated React CAD app, signed TL494 source import, Python v2 adapter or Windows Tauri binary.** A runnable, isolated HTML/JS R0 proof exists at `ui/experiments/r0/`, explicitly *not* the final v2 editor. Never describe this branch as an MVP release until R2–R4 acceptance is demonstrated.
 
 **Single integration owner:** #125 (MASTER). Direction and issue tracking: #116. Approved baseline: `integration/stage0-12` SHA `9ae2561562c2b6e41069e8343d0e682bd37ab3d4`. Architectural authority: [ADR-0010](../docs/decisions/0010-visual-cad-mvp.md). Data/wire contract: [manual-wire-v2](contracts/manual-wire-v2.md).
 
@@ -19,6 +19,7 @@ See `ui/integration/README.md` for limits and `ui/integration/browser-r0-smoke.m
 
 ```text
 ui/
+  experiments/r0/         # standalone legacy R0 proof; NOT v2 or production
   contracts/             # v2 schema/commands; #122 in consultation with #123
   fixtures/              # signed original TL494 + isolated toy projects; #122
   editor/                # React/Vite TypeScript package; #125 root owner
