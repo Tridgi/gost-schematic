@@ -328,6 +328,38 @@ def review_c15_owner_proof(
         or type(config.get("component_moves_mm")) is not list
     ):
         _reject("C16_C15_ROUTE_CONFIG_INVALID")
+    # RECON placements may move only authentic source parts on the accepted
+    # 2.5mm proposal grid; ELK/netlistsvg dummy layout nodes are never parts.
+    moved = set()
+    original_parts = {
+        item["reference"] for item in source_request["components"]
+    }
+    for displacement in config["component_moves_mm"]:
+        if (
+            type(displacement) is not list or len(displacement) != 3
+            or type(displacement[0]) is not str
+            or displacement[0] not in original_parts
+            or displacement[0] in moved
+        ):
+            _reject("C16_C15_MOVED_FOREIGN_PART")
+        moved.add(displacement[0])
+        for coordinate in displacement[1:]:
+            if type(coordinate) not in (str, int):
+                _reject("C16_C15_MOVEMENT_PRECISION_VIOLATION")
+            try:
+                value = Decimal(coordinate)
+            except InvalidOperation as error:
+                raise ProjectError(
+                    "C16_C15_MOVEMENT_PRECISION_VIOLATION",
+                    "Invalid signed mm displacement",
+                ) from error
+            if (
+                not value.is_finite() or abs(value) > 100
+                or (value / Decimal("2.5")) != (
+                    value / Decimal("2.5")
+                ).to_integral_value()
+            ):
+                _reject("C16_C15_MOVEMENT_PRECISION_VIOLATION")
     paper = proof.get("paper")
     if (
         type(paper) is not dict
