@@ -106,7 +106,12 @@ def test_negative_wrong_b_marker_provenance_or_double_marker(
             for ep in old.endpoints
         ),
     )
-    with pytest.raises(ValueError, match="OLD_STUB_NOT_FROM_ACTUAL_PIN"):
+    # The source-typed validator rejects the 1-mm endpoint drift *before*
+    # the later manual stub-to-pin guard. Preserve the earlier strict gate.
+    with pytest.raises(
+        ValueError,
+        match=r"^TL494_C11_B_OLD_SOURCE_TYPED_INVALID:E3_CONT_STUB_OFF_ANCHOR$",
+    ):
         rebind_true_source_b(shifted, signed, a3.symbols)
 
 
