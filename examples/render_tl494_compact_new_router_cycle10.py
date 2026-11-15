@@ -13,9 +13,6 @@ from pathlib import Path
 from gost_schematic.core.geometry import Box
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.engines.sheet_layout import layout_sheet
-from gost_schematic.model.circuit import PinRef
-from gost_schematic.rendering.ic_hotspots import IcConnectionTarget
-from gost_schematic.rendering.ic_rectangular import render_resolved_ic
 from gost_schematic.rendering.routed_native_sheet import render_routed_native_sheet
 from gost_schematic.standards.type_a_font import inspect_type_a_font
 
@@ -93,7 +90,6 @@ def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 2500
     original_named = restore_original_named_nets(assembly, frozen_source)
     signed = bind_verified_compact_ti(assembly, original_named)
     signed.verify()
-    canonical_parts = {**assembly.parts, signed.part.identifier: signed.part}
     circuit = signed.signed.circuit
     if circuit.nets != original_named.nets or (
         circuit.components != tuple(
@@ -120,22 +116,21 @@ def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 2500
     view = physical_ic.views[0]
     if len(view.pins) != 16:
         raise ValueError("COMPACT_16_TI_PHYSICAL_PINS_REQUIRED")
-    net_by_pin = {
-        pin: net.name for net in circuit.nets for pin in net.members
-    }
-    targets = tuple(IcConnectionTarget(
-        pin.pin_id, PinRef("DA1", pin.number), pin.anchor, True,
-        net_id=net_by_pin.get(PinRef("DA1", pin.number)),
-    ) for pin in view.pins)
-    clean = render_resolved_ic(
-        view, style, measurer, editor_targets=targets,
-        editor_overlay=False, review_overlay=False,
+    # The signed circuit owns ALL sixteen real manufacturer PinRef targets.
+    # Raw PAINT-provided editor targets are not independently authoritative.
+    revised, snapshot = signed.seal_paint(physical_ic)
+    snapshot.verify_against(revised, physical_ic)
+    if revised.circuit is not circuit or (
+        revised.part.identifier != signed.signed_part_id
+    ):
+        raise ValueError("COMPACT_TRUSTED_SIGNED_CIRCUIT_OR_PART_DRIFT")
+    (clean,) = snapshot.render(
+        revised, physical_ic, style, measurer, diagnostics=False,
     )
-    diagnostic = render_resolved_ic(
-        view, style, measurer, editor_targets=targets,
-        editor_overlay=True, review_overlay=True,
-        glyph_detail=True,
+    (diagnostic,) = snapshot.render(
+        revised, physical_ic, style, measurer, diagnostics=True,
     )
+    canonical_parts = {**assembly.parts, revised.part.identifier: revised.part}
     da = next(c for c in circuit.components if c.reference == "DA1")
     by_part = {
         part_id: assembly.symbols[part.symbol_id]
@@ -144,8 +139,8 @@ def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 2500
     }
     ic_obstacle = _owner_ic_obstacle(view, clean.svg, da)
     by_part["reference.tl494cn"] = ic_obstacle
-    by_part[signed.part.identifier] = replace(
-        ic_obstacle, identifier=signed.part.symbol_id,
+    by_part[revised.part.identifier] = replace(
+        ic_obstacle, identifier=revised.part.symbol_id,
     )
     if any(c.part_id not in by_part for c in circuit.components):
         raise ValueError("COMPACT_CATALOG_SYMBOL_NOT_RESOLVED")
@@ -182,6 +177,9 @@ def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 2500
         style, measurer,
         physical_ic_renderings_clean={"DA1": clean},
         physical_ic_renderings_diagnostic={"DA1": diagnostic},
+        verified_ic_source=revised,
+        verified_ic_paint_binding=physical_ic,
+        verified_ic_snapshot=snapshot,
         route_preview=route,
         source_continuation_project=source_b,  # typed checked real b pair
         expected_component_count=23,
@@ -216,6 +214,8 @@ def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 2500
         "canonical_ti_part_id_verified": signed.part.identifier,
         "legacy_part_id_preserved_only_in_frozen_fixture": True,
         "trusted_97_part_rebinding": True,
+        "source_signed_16_pin_overlay": True,
+        "source_signed_overlay_sha256": snapshot.circuit_sha256,
         "router_attempt": route.as_dict(),
         "A3_nominal_1_to_1_mm": [420, 297],
         "A3_true_catalog_bounds": footprint,
