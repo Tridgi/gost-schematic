@@ -1,5 +1,7 @@
 """Source-pinned A3 placement tests. No SVG redraw or hidden ERC acceptance."""
+import os
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -9,6 +11,7 @@ from examples.tl494_v5.compact_layout import (
     compact_source_assembly,
 )
 from examples.tl494_v5.native_circuit import assemble_native_v5
+from examples.tl494_v5.route_candidate_driver import source_signed_ink_footprint
 from gost_schematic.core.geometry import Point
 from gost_schematic.model.circuit import Circuit
 
@@ -80,7 +83,9 @@ def test_a3_capacity_never_approves_off_paper_ink_bbox(
     delta_x_um: int, delta_y_um: int,
 ):
     source = compact_source_assembly()
-    original = actual_component_occupied_mm(source, source.symbols)
+    symbols, original = source_signed_ink_footprint(
+        source, Path(os.environ["TL494_TYPE_A_FONT"]),
+    )
     assert original["A3_capacity_fit"] is True
     assert original["A3_bbox_within_margins"] is True
 
@@ -99,7 +104,7 @@ def test_a3_capacity_never_approves_off_paper_ink_bbox(
         ),
         source.circuit.nets,
     ))
-    measured = actual_component_occupied_mm(shifted, source.symbols)
+    measured = actual_component_occupied_mm(shifted, symbols)
     assert measured["width_mm"] == original["width_mm"]
     assert measured["height_mm"] == original["height_mm"]
     assert measured["A3_bbox_within_margins"] is False
