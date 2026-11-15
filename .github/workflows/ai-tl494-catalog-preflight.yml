@@ -8,6 +8,8 @@ on:
       - "src/gost_schematic/agent_project/design_assistant.py"
       - "src/gost_schematic/agent_project/agent_readiness.py"
       - "src/gost_schematic/agent_project/owner_source_contract.py"
+      - "src/gost_schematic/agent_project/owner_api_locks.py"
+      - "src/gost_schematic/agent_project/data/tl494_cycle12_owner_locks.json"
       - "src/gost_schematic/agent_project/data/tl494_ic97_frozen_source.json"
       - "pyproject.toml"
       - "scripts/verify_wheel_payload.py"
@@ -18,6 +20,7 @@ on:
       - "tests/agent_project/test_agent_readiness_cli.py"
       - "tests/agent_project/test_tl494_owner_contract_cycle11.py"
       - "tests/agent_project/test_tl494_owner_pipeline_cycle11.py"
+      - "tests/agent_project/test_owner_api_locks_cycle12.py"
       - "tests/fixtures/ai_tl494_ic97_pinned_source.json"
       - "tests/agent_project/test_agent_guidance_contract.py"
       - "examples/agent_tl494_catalog_preflight_mcp.py"
@@ -56,6 +59,7 @@ jobs:
             tests/agent_project/test_agent_guidance_contract.py \
             tests/agent_project/test_tl494_owner_contract_cycle11.py \
             tests/agent_project/test_tl494_owner_pipeline_cycle11.py \
+            tests/agent_project/test_owner_api_locks_cycle12.py \
             tests/agent_project/test_mcp_saved_stdio.py
       - name: Real native MCP sample gallery and six-part print preflight
         shell: bash
@@ -156,19 +160,19 @@ jobs:
         run: |
           mkdir -p output/cycle11-owner
           git fetch --no-tags --depth=1 origin \
-            c8991bf232428645cad6e8b402d70abccf12a546 \
-            65b68cdd89ac0c2ae0b137228da61a17ac78d339
-          git show c8991bf232428645cad6e8b402d70abccf12a546:tests/fixtures/tl494_photo_23_frozen_cycle9.json \
+            585d4e645b01ba48e8f7d0574a447a5b6c33c07f \
+            32548a704420683e0cb30bf6ab80788c68f84eae
+          git show 585d4e645b01ba48e8f7d0574a447a5b6c33c07f:tests/fixtures/tl494_photo_23_frozen_cycle9.json \
             > output/cycle11-owner/frozen-IC97-source.json
-          git show c8991bf232428645cad6e8b402d70abccf12a546:src/gost_schematic/electrical/tl494cn.py \
+          git show 585d4e645b01ba48e8f7d0574a447a5b6c33c07f:src/gost_schematic/electrical/tl494cn.py \
             > output/cycle11-owner/IC97-tl494cn.py
-          git show 65b68cdd89ac0c2ae0b137228da61a17ac78d339:examples/tl494_v5/native_circuit.py \
+          git show 32548a704420683e0cb30bf6ab80788c68f84eae:examples/tl494_v5/native_circuit.py \
             > output/cycle11-owner/RECON115-native-circuit.py
-          git show c8991bf232428645cad6e8b402d70abccf12a546:examples/tl494_cycle9_circuit_integration.py \
+          git show 585d4e645b01ba48e8f7d0574a447a5b6c33c07f:examples/tl494_cycle9_circuit_integration.py \
             > output/cycle11-owner/IC97-typed-integration.py
-          git show 65b68cdd89ac0c2ae0b137228da61a17ac78d339:examples/tl494_v5/cycle11_ti_bridge.py \
+          git show 32548a704420683e0cb30bf6ab80788c68f84eae:examples/tl494_v5/cycle11_ti_bridge.py \
             > output/cycle11-owner/RECON115-typed-ti-bridge.py
-          git show 65b68cdd89ac0c2ae0b137228da61a17ac78d339:examples/tl494_v5/cycle11_b_continuation.py \
+          git show 32548a704420683e0cb30bf6ab80788c68f84eae:examples/tl494_v5/cycle11_b_continuation.py \
             > output/cycle11-owner/RECON115-typed-b-continuation.py
           test "$(git hash-object output/cycle11-owner/frozen-IC97-source.json)" = \
             "a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65"
@@ -193,6 +197,19 @@ jobs:
 
           proof = json.loads(Path("output/cycle11-source-pipeline-report.json").read_text())
           assert proof["status"] == "BLOCKED_15NET_NOT_ROUTED"
+          owner = proof["cycle12_exact_owner_api_locks"]
+          assert owner["status"] == "PASS_SOURCE_AND_OWNER_BYTES_ONLY_PRINT_BLOCKED"
+          assert owner["physical_components"] == 23
+          assert owner["physical_nets"] == 15
+          assert owner["physical_pinref_memberships"] == 62
+          assert owner["da1_all_16_physical_pins"] is True
+          assert owner["source_b_exact_marker_bindings"] == {
+              "b-X2": "X2.1", "b-R5": "R5.2"
+          }
+          assert len(owner["verified_git_blob_sha1"]) == 6
+          assert owner["owner_code_executed"] is False
+          assert owner["new_15_of_15_route_verified"] is False
+          assert owner["mcp_arbitrary_write_enabled"] is False
           assert proof["real_source_23_15_62_verified"] is True
           assert proof["source_components_count"] == 23
           assert proof["source_nets_count"] == 15
