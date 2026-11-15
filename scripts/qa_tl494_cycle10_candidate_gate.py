@@ -24,21 +24,21 @@ from scripts.qa_tl494_next_route_gate import (
 )
 
 RECON_CANDIDATE_SHA = "4db3b8bb7b06757602787b48240d0deaaa3dc754"
-CYCLE11_RECON_SHA = "021dc1a240f2d2aea21c60057f28159bf7e4ecba"
+CYCLE11_RECON_SHA = "73025965efeb94585e8723ba3f0b636229e8a5de"
 # Provenance as claimed INSIDE current RECON owner source code, not guessed.
 CYCLE11_RECON_OWNER_SHAS = {
-    "ELEKTRIK_IC_PR97": "0fdd1c799796a8afecb347d71169c001e02fe3e1",
-    "PAINT_PR93": "18294ec6218e375c6e82be3a3ec70e15be419cd0",
-    "YGO2_PR113": "78935639a1c9c2c10d5f1fcf32af5d6c96e7c601",
-    "ELEKTRIK_NET_PR114": "ba4735b4c7e533856c4a714c99e3d18ba2ab8be6",
+    "ELEKTRIK_IC_PR97": "7c30c209ea5e97a245844b24a3bbc4d3d30118ea",
+    "PAINT_PR93": "2e9d3fa41794eb773645e112ec8c44fc273e9f52",
+    "YGO2_PR113": "3e47cdf32ccf211ded97e3be1ad874035653e090",
+    "ELEKTRIK_NET_PR114": "61df41377cc9326f7fa0f594a804d329b447ec69",
 }
 # Latest concurrently retrieved owner HEADs for *execution*, not silently
 # identical to pinned provenance shown in the RECON source report.
 CYCLE11_LIVE_RUNTIME_SHAS = {
-    "ic": "90dab83566ba9ed8b344ab24396da084f02b5c23",
-    "paint": "f71f9c47f1e6313361dfa04242c559b0d74c831c",
-    "net": "ffbfc5fdc4653e1a2b08ac5e6d38d96ad669dbec",
-    "catalog": "92347d936c71e6038c836f37992bbbee65d56196",
+    "ic": "7c30c209ea5e97a245844b24a3bbc4d3d30118ea",
+    "paint": "2e9d3fa41794eb773645e112ec8c44fc273e9f52",
+    "net": "61df41377cc9326f7fa0f594a804d329b447ec69",
+    "catalog": "3e47cdf32ccf211ded97e3be1ad874035653e090",
 }
 FROZEN_IC_BLOB = "a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65"
 OWNER_SHAS = {
