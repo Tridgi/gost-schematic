@@ -462,3 +462,45 @@ def test_type_a_and_page_margin_negative_cases(mutation, reason):
         root.set("data-release", "PRINT_PASS")
     with pytest.raises(gate.EvidenceError, match=reason):
         gate.type_a_physical_text_and_paper_scope(root)
+
+
+@pytest.mark.parametrize(("center_distance_um", "has_violation"), [
+    (3299, True),
+    (3300, False),
+    (3301, False),
+])
+@pytest.mark.parametrize("same_net", [False, True])
+def test_gost_3mm_parallel_wires_applies_within_one_named_net_too(
+    center_distance_um, has_violation, same_net
+):
+    first = _wire(0, "COMMON", (0, 0), (10000, 0))
+    second = _wire(
+        1, "COMMON" if same_net else "GATE_DRIVE",
+        (0, center_distance_um), (10000, center_distance_um)
+    )
+    evidence = gate.all_parallel_ink_3mm_scope([first, second])
+    assert evidence["all_noncoincident_overlapping_projection_pairs"] == 1
+    assert evidence["same_net_pairs"] == int(same_net)
+    assert evidence["different_net_pairs"] == int(not same_net)
+    assert bool(evidence["below_3mm"]) is has_violation
+    assert evidence["minimum_printed_edge_gap_um"] == center_distance_um - 300
+
+
+def test_gost_3mm_nonparallel_crossing_not_wrongly_classified():
+    wires = [
+        _wire(0, "COMMON", (0, 0), (10000, 0)),
+        _wire(1, "FEEDBACK", (5000, -5000), (5000, 5000)),
+    ]
+    with pytest.raises(gate.EvidenceError,
+                       match="NO_REAL_PARALLEL_CONNECTION_LINES_INSPECTED"):
+        gate.all_parallel_ink_3mm_scope(wires)
+
+
+def test_gost_3mm_overlapping_collinear_duplicate_is_separate_drc_problem():
+    wires = [
+        _wire(0, "COMMON", (0, 0), (10000, 0)),
+        _wire(1, "COMMON", (0, 0), (10000, 0)),
+    ]
+    with pytest.raises(gate.EvidenceError,
+                       match="NO_REAL_PARALLEL_CONNECTION_LINES_INSPECTED"):
+        gate.all_parallel_ink_3mm_scope(wires)
