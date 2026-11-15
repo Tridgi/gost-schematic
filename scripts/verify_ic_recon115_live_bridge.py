@@ -289,7 +289,7 @@ def _true_source_b_rendering(font: Path):
     driver = import_module("examples.tl494_v5.route_candidate_driver")
     fixture, _ = driver.load_original_owner_fixture()
     original_named = driver.restore_original_named_nets(native, fixture)
-    assert set(net.name for net in original_named.nets) == set(
+    assert {net.name for net in original_named.nets} == set(
         load_frozen_source()["nets"]
     )
     physical = bind_positioned_photo_circuit_from_catalog(
