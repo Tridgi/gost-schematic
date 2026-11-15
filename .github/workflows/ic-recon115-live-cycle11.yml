@@ -74,6 +74,9 @@ jobs:
           test -f _paint93_exact/examples/render_tl494_compact_new_router_cycle10.py
           cp _paint93_exact/examples/render_tl494_full_native_cycle9.py _recon115_exact/examples/
           cp _paint93_exact/examples/render_tl494_compact_new_router_cycle10.py _recon115_exact/examples/
+          echo "IC_OWNER_RECON_SHA=$(git -C _recon115_exact rev-parse HEAD)" >> "$GITHUB_ENV"
+          echo "IC_OWNER_YGO_SHA=$(git -C _catalog113_exact rev-parse HEAD)" >> "$GITHUB_ENV"
+          echo "IC_OWNER_PAINT_SHA=$(git -C _paint93_exact rev-parse HEAD)" >> "$GITHUB_ENV"
           echo "REAL_OWNER_SOURCES RECON115=8453ea5e IC97=$GITHUB_SHA YGO113=54f06f67 PAINT93=6ebd97d5"
           echo "NO_PRODUCTION_SOURCE_BRANCH_MERGE"
       - uses: actions/setup-python@v5
@@ -105,6 +108,33 @@ jobs:
           set -euo pipefail
           python -m scripts.verify_ic_recon115_live_bridge --font-file "$IC_TYPE_A_FONT_PATH" --output-dir output/ic-recon115-cycle11
           test "$(find output/ic-recon115-cycle11 -maxdepth 1 -name '*.svg' | wc -l)" -eq 2
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          witness = json.loads(
+              Path("output/ic-recon115-cycle11/source-physical-witness.json")
+              .read_text(encoding="utf-8")
+          )
+          for owner, env in (
+              ("ic97", "GITHUB_SHA"),
+              ("recon115", "IC_OWNER_RECON_SHA"),
+              ("paint93", "IC_OWNER_PAINT_SHA"),
+              ("ygo113", "IC_OWNER_YGO_SHA"),
+          ):
+              assert witness["owner_sha"][owner] == os.environ[env]
+          assert witness["source_component_count"] == 23
+          assert witness["source_net_count"] == 15
+          assert witness["source_physical_pinref_count"] == 62
+          assert len(witness["tl494_factory_pins"]) == 16
+          assert len(witness["source_b_nonphysical_stubs"]) == 2
+          assert witness["clean_green_contacts"] == 0
+          assert witness["diagnostic_green_contacts"] == 16
+          assert not witness["printable_candidate"]
+          assert not witness["new_route_15_of_15_complete"]
+          print("CANONICAL_SIGNED_ORIGINAL_NAMES_AND_2_B_STROKES_PASS_DRAFT_ONLY")
+          PY
       - name: Genuine SVG to 300DPI PNG, stamps and immutable evidence hashes
         if: matrix.python-version == '3.12'
         shell: bash
