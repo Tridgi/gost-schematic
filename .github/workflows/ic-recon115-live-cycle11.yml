@@ -8,6 +8,8 @@ on:
       - 'examples/tl494_cycle9_circuit_integration.py'
       - 'scripts/verify_ic_recon115_live_bridge.py'
       - 'tests/test_ic_circuit_adapter_cycle9.py'
+      - 'tests/test_ic_router_ports_cycle16.py'
+      - 'docs/rfc/cycle16-ic-router-ports.md'
       - 'docs/rfc/cycle11-recon115-ic97-trusted-source-bridge.md'
       - 'docs/rfc/cycle14-ic97-canonical-source-witness.md'
       - 'tests/fixtures/tl494_photo_23_frozen_cycle9.json'
@@ -130,11 +132,48 @@ jobs:
           assert witness["source_physical_pinref_count"] == 62
           assert len(witness["tl494_factory_pins"]) == 16
           assert len(witness["source_b_nonphysical_stubs"]) == 2
+          physical_ports = witness["source_verified_router_ports"]
+          separate = json.loads(
+              Path("output/ic-recon115-cycle11/DA1-tl494-router-ports.json")
+              .read_text(encoding="utf-8")
+          )
+          assert physical_ports == separate
+          assert physical_ports["source_sha"] == (
+              "e695c415fdced164b0e0c39c5249d030795a0aa6"
+          )
+          assert physical_ports["source_original_net_count"] == 15
+          assert physical_ports["source_pinref_memberships"] == 62
+          assert physical_ports["physical_manufacturer_pins"] == 16
+          assert len(physical_ports["ports"]) == 16
+          assert len(physical_ports["source_original_nets"]) == 15
+          assert sum(len(n["members"]) for n in physical_ports["source_original_nets"]) == 62
+          assert not physical_ports["printable_candidate"]
+          assert not physical_ports["full_15_net_route_verified"]
+          assert physical_ports["nonphysical_b_stubs"] == ["b-X2", "b-R5"]
+          for key, env in (
+              ("IC97", "GITHUB_SHA"),
+              ("RECON115", "IC_OWNER_RECON_SHA"),
+              ("PAINT93", "IC_OWNER_PAINT_SHA"),
+              ("YGO113", "IC_OWNER_YGO_SHA"),
+          ):
+              assert physical_ports["producer_shas"][key] == os.environ[env]
+          da = {p["pin_ref"]: p for p in physical_ports["ports"]}
+          assert set(da) == {f"DA1.{i}" for i in range(1, 17)}
+          assert da["DA1.3"]["ti_name"] == "FEEDBACK"
+          assert da["DA1.3"]["electrical_type"] == "input"
+          assert da["DA1.13"]["ti_name"] == "OUTPUT CTRL"
+          assert da["DA1.13"]["electrical_type"] == "input"
+          assert da["DA1.14"]["ti_name"] == "REF"
+          assert da["DA1.14"]["electrical_type"] == "power_output"
+          assert all(
+              p["escape_rule"] == "PIN_REF_ONLY_NO_FOREIGN_NET_CLEARANCE"
+              for p in da.values()
+          )
           assert witness["clean_green_contacts"] == 0
           assert witness["diagnostic_green_contacts"] == 16
           assert not witness["printable_candidate"]
           assert not witness["new_route_15_of_15_complete"]
-          print("CANONICAL_SIGNED_ORIGINAL_NAMES_AND_2_B_STROKES_PASS_DRAFT_ONLY")
+          print("CANONICAL_SIGNED_16_ROUTER_PORTS_AND_SOURCE_B_PASS_DRAFT_ONLY")
           PY
       - name: Genuine SVG to 300DPI PNG, stamps and immutable evidence hashes
         if: matrix.python-version == '3.12'
