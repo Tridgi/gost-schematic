@@ -177,6 +177,22 @@ def render_routed_native_sheet(
                 != verified_ic_snapshot.per_unit_targets[0]
             ):
                 raise ValueError("ROUTED_SHEET_SIGNED_IC_INK_OR_TARGET_DRIFT")
+        # Re-render from the signed source in BOTH modes. PinRef targets
+        # alone cannot authenticate text glyphs or SVG physical-lead ink.
+        expected_clean = verified_ic_snapshot.render(
+            verified_ic_source, verified_ic_paint_binding,
+            style, measurer, diagnostics=False,
+        )
+        expected_diagnostic = verified_ic_snapshot.render(
+            verified_ic_source, verified_ic_paint_binding,
+            style, measurer, diagnostics=True,
+        )
+        if (
+            expected_clean != (physical_ic_renderings_clean[reference],)
+            or expected_diagnostic
+            != (physical_ic_renderings_diagnostic[reference],)
+        ):
+            raise ValueError("ROUTED_SHEET_SIGNED_IC_SERIALIZED_INK_CHANGED")
         signed_source_verified = True
     if type(stroke_um) is not int or stroke_um <= 0:
         raise ValueError("ROUTED_SHEET_INVALID_STROKE")
