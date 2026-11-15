@@ -92,6 +92,7 @@ class GlobalRoutePreview:
     routing_strategy: str = "SOURCE_FUNCTIONAL"
     route_order_trials: tuple[tuple[str, int, int], ...] = ()
     ripup_trials: tuple[tuple[str, str, int, str], ...] = ()
+    group_ripup_trials: tuple[tuple[str, str, int, str], ...] = ()
 
     @property
     def complete(self) -> bool:
@@ -138,6 +139,16 @@ class GlobalRoutePreview:
                 {"blocked_net": blocked, "ripped_net": removed,
                  "complete_nets": count, "status": status}
                 for blocked, removed, count, status in self.ripup_trials
+            ],
+            "physical_conflict_dependencies": {
+                name: list(owners) for name, owners in
+                _physical_conflict_dependencies(self.net_trees).items()
+            },
+            "group_ripup_trials": [
+                {"blocked_net": blocked, "removed_real_nets": owners,
+                 "complete_nets": complete, "status": status}
+                for blocked, owners, complete, status
+                in self.group_ripup_trials
             ],
             "not_gost_approved": True,
         }
@@ -441,6 +452,7 @@ def _visibility_path(
     grid_um: int,
     max_detour_ratio: float,
     goal_offset: int = 0,
+    prefer_astar: bool = False,
 ) -> tuple[tuple[Point, ...], str | None]:
     """Deterministic multi-goal Dijkstra with explicit T candidates.
 
@@ -547,7 +559,54 @@ def _visibility_path(
     # actually expanded from the source allocate nodes. Reject enormous
     # lattices but do not confuse potential cells with 25k actual visits.
     if len(xs) * len(ys) > search_node_cap * 8:
-        return (), "ROUTE_GRID_TOO_DENSE"
+        if search_node_cap < 16:
+            return (), "ROUTE_GRID_TOO_DENSE"
+        # The full potential Cartesian product is NOT the visited Dijkstra
+        # budget. Earlier we rejected R5.2 and distant power terminals
+        # without testing a single genuine wire candidate. Downsample ONLY
+        # search coordinates, never source physical ink, copper or the DRC
+        # obstacles. Every proposed edge still checks ALL original boxes,
+        # real lead strokes, wire-veto and post-route full graph DRC.
+        # Source/goal coordinates are non-negotiable. The compressed grid
+        # keeps nearby verified lane boundaries where it is most likely
+        # to find a short escape. If no path is found, report that honestly
+        # rather than converting the failure to a synthetic connection.
+        max_cells = search_node_cap * 8
+        side = max(8, int(max_cells ** 0.5))
+        keep_x = {window.min_x, window.max_x, source.x}
+        keep_y = {window.min_y, window.max_y, source.y}
+        keep_x.update(point.x for point in reachable_goals)
+        keep_y.update(point.y for point in reachable_goals)
+
+        def sampled_axis(
+            values: list[int], required: set[int], endpoints: tuple[int, ...],
+            limit: int,
+        ) -> list[int]:
+            mandatory = {value for value in required if value in values}
+            if len(mandatory) >= limit:
+                return sorted(mandatory)
+            available = [value for value in values if value not in mandatory]
+            available.sort(key=lambda value: (
+                min(abs(value - pivot) for pivot in endpoints),
+                value,
+            ))
+            chosen = mandatory | set(available[:limit - len(mandatory)])
+            return sorted(chosen)
+
+        # Two dimensions are trimmed together. Any axis smaller than side
+        # retains every legitimate source candidate, allocating remaining
+        # grid capacity to the longer axis instead of wasting budget.
+        nx = min(len(xs), side)
+        ny = min(len(ys), max_cells // nx)
+        nx = min(len(xs), max_cells // ny)
+        xs = sampled_axis(
+            xs, keep_x, (source.x, *(p.x for p in reachable_goals)), nx,
+        )
+        ys = sampled_axis(
+            ys, keep_y, (source.y, *(p.y for p in reachable_goals)), ny,
+        )
+        if len(xs) * len(ys) > max_cells:
+            return (), "ROUTE_SPARSE_GRID_EXCEEDED_NODE_BUDGET"
     # Every candidate is strictly horizontal or vertical. A rectangle can
     # intersect such a candidate only if its perpendicular projection
     # contains the fixed row/column coordinate (including its boundary).
@@ -646,7 +705,20 @@ def _visibility_path(
     permanent_dots = frozenset((*occupied.junctions, *existing_dots))
     current_score = {start: (0, 0, 0, 0)}
     predecessor: dict[tuple[int, int, int], tuple[int, int, int]] = {}
-    heap = [(0, 0, 0, 0, *start)]
+    # A* Manhattan lower bound is admissible even with positive bend and
+    # foreign-crossing penalties. Dijkstra's zero heuristic needlessly
+    # expanded thousands of unrelated rows before trying the real target.
+    # Only SEARCH order changes; every old physical veto/DRC is preserved.
+    def remaining_distance(at: Point) -> int:
+        return min(
+            abs(at.x - goal.x) + abs(at.y - goal.y)
+            for goal in reachable_goals
+        )
+
+    heap = [(
+        remaining_distance(source) if prefer_astar else 0,
+        0, 0, 0, 0, *start,
+    )]
     reached = None
     visited = 0
     # A goal-window retry must use only its selected real T candidates.
@@ -662,12 +734,29 @@ def _visibility_path(
         tuple[str, str, Point, Point], tuple[Point, Point]
     ] = {}
     while heap:
-        score, bends, crossings, length, ix, iy, direction = heappop(heap)
+        _, score, bends, crossings, length, ix, iy, direction = heappop(heap)
         state = (ix, iy, direction)
         if current_score.get(state) != (score, bends, crossings, length):
             continue
         visited += 1
         if visited > search_node_cap * 3:
+            if not prefer_astar:
+                # Preserve every successful Dijkstra route. Only a failed
+                # bounded exploration receives one admissible A* retry.
+                # This is a SEARCH restart, not permission to cross UGO ink,
+                # bypass a PinRef, or relax a single physical DRC rule.
+                return _visibility_path(
+                    source, normal, goals,
+                    net_name=net_name, occupied=occupied, tree=tree,
+                    existing_dots=existing_dots,
+                    goal_pin_normals=goal_pin_normals,
+                    ink_obstacles=ink_obstacles,
+                    authorized_pins=authorized_pins, boxes=boxes,
+                    page=page, stroke_um=stroke_um,
+                    search_node_cap=search_node_cap, grid_um=grid_um,
+                    max_detour_ratio=max_detour_ratio,
+                    goal_offset=goal_offset, prefer_astar=True,
+                )
             return (), "ROUTE_SEARCH_EXPANSION_LIMIT"
         here = Point(xs[ix], ys[iy])
         if here in targets and here != source:
@@ -765,7 +854,10 @@ def _visibility_path(
                     or improved < current_score[next_state]):
                 current_score[next_state] = improved
                 predecessor[next_state] = state
-                heappush(heap, (*improved, *next_state))
+                heappush(heap, (
+                    n_score + (remaining_distance(to) if prefer_astar else 0),
+                    *improved, *next_state,
+                ))
     if reached is None:
         # Route-search diagnostics retain the actual source primitive and
         # candidate coordinates; never call the reject a successful Net.
@@ -1362,6 +1454,173 @@ def _conflict_directed_ripup(
     )
 
 
+
+def _physical_conflict_dependencies(
+    trees: tuple[NetTreePreview, ...],
+) -> dict[str, tuple[str, ...]]:
+    """Reported real copper dependency graph of BLOCKED -> accepted foreign Nets.
+
+    Include no guessed blocker on INK, grid-budget or pin-escape errors.
+    Source net tree identities are preserved even when no witness exists.
+    """
+    accepted = {tree.net_name for tree in trees if tree.complete}
+    result: dict[str, tuple[str, ...]] = {}
+    for tree in trees:
+        if tree.complete:
+            continue
+        blockers: list[str] = []
+        for diagnosis in tree.diagnostics:
+            for marker in diagnosis.split(":WIRE_VETO=")[1:]:
+                for token in marker.split(";"):
+                    owner = token.split(":", 1)[0]
+                    if (
+                        owner in accepted and owner != tree.net_name
+                        and owner not in blockers
+                    ):
+                        blockers.append(owner)
+        result[tree.net_name] = tuple(blockers)
+    return result
+
+
+def _conflict_group_reroute(
+    source: GlobalRoutePreview,
+    parts: dict[str, PartDefinition],
+    symbols: dict[str, SymbolDefinition],
+    *,
+    page_box: Box,
+    annotation_placements: tuple,
+    stroke_um: int,
+    search_node_cap: int,
+    max_detour_ratio: float,
+    attempts: int,
+) -> GlobalRoutePreview:
+    """Bounded 2+1 Net simultaneous genuine physical copper re-planning.
+
+    A blocked tree's actual veto owners form its measured conflict component;
+    remove no more than TWO accepted foreign trees at once. Build blocked
+    first, then reconstruct both removed authentic trees in either order.
+    Candidate graph consists ONLY of freshly independently DRC-cleared,
+    completed trees. Never invent a terminal, copper stroke, or terminal T.
+    """
+    if type(attempts) is not int or not 0 <= attempts <= 3:
+        raise ValueError("ROUTE_INVALID_CONFLICT_GROUP_ATTEMPTS")
+    if attempts == 0 or source.print_pass:
+        return source
+    circuit = source.source_circuit
+    known = {n.name: n for n in circuit.nets}
+    if (
+        len(known) != len(circuit.nets)
+        or len(source.net_trees) != len(circuit.nets)
+        or {tree.net_name for tree in source.net_trees} != set(known)
+        or any(tree.pin_refs != known[tree.net_name].members
+               for tree in source.net_trees)
+        or _accepted_tree_graph(source.net_trees) != source.graph
+    ):
+        raise ValueError("ROUTE_GROUP_RIPUP_UNTRUSTED_PREVIEW")
+    best = source
+    best_complete = sum(t.complete for t in source.net_trees)
+    history = []
+    dependencies = _physical_conflict_dependencies(source.net_trees)
+    for blocked, owners in dependencies.items():
+        if len(history) >= attempts:
+            break
+        if len(owners) < 2:
+            continue
+        removing = owners[:2]
+        rest = tuple(
+            tree for tree in source.net_trees
+            if tree.complete and tree.net_name not in removing
+        )
+        start = _accepted_tree_graph(rest)
+        for chosen_order in (removing, tuple(reversed(removing))):
+            if len(history) >= attempts:
+                break
+            candidate_trees = {
+                tree.net_name: tree for tree in rest
+            }
+            blocked_tree = _reroute_real_net(
+                circuit, known[blocked], parts, symbols,
+                occupied_graph=start, page_box=page_box,
+                annotation_placements=annotation_placements,
+                stroke_um=stroke_um, search_node_cap=search_node_cap,
+                max_detour_ratio=max_detour_ratio,
+            )
+            if not blocked_tree.complete:
+                history.append((
+                    blocked, "+".join(chosen_order), best_complete,
+                    "PHYSICAL_PIN_OR_INK_BLOCKED",
+                ))
+                continue
+            candidate_trees[blocked] = blocked_tree
+            for owner in chosen_order:
+                graph = _accepted_tree_graph(tuple(candidate_trees.values()))
+                ret = _reroute_real_net(
+                    circuit, known[owner], parts, symbols,
+                    occupied_graph=graph, page_box=page_box,
+                    annotation_placements=annotation_placements,
+                    stroke_um=stroke_um, search_node_cap=search_node_cap,
+                    max_detour_ratio=max_detour_ratio,
+                )
+                if ret.complete:
+                    candidate_trees[owner] = ret
+                else:
+                    candidate_trees[owner] = ret
+            trial_trees = tuple(
+                candidate_trees.get(tree.net_name, tree)
+                for tree in source.net_trees
+            )
+            graph = _accepted_tree_graph(trial_trees)
+            drc = audit_route_drc(
+                circuit, graph, stroke_um=stroke_um,
+                symbols_by_part=symbols,
+                annotation_placements=annotation_placements,
+            )
+            if not drc.valid:
+                history.append((
+                    blocked, "+".join(chosen_order), best_complete,
+                    "REJECTED_FULL_GRAPH_DRC",
+                ))
+                continue
+            complete = sum(tree.complete for tree in trial_trees)
+            notes = tuple(
+                f"{tree.net_name}:{diagnostic}"
+                for tree in trial_trees if not tree.complete
+                for diagnostic in tree.diagnostics
+            )
+            if complete == len(known):
+                faults = validate_external_wires(
+                    circuit, graph, parts,
+                    {sym.identifier: sym for sym in symbols.values()},
+                )
+                if any(f.severity.value == "error" for f in faults):
+                    history.append((
+                        blocked, "+".join(chosen_order), complete,
+                        "REJECTED_PHYSICAL_ERC",
+                    ))
+                    continue
+            candidate = GlobalRoutePreview(
+                circuit, graph, trial_trees, notes, drc,
+                source.routing_strategy, source.route_order_trials,
+                source.ripup_trials,
+            )
+            history.append((
+                blocked, "+".join(chosen_order), complete,
+                "REBUILT" if all(
+                    candidate_trees[o].complete for o in chosen_order
+                ) else "SOME_REMOVED_NET_INCOMPLETE",
+            ))
+            if complete > best_complete:
+                best, best_complete = candidate, complete
+    return replace(
+        best,
+        group_ripup_trials=tuple(history),
+        routing_strategy=(
+            "CONFLICT_COMPONENT_PHYSICAL_REBUILD"
+            if best is not source else source.routing_strategy
+        ),
+    )
+
+
 def _source_priority_name_view(
     original: tuple[str, ...],
     actual_names: frozenset[str],
@@ -1471,6 +1730,7 @@ def route_circuit_with_order_fallback(
     priority_offset: int = 0,
     physical_veto_restarts: int = 0,
     physical_ripup_attempts: int = 0,
+    physical_group_attempts: int = 0,
 ) -> GlobalRoutePreview:
     """Search independent functional route-order permutations without rewiring.
 
@@ -1604,9 +1864,15 @@ def route_circuit_with_order_fallback(
         chosen, routing_strategy=chosen_strategy,
         route_order_trials=tuple(history),
     )
-    return _conflict_directed_ripup(
+    paired = _conflict_directed_ripup(
         chosen, parts, symbols, page_box=page_box,
         annotation_placements=annotation_placements,
         stroke_um=stroke_um, search_node_cap=search_node_cap,
         max_detour_ratio=max_detour_ratio, budget=physical_ripup_attempts,
+    )
+    return _conflict_group_reroute(
+        paired, parts, symbols, page_box=page_box,
+        annotation_placements=annotation_placements,
+        stroke_um=stroke_um, search_node_cap=search_node_cap,
+        max_detour_ratio=max_detour_ratio, attempts=physical_group_attempts,
     )

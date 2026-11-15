@@ -30,6 +30,11 @@ MOVE_VARIANTS = {
     "old-x16": (),
     "fixed-x17": (),
     "r2-down-2p5": (("R2", 0, Decimal("2.5")),),
+    "c1-down-2p5": (("C1", 0, Decimal("2.5")),),
+    "r2-c1-down-2p5": (
+        ("R2", 0, Decimal("2.5")),
+        ("C1", 0, Decimal("2.5")),
+    ),
     "da1-right-2p5": (("DA1", Decimal("2.5"), 0),),
     "r1-up-2p5": (("R1", 0, Decimal("-2.5")),),
     "vt1-right-2p5": (("VT1", Decimal("2.5"), 0),),
@@ -99,6 +104,7 @@ def run_matrix(
     variants: tuple[str, ...],
     max_nodes: int,
     physical_ripup_attempts: int,
+    physical_group_attempts: int = 0,
     priority_offset: int = 0,
 ) -> dict:
     if (
@@ -114,6 +120,8 @@ def run_matrix(
         0 <= physical_ripup_attempts <= 4
     ):
         raise ValueError("C14_INVALID_RIPUP_BUDGET")
+    if type(physical_group_attempts) is not int or not (0 <= physical_group_attempts <= 3):
+        raise ValueError("C15_INVALID_CONFLICT_GROUP_ATTEMPTS")
     if len(owner_sha) != 40 or len(reference_sha) != 40:
         raise ValueError("C14_INVALID_OWNER_IDENTITY")
 
@@ -156,6 +164,7 @@ def run_matrix(
             priority_offset=priority_offset,
             physical_veto_restarts=0,
             physical_ripup_attempts=physical_ripup_attempts,
+            physical_group_attempts=physical_group_attempts,
             page_format="A3",
         )
         report_path = folder / "TL494-compact-A3-route-drc.json"
@@ -211,6 +220,7 @@ def run_matrix(
         "priority_trials": 1,
         "physical_veto_restarts": 0,
         "physical_ripup_attempts": physical_ripup_attempts,
+        "physical_group_attempts": physical_group_attempts,
         "matrix": results,
         "legal_print_15_15_verified": False,
         "global_post_render_3_2_1mm_signed": False,
@@ -240,6 +250,7 @@ def main() -> None:
     parser.add_argument("--node-cap", type=int, default=4000)
     parser.add_argument("--priority-offset", type=int, default=0)
     parser.add_argument("--physical-ripup-attempts", type=int, default=0)
+    parser.add_argument("--physical-group-attempts", type=int, default=0)
     parser.add_argument(
         "--variant", action="append", choices=tuple(MOVE_VARIANTS),
     )
@@ -252,6 +263,7 @@ def main() -> None:
         max_nodes=args.node_cap,
         priority_offset=args.priority_offset,
         physical_ripup_attempts=args.physical_ripup_attempts,
+        physical_group_attempts=args.physical_group_attempts,
     )
 
 

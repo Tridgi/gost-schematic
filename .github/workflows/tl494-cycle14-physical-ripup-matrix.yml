@@ -138,6 +138,35 @@ jobs:
           assert route["print_pass"] is False
           print("Local source 23/15/62/16, fixed x17", by_name["fixed-x17"]["routed_net_count"], "ripup", route["routed_nets"], "STILL BLOCKED")
           PY
+      - name: Source-real x17 R2 and C1 position with physical A-star group search
+        run: |
+          set -euo pipefail
+          FONT="$(find "$HOME/.local/share/fonts" -name '*TypeA*' -type f -print -quit)"
+          python -m examples.review_tl494_cycle14_matrix \
+            --font-file "$FONT" --owner-sha "$GITHUB_SHA" \
+            --reference-sha 73025965efeb94585e8723ba3f0b636229e8a5de \
+            --node-cap 4000 --priority-offset 0 \
+            --physical-ripup-attempts 2 --physical-group-attempts 3 \
+            --variant r2-down-2p5 --variant c1-down-2p5 \
+            --variant r2-c1-down-2p5 \
+            --output output/cycle15-r2-c1-physical-search
+      - name: Reject false Cycle15 print release
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('output/cycle15-r2-c1-physical-search/TL494-cycle14-equal-budget-matrix.json')
+          x = json.loads(p.read_text(encoding='utf-8'))
+          assert x['actual_23_15_62_16_source_preserved']
+          assert x['physical_ripup_attempts'] == 2 and x['physical_group_attempts'] == 3
+          assert len(x['matrix']) == 3
+          for row in x['matrix']:
+              assert len(row['net_trees']) == 15
+              assert sum(len(t['source_physical_PinRefs']) for t in row['net_trees']) == 62
+              assert row['partial_graph_drc_error_count'] == 0
+              assert row['print_pass'] is False
+          print([(row['key'], row['routed_net_count']) for row in x['matrix']])
+          PY
       - name: Render actual 300DPI DRAFT partial source wire previews (NOT final PAINT)
         run: |
           set -euo pipefail
@@ -154,6 +183,7 @@ jobs:
           python - <<'PY'
           from hashlib import sha256
           from pathlib import Path
+          Path("output").mkdir(parents=True, exist_ok=True)
           paths = (sorted(Path("output").rglob("*.json"))
                    + sorted(Path("output").rglob("*.svg"))
                    + sorted(Path("output").rglob("*.png")))
@@ -169,5 +199,6 @@ jobs:
           path: |
             output/cycle14-matrix/
             output/cycle14-ripup/
+            output/cycle15-r2-c1-physical-search/
             output/cycle14-sha256sum.txt
           if-no-files-found: warn
