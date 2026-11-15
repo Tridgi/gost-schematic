@@ -137,12 +137,17 @@ jobs:
             --font-file "$TL494_TYPE_A_FONT" \
             --output output/tl494-v5-current/C14_SIGNED_PHYSICAL_62_PIN_A2.json \
             --page-format A2
+          PYTHONPATH=src python -m examples.tl494_v5.cycle14_pin_corridor_probe \
+            --font-file "$TL494_TYPE_A_FONT" \
+            --output output/tl494-v5-current/C14_SIGNED_C1_2P5_LEGAL_A3.json \
+            --page-format A3 --move C1:0:2.5
           PYTHONPATH=src python - <<'PY'
           import json
           from pathlib import Path
           root = Path("output/tl494-v5-current")
           a3=json.loads((root/"C14_SIGNED_PHYSICAL_62_PIN_A3.json").read_text())
           a2=json.loads((root/"C14_SIGNED_PHYSICAL_62_PIN_A2.json").read_text())
+          c1=json.loads((root/"C14_SIGNED_C1_2P5_LEGAL_A3.json").read_text())
           for report in (a3,a2):
               assert (report["components"],report["original_net_count"],report["physical_pinref_memberships"],report["manufacturer_signed_DA1_pins"]) == (23,15,62,16)
               assert len(report["pin_escapes"]) == 62
@@ -150,6 +155,24 @@ jobs:
               assert set(report["true_b_source_stubs"]) == {"b-X2","b-R5"}
               assert report["absolute_10mm_component_ink_fit"]
               assert report["full_15_net_print_release"] == "BLOCKED_NOT_A_ROUTER"
+          assert a3["measured_text_10mm_frame_fit"] is False
+          assert a2["measured_text_10mm_frame_fit"] is False
+          assert a3["real_measured_text_guard_count"] == 73
+          assert a3["measured_text_frame_violations"] == [{
+              "owner": "C1", "label": "C1", "kind": "AnnotationPlacement",
+              "bounds_um": [261362, 9100, 265638, 13600],
+          }]
+          assert c1["source_position_only_moves_mm"] == [["C1","0","2.5"]]
+          assert c1["measured_text_10mm_frame_fit"]
+          assert c1["real_measured_text_guard_count"] == 73
+          assert c1["measured_text_frame_violations"] == []
+          assert c1["absolute_10mm_component_ink_fit"]
+          assert c1["source_UGO_bbox_um"] == [10850,17300,405150,243151]
+          assert c1["original_nets"] == a3["original_nets"]
+          assert c1["true_b_source_stubs"] == a3["true_b_source_stubs"]
+          assert c1["manufacturer_signed_DA1_pins"] == 16
+          assert c1["physical_pinref_memberships"] == 62
+          assert c1["full_15_net_print_release"] == "BLOCKED_NOT_A_ROUTER"
           assert a3["pin_escapes"] == a2["pin_escapes"]
           assert a3["source_UGO_bbox_um"] == [10850,14800,405150,243151]
           assert all(
@@ -159,6 +182,7 @@ jobs:
           print("C14_62_REAL_PIN_NATIVE_INK_2500_CLEAR_A3_A2_NOT_ROUTED")
           PY
           sha256sum output/tl494-v5-current/C14_SIGNED_PHYSICAL_62_PIN_*.json >> output/tl494-v5-current/SHA256SUMS.txt
+          sha256sum output/tl494-v5-current/C14_SIGNED_C1_2P5_LEGAL_A3.json >> output/tl494-v5-current/SHA256SUMS.txt
       - name: Compare original source 23/15/62 and run two order candidates
         run: |
           set -euxo pipefail
