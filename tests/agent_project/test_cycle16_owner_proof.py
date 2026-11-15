@@ -52,7 +52,7 @@ def _write_json(path, value):
     )
 
 
-def _xml(diagnostic):
+def _xml(diagnostic, real_net_name):
     root = ET.Element(f"{{{_SVG}}}svg", {
         "data-original-source-names-restored-in-manifest": "true",
         "data-source-physical-pinrefs": "62",
@@ -77,6 +77,12 @@ def _xml(diagnostic):
             "y1": str(stub["start_um"][1] / 1000),
             "x2": str(stub["end_um"][0] / 1000),
             "y2": str(stub["end_um"][1] / 1000),
+        })
+    for i in range(41):
+        ET.SubElement(root, f"{{{_SVG}}}line", {
+            "data-layer": "wires",
+            "data-net": real_net_name, "data-wire-index": str(i),
+            "x1": str(i + 5), "x2": str(i + 6), "y1": "30", "y2": "30",
         })
     if diagnostic:
         layer = ET.SubElement(root, f"{{{_SVG}}}g", {
@@ -125,7 +131,7 @@ def _make_owner(tmp_path, completed=9):
         ("TL494-A3-clean-source-b.svg", False),
         ("TL494-A3-diagnostic-source-b.svg", True),
     ):
-        (tmp_path / name).write_bytes(_xml(diagnostic))
+        (tmp_path / name).write_bytes(_xml(diagnostic, next(iter(nets))))
     artifact_files = {
         "TL494-A3-clean-source-b.svg":
             tmp_path / "TL494-A3-clean-source-b.svg",
@@ -264,7 +270,7 @@ def test_c16_untrusted_owner_negative_cases(tmp_path, mutation, code):
 def test_native_clean_svg_rejects_diagnostic_editor_marks(tmp_path):
     request, proof = _make_owner(tmp_path)
     path = tmp_path / "TL494-A3-clean-source-b.svg"
-    path.write_bytes(_xml(diagnostic=True))
+    path.write_bytes(_xml(diagnostic=True, real_net_name=request["nets"][0]["name"]))
     proof["artifacts"][path.name]["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
     _write_json(tmp_path / "C15_REAL_TL494_DELIVERY.json", proof)
     with pytest.raises(ProjectError, match="C16_CLEAN_SVG_EDITOR_MARKERS"):
@@ -332,4 +338,35 @@ def test_duplicated_json_field_in_external_owner_is_rejected(tmp_path):
     assert body.startswith("{")
     path.write_text('{"schema": "FORGED", ' + body[1:], encoding="utf-8")
     with pytest.raises(ProjectError, match="C16_DUPLICATE_JSON_FIELD"):
+        review_c15_owner_proof(request, tmp_path)
+
+
+def test_forged_extra_wire_in_native_svg_is_rejected(tmp_path):
+    request, proof = _make_owner(tmp_path)
+    name = "TL494-A3-clean-source-b.svg"
+    path = tmp_path / name
+    tree = ET.fromstring(path.read_bytes())
+    ET.SubElement(tree, f"{{{_SVG}}}line", {
+        "data-layer": "wires", "data-net": request["nets"][0]["name"],
+        "data-wire-index": "41", "x1": "40", "y1": "50",
+        "x2": "50", "y2": "50",
+    })
+    path.write_bytes(ET.tostring(tree))
+    proof["artifacts"][name]["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+    _write_json(tmp_path / "C15_REAL_TL494_DELIVERY.json", proof)
+    with pytest.raises(ProjectError, match="C16_SVG_ROUTE_WIRE_COUNT_DRIFT"):
+        review_c15_owner_proof(request, tmp_path)
+
+
+def test_diagnostic_and_clean_cannot_disagree_about_wire_geometry(tmp_path):
+    request, proof = _make_owner(tmp_path)
+    name = "TL494-A3-diagnostic-source-b.svg"
+    path = tmp_path / name
+    tree = ET.fromstring(path.read_bytes())
+    first = tree.findall(f".//{{{_SVG}}}line[@data-layer='wires']")[0]
+    first.set("x2", "6.001")
+    path.write_bytes(ET.tostring(tree))
+    proof["artifacts"][name]["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+    _write_json(tmp_path / "C15_REAL_TL494_DELIVERY.json", proof)
+    with pytest.raises(ProjectError, match="C16_SVG_CLEAN_DIAGNOSTIC_COPPER_DRIFT"):
         review_c15_owner_proof(request, tmp_path)
