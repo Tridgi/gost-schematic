@@ -46,7 +46,8 @@ _SOURCE_SHA = "e695c415fdced164b0e0c39c5249d030795a0aa6"
 def produce(
     output: Path, font_file: Path, *,
     owner_sha: str, reference_sha: str, node_cap: int = 25000,
-    priority_trials: int = 2, page_format: str = "A3",
+    priority_trials: int = 2, priority_offset: int = 0,
+    page_format: str = "A3",
 ) -> dict:
     if len(owner_sha) != 40 or len(reference_sha) != 40:
         raise ValueError("COMPACT_UNPINNED_OWNER_SHA")
@@ -171,6 +172,7 @@ def produce(
         circuit, model.parts, symbols, page_box=page,
         annotation_placements=annotations, search_node_cap=node_cap,
         max_order_restarts=2, try_priorities=priority_trials,
+        priority_offset=priority_offset,
     )
     model.verify()
     if {
@@ -416,6 +418,8 @@ def produce(
         "measured_annotation_guards": len(annotations),
         "source_label_layout_valid": source_labels.valid,
         "after_label_layout_valid": after_labels.valid,
+        "route_priority_offset": priority_offset,
+        "route_priority_trials": priority_trials,
         "routing": route.as_dict(),
         "new_after_drc": after_drc.as_dict(),
         "after_erc_errors": erc_errors if route.complete else [
@@ -484,12 +488,14 @@ def main() -> None:
     parser.add_argument("--reference-sha", type=str, required=True)
     parser.add_argument("--max-nodes", type=int, default=25000)
     parser.add_argument("--priority-trials", type=int, default=2)
+    parser.add_argument("--priority-offset", type=int, default=0)
     parser.add_argument("--page-format", choices=("A3", "A2"), default="A3")
     args = parser.parse_args()
     produce(
         args.output, args.font_file, owner_sha=args.owner_sha,
         reference_sha=args.reference_sha, node_cap=args.max_nodes,
         priority_trials=args.priority_trials,
+        priority_offset=args.priority_offset,
         page_format=args.page_format,
     )
 
