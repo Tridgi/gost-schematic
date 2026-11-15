@@ -107,7 +107,7 @@ def test_cycle12_real_native_lead_cap_creates_only_legal_route_search_lanes():
         "native-obstruction", 1,
         (Line(Point(0, -200), Point(0, 200)),),
         (GraphicPin("1", Point(0, 200), Side.BOTTOM),),
-        Box(-200, -300, 200, 300), 300,
+        Box(-200, -300, 200, 0), 300,
     )
     circuit = Circuit((
         ComponentInstance(
