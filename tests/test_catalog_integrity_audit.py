@@ -28,7 +28,9 @@ def test_all_current_catalog_symbols_pass_structural_integrity_audit():
         assert len(item["source_sha256"]) == 64
         assert item["physical_part_mapped"]
         assert item["approval"] == "draft"
-        assert item["pin_count"] >= 2
+        assert item["pin_count"] >= (1 if item["id"] in {
+            "connector.plug_contact", "connector.socket_contact"
+        } else 2)
         assert item["stroked_bounds_mm"]
         assert not [
             issue for issue in item["diagnostics"]

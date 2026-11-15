@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "id": "connector.plug_4",
+  "reference_prefix": "XP",
+  "symbol_id": "connector.plug_4",
+  "nominal_kind": null,
+  "voltage_orientation_rule": "none",
+  "pins": [
+    {
+      "number": "1",
+      "name": "CONTACT_1",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    },
+    {
+      "number": "2",
+      "name": "CONTACT_2",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    },
+    {
+      "number": "3",
+      "name": "CONTACT_3",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    },
+    {
+      "number": "4",
+      "name": "CONTACT_4",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    }
+  ]
+}

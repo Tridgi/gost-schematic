@@ -1,0 +1,254 @@
+{
+  "schema_version": 1,
+  "id": "connector.socket_4",
+  "revision": 1,
+  "status": "draft",
+  "standard_refs": [
+    "ГОСТ 2.755-87 (1998 reproduction), таблица 6 позиция 4: гнездо четырёхпроводного разъёмного соединения; https://eelib.narod.ru/eskd/GOST_2.755-87.pdf#page=10",
+    "SOURCE_FIGURE_INSPECTED_ONLY: printed outline/topology traced by drawing family; no independent scale-calibrated 1:1 geometry approval",
+    "EDITORIAL_ASSUMPTION: lead length, row pitch 8mm, contact body/fork size, 0.3mm stroke, annotation positions and keepout are CAD prototype dimensions, NOT numeric GOST dimensions",
+    "PHYSICAL_CONTRACT: abstract catalogue contact numbers are NOT a manufacturer datasheet pinout; contacts are separate disconnected conductor islands; mating requires explicit Circuit.Net and mate-state model; #90 net continuation is NOT a physical connector"
+  ],
+  "line_width_mm": 0.3,
+  "body_keepout_mm": [
+    -4,
+    -14,
+    1,
+    14
+  ],
+  "geometry": {
+    "rectangles": [],
+    "lines": [
+      [
+        [
+          0,
+          -12
+        ],
+        [
+          11,
+          -12
+        ]
+      ],
+      [
+        [
+          0,
+          -4
+        ],
+        [
+          11,
+          -4
+        ]
+      ],
+      [
+        [
+          0,
+          4
+        ],
+        [
+          11,
+          4
+        ]
+      ],
+      [
+        [
+          0,
+          12
+        ],
+        [
+          11,
+          12
+        ]
+      ],
+      [
+        [
+          -4,
+          -14
+        ],
+        [
+          0,
+          -12
+        ]
+      ],
+      [
+        [
+          -4,
+          -10
+        ],
+        [
+          0,
+          -12
+        ]
+      ],
+      [
+        [
+          -4,
+          -6
+        ],
+        [
+          0,
+          -4
+        ]
+      ],
+      [
+        [
+          -4,
+          -2
+        ],
+        [
+          0,
+          -4
+        ]
+      ],
+      [
+        [
+          -4,
+          2
+        ],
+        [
+          0,
+          4
+        ]
+      ],
+      [
+        [
+          -4,
+          6
+        ],
+        [
+          0,
+          4
+        ]
+      ],
+      [
+        [
+          -4,
+          10
+        ],
+        [
+          0,
+          12
+        ]
+      ],
+      [
+        [
+          -4,
+          14
+        ],
+        [
+          0,
+          12
+        ]
+      ]
+    ],
+    "circles": []
+  },
+  "pins": [
+    {
+      "number": "1",
+      "at_mm": [
+        11,
+        -12
+      ],
+      "side": "right",
+      "label": "1"
+    },
+    {
+      "number": "2",
+      "at_mm": [
+        11,
+        -4
+      ],
+      "side": "right",
+      "label": "2"
+    },
+    {
+      "number": "3",
+      "at_mm": [
+        11,
+        4
+      ],
+      "side": "right",
+      "label": "3"
+    },
+    {
+      "number": "4",
+      "at_mm": [
+        11,
+        12
+      ],
+      "side": "right",
+      "label": "4"
+    }
+  ],
+  "annotations": [
+    {
+      "key": "refdes",
+      "role": "refdes",
+      "required": true,
+      "candidates": [
+        {
+          "at_mm": [
+            -1,
+            -20
+          ],
+          "horizontal": "center",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            16,
+            0
+          ],
+          "horizontal": "left",
+          "vertical": "bottom"
+        }
+      ]
+    },
+    {
+      "key": "value",
+      "role": "value",
+      "required": false,
+      "candidates": [
+        {
+          "at_mm": [
+            -1,
+            21
+          ],
+          "horizontal": "center",
+          "vertical": "top"
+        }
+      ]
+    }
+  ],
+  "conductor_topology": {
+    "indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "junctions_mm": [],
+    "pin_groups": [
+      [
+        "1"
+      ],
+      [
+        "2"
+      ],
+      [
+        "3"
+      ],
+      [
+        "4"
+      ]
+    ]
+  }
+}

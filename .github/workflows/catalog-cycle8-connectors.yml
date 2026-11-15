@@ -1,0 +1,89 @@
+name: Cycle 8 DRAFT physical XP XS connector E3 review
+
+on:
+  push:
+    branches: [parallel/catalog-connectors-cycle8]
+    paths:
+      - "src/gost_schematic/catalog/symbols/connectors/**"
+      - "src/gost_schematic/catalog/parts/connectors/**"
+      - "src/gost_schematic/engines/connection_targets.py"
+      - "scripts/verify_wheel_payload.py"
+      - "tests/test_connector_cycle8.py"
+      - "examples/review_connectors_cycle8.py"
+      - "examples/verify_connectors_cycle8.py"
+      - "docs/catalog/connectors-cycle8-*"
+      - ".github/workflows/catalog-cycle8-connectors.yml"
+  pull_request:
+    branches: [integration/stage0-12]
+    paths:
+      - "src/gost_schematic/catalog/symbols/connectors/**"
+      - "src/gost_schematic/catalog/parts/connectors/**"
+      - "src/gost_schematic/engines/connection_targets.py"
+      - "scripts/verify_wheel_payload.py"
+      - "tests/test_connector_cycle8.py"
+      - "examples/review_connectors_cycle8.py"
+      - "examples/verify_connectors_cycle8.py"
+      - "docs/catalog/connectors-cycle8-*"
+      - ".github/workflows/catalog-cycle8-connectors.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cycle8-connectors-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  physical-connectors:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install test and lint dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Ruff
+        run: |
+          ruff check src/gost_schematic/engines/connection_targets.py tests/test_connector_cycle8.py examples/review_connectors_cycle8.py examples/verify_connectors_cycle8.py scripts/verify_wheel_payload.py
+      - name: Physical pin and D4 acceptance tests
+        run: pytest -q tests/test_connector_cycle8.py
+      - name: Audit all 40 DRAFT and verify distributable wheel
+        run: |
+          python scripts/audit_symbol_catalog.py --output output/connectors-cycle8-catalog-audit.json
+          python -m pip wheel . --no-deps --wheel-dir dist
+          python scripts/verify_wheel_payload.py dist
+      - name: Pin OpenGost Type A for gallery labels
+        if: matrix.python-version == '3.12'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/install_opengost_type_a.py --directory "$HOME/.local/share/fonts" --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a
+          fc-cache -f
+      - name: Generate four clean and diagnostic actual XP/XS E3 SVG
+        if: matrix.python-version == '3.12'
+        run: python -m examples.review_connectors_cycle8 --output-dir output/connectors-cycle8
+      - name: Rasterize true 300-DPI mm SVG and verify images
+        if: matrix.python-version == '3.12'
+        shell: bash
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+          for svg in output/connectors-cycle8/*.svg; do
+            rsvg-convert --dpi-x 300 --dpi-y 300 --background-color white -o "${svg%.svg}.png" "$svg"
+          done
+          python -m examples.verify_connectors_cycle8 --output-dir output/connectors-cycle8
+      - name: Publish DRAFT 300DPI XP XS image gallery and audit
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-cycle8-xp-xs-physical-gallery
+          path: |
+            output/connectors-cycle8/*
+            output/connectors-cycle8-catalog-audit.json
+          if-no-files-found: error

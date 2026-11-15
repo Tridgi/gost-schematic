@@ -66,7 +66,9 @@ def test_all_21_draft_physical_pin_passports_and_transforms(
         assert identifier == graphic.identifier
         physical = {pin.number for pin in part.pins}
         assert physical == {pin.number for pin in graphic.pins}
-        assert len(physical) >= 2
+        assert len(physical) >= (1 if identifier in {
+            "connector.plug_contact", "connector.socket_contact"
+        } else 2)
         instance = ComponentInstance(
             "X1", identifier, Point(100000, 200000), transform
         )
