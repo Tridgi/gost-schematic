@@ -317,6 +317,52 @@ def parallel_gaps(wires: list[dict]) -> dict:
             "rule": "PROJECTED_OVERLAP_PARALLEL_DIFFERENT_NET_ONLY"}
 
 
+def all_parallel_ink_3mm_scope(wires: list[dict]) -> dict:
+    """3mm adjacent connection lines irrespective of electrical Net identity.
+
+    Two noncoincident parallel printed wires may have the SAME named Net.
+    ГОСТ 2.701-2008 §5.3.4 does not exempt these two strokes; the earlier
+    distinct-Net audit alone is not a full 3mm assertion. Coincident ink is
+    a duplicate-segment DRC problem, not spacing between two adjacent lines.
+    """
+    count_same = 0
+    count_cross = 0
+    observations: list[tuple[float, str, str, int, int]] = []
+    for a, b in combinations(wires, 2):
+        x, y, xx, yy = a["coords"]
+        u, v, uu, vv = b["coords"]
+        h = (y == yy and v == vv and
+             min(max(x, xx), max(u, uu)) > max(min(x, xx), min(u, uu)))
+        vert = (x == xx and u == uu and
+                min(max(y, yy), max(v, vv)) > max(min(y, yy), min(v, vv)))
+        if not (h or vert):
+            continue
+        center = abs(y - v if h else x - u)
+        if center == 0:
+            continue  # Not two distinct parallel ink strokes.
+        gap = center - (a["stroke"] + b["stroke"]) / 2
+        count_same += a["net"] == b["net"]
+        count_cross += a["net"] != b["net"]
+        observations.append((gap, a["net"], b["net"], a["index"], b["index"]))
+    require(bool(observations), "NO_REAL_PARALLEL_CONNECTION_LINES_INSPECTED")
+    return {
+        "all_noncoincident_overlapping_projection_pairs": len(observations),
+        "same_net_pairs": count_same,
+        "different_net_pairs": count_cross,
+        "minimum_printed_edge_gap_um": round(min(x[0] for x in observations)),
+        "below_3mm": [
+            {"nets": [n, m], "indices": [i, j], "gap_um": round(g)}
+            for g, n, m, i, j in observations if g < 3000
+        ],
+        "verdict": (
+            "PASS_SOURCE_PARTIAL_ALL_NONCOINCIDENT_PARALLEL_CONNECTIONS"
+            if all(x[0] >= 3000 for x in observations)
+            else "FAIL_ADJACENT_PARALLEL_PRINTED_3MM"
+        ),
+        "scope": "DISTINCT_INK_PARALLEL_HV_PROJECTION_OVERLAP_SAME_AND_CROSS_NET",
+    }
+
+
 def _conservative_ugo_envelope(group: ET.Element) -> tuple[int, int, int, int]:
     """Stroke-expanded conservative AABB (um), no pretend font/pixel parity.
 
@@ -727,6 +773,9 @@ def audit(folder: Path, original_netlist: Path,
     require(not intra_1mm["below_one_mm"],
             "ACTUAL_SOURCE_UGO_PARALLEL_1MM_INK_GAP_FAILED")
     print_text_and_page = type_a_physical_text_and_paper_scope(clean_root)
+    all_gaps = all_parallel_ink_3mm_scope(clean_wires)
+    require(not all_gaps["below_3mm"],
+            "ACTUAL_PARTIAL_3MM_ALL_CONNECTIONS_INK_GAP_FAILED")
     gaps = parallel_gaps(clean_wires)
     require(not gaps["hard_3mm_edge_violations"],
             "ACTUAL_PARTIAL_ROUTE_3MM_DISTINCT_NET_PARALLEL_FAILED")
@@ -740,6 +789,7 @@ def audit(folder: Path, original_netlist: Path,
         "source_inventory": source, "routed_graph": route,
         "current_owner_ygo_source_review": current_ygo,
         "printed_parallel_edge_3mm": gaps,
+        "printed_all_parallel_3mm_same_and_different_nets": all_gaps,
         "measured_distinct_ugo_2mm_envelopes": ugo_2mm,
         "measured_same_ugo_parallel_1mm_subset": intra_1mm,
         "real_type_a_paper_and_text_scope": print_text_and_page,
@@ -748,6 +798,7 @@ def audit(folder: Path, original_netlist: Path,
             "new_partial_native_svg_300dpi": "PASS_DRAFT_PARTIAL_ONLY",
             "real_original_exact_named_net_export": source["source_name_parity"],
             "minimum_3mm_distinct_parallel_ink": "PASS_PARTIAL_ONLY",
+            "minimum_3mm_same_and_cross_net_parallel_ink": all_gaps["verdict"],
             "two_mm_separate_UGO": ugo_2mm["verdict"],
             "one_mm_same_UGO_strokes": intra_1mm["verdict"],
             "one_mm_all_UGO_primitive_strokes": "BLOCKED_NOT_FULL_PRIMITIVE_AUDIT",
