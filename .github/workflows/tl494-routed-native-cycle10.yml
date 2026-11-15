@@ -26,10 +26,10 @@ jobs:
         python-version: ["3.12", "3.13"]
     env:
       SOURCE_SHA: e695c415fdced164b0e0c39c5249d030795a0aa6
-      IC_SHA: c8991bf232428645cad6e8b402d70abccf12a546
-      YGO_SHA: 2dae5306c0690f2fc2d402bb4b65266dabd778b8
-      NET_SHA: e604ab355f1f704aa11f5545d048a0087c97e39a
-      RECON_SHA: 68d52e243c966e0fd25c5a7e2eaad34914392fba
+      IC_SHA: 892640cfff9780bb4f13c1a6753dbba5f7754a96
+      YGO_SHA: 3e47cdf32ccf211ded97e3be1ad874035653e090
+      NET_SHA: ef48b2a1a6a77ed8d2e18528aeeeb1f0e0e41d2d
+      RECON_SHA: d9286dc2719157109c110db86581951cd58192ab
       NETREF_SHA: 2d9668966bc5dbe023608d42340dcfb46e31234d
       PAINT_PINNED_NATIVE_REQUIRED: "1"
     steps:
@@ -70,6 +70,7 @@ jobs:
             > src/gost_schematic/electrical/netrefs.py
           for p in \
             src/gost_schematic/catalog/source_profiles.py \
+            src/gost_schematic/catalog/source_digest.py \
             src/gost_schematic/catalog/source_footprints.py \
             src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json; do
             mkdir -p "$(dirname "$p")"
@@ -95,6 +96,7 @@ jobs:
           test -f examples/tl494_v5/cycle11_ti_bridge.py
           test -f examples/tl494_v5/cycle11_b_continuation.py
           test -f examples/tl494_v5/route_candidate_driver.py
+          test -f src/gost_schematic/catalog/source_digest.py
           test -f src/gost_schematic/catalog/source_footprints.py
           test -f src/gost_schematic/engines/multiterminal_router.py
       - name: Real Type A 3500um, pinned face, librsvg 300DPI
