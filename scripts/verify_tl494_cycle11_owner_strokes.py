@@ -334,7 +334,6 @@ def compare_native_recon_compact_source() -> dict:
         A3_LANDSCAPE_UM,
         COMPACT_A3_MM,
         PRINT_MARGIN_UM,
-        actual_component_occupied_mm,
         compact_source_assembly,
     )
 
@@ -359,14 +358,25 @@ def compare_native_recon_compact_source() -> dict:
         ("FU1", "2"), ("X2", "1"), ("R5", "2"),
     } or len(b.members) != 3:
         raise AssertionError("RECON_C13_REAL_B_PHYSICAL_TIPS_CHANGED")
-    bounds = actual_component_occupied_mm(assembly, assembly.symbols)
-    if not bounds["A3_bbox_within_margins"]:
-        raise AssertionError(
-            "RECON_C13_ACTUAL_COMPACT_A3_BOUNDS_OUTSIDE_PRINT_MARGINS: "
-            + str(bounds)
-        )
+    # RECON's NativeV5Assembly.symbols does NOT contain the real DA1
+    # rendered symbol: full 23-glyph paper bounds require a separately
+    # signed PAINT IC glyph. Never invent that graphic just to pass CI.
+    full_23_ink_gate = (
+        "BLOCKED_REAL_DA1_RENDERED_SYMBOL_NOT_IN_SOURCE_ASSEMBLY"
+        if "reference.tl494cn" not in assembly.symbols
+        else "UNVERIFIED_FULL_PAINT_RENDER_AND_PRINT_DRC"
+    )
     min_margin = PRINT_MARGIN_UM
     max_x, max_y = A3_LANDSCAPE_UM
+    x1 = next(c for c in circuit.components if c.reference == "X1")
+    x1_symbol = assembly.symbols.get(x1.part_id)
+    if x1_symbol is None:
+        raise AssertionError("RECON_C14_REAL_X1_GRAPHIC_MISSING")
+    x1_ink = x1.transform.box(x1_symbol.stroked_bounds).translated(x1.origin)
+    if not (min_margin <= x1_ink.min_x <= x1_ink.max_x <= max_x - min_margin
+            and min_margin <= x1_ink.min_y <= x1_ink.max_y
+            <= max_y - min_margin):
+        raise AssertionError("RECON_C14_REAL_X1_GRAPHIC_OUTSIDE_A3_INSET")
     measured = {}
     compact_footprints = []
     all_poses = 0
@@ -462,21 +472,16 @@ def compare_native_recon_compact_source() -> dict:
 
     # Negative control: reproduce the historical compact X1=16mm candidate
     # *only in memory*; it must NOT pass the current physical margin proof.
-    old_x1 = tuple(
-        replace(c, origin=Point(16000, c.origin.y))
-        if c.reference == "X1" else c
-        for c in circuit.components
+    old_x1 = replace(x1, origin=Point(16000, x1.origin.y))
+    old_ink = old_x1.transform.box(x1_symbol.stroked_bounds).translated(
+        old_x1.origin
     )
-    old_fit = actual_component_occupied_mm(
-        replace(assembly, circuit=Circuit(old_x1, assembly_nets)),
-        assembly.symbols,
-    )
-    if old_fit["A3_bbox_within_margins"]:
+    if old_ink.min_x >= min_margin:
         raise AssertionError(
-            "RECON_C13_NEGATIVE_X1_16MM_UNEXPECTEDLY_WITHIN_MARGIN"
+            "RECON_C14_NEGATIVE_X1_16MM_UNEXPECTEDLY_WITHIN_MARGIN"
         )
-    if old_fit["bbox_um"][0] != bounds["bbox_um"][0] - 1000:
-        raise AssertionError("RECON_C13_X1_GEOMETRY_NOT_EXACT_1MM_TRANSLATION")
+    if old_ink.min_x != x1_ink.min_x - 1000:
+        raise AssertionError("RECON_C14_X1_GEOMETRY_NOT_EXACT_1MM_TRANSLATION")
 
     return {
         "consumer": "RECON_PR115_ACTUAL_COMPACT_A3_PHYSICAL_UGO",
@@ -494,7 +499,9 @@ def compare_native_recon_compact_source() -> dict:
         "source_ink_2mm_scope": "PRECHECK_ONLY_NOT_23_PART_ESKD_DRC",
         "X1_new_true_origin_um": [17000, 35000],
         "X1_old_16mm_negative": "REJECTED_OUTSIDE_A3_PRINT_MARGIN",
-        "A3_component_ink_bounds": bounds,
+        "X1_true_source_ink_box_um": _box(x1_ink),
+        "X1_old_true_source_ink_box_um": _box(old_ink),
+        "whole_23_component_printed_bounds": full_23_ink_gate,
         "source_13_real_compact_footprints": measured,
         "graphical_b_stub_strokes_printed": False,
         "status": "PASS_RECON_COMPACT_SOURCE_UGO_NOT_COMPLETE_PRINT",
