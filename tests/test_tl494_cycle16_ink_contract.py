@@ -7,10 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.verify_tl494_cycle16_ink_contract import (
-    InkContractMismatch,
-    verify_contract,
-)
+from scripts.verify_tl494_cycle16_ink_contract import InkContractMismatch, verify_contract
 
 
 BASELINE = (
