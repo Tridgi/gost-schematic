@@ -73,6 +73,16 @@ def test_real_one_command_source_mcp_and_negatives(tmp_path):
         "errors": 9, "warnings": 32,
     }
     assert report["refusal_tests_passed"] == report["refusal_tests_total"] == 11
+    assert {d["code"] for d in report["blocked_stage_diagnostics"]} == {
+        "TI_TL494_16_PIN_P11_ADAPTER_NOT_INSTALLED",
+        "SOURCE_62_PINREF_MEMBERSHIP_NOT_VERIFIED_IN_P11",
+        "GLOBAL_15_NET_ROUTER_NOT_ACCEPTED",
+        "PRINT_INK_AND_A3_DRC_NOT_ACCEPTED",
+        "NO_TRUSTED_TYPED_GENERATOR_OR_CAS_COMMIT",
+    }
+    assert all(d["mcp_write_allowed"] is False and
+               d["retryable_read_only"] is False
+               for d in report["blocked_stage_diagnostics"])
     refuses = json.loads((output / "refusal-tests.json").read_text())
     assert {x["case"] for x in refuses} == {
         "wrong_R5_UGO", "unknown_catalog_UGO",
@@ -83,6 +93,10 @@ def test_real_one_command_source_mcp_and_negatives(tmp_path):
         "unbounded_route_retries",
     }
     assert all(x["exit_code"] == 3 and x["rejected"] for x in refuses)
+    assert all(x["diagnostic"]["code"] == x["diagnostic_code"]
+               and x["diagnostic"]["mcp_write_allowed"] is False
+               and x["diagnostic"]["retryable_read_only"] is False
+               for x in refuses)
     request = json.loads((output / "source-typed-request.json").read_text())
     assert request["source_sha"] == "e695c415fdced164b0e0c39c5249d030795a0aa6"
     assert len(request["components"]) == 23 and len(request["nets"]) == 15
