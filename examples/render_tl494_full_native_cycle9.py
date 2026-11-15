@@ -113,7 +113,18 @@ def _declared_type_a_family(builder) -> str:
         and isinstance(node.func, ast.Name)
         and node.func.id == "inspect_type_a_font"
     ]
-    if len(calls) != 1 or calls[0].args:
+    # inspect_type_a_font() takes the font path as its first positional
+    # argument. Reject foreign operands or variadic forwarding, but never
+    # mistake that mandatory genuine path for an insecure selector.
+    declarations = [
+        node for node in tree.body if isinstance(node, ast.FunctionDef)
+    ]
+    if len(calls) != 1 or len(declarations) != 1 or (
+        len(declarations[0].args.args) != 1
+        or len(calls[0].args) != 1
+        or not isinstance(calls[0].args[0], ast.Name)
+        or calls[0].args[0].id != declarations[0].args.args[0].arg
+    ):
         raise ValueError("FULL_NATIVE_TYPE_A_OWNER_SELECTOR_NOT_LITERAL")
     keywords = {item.arg: item.value for item in calls[0].keywords}
     if set(keywords) != {"h_um", "family", "require_family_match"} or any(
