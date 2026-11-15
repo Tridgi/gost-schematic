@@ -30,14 +30,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Tridgi/gost-schematic
-          ref: 8453ea5e2438844ad468b8a9042806ec12e1f125
+          ref: 2c53aacc4f07b265756b25ff1d8145e6a87bc114
           path: _recon115_exact
           persist-credentials: false
       - name: Checkout current YGO2 PR113 source-native physical catalog
         uses: actions/checkout@v4
         with:
           repository: Tridgi/gost-schematic
-          ref: 54f06f67db8ffc64262ce5d8d98b8c6b72f45b9f
+          ref: c3e81d1cbe22ee149a7fd842a39e50752a813642
           path: _catalog113_exact
           persist-credentials: false
       - name: Checkout latest PAINT PR93 owner
@@ -51,8 +51,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -C _recon115_exact rev-parse HEAD)" = '8453ea5e2438844ad468b8a9042806ec12e1f125'
-          test "$(git -C _catalog113_exact rev-parse HEAD)" = '54f06f67db8ffc64262ce5d8d98b8c6b72f45b9f'
+          test "$(git -C _recon115_exact rev-parse HEAD)" = '2c53aacc4f07b265756b25ff1d8145e6a87bc114'
+          test "$(git -C _catalog113_exact rev-parse HEAD)" = 'c3e81d1cbe22ee149a7fd842a39e50752a813642'
           test "$(git -C _paint93_exact rev-parse HEAD)" = '99fbad0f904ef49e07c15e8ce06a5bdc1233c877'
           test -f _recon115_exact/examples/tl494_v5/compact_layout.py
           test -f src/gost_schematic/electrical/ic_circuit_adapter.py
@@ -77,7 +77,7 @@ jobs:
           echo "IC_OWNER_RECON_SHA=$(git -C _recon115_exact rev-parse HEAD)" >> "$GITHUB_ENV"
           echo "IC_OWNER_YGO_SHA=$(git -C _catalog113_exact rev-parse HEAD)" >> "$GITHUB_ENV"
           echo "IC_OWNER_PAINT_SHA=$(git -C _paint93_exact rev-parse HEAD)" >> "$GITHUB_ENV"
-          echo "REAL_OWNER_SOURCES RECON115=8453ea5e IC97=$GITHUB_SHA YGO113=54f06f67 PAINT93=99fbad0f"
+          echo "REAL_OWNER_SOURCES RECON115=2c53aacc IC97=$GITHUB_SHA YGO113=c3e81d1c PAINT93=99fbad0f"
           echo "NO_PRODUCTION_SOURCE_BRANCH_MERGE"
       - uses: actions/setup-python@v5
         with:
