@@ -229,7 +229,9 @@ def produce_delivery(
         "source_font_sha256": _digest(font_file),
         "source_23_components": 23,
         "source_15_literal_names": list(original_members),
-        "source_62_physical_pinrefs": original_members,
+        "source_62_physical_pinrefs": {
+            k: list(v) for k, v in original_members.items()
+        },
         "source_16_signed_DA1": 16,
         "source_b_nonphysical": paper["true_b_source_stubs"],
         "paper": paper,
@@ -273,7 +275,9 @@ def _record_blocked_before_router(
         "schema": "GOST_TL494_CYCLE15_SOURCE_FRAME_BLOCKED_V1",
         "source_sha": SOURCE_SHA,
         "source_original_net_names": list(source),
-        "source_original_62_pinrefs": source,
+        "source_original_62_pinrefs": {
+            k: list(v) for k, v in source.items()
+        },
         "source_font_sha256": _digest(font_file),
         "real_measured_text_frame_violations": paper[
             "measured_text_frame_violations"
