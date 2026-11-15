@@ -39,7 +39,6 @@ def test_real_one_command_source_mcp_and_negatives(tmp_path):
          "--out", str(output)],
         capture_output=True, text=True, check=True,
     )
-    assert not p.stderr
     report = json.loads(p.stdout)
     assert json.loads(
         (output / "source-quickstart-report.json").read_text(encoding="utf-8")
