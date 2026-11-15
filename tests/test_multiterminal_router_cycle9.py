@@ -98,6 +98,59 @@ def test_route_priority_trial_count_rejects_invalid_or_unbounded_inputs(n):
         )
 
 
+def test_cycle12_real_tree_target_window_can_reach_25th_physical_T():
+    # A compact source Net can have >24 exact authored branch positions.
+    # The first 24 are genuinely INSIDE a prohibited component body; the
+    # 25th is reachable by walking outside it. Do not synthesize a new T:
+    # the only acceptable path ends at a supplied, real branch point.
+    source = Point(4000, 5000)
+    nearest_blocked = tuple(
+        Point(12000 + 200 * i, 5000) for i in range(24)
+    )
+    actual_far_t = Point(45000, 5000)
+    goals = (*nearest_blocked, actual_far_t)
+    forbidden = (Box(10000, 2000, 35000, 8000),)
+
+    def route(offset):
+        return _visibility_path(
+            source, Point(1, 0), goals,
+            net_name="A", occupied=ExternalWireGraph(()), tree=(),
+            existing_dots=(), goal_pin_normals={},
+            ink_obstacles=(), authorized_pins=frozenset(),
+            boxes=forbidden, page=Box(0, 0, 50000, 15000),
+            stroke_um=300, search_node_cap=10000,
+            grid_um=5000, max_detour_ratio=2.0,
+            goal_offset=offset,
+        )
+
+    missing, reason = route(0)
+    assert missing == () and reason is not None
+    routed, reason = route(24)
+    assert reason is None
+    assert routed[0] == source and routed[-1] == actual_far_t
+    assert all(
+        not forbidden[0].contains_interior(p) for p in routed
+    )
+    assert all(a.x == b.x or a.y == b.y for a, b in zip(
+        routed, routed[1:], strict=False,
+    ))
+
+
+@pytest.mark.parametrize("offset", (-1, 0.5, True))
+def test_cycle12_real_tree_goal_window_bad_offset_rejected(offset):
+    with pytest.raises(ValueError, match="ROUTE_INVALID_GOAL_WINDOW_OFFSET"):
+        _visibility_path(
+            Point(0, 0), Point(1, 0), (Point(10000, 0),),
+            net_name="A", occupied=ExternalWireGraph(()), tree=(),
+            existing_dots=(), goal_pin_normals={},
+            ink_obstacles=(), authorized_pins=frozenset(),
+            boxes=(), page=Box(-1000, -1000, 20000, 20000),
+            stroke_um=300, search_node_cap=10000,
+            grid_um=5000, max_detour_ratio=3.0,
+            goal_offset=offset,
+        )
+
+
 def test_cycle12_source_congested_first_independent_from_graph_and_circuit():
     circuit, parts, symbols = native_three_terminal()
     preview = route_circuit_with_order_fallback(
