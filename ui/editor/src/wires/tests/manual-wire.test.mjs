@@ -192,3 +192,18 @@ test('vertex drag must not edit anchored terminal',()=>{
  const e=make();commit(e,w1());const before=e.serialize();
  err(()=>e.moveVertex(tx(e,'bad'),'W1',0,[1000,1000]),'PIN_ANCHOR_PROTECTED');assert.equal(e.serialize(),before);
 });
+
+test('source Net with single declared pin and unrelated free ink is not VERIFIED',()=>{
+ const d=toy();d.components=d.components.slice(0,1);d.nets=[{id:'N1',literal_source_name:'SINGLE',members:[p('R1','1')]}];
+ d.wires=[constructWire('F1','N1','default',[[5000,10000],[7000,10000]],free('F1','start'),free('F1','end'))];
+ const e=make(d);assert.equal(e.validateNet('N1').status,'partial');
+});
+test('explicit visible junction cannot overlap foreign declared physical pin even without foreign wire',()=>{
+ const d=toy();d.components=[comp('P1',[5000,0])];
+ d.nets=[{id:'A',literal_source_name:'A',members:[]},{id:'B',literal_source_name:'B',members:[p('P1','1')]}];
+ d.wires=[constructWire('W1','A','default',[[0,0],[10000,0]],free('W1','start'),free('W1','end')),
+          constructWire('W2','A','default',[[5000,0],[5000,5000]],free('W2','start'),free('W2','end'))];
+ const e=make(d),before=e.serialize();
+ err(()=>e.toggleJunction(tx(e,'invalid-dot'),{id:'J',net_id:'A',layer_id:'default',at_um:[5000,0]},['W1','W2']),'NET_CONFLICT');
+ assert.equal(e.serialize(),before);
+});
