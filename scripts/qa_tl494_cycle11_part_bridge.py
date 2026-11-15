@@ -72,6 +72,25 @@ def verify_bridge(font_file: Path) -> dict:
         aliases=source.owner_aliases,
     )
     assert_frozen_photo_topology(upgraded, frozen)
+    # Production's authoritative manufacturer PartDefinition is derived from
+    # the signed IcLibraryRecord. The caller's mapping is REQUIRED only for
+    # external components. An absent duplicate TI key is therefore a valid
+    # input, NOT a vendor trust bypass. Test the real no-TI production path.
+    external_only_parts = {
+        identifier: part for identifier, part in parts.items()
+        if identifier != TI_DEVICE_ID
+    }
+    vendor_derived = bind_positioned_photo_circuit_from_catalog(
+        raw, source.owner_ic_record, external_only_parts,
+        aliases=source.owner_aliases,
+    )
+    require(
+        vendor_derived == upgraded and
+        vendor_derived.part.identifier == TI_DEVICE_ID and
+        len(vendor_derived.contacts) == 16 and
+        vendor_derived.circuit.nets is raw.nets,
+        "QA_C15_IC_VENDOR_AUTHORITY_NOT_DERIVED_FROM_SIGNED_RECORD",
+    )
     require(upgraded.circuit.nets is raw.nets and
             upgraded.circuit.nets == raw.nets and
             len(upgraded.circuit.components) == 23 and
@@ -237,8 +256,10 @@ def verify_bridge(font_file: Path) -> dict:
                 for n in raw.nets
             )), parts,
         ),
-        "missing_vendor_partdefinition": (
-            raw, {k: v for k, v in parts.items() if k != TI_DEVICE_ID},
+        "missing_external_R8_partdefinition": (
+            raw, {k: v for k, v in parts.items()
+                  if k != next(c.part_id for c in raw.components
+                               if c.reference == "R8")},
         ),
     }
     for name, (candidate, candidate_parts) in changes.items():
@@ -273,6 +294,17 @@ def verify_bridge(font_file: Path) -> dict:
         ],
         "source_Circuit_Net_object_identity_after_Paint": True,
         "real_trusted_editor_modes": modes,
+        "manufacturer_catalog_trust_semantics": {
+            "actual_record_is_authoritative_TI_part": True,
+            "present_vendor_key_positive": True,
+            "missing_duplicate_vendor_key_positive": True,
+            "external_R8_required_by_production": (
+                mutants["missing_external_R8_partdefinition"]
+                == "REJECTED_TRUE_PHYSICAL_SOURCE"
+            ),
+            "classification": "QA_HARNESS_ERROR_NOT_VENDOR_BYPASS",
+            "manufacturer_record_part_id": TI_DEVICE_ID,
+        },
         "seven_hostile_real_source_mutations": mutants,
         "source_b_continuation_print_rebinding":
             "BLOCKED_NEW_SPATIAL_MARKERS_NOT_VERIFIED",
