@@ -12,6 +12,7 @@ on:
       - "examples/render_tl494_compact_new_router_cycle10.py"
       - "examples/paint_cycle12_signed_native_contract.py"
       - "scripts/verify_tl494_compact_cycle10.py"
+      - "scripts/deliver_tl494_native_cycle15.py"
       - "tests/test_routed_native_sheet_cycle10.py"
       - ".github/workflows/tl494-routed-native-cycle10.yml"
   workflow_dispatch:
@@ -165,6 +166,14 @@ jobs:
             --font-file "$REVIEW_FONT" \
             --output output/tl494-C10-compact-A3-new-graph \
             --node-cap 25000
+      - name: Cycle15 single-entry signed source compact delivery with native PNG300
+        run: |
+          python -m pip install "resvg_py>=0.5,<1"
+          python -m scripts.deliver_tl494_native_cycle15 \
+            --font-file "$REVIEW_FONT" \
+            --output output/tl494-C15-delivery-BLOCKED_PARTIAL \
+            --node-cap 2500
+          test -f output/tl494-C15-delivery-BLOCKED_PARTIAL/CYCLE15_TL494_DELIVERY_BLOCKED_PARTIAL.json
       - name: Real SVG and true PNG at 300 DPI
         run: |
           for f in output/tl494-C10-new-net114-owner-graph/*.svg output/tl494-C10-compact-A3-new-graph/*.svg; do
@@ -239,4 +248,5 @@ jobs:
           path: |
             output/tl494-C10-new-net114-owner-graph/*
             output/tl494-C10-compact-A3-new-graph/*
+            output/tl494-C15-delivery-BLOCKED_PARTIAL/*
           if-no-files-found: error
