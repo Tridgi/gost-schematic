@@ -322,8 +322,16 @@ def _semantic(project: dict) -> None:
                 raise ContractError('FALSE_JUNCTION',j['id'])
     # Wires cannot claim physical pin if the relevant graphical pin has not been placed.
     for net in nets.values():
-        if net['route_status'] == 'verified' and not route_is_complete(project,net):
-            raise ContractError('ROUTE_INCOMPLETE',net['name'])
+        if net['route_status'] == 'verified':
+            # The live wire engine emits this review flag after an approved
+            # provisional move/rotation. Preserve it in JSON but never infer
+            # print-ready routing before clearance/ERC gates have re-run.
+            if any(w.get('needs_routing_review', False)
+                   for sheet in sheets.values() for w in sheet['wires']
+                   if w['net_id'] == net['id']):
+                raise ContractError('ROUTE_REVIEW_REQUIRED',net['name'])
+            if not route_is_complete(project,net):
+                raise ContractError('ROUTE_INCOMPLETE',net['name'])
     source = project['provenance']
     counts = source['expected_counts']
     actual = {'components':len(components),'nets':len(nets),
@@ -331,7 +339,7 @@ def _semantic(project: dict) -> None:
               'da1_pins':sum(len(parts[c['part_id']]['physical_pins']) for c in components.values()
                               if c['source_refdes']=='DA1'),
               'b_graphics':sum(1 for s in sheets.values() for g in s['graphics']
-                                if g['source_role']=='source_b_continuation')}
+                                if g['kind']=='source_b_continuation')}
     if actual!=counts:
         raise ContractError('SOURCE_COUNT_MISMATCH',f'expected {counts}, got {actual}')
     if source['status']=='source_traced_unapproved' and source['source_sha']==SOURCE_SHA:
@@ -407,11 +415,26 @@ def source_inventory_hash(project: dict) -> str:
         'source_sha': project['provenance']['source_sha'],
         'components': sorted((cid, c['source_refdes'], c['part_id'])
                              for cid, c in components.items()),
+        # Freezing only component IDs / Net memberships is insufficient:
+        # a writer could silently retype a physical pin, move its library-local
+        # contact 1µm or relabel a part without changing the old source hash.
+        # Lock the physical catalogue inventory and pin anchors as well.
+        'physical_parts': sorted((p['id'], p['reference_prefix'],
+                                  sorted(p['symbol_ids']),
+                                  sorted((pin['number'], pin['name'],
+                                          pin['electrical_type'])
+                                         for pin in p['physical_pins']))
+                                 for p in project['part_definitions']),
+        'graphic_pin_bindings': sorted((s['id'], s['part_id'], s['revision'],
+                                        sorted((pin['physical_pin_number'],
+                                                pin['side'], pin['at_um'])
+                                               for pin in s['pins']))
+                                       for s in project['symbol_definitions']),
         'nets': sorted((net['id'], net['name'], sorted(
             (m['component_id'], m['physical_pin_number']) for m in net['members']))
             for net in project['nets']),
     }
-    return hashlib.sha256(b'GSCAD_SOURCE_V1\x00' + _canonical(record)).hexdigest()
+    return hashlib.sha256(b'GSCAD_SOURCE_V2\x00' + _canonical(record)).hexdigest()
 
 
 def digest(document: dict) -> str:

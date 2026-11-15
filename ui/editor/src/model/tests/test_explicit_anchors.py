@@ -188,3 +188,60 @@ def test_snapshot_cas_rejects_forged_source_net_member():
                            expected_generation=0,generation=0,
                            source_topology_hash=source_inventory_hash(history.current['project']))
     assert history.current==toy()
+
+
+def test_wire_engine_pending_routing_review_survives_save_but_never_verifies():
+    """#123 writes needs_routing_review after provisional symbol rotation."""
+    from contract import serialize
+    doc=toy()
+    wire=doc['project']['sheets'][0]['wires'][0]
+    wire['needs_routing_review']=True
+    with pytest.raises(ContractError, match='ROUTE_REVIEW_REQUIRED'):
+        validate(doc)
+    doc['project']['nets'][0]['route_status']='partial'
+    validate(doc)
+    assert strict_loads(serialize(doc))['project']['sheets'][0]['wires'][0]['needs_routing_review'] is True
+    wire['needs_routing_review']=False
+    doc['project']['nets'][0]['route_status']='verified'
+    validate(doc)
+
+
+def test_pending_routing_review_rejects_non_boolean_and_unknown_keys():
+    doc=toy()
+    wire=doc['project']['sheets'][0]['wires'][0]
+    wire['needs_routing_review']='true'
+    with pytest.raises(ContractError, match='SCHEMA_INVALID'):
+        validate(doc)
+    wire['needs_routing_review']=True
+    wire['unknown_wire_property']=True
+    with pytest.raises(ContractError, match='SCHEMA_INVALID'):
+        validate(doc)
+
+
+def test_source_cas_locks_physical_type_changes_even_if_net_memberships_same():
+    """Cross-review: source topology digest must cover physical catalog semantics."""
+    from contract import History, source_inventory_hash
+    original=toy()
+    h=History(original)
+    candidate=copy.deepcopy(original)
+    candidate['project']['part_definitions'][0]['physical_pins'][0]['electrical_type']='output'
+    validate(candidate)  # structurally valid, but not a safe geometry-only command
+    assert source_inventory_hash(candidate['project']) != source_inventory_hash(original['project'])
+    with pytest.raises(ContractError,match='SOURCE_TOPOLOGY_DRIFT'):
+        h.commit_cas(candidate, expected_sha256=digest(original), expected_generation=0,
+                     generation=0, source_topology_hash=source_inventory_hash(original['project']))
+    assert h.current==original
+
+
+def test_source_cas_locks_one_um_library_pin_mutation():
+    from contract import History, source_inventory_hash
+    original=toy()
+    h=History(original)
+    candidate=copy.deepcopy(original)
+    candidate['project']['symbol_definitions'][0]['pins'][0]['at_um'][0]+=1
+    validate(candidate)  # routing pin 2 remains unchanged, pin 1 has drifted
+    assert source_inventory_hash(candidate['project']) != source_inventory_hash(original['project'])
+    with pytest.raises(ContractError,match='SOURCE_TOPOLOGY_DRIFT'):
+        h.commit_cas(candidate, expected_sha256=digest(original), expected_generation=0,
+                     generation=0, source_topology_hash=source_inventory_hash(original['project']))
+    assert h.current==original

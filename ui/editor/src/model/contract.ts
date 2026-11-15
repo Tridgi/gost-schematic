@@ -25,7 +25,7 @@ export type WireEndpoint =
   | {kind:'bend'};
 export interface WireVertex {id:ID; at_um:PointUm; anchor:WireEndpoint}
 export interface WireSegment {id:ID; from_vertex_id:ID; to_vertex_id:ID}
-export interface WirePolyline {id:ID; net_id:ID; layer_id:ID; vertices:WireVertex[]; segments:WireSegment[]; mode:'orthogonal'}
+export interface WirePolyline {id:ID; net_id:ID; layer_id:ID; vertices:WireVertex[]; segments:WireSegment[]; mode:'orthogonal'; needs_routing_review?:boolean}
 export interface Splice { id:ID; net_id:ID; at_um:PointUm; layer_id:ID }
 export interface Junction {id:ID; net_id:ID; at_um:PointUm; layer_id:ID}
 export interface Layer {id:ID; name:string; kind:'electrical'|'annotation'|'drawing'|'diagnostics'; visible:boolean; printable:boolean; locked:boolean}
@@ -33,7 +33,7 @@ export interface SheetFrame {size_um:PointUm; margin_um:number; paper:string}
 export interface TitleBlock {designation:string; title:string; organization:string; revision:string; sheet_number:number}
 export interface SheetText {id:ID; layer_id:ID; text:string; at_um:PointUm; rotation_deg:Rotation; height_um:number}
 export interface Label {id:ID; layer_id:ID; text:string; at_um:PointUm; role:'visual'|'net_annotation'; net_id:ID|null}
-export interface Graphic {id:ID; layer_id:ID; kind:'line'|'polyline'; points_um:PointUm[]; stroke_um:number; source_role:'none'|'source_b_continuation'}
+export interface Graphic {id:ID; layer_id:ID; kind:'line'|'polyline'|'source_b_continuation'; points_um:PointUm[]; stroke_um:number}
 export interface Sheet {id:ID; name:string; index:number; frame:SheetFrame; title_block:TitleBlock; layers:Layer[]; instances:SymbolInstance[]; wires:WirePolyline[]; junctions:Junction[]; splices:Splice[]; texts:SheetText[]; labels:Label[]; graphics:Graphic[]}
 export interface Provenance {source_sha:string; source_path:string; status:'source_traced_unapproved'|'source_excerpt_unapproved'|'synthetic'; expected_counts:{components:number; nets:number; memberships:number; da1_pins:number; b_graphics:number}}
 export interface ProjectSettings {units:'um'; grid_visible:boolean; snap_enabled:boolean; grid_step_um:number; orthogonal_wires:boolean}

@@ -34,7 +34,7 @@ def test_source_locked_identity_and_b_graphics_not_wires():
     assert (len(p['components']),len(p['nets']),sum(len(n['members']) for n in p['nets']))==(23,15,62)
     assert len(next(x for x in p['part_definitions'] if x['id']=='reference.tl494cn')['physical_pins'])==16
     assert sum(len(x['wires']) for x in p['sheets']) == 0
-    assert sum(g['source_role']=='source_b_continuation' for s in p['sheets'] for g in s['graphics'])==2
+    assert sum(g['kind']=='source_b_continuation' for s in p['sheets'] for g in s['graphics'])==2
     assert set(n['name'] for n in p['nets']) >= {'a_INPUT_PLUS','b_NEGATIVE_OUTPUT','COMMON'}
 
 
@@ -274,3 +274,31 @@ def test_schema_rejects_boolean_coordinates_and_unknown_pin_endpoints():
     doc=read('toy-v2.gscad.json')
     doc['project']['sheets'][0]['wires'][0]['vertices'][0]['anchor']={'kind':'pin','component_id':'x','physical_pin_number':'2','guessed_by_pixel':True}
     with pytest.raises(ContractError,match='SCHEMA_INVALID'):validate(doc)
+
+
+def test_source_b_uses_consumer_kind_and_never_a_wire_endpoint():
+    """Canonical R1 renderer/source gate checks graphic.kind, not source_role."""
+    doc = validate(read('tl494-source-e695-v2.gscad.json'))
+    sheet = doc['project']['sheets'][0]
+    b = [g for g in sheet['graphics'] if g['kind'] == 'source_b_continuation']
+    assert len(b) == 2
+    assert all(g['id'] not in {w['id'] for w in sheet['wires']} for g in b)
+    assert all('source_role' not in g and 'net_id' not in g and
+               'pin_ref' not in g and 'anchor' not in g for g in b)
+    assert all(n['route_status'] == 'unrouted' for n in doc['project']['nets'])
+
+
+@pytest.mark.parametrize('foreign', [
+    {'net_id':'source-net'},
+    {'pin_ref':{'component_id':'A', 'physical_pin_number':'1'}},
+    {'anchor':{'kind':'pin','component_id':'A','physical_pin_number':'1'}},
+    {'electrical':True},
+    {'source_role':'source_b_continuation'},
+])
+def test_source_b_rejects_electrical_or_legacy_shadow_fields(foreign):
+    doc=read('tl494-source-e695-v2.gscad.json')
+    graphic=next(g for g in doc['project']['sheets'][0]['graphics']
+                 if g['kind']=='source_b_continuation')
+    graphic.update(foreign)
+    with pytest.raises(ContractError, match='SCHEMA_INVALID'):
+        validate(doc)

@@ -575,7 +575,7 @@
           {
             "id": "source-b-graphic-1",
             "layer_id": "layer-draw",
-            "kind": "line",
+            "kind": "source_b_continuation",
             "points_um": [
               [
                 5000,
@@ -586,13 +586,12 @@
                 280000
               ]
             ],
-            "stroke_um": 300,
-            "source_role": "source_b_continuation"
+            "stroke_um": 300
           },
           {
             "id": "source-b-graphic-2",
             "layer_id": "layer-draw",
-            "kind": "line",
+            "kind": "source_b_continuation",
             "points_um": [
               [
                 8000,
@@ -603,8 +602,7 @@
                 280000
               ]
             ],
-            "stroke_um": 300,
-            "source_role": "source_b_continuation"
+            "stroke_um": 300
           }
         ]
       }

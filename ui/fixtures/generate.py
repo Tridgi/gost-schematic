@@ -34,11 +34,11 @@ endpoint={ 'oneOf':[
 ] }
 vertex=obj({'id':uid,'at_um':ref('point_um'),'anchor':ref('wire_endpoint')})
 segment=obj({'id':uid,'from_vertex_id':uid,'to_vertex_id':uid})
-wire=obj({'id':uid,'net_id':uid,'layer_id':uid,'vertices':arr(ref('vertex'),2),'segments':arr(ref('wire_segment'),1),'mode':{'const':'orthogonal'}})
+wire=obj({'id':uid,'net_id':uid,'layer_id':uid,'vertices':arr(ref('vertex'),2),'segments':arr(ref('wire_segment'),1),'mode':{'const':'orthogonal'},'needs_routing_review':{'type':'boolean'}}, required=['id','net_id','layer_id','vertices','segments','mode'])
 junction=obj({'id':uid,'net_id':uid,'at_um':ref('point_um'),'layer_id':uid})
 text=obj({'id':uid,'layer_id':uid,'text':string(0),'at_um':ref('point_um'),'rotation_deg':{'enum':[0,90,180,270]},'height_um':integer(1,100_000)})
 label=obj({'id':uid,'layer_id':uid,'text':uid,'at_um':ref('point_um'),'role':{'enum':['visual','net_annotation']},'net_id':{'anyOf':[uid,{'type':'null'}]}})
-graphic=obj({'id':uid,'layer_id':uid,'kind':{'enum':['line','polyline']},'points_um':arr(ref('point_um'),2),'stroke_um':integer(1,100_000),'source_role':{'enum':['none','source_b_continuation']}})
+graphic=obj({'id':uid,'layer_id':uid,'kind':{'enum':['line','polyline','source_b_continuation']},'points_um':arr(ref('point_um'),2),'stroke_um':integer(1,100_000)})
 frame=obj({'size_um':ref('point_um'),'margin_um':integer(0,100_000),'paper':uid})
 title=obj({'designation':string(0),'title':string(0),'organization':string(0),'revision':string(0),'sheet_number':integer(1,10000)})
 sheet=obj({'id':uid,'name':uid,'index':integer(1,10000),'frame':ref('sheet_frame'),'title_block':ref('title_block'),'layers':arr(ref('layer'),1),'instances':arr(ref('symbol_instance')),'wires':arr(ref('wire_polyline')),'junctions':arr(ref('junction')),'splices':arr(ref('splice')),'texts':arr(ref('text')),'labels':arr(ref('label')),'graphics':arr(ref('graphic'))})
@@ -156,7 +156,7 @@ for index,(r,p) in enumerate(spec.items()):
     add_def(target,p,all_numbers.get(p,['1','2']));add_component(target,r,p,(index%6)*68000+20000,(index//6)*56000+18000)
 for n,members in traced.items():net(target,n,members)
 for idx,x in enumerate([5000,8000]):
-    target['project']['sheets'][0]['graphics'].append({'id':'source-b-graphic-'+str(idx+1),'layer_id':'layer-draw','kind':'line','points_um':[[x,280000],[x+2000,280000]],'stroke_um':300,'source_role':'source_b_continuation'})
+    target['project']['sheets'][0]['graphics'].append({'id':'source-b-graphic-'+str(idx+1),'layer_id':'layer-draw','kind':'source_b_continuation','points_um':[[x,280000],[x+2000,280000]],'stroke_um':300})
 target['project']['sheets'][0]['labels'].append({'id':'label-source-b','layer_id':'layer-draw','text':'b','at_um':[10500,280000],'role':'visual','net_id':None})
 save('tl494-source-e695-v2.gscad.json',target)
 # Source excerpt preserves literal original membership for the retained components,
