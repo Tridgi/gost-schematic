@@ -262,6 +262,89 @@ jobs:
         run: |
           python -m pip wheel . --no-deps --wheel-dir dist
           python scripts/verify_wheel_payload.py dist
+      - name: Fresh wheel install in isolated venv outside checkout
+        shell: bash
+        run: |
+          python -m venv "$RUNNER_TEMP/gse-ai-cycle12-wheel"
+          "$RUNNER_TEMP/gse-ai-cycle12-wheel/bin/python" -m pip install \
+            --no-deps "$GITHUB_WORKSPACE"/dist/gost_schematic-*.whl
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/gse-ai-cycle12-wheel/bin/python" - \
+            > "$GITHUB_WORKSPACE/output/cycle12-fresh-wheel-report.json" <<'PY'
+          import json
+          import pathlib
+          import gost_schematic
+          from importlib.resources import files
+          from gost_schematic.agent_project.agent_readiness import review_request
+          from gost_schematic.agent_project.catalog import CatalogResolver, ProjectError
+          from gost_schematic.agent_project.design_assistant import TL494_REQUIRED_PARTS
+          from gost_schematic.agent_project.owner_api_locks import load_pinned_owner_lock_manifest
+          from gost_schematic.agent_project.owner_source_contract import verify_frozen_owner_fixture
+
+          location = pathlib.Path(gost_schematic.__file__).resolve()
+          assert "site-packages" in str(location), location
+          raw = files("gost_schematic").joinpath(
+              "agent_project", "data", "tl494_ic97_frozen_source.json"
+          ).read_bytes()
+          catalog = CatalogResolver()
+          source = verify_frozen_owner_fixture(raw, catalog)
+          locks = load_pinned_owner_lock_manifest()
+          assert source["source_fixture_git_blob_sha1"] == (
+              "a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65"
+          )
+          assert len(locks["file_locks"]) == 6
+          components = []
+          for c in source["source_components"]:
+              ref = c["reference"]
+              part = c["part_id"] if ref in TL494_REQUIRED_PARTS else None
+              sha = catalog.lock(part) if part else None
+              components.append({
+                  "reference": ref, "source_part_id": c["part_id"],
+                  "nominal_si": c["nominal_si"], "part_id": part,
+                  "part_sha256": sha["part_sha256"] if sha else None,
+                  "symbol_sha256": sha["symbol_sha256"] if sha else None,
+              })
+          nets = [
+              {"name": name, "members": [
+                  {"reference": p.rsplit(".", 1)[0], "number": p.rsplit(".", 1)[1]}
+                  for p in pins
+              ]} for name, pins in source["source_nets"].items()
+          ]
+          request = {
+              "schema_version": 1, "intent": "tl494_reconstruction",
+              "source_sha": source["source_commit"], "project_id": None,
+              "expected_revision": None, "expected_generation": None,
+              "components": components, "nets": nets, "max_route_attempts": 0,
+              "outputs": ["bom", "netlist", "drc", "svg_clean", "png_300dpi"],
+          }
+          result = review_request(request)
+          assert result["status"] == "BLOCKED_SOURCE_NOT_IMPORTABLE"
+          assert result["component_count"] == 23 and result["net_count"] == 15
+          assert result["submitted_pinref_count"] == 62
+          assert result["frozen_original_nominals_verified"]
+          assert result["frozen_original_pinref_membership_verified"]
+          assert result["frozen_original_bom_part_ids_verified"]
+          assert not result["ready_to_generate"] and not result["mutated"]
+          invalid = json.loads(json.dumps(request))
+          invalid["nets"][-1]["members"][0]["number"] = "99"
+          try:
+              review_request(invalid)
+              raise AssertionError("Altered physical Net/Pins must be rejected")
+          except ProjectError as exc:
+              assert exc.code in (
+                  "REQUEST_INVALID_PHYSICAL_PIN", "SOURCE_NET_MEMBERSHIP_MISMATCH",
+              )
+          print(json.dumps({
+              "status": "FRESH_WHEEL_SOURCE_MATCH_PRINT_BLOCKED",
+              "installed_package": str(location),
+              "physical_components": 23, "original_nets": 15, "pinrefs": 62,
+              "original_source_blob_sha1": source["source_fixture_git_blob_sha1"],
+              "locked_owner_heads": locks["owner_heads"],
+              "cli_source_validated": True, "physical_negative_rejected": True,
+              "route_15_of_15_verified": False,
+              "print_ready": False, "mcp_write_enabled": False,
+          }, sort_keys=True))
+          PY
       - name: Archive actual UGO glyphs and project diagnostics
         uses: actions/upload-artifact@v4
         with:
@@ -275,6 +358,7 @@ jobs:
             output/agent-readiness/projects/
             output/cycle11-owner/
             output/cycle11-source-pipeline-report.json
+            output/cycle12-fresh-wheel-report.json
             output/cycle11-original-source-proof/
           if-no-files-found: error
           retention-days: 30
