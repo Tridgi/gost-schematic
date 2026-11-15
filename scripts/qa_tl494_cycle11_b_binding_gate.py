@@ -202,9 +202,8 @@ def live_real_rebinding_gate(font_file: Path, expected: dict) -> dict:
 
     from examples.tl494_v5.cycle11_b_continuation import rebind_true_source_b
     from examples.tl494_v5.cycle11_ti_bridge import bind_verified_compact_ti
-    from gost_schematic.electrical.netrefs import validate_net_continuations
-
     from gost_schematic.core.geometry import Point
+    from gost_schematic.electrical.netrefs import validate_net_continuations
     from gost_schematic.model.circuit import Circuit, Net
 
     # Real source composition does not require any PAINT-only font adapter.
