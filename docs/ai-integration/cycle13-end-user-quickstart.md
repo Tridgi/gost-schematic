@@ -55,6 +55,7 @@ Set-Location $env:TEMP
 | `refusal-tests.json` | 11 реальных отказов CLI: неправильный R5, неизвестное УГО, чужой PinRef, изменение b-Net, неверный номинал, alias R1, stale revision, попытка write, недопустимый output/retries | Автоматический роутер |
 | 7 `*.svg` + 7 `*.png` | Настоящие нативные изображения **отдельных каталожных УГО**, полученные через `mcp.ClientSession`, SHA256 каждого | Полный SVG/PNG 300 DPI схемы |
 | `source-quickstart-report.json` | Машинные статусы, SHA и размеры артефактов, source 91 исторический wire / 37 junction / 2 графических b | Производственная приёмка |
+| `source-generation-handoff.json` | Проверенный на исходной электрической модели контракт будущих семи стадий, SHA запроса и 13 точных УГО, все gates `BLOCKED` | Подтверждение трассировки, печати или транзакционной записи |
 
 В Cycle14 отчёт `source-quickstart-report.json` дополнительно содержит
 `blocked_stage_diagnostics`: структурированные коды и стадии
