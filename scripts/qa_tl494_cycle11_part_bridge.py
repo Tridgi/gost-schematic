@@ -20,6 +20,11 @@ from examples.tl494_v5.route_candidate_driver import (
     load_original_owner_fixture,
     restore_original_named_nets,
 )
+from gost_schematic.electrical.ic import resolve_ic_pin_positions
+from gost_schematic.electrical.ic_graphic_revision import (
+    IcGeometryConsent,
+    ic_record_fingerprint,
+)
 from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
 from gost_schematic.electrical.tl494cn import TI_DEVICE_ID
 
@@ -97,14 +102,52 @@ def verify_bridge(font_file: Path) -> dict:
         source.owner_ic_record, style, measurer,
     )
     actual_paint.verify_endpoints()
-    snapshot = upgraded.seal_paint_overlay(actual_paint)
-    snapshot.verify_against(upgraded, actual_paint)
+    # The genuine manufacturer record may have distinct terminal locations
+    # from PAINT's actually measured Type-A geometry. The production adapter
+    # MUST reject a raw stale overlay, not silently force its green endpoints.
+    old_anchors = resolve_ic_pin_positions(
+        upgraded.record.device, upgraded.record.specs,
+        upgraded.record.placements,
+    )
+    new_anchors = resolve_ic_pin_positions(
+        actual_paint.record.device, actual_paint.record.specs,
+        actual_paint.record.placements,
+    )
+    require(len(old_anchors) == len(new_anchors) == 16 and
+            set(old_anchors) == set(new_anchors),
+            "QA_C11_BRIDGE_REVISED_IC_PINREFS_NOT_EXACT_16")
+    moved = tuple(pin for pin in old_anchors
+                  if old_anchors[pin] != new_anchors[pin])
+    require(bool(moved),
+            "QA_C11_BRIDGE_TEST_NOT_MEASURING_REAL_STALE_PAINT")
+    try:
+        upgraded.seal_paint_overlay(actual_paint)
+    except ValueError as exc:
+        require(str(exc) == "IC_ADAPTER_STALE_PAINT_GEOMETRY",
+                "QA_C11_BRIDGE_STALE_PAINT_REJECTED_FOR_WRONG_REASON")
+    else:
+        raise AssertionError("QA_C11_BRIDGE_UNCONSENTED_OVERLAY_ACCEPTED")
+    active = {pin for net in upgraded.circuit.nets
+              for pin in net.members if pin in old_anchors}
+    consent = IcGeometryConsent(
+        ic_record_fingerprint(upgraded.record),
+        moved,
+        tuple(pin for pin in moved if pin in active),
+    )
+    revised, delta = upgraded.revise(actual_paint.record, consent=consent)
+    require(set(delta.moved) == set(moved) and
+            revised.circuit is upgraded.circuit and
+            revised.circuit.nets is raw.nets and
+            len(revised.contacts) == 16,
+            "QA_C11_BRIDGE_SIGNED_GEOMETRY_CONSENT_DROPPED_PHYSICAL_NET")
+    snapshot = revised.seal_paint_overlay(actual_paint)
+    snapshot.verify_against(revised, actual_paint)
     clean = snapshot.render(
-        upgraded, actual_paint, style, measurer,
+        revised, actual_paint, style, measurer,
         diagnostics=False,
     )
     diagnostic = snapshot.render(
-        upgraded, actual_paint, style, measurer,
+        revised, actual_paint, style, measurer,
         diagnostics=True,
     )
     require(len(clean) == len(diagnostic) == 1,
@@ -196,6 +239,11 @@ def verify_bridge(font_file: Path) -> dict:
         "raw_a_b_transfer_names_preserved": True,
         "source_nets_tuple_identity_preserved": True,
         "manufacturer_FB_OC_roles_both_input": True,
+        "unconsented_stale_geometry_rejected": True,
+        "consented_real_physical_pin_moves": [
+            f"{p.reference}.{p.number}" for p in moved
+        ],
+        "source_Circuit_Net_object_identity_after_Paint": True,
         "real_trusted_editor_modes": modes,
         "seven_hostile_real_source_mutations": mutants,
         "source_b_continuation_print_rebinding":
