@@ -3,6 +3,1080 @@
   "NET_semantics": "CONSERVATIVE_STROKED_OBSTACLE_AND_PIN_SPECIFIC_ESCAPE",
   "control": {
     "DA1_physical_contact_count": 16,
+    "actual_PAINT_TypeA_label_guard_count": 73,
+    "actual_PAINT_TypeA_text_guards": [
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          162750,
+          92906,
+          167250,
+          102094
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "main.0",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          136438,
+          99000,
+          143561,
+          103500
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "left.1",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          136438,
+          106500,
+          143561,
+          111000
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "left.2",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          137450,
+          114000,
+          142550,
+          118500
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "left.3",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          136401,
+          121500,
+          143599,
+          126000
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "left.4",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          137509,
+          129000,
+          142491,
+          133500
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "left.5",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          137359,
+          136500,
+          142641,
+          141000
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "left.6",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          137455,
+          143925,
+          142544,
+          148575
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "left.7",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          136010,
+          151462,
+          143989,
+          156037
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "left.8",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          136010,
+          158962,
+          143989,
+          163537
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "left.9",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          187862,
+          99000,
+          192138,
+          103500
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "right.1",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          187841,
+          106500,
+          192159,
+          111000
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "right.2",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          187412,
+          113962,
+          192587,
+          118537
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "right.3",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          187434,
+          121462,
+          192566,
+          126037
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "right.4",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          186465,
+          129000,
+          193534,
+          133500
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "right.5",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          186481,
+          136500,
+          193518,
+          141000
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "right.6",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          186165,
+          144000,
+          193834,
+          148500
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "right.7",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          128810,
+          96100,
+          131191,
+          100600
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P1",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          128382,
+          103525,
+          131619,
+          108100
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P2",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          128505,
+          111100,
+          131496,
+          115600
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P3",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          128382,
+          118600,
+          131619,
+          123100
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P4",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          128505,
+          126100,
+          131496,
+          130600
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P5",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          128382,
+          133525,
+          131619,
+          138100
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P6",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          127814,
+          141100,
+          132186,
+          145600
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P13",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          127814,
+          148600,
+          132186,
+          153100
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P15",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          127691,
+          156025,
+          132309,
+          160600
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P16",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          198382,
+          95950,
+          201619,
+          100600
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P8",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          198382,
+          103525,
+          201619,
+          108100
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P9",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          197691,
+          110950,
+          202309,
+          115600
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P10",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          198119,
+          118600,
+          201881,
+          123100
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P11",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          197691,
+          126100,
+          202309,
+          130600
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P14",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          197691,
+          133525,
+          202309,
+          138100
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P12",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          198478,
+          141100,
+          201523,
+          145600
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P7",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          161578,
+          84400,
+          168422,
+          88900
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": [
+          12111,
+          26800,
+          15890,
+          30300
+        ],
+        "collision_box_um": [
+          11611,
+          26300,
+          16390,
+          30800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "X1",
+        "printed_text": "X1"
+      },
+      {
+        "actual_ink_box_um": [
+          76502,
+          25200,
+          79499,
+          28700
+        ],
+        "collision_box_um": [
+          76002,
+          24700,
+          79999,
+          29200
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "L1",
+        "printed_text": "L1"
+      },
+      {
+        "actual_ink_box_um": [
+          70326,
+          37900,
+          85675,
+          41550
+        ],
+        "collision_box_um": [
+          69826,
+          37400,
+          86175,
+          42050
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "L1",
+        "printed_text": "100 мкГн"
+      },
+      {
+        "actual_ink_box_um": [
+          232000,
+          121800,
+          237716,
+          125300
+        ],
+        "collision_box_um": [
+          231500,
+          121300,
+          238216,
+          125800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "VT1",
+        "printed_text": "VT1"
+      },
+      {
+        "actual_ink_box_um": [
+          261862,
+          9600,
+          265138,
+          13100
+        ],
+        "collision_box_um": [
+          261362,
+          9100,
+          265638,
+          13600
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C1",
+        "printed_text": "C1"
+      },
+      {
+        "actual_ink_box_um": [
+          258068,
+          25700,
+          268932,
+          29350
+        ],
+        "collision_box_um": [
+          257568,
+          25200,
+          269432,
+          29850
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C1",
+        "printed_text": "220мк"
+      },
+      {
+        "actual_ink_box_um": [
+          261434,
+          51525,
+          265566,
+          55100
+        ],
+        "collision_box_um": [
+          260934,
+          51025,
+          266066,
+          55600
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C2",
+        "printed_text": "C2"
+      },
+      {
+        "actual_ink_box_um": [
+          258068,
+          67700,
+          268932,
+          71350
+        ],
+        "collision_box_um": [
+          257568,
+          67200,
+          269432,
+          71850
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C2",
+        "printed_text": "220мк"
+      },
+      {
+        "actual_ink_box_um": [
+          307300,
+          110800,
+          313144,
+          114300
+        ],
+        "collision_box_um": [
+          306800,
+          110300,
+          313644,
+          114800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "VD1",
+        "printed_text": "VD1"
+      },
+      {
+        "actual_ink_box_um": [
+          318073,
+          25125,
+          321927,
+          28700
+        ],
+        "collision_box_um": [
+          317573,
+          24625,
+          322427,
+          29200
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "L2",
+        "printed_text": "L2"
+      },
+      {
+        "actual_ink_box_um": [
+          312326,
+          37900,
+          327675,
+          41550
+        ],
+        "collision_box_um": [
+          311826,
+          37400,
+          328175,
+          42050
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "L2",
+        "printed_text": "100 мкГн"
+      },
+      {
+        "actual_ink_box_um": [
+          346151,
+          138600,
+          350037,
+          142100
+        ],
+        "collision_box_um": [
+          345651,
+          138100,
+          350537,
+          142600
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C5",
+        "printed_text": "C5"
+      },
+      {
+        "actual_ink_box_um": [
+          346151,
+          150900,
+          358396,
+          154550
+        ],
+        "collision_box_um": [
+          345651,
+          150400,
+          358896,
+          155050
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C5",
+        "printed_text": "1000мк"
+      },
+      {
+        "actual_ink_box_um": [
+          371151,
+          138525,
+          375283,
+          142100
+        ],
+        "collision_box_um": [
+          370651,
+          138025,
+          375783,
+          142600
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C6",
+        "printed_text": "C6"
+      },
+      {
+        "actual_ink_box_um": [
+          371151,
+          150900,
+          383396,
+          154550
+        ],
+        "collision_box_um": [
+          370651,
+          150400,
+          383896,
+          155050
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C6",
+        "printed_text": "1000мк"
+      },
+      {
+        "actual_ink_box_um": [
+          372223,
+          27725,
+          377778,
+          31300
+        ],
+        "collision_box_um": [
+          371723,
+          27225,
+          378278,
+          31800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "FU1",
+        "printed_text": "FU1"
+      },
+      {
+        "actual_ink_box_um": [
+          399683,
+          26725,
+          404318,
+          30300
+        ],
+        "collision_box_um": [
+          399183,
+          26225,
+          404818,
+          30800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "X2",
+        "printed_text": "X2"
+      },
+      {
+        "actual_ink_box_um": [
+          229150,
+          202650,
+          233582,
+          206300
+        ],
+        "collision_box_um": [
+          228650,
+          202150,
+          234082,
+          206800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R8",
+        "printed_text": "R8"
+      },
+      {
+        "actual_ink_box_um": [
+          229150,
+          219700,
+          232768,
+          223350
+        ],
+        "collision_box_um": [
+          228650,
+          219200,
+          233268,
+          223850
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R8",
+        "printed_text": "10"
+      },
+      {
+        "actual_ink_box_um": [
+          32200,
+          100600,
+          36086,
+          104100
+        ],
+        "collision_box_um": [
+          31700,
+          100100,
+          36586,
+          104600
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C3",
+        "printed_text": "C3"
+      },
+      {
+        "actual_ink_box_um": [
+          32200,
+          112900,
+          40635,
+          116400
+        ],
+        "collision_box_um": [
+          31700,
+          112400,
+          41135,
+          116900
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C3",
+        "printed_text": "47мк"
+      },
+      {
+        "actual_ink_box_um": [
+          59150,
+          99800,
+          62725,
+          103300
+        ],
+        "collision_box_um": [
+          58650,
+          99300,
+          63225,
+          103800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R1",
+        "printed_text": "R1"
+      },
+      {
+        "actual_ink_box_um": [
+          59150,
+          116700,
+          60531,
+          120200
+        ],
+        "collision_box_um": [
+          58650,
+          116200,
+          61031,
+          120700
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R1",
+        "printed_text": "1"
+      },
+      {
+        "actual_ink_box_um": [
+          89150,
+          99725,
+          93582,
+          103300
+        ],
+        "collision_box_um": [
+          88650,
+          99225,
+          94082,
+          103800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R2",
+        "printed_text": "R2"
+      },
+      {
+        "actual_ink_box_um": [
+          89150,
+          116700,
+          95861,
+          120350
+        ],
+        "collision_box_um": [
+          88650,
+          116200,
+          96361,
+          120850
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R2",
+        "printed_text": "620"
+      },
+      {
+        "actual_ink_box_um": [
+          59908,
+          139800,
+          64093,
+          143300
+        ],
+        "collision_box_um": [
+          59408,
+          139300,
+          64593,
+          143800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R3",
+        "printed_text": "R3"
+      },
+      {
+        "actual_ink_box_um": [
+          59233,
+          150700,
+          64767,
+          154350
+        ],
+        "collision_box_um": [
+          58733,
+          150200,
+          65267,
+          154850
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R3",
+        "printed_text": "10к"
+      },
+      {
+        "actual_ink_box_um": [
+          29150,
+          164800,
+          33582,
+          168300
+        ],
+        "collision_box_um": [
+          28650,
+          164300,
+          34082,
+          168800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R4",
+        "printed_text": "R4"
+      },
+      {
+        "actual_ink_box_um": [
+          29150,
+          181700,
+          36289,
+          185779
+        ],
+        "collision_box_um": [
+          28650,
+          181200,
+          36789,
+          186279
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R4",
+        "printed_text": "6,8к"
+      },
+      {
+        "actual_ink_box_um": [
+          36150,
+          204800,
+          40335,
+          208300
+        ],
+        "collision_box_um": [
+          35650,
+          204300,
+          40835,
+          208800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R5",
+        "printed_text": "R5"
+      },
+      {
+        "actual_ink_box_um": [
+          36150,
+          221700,
+          39447,
+          225200
+        ],
+        "collision_box_um": [
+          35650,
+          221200,
+          39947,
+          225700
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R5",
+        "printed_text": "1к"
+      },
+      {
+        "actual_ink_box_um": [
+          84150,
+          204725,
+          88582,
+          208300
+        ],
+        "collision_box_um": [
+          83650,
+          204225,
+          89082,
+          208800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R6",
+        "printed_text": "R6"
+      },
+      {
+        "actual_ink_box_um": [
+          84150,
+          221700,
+          85531,
+          225200
+        ],
+        "collision_box_um": [
+          83650,
+          221200,
+          86031,
+          225700
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R6",
+        "printed_text": "1"
+      },
+      {
+        "actual_ink_box_um": [
+          114150,
+          224800,
+          118389,
+          228300
+        ],
+        "collision_box_um": [
+          113650,
+          224300,
+          118889,
+          228800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R7",
+        "printed_text": "R7"
+      },
+      {
+        "actual_ink_box_um": [
+          114150,
+          241700,
+          122777,
+          245350
+        ],
+        "collision_box_um": [
+          113650,
+          241200,
+          123277,
+          245850
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R7",
+        "printed_text": "680к"
+      },
+      {
+        "actual_ink_box_um": [
+          22934,
+          137800,
+          27066,
+          141300
+        ],
+        "collision_box_um": [
+          22434,
+          137300,
+          27566,
+          141800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C4",
+        "printed_text": "C4"
+      },
+      {
+        "actual_ink_box_um": [
+          19622,
+          152700,
+          30379,
+          156779
+        ],
+        "collision_box_um": [
+          19122,
+          152200,
+          30879,
+          157279
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C4",
+        "printed_text": "0,01мк"
+      },
+      {
+        "actual_ink_box_um": [
+          146150,
+          228600,
+          150089,
+          232100
+        ],
+        "collision_box_um": [
+          145650,
+          228100,
+          150589,
+          232600
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C7",
+        "printed_text": "C7"
+      },
+      {
+        "actual_ink_box_um": [
+          146150,
+          237900,
+          154242,
+          241550
+        ],
+        "collision_box_um": [
+          145650,
+          237400,
+          154742,
+          242050
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C7",
+        "printed_text": "1000"
+      }
+    ],
     "all_component_stroke_boxes_within_A3_margins": true,
     "full_23_component_stroke_bbox_um": [
       10850,
@@ -10,6 +1084,7 @@
       405150,
       243151
     ],
+    "minimum_text_collision_y_um": 9100,
     "original_named_nets": {
       "ADJUSTED_DIVIDER": [
         "R4.2",
@@ -5798,6 +6873,7 @@
         "symbol_revision": 1
       }
     },
+    "project_10mm_text_collision_frame_fit": false,
     "real_net_count": 15,
     "real_part_count": 23,
     "real_pin_ref_memberships": 62,
@@ -5870,6 +6946,1080 @@
   "font_type_a_sha256": "f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a",
   "moved_R2_Y_2p5_C1_Y_2p5": {
     "DA1_physical_contact_count": 16,
+    "actual_PAINT_TypeA_label_guard_count": 73,
+    "actual_PAINT_TypeA_text_guards": [
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          162750,
+          92906,
+          167250,
+          102094
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "main.0",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          136438,
+          99000,
+          143561,
+          103500
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "left.1",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          136438,
+          106500,
+          143561,
+          111000
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "left.2",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          137450,
+          114000,
+          142550,
+          118500
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "left.3",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          136401,
+          121500,
+          143599,
+          126000
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "left.4",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          137509,
+          129000,
+          142491,
+          133500
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "left.5",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          137359,
+          136500,
+          142641,
+          141000
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "left.6",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          137455,
+          143925,
+          142544,
+          148575
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "left.7",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          136010,
+          151462,
+          143989,
+          156037
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "left.8",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          136010,
+          158962,
+          143989,
+          163537
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "left.9",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          187862,
+          99000,
+          192138,
+          103500
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "right.1",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          187841,
+          106500,
+          192159,
+          111000
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "right.2",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          187412,
+          113962,
+          192587,
+          118537
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "right.3",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          187434,
+          121462,
+          192566,
+          126037
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "right.4",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          186465,
+          129000,
+          193534,
+          133500
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "right.5",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          186481,
+          136500,
+          193518,
+          141000
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "right.6",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          186165,
+          144000,
+          193834,
+          148500
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "right.7",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          128810,
+          96100,
+          131191,
+          100600
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P1",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          128382,
+          103525,
+          131619,
+          108100
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P2",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          128505,
+          111100,
+          131496,
+          115600
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P3",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          128382,
+          118600,
+          131619,
+          123100
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P4",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          128505,
+          126100,
+          131496,
+          130600
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P5",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          128382,
+          133525,
+          131619,
+          138100
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P6",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          127814,
+          141100,
+          132186,
+          145600
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P13",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          127814,
+          148600,
+          132186,
+          153100
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P15",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          127691,
+          156025,
+          132309,
+          160600
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P16",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          198382,
+          95950,
+          201619,
+          100600
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P8",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          198382,
+          103525,
+          201619,
+          108100
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P9",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          197691,
+          110950,
+          202309,
+          115600
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P10",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          198119,
+          118600,
+          201881,
+          123100
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P11",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          197691,
+          126100,
+          202309,
+          130600
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P14",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          197691,
+          133525,
+          202309,
+          138100
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P12",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          198478,
+          141100,
+          201523,
+          145600
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1.P7",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": null,
+        "collision_box_um": [
+          161578,
+          84400,
+          168422,
+          88900
+        ],
+        "kind": "MeasuredInkGuard",
+        "owner": "DA1",
+        "printed_text": null
+      },
+      {
+        "actual_ink_box_um": [
+          12111,
+          26800,
+          15890,
+          30300
+        ],
+        "collision_box_um": [
+          11611,
+          26300,
+          16390,
+          30800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "X1",
+        "printed_text": "X1"
+      },
+      {
+        "actual_ink_box_um": [
+          76502,
+          25200,
+          79499,
+          28700
+        ],
+        "collision_box_um": [
+          76002,
+          24700,
+          79999,
+          29200
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "L1",
+        "printed_text": "L1"
+      },
+      {
+        "actual_ink_box_um": [
+          70326,
+          37900,
+          85675,
+          41550
+        ],
+        "collision_box_um": [
+          69826,
+          37400,
+          86175,
+          42050
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "L1",
+        "printed_text": "100 мкГн"
+      },
+      {
+        "actual_ink_box_um": [
+          232000,
+          121800,
+          237716,
+          125300
+        ],
+        "collision_box_um": [
+          231500,
+          121300,
+          238216,
+          125800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "VT1",
+        "printed_text": "VT1"
+      },
+      {
+        "actual_ink_box_um": [
+          261862,
+          12100,
+          265138,
+          15600
+        ],
+        "collision_box_um": [
+          261362,
+          11600,
+          265638,
+          16100
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C1",
+        "printed_text": "C1"
+      },
+      {
+        "actual_ink_box_um": [
+          258068,
+          28200,
+          268932,
+          31850
+        ],
+        "collision_box_um": [
+          257568,
+          27700,
+          269432,
+          32350
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C1",
+        "printed_text": "220мк"
+      },
+      {
+        "actual_ink_box_um": [
+          261434,
+          51525,
+          265566,
+          55100
+        ],
+        "collision_box_um": [
+          260934,
+          51025,
+          266066,
+          55600
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C2",
+        "printed_text": "C2"
+      },
+      {
+        "actual_ink_box_um": [
+          258068,
+          67700,
+          268932,
+          71350
+        ],
+        "collision_box_um": [
+          257568,
+          67200,
+          269432,
+          71850
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C2",
+        "printed_text": "220мк"
+      },
+      {
+        "actual_ink_box_um": [
+          307300,
+          110800,
+          313144,
+          114300
+        ],
+        "collision_box_um": [
+          306800,
+          110300,
+          313644,
+          114800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "VD1",
+        "printed_text": "VD1"
+      },
+      {
+        "actual_ink_box_um": [
+          318073,
+          25125,
+          321927,
+          28700
+        ],
+        "collision_box_um": [
+          317573,
+          24625,
+          322427,
+          29200
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "L2",
+        "printed_text": "L2"
+      },
+      {
+        "actual_ink_box_um": [
+          312326,
+          37900,
+          327675,
+          41550
+        ],
+        "collision_box_um": [
+          311826,
+          37400,
+          328175,
+          42050
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "L2",
+        "printed_text": "100 мкГн"
+      },
+      {
+        "actual_ink_box_um": [
+          346151,
+          138600,
+          350037,
+          142100
+        ],
+        "collision_box_um": [
+          345651,
+          138100,
+          350537,
+          142600
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C5",
+        "printed_text": "C5"
+      },
+      {
+        "actual_ink_box_um": [
+          346151,
+          150900,
+          358396,
+          154550
+        ],
+        "collision_box_um": [
+          345651,
+          150400,
+          358896,
+          155050
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C5",
+        "printed_text": "1000мк"
+      },
+      {
+        "actual_ink_box_um": [
+          371151,
+          138525,
+          375283,
+          142100
+        ],
+        "collision_box_um": [
+          370651,
+          138025,
+          375783,
+          142600
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C6",
+        "printed_text": "C6"
+      },
+      {
+        "actual_ink_box_um": [
+          371151,
+          150900,
+          383396,
+          154550
+        ],
+        "collision_box_um": [
+          370651,
+          150400,
+          383896,
+          155050
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C6",
+        "printed_text": "1000мк"
+      },
+      {
+        "actual_ink_box_um": [
+          372223,
+          27725,
+          377778,
+          31300
+        ],
+        "collision_box_um": [
+          371723,
+          27225,
+          378278,
+          31800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "FU1",
+        "printed_text": "FU1"
+      },
+      {
+        "actual_ink_box_um": [
+          399683,
+          26725,
+          404318,
+          30300
+        ],
+        "collision_box_um": [
+          399183,
+          26225,
+          404818,
+          30800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "X2",
+        "printed_text": "X2"
+      },
+      {
+        "actual_ink_box_um": [
+          229150,
+          202650,
+          233582,
+          206300
+        ],
+        "collision_box_um": [
+          228650,
+          202150,
+          234082,
+          206800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R8",
+        "printed_text": "R8"
+      },
+      {
+        "actual_ink_box_um": [
+          229150,
+          219700,
+          232768,
+          223350
+        ],
+        "collision_box_um": [
+          228650,
+          219200,
+          233268,
+          223850
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R8",
+        "printed_text": "10"
+      },
+      {
+        "actual_ink_box_um": [
+          32200,
+          100600,
+          36086,
+          104100
+        ],
+        "collision_box_um": [
+          31700,
+          100100,
+          36586,
+          104600
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C3",
+        "printed_text": "C3"
+      },
+      {
+        "actual_ink_box_um": [
+          32200,
+          112900,
+          40635,
+          116400
+        ],
+        "collision_box_um": [
+          31700,
+          112400,
+          41135,
+          116900
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C3",
+        "printed_text": "47мк"
+      },
+      {
+        "actual_ink_box_um": [
+          59150,
+          99800,
+          62725,
+          103300
+        ],
+        "collision_box_um": [
+          58650,
+          99300,
+          63225,
+          103800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R1",
+        "printed_text": "R1"
+      },
+      {
+        "actual_ink_box_um": [
+          59150,
+          116700,
+          60531,
+          120200
+        ],
+        "collision_box_um": [
+          58650,
+          116200,
+          61031,
+          120700
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R1",
+        "printed_text": "1"
+      },
+      {
+        "actual_ink_box_um": [
+          89150,
+          102225,
+          93582,
+          105800
+        ],
+        "collision_box_um": [
+          88650,
+          101725,
+          94082,
+          106300
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R2",
+        "printed_text": "R2"
+      },
+      {
+        "actual_ink_box_um": [
+          89150,
+          119200,
+          95861,
+          122850
+        ],
+        "collision_box_um": [
+          88650,
+          118700,
+          96361,
+          123350
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R2",
+        "printed_text": "620"
+      },
+      {
+        "actual_ink_box_um": [
+          59908,
+          139800,
+          64093,
+          143300
+        ],
+        "collision_box_um": [
+          59408,
+          139300,
+          64593,
+          143800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R3",
+        "printed_text": "R3"
+      },
+      {
+        "actual_ink_box_um": [
+          59233,
+          150700,
+          64767,
+          154350
+        ],
+        "collision_box_um": [
+          58733,
+          150200,
+          65267,
+          154850
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R3",
+        "printed_text": "10к"
+      },
+      {
+        "actual_ink_box_um": [
+          29150,
+          164800,
+          33582,
+          168300
+        ],
+        "collision_box_um": [
+          28650,
+          164300,
+          34082,
+          168800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R4",
+        "printed_text": "R4"
+      },
+      {
+        "actual_ink_box_um": [
+          29150,
+          181700,
+          36289,
+          185779
+        ],
+        "collision_box_um": [
+          28650,
+          181200,
+          36789,
+          186279
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R4",
+        "printed_text": "6,8к"
+      },
+      {
+        "actual_ink_box_um": [
+          36150,
+          204800,
+          40335,
+          208300
+        ],
+        "collision_box_um": [
+          35650,
+          204300,
+          40835,
+          208800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R5",
+        "printed_text": "R5"
+      },
+      {
+        "actual_ink_box_um": [
+          36150,
+          221700,
+          39447,
+          225200
+        ],
+        "collision_box_um": [
+          35650,
+          221200,
+          39947,
+          225700
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R5",
+        "printed_text": "1к"
+      },
+      {
+        "actual_ink_box_um": [
+          84150,
+          204725,
+          88582,
+          208300
+        ],
+        "collision_box_um": [
+          83650,
+          204225,
+          89082,
+          208800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R6",
+        "printed_text": "R6"
+      },
+      {
+        "actual_ink_box_um": [
+          84150,
+          221700,
+          85531,
+          225200
+        ],
+        "collision_box_um": [
+          83650,
+          221200,
+          86031,
+          225700
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R6",
+        "printed_text": "1"
+      },
+      {
+        "actual_ink_box_um": [
+          114150,
+          224800,
+          118389,
+          228300
+        ],
+        "collision_box_um": [
+          113650,
+          224300,
+          118889,
+          228800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R7",
+        "printed_text": "R7"
+      },
+      {
+        "actual_ink_box_um": [
+          114150,
+          241700,
+          122777,
+          245350
+        ],
+        "collision_box_um": [
+          113650,
+          241200,
+          123277,
+          245850
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "R7",
+        "printed_text": "680к"
+      },
+      {
+        "actual_ink_box_um": [
+          22934,
+          137800,
+          27066,
+          141300
+        ],
+        "collision_box_um": [
+          22434,
+          137300,
+          27566,
+          141800
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C4",
+        "printed_text": "C4"
+      },
+      {
+        "actual_ink_box_um": [
+          19622,
+          152700,
+          30379,
+          156779
+        ],
+        "collision_box_um": [
+          19122,
+          152200,
+          30879,
+          157279
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C4",
+        "printed_text": "0,01мк"
+      },
+      {
+        "actual_ink_box_um": [
+          146150,
+          228600,
+          150089,
+          232100
+        ],
+        "collision_box_um": [
+          145650,
+          228100,
+          150589,
+          232600
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C7",
+        "printed_text": "C7"
+      },
+      {
+        "actual_ink_box_um": [
+          146150,
+          237900,
+          154242,
+          241550
+        ],
+        "collision_box_um": [
+          145650,
+          237400,
+          154742,
+          242050
+        ],
+        "kind": "AnnotationPlacement",
+        "owner": "C7",
+        "printed_text": "1000"
+      }
+    ],
     "all_component_stroke_boxes_within_A3_margins": true,
     "full_23_component_stroke_bbox_um": [
       10850,
@@ -5877,6 +8027,7 @@
       405150,
       243151
     ],
+    "minimum_text_collision_y_um": 11600,
     "original_named_nets": {
       "ADJUSTED_DIVIDER": [
         "R4.2",
@@ -11665,6 +13816,7 @@
         "symbol_revision": 1
       }
     },
+    "project_10mm_text_collision_frame_fit": true,
     "real_net_count": 15,
     "real_part_count": 23,
     "real_pin_ref_memberships": 62,
