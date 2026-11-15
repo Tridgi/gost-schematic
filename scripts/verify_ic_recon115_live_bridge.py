@@ -153,7 +153,7 @@ def test_real_115_owner_verified_compact_ti_consumes_exact_source_tuple():
     _checks(actual.signed)
 
     # A numerically equal clone is NOT the owner's exact same source tuple.
-    new_tuple = tuple(list(native.circuit.components))
+    new_tuple = (*native.circuit.components,)
     assert new_tuple == native.circuit.components
     assert new_tuple is not native.circuit.components
     unauthorized = replace(native.circuit, components=new_tuple)
