@@ -1,0 +1,36 @@
+--- a/ui/integration/source-gate.mjs
++++ b/ui/integration/source-gate.mjs
+@@ -3,7 +3,7 @@
+ function deny(code){throw Error(code)}
+ const point=p=>Array.isArray(p)&&p.length===2&&p.every(n=>Number.isSafeInteger(n)&&Math.abs(n)<=1e9);
+ const same=(a,b)=>a[0]===b[0]&&a[1]===b[1];
+-const key=p=>p.component_id+":"+p.physical_pin_number;
++const key=p=>JSON.stringify([p.component_id,p.physical_pin_number]);
+ export function auditCandidateV2(file,{pinWorld,requireFrozen=false}={}){
+  if(file?.format!=="gscad-project"||file.format_version!==2||!file.project)deny("UNSUPPORTED_SCHEMA");
+  const p=file.project;
+@@ -57,6 +57,15 @@
+    }
+   }
+   for(const j of sh.junctions)if(!point(j.at_um)||!netIds.has(j.net_id)||(usage.get("junction:"+j.id)||0)<2)deny("ORPHAN_JUNCTION");
++  // A visible Junction must not occupy any different-Net conductive stroke.
++  for(const j of sh.junctions)for(const foreign of sh.wires){
++   if(foreign.net_id===j.net_id)continue;
++   for(let i=1;i<foreign.vertices.length;i++){
++    const a=foreign.vertices[i-1].at_um,b=foreign.vertices[i].at_um,q=j.at_um;
++    if((a[0]===b[0]&&q[0]===a[0]&&q[1]>=Math.min(a[1],b[1])&&q[1]<=Math.max(a[1],b[1]))||
++       (a[1]===b[1]&&q[1]===a[1]&&q[0]>=Math.min(a[0],b[0])&&q[0]<=Math.max(a[0],b[0])))deny("JUNCTION_CROSSES_FOREIGN_NET");
++   }
++  }
+   for(const j of sh.splices||[])if(!point(j.at_um)||!netIds.has(j.net_id)||(usage.get("splice:"+j.id)||0)!==2)deny("INVALID_SPLICE");
+   if(sh.graphics.some(g=>g.kind==="source_b_continuation"&&g.electrical===true))deny("NON_ELECTRICAL_GRAPHIC");
+   wireCount+=sh.wires.length;graphicCount+=sh.graphics.length;
+@@ -66,7 +75,7 @@
+   if(p.provenance?.source_sha!==SOURCE_SHA)deny("FROZEN_SHA_MISMATCH");
+   if(components.size!==23||netIds.size!==15||ownership.size!==62)deny("FROZEN_COUNTS_MISMATCH");
+   const da=p.components.find(c=>c.source_refdes==="DA1");
+-  if(!da||[...ownership.keys()].filter(k=>k.startsWith(da.id+":")).length!==16)deny("FROZEN_DA1_MISMATCH");
++  if(!da||p.nets.flatMap(n=>n.members).filter(pin=>pin.component_id===da.id).length!==16)deny("FROZEN_DA1_MISMATCH");
+   if(p.sheets.flatMap(s=>s.graphics.filter(g=>g.kind==="source_b_continuation")).length!==2)deny("FROZEN_B_MISMATCH");
+   if(p.nets.some(n=>n.route_status==="verified"))deny("UNVERIFIED_ROUTING");
+  }
