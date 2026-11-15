@@ -5,6 +5,7 @@
  * See ui/qa/README.md; DO NOT ship the QA bridge in production.
  */
 import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 import { qaFixtures, source } from './acceptance-contract.mjs';
 
 const origin = process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:5173';
@@ -155,25 +156,67 @@ test('CAD-UX-R3-05 — wrong-Net atomic rollback', async ({page}) => {
   expect(after.project).toEqual(before.project);
   expect(after.revision).toBe(before.revision);
   expect(after.history_depth).toBe(before.history_depth);
+
+  // New negative fixture state: an anchored endpoint's X-coordinate edit by
+  // exactly +0.001 mm must fail atomically, never silently rebind the PinRef.
+  await openFixture(page,'twoNets');
+  const pinnedBefore=await snapshot(page);
+  await page.locator(sel('anchored-wire-endpoint')).first().click();
+  const field=page.locator(sel('inspector-vertex-x'));
+  const old=Number(await field.inputValue());
+  expect(Number.isFinite(old)).toBeTruthy();
+  await field.fill((old+0.001).toFixed(3));
+  await field.press('Enter');
+  await expect(page.locator(sel('diagnostic-PIN_ANCHOR_MISMATCH'))).toBeVisible();
+  const pinnedAfter=await snapshot(page);
+  expect(pinnedAfter.project).toEqual(pinnedBefore.project);
+  expect(pinnedAfter.revision).toBe(pinnedBefore.revision);
+  expect(pinnedAfter.history_depth).toBe(pinnedBefore.history_depth);
 });
 
-test('CAD-UX-R3-06 — save/export requires authentic result receipts', async ({page}) => {
+test('CAD-UX-R3-06 — real save/reopen and SVG/PNG300 downloaded bytes', async ({page}) => {
   await openFixture(page,'twoNets');
   const before=await snapshot(page);
   await page.locator(sel('save-project')).click();
   await expect.poll(async () => (await snapshot(page)).persistence?.last_saved_sha256, {
     message:'BLOCKED: canonical disk save and hash not observable'
   }).toMatch(/^[a-f0-9]{64}$/i);
-  await page.locator(sel('export-svg')).click();
-  await expect.poll(async () => (await snapshot(page)).export?.last_svg_width_mm, {
-    message:'BLOCKED: clean SVG result not observable'
-  }).toBeGreaterThan(0);
-  await page.locator(sel('export-png300')).click();
-  await expect.poll(async () => (await snapshot(page)).export?.last_png_dpi, {
-    message:'BLOCKED: raster PNG pHYs not verified by exporter'
-  }).toBe(300);
-  invariantSource(before,await snapshot(page));
-  // Only a partial R3 gate: #124/#125 must also reopen saved bytes and decode SVG/PNG.
+  const saved=await snapshot(page);
+  // Dev/test readback route must reopen the actual saved bytes, not reset the fixture.
+  await page.goto(origin+'/?qaOpenLastSaved=1');
+  await expect(page.locator(sel('editor-root'))).toBeVisible();
+  const reopened=await snapshot(page);
+  expect(reopened.project).toEqual(saved.project);
+  invariantSource(before,reopened);
+
+  // Require genuine browser downloads and inspect the bytes; metadata-only
+  // receipts and editor screenshots are NOT sufficient for R3.
+  const [svgDownload] = await Promise.all([
+    page.waitForEvent('download'),page.locator(sel('export-svg')).click()
+  ]);
+  const xml=await readFile(await svgDownload.path(),'utf8');
+  expect(xml).toMatch(/<svg\\b/);
+  expect(xml).toMatch(/\\bwidth="[0-9.]+mm"/);
+  expect(xml).toMatch(/\\bheight="[0-9.]+mm"/);
+  expect(xml).toMatch(/\\bviewBox="/);
+  expect(xml).toMatch(/<(path|line|polyline|rect)\\b/);
+  expect(xml).not.toMatch(/<image\\b/i);
+  expect(xml).not.toMatch(/data-layer="(geometry-review|selection|grid)"/);
+
+  const [pngDownload] = await Promise.all([
+    page.waitForEvent('download'),page.locator(sel('export-png300')).click()
+  ]);
+  const png=await readFile(await pngDownload.path());
+  expect(png.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))).toBeTruthy();
+  expect(png.readUInt32BE(16)).toBeGreaterThan(0);
+  expect(png.readUInt32BE(20)).toBeGreaterThan(0);
+  const chunk=png.indexOf(Buffer.from('pHYs'));
+  expect(chunk).toBeGreaterThan(0);
+  // PNG pHYs stores integer pixels per meter. 300dpi ~= 11811 px/m.
+  const ppmX=png.readUInt32BE(chunk+4),ppmY=png.readUInt32BE(chunk+8),unit=png[chunk+12];
+  expect(unit).toBe(1);
+  expect(Math.abs(ppmX*0.0254-300)).toBeLessThan(0.1);
+  expect(Math.abs(ppmY*0.0254-300)).toBeLessThan(0.1);
 });
 
 test('CAD-UX-R4-01 — genuine frozen TL494 source and incomplete nets', async ({page}) => {
