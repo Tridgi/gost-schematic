@@ -352,14 +352,14 @@ def produce(
         "owner_router_sha": owner_sha,
         "reference_recon_sha": reference_sha,
         "pinned_model_owners": {
-            "ELEKTRIK_IC": "6161e9102cbc0c9e0491fb27ed7a496dc0b274bc",
-            "PAINT": "e3ea841dbe087952577121d5690fe41e9a9a5c83",
-            "YGO2": "edc71a48035723d48a203ae2ea12588701f68ba8",
+            "ELEKTRIK_IC": "7c30c209ea5e97a245844b24a3bbc4d3d30118ea",
+            "PAINT": "f872ce50ac699ad089391b0bbd58e2cb92f2b7f6",
+            "YGO2": "3e47cdf32ccf211ded97e3be1ad874035653e090",
             "RECON": reference_sha,
         },
         "note": (
-            "Model/PAINT modules pinned to isolated mutually compatible "
-            "source fixture; current owner heads need separate QA re-pin"
+            "Source-owner code SHA-locked within isolated CI; exact tested "
+            "source and layouts require full DRC and independent QA"
         ),
         "font_sha256": style.font_sha256,
         "source_components": 23,
