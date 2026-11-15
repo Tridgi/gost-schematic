@@ -501,6 +501,28 @@ def _visibility_path(
     for point in (source, *reachable_goals):
         x_set.update((point.x - grid_um, point.x + grid_um))
         y_set.update((point.y - grid_um, point.y + grid_um))
+    # Source-real GraphicPin lead strokes can extend beyond the rectangular
+    # body keepout. In a tight 7.5mm physical DA1 lead fanout the safe aisle
+    # may be only hundreds of µm beyond a printed stroke cap; a 5mm sample
+    # grid omits that aisle entirely. Add conservative exact SOURCE-INK
+    # boundaries for leads within 16mm of the current real endpoints.
+    # This is a SEARCH lane only; the original strokes, final candidate
+    # collision veto and global full DRC remain unchanged. Do not add an
+    # imagined physical PinRef, wire, dot, or exemption.
+    for lead in ink_obstacles:
+        if lead.permitted_pin is None or not overlaps_window(
+            lead.collision_bounds
+        ):
+            continue
+        bound = lead.collision_bounds
+        if not any(
+            bound.min_x - 16000 <= p.x <= bound.max_x + 16000
+            and bound.min_y - 16000 <= p.y <= bound.max_y + 16000
+            for p in (source, *reachable_goals)
+        ):
+            continue
+        x_set.update((bound.min_x - 1, bound.max_x + 1))
+        y_set.update((bound.min_y - 1, bound.max_y + 1))
     xs = sorted(x for x in x_set if window.min_x <= x <= window.max_x)
     ys = sorted(y for y in y_set if window.min_y <= y <= window.max_y)
     # The Cartesian visibility lattice is sparse in practice: only states
