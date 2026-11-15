@@ -31,6 +31,7 @@ from scripts.eskd_cycle13_signed_b_print_gate import (
     FROZEN_SOURCE_NETS,
     audit_source_b_printed_lines,
 )
+from scripts.eskd_cycle16_label_ink_gate import audit_type_a_annotations
 
 NS = "{http://www.w3.org/2000/svg}"
 ROOT = "TL494_COMPACT_A3_NEW_ROUTE_BLOCKED"
@@ -163,6 +164,7 @@ def _layout_measure(root: ET.Element) -> dict:
             internal_root.append(g)
     internal = source_ugo_parallel_1mm_scope(internal_root)
     return {
+        "real_symbol_boxes_um": {ref: list(bounds) for ref, bounds in boxes.items()},
         "distinct_UGO_count": 23,
         "separate_UGO_checked_pairs": 253,
         "min_separate_UGO_ink_um": min(gaps)[0],
@@ -267,6 +269,9 @@ def audit(folder: Path, *, artifact_run: int, paint_sha: str,
           "ROUTE_MANIFEST_AND_PRINTED_WIRE_COUNT_DIFFER")
     ink3 = all_parallel_ink_3mm_scope(wires)
     ink2_1 = _layout_measure(ET.parse(cf).getroot())
+    label_ink = audit_type_a_annotations(
+        ET.parse(cf).getroot(), wires, ink2_1["real_symbol_boxes_um"]
+    )
     route = manifest["router_attempt"]
     check(route["routed_net_count"] < 15 and route["complete"] is False,
           "PINNED_PARTIAL_OWNER_MASQUERADES_AS_COMPLETE")
@@ -298,8 +303,9 @@ def audit(folder: Path, *, artifact_run: int, paint_sha: str,
         },
         "scope_3mm_parallel_wires": ink3,
         "scope_2mm_distinct_and_1mm_internal_UGO": ink2_1,
+        "scope_39_catalog_type_a_label_ink": label_ink,
         "source_C1_type_a_catalog_text_frame":
-            "BLOCKED_SOURCE_SVG_ANNOTATIONS_LACK_MEASURED_INK_BBOX",
+            "BLOCKED_NO_INDEPENDENT_NATIVE_LABEL_RASTER_BBOX",
         "paper_A3_420x297_svg": "PASS_REAL_FULL_PAGE_CROP_NOT_USED",
         "project_10mm_C1_label":
             "BLOCKED_OWNER_RECON_MEASURED_C1_TOP_900UM_OUTSIDE",
