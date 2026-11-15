@@ -1,6 +1,6 @@
 # GOST Schematic — Visual CAD integration worktree
 
-**STATUS as of 2026-11-16:** R1 architecture/contract and independent `ui/integration/` structural gate (15 Node tests). **No integrated React CAD app, signed TL494 source import, Python v2 adapter or Windows Tauri binary.** Never describe this branch as an MVP release until R2–R4 acceptance is demonstrated.
+**STATUS as of 2026-11-16:** R1 architecture/contract and independent `ui/integration/` structural gate (17 Node tests). **No integrated React CAD app, signed TL494 source import, Python v2 adapter or Windows Tauri binary.** Never describe this branch as an MVP release until R2–R4 acceptance is demonstrated.
 
 **Single integration owner:** #125 (MASTER). Direction and issue tracking: #116. Approved baseline: `integration/stage0-12` SHA `9ae2561562c2b6e41069e8343d0e682bd37ab3d4`. Architectural authority: [ADR-0010](../docs/decisions/0010-visual-cad-mvp.md). Data/wire contract: [manual-wire-v2](contracts/manual-wire-v2.md).
 
@@ -13,7 +13,7 @@ node --check ui/integration/source-gate.mjs
 node --test ui/integration/source-gate.test.mjs
 ```
 
-See `ui/integration/README.md` for limits. It does not replace #122's versioned JSON Schema, #123's write-safe wire engine, the original source E695 fixture or independent real-browser tests. Existing Python CI separately renders OpenGOST technical samples; its release metadata download uses the job-scoped GitHub API token only for `api.github.com` to avoid anonymous shared-runner 403 (no token on CDN assets).
+See `ui/integration/README.md` for limits and `ui/integration/browser-r0-smoke.md` for real R0 browser gestures (not an R2 acceptance claim). It does not replace #122's versioned JSON Schema, #123's write-safe wire engine, the original source E695 fixture or independent real-browser tests. Existing Python CI separately renders OpenGOST technical samples; its release metadata download uses the job-scoped GitHub API token only for `api.github.com` to avoid anonymous shared-runner 403 (no token on CDN assets).
 
 ## Expected structure (create directories only as code is transferred)
 
