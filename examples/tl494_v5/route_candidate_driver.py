@@ -380,7 +380,8 @@ def source_signed_ink_footprint(
     symbols, _guards, _layout, footprint, _style = _build_obstacles(
         assembly, original_nets, font_file, verified_ti=verified_ti,
     )
-    if set(symbols) < {c.part_id for c in assembly.circuit.components}:
+    required_parts = {c.part_id for c in assembly.circuit.components}
+    if not required_parts.issubset(symbols):
         raise ValueError("V5_SIGNED_INK_NOT_ALL_23_SOURCE_PARTS")
     return symbols, footprint
 
