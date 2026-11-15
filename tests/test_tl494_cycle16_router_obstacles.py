@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from scripts.export_tl494_cycle16_router_obstacles import (
+    orthogonal_segment_hits_stroked_box,
     router_obstacle_contract,
 )
 
@@ -95,3 +96,26 @@ def test_source_true_lead_portals_are_not_connections_on_search_intersections(so
     refs = {p["pin_ref"] for p in output["physical_pinref_portals"]}
     assert len(refs) == 62
     assert output["obstacle_model"] == "REAL_STROKES_NO_REMOTE_COORDINATE_VETO"
+
+
+@pytest.mark.parametrize("start,end,stroked,hit", (
+    ((0, 146250), (2000, 146250), [1000, 170000, 1001, 170001], False),
+    ((0, 146250), (2000, 146250), [1000, 146250, 1001, 146251], True),
+    ((0, 146250), (2000, 146250), [1000, 146251, 1001, 146252], False),
+    ((0, 146250), (2000, 146250), [1000, 146249, 1001, 146250], True),
+    ((1000, 0), (1000, 2000), [1500, 1000, 1501, 1001], False),
+    ((1000, 0), (1000, 2000), [1000, 1000, 1001, 1001], True),
+))
+def test_real_stroke_visibility_not_remote_coordinate_veto(
+    start, end, stroked, hit,
+):
+    assert orthogonal_segment_hits_stroked_box(
+        start, end, stroked,
+    ) is hit
+
+
+def test_reject_nonorthogonal_as_not_proven_clear():
+    with pytest.raises(AssertionError, match="DIAGONAL_SEGMENT"):
+        orthogonal_segment_hits_stroked_box(
+            (0, 0), (1000, 1000), [100, 100, 200, 200],
+        )
