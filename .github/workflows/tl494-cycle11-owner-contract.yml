@@ -174,10 +174,10 @@ jobs:
             # Only measured Type A TEXT widths/heights may vary; exact text
             # anchor (with half-um integer AABB quantization) and paper fit
             # remain fail-closed. No 15/15 / full DRC claim is made.
-            python "$GITHUB_WORKSPACE/scripts/verify_tl494_cycle16_ink_contract.py" \\
-              --baseline "$GITHUB_WORKSPACE/reports/tl494-cycle15-true-23-ink.json" \\
-              --current "$GITHUB_WORKSPACE/output/cycle11-owners/tl494-23-real-instance-ink.json" \\
-              --owner-recon-sha "$OWNER_SHA" \\
+            python "$GITHUB_WORKSPACE/scripts/verify_tl494_cycle16_ink_contract.py" \
+              --baseline "$GITHUB_WORKSPACE/reports/tl494-cycle15-true-23-ink.json" \
+              --current "$GITHUB_WORKSPACE/output/cycle11-owners/tl494-23-real-instance-ink.json" \
+              --owner-recon-sha "$OWNER_SHA" \
               --report "$GITHUB_WORKSPACE/output/cycle11-owners/tl494-cycle16-physical-comparison.json"
 
           fi
