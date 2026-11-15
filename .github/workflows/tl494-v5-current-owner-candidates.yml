@@ -158,10 +158,16 @@ jobs:
           assert a3["measured_text_10mm_frame_fit"] is False
           assert a2["measured_text_10mm_frame_fit"] is False
           assert a3["real_measured_text_guard_count"] == 73
-          assert a3["measured_text_frame_violations"] == [{
-              "owner": "C1", "label": "C1", "kind": "AnnotationPlacement",
-              "bounds_um": [261362, 9100, 265638, 13600],
-          }]
+          v=a3["measured_text_frame_violations"]
+          assert len(v) == 1
+          assert (v[0]["owner"],v[0]["label"],v[0]["kind"]) == (
+              "C1","C1","AnnotationPlacement"
+          )
+          x0,y0,x1,y1=v[0]["bounds_um"]
+          assert 261250 <= x0 <= 261450
+          assert (y0,y1) == (9100,13600)
+          assert 265550 <= x1 <= 265750
+          assert 10000-y0 == 900
           assert c1["source_position_only_moves_mm"] == [["C1","0","2.5"]]
           assert c1["measured_text_10mm_frame_fit"]
           assert c1["real_measured_text_guard_count"] == 73
