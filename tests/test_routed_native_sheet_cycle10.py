@@ -225,3 +225,23 @@ def test_generic_or_incomplete_source_inventory_not_mislabeled_as_tl494(inventor
         route_preview=None, source_continuation_project=None,
         physical_page_box=None,
     )
+
+
+def test_source_signed_ic_triple_incomplete_or_forged_rejected():
+    circuit, graph, parts, symbols, clean, diagnostic = _case()
+    with pytest.raises(TypeError, match="SIGNED_IC_TRIPLE_REQUIRED"):
+        render_routed_native_sheet(
+            circuit, graph, parts, symbols, STYLE, FixedInk(),
+            physical_ic_renderings_clean={"DD1": clean},
+            physical_ic_renderings_diagnostic={"DD1": diagnostic},
+            verified_ic_source=object(),
+        )
+    with pytest.raises(TypeError, match="SIGNED_MANUFACTURER_TYPES_REQUIRED"):
+        render_routed_native_sheet(
+            circuit, graph, parts, symbols, STYLE, FixedInk(),
+            physical_ic_renderings_clean={"DD1": clean},
+            physical_ic_renderings_diagnostic={"DD1": diagnostic},
+            verified_ic_source=object(),
+            verified_ic_paint_binding=object(),
+            verified_ic_snapshot=object(),
+        )
