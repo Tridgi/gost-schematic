@@ -85,7 +85,7 @@ def _dimension_mm(root: ET.Element) -> tuple[float, float, float, float]:
     return tuple(view)
 
 
-def _source_model(manifest: dict) -> dict:
+def _source_model(manifest: dict, original: dict) -> dict:
     require(manifest.get("source_sha") == FROZEN, "FROZEN_SOURCE_SHA_CHANGED")
     require(
         (manifest.get("source_components"), manifest.get("source_nets"),
@@ -101,6 +101,28 @@ def _source_model(manifest: dict) -> dict:
     assert len(SOURCE_NETS) == 15
     canonical = {SOURCE_ALIASES.get(n, n) for n in names}
     require(canonical == SOURCE_NETS, "SOURCE_NET_NAMES_NOT_REVERSIBLY_MAPPABLE")
+    # Immutable original e695c415 ... file, verified with git hash-object in CI.
+    # A global count + empty owner diff cannot detect a swapped physical pin.
+    require(original.get("full_component_count") == 23
+            and original.get("net_count") == 15
+            and original.get("physical_pin_memberships") == 62
+            and original.get("routed") is False
+            and original.get("rendered_full_e3") is False,
+            "ORIGINAL_FROZEN_TYPED_MODEL_INVALID")
+    source_parts = {row["ref"] for row in original["elements"]}
+    require(len(source_parts) == 23, "ORIGINAL_PART_REFERENCES_NOT_23")
+    expected_nets = {
+        name: sorted(pins) for name, pins in original["nets"].items()
+    }
+    actual_nets = {
+        SOURCE_ALIASES.get(name, name): sorted(pins)
+        for name, pins in rows.items()
+    }
+    require(actual_nets == expected_nets,
+            "ORIGINAL_15_NET_PINREF_MEMBERSHIPS_DRIFT")
+    require(all(pin.split(".", 1)[0] in source_parts
+                for pins in rows.values() for pin in pins),
+            "ORIGINAL_UNKNOWN_COMPONENT_PINREF")
     require("COMMON" in names and not names.intersection({"PE", "CHASSIS", "EARTH"}),
             "COMMON_0V_FAKED_AS_PROTECTIVE_EARTH")
     refs = [p for pins in rows.values() for p in pins]
@@ -119,6 +141,7 @@ def _source_model(manifest: dict) -> dict:
             "PASS_EXACT" if names == SOURCE_NETS
             else "BLOCKED_REVERSIBLE_ALIAS_MUST_BE_SIGNED_AT_EXPORT"
         ),
+        "original_pinref_memberships_exact_after_alias": True,
         "physical_pinrefs": len(refs),
         "da1_pin_numbers": sorted(refs_da, key=int),
     }
@@ -320,9 +343,9 @@ def _png(path: Path, view: tuple[float, float, float, float],
                     "PHYSICAL_PINREF_DEBUG_GREEN_OCCLUDED")
 
 
-def audit(folder: Path) -> dict:
+def audit(folder: Path, original_netlist: Path) -> dict:
     manifest = _read_json(folder / f"{BASENAME}-route-drc.json")
-    source = _source_model(manifest)
+    source = _source_model(manifest, _read_json(original_netlist))
     route = _route(manifest)
     for key in FAILED_SOURCE_NETS:
         require(any(reason.startswith(f"{key}:") for reason in manifest["reason"]),
@@ -377,8 +400,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--folder", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--original-netlist", type=Path, required=True)
     args = parser.parse_args()
-    result = audit(args.folder)
+    result = audit(args.folder, args.original_netlist)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(result, indent=2, ensure_ascii=False,
                                     sort_keys=True) + "\n", encoding="utf-8")
