@@ -52,7 +52,8 @@ async fn engine_request(
     data.push(b'\n');
 
     // Fixed packaged program; no user-controlled executable path, shell, args or files.
-    let cmd = app.shell().sidecar("engine-bridge").map_err(|_| "SIDECAR_NOT_PACKAGED")?;
+    let cmd = app.shell().sidecar("engine-bridge").map_err(|_| "SIDECAR_NOT_PACKAGED")?
+        .set_process_group(true).kill_on_drop(true);
     let (mut rx, mut child) = cmd.spawn().map_err(|_| "ENGINE_SPAWN_FAILED")?;
     if child.write(&data).is_err() {
         let _ = child.kill();
