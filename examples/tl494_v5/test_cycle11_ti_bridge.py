@@ -1,9 +1,9 @@
 """Cycle11: real 23/15/62 reference->TI manufacturer reversible binding."""
 from dataclasses import replace
+from importlib import import_module
 from pathlib import Path
 
 import pytest
-from gost_schematic.electrical.tl494cn import TI_DEVICE_ID
 
 from examples.tl494_v5.compact_layout import compact_source_assembly
 from examples.tl494_v5.cycle11_ti_bridge import (
@@ -17,6 +17,8 @@ from examples.tl494_v5.route_candidate_driver import (
 )
 from gost_schematic.core.geometry import Point
 from gost_schematic.model.circuit import Circuit, Net, PinRef
+
+TI_DEVICE_ID = import_module("gost_schematic.electrical.tl494cn").TI_DEVICE_ID
 
 
 def _real():
@@ -129,8 +131,6 @@ def test_real_16_pin_signed_paint_overlay_and_wrong_record_fails(
 ):
     import os
 
-    from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
-
     from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
     from gost_schematic.standards.type_a_font import inspect_type_a_font
 
@@ -143,7 +143,9 @@ def test_real_16_pin_signed_paint_overlay_and_wrong_record_fails(
         Path(font), h_um=3500, family="OpenGOST type A",
         require_family_match=True,
     ).style
-    paint = propose_ic_paint_binding(
+    paint = import_module(
+        "gost_schematic.electrical.ic_paint_bridge"
+    ).propose_ic_paint_binding(
         assembly.owner_ic_record, style, PillowTextMeasurer(),
     )
     signed_paint, witness = verified.seal_paint(paint)

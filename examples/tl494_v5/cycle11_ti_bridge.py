@@ -7,13 +7,19 @@ physical pin semantics: owner #97 verifies manufacturer data + frozen photo.
 from __future__ import annotations
 
 from dataclasses import dataclass
-
-from gost_schematic.electrical.ic_circuit_adapter import IcCircuitBinding
-from gost_schematic.electrical.tl494cn import TI_DEVICE_ID
+from importlib import import_module
 
 from examples.tl494_v5.native_circuit import NativeV5Assembly
 from gost_schematic.model.circuit import Circuit, PinRef
 from gost_schematic.model.part import PartDefinition
+
+# These owner modules are staged by the specialized IC/PAINT jobs but are
+# deliberately absent in the base RECON checkout. Late-bound imports prevent
+# Ruff/isort from classifying the very same source differently across jobs.
+IcCircuitBinding = import_module(
+    "gost_schematic.electrical.ic_circuit_adapter"
+).IcCircuitBinding
+TI_DEVICE_ID = import_module("gost_schematic.electrical.tl494cn").TI_DEVICE_ID
 
 SOURCE_PART_ID = "reference.tl494cn"
 PHYSICAL_REF = "DA1"

@@ -7,9 +7,8 @@ from __future__ import annotations
 
 import argparse
 import json
+from importlib import import_module
 from pathlib import Path
-
-from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
 
 from examples.tl494_v5.compact_layout import compact_source_assembly
 from examples.tl494_v5.cycle11_b_continuation import rebind_true_source_b
@@ -41,7 +40,9 @@ def generate_cycle11_evidence(
         require_family_match=True,
     ).style
     measurer = PillowTextMeasurer()
-    paint = propose_ic_paint_binding(
+    paint = import_module(
+        "gost_schematic.electrical.ic_paint_bridge"
+    ).propose_ic_paint_binding(
         assembly.owner_ic_record, style, measurer,
     )
     revised, signed_overlay = signed.seal_paint(paint)
