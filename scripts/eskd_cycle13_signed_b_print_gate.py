@@ -19,6 +19,31 @@ EXPECTED = {"b-X2": PinRef("X2", "1"), "b-R5": PinRef("R5", "2")}
 B_MEMBERS = frozenset((PinRef("FU1", "2"), *EXPECTED.values()))
 
 
+# Independently transcribed from immutable e695c415 typed original Netlist.
+# Explicit per-Net membership prevents a benign count-preserving foreign Net.
+FROZEN_SOURCE_NETS: dict[str, tuple[str, ...]] = {
+    "ADJUSTED_DIVIDER": ("R4.2", "R5.1", "R5.3"),
+    "COMMON": (
+        "X1.2", "X2.2", "VT1.3", "VD1.2", "C5.1", "C6.1",
+        "DA1.7", "DA1.1", "DA1.16", "DA1.13", "R6.2", "R7.2",
+        "R8.2", "C7.2",
+    ),
+    "CONTROL_REFERENCE": ("DA1.14", "DA1.15", "R1.1", "R2.1", "C3.1"),
+    "ERROR_INPUT": ("DA1.2", "R2.2", "R4.1", "C4.1"),
+    "FEEDBACK": ("R3.2", "DA1.3"),
+    "GATE_DRIVE": ("DA1.9", "DA1.10", "R8.1", "VT1.1"),
+    "OSCILLATOR_CT": ("C7.1", "DA1.5"),
+    "OSCILLATOR_RT": ("R7.1", "DA1.6"),
+    "OUT_BEFORE_FUSE": ("L2.2", "FU1.1", "C5.2", "C6.2"),
+    "RC_CORRECTION": ("C4.2", "R3.1"),
+    "SOFT_START": ("DA1.4", "R1.2", "C3.2", "R6.1"),
+    "SWITCH": ("L1.2", "VT1.2", "C1.1", "C2.1"),
+    "TRANSFER": ("C1.2", "C2.2", "VD1.1", "L2.1"),
+    "a_INPUT_PLUS": ("X1.1", "L1.1", "DA1.12", "DA1.8", "DA1.11"),
+    "b_NEGATIVE_OUTPUT": ("FU1.2", "X2.1", "R5.2"),
+}
+
+
 class SignedBPrintError(ValueError):
     """Real source b ink missing, forged or ambiguous."""
 
@@ -57,6 +82,30 @@ def audit_source_b_printed_lines(
     insist(len(source_b) == 1
            and frozenset(source_b[0].members) == B_MEMBERS,
            "SOURCE_B_ORIGINAL_NEGATIVE_OUTPUT_MEMBERSHIP_CHANGED")
+    actual = {
+        net.name: tuple(sorted(
+            f"{pin.reference}.{pin.number}" for pin in net.members
+        )) for net in circuit.nets
+    }
+    expected = {
+        name: tuple(sorted(members))
+        for name, members in FROZEN_SOURCE_NETS.items()
+    }
+    insist(len(actual) == len(circuit.nets) == len(expected)
+           and actual == expected,
+           "SOURCE_B_OTHER_14_ORIGINAL_NET_PINREF_MEMBERSHIPS_DRIFT")
+    original_parts = {
+        ref for pins in expected.values() for pin in pins
+        for ref in (pin.split(".", 1)[0],)
+    }
+    insist({component.reference for component in circuit.components}
+           == original_parts
+           and len(original_parts) == 23
+           and len({pin for pins in actual.values() for pin in pins}) == 62
+           and {int(pin.split(".", 1)[1])
+                for pins in actual.values() for pin in pins
+                if pin.startswith("DA1.")} == set(range(1, 17)),
+           "SOURCE_B_23_UNIQUE_PARTS_62_PINREFS_16_DA1_IDENTITY_FAILED")
     signed = {s.endpoint_id: s for s in stubs}
     insist(set(signed) == set(EXPECTED)
            and all(signed[ref].pin == pin for ref, pin in EXPECTED.items()),
