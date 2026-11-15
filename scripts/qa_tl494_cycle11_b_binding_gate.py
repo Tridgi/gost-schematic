@@ -19,13 +19,11 @@ from examples.render_tl494_full_native_cycle9 import (
 from examples.tl494_named_photo_sheet import compose_circuit
 from examples.tl494_v5.compact_layout import compact_source_assembly
 from examples.tl494_v5.route_candidate_driver import (
-    OWNER_SHAS,
     ORIGINAL_BAD_DRC,
-    SOURCE_SHA,
+    OWNER_SHAS,
     load_original_owner_fixture,
     restore_original_named_nets,
 )
-from gost_schematic.model.circuit import PinRef
 from gost_schematic.standards.type_a_font import inspect_type_a_font
 
 RECON_SHA = "65b68cdd89ac0c2ae0b137228da61a17ac78d339"
@@ -193,6 +191,7 @@ def live_real_rebinding_gate(font_file: Path, expected: dict) -> dict:
 
     from examples.tl494_v5.cycle11_b_continuation import rebind_true_source_b
     from examples.tl494_v5.cycle11_ti_bridge import bind_verified_compact_ti
+
     from gost_schematic.core.geometry import Point
     from gost_schematic.electrical.netrefs import validate_net_continuations
     from gost_schematic.model.circuit import Circuit, Net
