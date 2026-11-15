@@ -5,7 +5,6 @@ import copy
 from pathlib import Path
 
 import pytest
-
 from contract import ContractError, digest, migrate, route_is_complete, strict_loads, validate
 
 FIX = Path(__file__).resolve().parents[4] / 'fixtures'

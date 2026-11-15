@@ -224,9 +224,9 @@ def _semantic(project: dict) -> None:
                 if item['id'] in global_ids:
                     raise ContractError('DUPLICATE_ID', item['id']+' global')
                 global_ids.add(item['id'])
-                if collection not in ('layers','instances'):
-                    if item['layer_id'] not in layer_map:
-                        raise ContractError('UNKNOWN_LAYER',item['id'])
+                if (collection not in ('layers', 'instances')
+                        and item['layer_id'] not in layer_map):
+                    raise ContractError('UNKNOWN_LAYER',item['id'])
         for inst in instances.values():
             if inst['layer_id'] not in layer_map:
                 raise ContractError('UNKNOWN_LAYER', inst['id'])
