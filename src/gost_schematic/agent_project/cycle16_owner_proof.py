@@ -69,6 +69,8 @@ def _json(raw: bytes) -> dict[str, Any]:
             raw.decode("utf-8", errors="strict"), object_pairs_hook=_unique_pairs,
             parse_constant=lambda _: _reject("C16_NONFINITE_JSON"),
         )
+    except ProjectError:
+        raise
     except (UnicodeError, ValueError) as error:
         raise ProjectError("C16_INVALID_JSON", "Invalid owner JSON document") from error
     if type(value) is not dict:
@@ -192,14 +194,38 @@ def review_c15_owner_proof(
     proof = _json(manifest_bytes)
     if proof.get("schema") != "GOST_TL494_CYCLE15_ONE_COMMAND_SOURCE_LOCKED_DELIVERY_V1":
         _reject("C16_NOT_REAL_C15_PROOF")
+    # This exactly matches the published RECON C15 producer contract. Reject
+    # silent 1um pin override, extra electrical dummy Net and forged QA fields.
+    if set(proof) != {
+        "schema", "source_sha", "owner_exact_shas", "source_font_sha256",
+        "source_23_components", "source_15_literal_names",
+        "source_62_physical_pinrefs", "source_16_signed_DA1",
+        "source_b_nonphysical", "paper", "native_ugo_bbox_um",
+        "route_config", "original_named_net_route_progress",
+        "completed_original_nets", "required_original_nets",
+        "routed_native_segments", "routed_native_drc_errors",
+        "native_paper_frame_errors", "artifacts",
+        "full_SVG_PNG300_release", "source_photo_pixel_parity",
+        "main_or_integration_merge",
+    }:
+        _reject("C16_C15_UNDECLARED_PROOF_FIELDS")
     if (
         proof.get("source_sha") != TL494_FROZEN_SOURCE_SHA
         or type(proof.get("source_23_components")) is not int
         or proof["source_23_components"] != 23
         or type(proof.get("source_16_signed_DA1")) is not int
         or proof["source_16_signed_DA1"] != 16
-        or proof.get("source_15_literal_names") != list(source_nets)
-        or proof.get("source_62_physical_pinrefs") != source_nets
+        or type(proof.get("source_15_literal_names")) is not list
+        or len(proof["source_15_literal_names"]) != 15
+        or set(proof["source_15_literal_names"]) != set(source_nets)
+        or type(proof.get("source_62_physical_pinrefs")) is not dict
+        or set(proof["source_62_physical_pinrefs"]) != set(source_nets)
+        or any(
+            type(proof["source_62_physical_pinrefs"][n]) is not list
+            or len(proof["source_62_physical_pinrefs"][n]) != len(pins)
+            or set(proof["source_62_physical_pinrefs"][n]) != set(pins)
+            for n, pins in source_nets.items()
+        )
     ):
         _reject("C16_C15_SOURCE_MEMBERSHIP_DRIFT")
     if (
@@ -241,7 +267,10 @@ def review_c15_owner_proof(
     for name, pins in source_nets.items():
         item = progress[name]
         if (
-            type(item) is not dict or item.get("source_pinrefs") != pins
+            type(item) is not dict
+            or type(item.get("source_pinrefs")) is not list
+            or len(item["source_pinrefs"]) != len(pins)
+            or set(item["source_pinrefs"]) != set(pins)
             or type(item.get("connected_pinrefs")) is not list
             or type(item.get("complete")) is not bool
             or not isinstance(item.get("diagnostics"), list)
@@ -336,7 +365,9 @@ def review_c15_owner_proof(
         alias = RECON_DISPLAY_RENAMES.get(original, original)
         tree = by_alias[alias]
         if (
-            tree.get("pin_refs") != item["source_pinrefs"]
+            type(tree.get("pin_refs")) is not list
+            or len(tree["pin_refs"]) != len(item["source_pinrefs"])
+            or set(tree["pin_refs"]) != set(item["source_pinrefs"])
             or tree.get("connected_pin_refs") != item["connected_pinrefs"]
             or tree.get("complete") is not item["complete"]
         ):
