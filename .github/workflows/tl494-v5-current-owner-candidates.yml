@@ -15,6 +15,8 @@ on:
       - examples/tl494_v5/native_circuit.py
       - examples/tl494_v5/compact_layout.py
       - examples/tl494_v5/test_compact_layout.py
+      - examples/tl494_v5/cycle13_placement_matrix.py
+      - examples/tl494_v5/test_cycle13_placement_matrix.py
       - examples/tl494_v5/route_preflight.py
       - examples/tl494_ic_paint_reference.py
       - examples/tl494_connected_native.py
@@ -38,10 +40,10 @@ jobs:
       - name: Pin all four unmerged current-owner source HEADs (never merge)
         run: |
           set -euxo pipefail
-          IC=7c30c209ea5e97a245844b24a3bbc4d3d30118ea
-          PAINT=2e9d3fa41794eb773645e112ec8c44fc273e9f52
+          IC=bc03a31c5d15c9e962f9b26a209aab373e39bee6
+          PAINT=d74300580dfd28cc3400a512828dac6b49d529f0
           CATALOG=3e47cdf32ccf211ded97e3be1ad874035653e090
-          ROUTER=61df41377cc9326f7fa0f594a804d329b447ec69
+          ROUTER=027cee506a8dc9b3926b44b1abba66e1ae25b183
           SOURCE=e695c415fdced164b0e0c39c5249d030795a0aa6
           for sha in "$IC" "$PAINT" "$CATALOG" "$ROUTER" "$SOURCE"; do
             git fetch origin "$sha"
@@ -86,7 +88,8 @@ jobs:
             examples/tl494_v5/test_route_candidate_driver.py \
             examples/tl494_v5/test_routed_graph_contract.py \
             examples/tl494_v5/test_cycle11_ti_bridge.py \
-            examples/tl494_v5/test_cycle11_b_continuation.py
+            examples/tl494_v5/test_cycle11_b_continuation.py \
+            examples/tl494_v5/test_cycle13_placement_matrix.py
       - name: Produce C11 signed TI plus true b marker source proof independently of routing
         run: |
           set -euxo pipefail
@@ -174,6 +177,26 @@ jobs:
           print("NO_FAKE_RELEASE_TRUE 23/15/62", m["best_evidence_variant"])
           PY
           sha256sum output/tl494-v5-current/all15-candidate-report.json >> output/tl494-v5-current/SHA256SUMS.txt
+          PYTHONPATH=src python -m examples.tl494_v5.cycle13_placement_matrix \
+            --font-file "$TL494_TYPE_A_FONT" \
+            --output-file output/tl494-v5-current/C13_BOUND_A3_PLACEMENT_MATRIX.json \
+            --node-cap 1500
+          PYTHONPATH=src python - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path("output/tl494-v5-current/C13_BOUND_A3_PLACEMENT_MATRIX.json").read_text())
+          assert (data["components"], data["nets"], data["pinref_memberships"]) == (23,15,62)
+          assert data["manufacturer_DA1_pins"] == 16
+          assert len(data["trials"]) == 4
+          assert data["full_print_QA_ESKD"] == "BLOCKED_UNTIL_15_OF_15_AND_REAL_INK_DRC"
+          assert not data["actual_full_sheet_svg_or_png_emitted"]
+          assert data["trials"][0]["a3_bbox_within_margins"]
+          assert data["trials"][0]["a3_capacity_fit"]
+          assert all(not t["print_after_released"] for t in data["trials"])
+          assert all(t["routes_attempted"] in (0,15) for t in data["trials"])
+          print("C13_REAL_SOURCE_POSITION_EXPERIMENT", [(t["name"], t["completed_nets"], t["status"]) for t in data["trials"]])
+          PY
+          sha256sum output/tl494-v5-current/C13_BOUND_A3_PLACEMENT_MATRIX.json >> output/tl494-v5-current/SHA256SUMS.txt
           git diff --exit-code -- examples/tl494_named_truth_output/ examples/tl494_v4/evidence_runs/
       - uses: actions/upload-artifact@v4
         if: always()
