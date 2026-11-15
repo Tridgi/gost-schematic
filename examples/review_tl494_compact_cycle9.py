@@ -49,7 +49,8 @@ def produce(
     output: Path, font_file: Path, *,
     owner_sha: str, reference_sha: str, node_cap: int = 25000,
     priority_trials: int = 2, priority_offset: int = 0,
-    physical_veto_restarts: int = 0, page_format: str = "A3",
+    physical_veto_restarts: int = 0, physical_ripup_attempts: int = 0,
+    page_format: str = "A3",
 ) -> dict:
     if len(owner_sha) != 40 or len(reference_sha) != 40:
         raise ValueError("COMPACT_UNPINNED_OWNER_SHA")
@@ -98,7 +99,12 @@ def produce(
         bridge.views[0], real_ic.svg, da1,
     )
     actual_tip = da1.pin_positions(symbols[da1.part_id])["12"]
-    if actual_tip != Point(205000, 138750):
+    # The source-relative physical contact stays invariant even when
+    # RECON moves the REAL DA1 body on a 2.5mm position-only candidate.
+    # Testing a fixed absolute A3 point wrongly banned all such placements.
+    delta = Point(da1.origin.x - 135000, da1.origin.y - 90000)
+    expected_tip = Point(205000 + delta.x, 138750 + delta.y)
+    if actual_tip != expected_tip:
         raise ValueError(
             f"COMPACT_DA1_12_SOURCE_ANCHOR_DRIFT:{actual_tip}"
         )
@@ -111,7 +117,8 @@ def produce(
             if ink.permitted_pin is not None}) != 16:
         raise ValueError("COMPACT_PAINT_16_PHYSICAL_LEADS_NOT_TRACKED")
     repro_wire = WireSegment(
-        Point(203460, 138750), Point(203460, 43201),
+        Point(203460 + delta.x, 138750 + delta.y),
+        Point(203460 + delta.x, 43201 + delta.y),
         "INPUT_POS",
     )
     repro_block = _source_ink_collision(
@@ -176,6 +183,7 @@ def produce(
         max_order_restarts=2, try_priorities=priority_trials,
         priority_offset=priority_offset,
         physical_veto_restarts=physical_veto_restarts,
+        physical_ripup_attempts=physical_ripup_attempts,
     )
     model.verify()
     if {
@@ -424,6 +432,7 @@ def produce(
         "route_priority_offset": priority_offset,
         "route_priority_trials": priority_trials,
         "route_physical_veto_restarts": physical_veto_restarts,
+        "route_physical_ripup_attempts": physical_ripup_attempts,
         "routing": route.as_dict(),
         "new_after_drc": after_drc.as_dict(),
         "after_erc_errors": erc_errors if route.complete else [
@@ -547,6 +556,7 @@ def main() -> None:
     parser.add_argument("--priority-trials", type=int, default=2)
     parser.add_argument("--priority-offset", type=int, default=0)
     parser.add_argument("--physical-veto-restarts", type=int, default=0)
+    parser.add_argument("--physical-ripup-attempts", type=int, default=0)
     parser.add_argument("--page-format", choices=("A3", "A2"), default="A3")
     args = parser.parse_args()
     produce(
@@ -555,6 +565,7 @@ def main() -> None:
         priority_trials=args.priority_trials,
         priority_offset=args.priority_offset,
         physical_veto_restarts=args.physical_veto_restarts,
+        physical_ripup_attempts=args.physical_ripup_attempts,
         page_format=args.page_format,
     )
 

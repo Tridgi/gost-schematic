@@ -91,6 +91,7 @@ class GlobalRoutePreview:
     drc: RouteDRCReport | None
     routing_strategy: str = "SOURCE_FUNCTIONAL"
     route_order_trials: tuple[tuple[str, int, int], ...] = ()
+    ripup_trials: tuple[tuple[str, str, int, str], ...] = ()
 
     @property
     def complete(self) -> bool:
@@ -132,6 +133,11 @@ class GlobalRoutePreview:
                 {"strategy": name, "complete_nets": count,
                  "drc_errors": errors}
                 for name, count, errors in self.route_order_trials
+            ],
+            "ripup_trials": [
+                {"blocked_net": blocked, "ripped_net": removed,
+                 "complete_nets": count, "status": status}
+                for blocked, removed, count, status in self.ripup_trials
             ],
             "not_gost_approved": True,
         }
@@ -1137,6 +1143,225 @@ def route_circuit_net_trees(
     )
 
 
+
+def _accepted_tree_graph(trees: tuple[NetTreePreview, ...]) -> ExternalWireGraph:
+    """Rebuild copper AND same-Net dots only from independently complete trees.
+
+    Never retain an old ripped-up junction (it could falsely connect a new
+    conductor), or include partially constructed but rejected branch wires.
+    """
+    completed = tuple(tree for tree in trees if tree.complete)
+    if len({tree.net_name for tree in completed}) != len(completed):
+        raise ValueError("ROUTE_RIPUP_DUPLICATED_SOURCE_NET_TREE")
+    return ExternalWireGraph(
+        tuple(w for tree in completed for w in tree.segments),
+        tuple(sorted(
+            {point for tree in completed for point in tree.junctions},
+            key=lambda point: (point.x, point.y),
+        )),
+    )
+
+
+def _observed_ripup_pairs(
+    trees: tuple[NetTreePreview, ...],
+) -> tuple[tuple[str, str], ...]:
+    """Use only an actual foreign-Net physical WIRE_VETO as repair evidence."""
+    complete = frozenset(tree.net_name for tree in trees if tree.complete)
+    result: list[tuple[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for failed in trees:
+        if failed.complete:
+            continue
+        for diagnostic in failed.diagnostics:
+            if ":WIRE_VETO=" not in diagnostic:
+                continue
+            for record in diagnostic.split(":WIRE_VETO=", 1)[1].split(";"):
+                owner = record.split(":", 1)[0]
+                key = (failed.net_name, owner)
+                if (
+                    owner not in complete or owner == failed.net_name
+                    or key in seen
+                ):
+                    continue
+                seen.add(key)
+                result.append(key)
+    return tuple(result)
+
+
+def _reroute_real_net(
+    circuit: Circuit,
+    net: Net,
+    parts: dict[str, PartDefinition],
+    symbols: dict[str, SymbolDefinition],
+    *,
+    occupied_graph: ExternalWireGraph,
+    page_box: Box,
+    annotation_placements: tuple,
+    stroke_um: int,
+    search_node_cap: int,
+    max_detour_ratio: float,
+) -> NetTreePreview:
+    """Rebuild a sourced physical tree, optionally trying its true reverse.
+
+    Neither the physical source PinRefs nor its nominal/UGO/clearance changes.
+    Every candidate passes the same strict per-segment, ink and DRC gates.
+    """
+    first = route_multi_terminal_net(
+        circuit, net, parts, symbols,
+        page_box=page_box, occupied_graph=occupied_graph,
+        annotation_placements=annotation_placements,
+        stroke_um=stroke_um, search_node_cap=search_node_cap,
+        max_detour_ratio=max_detour_ratio,
+    )
+    if first.complete or len(net.members) < 2:
+        return first
+    reverse = route_multi_terminal_net(
+        circuit, net, parts, symbols,
+        page_box=page_box, occupied_graph=occupied_graph,
+        annotation_placements=annotation_placements,
+        stroke_um=stroke_um, search_node_cap=search_node_cap,
+        max_detour_ratio=max_detour_ratio,
+        terminal_order=tuple(reversed(net.members)),
+    )
+    if reverse.complete or len(reverse.completed_pins) > len(first.completed_pins):
+        return reverse
+    return first
+
+
+def _conflict_directed_ripup(
+    source: GlobalRoutePreview,
+    parts: dict[str, PartDefinition],
+    symbols: dict[str, SymbolDefinition],
+    *,
+    page_box: Box,
+    annotation_placements: tuple,
+    stroke_um: int,
+    search_node_cap: int,
+    max_detour_ratio: float,
+    budget: int,
+) -> GlobalRoutePreview:
+    """Bounded physical rip-up/rebuild search, never a DRC or topology waiver.
+
+    On an observed failed Net / foreign accepted copper collision, remove
+    exactly that real foreign tree, keep all independently valid other trees,
+    route the blocked Net, then reroute the removed real Net. One attempt may
+    exchange which source Net is blocked, allowing the next attempt to free
+    a different corridor. The return value is always globally rescanned;
+    candidates that do not improve the full-connected-Net count cannot
+    replace the caller's result, and partial routes remain NOT PRINT PASS.
+    """
+    if type(budget) is not int or not 0 <= budget <= 4:
+        raise ValueError("ROUTE_INVALID_PHYSICAL_RIPUP_BUDGET")
+    if budget == 0 or source.print_pass:
+        return source
+    circuit = source.source_circuit
+    original = {net.name: net for net in circuit.nets}
+    if (
+        len(original) != len(circuit.nets)
+        or len(source.net_trees) != len(circuit.nets)
+        or {tree.net_name for tree in source.net_trees} != set(original)
+        or any(tree.pin_refs != original[tree.net_name].members
+               for tree in source.net_trees)
+    ):
+        raise ValueError("ROUTE_RIPUP_UNTRUSTED_SOURCE_PREVIEW")
+    # Derive candidate copper from actual complete tree data, not blindly
+    # trust a serialized/handcrafted graph that may omit hidden foreign wire.
+    if _accepted_tree_graph(source.net_trees) != source.graph:
+        raise ValueError("ROUTE_RIPUP_GRAPH_TREE_MISMATCH")
+
+    best = source
+    best_count = sum(tree.complete for tree in source.net_trees)
+    frontier = [source]
+    seen: set[ExternalWireGraph] = {source.graph}
+    history: list[tuple[str, str, int, str]] = []
+    while frontier and len(history) < budget:
+        current = frontier.pop(0)
+        for blocked, blocker in _observed_ripup_pairs(current.net_trees):
+            if len(history) >= budget:
+                break
+            retained = tuple(
+                tree for tree in current.net_trees
+                if tree.complete and tree.net_name != blocker
+            )
+            retained_graph = _accepted_tree_graph(retained)
+            restored = _reroute_real_net(
+                circuit, original[blocked], parts, symbols,
+                occupied_graph=retained_graph, page_box=page_box,
+                annotation_placements=annotation_placements,
+                stroke_um=stroke_um, search_node_cap=search_node_cap,
+                max_detour_ratio=max_detour_ratio,
+            )
+            if not restored.complete:
+                history.append((blocked, blocker, best_count, "BLOCKED_PIN_OR_INK"))
+                continue
+            next_occupied = _accepted_tree_graph((*retained, restored))
+            rebuilt = _reroute_real_net(
+                circuit, original[blocker], parts, symbols,
+                occupied_graph=next_occupied, page_box=page_box,
+                annotation_placements=annotation_placements,
+                stroke_um=stroke_um, search_node_cap=search_node_cap,
+                max_detour_ratio=max_detour_ratio,
+            )
+            replacements = {blocked: restored, blocker: rebuilt}
+            new_trees = tuple(
+                replacements.get(tree.net_name, tree)
+                for tree in current.net_trees
+            )
+            candidate_graph = _accepted_tree_graph(new_trees)
+            drc = audit_route_drc(
+                circuit, candidate_graph, stroke_um=stroke_um,
+                symbols_by_part=symbols,
+                annotation_placements=annotation_placements,
+            )
+            if not drc.valid:
+                history.append((blocked, blocker, best_count, "REJECTED_GLOBAL_DRC"))
+                continue
+            diagnostic = [
+                f"{tree.net_name}:{code}"
+                for tree in new_trees if not tree.complete
+                for code in tree.diagnostics
+            ]
+            if all(tree.complete for tree in new_trees):
+                found = validate_external_wires(
+                    circuit, candidate_graph, parts,
+                    {symbol.identifier: symbol for symbol in symbols.values()},
+                )
+                physical_errors = tuple(
+                    issue.code for issue in found
+                    if issue.severity.value == "error"
+                )
+                if physical_errors:
+                    history.append((
+                        blocked, blocker, best_count, "REJECTED_PHYSICAL_ERC",
+                    ))
+                    continue
+            candidate = GlobalRoutePreview(
+                circuit, candidate_graph, new_trees, tuple(diagnostic), drc,
+                current.routing_strategy, current.route_order_trials,
+            )
+            new_count = sum(tree.complete for tree in new_trees)
+            history.append((
+                blocked, blocker, new_count,
+                "BOTH_REBUILT" if rebuilt.complete else "RIPPED_NET_BLOCKED",
+            ))
+            # A candidate can be retained on the temporary bounded frontier
+            # even if its complete-Net count is equal, but only an actual
+            # improvement replaces the returned best. Old copper is never
+            # silently substituted into a different independent graph.
+            if new_count > best_count:
+                best, best_count = candidate, new_count
+            if candidate_graph not in seen and len(frontier) < budget:
+                seen.add(candidate_graph)
+                frontier.append(candidate)
+    return replace(
+        best, ripup_trials=tuple(history),
+        routing_strategy=(
+            "CONFLICT_DIRECTED_PHYSICAL_RIPUP"
+            if best is not source else source.routing_strategy
+        ),
+    )
+
+
 def _source_priority_name_view(
     original: tuple[str, ...],
     actual_names: frozenset[str],
@@ -1245,6 +1470,7 @@ def route_circuit_with_order_fallback(
     try_priorities: int = 3,
     priority_offset: int = 0,
     physical_veto_restarts: int = 0,
+    physical_ripup_attempts: int = 0,
 ) -> GlobalRoutePreview:
     """Search independent functional route-order permutations without rewiring.
 
@@ -1298,6 +1524,8 @@ def route_circuit_with_order_fallback(
         or not 0 <= physical_veto_restarts <= 4
     ):
         raise ValueError("ROUTE_INVALID_PHYSICAL_VETO_TRIAL_LIMIT")
+    if type(physical_ripup_attempts) is not int or not 0 <= physical_ripup_attempts <= 4:
+        raise ValueError("ROUTE_INVALID_PHYSICAL_RIPUP_BUDGET")
     orders = orders[priority_offset:priority_offset + try_priorities]
     history: list[tuple[str, int, int]] = []
     candidate_results: list[tuple[str, GlobalRoutePreview]] = []
@@ -1372,7 +1600,13 @@ def route_circuit_with_order_fallback(
                 chosen_strategy, chosen = challenger
             if chosen.print_pass:
                 break
-    return replace(
+    chosen = replace(
         chosen, routing_strategy=chosen_strategy,
         route_order_trials=tuple(history),
+    )
+    return _conflict_directed_ripup(
+        chosen, parts, symbols, page_box=page_box,
+        annotation_placements=annotation_placements,
+        stroke_um=stroke_um, search_node_cap=search_node_cap,
+        max_detour_ratio=max_detour_ratio, budget=physical_ripup_attempts,
     )

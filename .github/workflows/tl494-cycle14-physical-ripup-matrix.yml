@@ -1,0 +1,173 @@
+name: TL494 Cycle14 true source equal-budget A3 and ripup
+
+on:
+  push:
+    branches: [parallel/electrical-routing-drc-tl494-cycle9]
+    paths:
+      - src/gost_schematic/engines/multiterminal_router.py
+      - examples/review_tl494_compact_cycle9.py
+      - examples/review_tl494_cycle14_matrix.py
+      - tests/test_cycle14_physical_ripup.py
+      - .github/workflows/tl494-cycle14-physical-ripup-matrix.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  owner-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Tridgi/gost-schematic
+          ref: e695c415fdced164b0e0c39c5249d030795a0aa6
+          path: _owner_source
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Tridgi/gost-schematic
+          ref: 73025965efeb94585e8723ba3f0b636229e8a5de
+          path: _owner_recon
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Tridgi/gost-schematic
+          ref: 7c30c209ea5e97a245844b24a3bbc4d3d30118ea
+          path: _owner_ic
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Tridgi/gost-schematic
+          ref: 3e47cdf32ccf211ded97e3be1ad874035653e090
+          path: _owner_ygo
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Tridgi/gost-schematic
+          ref: f872ce50ac699ad089391b0bbd58e2cb92f2b7f6
+          path: _owner_paint
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install core and real print dependencies
+        run: |
+          python -m pip install -e ".[dev,mcp]"
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin fontconfig
+      - name: Strictly pinned source owner sources in isolated checkout
+        run: |
+          set -euo pipefail
+          test "$(git -C _owner_source rev-parse HEAD)" = e695c415fdced164b0e0c39c5249d030795a0aa6
+          test "$(git -C _owner_recon rev-parse HEAD)" = 73025965efeb94585e8723ba3f0b636229e8a5de
+          test "$(git -C _owner_ic rev-parse HEAD)" = 7c30c209ea5e97a245844b24a3bbc4d3d30118ea
+          test "$(git -C _owner_ygo rev-parse HEAD)" = 3e47cdf32ccf211ded97e3be1ad874035653e090
+          test "$(git -C _owner_paint rev-parse HEAD)" = f872ce50ac699ad089391b0bbd58e2cb92f2b7f6
+          for F in tl494_native_rework tl494_connected_native tl494_full_native_model tl494_ic_paint_reference tl494_named_photo_sheet; do
+            cp "_owner_source/examples/$F.py" "examples/$F.py"
+          done
+          cp -a _owner_recon/examples/tl494_v4 examples/
+          cp -a _owner_recon/examples/tl494_v5 examples/
+          for F in contacts ic ic_agent_snapshot ic_circuit_adapter ic_editor_targets ic_power_presentation tl494cn ic_pin_alias ic_serde ic_paint_bridge ic_graphic_revision; do
+            cp "_owner_ic/src/gost_schematic/electrical/$F.py" "src/gost_schematic/electrical/$F.py"
+          done
+          mkdir -p src/gost_schematic/catalog/source_profiles
+          cp _owner_ygo/src/gost_schematic/catalog/source_profiles.py src/gost_schematic/catalog/source_profiles.py
+          cp _owner_ygo/src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json
+          for F in ic_rectangular ic_hotspots ic_orientation ic_power_profiles ic_tl494_profile ic_electrical_binding; do
+            cp "_owner_paint/src/gost_schematic/rendering/$F.py" "src/gost_schematic/rendering/$F.py"
+          done
+      - name: Ruff + 133 strict real-pin/ink DRC tests
+        run: |
+          python -m ruff check src/gost_schematic/engines/multiterminal_router.py examples/review_tl494_compact_cycle9.py examples/review_tl494_cycle14_matrix.py tests/test_cycle14_physical_ripup.py
+          python -m pytest -q tests/test_cycle14_physical_ripup.py tests/test_multiterminal_router_cycle9.py tests/test_route_candidate_clearance_cycle9.py tests/test_route_drc_cycle9.py
+      - name: Install pinned Type A font
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/install_opengost_type_a.py --directory "$HOME/.local/share/fonts" --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a
+          fc-cache -f
+      - name: Six identical 4000-node source placement profiles on A3
+        run: |
+          set -euo pipefail
+          FONT="$(find "$HOME/.local/share/fonts" -name '*TypeA*' -type f -print -quit)"
+          python -m examples.review_tl494_cycle14_matrix --font-file "$FONT" --owner-sha "$GITHUB_SHA" --reference-sha 73025965efeb94585e8723ba3f0b636229e8a5de --node-cap 4000 --priority-offset 0 --physical-ripup-attempts 0 --variant old-x16 --variant fixed-x17 --variant r2-down-2p5 --variant da1-right-2p5 --variant r1-up-2p5 --variant vt1-right-2p5 --output output/cycle14-matrix
+      - name: Genuine conflict-directed repair at same search budget
+        run: |
+          set -euo pipefail
+          FONT="$(find "$HOME/.local/share/fonts" -name '*TypeA*' -type f -print -quit)"
+          python -m examples.review_tl494_compact_cycle9 --font-file "$FONT" --owner-sha "$GITHUB_SHA" --reference-sha 73025965efeb94585e8723ba3f0b636229e8a5de --max-nodes 4000 --page-format A3 --priority-trials 1 --priority-offset 0 --physical-veto-restarts 0 --physical-ripup-attempts 2 --output output/cycle14-ripup
+      - name: Distinguish source partial DRC from complete printable graph
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import json
+          from xml.etree import ElementTree as ET
+          folder = Path("output/cycle14-matrix")
+          matrix = json.loads((folder / "TL494-cycle14-equal-budget-matrix.json").read_text())
+          assert matrix["actual_23_15_62_16_source_preserved"]
+          assert not matrix["source_raw_name_binding_to_routed_graph_approved"]
+          assert len(matrix["matrix"]) == 6
+          assert matrix["max_nodes_per_search"] == 4000
+          by_name = {p["key"]: p for p in matrix["matrix"]}
+          assert by_name["old-x16"]["a3_10mm_margin_pass"] is False
+          assert all(row["a3_10mm_margin_pass"] for name, row in by_name.items()
+                     if name != "old-x16")
+          for row in matrix["matrix"]:
+              assert len(row["net_trees"]) == 15
+              assert sum(len(tree["source_physical_PinRefs"])
+                         for tree in row["net_trees"]) == 62
+              assert row["partial_graph_drc_error_count"] == 0
+              assert row["print_pass"] is False
+              path = Path(row["source_drc_json"])
+              assert hashlib.sha256(path.read_bytes()).hexdigest() == row["source_drc_json_sha256"]
+              for view in ("clean", "diagnostic"):
+                  ET.parse(path.parent / f"TL494-compact-A3-{view}.svg")
+          route = json.loads(Path("output/cycle14-ripup/TL494-compact-A3-route-drc.json").read_text())
+          assert route["routed_nets"] >= by_name["fixed-x17"]["routed_net_count"]
+          assert route["route_physical_ripup_attempts"] == 2
+          assert route["new_after_drc"]["error_count"] == 0
+          assert route["print_pass"] is False
+          print("Local source 23/15/62/16, fixed x17", by_name["fixed-x17"]["routed_net_count"], "ripup", route["routed_nets"], "STILL BLOCKED")
+          PY
+      - name: Render actual 300DPI DRAFT partial source wire previews (NOT final PAINT)
+        run: |
+          set -euo pipefail
+          for ROOT in output/cycle14-matrix/fixed-x17 output/cycle14-ripup; do
+            for MODE in clean diagnostic; do
+              rsvg-convert --background-color white --dpi-x 300 --dpi-y 300 \
+                --output "$ROOT/TL494-compact-A3-$MODE-300dpi.png" \
+                "$ROOT/TL494-compact-A3-$MODE.svg"
+            done
+          done
+      - name: Record artifacts SHA256 and explicit DRAFT status
+        if: always()
+        run: |
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          paths = (sorted(Path("output").rglob("*.json"))
+                   + sorted(Path("output").rglob("*.svg"))
+                   + sorted(Path("output").rglob("*.png")))
+          Path("output/cycle14-sha256sum.txt").write_text(
+              "".join(f"{sha256(p.read_bytes()).hexdigest()}  {p}\n" for p in paths),
+              encoding="utf-8",
+          )
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cycle14-original-source-a3-matrix-${{ matrix.python-version }}
+          path: |
+            output/cycle14-matrix/
+            output/cycle14-ripup/
+            output/cycle14-sha256sum.txt
+          if-no-files-found: warn
