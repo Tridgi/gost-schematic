@@ -8,6 +8,7 @@ is diagnostic-only and must remain blocked from certified ESKD print.
 import argparse
 import hashlib
 import json
+import re
 from importlib import import_module
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -21,6 +22,7 @@ from examples.tl494_v5.route_preflight import _owner_ic_obstacle
 
 from gost_schematic.core.geometry import Box, Point
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
+from gost_schematic.engines.orthogonal_route_planner import _resolve_real_pin
 from gost_schematic.engines.multiterminal_router import (
     _source_ink_collision,
     _source_ink_obstacles,
@@ -443,6 +445,59 @@ def produce(
             "complete PAINT compositor and QA are separate owners"
         ),
     }
+    blocked_source_pin_handoff = []
+    for tree in route.net_trees:
+        if tree.complete:
+            continue
+        attached = set(tree.completed_pins)
+        missing = tuple(p for p in tree.pin_refs if p not in attached)
+        if not missing:
+            # An incomplete tree with no missing contacts has an independent
+            # graphic or global validity failure. Never misstate it as one
+            # completed physical conductor tree.
+            blocked_source_pin_handoff.append({
+                "net": tree.net_name,
+                "missing_physical_PinRefs": [],
+                "unresolved_reason": "NONCONNECTIVITY_OR_POST_DRC_BLOCKED",
+                "diagnostics": list(tree.diagnostics),
+            })
+            continue
+        anchors = {}
+        for pin in missing:
+            at, outward, instance = _resolve_real_pin(
+                circuit, pin, model.parts, symbols,
+            )
+            if instance.reference != pin.reference:
+                raise ValueError("COMPACT_BLOCKED_PINREF_OWNER_DRIFT")
+            anchors[f"{pin.reference}.{pin.number}"] = {
+                "physical_tip_um": [at.x, at.y],
+                "world_outward_normal": [outward.x, outward.y],
+            }
+        observed = tuple(sorted({
+            name for diagnostic in tree.diagnostics
+            for name in re.findall(
+                r"(?:INK_VETO=|;)([A-Z][A-Z0-9]*)#[0-9]+:",
+                diagnostic,
+            )
+        }))
+        blocked_source_pin_handoff.append({
+            "net": tree.net_name,
+            "connected_physical_PinRefs": [
+                f"{p.reference}.{p.number}" for p in tree.completed_pins
+            ],
+            "missing_physical_PinRefs": [
+                f"{p.reference}.{p.number}" for p in missing
+            ],
+            "missing_physical_world_anchors": anchors,
+            "observed_print_ink_owner_vetoes": list(observed),
+            "diagnostics": list(tree.diagnostics),
+            "physical_edit_policy": (
+                "Move real ComponentInstances only via source-preserving "
+                "RECON typed layout candidate; never alter 15 source Nets, "
+                "62 PinRefs, source b-continuation semantics or UGO scale"
+            ),
+        })
+    record["blocked_source_pin_handoff"] = blocked_source_pin_handoff
     payload = json.dumps(record, ensure_ascii=False, sort_keys=True,
                          indent=2) + "\n"
     (output / f"{filename_prefix}-route-drc.json").write_text(
