@@ -37,6 +37,28 @@ _REQUIRED_CATALOG_TOOLS = frozenset({
     "schematic_catalog_preview", "schematic_tl494_selection_profile",
     "schematic_tl494_pin_alias",
 })
+# Strict allowlist: a fake "readOnlyHint" on a new, innocuously named tool
+# cannot extend agent authority. Any genuine new read tool needs code review.
+_APPROVED_READONLY_TOOLS = frozenset({
+    "schematic_render_overview",
+    "schematic_inspect_region",
+    "schematic_inspect_component",
+    "schematic_inspect_connection",
+    "schematic_get_diagnostics",
+    "schematic_list_views",
+    "schematic_list_projects",
+    "schematic_open_project",
+    "schematic_describe_project",
+    "schematic_validate_project",
+    "schematic_catalog_search",
+    "schematic_catalog_preview",
+    "schematic_catalog_select",
+    "schematic_tl494_selection_profile",
+    "schematic_tl494_pin_alias",
+    "schematic_preflight_project",
+    "schematic_preview_placement",
+    "schematic_render_project",
+})
 _FORBIDDEN_WRITE_VERBS = (
     "commit", "connect_pins", "delete", "edit", "write",
     "transaction", "execute", "create", "move", "route",
@@ -61,6 +83,8 @@ def _assert_readonly_tool_registry(tools: dict) -> None:
         for token in _FORBIDDEN_WRITE_VERBS
     ):
         raise AssertionError("Agent write tool unexpectedly registered")
+    if set(tools) - _APPROVED_READONLY_TOOLS:
+        raise AssertionError("Agent write tool unexpectedly registered: unknown tool")
 
 
 def _decoded(reply):
