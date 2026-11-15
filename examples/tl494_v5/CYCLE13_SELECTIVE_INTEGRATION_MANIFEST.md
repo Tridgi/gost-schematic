@@ -60,10 +60,10 @@ Referenced actual CI artifact:
 
 | Owner | SHA pinned by RECON placement workflow |
 |---|---|
-| IC #97 | `bc03a31c5d15c9e962f9b26a209aab373e39bee6` |
-| PAINT #93 | `d74300580dfd28cc3400a512828dac6b49d529f0` |
+| IC #97 | `d7e70a8bfaed5f4e4f7fb340fdc7dbe4fc466e7b` |
+| PAINT #93 | `6ebd97d5d51facf15b733a1f909c4530262f5bc8` |
 | NET #114 | `027cee506a8dc9b3926b44b1abba66e1ae25b183` |
-| YGO #113 | `3e47cdf32ccf211ded97e3be1ad874035653e090` |
+| YGO #113 | `a805f0d7685187a05064cb801bcff4c893edf811` |
 
 GitHub concurrent work may advance all four owner branches. Any re-pin must
 be explicit and CI-verified. The one approved Type A font witness used in
