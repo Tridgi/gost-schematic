@@ -53,6 +53,15 @@ def router_obstacle_contract(snapshot: dict) -> dict:
             snapshot["DA1_physical_contact_count"] == 16 and
             snapshot["source_glyph_instances"] == 13,
             "UGO_C16_REAL_23_15_62_16_13_REQUIRED")
+    source_nets = snapshot["original_named_nets"]
+    source_members = {
+        pin_ref: name for name, pins in source_nets.items()
+        for pin_ref in pins
+    }
+    require(len(source_nets) == 15 and
+            sum(len(pins) for pins in source_nets.values()) == 62 and
+            len(source_members) == 62,
+            "UGO_C16_ORIGINAL_SOURCE_NET_PINREF_DRIFT")
     strokes = []
     portals = []
     for ref, part in sorted(snapshot["parts"].items()):
@@ -76,6 +85,8 @@ def router_obstacle_contract(snapshot: dict) -> dict:
         for pin in part["real_physical_contacts"]:
             tag = pin["pin_ref"]
             require(tag.startswith(ref + "."), "UGO_C16_PIN_REF_OWNER:" + tag)
+            require(pin["canonical_source_net"] == source_members.get(tag),
+                    "UGO_C16_PIN_REF_NET_MEMBERSHIP_CHANGED:" + tag)
             side = pin["escape_side"]
             require(side in DIRECTIONS, "UGO_C16_UNKNOWN_ESCAPE_SIDE:" + tag)
             require(
