@@ -222,3 +222,40 @@ the latest NET X1=17mm 15/15 route has independent runtime PASS.
 Keep 15/15, full ERC, measured 3/2/1-mm global print DRC,
 original user-photo equivalence, and all normative DRAFT UGO
 **BLOCKED / NO-GO** until independently proven by actual artifacts.
+
+### Full QA branch local verification after platform-safe QA corrections
+
+The independently cloned QA HEAD
+`f5adf4e5094d8cd30bdd1d43ddf454a9d57c55ec` was
+tested from a separate disposable Windows clone with
+`git -c core.autocrlf=false clone ...`, so its checkout
+fixture bytes exactly match the immutable Git blob SHA-1s.
+This matters: a Windows checkout with `core.autocrlf=true`
+silently rewrote `.txt` fixture line endings and produced
+large false fixture-integrity failures. **No fixture hashes
+or negative tests were altered.**
+
+| Interpreter | Full `ruff check .` | Full `pytest -q` |
+| --- | --- | --- |
+| CPython 3.13.15, local Windows | PASS / code 0 | **1919 passed, 6 skipped, 1 warning / code 0** |
+| CPython 3.12.14, local Windows | PASS / code 0 | **1919 passed, 6 skipped, 1 warning / code 0** |
+
+Dependencies were installed isolated with `uv run --extra dev
+--extra mcp` in the disposable clone. The performance warning
+was emitted by the non-gating PR39 runtime benchmark.
+The existing six skips were not modified or artificially enabled.
+Two legacy QA assertions were changed to normalize only Windows
+backslashes to forward slashes **before comparing unchanged exact
+source-path suffixes**; all original real owner SHA and module
+checks remain active. A pre-existing Ruff `I001` for
+`scripts/qa_cycle7_pin_squares.py` was fixed by import order only.
+No production sources, frozen original, `main` or integration were edited.
+
+**Scope distinction:** the full QA branch tests above are
+**real PASS** on both local Python versions; they are not
+substitutes for the new direct source-pinned C13 5-owner
+native SVG/PNG300 + 24 hostile SVG mutation workflow, whose
+GitHub Actions jobs were **QUEUED** at the final checkout.
+Until that actually runs, the new 2-stub **rendered-artifact
+acceptance remains UNVERIFIED**, and whole-sheet 15/15 release
+remains **NO-GO**.
