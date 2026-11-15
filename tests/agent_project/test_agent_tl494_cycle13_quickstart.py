@@ -17,7 +17,7 @@ from examples.agent_tl494_cycle13_quickstart import _safe_new_output, run
 
 
 def _check_hashes(root: Path, report: dict) -> None:
-    assert len(report["artifacts"]) == 17  # 14 native glyphs + 3 JSON
+    assert len(report["artifacts"]) == 18  # 14 native glyphs + 4 JSON
     assert len([p for p in root.glob("*.svg")]) == 7
     assert len([p for p in root.glob("*.png")]) == 7
     for filename, facts in report["artifacts"].items():
@@ -97,6 +97,21 @@ def test_real_one_command_source_mcp_and_negatives(tmp_path):
                and x["diagnostic"]["mcp_write_allowed"] is False
                and x["diagnostic"]["retryable_read_only"] is False
                for x in refuses)
+    handoff = json.loads((output / "source-generation-handoff.json").read_text())
+    assert report["generation_handoff_status"] == "BLOCKED_GENERATOR_NOT_INTEGRATED"
+    assert handoff["status"] == report["generation_handoff_status"]
+    assert handoff["source_request_sha256"] == (
+        report["generation_handoff_source_request_sha256"]
+    )
+    assert (handoff["source_component_count"], handoff["source_net_count"],
+            handoff["source_pinref_memberships"], handoff["source_da1_pin_count"]) == (
+                23, 15, 62, 16,
+            )
+    assert len(handoff["stages"]) == 7
+    assert all(not stage["verified_complete"] for stage in handoff["stages"])
+    assert not handoff["mcp_write_tools_enabled"]
+    assert not handoff["print_ready"]
+    assert not handoff["all_15_nets_routed"]
     request = json.loads((output / "source-typed-request.json").read_text())
     assert request["source_sha"] == "e695c415fdced164b0e0c39c5249d030795a0aa6"
     assert len(request["components"]) == 23 and len(request["nets"]) == 15
