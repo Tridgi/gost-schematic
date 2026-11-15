@@ -27,6 +27,15 @@ Set-Location $env:TEMP
 
 `pip install` здесь **не editable**: setuptools собирает и устанавливает wheel.
 После `Set-Location` путь проекта больше не участвует в поиске модуля.
+На Windows с `core.autocrlf=true` байты подписанного JSON должны
+оставаться равными Git-blob `a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65`.
+В этой ветке `.gitattributes` отключает преобразование переносов строк
+для двух исходных фикстур и дерева `tests/fixtures`. Для уже существующего
+Windows checkout после получения атрибутов следует заново восстановить
+**те же исходные байты из Git**, а не редактировать JSON вручную.
+Проверка `git hash-object --no-filters
+src/gost_schematic/agent_project/data/tl494_ic97_frozen_source.json`
+должна вернуть указанный SHA. Этот контроль нельзя отключать.
 Установленный wheel включает `examples.agent_tl494_cycle11_pipeline` и
 `examples.agent_tl494_cycle13_quickstart`. Прежде чем повторять команду,
 задайте другой несуществующий каталог `--out`; старые артефакты не
