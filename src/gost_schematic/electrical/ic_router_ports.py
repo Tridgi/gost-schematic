@@ -60,6 +60,7 @@ _EXPECTED_COMPONENTS = frozenset((
 ))
 _ESCAPE_LENGTH_UM = 1800
 _ESCAPE_HALF_WIDTH_UM = 400
+_DEFAULT_PAGE_BOX_UM = Box(0, 0, 420000, 297000)
 
 
 def _point(point: Point) -> list[int]:
@@ -232,7 +233,7 @@ def export_tl494_router_ports(
     binding: IcCircuitBinding,
     *,
     producer_shas: dict[str, str] | None = None,
-    page_box_um: Box = Box(0, 0, 420000, 297000),
+    page_box_um: Box = _DEFAULT_PAGE_BOX_UM,
 ) -> IcRouterPortContract:
     """Export exactly 16 world ports, original literal Nets and DRAFT UGO ink.
 
