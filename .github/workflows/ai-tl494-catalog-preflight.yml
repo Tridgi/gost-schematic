@@ -33,6 +33,9 @@ on:
       - "tests/agent_project/test_windows_signed_source_checkout_cycle14.py"
       - ".gitattributes"
       - "src/gost_schematic/agent_project/generation_handoff.py"
+      - "src/gost_schematic/agent_project/cycle16_owner_proof.py"
+      - "examples/agent_tl494_cycle16_owner_proof.py"
+      - "tests/agent_project/test_cycle16_owner_proof.py"
       - "src/gost_schematic/agent_project/retry_contract.py"
       - "docs/ai-integration/cycle14-readonly-retry-and-future-generator-contract.md"
       - "docs/ai-integration/cycle13-end-user-quickstart.md"
@@ -73,6 +76,7 @@ jobs:
             tests/agent_project/test_agent_tl494_cycle13_quickstart.py \
             tests/agent_project/test_retry_contract_cycle14.py \
             tests/agent_project/test_generation_handoff_cycle14.py \
+            tests/agent_project/test_cycle16_owner_proof.py \
             tests/agent_project/test_windows_signed_source_checkout_cycle14.py \
             tests/agent_project/test_mcp_saved_stdio.py
       - name: Real native MCP sample gallery and six-part print preflight
