@@ -153,6 +153,13 @@ jobs:
               "added": [], "removed": [], "physical_members_changed": [],
           }
           assert data["measured_annotation_guards"] >= 39
+          # RECON #115 physically fixed X1 +1mm after discovering the
+          # former A3 source footprint was 150um inside the left margin.
+          # A green nominal bbox *width* without absolute on-paper
+          # coordinates is NOT evidence of an A3-eligible sheet.
+          assert data["occupied_mm"]["A3_bbox_within_margins"]
+          assert data["occupied_mm"]["A3_capacity_fit"]
+          assert data["occupied_mm"]["bbox_um"][0] >= 10000
           assert data["route_priority_trials"] == 2
           assert data["route_priority_offset"] == (3 if paper == "A2" else 0)
           assert data["route_physical_veto_restarts"] == (
