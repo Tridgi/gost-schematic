@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from gost_schematic.agent_project.catalog import CatalogResolver
+from gost_schematic.agent_project.generation_handoff import build_readonly_tl494_handoff
 from gost_schematic.agent_project.owner_api_locks import load_pinned_owner_lock_manifest
 from gost_schematic.agent_project.owner_source_contract import verify_frozen_owner_fixture
 
@@ -133,6 +134,8 @@ def run(output: Path) -> dict[str, Any]:
     if len(parts) != 7:
         raise AssertionError("Expected seven true installed source UGO specimens")
 
+    handoff = build_readonly_tl494_handoff(request, report, parts)
+    (root / "source-generation-handoff.json").write_bytes(_json_bytes(handoff))
     (root / "source-typed-request.json").write_bytes(_json_bytes(request))
     (root / "source-validation.json").write_bytes(_json_bytes(report))
     (root / "refusal-tests.json").write_bytes(_json_bytes(negatives))
@@ -189,6 +192,8 @@ def run(output: Path) -> dict[str, Any]:
         "cli_verified_read_only_exit_code": exit_code,
         "refusal_tests_passed": len(negatives),
         "refusal_tests_total": len(negatives),
+        "generation_handoff_status": handoff["status"],
+        "generation_handoff_source_request_sha256": handoff["source_request_sha256"],
         "blocked_stage_diagnostics": report["diagnostics"],
         "artifacts": artifacts,
         "next_unmet_gate": (
