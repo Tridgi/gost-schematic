@@ -87,7 +87,7 @@ def test_global_functional_order_restart_is_deterministic_and_readonly():
     assert not a.print_pass
 
 
-@pytest.mark.parametrize("n", (0, -1, 4, 99, 2.5))
+@pytest.mark.parametrize("n", (0, -1, 7, 99, 2.5))
 def test_route_priority_trial_count_rejects_invalid_or_unbounded_inputs(n):
     circuit, parts, symbols = native_three_terminal()
     with pytest.raises(ValueError, match="ROUTE_INVALID_FUNCTIONAL_ORDER"):
@@ -95,6 +95,48 @@ def test_route_priority_trial_count_rejects_invalid_or_unbounded_inputs(n):
             circuit, parts, symbols,
             page_box=Box(0, 0, 90000, 60000),
             try_priorities=n,
+        )
+
+
+def test_cycle12_source_congested_first_independent_from_graph_and_circuit():
+    circuit, parts, symbols = native_three_terminal()
+    preview = route_circuit_with_order_fallback(
+        circuit, parts, symbols,
+        page_box=Box(0, 0, 90000, 60000),
+        priority_offset=3, try_priorities=2,
+        max_order_restarts=0,
+    )
+    assert preview.source_circuit is circuit
+    assert preview.route_order_trials == (
+        ("CONGESTED_PIN_FANOUT_FIRST", 1, 0),
+        ("CONGESTED_REVERSE_ROOTS", 1, 0),
+    )
+    assert preview.routing_strategy == "CONGESTED_PIN_FANOUT_FIRST"
+    assert {w.net_name for w in preview.graph.segments} == {"A"}
+    assert not preview.print_pass
+
+
+@pytest.mark.parametrize("offset,trials", (
+    (-1, 1), (6, 1), (5, 2), (3, 4), (0.5, 1),
+    (True, 1), (0, False),
+))
+def test_cycle12_route_profile_range_fails_closed(offset, trials):
+    circuit, parts, symbols = native_three_terminal()
+    with pytest.raises(ValueError, match="ROUTE_INVALID_FUNCTIONAL_ORDER"):
+        route_circuit_with_order_fallback(
+            circuit, parts, symbols,
+            page_box=Box(0, 0, 90000, 60000),
+            priority_offset=offset, try_priorities=trials,
+        )
+
+
+def test_cycle12_duplicate_source_priority_cannot_revisit_occupied_net():
+    circuit, parts, symbols = native_three_terminal()
+    with pytest.raises(ValueError, match="ROUTE_INVALID_DUPLICATED_NET_PRIORITY"):
+        route_circuit_net_trees(
+            circuit, parts, symbols,
+            page_box=Box(0, 0, 90000, 60000),
+            priority=("A", "A"),
         )
 
 
