@@ -9,6 +9,7 @@ no API release metadata and no alternative font are accepted.
 import argparse
 import hashlib
 import io
+import json
 import os
 import sys
 import urllib.parse
@@ -113,6 +114,10 @@ def main(argv: list[str] | None = None) -> int:
         "--expected-sha256",
         help="Optional exact hash for a controlled, reproducible installation",
     )
+    parser.add_argument(
+        "--manifest-out", type=Path,
+        help="Write a JSON provenance receipt; no font bytes are included",
+    )
     args = parser.parse_args(argv)
     try:
         name, data = load_verified_pinned_type_a()
@@ -126,6 +131,23 @@ def main(argv: list[str] | None = None) -> int:
         args.directory.mkdir(parents=True, exist_ok=True)
         destination = args.directory / f"OpenGOST-TypeA-{Path(name).name}"
         destination.write_bytes(data)
+        if args.manifest_out is not None:
+            args.manifest_out.parent.mkdir(parents=True, exist_ok=True)
+            receipt = {
+                "schema_version": 1,
+                "font_family": "OpenGOST Type A",
+                "font_file": PINNED_TYPE_A_NAME,
+                "font_sha256": digest,
+                "archive_url": PINNED_ARCHIVE_URL,
+                "archive_sha256": PINNED_ARCHIVE_SHA256,
+                "upstream_tag": "v0.7",
+                "license": "SIL OFL 1.1",
+                "verified_exact_archive_and_face": True,
+                "unverified_substitution_used": False,
+            }
+            # Distinct receipt name per run; never replace an old proof.
+            with args.manifest_out.open("x", encoding="utf-8") as output:
+                output.write(json.dumps(receipt, sort_keys=True, indent=2) + "\\n")
         print(f"Installed: {destination}")
         print(f"SHA256: {digest}")
         print("License: SIL OFL 1.1; see upstream LICENSE.txt")
