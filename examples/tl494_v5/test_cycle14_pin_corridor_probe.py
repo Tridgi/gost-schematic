@@ -32,10 +32,20 @@ def test_all_62_real_pin_escapes_preserve_original_graph(sheet):
     assert sheet["real_measured_text_layout_valid"]
     assert sheet["real_measured_text_guard_count"] == 73
     assert sheet["measured_text_10mm_frame_fit"] is False
-    assert sheet["measured_text_frame_violations"] == [{
-        "owner": "C1", "label": "C1", "kind": "AnnotationPlacement",
-        "bounds_um": [261362, 9100, 265638, 13600],
-    }]
+    violations = sheet["measured_text_frame_violations"]
+    assert len(violations) == 1
+    c1 = violations[0]
+    assert (c1["owner"], c1["label"], c1["kind"]) == (
+        "C1", "C1", "AnnotationPlacement",
+    )
+    # Genuine OpenGOST Type A font metrics vary by a few micrometres
+    # between Pillow Linux/Windows; the real 900 um *vertical* border
+    # violation is exact and must never be waived or rounded away.
+    min_x, min_y, max_x, max_y = c1["bounds_um"]
+    assert 261250 <= min_x <= 261450
+    assert (min_y, max_y) == (9100, 13600)
+    assert 265550 <= max_x <= 265750
+    assert 10000 - min_y == 900
     assert sheet["full_15_net_print_release"] == "BLOCKED_NOT_A_ROUTER"
     assert "existing routed Net wires" in sheet["excluded_from_this_probe"]
 
