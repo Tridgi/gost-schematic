@@ -13,7 +13,6 @@ from decimal import Decimal
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-import cairosvg
 from PIL import Image, ImageChops
 
 SVG = "{http://www.w3.org/2000/svg}"
@@ -527,6 +526,15 @@ def inspect_native(
                "QA_C11_NATIVE_INVALID_PHYSICAL_SCALE")
         destination_png = destination / (target.stem + "-300dpi.png")
         # SVG original source remains byte-for-byte unchanged on disk.
+        # Cairo is a required raster dependency only for actual PNG export;
+        # source-exact SVG geometry can be independently audited on Windows
+        # hosts without libcairo. Never claim raster PASS without this call.
+        try:
+            import cairosvg
+        except (ImportError, OSError) as exc:
+            raise RuntimeError(
+                "QA_C14_REAL_CAIRO_300DPI_BACKEND_NOT_INSTALLED"
+            ) from exc
         cairosvg.svg2png(
             bytestring=svg, write_to=str(destination_png), dpi=300,
         )
