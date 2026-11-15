@@ -35,28 +35,28 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Tridgi/gost-schematic
-          ref: 0fdd1c799796a8afecb347d71169c001e02fe3e1
+          ref: 7c30c209ea5e97a245844b24a3bbc4d3d30118ea
           path: _active_ic
           persist-credentials: false
       - name: Current PAINT #93 routed native sheet owner
         uses: actions/checkout@v4
         with:
           repository: Tridgi/gost-schematic
-          ref: 23aaf19aab7e0cd45d570e1c061ae00b9d49ba00
+          ref: 12a5b16567716034cb1ad222b3b5c1f1563b01f8
           path: _active_paint
           persist-credentials: false
       - name: Current YGO2 #113 source UGO owner
         uses: actions/checkout@v4
         with:
           repository: Tridgi/gost-schematic
-          ref: 3398942ba4815963a7c979006ba3e13569d4a48f
+          ref: 3e47cdf32ccf211ded97e3be1ad874035653e090
           path: _active_ygo
           persist-credentials: false
       - name: Current RECON #115 positioned 23/15/62 owner
         uses: actions/checkout@v4
         with:
           repository: Tridgi/gost-schematic
-          ref: f30dfaa932af78bbb819cf1fcfbef7344d84be4b
+          ref: 73025965efeb94585e8723ba3f0b636229e8a5de
           path: _active_recon
           persist-credentials: false
       - uses: actions/setup-python@v5
@@ -66,10 +66,10 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C _active_source rev-parse HEAD)" = e695c415fdced164b0e0c39c5249d030795a0aa6
-          test "$(git -C _active_ic rev-parse HEAD)" = 0fdd1c799796a8afecb347d71169c001e02fe3e1
-          test "$(git -C _active_paint rev-parse HEAD)" = 23aaf19aab7e0cd45d570e1c061ae00b9d49ba00
-          test "$(git -C _active_ygo rev-parse HEAD)" = 3398942ba4815963a7c979006ba3e13569d4a48f
-          test "$(git -C _active_recon rev-parse HEAD)" = f30dfaa932af78bbb819cf1fcfbef7344d84be4b
+          test "$(git -C _active_ic rev-parse HEAD)" = 7c30c209ea5e97a245844b24a3bbc4d3d30118ea
+          test "$(git -C _active_paint rev-parse HEAD)" = 12a5b16567716034cb1ad222b3b5c1f1563b01f8
+          test "$(git -C _active_ygo rev-parse HEAD)" = 3e47cdf32ccf211ded97e3be1ad874035653e090
+          test "$(git -C _active_recon rev-parse HEAD)" = 73025965efeb94585e8723ba3f0b636229e8a5de
           for F in tl494_native_rework tl494_connected_native tl494_full_native_model tl494_ic_paint_reference tl494_named_photo_sheet; do
             cp "_active_source/examples/$F.py" "examples/$F.py"
           done
@@ -92,10 +92,10 @@ jobs:
           set -euo pipefail
           mkdir -p output/cycle11-current-owners
           python -m examples.tl494_cycle11_active_owner_smoke \
-            --ic-sha 0fdd1c799796a8afecb347d71169c001e02fe3e1 \
-            --paint-sha 23aaf19aab7e0cd45d570e1c061ae00b9d49ba00 \
-            --ygo-sha 3398942ba4815963a7c979006ba3e13569d4a48f \
-            --recon-sha f30dfaa932af78bbb819cf1fcfbef7344d84be4b \
+            --ic-sha 7c30c209ea5e97a245844b24a3bbc4d3d30118ea \
+            --paint-sha 12a5b16567716034cb1ad222b3b5c1f1563b01f8 \
+            --ygo-sha 3e47cdf32ccf211ded97e3be1ad874035653e090 \
+            --recon-sha 73025965efeb94585e8723ba3f0b636229e8a5de \
             --output output/cycle11-current-owners/typed-source-contract.json \
             2>&1 | tee output/cycle11-current-owners/typed-source-contract.log
       - name: Typed adapter manifest MUST preserve exactly all 62 source PinRef members
