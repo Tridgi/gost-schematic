@@ -42,6 +42,7 @@ from gost_schematic.electrical.tl494cn import TI_DEVICE_ID
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.model.circuit import PinRef
 from gost_schematic.standards.type_a_font import inspect_type_a_font
+from gost_schematic.validation.external_wire_checks import ExternalWireGraph
 
 _NS = "{http://www.w3.org/2000/svg}"
 _FONT_SHA256 = "f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a"
@@ -319,8 +320,9 @@ def test_real_115_paint_text_only_toggle_keeps_trusted_physical_points():
 
 def test_real_115_latest_paint_routed_native_requires_genuine_15_net_graph():
     """Exercise PAINT's actual whole-sheet API, safely blocked without NET114."""
-    from gost_schematic.rendering.routed_native_sheet import render_routed_native_sheet
-    from gost_schematic.validation.external_wire_checks import ExternalWireGraph
+    render_routed_native_sheet = import_module(
+        "gost_schematic.rendering.routed_native_sheet"
+    ).render_routed_native_sheet
 
     font = Path(os.environ["IC_TYPE_A_FONT_PATH"])
     native, signed, paint, verified, style, measure = live_paint(font)
