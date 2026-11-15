@@ -4,6 +4,7 @@ No invented print PASS, no edits of source SVG geometry. Tests actual
 raster color at every external physical TL494DA1 point.
 """
 import argparse
+import hashlib
 import json
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -38,6 +39,44 @@ def verify(folder: Path) -> dict:
     }
     assert len(proof["original_named_nets_verified"]) == 15
     assert set(proof["original_named_nets_verified"]) == source_names
+    expected_files = {
+        "TL494_COMPACT_A3_SOURCE_BOM_DRAFT.json",
+        "TL494_COMPACT_A3_SOURCE_NETLIST_DRAFT.json",
+    }
+    assert set(proof["source_model_exports"]) == expected_files
+    source_records = {}
+    for name, evidence in proof["source_model_exports"].items():
+        raw = (folder/name).read_bytes()
+        assert hashlib.sha256(raw).hexdigest() == evidence["sha256"]
+        assert len(raw) == evidence["bytes"]
+        item = json.loads(raw)
+        assert item["source_sha"] == proof["model_source"]
+        assert item["signed_ic_owner_sha"] == proof["IC97_owner_sha"]
+        assert item["print_approved"] is False
+        source_records[name] = item
+    bom = source_records["TL494_COMPACT_A3_SOURCE_BOM_DRAFT.json"]
+    netlist = source_records["TL494_COMPACT_A3_SOURCE_NETLIST_DRAFT.json"]
+    assert bom["schema"] == "paint.source-bom.v1"
+    assert netlist["schema"] == "paint.source-netlist.v1"
+    assert len(bom["components"]) == 23
+    assert len({item["reference"] for item in bom["components"]}) == 23
+    assert next(item for item in bom["components"] if (
+        item["reference"] == "DA1"
+    ))["part_id"] == "ti.tl494cn.pdip16"
+    assert all(
+        entry["nominal"] is None or entry["nominal"]["schema_version"] == 1
+        for entry in bom["components"]
+    )
+    assert len(netlist["nets"]) == 15
+    assert {item["name"] for item in netlist["nets"]} == source_names
+    members = [
+        (pin["reference"], pin["number"])
+        for net in netlist["nets"] for pin in net["pinrefs"]
+    ]
+    assert len(members) == len(set(members)) == 62
+    assert {(ref, number) for ref, number in members if ref == "DA1"} == {
+        ("DA1", str(pin)) for pin in range(1, 17)
+    }
     assert "PE" not in source_names and "CHASSIS" not in source_names
     assert proof["A3_true_catalog_bounds"]["A3_capacity_fit"]
     assert proof["status"] == "BLOCKED" and not proof["real_print_release"]
