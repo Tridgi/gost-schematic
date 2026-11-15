@@ -441,9 +441,17 @@ def render_routed_native_sheet(
                 point.x+550, point.y+550,
             ))
         if source_continuation_project is not None:
-            # Both nonphysical b glyphs are genuine PRINTED ink. Counting
-            # only components/copper silently lets labels or marker rings
-            # spill beyond an otherwise falsely 'A3 fits' physical page.
+            # Non-electrical b ink is printed: count both the visible
+            # physical-tip-to-marker strokes AND their marker/text regions
+            # in the 1:1 page gate, without creating copper Net/PinRef.
+            b_ink_half_stroke = 150
+            for stub in source_continuation_project.stubs:
+                protected_boxes.append(Box(
+                    min(stub.start.x, stub.end.x)-b_ink_half_stroke,
+                    min(stub.start.y, stub.end.y)-b_ink_half_stroke,
+                    max(stub.start.x, stub.end.x)+b_ink_half_stroke+1,
+                    max(stub.start.y, stub.end.y)+b_ink_half_stroke+1,
+                ))
             for endpoint in source_continuation_project.endpoints:
                 at = endpoint.anchor
                 protected_boxes.append(Box(
