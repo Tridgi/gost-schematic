@@ -73,6 +73,36 @@ jobs:
           cp src/gost_schematic/catalog/source_profiles.py "$RUNNER_TEMP/ygo-owner/src/gost_schematic/catalog/"
           cp src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json "$RUNNER_TEMP/ygo-owner/src/gost_schematic/catalog/source_profiles/"
           cp examples/review_tl494_ugo_source_cycle9.py "$RUNNER_TEMP/ygo-owner/examples/"
+          # Keep source-approved REAL JSON models, not synthetic glyph shims.
+          # Older owner trees can lack some of the original physical catalog.
+          # Fill only ABSENT files in an isolated checkout; if a file exists
+          # with different bytes, FAIL rather than silently overwrite ink.
+          SOURCE_CATALOG="$GITHUB_WORKSPACE/src/gost_schematic/catalog"
+          OWNER_CATALOG="$RUNNER_TEMP/ygo-owner/src/gost_schematic/catalog"
+          for model in capacitors/fixed capacitors/polarized diodes/schottky fuses/general resistors/variable transistors/mosfet_n_enh; do
+            for kind in parts symbols; do
+              original="$SOURCE_CATALOG/$kind/$model.json"
+              target="$OWNER_CATALOG/$kind/$model.json"
+              test -f "$original"
+              mkdir -p "$(dirname "$target")"
+              if test -e "$target"; then
+                if ! cmp -s "$original" "$target"; then
+                  echo "::error::SOURCE_CATALOG_DRIFT:$kind/$model.json"
+                  exit 1
+                fi
+              else
+                cp "$original" "$target"
+              fi
+            done
+          done
+          original="$SOURCE_CATALOG/inductors/inductor.ferromagnetic.json"
+          target="$OWNER_CATALOG/inductors/inductor.ferromagnetic.json"
+          mkdir -p "$(dirname "$target")"
+          if test -e "$target"; then
+            cmp -s "$original" "$target" || { echo "::error::SOURCE_FERROMAGNETIC_PROFILE_DRIFT"; exit 1; }
+          else
+            cp "$original" "$target"
+          fi
           mkdir -p output/cycle11-owners
           cd "$RUNNER_TEMP/ygo-owner"
           PYTHONPATH="$PWD/src:$PWD" python "$GITHUB_WORKSPACE/scripts/verify_tl494_cycle11_owner_strokes.py" \

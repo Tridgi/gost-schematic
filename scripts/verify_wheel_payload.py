@@ -58,6 +58,12 @@ _PARTS = {
 }
 _REQUIREMENTS = "standards/requirements_2026_ru.json"
 _SOURCE_PROFILE = "catalog/source_profiles/tl494_source_20261114.json"
+_FIGURE_LEDGER = "catalog/source_profiles/tl494_figure_comparisons_20261115.json"
+_SOURCE_MODULES = {
+    "catalog/source_profiles.py",
+    "catalog/source_footprints.py",
+    "catalog/source_digest.py",
+}
 
 
 def verify_wheel(wheel: Path) -> dict[str, int]:
@@ -67,7 +73,9 @@ def verify_wheel(wheel: Path) -> dict[str, int]:
             path.removeprefix(_PREFIX)
             for path in archive.namelist() if path.startswith(_PREFIX)
         }
-        missing = (_SYMBOLS | _PARTS | {_REQUIREMENTS, _SOURCE_PROFILE}) - payload
+        missing = (_SYMBOLS | _PARTS | _SOURCE_MODULES | {
+            _REQUIREMENTS, _SOURCE_PROFILE, _FIGURE_LEDGER,
+        }) - payload
         if missing:
             raise ValueError(f"Wheel missing required data: {sorted(missing)}")
         inductors = {
