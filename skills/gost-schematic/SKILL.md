@@ -248,7 +248,10 @@ The output directory must not exist before the command. The process
 opens a genuine `mcp.ClientSession` and SHA-checks seven installed
 UGO SVG/PNG pairs, checks the real frozen 23/15/62 original through
 the strict `agent_readiness` subprocess, then actually submits
-11 adversarial JSON requests that must all fail. Read the
+11 adversarial JSON requests that must all fail. The immutable
+`source-generation-handoff.json` carries only verified source/UGO locks
+and seven still-blocked generation stages; never treat it as a routed
+sheet or commit authorization. Read the
 `source-typed-request.json`, `refusal-tests.json` and
 `source-quickstart-report.json` artifacts, not just the shell exit
 code. A zero shell exit means **correctly BLOCKED**, not ready-to-print.
