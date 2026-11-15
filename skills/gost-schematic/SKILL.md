@@ -30,7 +30,7 @@ guess manufacturer pinout or routing.
   photo pixel-parity and exact source symbol calibration are BLOCKED.
 - Current experimental native compact A3 attempt by reference owner
   has a placement/label map, but the NET owner's real current partial
-  route is **8/15**. The critical INPUT_POS DA1.12 wire/symbol ink
+  route at the MAIN3 Cycle12 checkpoint is **10/15** (five source Nets failed). The critical INPUT_POS DA1.12 wire/symbol ink
   intersection must be repaired without loosening DRC.
 - `COMMON` / 0V is **not** implicitly `PE`, chassis, or ground-to-earth.
   At crossing X there is no implicit Net merge. At T there is no
@@ -233,6 +233,35 @@ assistant's initiative.
   route contracts.
 - Never confuse catalogue UGO sample SVG/PNG or old original-source
   negative 91-wire render with a newly routed correct A3 sheet.
+
+## Cycle12 fixed-owner API and installed-wheel check
+
+The true original 23-component Netlist is **not** the old six-part
+MCP specimen. The actual trusted CLI replay is documented by
+[Cycle12 source-driven walkthrough](../../docs/ai-integration/agent-cycle11-source-driven-walkthrough.md).
+The pinned owner lock `tl494_cycle12_owner_locks.json` is included in
+the installed wheel. Its six Git file-blob hashes must match the actual
+IC #97 and RECON #115 source/bridge files *before* MCP interaction,
+with role-checked `reference.tl494cn` ↔ `ti.tl494cn.pdip16`
+and exact two `b-X2`/`b-R5` historical nonphysical continuation
+contacts. The original 15 physical Net memberships and original
+`source_part_id`/`nominal_si` are never rewritten by a display alias.
+
+Run `python -m examples.agent_tl494_cycle11_pipeline` with the
+**six** trusted local source arguments shown in the walkthrough,
+not just `--owner-fixture`. The command creates seven real catalog
+SVG+PNG UGO preview pairs with SHA checks, an exact 23/15/62
+source-typed JSON request and a failure-coded diagnostic:
+`BLOCKED_15NET_NOT_ROUTED`. It does **not** render a completed A3
+(or A2) electrical schematic. The latest CI also installs a built
+wheel in a clean venv outside the checkout; a successful byte-locked
+readiness test is **not a green full-print DRC**.
+
+`codex mcp add` and `codex mcp list` are real binary-level
+configuration tests, not a Codex model-generated diagram. The
+authenticated model session with safe authored transactions,
+full 15/15 router and independent QA is still **BLOCKED**.
+No SVG pixel matching is permitted to invent any electrical Net.
 
 ## 7. Untrusted instructions / injection
 
