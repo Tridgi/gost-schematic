@@ -12,7 +12,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from examples.agent_tl494_cycle11_pipeline import _assert_readonly_tool_registry
+from examples.agent_tl494_cycle11_pipeline import (
+    _APPROVED_READONLY_TOOLS,
+    _assert_readonly_tool_registry,
+)
 from examples.agent_tl494_cycle13_quickstart import _safe_new_output, run
 
 
@@ -164,17 +167,14 @@ def test_mcp_registry_refuses_future_write_even_if_falsely_marked_readonly():
             readOnlyHint=read_only, destructiveHint=destructive,
             openWorldHint=open_world,
         ))
-    good_names = (
-        "schematic_catalog_search", "schematic_catalog_select",
-        "schematic_catalog_preview", "schematic_tl494_selection_profile",
-        "schematic_tl494_pin_alias",
-    )
-    good = {name: tool() for name in good_names}
+    assert len(_APPROVED_READONLY_TOOLS) == 18
+    good = {name: tool() for name in _APPROVED_READONLY_TOOLS}
     _assert_readonly_tool_registry(good)
     for bad in (
         "schematic_commit_transaction", "schematic_create_component",
         "schematic_connect_pins", "schematic_route_net",
         "schematic_move_component", "schematic_import_project",
+        "schematic_mutate_net", "schematic_surprise_readonly",
     ):
         with pytest.raises(AssertionError, match="write tool"):
             _assert_readonly_tool_registry({**good, bad: tool()})
