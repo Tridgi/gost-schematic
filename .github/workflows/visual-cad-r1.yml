@@ -1,0 +1,20 @@
+name: Visual CAD R1 source gate
+on:
+  push:
+    branches: [ui/visual-cad-mvp]
+    paths: ['ui/integration/**', '.github/workflows/visual-cad-r1.yml']
+  pull_request:
+    paths: ['ui/integration/**', '.github/workflows/visual-cad-r1.yml']
+  workflow_dispatch:
+jobs:
+  candidate-v2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check ui/integration/source-gate.mjs
+      - run: node --check ui/integration/source-gate.test.mjs
+      - run: node --test ui/integration/source-gate.test.mjs
