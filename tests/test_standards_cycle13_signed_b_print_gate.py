@@ -83,10 +83,13 @@ def real_native_b_graphics(*, no_lines: bool = False):
                 "data-nonphysical-net-continuation": s.endpoint_id,
             })
         ET.SubElement(region, f"{gate.SVG}circle", {
+            "cx": _point_mm(s.end.x), "cy": _point_mm(s.end.y),
             "data-nonphysical-net-continuation": s.endpoint_id,
             "data-electrical-junction": "false",
         })
         ET.SubElement(region, f"{gate.SVG}text", {
+            "x": _point_mm(s.end.x),
+            "y": _point_mm(s.end.y - 4000),
             "font-family": "OpenGOST type A",
             "data-font-sha256": gate.FONT_SHA,
             "data-nonphysical": "true",
@@ -122,6 +125,10 @@ def test_true_typed_b_has_two_printed_lines_and_never_physical_edge():
     ("cross_pin_stub", "SOURCE_B_TYPED_STUB_PINREF_FORGED"),
     ("stroke_change", "SOURCE_B_PRINT_STUB_0P3MM_STROKE_REQUIRED"),
     ("submicrometre", "SOURCE_B_PRINT_COORDINATE_NOT_EXACT_MICROMETRE"),
+    ("circle_shift", "SOURCE_B_PRINT_MARKER_CIRCLE_NOT_AT_SIGNED_ENDPOINT"),
+    ("label_shift", "SOURCE_B_PRINT_LABEL_NOT_AT_SIGNED_SOURCE_MARKER"),
+    ("extra_unmarked_line", "SOURCE_B_UNMARKED_FOREIGN_GRAPHICAL_LINE"),
+    ("copied_electrical_wire", "SOURCE_B_EXACT_STUB_COPIED_INTO_ELECTRICAL_GRAPH"),
 ])
 def test_printed_b_adversarial_physical_and_graphic_invariants(mutation, reason):
     source = native_source()
@@ -165,5 +172,18 @@ def test_printed_b_adversarial_physical_and_graphic_invariants(mutation, reason)
         lines[1].set("stroke-width", "0.15")
     elif mutation == "submicrometre":
         lines[0].set("x1", "35.0005")
+    elif mutation == "circle_shift":
+        region.findall(f"{gate.SVG}circle")[0].set("cx", "45.001")
+    elif mutation == "label_shift":
+        texts[0].set("y", "46.001")
+    elif mutation == "extra_unmarked_line":
+        ET.SubElement(region, f"{gate.SVG}line", {
+            "x1": "1", "x2": "2", "y1": "1", "y2": "1",
+        })
+    elif mutation == "copied_electrical_wire":
+        ET.SubElement(root, f"{gate.SVG}line", {
+            "data-layer": "wires",
+            "x1": "35", "y1": "50", "x2": "45", "y2": "50",
+        })
     with pytest.raises(gate.SignedBPrintError, match=reason):
         gate.audit_source_b_printed_lines(root, source, stubs)
