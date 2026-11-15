@@ -134,3 +134,34 @@ components, full 253 pairs including DA1, 3/2/1mm wiring/text DRC,
 graphical b-X2/b-R5 strokes, 15/15 connected routing or calibrated
 original-photo/primary-standard GOST 1:1. All remain independently
 BLOCKED until real owner QA and ESKD acceptance.
+
+
+## Cycle 14 newest second owner-head snapshot (15 November 2026)
+
+Subsequent owner commits were compared to the initial snapshot; the
+latest exact producer code used here is:
+
+| Owner | New frozen source HEAD | LOCALLY tested source-gate JSON SHA256 |
+| --- | --- | --- |
+| NET #114 | 027cee506a8dc9b3926b44b1abba66e1ae25b183 | 5771149116c54e9693de3a3722e4cc8e099e14b8d611a4cd86e7006c3c1e2f7b |
+| PAINT #93 | 252fed9077351493378348f4c0a0138c5e04c8b5 | a6e50a0e347da7d3e77c50ffad9a4b162e733769d1851d1d9c68889019188d28 |
+| IC #97 | 632d5cf4222f188a65d0ec4a6ed22d8dcf1c8617 | 9d65491eb1f430b390e8563ef24c3f7925a2e2e53e49e41cb3bc0d15b3ad5b69 |
+| RECON #115 | 324a87fc736cde8c6393e6c4cee4dc5d3e2e1241 | f3559536fcd6fc44b0574cd50e61a789918d1911c0c520805cc1120883c20e02 |
+
+These four local physical-source reports were generated with ACTUAL
+detached source code. On each owner, the resulting Windows-generated
+UTF-8 JSON artifact has an **identical SHA256 on Python 3.12 and 3.13**
+(8/8 local gate results PASS). These checksums are for the **local
+Windows report bytes**, which may have a different line-ending encoding
+from Linux GitHub Actions. CI now publishes its own independent SHA256
+sidecar together with every real owner JSON artifact; do not falsely
+expect platform-independent equality without normalizing bytes.
+
+The latest current source produces the same directly measured compact
+geometry for YGO: 13 real UGO, 104 D4, 224 conducting leads, 78 source
+ink pairs and minimum C5-C6 16.315 mm. The genuine 17 mm X1 left ink
+edge remains 10.850 mm, and the 16 mm historical candidate 9.850 mm.
+DA1's separate original PAINT-rendered graphic remains unavailable in
+NativeV5Assembly.symbols, so **all-23-component printed sheet bounds
+remain BLOCKED** and no 15/15 graph print is accepted. All 36 UGO
+remain DRAFT and zero APPROVED.
