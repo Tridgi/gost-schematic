@@ -134,6 +134,30 @@ def verify_bridge(font_file: Path) -> dict:
         moved,
         tuple(pin for pin in moved if pin in active),
     )
+    require(bool(consent.connected_reroute_pinrefs),
+            "QA_C13_OWNER_PAINTER_MOVED_NO_REAL_CONNECTED_PIN")
+    # Three extra negative production API checks, not JSON-only guards.
+    for test_name, forged_consent, rejection in (
+        ("no_consent", None, "IC_GEOMETRY_REAUTHORIZATION_REQUIRED"),
+        ("wrong_source_fingerprint",
+         IcGeometryConsent("0" * 64, moved,
+                           consent.connected_reroute_pinrefs),
+         "IC_GEOMETRY_CONSENT_SOURCE_STALE"),
+        ("withheld_connected_reroute",
+         IcGeometryConsent(consent.source_sha256, moved, ()),
+         "IC_CONNECTED_REROUTE_CONSENT_MISMATCH"),
+    ):
+        try:
+            upgraded.revise(actual_paint.record, consent=forged_consent)
+        except ValueError as exc:
+            require(str(exc) == rejection,
+                    "QA_C13_GEOMETRY_NEGATIVE_REJECTED_WRONG_REASON:"
+                    + test_name)
+        else:
+            raise AssertionError(
+                "QA_C13_UNCONSENTED_REAL_PHYSICAL_IC_MOVE_ACCEPTED:"
+                + test_name
+            )
     revised, delta = upgraded.revise(actual_paint.record, consent=consent)
     require(set(delta.moved) == set(moved) and
             revised.circuit is upgraded.circuit and
@@ -240,6 +264,10 @@ def verify_bridge(font_file: Path) -> dict:
         "source_nets_tuple_identity_preserved": True,
         "manufacturer_FB_OC_roles_both_input": True,
         "unconsented_stale_geometry_rejected": True,
+        "three_unsafe_real_geometry_consent_mutants_rejected": (
+            "no_consent", "wrong_source_fingerprint",
+            "withheld_connected_reroute",
+        ),
         "consented_real_physical_pin_moves": [
             f"{p.reference}.{p.number}" for p in moved
         ],
