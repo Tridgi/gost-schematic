@@ -15,7 +15,6 @@ from xml.etree import ElementTree as ET
 
 import resvg_py
 from PIL import Image, ImageChops
-
 from qa_tl494_cycle11_native_300dpi import SVG, demand
 from qa_tl494_cycle14_b_xml_gate import inspect_source_svg_only
 
