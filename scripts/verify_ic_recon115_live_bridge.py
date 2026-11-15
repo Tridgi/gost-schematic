@@ -7,6 +7,7 @@ ONLY invoked in an isolated CI checkout containing genuine pinned PR #115,
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 from dataclasses import replace
@@ -806,6 +807,213 @@ def test_real_115_paint_signed_manufacturer_trust_gate(attack, error_code):
     assert signed.circuit.nets is native.circuit.nets
     assert len(verified.manifest.contacts) == 16
 
+
+def canonical_signed_tl494_and_b(font: Path):
+    """Real RECON source-named -> TI -> PAINT consent -> native b evidence.
+
+    No route is supplied or reconstructed here. The genuine manufacturer
+    contact snapshot can only attest exact Circuit and graphical endpoints.
+    """
+    native = compact_source_assembly()
+    driver = import_module("examples.tl494_v5.route_candidate_driver")
+    fixture, _source = driver.load_original_owner_fixture()
+    original = driver.restore_original_named_nets(native, fixture)
+    assert {net.name for net in original.nets} == set(
+        load_frozen_source()["nets"]
+    )
+    bridge = import_module("examples.tl494_v5.cycle11_ti_bridge")
+    owner = bridge.bind_verified_compact_ti(native, original)
+    owner.verify()
+    assert owner.reverse_source() is original
+    inspection = inspect_type_a_font(
+        font, h_um=3500, family="OpenGOST type A",
+        require_family_match=True,
+    )
+    assert inspection.style.font_sha256 == _FONT_SHA256
+    assert inspection.measured_cap_height_um == 3500
+    style = inspection.style
+    measure = PillowTextMeasurer()
+    proposal = propose_ic_paint_binding(owner.signed.record, style, measure)
+    signed, snapshot = owner.seal_paint(proposal)
+    snapshot.verify_against(signed, proposal)
+    assert signed.circuit.nets is original.nets
+    assert len(snapshot.manifest.contacts) == 16
+    _checks(signed)
+    symbols = {
+        part_id: native.symbols[part.symbol_id]
+        for part_id, part in native.parts.items()
+        if part.symbol_id in native.symbols
+    }
+    assert signed.symbol_surrogate is not None
+    symbols[signed.part.identifier] = signed.symbol_surrogate
+    project = import_module(
+        "examples.render_tl494_compact_new_router_cycle10"
+    )._bind_verified_source_b(font, signed.circuit, symbols)
+    assert project.circuit.nets is original.nets
+    assert len(project.stubs) == 2
+    parts = {**native.parts, signed.part.identifier: signed.part}
+    return original, signed, proposal, snapshot, style, measure, project, parts, symbols
+
+
+def _canonical_source_witness(font: Path):
+    """Emit audit facts from typed source objects; hashes are not credentials."""
+    (
+        source, signed, paint, snapshot, style, measure, project, parts, symbols,
+    ) = canonical_signed_tl494_and_b(font)
+    renderer = import_module(
+        "gost_schematic.rendering.routed_native_sheet"
+    ).render_routed_native_sheet
+    clean = snapshot.render(
+        signed, paint, style, measure, diagnostics=False,
+    )[0]
+    diagnostic = snapshot.render(
+        signed, paint, style, measure, diagnostics=True,
+    )[0]
+    result = renderer(
+        signed.circuit, ExternalWireGraph(()), parts, symbols, style, measure,
+        physical_ic_renderings_clean={"DA1": clean},
+        physical_ic_renderings_diagnostic={"DA1": diagnostic},
+        verified_ic_source=signed,
+        verified_ic_paint_binding=paint,
+        verified_ic_snapshot=snapshot,
+        source_continuation_project=project,
+        expected_component_count=23,
+        expected_net_count=15,
+        expected_net_pinrefs=62,
+        physical_page_box=Box(0, 0, 420000, 297000),
+    )
+    assert result.manifest["signed_manufacturer_ic_16_verified"] is True
+    assert result.manifest["source_b_two_physical_vectors_verified"] is True
+    assert not result.printable_candidate
+    assert result.manifest["blockers"]
+    assert _expected_marker_count(result.clean_svg) == 0
+    assert _expected_marker_count(result.diagnostic_svg) == 16
+    for view in (result.clean_svg, result.diagnostic_svg):
+        root = ET.fromstring(view)
+        ink = {
+            node.get("data-source-stub-id"): node
+            for node in root.iter()
+            if node.get("data-layer") == "nonphysical-continuation-stub"
+        }
+        assert len(ink) == 2
+        for stub in project.stubs:
+            stroke = ink[stub.id]
+            assert stroke.tag == _NS + "line"
+            assert (
+                stroke.get("data-nonphysical"),
+                stroke.get("data-electrical-junction"),
+                stroke.get("data-connectable"),
+            ) == ("true", "false", "false")
+            assert tuple(
+                stroke.get(label) for label in ("x1", "y1", "x2", "y2")
+            ) == (
+                format_mm(stub.start.x), format_mm(stub.start.y),
+                format_mm(stub.end.x), format_mm(stub.end.y),
+            )
+    netlist = [
+        {
+            "name": net.name,
+            "members": [f"{p.reference}.{p.number}" for p in net.members],
+        } for net in source.nets
+    ]
+    netlist_data = json.dumps(
+        netlist, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    ).encode("utf-8")
+    pins = sorted(signed.contacts, key=lambda c: int(c.pin_ref.number))
+    witness = {
+        "schema_version": 1,
+        "status": "DRAFT_TRUSTED_SOURCE_PHYSICAL_NOT_FULL_ROUTED_PRINT",
+        "frozen_original_git_sha": FROZEN_SOURCE_COMMIT,
+        "owner_sha": {
+            "ic97": os.environ.get("GITHUB_SHA", "LOCAL_NO_GITHUB_SHA"),
+            "recon115": os.environ.get(
+                "IC_OWNER_RECON_SHA", "LOCAL_OWNER_SHA_NOT_VERIFIED",
+            ),
+            "paint93": os.environ.get(
+                "IC_OWNER_PAINT_SHA", "LOCAL_OWNER_SHA_NOT_VERIFIED",
+            ),
+            "ygo113": os.environ.get(
+                "IC_OWNER_YGO_SHA", "LOCAL_OWNER_SHA_NOT_VERIFIED",
+            ),
+        },
+        "legacy_part_id": "reference.tl494cn",
+        "verified_manufacturer_part_id": TI_DEVICE_ID,
+        "part_id_translation_only_da1": True,
+        "original_net_names_preserved": True,
+        "source_circuit_net_tuple_identity_preserved": (
+            signed.circuit.nets is source.nets
+        ),
+        "original_netlist_sha256": hashlib.sha256(netlist_data).hexdigest(),
+        "source_component_count": len(source.components),
+        "source_net_count": len(source.nets),
+        "source_physical_pinref_count": sum(
+            len(net.members) for net in source.nets
+        ),
+        "source_original_named_nets": netlist,
+        "tl494_factory_pins": [{
+            "pin_ref": f"{c.pin_ref.reference}.{c.pin_ref.number}",
+            "manufacturer_name": c.manufacturer_pin_name,
+            "display_alias": c.schematic_short_label,
+            "electrical_type": c.electrical_type.value,
+            "source_named_net": c.net_id,
+            "physical_tip_um": [c.world_anchor.x, c.world_anchor.y],
+        } for c in pins],
+        "sealed_source_circuit_sha256": snapshot.circuit_sha256,
+        "source_b_nonphysical_stubs": [{
+            "id": stub.id,
+            "endpoint_id": stub.endpoint_id,
+            "source_pin_ref": f"{stub.pin.reference}.{stub.pin.number}",
+            "start_um": [stub.start.x, stub.start.y],
+            "end_um": [stub.end.x, stub.end.y],
+            "not_electrical_wire_segment": True,
+        } for stub in project.stubs],
+        "font_type_a_sha256": style.font_sha256,
+        "font_cap_height_um": 3500,
+        "clean_green_contacts": _expected_marker_count(result.clean_svg),
+        "diagnostic_green_contacts": _expected_marker_count(
+            result.diagnostic_svg
+        ),
+        "new_route_segments": 0,
+        "new_route_15_of_15_complete": False,
+        "printable_candidate": result.printable_candidate,
+        "whole_sheet_blockers": result.manifest["blockers"],
+        "normative_eskd_approved": False,
+    }
+    return witness
+
+
+def test_real_cycle14_canonical_signed_source_and_b_print_witness():
+    """Canonical 15 frozen names, 16 TI tips, 2 real b SVG lines, NO release."""
+    witness = _canonical_source_witness(
+        Path(os.environ["IC_TYPE_A_FONT_PATH"])
+    )
+    assert witness["source_component_count"] == 23
+    assert witness["source_net_count"] == 15
+    assert witness["source_physical_pinref_count"] == 62
+    assert len(witness["tl494_factory_pins"]) == 16
+    assert len(witness["source_b_nonphysical_stubs"]) == 2
+    assert witness["original_net_names_preserved"] is True
+    assert witness["source_circuit_net_tuple_identity_preserved"] is True
+    assert witness["clean_green_contacts"] == 0
+    assert witness["diagnostic_green_contacts"] == 16
+    assert witness["new_route_15_of_15_complete"] is False
+    assert witness["printable_candidate"] is False
+    assert {s["source_pin_ref"] for s in witness["source_b_nonphysical_stubs"]} == {
+        "X2.1", "R5.2",
+    }
+    assert {
+        item["name"] for item in witness["source_original_named_nets"]
+    } == set(load_frozen_source()["nets"])
+    contacts = {
+        p["pin_ref"]: p for p in witness["tl494_factory_pins"]
+    }
+    assert contacts["DA1.3"]["manufacturer_name"] == "FEEDBACK"
+    assert contacts["DA1.3"]["electrical_type"] == "input"
+    assert contacts["DA1.13"]["manufacturer_name"] == "OUTPUT CTRL"
+    assert contacts["DA1.13"]["electrical_type"] == "input"
+    assert contacts["DA1.14"]["manufacturer_name"] == "REF"
+    assert contacts["DA1.14"]["electrical_type"] == "power_output"
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--font-file", type=Path, required=True)
@@ -840,6 +1048,11 @@ def main() -> None:
     }
     (args.output_dir / "bridge-manifest.json").write_text(
         json.dumps(snapshot, indent=2, sort_keys=True) + "\n", encoding="utf-8",
+    )
+    witness = _canonical_source_witness(args.font_file)
+    (args.output_dir / "source-physical-witness.json").write_text(
+        json.dumps(witness, ensure_ascii=False, indent=2, sort_keys=True)
+        + "\n", encoding="utf-8",
     )
     print(json.dumps(snapshot, sort_keys=True))
 
