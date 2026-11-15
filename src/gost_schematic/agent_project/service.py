@@ -123,6 +123,44 @@ class ProjectService:
         manifest = model_manifest(snapshot.project, self.catalog)
         return {**self._summary(snapshot), "model": manifest}
 
+    def preflight_design(
+        self, project_id: str, revision: str, *, profile: str = "none",
+    ) -> dict[str, Any]:
+        """Read-only physical/printing subset before any E3 SVG rendering.
+
+        A complete source photo, route optimizer, sheet format, font-ink
+        and full wire-to-graphic DRC are not implemented; never return a
+        print-approved PASS from these partial model-derived checks.
+        """
+        from .design_assistant import preflight_project
+
+        if type(revision) is not str or len(revision) != 64:
+            raise ProjectError("REVISION_REQUIRED", "Exact saved revision SHA required")
+        snapshot = self.open_project(project_id, revision)
+        result = preflight_project(snapshot.project, self.catalog, profile=profile)
+        return {
+            **result,
+            "generation": snapshot.head.generation,
+            "electrical_erc": self._report(snapshot.project, snapshot.head.generation),
+        }
+
+    def preview_placement(
+        self, project_id: str, revision: str, *, reference: str,
+        x_um: int, y_um: int, rotation: int = 0, mirror_x: bool = False,
+        api_version: int = 1,
+    ) -> dict[str, Any]:
+        """Preflight hypothetical placement, never modify original Net/graph or disk."""
+        from .design_selection import preview_placement
+
+        if type(revision) is not str or len(revision) != 64:
+            raise ProjectError("REVISION_REQUIRED", "Exact immutable SHA required")
+        snapshot = self.open_project(project_id, revision)
+        return preview_placement(
+            snapshot.project, self.catalog, reference=reference,
+            x_um=x_um, y_um=y_um, rotation=rotation,
+            mirror_x=mirror_x, api_version=api_version,
+        )
+
     def render_project(
         self, project_id: str, revision: str, *, mode: str = "clean",
         reference: str | None = None, target_dpi: int = 500,

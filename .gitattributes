@@ -1,0 +1,9 @@
+# Frozen source is pinned by its exact Git-blob bytes, not parsed JSON.
+# Git for Windows with core.autocrlf=true must NEVER rewrite either fixture.
+# Do not use EOL normalization as a substitute for signed-source validation.
+/src/gost_schematic/agent_project/data/tl494_ic97_frozen_source.json -text
+/tests/fixtures/ai_tl494_ic97_pinned_source.json -text
+
+# Archived QA owner source blobs are also checked byte-for-byte.
+# Preserve committed bytes, including unusual source text and newlines.
+/tests/fixtures/** -text

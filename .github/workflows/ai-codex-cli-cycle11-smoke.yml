@@ -1,0 +1,126 @@
+name: Cycle13 real Codex CLI binary + original-source read-only MCP smoke
+
+on:
+  pull_request:
+    paths:
+      - "AGENTS.md"
+      - "skills/gost-schematic/SKILL.md"
+      - "src/gost_schematic/agent_project/agent_readiness.py"
+      - "src/gost_schematic/agent_project/owner_source_contract.py"
+      - "src/gost_schematic/agent_project/data/tl494_ic97_frozen_source.json"
+      - "examples/agent_tl494_cycle11_pipeline.py"
+      - "examples/agent_tl494_cycle13_quickstart.py"
+      - "tests/agent_project/test_agent_tl494_cycle13_quickstart.py"
+      - "src/gost_schematic/agent_project/generation_handoff.py"
+      - "tests/agent_project/test_generation_handoff_cycle14.py"
+      - "docs/ai-integration/cycle13-end-user-quickstart.md"
+      - "docs/ai-integration/agent-cycle11-source-driven-walkthrough.md"
+      - ".github/workflows/ai-codex-cli-cycle11-smoke.yml"
+  workflow_dispatch:
+
+jobs:
+  codex-cli-binary-no-model-auth:
+    name: Real Codex CLI + stdio read-only MCP contract (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install actual Python MCP and native source-reader
+        run: python -m pip install -e ".[dev,mcp]"
+      - name: Install PUBLISHED Codex CLI into a disposable runner directory
+        shell: bash
+        run: |
+          mkdir -p output/codex-cycle11 "$RUNNER_TEMP/gse-codex-cli"
+          npm install --prefix "$RUNNER_TEMP/gse-codex-cli" \
+            --no-audit --no-fund --no-save @openai/codex
+          test -x "$RUNNER_TEMP/gse-codex-cli/node_modules/.bin/codex"
+          "$RUNNER_TEMP/gse-codex-cli/node_modules/.bin/codex" --version \
+            > output/codex-cycle11/codex-version.txt
+      - name: Real Codex CLI MCP registry syntax, no model authorization
+        shell: bash
+        env:
+          CODEX_HOME: ${{ runner.temp }}/gse-codex-cycle11-config
+        run: |
+          mkdir -p "$CODEX_HOME"
+          CODEX_BIN="$RUNNER_TEMP/gse-codex-cli/node_modules/.bin/codex"
+          "$CODEX_BIN" mcp add gost-schematic-readonly -- \
+            python -m gost_schematic.mcp_server
+          "$CODEX_BIN" mcp list > output/codex-cycle11/mcp-list.txt
+          grep -q gost-schematic-readonly output/codex-cycle11/mcp-list.txt
+          "$CODEX_BIN" exec --help > output/codex-cycle11/codex-exec-help.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("output/codex-cycle11")
+          version = (root / "codex-version.txt").read_text().strip()
+          names = (root / "mcp-list.txt").read_text()
+          help_text = (root / "codex-exec-help.txt").read_text()
+          assert "codex" in version.lower()
+          assert "gost-schematic-readonly" in names
+          assert "python" in names and "gost_schematic.mcp_server" in names
+          assert "Usage:" in help_text or "usage:" in help_text
+          proof = {
+              "schema_version": 1,
+              "codex_binary_invoked": True,
+              "codex_version": version,
+              "codex_mcp_registration": "PASS",
+              "codex_exec_model_call": "BLOCKED_NO_AUTH_OR_VERIFIED_15NET_WRITER",
+              "mcp_server_mode": "read_only",
+              "agent_created_full_source_23part_sheet": False,
+              "generated_full_new_15net_print": False,
+          }
+          (root / "codex-cli-proof.json").write_text(
+              json.dumps(proof, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+      - name: Actual independent MCP ClientSession stdout with physical negatives
+        run: |
+          python -m pytest -q \
+            tests/agent_project/test_tl494_catalog_preflight_stdio.py \
+            tests/agent_project/test_tl494_ai_selection_cycle9.py \
+            tests/agent_project/test_tl494_owner_contract_cycle11.py \
+            tests/agent_project/test_tl494_owner_pipeline_cycle11.py \
+            tests/agent_project/test_generation_handoff_cycle14.py \
+            tests/agent_project/test_agent_tl494_cycle13_quickstart.py
+      - name: Cycle13 real end-user native MCP quickstart — no Codex model call
+        shell: bash
+        run: |
+          python -m examples.agent_tl494_cycle13_quickstart             --out output/codex-cycle11/physical-source-quickstart             > output/codex-cycle11/physical-source-quickstart-stdout.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("output/codex-cycle11")
+          proof = json.loads((root / "physical-source-quickstart-stdout.json").read_text())
+          assert proof["status"] == "BLOCKED_PARTIAL"
+          assert proof["actual_native_mcp_client_session"] is True
+          assert proof["source_netlist_user_approval"] == "USER_REVIEW_REQUIRED"
+          assert proof["refusal_tests_passed"] == 11
+          assert proof["generation_handoff_status"] == "BLOCKED_GENERATOR_NOT_INTEGRATED"
+          assert proof["original_net_count"] == 15
+          assert proof["original_pinref_member_count"] == 62
+          assert proof["actual_codex_cli_llm_session"] is False
+          assert proof["complete_print_clean_svg_available"] is False
+          assert proof["full_print_drc_executed"] is False
+          assert proof["mcp_write_tool_enabled"] is False
+          assert proof == json.loads(
+              (root / "physical-source-quickstart/source-quickstart-report.json"
+              ).read_text()
+          )
+          PY
+      - name: Archive true Codex CLI configuration & proof (NO model call)
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-cli-mcp-cycle11-python-${{ matrix.python }}
+          path: output/codex-cycle11/
+          retention-days: 30
+          if-no-files-found: error

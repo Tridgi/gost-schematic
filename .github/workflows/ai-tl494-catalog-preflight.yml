@@ -1,0 +1,514 @@
+name: AI TL494 source-pinned catalog and preflight MCP
+
+on:
+  pull_request:
+    paths:
+      - "AGENTS.md"
+      - "skills/gost-schematic/SKILL.md"
+      - "src/gost_schematic/agent_project/design_assistant.py"
+      - "src/gost_schematic/agent_project/agent_readiness.py"
+      - "src/gost_schematic/agent_project/owner_source_contract.py"
+      - "src/gost_schematic/agent_project/owner_api_locks.py"
+      - "src/gost_schematic/agent_project/data/tl494_cycle12_owner_locks.json"
+      - "src/gost_schematic/agent_project/data/tl494_ic97_frozen_source.json"
+      - "pyproject.toml"
+      - "scripts/verify_wheel_payload.py"
+      - "src/gost_schematic/agent_project/service.py"
+      - "src/gost_schematic/mcp_server/saved_projects.py"
+      - "tests/agent_project/test_tl494_catalog_preflight*.py"
+      - "tests/agent_project/test_tl494_ai_selection_cycle9.py"
+      - "tests/agent_project/test_agent_readiness_cli.py"
+      - "tests/agent_project/test_tl494_owner_contract_cycle11.py"
+      - "tests/agent_project/test_tl494_owner_pipeline_cycle11.py"
+      - "tests/agent_project/test_owner_api_locks_cycle12.py"
+      - "tests/fixtures/ai_tl494_ic97_pinned_source.json"
+      - "tests/agent_project/test_agent_guidance_contract.py"
+      - "examples/agent_tl494_catalog_preflight_mcp.py"
+      - "examples/agent_readiness_readonly.py"
+      - "examples/agent_tl494_cycle11_pipeline.py"
+      - "examples/agent_tl494_cycle13_quickstart.py"
+      - "tests/agent_project/test_agent_tl494_cycle13_quickstart.py"
+      - "tests/agent_project/test_retry_contract_cycle14.py"
+      - "tests/agent_project/test_generation_handoff_cycle14.py"
+      - "tests/agent_project/test_windows_signed_source_checkout_cycle14.py"
+      - ".gitattributes"
+      - "src/gost_schematic/agent_project/generation_handoff.py"
+      - "src/gost_schematic/agent_project/cycle16_owner_proof.py"
+      - "examples/agent_tl494_cycle16_owner_proof.py"
+      - "tests/agent_project/test_cycle16_owner_proof.py"
+      - "src/gost_schematic/agent_project/retry_contract.py"
+      - "docs/ai-integration/cycle14-readonly-retry-and-future-generator-contract.md"
+      - "docs/ai-integration/cycle13-end-user-quickstart.md"
+      - "docs/ai-integration/tl494-catalog-and-preflight-issue107.md"
+      - "docs/ai-integration/agent-readiness-cli-v01.md"
+      - "docs/ai-integration/agent-cycle11-source-driven-walkthrough.md"
+      - ".github/workflows/ai-tl494-catalog-preflight.yml"
+  workflow_dispatch:
+
+jobs:
+  actual-readonly-mcp:
+    name: Real catalog MCP + TL494 print preflight (${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install actual source catalog and real MCP transport
+        run: python -m pip install -e ".[dev,mcp]"
+      - name: Ruff
+        run: python -m ruff check .
+      - name: Actual stdio ClientSession and engineering unit tests
+        run: |
+          python -m pytest -q \
+            tests/agent_project/test_tl494_catalog_preflight.py \
+            tests/agent_project/test_tl494_catalog_preflight_stdio.py \
+            tests/agent_project/test_tl494_ai_selection_cycle9.py \
+            tests/agent_project/test_agent_readiness_cli.py \
+            tests/agent_project/test_agent_guidance_contract.py \
+            tests/agent_project/test_tl494_owner_contract_cycle11.py \
+            tests/agent_project/test_tl494_owner_pipeline_cycle11.py \
+            tests/agent_project/test_owner_api_locks_cycle12.py \
+            tests/agent_project/test_agent_tl494_cycle13_quickstart.py \
+            tests/agent_project/test_retry_contract_cycle14.py \
+            tests/agent_project/test_generation_handoff_cycle14.py \
+            tests/agent_project/test_cycle16_owner_proof.py \
+            tests/agent_project/test_windows_signed_source_checkout_cycle14.py \
+            tests/agent_project/test_mcp_saved_stdio.py
+      - name: Real native MCP sample gallery and six-part print preflight
+        shell: bash
+        run: |
+          mkdir -p output
+          python -m examples.agent_tl494_catalog_preflight_mcp \
+            --workspace output/tl494-catalog-evidence \
+            --project-id "24d49302-621b-46a6-9505-8af5be248ab8" \
+            --idempotency-key "c623dd5a-a14a-4a1a-a85b-2cead3c86f63" \
+            > output/tl494-catalog-client-proof.json
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          report = json.loads(Path("output/tl494-catalog-client-proof.json").read_text())
+          assert report["transport"] == "real stdio MCP ClientSession"
+          assert report["codex_cli_used"] is False
+          assert report["python_bootstrap_not_mcp_write"] is True
+          assert report["source_locked_reference_count"] == 13
+          assert report["catalog_selection_all_parts_SHA_verified"] is True
+          assert report["placement_proposal"]["commit_authorized"] is False
+          assert report["placement_proposal"]["model_or_head_mutated"] is False
+          assert any(d["code"] == "CONNECTED_PIN_RELOCATION_BLOCKED"
+                     for d in report["placement_proposal"]["diagnostics"])
+          assert len(report["tl494_profile"]["required_variants"]) == 13
+          assert report["tl494_profile"]["frozen_source_git_commit_sha"] == (
+              "e695c415fdced164b0e0c39c5249d030795a0aa6"
+          )
+          assert report["selected_physical_symbol_variants"]["resistor.variable"][
+              "physical_pin_count"
+          ] == 3
+          assert report["tl494_profile"]["tl494_device_catalog"] == "NOT_IN_INSTALLED_P11_CATALOG"
+          assert report["tl494_aliases"]["FEEDBACK"]["display_alias"] == "FB"
+          assert report["tl494_aliases"]["OUTPUT CTRL"]["display_alias"] == "OC"
+          assert report["saved_sixpart_preflight"]["print_ready"] is False
+          assert report["misprofiled_sixpart_tl494_preflight"]["print_ready"] is False
+          refs = {d["code"] for d in
+                  report["misprofiled_sixpart_tl494_preflight"]["diagnostics"]}
+          assert "TL494_UGO_VARIANT_MISMATCH" in refs
+          assert "TL494_REQUIRED_COMPONENT_MISSING" in refs
+          for part, hashes in report["selected_physical_symbol_variants"].items():
+              for ext in ("svg", "png"):
+                  path = Path("output/tl494-catalog-evidence/client-evidence") / (part+"."+ext)
+                  assert path.is_file()
+                  assert hashlib.sha256(path.read_bytes()).hexdigest() == hashes[ext+"_sha256"]
+          for ext in ("svg", "png"):
+              path = Path("output/tl494-catalog-evidence/client-evidence") / (
+                  "saved-c3-diagnostic."+ext
+              )
+              assert path.exists()
+              assert hashlib.sha256(path.read_bytes()).hexdigest() == report[
+                  "project_diagnostic_"+ext+"_sha256"
+              ]
+          print("MCP project SHA:", report["project_revision"])
+          print("Source-locked variants:", sorted(report["selected_physical_symbol_variants"]))
+          PY
+      - name: Real typed AI CLI physical Net/Pins and fail-closed evidence
+        shell: bash
+        run: |
+          python -m examples.agent_readiness_readonly \
+            --workspace output/agent-readiness             > output/agent-readiness-proof.json
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("output/agent-readiness-proof.json").read_text())
+          assert report["generator_implemented"] is False
+          assert report["mcp_write_tools_enabled"] is False
+          assert report["project_model_unchanged"] is True
+          assert report["accepted_review"]["status"] == "READ_ONLY_MODEL_MATCH"
+          assert report["accepted_review"]["ready_to_generate"] is False
+          assert report["accepted_review"]["component_count"] == 6
+          assert report["accepted_review"]["net_count"] == 5
+          assert report["incomplete_net_denial"]["code"] == "REQUEST_NET_MEMBERSHIP_MISMATCH"
+          assert report["malicious_write_intent_denial"]["code"] == "REQUEST_INTENT_UNSUPPORTED"
+          assert report["unauthorized_project_denial"]["code"] == "PROJECT_ACCESS_DENIED"
+          assert report["exit_statuses"] == [0, 3, 3, 3]
+          assert len(report["project_revision"]) == 64
+          evidence = Path("output/agent-readiness/readiness-client-evidence/proof.json")
+          assert evidence.is_file()
+          assert json.loads(evidence.read_text()) == report
+          snapshot = Path("output/agent-readiness/projects") / (
+              "d3597e28-c8d8-46f6-8473-a0d03b520c9a"
+          )
+          head = snapshot / "HEAD.json"
+          blob = snapshot / "revisions" / (report["project_revision"] + ".gseproj")
+          assert hashlib.sha256(head.read_bytes()).hexdigest() == report[
+              "project_head_sha256"
+          ]
+          assert hashlib.sha256(blob.read_bytes()).hexdigest() == report[
+              "project_blob_sha256"
+          ]
+          print("Typed review/no write project SHA:", report["project_revision"])
+          PY
+      - name: Pin actual IC97 and RECON115 owner HEAD source, never execute owner Python
+        shell: bash
+        run: |
+          mkdir -p output/cycle11-owner
+          git fetch --no-tags --depth=1 origin \
+            7c30c209ea5e97a245844b24a3bbc4d3d30118ea \
+            73025965efeb94585e8723ba3f0b636229e8a5de
+          git show 7c30c209ea5e97a245844b24a3bbc4d3d30118ea:tests/fixtures/tl494_photo_23_frozen_cycle9.json \
+            > output/cycle11-owner/frozen-IC97-source.json
+          git show 7c30c209ea5e97a245844b24a3bbc4d3d30118ea:src/gost_schematic/electrical/tl494cn.py \
+            > output/cycle11-owner/IC97-tl494cn.py
+          git show 73025965efeb94585e8723ba3f0b636229e8a5de:examples/tl494_v5/native_circuit.py \
+            > output/cycle11-owner/RECON115-native-circuit.py
+          git show 7c30c209ea5e97a245844b24a3bbc4d3d30118ea:examples/tl494_cycle9_circuit_integration.py \
+            > output/cycle11-owner/IC97-typed-integration.py
+          git show 73025965efeb94585e8723ba3f0b636229e8a5de:examples/tl494_v5/cycle11_ti_bridge.py \
+            > output/cycle11-owner/RECON115-typed-ti-bridge.py
+          git show 73025965efeb94585e8723ba3f0b636229e8a5de:examples/tl494_v5/cycle11_b_continuation.py \
+            > output/cycle11-owner/RECON115-typed-b-continuation.py
+          test "$(git hash-object output/cycle11-owner/frozen-IC97-source.json)" = \
+            "a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65"
+          test "$(git hash-object src/gost_schematic/agent_project/data/tl494_ic97_frozen_source.json)" = \
+            "a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65"
+      - name: Real full 23/15/62 source → native MCP choices → strictly BLOCKED typed pipeline
+        shell: bash
+        run: |
+          python -m examples.agent_tl494_cycle11_pipeline \
+            --owner-fixture output/cycle11-owner/frozen-IC97-source.json \
+            --ic-header output/cycle11-owner/IC97-tl494cn.py \
+            --recon-header output/cycle11-owner/RECON115-native-circuit.py \
+            --ic-integration output/cycle11-owner/IC97-typed-integration.py \
+            --recon-ti-bridge output/cycle11-owner/RECON115-typed-ti-bridge.py \
+            --recon-b-continuation output/cycle11-owner/RECON115-typed-b-continuation.py \
+            --out output/cycle11-original-source-proof \
+            > output/cycle11-source-pipeline-report.json
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          proof = json.loads(Path("output/cycle11-source-pipeline-report.json").read_text())
+          assert proof["status"] == "BLOCKED_15NET_NOT_ROUTED"
+          owner = proof["cycle12_exact_owner_api_locks"]
+          assert owner["status"] == "PASS_SOURCE_AND_OWNER_BYTES_ONLY_PRINT_BLOCKED"
+          assert owner["physical_components"] == 23
+          assert owner["physical_nets"] == 15
+          assert owner["physical_pinref_memberships"] == 62
+          assert owner["da1_all_16_physical_pins"] is True
+          assert owner["source_b_exact_marker_bindings"] == {
+              "b-X2": "X2.1", "b-R5": "R5.2"
+          }
+          assert len(owner["verified_git_blob_sha1"]) == 6
+          assert owner["owner_code_executed"] is False
+          assert owner["new_15_of_15_route_verified"] is False
+          assert owner["mcp_arbitrary_write_enabled"] is False
+          assert proof["real_source_23_15_62_verified"] is True
+          assert proof["source_components_count"] == 23
+          assert proof["source_nets_count"] == 15
+          assert proof["source_pinrefs_count"] == 62
+          assert proof["da1_16_contacts"] is True
+          assert proof["typed_readiness"]["status"] == "BLOCKED_SOURCE_NOT_IMPORTABLE"
+          assert proof["typed_readiness"]["frozen_original_pinref_membership_verified"]
+          assert proof["typed_readiness_exit"] == 2
+          assert proof["missing_net_reject_code"] == "SOURCE_NET_INVENTORY_INCOMPLETE"
+          assert proof["missing_net_reject_exit"] == 3
+          assert proof["owner_part_id_bridge"]["reversible"]
+          assert proof["owner_cycle11_bridge"]["status"] == "PINNED_OWNER_AST_INTERFACES_MATCH"
+          assert proof["owner_cycle11_bridge"]["owner_code_imported_or_executed"] is False
+          assert proof["owner_cycle11_bridge"]["source_b_nonphysical_marker_bindings"] == {
+              "b-X2": "X2.1", "b-R5": "R5.2"
+          }
+          assert proof["owner_cycle11_bridge"]["b_physical_pins"] == [
+              "FU1.2", "R5.2", "X2.1"
+          ]
+          assert proof["typed_readiness"]["frozen_original_nominals_verified"]
+          assert proof["typed_readiness"]["frozen_original_bom_part_ids_verified"]
+          assert proof["reversible_net_display"][
+              "reversible_to_original_physical_15_net_memberships"
+          ]
+          assert not proof["print_ready"] and not proof["new_print_svg_generated"]
+          assert not proof["new_print_png300dpi_generated"]
+          assert proof["route_completed_nets"] == 0 and not proof["route_tool_called"]
+          assert not proof["mcp_write_tool_enabled"] and not proof["autonomous_codex_model_run"]
+          assert len(proof["real_UGO_samples"]) == 7
+          for part, source in proof["real_UGO_samples"].items():
+              for ext in ("svg", "png"):
+                  raw = (Path("output/cycle11-original-source-proof") / (
+                      part + "." + ext
+                  )).read_bytes()
+                  assert hashlib.sha256(raw).hexdigest() == source[
+                      "real_" + ext + "_sha256"
+                  ]
+          assert json.loads(Path(
+              "output/cycle11-original-source-proof/source-pipeline-report.json"
+          ).read_text()) == proof
+          print("Authentic original physical source Git blob:", proof[
+              "source_fixture_git_blob_sha1"
+          ])
+          print("Immutable original typed manifest SHA:", proof[
+              "source_typed_manifest_sha256"
+          ])
+          print("15/15 route: BLOCKED, no image-only success")
+          PY
+      - name: Cycle13 end-user one-command original TL494 native MCP+CLI and 11 refusals
+        shell: bash
+        run: |
+          python -m examples.agent_tl494_cycle13_quickstart --help             > output/cycle13-quickstart-help.txt
+          python -m examples.agent_tl494_cycle13_quickstart             --out output/tl494-cycle13-user             > output/cycle13-quickstart-stdout.json
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          root = Path("output/tl494-cycle13-user")
+          data = json.loads(Path("output/cycle13-quickstart-stdout.json").read_text())
+          assert data == json.loads((root / "source-quickstart-report.json").read_text())
+          assert data["status"] == "BLOCKED_PARTIAL"
+          assert data["source_netlist_user_approval"] == "USER_REVIEW_REQUIRED"
+          assert data["physical_component_count"] == 23
+          assert data["original_net_count"] == 15
+          assert data["original_pinref_member_count"] == 62
+          assert data["actual_native_mcp_client_session"]
+          assert not data["actual_codex_cli_llm_session"]
+          assert data["actual_catalog_ugo_glyphs_svg_png"] == 14
+          assert data["refusal_tests_passed"] == data["refusal_tests_total"] == 11
+          assert not data["full_15_net_route_available"]
+          assert data["new_routed_net_count"] == 0
+          assert not data["full_print_drc_executed"]
+          assert not data["mcp_write_tool_enabled"]
+          assert not data["atomic_write_transactions_available"]
+          for filename, evidence in data["artifacts"].items():
+              raw = (root / filename).read_bytes()
+              assert len(raw) == evidence["bytes"]
+              assert hashlib.sha256(raw).hexdigest() == evidence["sha256"]
+          request = json.loads((root / "source-typed-request.json").read_text())
+          assert len(request["components"]) == 23 and len(request["nets"]) == 15
+          assert sum(len(x["members"]) for x in request["nets"]) == 62
+          print("Cycle13 actual native MCP+typed CLI original source PASS, full print BLOCKED")
+          PY
+      - name: Build wheel and verify package payload
+        run: |
+          python -m pip wheel . --no-deps --wheel-dir dist
+          python scripts/verify_wheel_payload.py dist
+      - name: Fresh wheel install in isolated venv outside checkout
+        shell: bash
+        run: |
+          python -m venv "$RUNNER_TEMP/gse-ai-cycle12-wheel"
+          "$RUNNER_TEMP/gse-ai-cycle12-wheel/bin/python" -m pip install \
+            --no-deps "$GITHUB_WORKSPACE"/dist/gost_schematic-*.whl
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/gse-ai-cycle12-wheel/bin/python" - \
+            > "$GITHUB_WORKSPACE/output/cycle12-fresh-wheel-report.json" <<'PY'
+          import json
+          import pathlib
+          import gost_schematic
+          from importlib.resources import files
+          from gost_schematic.agent_project.agent_readiness import review_request
+          from gost_schematic.agent_project.catalog import CatalogResolver, ProjectError
+          from gost_schematic.agent_project.design_assistant import TL494_REQUIRED_PARTS
+          from gost_schematic.agent_project.owner_api_locks import load_pinned_owner_lock_manifest
+          from gost_schematic.agent_project.owner_source_contract import verify_frozen_owner_fixture
+
+          location = pathlib.Path(gost_schematic.__file__).resolve()
+          assert "site-packages" in str(location), location
+          raw = files("gost_schematic").joinpath(
+              "agent_project", "data", "tl494_ic97_frozen_source.json"
+          ).read_bytes()
+          catalog = CatalogResolver()
+          source = verify_frozen_owner_fixture(raw, catalog)
+          locks = load_pinned_owner_lock_manifest()
+          assert source["source_fixture_git_blob_sha1"] == (
+              "a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65"
+          )
+          assert len(locks["file_locks"]) == 6
+          components = []
+          for c in source["source_components"]:
+              ref = c["reference"]
+              part = c["part_id"] if ref in TL494_REQUIRED_PARTS else None
+              sha = catalog.lock(part) if part else None
+              components.append({
+                  "reference": ref, "source_part_id": c["part_id"],
+                  "nominal_si": c["nominal_si"], "part_id": part,
+                  "part_sha256": sha["part_sha256"] if sha else None,
+                  "symbol_sha256": sha["symbol_sha256"] if sha else None,
+              })
+          nets = [
+              {"name": name, "members": [
+                  {"reference": p.rsplit(".", 1)[0], "number": p.rsplit(".", 1)[1]}
+                  for p in pins
+              ]} for name, pins in source["source_nets"].items()
+          ]
+          request = {
+              "schema_version": 1, "intent": "tl494_reconstruction",
+              "source_sha": source["source_commit"], "project_id": None,
+              "expected_revision": None, "expected_generation": None,
+              "components": components, "nets": nets, "max_route_attempts": 0,
+              "outputs": ["bom", "netlist", "drc", "svg_clean", "png_300dpi"],
+          }
+          result = review_request(request)
+          assert result["status"] == "BLOCKED_SOURCE_NOT_IMPORTABLE"
+          assert result["component_count"] == 23 and result["net_count"] == 15
+          assert result["submitted_pinref_count"] == 62
+          assert result["frozen_original_nominals_verified"]
+          assert result["frozen_original_pinref_membership_verified"]
+          assert result["frozen_original_bom_part_ids_verified"]
+          assert not result["ready_to_generate"] and not result["mutated"]
+          invalid = json.loads(json.dumps(request))
+          invalid["nets"][-1]["members"][0]["number"] = "99"
+          try:
+              review_request(invalid)
+              raise AssertionError("Altered physical Net/Pins must be rejected")
+          except ProjectError as exc:
+              assert exc.code in (
+                  "REQUEST_INVALID_PHYSICAL_PIN", "SOURCE_NET_MEMBERSHIP_MISMATCH",
+              )
+          print(json.dumps({
+              "status": "FRESH_WHEEL_SOURCE_MATCH_PRINT_BLOCKED",
+              "installed_package": str(location),
+              "physical_components": 23, "original_nets": 15, "pinrefs": 62,
+              "original_source_blob_sha1": source["source_fixture_git_blob_sha1"],
+              "locked_owner_heads": locks["owner_heads"],
+              "cli_source_validated": True, "physical_negative_rejected": True,
+              "route_15_of_15_verified": False,
+              "print_ready": False, "mcp_write_enabled": False,
+          }, sort_keys=True))
+          PY
+      - name: Cycle14 standalone installed-wheel native MCP user quickstart
+        shell: bash
+        run: |
+          python -m venv "$RUNNER_TEMP/gse-cycle14-standalone"
+          PY="$RUNNER_TEMP/gse-cycle14-standalone/bin/python"
+          WHEEL="$(find "$GITHUB_WORKSPACE/dist" -maxdepth 1 -name 'gost_schematic-*.whl' -print -quit)"
+          test -f "$WHEEL"
+          "$PY" -m pip install "${WHEEL}[mcp]"
+          cd "$RUNNER_TEMP"
+          "$PY" - <<'PY'
+          import importlib.util
+          from pathlib import Path
+          for name in (
+              "gost_schematic.agent_project.agent_readiness",
+              "examples.agent_tl494_cycle11_pipeline",
+              "examples.agent_tl494_cycle13_quickstart",
+              "examples.agent_tl494_cycle16_owner_proof",
+              "gost_schematic.agent_project.cycle16_owner_proof",
+          ):
+              spec = importlib.util.find_spec(name)
+              assert spec is not None and spec.origin
+              origin = Path(spec.origin).resolve()
+              assert "site-packages" in str(origin), (name, origin)
+              assert not origin.is_relative_to(Path(__import__("os").environ["GITHUB_WORKSPACE"]))
+          PY
+          "$PY" -m examples.agent_tl494_cycle13_quickstart \
+            --out "$RUNNER_TEMP/gse-cycle14-wheel-native-evidence" \
+            > "$GITHUB_WORKSPACE/output/cycle14-installed-wheel-quickstart.json"
+          "$PY" - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          output = Path(os.environ["RUNNER_TEMP"]) / "gse-cycle14-wheel-native-evidence"
+          report = json.loads(
+              (Path(os.environ["GITHUB_WORKSPACE"]) /
+               "output/cycle14-installed-wheel-quickstart.json").read_text()
+          )
+          assert json.loads((output / "source-quickstart-report.json").read_text()) == report
+          assert report["status"] == "BLOCKED_PARTIAL"
+          assert (report["physical_component_count"], report["original_net_count"],
+                  report["original_pinref_member_count"]) == (23, 15, 62)
+          assert report["actual_native_mcp_client_session"] is True
+          assert report["actual_codex_cli_llm_session"] is False
+          assert report["refusal_tests_passed"] == report["refusal_tests_total"] == 11
+          assert report["full_15_net_route_available"] is False
+          assert report["mcp_write_tool_enabled"] is False
+          assert report["source_netlist_user_approval"] == "USER_REVIEW_REQUIRED"
+          assert len(report["blocked_stage_diagnostics"]) == 5
+          handoff = json.loads((output / "source-generation-handoff.json").read_text())
+          assert handoff["status"] == "BLOCKED_GENERATOR_NOT_INTEGRATED"
+          assert (handoff["source_component_count"], handoff["source_net_count"],
+                  handoff["source_pinref_memberships"], handoff["source_da1_pin_count"]
+                  ) == (23, 15, 62, 16)
+          assert len(handoff["stages"]) == 7
+          assert not handoff["print_ready"] and not handoff["mcp_write_tools_enabled"]
+          assert all(not d["mcp_write_allowed"] and not d["retryable_read_only"]
+                     for d in report["blocked_stage_diagnostics"])
+          refusals = json.loads((output / "refusal-tests.json").read_text())
+          assert len(refusals) == 11
+          assert all(not row["diagnostic"]["mcp_write_allowed"]
+                     for row in refusals)
+          for name, meta in report["artifacts"].items():
+              blob = (output / name).read_bytes()
+              assert hashlib.sha256(blob).hexdigest() == meta["sha256"]
+          print("Installed-wheel real MCP and fail-closed CLI: PASS; full print BLOCKED")
+          PY
+          cp -a "$RUNNER_TEMP/gse-cycle14-wheel-native-evidence" \
+            "$GITHUB_WORKSPACE/output/cycle14-installed-wheel-evidence"
+          # A real installed, non-editable wheel must expose the read-only
+          # Cycle16 owner-consumer CLI even when no external owner manifest
+          # exists. Missing proof is BLOCKED, never a fabricated 15-Net route.
+          "$PY" -m examples.agent_tl494_cycle16_owner_proof \
+            --out "$RUNNER_TEMP/gse-cycle16-installed-wheel-no-owner" \
+            > "$GITHUB_WORKSPACE/output/cycle16-installed-wheel-no-owner.json"
+          "$PY" - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          folder = Path(os.environ["RUNNER_TEMP"]) / "gse-cycle16-installed-wheel-no-owner"
+          report = json.loads((folder / "source-c16-owner-candidate-proof.json").read_text())
+          assert report["status"] == "BLOCKED_NO_OWNER_C15_PROOF"
+          assert report["source_snapshot"]["original_nets"] == 15
+          assert report["source_snapshot"]["physical_pinrefs"] == 62
+          assert report["mcp_write_tools_enabled"] is False
+          assert report["print_ready"] is False
+          PY
+          cp -a "$RUNNER_TEMP/gse-cycle16-installed-wheel-no-owner" \
+            "$GITHUB_WORKSPACE/output/cycle16-installed-wheel-no-owner"
+
+      - name: Archive actual UGO glyphs and project diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-tl494-catalog-evidence-python-${{ matrix.python }}
+          path: |
+            output/tl494-catalog-client-proof.json
+            output/tl494-catalog-evidence/client-evidence/
+            output/tl494-catalog-evidence/projects/
+            output/agent-readiness-proof.json
+            output/agent-readiness/readiness-client-evidence/
+            output/agent-readiness/projects/
+            output/cycle11-owner/
+            output/cycle11-source-pipeline-report.json
+            output/cycle12-fresh-wheel-report.json
+            output/cycle11-original-source-proof/
+            output/tl494-cycle13-user/
+            output/cycle13-quickstart-stdout.json
+            output/cycle13-quickstart-help.txt
+            output/cycle14-installed-wheel-quickstart.json
+            output/cycle14-installed-wheel-evidence/
+            output/cycle16-installed-wheel-no-owner.json
+            output/cycle16-installed-wheel-no-owner/
+          if-no-files-found: error
+          retention-days: 30

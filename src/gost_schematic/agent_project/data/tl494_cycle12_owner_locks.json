@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "status": "EXACT_OWNER_SOURCE_BLOBS_READ_ONLY_CYCLE12",
+  "repository": "Tridgi/gost-schematic",
+  "frozen_source_git_sha": "e695c415fdced164b0e0c39c5249d030795a0aa6",
+  "owner_heads": {
+    "IC97": "7c30c209ea5e97a245844b24a3bbc4d3d30118ea",
+    "RECON115": "73025965efeb94585e8723ba3f0b636229e8a5de",
+    "NET114": "a370d637fe67ec44870899d503f53c0a6f8ee3af",
+    "PAINT93": "f872ce50ac699ad089391b0bbd58e2cb92f2b7f6"
+  },
+  "file_locks": {
+    "ic_frozen_fixture": {
+      "owner": "IC97",
+      "path": "tests/fixtures/tl494_photo_23_frozen_cycle9.json",
+      "git_blob_sha1": "a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65"
+    },
+    "ic_tl494": {
+      "owner": "IC97",
+      "path": "src/gost_schematic/electrical/tl494cn.py",
+      "git_blob_sha1": "80524a5b05e8b2f245911f6699f832e0ee01e31c"
+    },
+    "ic_integration": {
+      "owner": "IC97",
+      "path": "examples/tl494_cycle9_circuit_integration.py",
+      "git_blob_sha1": "b103da5ea80673242466faa88238d30c024cb187"
+    },
+    "recon_native": {
+      "owner": "RECON115",
+      "path": "examples/tl494_v5/native_circuit.py",
+      "git_blob_sha1": "8cf1e1cf7d855fa348d7be993282e05ebfd9e7e6"
+    },
+    "recon_ti_bridge": {
+      "owner": "RECON115",
+      "path": "examples/tl494_v5/cycle11_ti_bridge.py",
+      "git_blob_sha1": "5822732d910e5a844b6ed6347868c86097b97a17"
+    },
+    "recon_b_continuation": {
+      "owner": "RECON115",
+      "path": "examples/tl494_v5/cycle11_b_continuation.py",
+      "git_blob_sha1": "86794e2ac5b471e4d9f882542b1ec639114442f6"
+    }
+  },
+  "constraints": {
+    "source_physical_components": 23,
+    "source_named_nets": 15,
+    "source_pinref_memberships": 62,
+    "source_da1_contacts": 16,
+    "source_original_wires": 91,
+    "source_original_junctions": 37,
+    "source_b_nonphysical_markers": [
+      "b-X2",
+      "b-R5"
+    ],
+    "complete_15_net_route_accepted": false,
+    "full_print_drc_accepted": false,
+    "autonomous_write_mcp_available": false
+  }
+}

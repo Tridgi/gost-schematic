@@ -103,9 +103,27 @@ jobs:
       - name: Install open-license OpenGOST Type A for sample render
         if: matrix.python-version == '3.12'
         run: |
+          # Fixed v0.7 release archive and Type A face are SHA256 pinned by
+          # the installer; no GitHub REST API token, substitute or font vendoring.
           python scripts/install_opengost_type_a.py \
-            --directory "$HOME/.local/share/fonts"
+            --directory "$HOME/.local/share/fonts" \
+            --manifest-out output/opengost-type-a-v07-provenance.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          proof = json.loads(Path("output/opengost-type-a-v07-provenance.json").read_text())
+          assert proof["verified_exact_archive_and_face"] is True
+          assert proof["unverified_substitution_used"] is False
+          assert proof["font_sha256"] == "f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a"
+          PY
           fc-cache -f
+      - name: Upload verified Type A font provenance (no font binaries)
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: opengost-type-a-v07-provenance
+          path: output/opengost-type-a-v07-provenance.json
+          if-no-files-found: error
       - name: Generate GOST Type A capacitor review
         if: matrix.python-version == '3.12'
         run: |

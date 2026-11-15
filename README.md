@@ -38,6 +38,95 @@ automatic component placement and wire routing, comprehensive ERC, formally cert
 ГОСТ font outlines, PDF export, an approved ГОСТ symbol catalog, BOM and document
 composition. These are planned stages, not current features.
 
+## ⚙️ TL494CN — Cycle 13 one-command read-only AI quickstart
+
+A real, reproducible end-user workflow (not a finished circuit):
+
+```bash
+python -m pip install -e ".[dev,mcp]"
+mkdir -p output
+python -m examples.agent_tl494_cycle13_quickstart --out output/tl494-cycle13-user
+```
+
+Use a **new output folder**. The executable verifies the frozen
+23-component, 15-Net, 62-member physical TL494 source and original
+nominals; calls an actual native stdio MCP client; exports 7
+source-locked catalog UGO SVG+PNG pairs; runs 11 real rejected unsafe
+and incorrect JSON inputs; emits a source-verified seven-stage
+`source-generation-handoff.json` for future owner integration (explicitly
+BLOCKED), a SHA256 manifest and strict
+read-only `BLOCKED_PARTIAL` engineering report. Glyphs are not
+a fully routed/printed diagram, and a clean exit is NOT a print PASS.
+The Codex CLI integration requires a separately authorized model
+session. [Copyable command details, artifacts, safety boundaries and
+future full-route gates](docs/ai-integration/cycle13-end-user-quickstart.md).
+The [Cycle14 typed diagnostics and future generator contract](docs/ai-integration/cycle14-readonly-retry-and-future-generator-contract.md)
+defines the exact seven stages and read-only retry policy; writer remains BLOCKED.
+
+**Cycle16 — consume real NET/RECON/PAINT C15 evidence (still read-only):**
+When an authorized owner has generated an actual
+`C15_REAL_TL494_DELIVERY.json` and its native SVG/DRC files, the same
+installed-wheel command supports
+`--owner-c15-dir /path/to/real/C15-output`. It independently checks the
+original named Net/physical PinRef membership, native route counts,
+SHA256-stamped SVG wire identities in both views, all 16 DA1 leads,
+0 vs 16 diagnostic green contact squares and the two exact
+**non-electrical** b lines, including 1µm coordinate drift.
+It writes `source-c16-owner-candidate-proof.json`, **never enables MCP
+writes** and always keeps final print blocked without independent QA.
+A separate non-editable-wheel CLI is
+`python -m examples.agent_tl494_cycle16_owner_proof --owner-c15-dir ... --out NEW_DIR`.
+[Production interface, commands, trust limits and real-owner CI]
+(docs/ai-integration/cycle16-real-c15-proof-consumer.md).
+
+## AI / MCP read-only TL494 engineering workflow (Cycle 12, DRAFT)
+
+The user-source target is the **actual immutable TL494CN E3**:
+23 components, 15 original named physical Nets, 62 `PinRef`
+memberships, all 16 TI DA1 pins, 91 historical wire segments,
+37 historical nodes and two nonphysical `b` continuation markers.
+Frozen reference commit:
+`e695c415fdced164b0e0c39c5249d030795a0aa6`.
+The original 9 DRC ERROR + 32 WARNING are a **negative fixture**,
+not a completed printable drawing.
+
+Present working surfaces: exact installed source-symbol selection
+(`schematic_catalog_search`, `schematic_catalog_select`,
+`schematic_catalog_preview`), true native SVG/PNG catalogue glyph
+previews, saved P1.1 E3 read-only list/open/describe/validate and
+partial preflight/diagnostic render, all via `mcp.ClientSession`
+stdio. The original 23/15/62 physical source and exact original BOM
+nominal strings are verified through the Git-blob locked
+`agent_project.agent_readiness` CLI; unknown Net or silently
+substituted `part_id` is **rejected**, not guessed.
+
+```bash
+python -m pip install -e ".[dev,mcp]"
+python -m pytest -q tests/agent_project/test_agent_readiness_cli.py \
+  tests/agent_project/test_tl494_owner_contract_cycle11.py \
+  tests/agent_project/test_tl494_owner_pipeline_cycle11.py \
+  tests/agent_project/test_owner_api_locks_cycle12.py
+python -m ruff check .
+```
+
+The **real source-to-MCP reproducible operator command**, exact
+IC #97 / RECON #115 HEAD locks, required six source-file arguments
+and generated SHA-checked evidence are specified in the
+[Cycle12 agent walkthrough](docs/ai-integration/agent-cycle11-source-driven-walkthrough.md).
+The [root agent instructions](AGENTS.md) and
+[agent Skill](skills/gost-schematic/SKILL.md) are constraints for an
+assistant, not proof that the language model has built the diagram.
+
+The MAIN3 Cycle12 source-native router checkpoint was **10/15**
+complete (five failed Nets); accepted partial-graph DRC=0 does not
+qualify the full page. A full **15/15 routed, print-clean** native A3
+(or justified A2/multisheet) design, QA 1:1, fully accepted GOST
+figures and authenticated autonomous model transaction pipeline are
+**BLOCKED**. All unapproved UGO remain DRAFT. There are **NO
+arbitrary MCP write/commit tools**. The separate Codex CLI workflow
+tests the real executable and MCP registry without model-based
+schematic construction.
+
 ## Development
 
 Requires Python 3.12+.
