@@ -434,6 +434,13 @@ jobs:
           assert report["full_15_net_route_available"] is False
           assert report["mcp_write_tool_enabled"] is False
           assert report["source_netlist_user_approval"] == "USER_REVIEW_REQUIRED"
+          assert len(report["blocked_stage_diagnostics"]) == 5
+          assert all(not d["mcp_write_allowed"] and not d["retryable_read_only"]
+                     for d in report["blocked_stage_diagnostics"])
+          refusals = json.loads((output / "refusal-tests.json").read_text())
+          assert len(refusals) == 11
+          assert all(not row["diagnostic"]["mcp_write_allowed"]
+                     for row in refusals)
           for name, meta in report["artifacts"].items():
               blob = (output / name).read_bytes()
               assert hashlib.sha256(blob).hexdigest() == meta["sha256"]
