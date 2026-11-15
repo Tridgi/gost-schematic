@@ -331,3 +331,38 @@ def test_direct_b_composer_rejects_1um_forged_physical_start(
             symbols_by_part=real_signed_scene[3],
         )
     assert len(root) == 0
+
+
+def _adversarial_foreign_family_builder(font_path):
+    from gost_schematic.standards.type_a_font import inspect_type_a_font
+
+    return inspect_type_a_font(
+        font_path, h_um=3500, family="Arbitrary Sans",
+        require_family_match=True,
+    )
+
+
+def _adversarial_unverified_family_builder(font_path):
+    from gost_schematic.standards.type_a_font import inspect_type_a_font
+
+    return inspect_type_a_font(
+        font_path, h_um=3500, family="OpenGOST type A",
+        require_family_match=False,
+    )
+
+
+@pytest.mark.parametrize("builder,error", (
+    (_adversarial_foreign_family_builder, "UNKNOWN_SOURCE_FAMILY"),
+    (_adversarial_unverified_family_builder, "OWNER_SELECTOR_NOT_LITERAL"),
+))
+def test_source_type_a_rejects_foreign_or_unverified_declared_family(
+    builder, error, monkeypatch,
+):
+    font_gate = import_module("examples.render_tl494_full_native_cycle9")
+    # Misleading identity metadata alone cannot authorize a foreign family.
+    monkeypatch.setattr(builder, "__name__", "build")
+    monkeypatch.setattr(
+        builder, "__module__", "examples.tl494_ic_paint_reference",
+    )
+    with pytest.raises(ValueError, match=error):
+        font_gate._declared_type_a_family(builder)
