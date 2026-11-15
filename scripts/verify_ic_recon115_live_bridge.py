@@ -1112,6 +1112,59 @@ def test_real_cycle14_canonical_signed_source_and_b_print_witness():
     assert contacts["DA1.14"]["manufacturer_name"] == "REF"
     assert contacts["DA1.14"]["electrical_type"] == "power_output"
 
+def test_real_cycle16_exact_da1_port_escape_and_untrusted_elk_movement():
+    """Current authentic C1+2.5 A3: no ELK node or pin drift is trusted."""
+    _, signed, _, _, _, _, _, _, _ = canonical_signed_tl494_and_b(
+        Path(os.environ["IC_TYPE_A_FONT_PATH"])
+    )
+    contract = export_tl494_router_ports(signed)
+    signed.circuit.nets  # authoritative, never synthesized from routed SVG
+    pins = {p.pin_ref.number: p for p in contract.ports}
+    assert len(pins) == 16
+    assert pins["13"].net_name == "COMMON"
+    assert pins["13"].tip_um == Point(125000, 146250)
+    assert pins["13"].normal == Point(-1, 0)
+    assert pins["13"].own_only_escape_box_um == Box(
+        123200, 145850, 125000, 146650,
+    )
+    assert pins["3"].ti_name == "FEEDBACK"
+    assert pins["3"].electrical_type is IcPinType.INPUT
+    assert pins["13"].ti_name == "OUTPUT CTRL"
+    assert pins["13"].electrical_type is IcPinType.INPUT
+    assert pins["14"].ti_name == "REF"
+    assert pins["14"].electrical_type is IcPinType.POWER_OUTPUT
+    contract.verify_external_layout(
+        signed, proposed_origin_um=contract.part_origin_um,
+        proposed_rotation_deg=contract.rotation_deg,
+        proposed_mirror_x=contract.mirror_x, proposed_ports=contract.ports,
+    )
+    with pytest.raises(
+        ValueError, match="IC_ROUTER_EXTERNAL_PART_REBIND_REQUIRED",
+    ):
+        contract.verify_external_layout(
+            signed,
+            proposed_origin_um=contract.part_origin_um + Point(1, 0),
+            proposed_rotation_deg=contract.rotation_deg,
+            proposed_mirror_x=contract.mirror_x,
+            proposed_ports=contract.ports,
+        )
+    moved_thirteenth = replace(
+        pins["13"], tip_um=pins["13"].tip_um + Point(1, 0),
+    )
+    proposal = tuple(
+        moved_thirteenth if p.pin_ref.number == "13" else p
+        for p in contract.ports
+    )
+    with pytest.raises(
+        ValueError, match="IC_ROUTER_EXTERNAL_ABSOLUTE_TIP_DRIFT",
+    ):
+        contract.verify_external_layout(
+            signed, proposed_origin_um=contract.part_origin_um,
+            proposed_rotation_deg=contract.rotation_deg,
+            proposed_mirror_x=contract.mirror_x, proposed_ports=proposal,
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--font-file", type=Path, required=True)
