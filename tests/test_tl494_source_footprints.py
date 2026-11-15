@@ -397,7 +397,7 @@ def test_debug_pin_marker_real_tip_on_exact_one_micrometre():
 
 @pytest.mark.parametrize("coords,pin,size,code", (
     (("0", "0"), "1", "1.2", "UGO_DEBUG_PIN_TIP"),
-    (("0.634", "-0.325"), "2", "UGO_DEBUG_PIN_UNKNOWN"),
+    (("0.634", "-0.325"), "2", "1.2", "UGO_DEBUG_PIN_UNKNOWN"),
     (("0.634", "-0.325"), "1", "1.3", "UGO_DEBUG_PIN_TIP"),
     (("0.6341", "-0.325"), "1", "1.2", "UGO_MARKER_NOT_EXACT"),
     (("nan", "-0.325"), "1", "1.2", "UGO_MARKER_NOT_EXACT"),
