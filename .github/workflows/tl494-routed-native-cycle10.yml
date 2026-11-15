@@ -119,11 +119,11 @@ jobs:
             examples/render_tl494_compact_new_router_cycle10.py \
             scripts/verify_tl494_compact_cycle10.py \
             tests/test_routed_native_sheet_cycle10.py \
-            tests/test_compact_real_source_cycle12.py \
-            tests/test_signed_routed_source_cycle12.py
+            examples/paint_cycle12_compact_source_contract.py \
+            examples/paint_cycle12_signed_native_contract.py
           pytest -q tests/test_routed_native_sheet_cycle10.py \
-            tests/test_compact_real_source_cycle12.py \
-            tests/test_signed_routed_source_cycle12.py \
+            examples/paint_cycle12_compact_source_contract.py \
+            examples/paint_cycle12_signed_native_contract.py \
             examples/tl494_v5/test_cycle11_ti_bridge.py
       - name: Genuine new NET114 graph -> PAINT full native engine, no old 91 wire reuse
         run: |
