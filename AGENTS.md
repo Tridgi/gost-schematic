@@ -228,6 +228,10 @@ printed sheet. `source_netlist_user_approval=USER_REVIEW_REQUIRED`:
 the agent cannot invent user approval. There is no active Codex
 model session, full-DPI print, 15/15 route, E3 commit or arbitrary
 MCP write. Source proof and a clean process exit are NOT print approval.
+The actual native MCP quickstart now fails closed against an exact
+18-tool allowlist, even when an unknown tool forges a read-only annotation.
+Windows signed JSON/QA fixtures use `.gitattributes` `-text` to preserve
+Git-blob bytes under `core.autocrlf=true` (never skip source SHA checks).
 Cycle14 [typed fail-closed recovery contract](docs/ai-integration/cycle14-readonly-retry-and-future-generator-contract.md)
 allows only one authorized fresh read after a stale P1.1 revision; no retries
 may modify source 23/15/62 or enable an MCP writer.
