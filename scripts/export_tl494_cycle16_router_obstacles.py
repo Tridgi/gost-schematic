@@ -154,9 +154,9 @@ def true_b_graphical_continuations(assembly, font: Path, snapshot: dict) -> list
 
     from examples.tl494_v5.cycle11_b_continuation import rebind_true_source_b
     from examples.tl494_v5.route_candidate_driver import (
+        load_original_owner_fixture,
         restore_original_named_nets,
         source_signed_ink_footprint,
-        load_original_owner_fixture,
     )
 
     frozen, _binding = load_original_owner_fixture()
