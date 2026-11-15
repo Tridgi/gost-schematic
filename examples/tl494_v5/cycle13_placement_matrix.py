@@ -16,14 +16,15 @@ from examples.tl494_v5.compact_layout import compact_source_assembly
 from examples.tl494_v5.route_candidate_driver import (
     ORIGINAL_BAD_DRC,
     OWNER_SHAS,
+    REAL_SOURCE_NAMES,
     SOURCE_SHA,
     Candidate,
-    candidate_priority,
     load_original_owner_fixture,
     position_only_move,
     restore_original_named_nets,
     run_candidate,
 )
+from examples.tl494_v5.routed_graph_contract import rehydrate_verified_route_graph
 from gost_schematic.model.circuit import PinRef
 
 # Actual reported paper/ink bottlenecks were DA1.3/6/13/15, VT1.1/R8.1
@@ -105,7 +106,10 @@ def run_placement_matrix(
             raise ValueError("C13_PLACEMENT_MOVED_PHYSICAL_PINREFS")
         trial = run_candidate(
             font_file,
-            Candidate("short-first", candidate_priority(frozen, "short-first"), changes),
+            Candidate(
+                "congested-veto", REAL_SOURCE_NAMES, changes,
+                router_mode="congested-veto",
+            ),
             node_cap=node_cap, frozen=frozen, owner_binding=owner,
         )
         if trial["source_nets"] != {
@@ -113,6 +117,8 @@ def run_placement_matrix(
             for name, pins in original_nets.items()
         }:
             raise ValueError("C13_PLACEMENT_SOURCE_NAME_OR_PINREF_DRIFT")
+        if trial["status"] != "BLOCKED_LAYOUT_NO_ROUTE_ATTEMPT":
+            rehydrate_verified_route_graph(trial, frozen["nets"])
         variants.append(summarize_trial(key, trial))
     result = {
         "schema": "C13_SOURCE_LOCKED_PHYSICAL_A3_PLACEMENT_MATRIX_V1",
