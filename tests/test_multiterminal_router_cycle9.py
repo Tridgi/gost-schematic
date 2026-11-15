@@ -1,5 +1,6 @@
 """Multi-terminal source-real PinRef tree connectivity and unsafe routing gates."""
 from dataclasses import replace
+from itertools import pairwise
 
 import pytest
 
@@ -7,9 +8,9 @@ from gost_schematic.core.geometry import Box, Line, Point, Rectangle, Side, Styl
 from gost_schematic.core.transforms import Transform
 from gost_schematic.engines.multiterminal_router import (
     _nearest_net_order,
-    _source_priority_name_view,
     _source_ink_collision,
     _source_ink_obstacles,
+    _source_priority_name_view,
     _visibility_path,
     route_circuit_net_trees,
     route_circuit_with_order_fallback,
@@ -225,7 +226,7 @@ def test_cycle12_real_native_lead_cap_creates_only_legal_route_search_lanes():
     assert failure is None, failure
     assert path[0] == start and path[-1] == goal
     assert {point.y for point in path} & {lower, upper}
-    for a, b in zip(path, path[1:]):
+    for a, b in pairwise(path):
         assert a.x == b.x or a.y == b.y
         assert _source_ink_collision(
             WireSegment(a, b, "A"), real,
@@ -267,9 +268,7 @@ def test_cycle12_real_tree_target_window_can_reach_25th_physical_T():
     assert all(
         not forbidden[0].contains_interior(p) for p in routed
     )
-    assert all(a.x == b.x or a.y == b.y for a, b in zip(
-        routed, routed[1:], strict=False,
-    ))
+    assert all(a.x == b.x or a.y == b.y for a, b in pairwise(routed))
 
 
 @pytest.mark.parametrize("offset", (-1, 0.5, True))
