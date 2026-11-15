@@ -5,9 +5,12 @@ on:
     branches: [integration/stage0-12]
     paths:
       - "src/gost_schematic/rendering/routed_native_sheet.py"
+      - "src/gost_schematic/rendering/ic_sheet_composition.py"
       - "src/gost_schematic/rendering/external_wire_sheet.py"
       - "examples/render_tl494_new_router_cycle10.py"
+      - "examples/render_tl494_full_native_cycle9.py"
       - "examples/render_tl494_compact_new_router_cycle10.py"
+      - "examples/paint_cycle12_signed_native_contract.py"
       - "scripts/verify_tl494_compact_cycle10.py"
       - "tests/test_routed_native_sheet_cycle10.py"
       - ".github/workflows/tl494-routed-native-cycle10.yml"
@@ -122,6 +125,8 @@ jobs:
       - name: Ruff plus 9 owner-agnostic hostile new route print cases
         run: |
           ruff check src/gost_schematic/rendering/routed_native_sheet.py \
+            src/gost_schematic/rendering/ic_sheet_composition.py \
+            examples/render_tl494_full_native_cycle9.py \
             examples/render_tl494_new_router_cycle10.py \
             examples/render_tl494_compact_new_router_cycle10.py \
             scripts/verify_tl494_compact_cycle10.py \
