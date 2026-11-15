@@ -147,7 +147,7 @@ def main(argv: list[str] | None = None) -> int:
             }
             # Distinct receipt name per run; never replace an old proof.
             with args.manifest_out.open("x", encoding="utf-8") as output:
-                output.write(json.dumps(receipt, sort_keys=True, indent=2) + "\\n")
+                output.write(json.dumps(receipt, sort_keys=True, indent=2) + "\n")
         print(f"Installed: {destination}")
         print(f"SHA256: {digest}")
         print("License: SIL OFL 1.1; see upstream LICENSE.txt")
