@@ -1,0 +1,234 @@
+"""Render genuine new NET #114 route attempt on 23/15/16 frozen-source Circuit.
+
+The old 91-wire source is used ONLY as input identity/negative baseline.
+New SVG is created entirely through the native typed PAINT engine, consuming
+the actual GlobalRoutePreview.graph. No saved SVG patching or manufactured
+electrical connections. Incomplete routing is BLOCKED even if a PNG exists.
+"""
+import argparse
+import json
+from importlib import import_module
+from pathlib import Path
+
+from examples.render_tl494_full_native_cycle9 import (
+    _compose_frozen_circuit_with_real_type_a,
+    _net_pin_id_map,
+    _real_dependencies,
+    construct_native_paint,
+    transformed_complete_scene,
+)
+from gost_schematic.core.geometry import Box
+from gost_schematic.core.transforms import Transform
+from gost_schematic.model.circuit import PinRef
+from gost_schematic.rendering.ic_hotspots import IcConnectionTarget
+from gost_schematic.rendering.ic_rectangular import (
+    IcFunctionReading,
+    render_resolved_ic,
+)
+from gost_schematic.rendering.routed_native_sheet import (
+    render_routed_native_sheet,
+)
+
+SOURCE_SHA = "e695c415fdced164b0e0c39c5249d030795a0aa6"
+IC97_SHA = "809616e6ab58b80b6386c664405cdb8ef6a99196"
+NET114_SHA = "2c4596e3e2897c5a34618169e4cfa5c3b8c38b43"
+
+
+def render_new_owner_route(
+    out: Path, font_file: Path, *,
+    search_node_cap: int = 25000,
+    d4: bool = False,
+) -> dict:
+    if type(search_node_cap) is not int or search_node_cap <= 0:
+        raise ValueError("PAINT_ROUTE_NODE_CAP_INVALID")
+    (
+        circuit, old_graph, symbols, portrait, _old_unit,
+        style, measurer, policy, b_pair, _ic_record, _catalog,
+    ) = construct_native_paint(font_file)
+    deps = _real_dependencies()
+    from_source = _compose_frozen_circuit_with_real_type_a(
+        deps["compose"], font_file,
+    )
+    parts = dict(from_source[2])
+    device = deps["device"][0]()
+    deps["device"][1](device)
+    parts[device.identifier] = device.to_legacy_part(device.identifier)
+    # Resolve real source 23/15/16/62 from the SAME typed IC+catalog contract
+    # as PAINT. This does not borrow any old exported SVG from the fixture.
+    if (
+        len(circuit.components) != 23
+        or len(circuit.nets) != 15
+        or sum(len(net.members) for net in circuit.nets) != 62
+        or len(old_graph.segments) != 91
+        or len(portrait.pins) != 16
+    ):
+        raise ValueError("PAINT_NEW_ROUTE_FROZEN_23_15_16_62_91_DRIFT")
+    snap = tuple(circuit.nets)
+    # True external route code exactly from isolated NET #114 frozen SHA.
+    # This PREVIEW may be incomplete; partial graphs are never a pass.
+    routed = import_module(
+        "gost_schematic.engines.multiterminal_router"
+    ).route_circuit_net_trees(
+        circuit, parts, symbols,
+        page_box=Box(-205000, 0, 636000, 594000),
+        search_node_cap=search_node_cap,
+        stop_on_first_failure=False,
+        max_order_restarts=1,
+    )
+    if circuit.nets != snap or routed.graph == old_graph or (
+        routed.source_circuit != circuit
+    ):
+        raise AssertionError("PAINT_ROUTE_NOT_NEW_OR_CHANGED_PHYSICAL_SOURCE")
+    resolved = portrait.select_function_text_reading(
+        IcFunctionReading.BOTTOM_TO_TOP,
+    )
+    net_ids = _net_pin_id_map(circuit)
+    targets = tuple(IcConnectionTarget(
+        pin.pin_id, PinRef("DA1", pin.number), pin.anchor,
+        True, net_id=net_ids.get(PinRef("DA1", pin.number)),
+    ) for pin in resolved.pins)
+    clean = render_resolved_ic(
+        resolved, style, measurer, policy=policy, editor_targets=targets,
+        editor_overlay=False, review_overlay=False,
+    )
+    diagnostic = render_resolved_ic(
+        resolved, style, measurer, policy=policy, editor_targets=targets,
+        editor_overlay=True, review_overlay=True, glyph_detail=True,
+    )
+    result = render_routed_native_sheet(
+        circuit, routed.graph, parts, symbols, style, measurer,
+        physical_ic_renderings_clean={"DA1": clean},
+        physical_ic_renderings_diagnostic={"DA1": diagnostic},
+        route_preview=routed, source_continuation_project=b_pair,
+        expected_component_count=23, expected_net_count=15,
+        expected_net_pinrefs=62,
+    )
+    if result.printable_candidate and not routed.print_pass:
+        raise AssertionError("PAINT_MUST_NOT_RELEASE_PARTIAL_NET_ROUTE")
+    if len(routed.graph.segments) != result.manifest["route_segments"]:
+        raise AssertionError("PAINT_ROUTER_TO_VECTOR_SEGMENT_LOSS")
+    assert circuit.nets == snap
+    manifest = {
+        **result.manifest,
+        "source_original_sha": SOURCE_SHA,
+        "elektrik_current_ic_sha": IC97_SHA,
+        "net_114_sha": NET114_SHA,
+        "original_negative_wires": 91,
+        "original_23_15_16_62": [23, 15, 16, 62],
+        "real_router_new_graph": True,
+        "real_routed_trees": routed.as_dict(),
+        "source_net_memberships_changed": False,
+        "new_graph_not_source_91_frozen": True,
+        "green_pin_tips_debug_only": True,
+        "format": "NATIVE_FULL_SOURCE_PLACEMENT_NOT_COMPACT_A3",
+        "A3_print_ready": False,
+        "compact_source_layout_dependency": "RECON #115",
+        "blocked_release": not result.printable_candidate,
+    }
+    out.mkdir(parents=True, exist_ok=True)
+    (out/"TL494_NEW_NET114_candidate_BLOCKED_clean.svg").write_text(
+        result.clean_svg, encoding="utf-8",
+    )
+    (out/"TL494_NEW_NET114_candidate_BLOCKED_diagnostic.svg").write_text(
+        result.diagnostic_svg, encoding="utf-8",
+    )
+    if d4:
+        transformed_cases = {}
+        for angle in (0, 90, 180, 270):
+            for mirror in (False, True):
+                pose = Transform(angle, mirror)
+                moved_circuit, moved_graph, moved_unit = transformed_complete_scene(
+                    circuit, routed.graph, portrait, pose,
+                )
+                assert moved_circuit.nets == circuit.nets
+                assert len(moved_circuit.components) == 23
+                assert len(moved_graph.segments) == len(routed.graph.segments)
+                assert len(moved_graph.junctions) == len(routed.graph.junctions)
+                seen = {
+                    x.pin_id: x.anchor for x in moved_unit.pins
+                }
+                assert seen == {
+                    p.pin_id: pose.apply(p.anchor) for p in portrait.pins
+                }
+                moved_targets = tuple(IcConnectionTarget(
+                    p.pin_id, PinRef("DA1", p.number), p.anchor, True,
+                    net_id=net_ids.get(PinRef("DA1", p.number)),
+                ) for p in moved_unit.pins)
+                viewed = moved_unit.select_function_text_reading(
+                    IcFunctionReading.BOTTOM_TO_TOP,
+                )
+                viewed_clean = render_resolved_ic(
+                    viewed, style, measurer, policy=policy,
+                    editor_targets=moved_targets,
+                    editor_overlay=False, review_overlay=False,
+                )
+                viewed_debug = render_resolved_ic(
+                    viewed, style, measurer, policy=policy,
+                    editor_targets=moved_targets,
+                    editor_overlay=True, review_overlay=True,
+                )
+                moved_result = render_routed_native_sheet(
+                    moved_circuit, moved_graph, parts, symbols,
+                    style, measurer,
+                    physical_ic_renderings_clean={"DA1": viewed_clean},
+                    physical_ic_renderings_diagnostic={"DA1": viewed_debug},
+                    route_preview=None,
+                    source_continuation_project=None,
+                    expected_component_count=23,
+                    expected_net_count=15,
+                    expected_net_pinrefs=62,
+                )
+                name = (
+                    f"TL494_NEW_NET114_D4_{angle}_mirror{int(mirror)}"
+                    "_BLOCKED_clean.svg"
+                )
+                if moved_result.printable_candidate:
+                    raise ValueError("PAINT_D4_PARTIAL_ROUTER_CANNOT_BE_PRINTED")
+                (out/name).write_text(
+                    moved_result.clean_svg, encoding="utf-8",
+                )
+                transformed_cases[name] = {
+                    "transform": [angle, mirror],
+                    "whole_sheet_23": True,
+                    "source_nets_15_unchanged": True,
+                    "all_physical_PinRef_62_unchanged": True,
+                    "new_router_graph": True,
+                    "new_segments": len(moved_graph.segments),
+                    "exact_world_D4_pin_tips": True,
+                    "printable": False,
+                    "graph_sha256": moved_result.graph_sha256,
+                }
+        manifest["whole_routed_sheet_D4"] = transformed_cases
+    (out/"TL494_NEW_NET114_vs_source_print_evidence.json").write_text(
+        json.dumps(manifest, indent=2, sort_keys=True, ensure_ascii=False)+"\n",
+        encoding="utf-8",
+    )
+    print(json.dumps({
+        "SOURCE_SHA": SOURCE_SHA,
+        "NET114_SHA": NET114_SHA,
+        "parts": 23, "nets": 15, "physical": 16,
+        "source_wires_known_bad": 91,
+        "attempt_new_wires": len(routed.graph.segments),
+        "complete_nets": sum(t.complete for t in routed.net_trees),
+        "print_pass": result.printable_candidate,
+        "blockers": manifest["blockers"][:15],
+        "whole_new_route_svg_generated": True,
+    }))
+    return manifest
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--font-file", type=Path, required=True)
+    parser.add_argument("--node-cap", type=int, default=25000)
+    parser.add_argument("--d4", action="store_true")
+    args = parser.parse_args()
+    render_new_owner_route(
+        args.output, args.font_file,
+        search_node_cap=args.node_cap, d4=args.d4,
+    )
+
+
+if __name__ == "__main__":
+    main()

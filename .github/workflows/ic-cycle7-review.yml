@@ -1,0 +1,339 @@
+name: Cycle7 physical IC Type A review
+
+on:
+  pull_request:
+    branches: [integration/stage0-12]
+    paths:
+      - "src/gost_schematic/rendering/ic_rectangular.py"
+      - "src/gost_schematic/rendering/ic_orientation.py"
+      - "src/gost_schematic/rendering/ic_hotspots.py"
+      - "src/gost_schematic/rendering/ic_power_profiles.py"
+      - "src/gost_schematic/rendering/ic_tl494_profile.py"
+      - "examples/review_ic_cycle7.py"
+      - "examples/review_tl494_cycle7.py"
+      - "scripts/review_tl494_print_readability.py"
+      - "scripts/rework_tl494_photo_svg_readonly.py"
+      - "scripts/verify_tl494_v3_raster.py"
+      - "tests/test_rendering_ic_tl494_v3.py"
+      - "tests/test_tl494_print_stroke.py"
+      - "scripts/verify_ic_debug_gallery.py"
+      - "scripts/replay_ic_qa99_pwm.py"
+      - "tests/test_rendering_ic_cycle7.py"
+      - ".github/workflows/ic-cycle7-review.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gallery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Test IC isolated engine
+        run: |
+          python -m pip install -e ".[dev]"
+          ruff check src/gost_schematic/rendering/ic_rectangular.py src/gost_schematic/rendering/ic_orientation.py src/gost_schematic/rendering/ic_hotspots.py src/gost_schematic/rendering/ic_power_profiles.py src/gost_schematic/rendering/ic_tl494_profile.py examples/review_ic_cycle7.py examples/review_tl494_cycle7.py scripts/review_tl494_print_readability.py scripts/rework_tl494_photo_svg_readonly.py scripts/verify_tl494_v3_raster.py scripts/verify_ic_debug_gallery.py scripts/replay_ic_qa99_pwm.py tests/test_rendering_ic_cycle7.py tests/test_rendering_ic_tl494_v3.py tests/test_tl494_print_stroke.py
+          pytest -q tests/test_rendering_ic_cycle7.py tests/test_rendering_ic_tl494_v3.py tests/test_tl494_print_stroke.py
+      - name: Install pinned external Type A font
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/install_opengost_type_a.py \
+            --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a \
+            --directory "$HOME/.local/share/fonts"
+          fc-cache -f
+          FONT_FILE="$(find "$HOME/.local/share/fonts" -type f \( -iname '*TypeA*.ttf' -o -iname '*TypeA*.otf' \) | head -1)"
+          test -f "$FONT_FILE"
+          test "$(realpath "$FONT_FILE")" = "$(realpath "$(fc-match -f '%{file}' 'OpenGost Type A')")"
+          echo "REVIEW_FONT=$FONT_FILE" >> "$GITHUB_ENV"
+          sha256sum "$FONT_FILE"
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+      - name: Reproduce original red QA99 PWM_CONTROLLER source fixture (real Type A)
+        env:
+          QA_SOURCE_SHA: 7547eb758abac286bdd5c4d116e23d525fc900a8
+        run: |
+          git fetch --no-tags origin "$QA_SOURCE_SHA" --depth=1
+          git show "$QA_SOURCE_SHA:scripts/qa_cycle7_live_source_gate.py" \
+            > "$RUNNER_TEMP/qa99-pwm-original.py"
+          python -m scripts.replay_ic_qa99_pwm \
+            --qa-file "$RUNNER_TEMP/qa99-pwm-original.py" \
+            --font-file "$REVIEW_FONT" \
+            --output-dir output/ic-cycle7
+      - name: Real Type-A TL494 16 pin full TI names, FB/OC, 270 BTT D4 SVG
+        run: |
+          python -m examples.review_tl494_cycle7 --font-file "$REVIEW_FONT" \
+            --output-dir output/tl494-readability
+          test "$(find output/tl494-readability -name '*.svg' | wc -l)" -eq 48
+      - name: Source-frozen 679.3mm TL494 print audit and 1:1 A3 tiling
+        env:
+          REFERENCE_SHA: e695c415fdced164b0e0c39c5249d030795a0aa6
+        run: |
+          git fetch --no-tags origin "$REFERENCE_SHA" --depth=1
+          mkdir -p output/tl494-readability
+          git show "$REFERENCE_SHA:examples/tl494_named_truth_output/TL494_named_photo_clean.svg" \
+            > output/tl494-readability/TL494_named_photo_before_original.svg
+          python -m scripts.review_tl494_print_readability \
+            --source-svg output/tl494-readability/TL494_named_photo_before_original.svg \
+            --output-dir output/tl494-readability --variant before
+          python -m scripts.rework_tl494_photo_svg_readonly \
+            --source-svg output/tl494-readability/TL494_named_photo_before_original.svg \
+            --font-file "$REVIEW_FONT" \
+            --output-dir output/tl494-readability
+          python -m scripts.review_tl494_print_readability \
+            --source-svg output/tl494-readability/TL494_named_photo_AFTER_btt_FB_OC_clean.svg \
+            --output-dir output/tl494-readability --variant after
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("output/tl494-readability/tl494-true-print-readability-audit.json")
+          report=json.loads(p.read_text())
+          drc=report["stroke_drc"]
+          assert drc["source_segments"]==91
+          assert drc["source_symbol_groups"]==23
+          assert all(drc["source_symbols_with_strokes"].values())
+          assert drc["real_circle_stroke_geometry"]=="MEASURED_EXACT_RADIUS_AND_STROKE"
+          assert report["A3_single_sheet"].startswith("FAIL_")
+          assert report["A2_landscape_single_sheet"].startswith("FAIL_")
+          assert report["A3_two_review_tiles_1_to_1"].startswith("PASS_")
+          after=json.loads(Path("output/tl494-readability/tl494-true-print-readability-after-audit.json").read_text())
+          assert after["stroke_drc"]["source_segments"]==91
+          assert after["stroke_drc"]["source_symbol_groups"]==23
+          migrated=json.loads(Path("output/tl494-readability/TL494_connected_before_after_immutable_91_wires.json").read_text())
+          assert migrated["clean"]["real_16_anchor_um"]==migrated["diagnostic"]["real_16_anchor_um"]
+          assert len(migrated["clean"]["real_16_anchor_um"])==16
+          assert migrated["clean"]["source_net_wires_unchanged"]
+          assert drc["print_release"].startswith("BLOCKED_")
+          print("Source-frozen print assessment:",report["stroke_drc"]["parallel_wire_under_3mm_count"],"wire-spacing findings")
+          PY
+      - name: Raster actual before / A3 1:1 tiles / D4 PWM / magnifications at 300 DPI
+        run: |
+          for INPUT in output/tl494-readability/*.svg; do
+            OUTPUT="${INPUT%.svg}-300dpi.png"
+            rsvg-convert --background-color white --dpi-x 300 --dpi-y 300 \
+              --output "$OUTPUT" "$INPUT"
+          done
+          rsvg-convert --background-color white --width 640 \
+            --output output/tl494-readability/TL494_named_photo_before_640px.png \
+            output/tl494-readability/TL494_named_photo_before_original.svg
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          root=Path("output/tl494-readability")
+          svgs=tuple(root.glob("*.svg"))
+          assert len(svgs)>=68, len(svgs)
+          for file in root.glob("*-300dpi.png"):
+              with Image.open(file) as pic:
+                  pic.save(file,dpi=(300,300))
+              with Image.open(file) as pic:
+                  assert all(abs(d-300)<0.2 for d in pic.info["dpi"])
+          assert sum("pwm-270" in x.name for x in svgs)==16
+          assert sum("a3-tile" in x.name for x in svgs)==8
+          print("True A3 print width pixels", round(420*300/25.4))
+          PY
+          python -m scripts.verify_tl494_v3_raster \
+            --output-dir output/tl494-readability
+      - name: Create 4/8/14/40/64 real OpenGost SVG and metric audit
+        run: |
+          python -m examples.review_ic_cycle7 --font-file "$REVIEW_FONT" \
+            --output-dir output/ic-cycle7
+      - name: Raster 200 DRAFT SVG (clean/ink/targets/combined) at 300 DPI
+        run: |
+          for INPUT in output/ic-cycle7/ic-*.svg output/ic-cycle7/portrait-*.svg output/ic-cycle7/d4-*.svg; do
+            test -f "$INPUT"
+            OUTPUT="${INPUT%.svg}-300dpi.png"
+            rsvg-convert --background-color white --dpi-x 300 --dpi-y 300 \
+              --output "$OUTPUT" "$INPUT"
+          done
+          test "$(find output/ic-cycle7 -name '*-300dpi.png' | wc -l)" -eq 200
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          for path in Path("output/ic-cycle7").glob("*-300dpi.png"):
+              with Image.open(path) as image:
+                  image.save(path, dpi=(300, 300))
+          PY
+      - name: Verify DPI, text/stroke distances, anchors and create comparison
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+          from PIL import Image, ImageDraw, ImageFont
+          root=Path("output/ic-cycle7")
+          report=json.loads((root/"ic-metric-audit.json").read_text())
+          assert report["font"]["sha256"]=="f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a"
+          assert abs(report["font"]["measured_cap_height_um"]-3500)<=10
+          assert report["drawing_profile"]["module_um"]==2500
+          imgs=[]
+          assert len(report["cases"])==10
+          for group in ("horizontal","vertical"):
+              for count in (4,8,14,40,64):
+                  typ="analog" if count==8 else "digital"
+                  key=(f"ic-{count:02d}-{typ}" if group=="horizontal"
+                       else f"ic-{count:02d}-vertical")
+                  evidence=report["cases"][key]
+                  assert evidence["physical_pin_count"]==count
+                  assert evidence["orientation"]==("left_right" if group=="horizontal"
+                                                   else "top_bottom")
+                  assert len(evidence["pin_anchors"])==count
+                  assert evidence["minimum_text_to_stroke_ink_gap_um"]>=1000
+                  assert evidence["visible_glyph_count"]>0
+                  for view in ("clean","diagnostic"):
+                      svg=ET.fromstring((root/f"{key}-{view}.svg").read_text())
+                      lines=svg.findall(".//{http://www.w3.org/2000/svg}line[@data-pin-id]")
+                      assert len(lines)==count
+                      assert svg.get("data-font-sha256")==report["font"]["sha256"]
+                      assert svg.get("data-approval")=="DRAFT"
+                      assert svg.get("data-orientation")==evidence["orientation"]
+                      w=float(svg.get("width").removesuffix("mm"))
+                      h=float(svg.get("height").removesuffix("mm"))
+                      path=root/f"{key}-{view}-300dpi.png"
+                      with Image.open(path) as pic:
+                          target=(round(w*300/25.4),round(h*300/25.4))
+                          assert all(abs(a-b)<=1 for a,b in zip(pic.size,target)),(key,pic.size,target)
+                          pic.save(path,dpi=(300,300))
+                      with Image.open(path) as pic:
+                          assert all(abs(d-300)<.2 for d in pic.info["dpi"])
+                          assert pic.convert("L").getextrema()[0]<120
+                          if view=="clean":
+                              # Independently compare actual rasterized glyph pixels
+                              # with the measured per-glyph world bboxes, allowing
+                              # only 3px anti-alias/FreeType fraction tolerance.
+                              x0,y0,*_=map(float,svg.get("viewBox").split())
+                              greyscale=pic.convert("L")
+                              scale=300/25.4/1000
+                              found=0
+                              boxes=evidence["glyph_ink_boxes"]
+                              for glyph in boxes[::max(1,len(boxes)//80)]:
+                                  b=glyph["ink_um"]
+                                  left=max(0,int((b[0]-1000*x0)*scale)-3)
+                                  top=max(0,int((b[1]-1000*y0)*scale)-3)
+                                  right=min(pic.width,int((b[2]-1000*x0)*scale)+4)
+                                  bottom=min(pic.height,int((b[3]-1000*y0)*scale)+4)
+                                  if right<=left or bottom<=top:
+                                      raise AssertionError(("clipped glyph",key,glyph))
+                                  dark=greyscale.crop((left,top,right,bottom)).getextrema()[0]
+                                  assert dark<150,("missing raster glyph",key,glyph,dark)
+                                  found+=1
+                              assert found>=5
+                              imgs.append((f"{count} pins | {group}",pic.convert("RGB").copy()))
+          # Four PORTRAIT source-immutable 90/0 pairs, two layers and 300DPI.
+          assert len(report["portrait_cases"])==4
+          for count in (8,14,40,64):
+              pair=report["portrait_cases"][str(count)]
+              assert pair["90"]["source_anchors"]==pair["0"]["source_anchors"]
+              assert pair["90"]["body_width_um"]==pair["0"]["body_width_um"]
+              assert pair["90"]["body_height_um"]==pair["0"]["body_height_um"]
+              assert pair["90"]["body_height_um"]>pair["90"]["body_width_um"]
+              functions=[]
+              others=[]
+              for angle in (90,0):
+                  key=f"portrait-{count:02d}-function-{angle:02d}"
+                  source=root/f"{key}-clean.svg"
+                  xml=ET.fromstring(source.read_text())
+                  assert xml.get("data-typography-profile")=="portrait_function_v2_draft"
+                  assert xml.get("data-orientation")=="left_right"
+                  assert xml.get("data-approval")=="DRAFT"
+                  assert xml.get("data-font-sha256")==report["font"]["sha256"]
+                  leads=xml.findall(".//{http://www.w3.org/2000/svg}line[@data-pin-id]")
+                  assert len(leads)==count
+                  functions.append(xml.find(".//{http://www.w3.org/2000/svg}text[@data-kind='function']"))
+                  others.append([
+                      (el.get("data-kind"),el.get("data-owner"),
+                       el.text,el.get("x"),el.get("y"),el.get("transform"))
+                      for el in xml.findall(".//{http://www.w3.org/2000/svg}text")
+                      if el.get("data-kind") not in ("function","main-text")
+                  ])
+                  assert pair[str(angle)]["minimum_ink_clearance_um"]>=1000
+                  for variant in ("clean","diagnostic"):
+                      svg=ET.fromstring((root/f"{key}-{variant}.svg").read_text())
+                      w=float(svg.get("width").removesuffix("mm"))
+                      h=float(svg.get("height").removesuffix("mm"))
+                      png=root/f"{key}-{variant}-300dpi.png"
+                      with Image.open(png) as original:
+                          assert all(abs(a-b)<=1 for a,b in zip(
+                              original.size,(round(w*300/25.4),round(h*300/25.4))
+                          ))
+                          original.save(png,dpi=(300,300))
+                      with Image.open(png) as raster:
+                          assert all(abs(a-300)<.2 for a in raster.info["dpi"])
+                          assert raster.convert("L").getextrema()[0]<150
+                          if variant=="clean":
+                              x0,y0,*_=map(float,svg.get("viewBox").split())
+                              grey=raster.convert("L")
+                              boxes=pair[str(angle)]["glyph_ink_boxes"]
+                              assert boxes
+                              found=0
+                              for glyph in boxes[::max(1,len(boxes)//60)]:
+                                  _,_,x1,y1,x2,y2=glyph
+                                  factor=300/25.4/1000
+                                  crop=(
+                                      max(0,int((x1-1000*x0)*factor)-3),
+                                      max(0,int((y1-1000*y0)*factor)-3),
+                                      min(raster.width,int((x2-1000*x0)*factor)+4),
+                                      min(raster.height,int((y2-1000*y0)*factor)+4),
+                                  )
+                                  assert crop[0]<crop[2] and crop[1]<crop[3]
+                                  assert grey.crop(crop).getextrema()[0]<150,(key,glyph)
+                                  found+=1
+                              assert found>=5
+              assert functions[0].text==functions[1].text==(
+                  "ADC" if count==8 else "PWM"
+              )
+              assert functions[0].get("transform","").startswith("matrix(")
+              assert functions[1].get("transform") is None
+              assert others[0]==others[1],("physical pin/auxiliary/refdes ink moved",count)
+          # Two row comparison is visual only, NOT physical 1:1 paper scale.
+          panel=(930,1250)
+          sheet=Image.new("RGB",(panel[0]*5,panel[1]*2),"white")
+          draw=ImageDraw.Draw(sheet)
+          font=ImageFont.truetype("DejaVuSans.ttf",31)
+          for i,(title,pic) in enumerate(imgs):
+              pic.thumbnail((panel[0]-55,panel[1]-135))
+              col=i%5
+              row=i//5
+              sheet.paste(pic,(col*panel[0]+(panel[0]-pic.width)//2,
+                               row*panel[1]+90))
+              draw.text((col*panel[0]+20,row*panel[1]+18),title,font=font,fill="black")
+          sheet.save(root/"ic-horizontal-vs-vertical-5x2-overview.png")
+          # Supplemental visual comparison; individual rasters remain physical
+          # 300-DPI vector-derived proofs and are NOT scaled for printing.
+          panel2=(930,1250)
+          overview=Image.new("RGB",(panel2[0]*4,panel2[1]*2),"white")
+          overlay=ImageDraw.Draw(overview)
+          for index,angle in enumerate((90,0)):
+              for column,count in enumerate((8,14,40,64)):
+                  fname=root/f"portrait-{count:02d}-function-{angle:02d}-clean-300dpi.png"
+                  with Image.open(fname) as source:
+                      img=source.convert("RGB")
+                  img.thumbnail((panel2[0]-55,panel2[1]-135))
+                  left=column*panel2[0]+(panel2[0]-img.width)//2
+                  top=index*panel2[1]+95
+                  overview.paste(img,(left,top))
+                  overlay.text(
+                      (column*panel2[0]+20,index*panel2[1]+18),
+                      f"{count} physical pins | PWM/ADC {angle} degrees",
+                      font=font,fill="black",
+                  )
+          overview.save(root/"ic-portrait-function-90-vs-0-4x2-overview.png")
+          print("10 measured ICs, 20 x 300DPI PNG, 2 orientations, source pin/ink provenance and real glyph pixels")
+          PY
+      - name: Independently verify all 300DPI PinRef-centered colored squares
+        run: |
+          python -m scripts.verify_ic_debug_gallery \
+            --gallery-dir output/ic-cycle7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tl494-pwm-bottom-up-print-readability-draft
+          path: output/tl494-readability/*
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: draft-e3-ic-cycle7-gallery
+          path: output/ic-cycle7/*
+          if-no-files-found: error

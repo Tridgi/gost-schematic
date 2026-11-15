@@ -48,6 +48,7 @@ def render_sheet_svg(
     *,
     wires: tuple[WireObstacle, ...] = (),
     review_overlay: bool = False,
+    review_pin_markers: bool = True,
 ) -> str:
     """Render sheet primitives + resolved annotation positions, no routing inference."""
     shapes: list[tuple[ComponentInstance, SymbolDefinition, tuple[Primitive, ...]]] = []
@@ -140,14 +141,20 @@ def render_sheet_svg(
                     "data-kind": obstacle.kind,
                     "data-owner": component.reference,
                 })
-            for pin in symbol.pins:
-                at = component.transform.apply(pin.at) + component.origin
-                ET.SubElement(debug, "circle", {
-                    "cx": format_mm(at.x),
-                    "cy": format_mm(at.y),
-                    "r": "0.3",
-                    "fill": "#168f78",
-                })
+            if review_pin_markers:
+                # Legacy generic review circles are purely editorial. For a
+                # verified real physical-IC sheet they would misrepresent
+                # a diagnostic contact as a second marker over the real pin.
+                # The caller disables these and uses ONLY typed PinRef
+                # endpoint squares from IcRendered.
+                for pin in symbol.pins:
+                    at = component.transform.apply(pin.at) + component.origin
+                    ET.SubElement(debug, "circle", {
+                        "cx": format_mm(at.x),
+                        "cy": format_mm(at.y),
+                        "r": "0.3",
+                        "fill": "#168f78",
+                    })
         for label in layout.placements:
             _rect(debug, label.ink_bounds, **{
                 "stroke": "#328bc9", "stroke-width": "0.12", "data-kind": "ink",
