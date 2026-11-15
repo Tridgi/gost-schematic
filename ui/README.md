@@ -1,8 +1,19 @@
 # GOST Schematic — Visual CAD integration worktree
 
-**STATUS as of 2026-11-15:** R1 architecture/contract only; **NO integrated app code or Windows binary is included by this commit**. Never describe this branch as an MVP release until R2–R4 acceptance is demonstrated.
+**STATUS as of 2026-11-16:** R1 architecture/contract and independent `ui/integration/` structural gate (15 Node tests). **No integrated React CAD app, signed TL494 source import, Python v2 adapter or Windows Tauri binary.** Never describe this branch as an MVP release until R2–R4 acceptance is demonstrated.
 
 **Single integration owner:** #125 (MASTER). Direction and issue tracking: #116. Approved baseline: `integration/stage0-12` SHA `9ae2561562c2b6e41069e8343d0e682bd37ab3d4`. Architectural authority: [ADR-0010](../docs/decisions/0010-visual-cad-mvp.md). Data/wire contract: [manual-wire-v2](contracts/manual-wire-v2.md).
+
+## R1 independently executable integration smoke
+
+The MASTER-owned `ui/integration/source-gate.mjs` is a deliberately *non-authoritative* negative/positive screen for proposed `gscad-project` v2 values. It checks exact pin anchors, unique declared Net membership, tagged junction/splice/free behavior, orthogonality, 1µm drift and synthetic source spoofing; its 15 tests run automatically in `.github/workflows/visual-cad-r1.yml`.
+
+```powershell
+node --check ui/integration/source-gate.mjs
+node --test ui/integration/source-gate.test.mjs
+```
+
+See `ui/integration/README.md` for limits. It does not replace #122's versioned JSON Schema, #123's write-safe wire engine, the original source E695 fixture or independent real-browser tests. Existing Python CI separately renders OpenGOST technical samples; its release metadata download uses the job-scoped GitHub API token only for `api.github.com` to avoid anonymous shared-runner 403 (no token on CDN assets).
 
 ## Expected structure (create directories only as code is transferred)
 
