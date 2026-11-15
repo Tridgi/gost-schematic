@@ -23,6 +23,16 @@ from gost_schematic.agent_project.owner_source_contract import (
 _SVG = "http://www.w3.org/2000/svg"
 _SHA = "e695c415fdced164b0e0c39c5249d030795a0aa6"
 _FONT = "f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a"
+_B = {
+    "b-X2": {
+        "physical_PinRef": "X2.1", "start_um": [1000, 2000],
+        "end_um": [1000, 3000], "electrical": False,
+    },
+    "b-R5": {
+        "physical_PinRef": "R5.2", "start_um": [4000, 5000],
+        "end_um": [5000, 5000], "electrical": False,
+    },
+}
 
 
 def _request_from_original():
@@ -56,10 +66,17 @@ def _xml(diagnostic):
         ET.SubElement(leads, f"{{{_SVG}}}line", {
             "data-pin-ref": f"DA1.{pin}",
         })
-    for label in ("b-R5", "b-X2"):
+    for label, stub in _B.items():
         ET.SubElement(root, f"{{{_SVG}}}line", {
             "data-layer": "nonphysical-continuation-stub",
-            "data-label": label,
+            "data-nonphysical-net-continuation": label,
+            "data-source-pin-ref": stub["physical_PinRef"],
+            "data-nonphysical": "true", "data-electrical-junction": "false",
+            "data-connectable": "false",
+            "x1": str(stub["start_um"][0] / 1000),
+            "y1": str(stub["start_um"][1] / 1000),
+            "x2": str(stub["end_um"][0] / 1000),
+            "y2": str(stub["end_um"][1] / 1000),
         })
     if diagnostic:
         layer = ET.SubElement(root, f"{{{_SVG}}}g", {
@@ -127,8 +144,8 @@ def _make_owner(tmp_path, completed=9):
         "source_font_sha256": _FONT, "source_23_components": 23,
         "source_15_literal_names": list(nets),
         "source_62_physical_pinrefs": nets, "source_16_signed_DA1": 16,
-        "source_b_nonphysical": ["b-X2", "b-R5"],
-        "paper": {"true_b_source_stubs": ["b-X2", "b-R5"]},
+        "source_b_nonphysical": copy.deepcopy(_B),
+        "paper": {"true_b_source_stubs": copy.deepcopy(_B)},
         "native_ugo_bbox_um": [0, 0, 500, 500],
         "route_config": {
             "format": "A3", "component_moves_mm": [["C1", "0", "2.5"]],
@@ -187,6 +204,7 @@ def test_external_full_15_of_15_still_requires_independent_qa(tmp_path):
     ("physical_member", "C16_C15_SOURCE_MEMBERSHIP_DRIFT"),
     ("manufacturer_missing", "C16_C15_SOURCE_MEMBERSHIP_DRIFT"),
     ("font_wrong", "C16_C15_PROOF_SPOOFED_RELEASE"),
+    ("extra_pin_override_1um", "C16_C15_UNDECLARED_PROOF_FIELDS"),
     ("green_claim", "C16_C15_PROOF_SPOOFED_RELEASE"),
     ("fake_15_count", "C16_C15_ROUTE_COUNTS_CONTRADICT"),
     ("forged_tree_pin", "C16_C15_PINREF_MEMBERSHIP_DRIFT"),
@@ -207,6 +225,8 @@ def test_c16_untrusted_owner_negative_cases(tmp_path, mutation, code):
         proof["source_62_physical_pinrefs"][name][0] = "DA1.13.001"
     elif mutation == "manufacturer_missing":
         proof["source_16_signed_DA1"] = 15
+    elif mutation == "extra_pin_override_1um":
+        proof["native_da1_override_um"] = {"DA1.13": [125001, 146250]}
     elif mutation == "font_wrong":
         proof["source_font_sha256"] = "a" * 64
     elif mutation == "green_claim":
@@ -281,3 +301,35 @@ def test_forged_or_missing_source_pin_rejected_even_with_valid_owner_files(tmp_p
     wrong["nets"][0]["members"][0]["number"] = "1.001"
     with pytest.raises(ProjectError, match="C16_SOURCE_REQUEST_UNTRUSTED"):
         review_c15_owner_proof(wrong, tmp_path)
+
+
+def test_real_b_stub_1um_change_must_fail_even_with_rehashed_svg(tmp_path):
+    request, proof = _make_owner(tmp_path)
+    name = "TL494-A3-clean-source-b.svg"
+    path = tmp_path / name
+    altered = path.read_bytes().replace(b'x1="1.0"', b'x1="1.001"')
+    assert altered != path.read_bytes()
+    path.write_bytes(altered)
+    proof["artifacts"][name]["sha256"] = hashlib.sha256(altered).hexdigest()
+    _write_json(tmp_path / "C15_REAL_TL494_DELIVERY.json", proof)
+    with pytest.raises(ProjectError, match="C16_NATIVE_B_COORDINATE_1UM_DRIFT"):
+        review_c15_owner_proof(request, tmp_path)
+
+
+def test_b_stubs_cannot_become_electric_or_foreign(tmp_path):
+    request, proof = _make_owner(tmp_path)
+    proof["source_b_nonphysical"]["b-X2"]["electrical"] = True
+    proof["paper"]["true_b_source_stubs"]["b-X2"]["electrical"] = True
+    _write_json(tmp_path / "C15_REAL_TL494_DELIVERY.json", proof)
+    with pytest.raises(ProjectError, match="C16_C15_B_STUB_PROVENANCE_INVALID"):
+        review_c15_owner_proof(request, tmp_path)
+
+
+def test_duplicated_json_field_in_external_owner_is_rejected(tmp_path):
+    request, _ = _make_owner(tmp_path)
+    path = tmp_path / "C15_REAL_TL494_DELIVERY.json"
+    body = path.read_text(encoding="utf-8")
+    assert body.startswith("{")
+    path.write_text('{"schema": "FORGED", ' + body[1:], encoding="utf-8")
+    with pytest.raises(ProjectError, match="C16_DUPLICATE_JSON_FIELD"):
+        review_c15_owner_proof(request, tmp_path)
