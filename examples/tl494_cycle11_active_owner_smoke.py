@@ -72,12 +72,12 @@ def check_active_owners(out: Path, *, owner_heads: dict[str, str]) -> dict:
     from examples.tl494_cycle9_circuit_integration import (
         bind_positioned_photo_circuit_from_catalog,
     )
+    from examples.tl494_v5.cycle11_ti_bridge import (
+        bind_verified_compact_ti,
+    )
     from examples.tl494_v5.route_candidate_driver import (
         load_original_owner_fixture,
         restore_original_named_nets,
-    )
-    from examples.tl494_v5.cycle11_ti_bridge import (
-        bind_verified_compact_ti,
     )
 
     historical, historical_binding = load_original_owner_fixture()
