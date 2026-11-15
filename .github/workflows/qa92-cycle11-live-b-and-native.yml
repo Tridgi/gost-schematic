@@ -117,6 +117,7 @@ jobs:
           stage("net", "src/gost_schematic/validation/route_drc.py")
           PY
       - name: True Type A face, checksum and offline spoof/release regressions
+        id: font
         shell: bash
         run: |
           set -euo pipefail
@@ -143,7 +144,7 @@ jobs:
             examples/tl494_v5/test_cycle11_b_continuation.py \
             examples/tl494_v5/test_routed_graph_contract.py
       - name: Independent REAL RECON b-binding production API with scoped signed Type A font and 3 hostile physical mutants
-        if: always()
+        if: ${{ always() && steps.font.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -155,7 +156,8 @@ jobs:
             --font-file "$QA_B_TYPE_A_FONT" \
             --output "../../output/qa92-cycle11-b-${{ matrix.python-version }}/qa-direct-actual-b-source-and-3-negatives.json"
       - name: Genuine owner RECON original signed b-X2 and b-R5 compact source data
-        if: always()
+        id: b_evidence
+        if: ${{ always() && steps.font.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -165,7 +167,7 @@ jobs:
             --font-file "$QA_B_TYPE_A_FONT" \
             --output-file "../../output/qa92-cycle11-b-${{ matrix.python-version }}/real-owner-two-b-markers.json"
       - name: Independent immutable source vector and actual X2 R5 PinRef validation, 12 hostile variants
-        if: always()
+        if: ${{ always() && steps.font.outcome == 'success' && steps.b_evidence.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -177,7 +179,8 @@ jobs:
             --evidence "../../output/qa92-cycle11-b-${{ matrix.python-version }}/real-owner-two-b-markers.json" \
             --output "../../output/qa92-cycle11-b-${{ matrix.python-version }}/qa-frozen-original-b-vectors-and-12-negatives.json"
       - name: Genuine PAINT HEAD full new routed A3 physical source output, not manually changed original
-        if: always()
+        id: native_output
+        if: ${{ always() && steps.font.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -187,7 +190,7 @@ jobs:
             --node-cap 5000 \
             --output "../../output/qa92-cycle11-b-${{ matrix.python-version }}/paint-owner-native"
       - name: Independent black and white clean versus 16 green diagnostic, physical 300 DPI NO-GO
-        if: always()
+        if: ${{ always() && steps.native_output.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
