@@ -149,3 +149,76 @@ cross-owner PAINT/RECON Type A compatibility, true all-15 source
 routing, complete ERC/global native ink DRC, exact physical paper
 scale and independent ESKD. New exact QA code must pass
 **CI 3.12 and 3.13 ON ITS LAST SHA** before any MAIN3 merge.
+
+## Cycle 13 concurrent continuation — independent real SVG acceptance delta (2026-11-15)
+
+This is a **new test iteration**, not a retroactive PASS for the
+previously documented defective PAINT snapshots. All historical
+failures remain recorded above.
+
+Current staged *exact snapshot commits*, verified through GitHub refs:
+
+| Owner | Exact source commit used by QA dedicated two-stub matrix |
+| --- | --- |
+| RECON #115 | `e4eb565820e54889456f64d36598b608597ca2c2` |
+| PAINT #93 | `d74300580dfd28cc3400a512828dac6b49d529f0` |
+| IC #97 | `bc03a31c5d15c9e962f9b26a209aab373e39bee6` |
+| NET #114 | `a370d637fe67ec44870899d503f53c0a6f8ee3af` |
+| YGO #113 | `3e47cdf32ccf211ded97e3be1ad874035653e090` |
+
+New PAINT owner **source code inspection** shows:
+`append_verified_sheet_continuations` now iterates
+`project.stubs` and produces two SVG `<line>` children with
+`data-layer=nonphysical-continuation-stub`, original
+`data-source-pin-ref`, `data-source-stub-id`, and explicit
+`data-connectable=false`/`data-electrical-junction=false`.
+Its Type A adapter now accepts two precisely declared builder
+signatures, retaining authentic measured family/hash checks.
+**Source inspection is not an executed native-artifact PASS.**
+
+New QA changes in existing Draft #99:
+
+- `scripts/qa_tl494_cycle11_native_300dpi.py` **requires** exactly
+  two actual non-electrical SVG line elements, not just metadata,
+  circles, text or editor zones. Missing both, missing one, extra
+  anonymous/duplicate line, untrusted layer and path substitution
+  are hard failures, not silent `BLOCKED` successful verification.
+- The real source vector `X2.1→b-X2`, `R5.2→b-R5` is compared
+  on **both endpoints** as exact Decimal mm-to-µm coordinates;
+  both strokes must preserve black 0.3 mm printed ink, real PinRef,
+  distinct source stub IDs, authored layer and no electrical role.
+- The actual Type A text family **and** font file SHA256 are
+  independently checked; old `OpenGost Type A TT`-only
+  spoof is rejected while the genuine `OpenGOST type A`
+  builder remains allowed.
+- Expanded **24 hostile in-memory mutations** of *genuine produced
+  native SVG bytes*, including 1-µm stroke tip changes, missing /
+  duplicate / switched segments, forged contact `X2.2`, wrong
+  family, invisible or wrong-width ink, fake green connectable
+  continuation, duplicate source IDs and extra anonymous strokes.
+  Source owner artwork is never modified.
+- Dedicated workflow
+  `.github/workflows/qa92-cycle11-live-b-and-native.yml`
+  stages exactly the five source commits above with frozen E695;
+  covers Python 3.12 and 3.13 and retains signed 23/15/62/16
+  source/BOM/Netlist, real 300-DPI PNG, global post-render DRC
+  checks. It never turns a partial route into whole-sheet PASS.
+- `scripts/qa_tl494_cycle11_b_binding_gate.py` now checks the
+  current RECON exact SHA. An existing source import-order
+  Ruff `I001` was detected and repaired with no suppressed test.
+
+**Actually executed independently on a fresh temporary working
+copy of the updated QA branch:** native Windows Python 3.13
+`py_compile` on both changed QA scripts **PASS**; `ruff check`
+on those two scripts **PASS** at QA commit
+`8cf6a4a6c5e01e5fd2d847d6ee44b1e36dfa026f`.
+These are local scoped lint/syntax checks; they are **not** substituted
+for full Python 3.12/3.13 GitHub CI or actual PAINT raster acceptance.
+
+All current exact-head GitHub Actions are **QUEUED as of this edit**
+and must be read again at actual execution completion. In particular,
+neither the two real PAINT stub strokes in emitted SVG/PNG nor
+the latest NET X1=17mm 15/15 route has independent runtime PASS.
+Keep 15/15, full ERC, measured 3/2/1-mm global print DRC,
+original user-photo equivalence, and all normative DRAFT UGO
+**BLOCKED / NO-GO** until independently proven by actual artifacts.
