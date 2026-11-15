@@ -1,5 +1,6 @@
 """Signed source physical pin corridor E3 diagnostics (negative and A2/A3)."""
 import os
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -28,6 +29,13 @@ def test_all_62_real_pin_escapes_preserve_original_graph(sheet):
         10850, 14800, 405150, 243151,
     ]
     assert sheet["absolute_10mm_component_ink_fit"]
+    assert sheet["real_measured_text_layout_valid"]
+    assert sheet["real_measured_text_guard_count"] == 73
+    assert sheet["measured_text_10mm_frame_fit"] is False
+    assert sheet["measured_text_frame_violations"] == [{
+        "owner": "C1", "label": "C1", "kind": "AnnotationPlacement",
+        "bounds_um": [261362, 9100, 265638, 13600],
+    }]
     assert sheet["full_15_net_print_release"] == "BLOCKED_NOT_A_ROUTER"
     assert "existing routed Net wires" in sheet["excluded_from_this_probe"]
 
@@ -92,9 +100,36 @@ def test_A2_extra_paper_does_not_alter_62_real_pin_tip_positions(sheet):
     assert larger["page_size_um"] == [594000, 420000]
     assert larger["source_UGO_bbox_um"] == sheet["source_UGO_bbox_um"]
     assert larger["absolute_10mm_component_ink_fit"]
+    assert larger["measured_text_frame_violations"] == sheet[
+        "measured_text_frame_violations"
+    ]
     assert larger["pin_escapes"] == sheet["pin_escapes"]
     assert larger["true_b_source_stubs"] == sheet["true_b_source_stubs"]
     assert larger["full_15_net_print_release"] == "BLOCKED_NOT_A_ROUTER"
+
+
+@pytest.mark.parametrize("page_format", ("A3", "A2"))
+def test_true_C1_down_2p5_repairs_paper_text_without_fake_net(
+    sheet, page_format,
+):
+    # The real source C1 label is at top 9.1mm, so its UGO being inside
+    # the margin is NOT enough. The actual 2.5mm source-preserving relocation
+    # fixes this geometric defect while not changing any original Net/PinRef.
+    legal = measure_pin_corridors(
+        _font(), page_format=page_format,
+        move_mm=(("C1", 0, Decimal("2.5")),),
+    )
+    assert legal["real_measured_text_guard_count"] == 73
+    assert legal["real_measured_text_layout_valid"]
+    assert legal["measured_text_10mm_frame_fit"]
+    assert legal["measured_text_frame_violations"] == []
+    assert legal["absolute_10mm_component_ink_fit"]
+    assert legal["source_UGO_bbox_um"] == [10850, 17300, 405150, 243151]
+    assert legal["original_nets"] == sheet["original_nets"]
+    assert legal["true_b_source_stubs"] == sheet["true_b_source_stubs"]
+    assert (legal["physical_pinref_memberships"],
+            legal["manufacturer_signed_DA1_pins"]) == (62, 16)
+    assert legal["full_15_net_print_release"] == "BLOCKED_NOT_A_ROUTER"
 
 
 @pytest.mark.parametrize(
