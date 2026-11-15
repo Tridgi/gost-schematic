@@ -267,6 +267,7 @@ def test_real_b_stroke_fail_closed_on_source_project_tampering(
         composer.append_verified_sheet_continuations(
             root, real_signed_scene[1], altered,
             real_signed_scene[4], diagnostic=False,
+            symbols_by_part=real_signed_scene[3],
         )
     assert not list(root)
 
@@ -307,3 +308,26 @@ def test_modern_type_a_owner_adapter_rejects_corrupted_font_and_alias(
         paint._compose_frozen_circuit_with_real_type_a(
             named.compose_circuit, original,
         )
+
+
+def test_direct_b_composer_rejects_1um_forged_physical_start(
+    real_signed_scene,
+):
+    from xml.etree import ElementTree as ET
+
+    geom = import_module("gost_schematic.core.geometry")
+    composer = import_module("gost_schematic.rendering.ic_sheet_composition")
+    source_b = real_signed_scene[11]
+    one = source_b.stubs[0]
+    changed = replace(
+        one, start=geom.Point(one.start.x + 1, one.start.y),
+    )
+    forged = replace(source_b, stubs=(changed, source_b.stubs[1]))
+    root = ET.Element("{http://www.w3.org/2000/svg}svg")
+    with pytest.raises(ValueError, match="SOURCE_B_PHYSICAL_TIP_DRIFT"):
+        composer.append_verified_sheet_continuations(
+            root, real_signed_scene[1], forged,
+            real_signed_scene[4], diagnostic=False,
+            symbols_by_part=real_signed_scene[3],
+        )
+    assert len(root) == 0
