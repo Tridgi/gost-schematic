@@ -11,6 +11,8 @@ on:
       - "examples/review_tl494_ugo_source_cycle9.py"
       - "scripts/verify_tl494_cycle11_owner_strokes.py"
       - "scripts/export_tl494_23_ink_contract.py"
+      - "scripts/verify_tl494_cycle16_ink_contract.py"
+      - "tests/test_tl494_cycle16_ink_contract.py"
       - "reports/tl494-cycle15-true-23-ink.*"
       - ".github/workflows/tl494-cycle11-owner-contract.yml"
   pull_request:
@@ -56,10 +58,10 @@ jobs:
             owner_sha: "632d5cf4222f188a65d0ec4a6ed22d8dcf1c8617"
           - owner: recon
             python-version: "3.12"
-            owner_sha: "88ec53babdcbb4246986b787816c999cda1e7f6d"
+            owner_sha: "77c588a81529de574ddcdc012bb6b616b8195a1d"
           - owner: recon
             python-version: "3.13"
-            owner_sha: "88ec53babdcbb4246986b787816c999cda1e7f6d"
+            owner_sha: "77c588a81529de574ddcdc012bb6b616b8195a1d"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -68,7 +70,7 @@ jobs:
       - name: Install the same project runtime and test dependencies
         run: python -m pip install -e ".[dev]"
       - name: Ruff current independent YGO/owner contract source
-        run: ruff check scripts/verify_tl494_cycle11_owner_strokes.py scripts/export_tl494_23_ink_contract.py
+        run: ruff check scripts/verify_tl494_cycle11_owner_strokes.py scripts/export_tl494_23_ink_contract.py scripts/verify_tl494_cycle16_ink_contract.py tests/test_tl494_cycle16_ink_contract.py
       - name: Restore pinned OpenGOST Type A cache (source-only, never uploaded)
         uses: actions/cache@v4
         with:
@@ -164,43 +166,20 @@ jobs:
             # Frozen measured source artifact is part of this Draft PR:
             # never silently regenerate a different 23/15/62 ink contract.
             (cd "$GITHUB_WORKSPACE" && sha256sum -c reports/tl494-cycle15-true-23-ink.sha256)
-            cmp "$GITHUB_WORKSPACE/reports/tl494-cycle15-true-23-ink.json" \
-              "$GITHUB_WORKSPACE/output/cycle11-owners/tl494-23-real-instance-ink.json" || {
-              # Inspect genuinely divergent physical glyph and Type A text
-              # boxes; NEVER convert a failure to a PASS by rounding.
-              python - "$GITHUB_WORKSPACE/reports/tl494-cycle15-true-23-ink.json" \
-                       "$GITHUB_WORKSPACE/output/cycle11-owners/tl494-23-real-instance-ink.json" <<'PY'
-          import json
-          import sys
-          from pathlib import Path
-          
-          before, after = (json.loads(Path(p).read_text(encoding="utf-8")) for p in sys.argv[1:])
-          def mismatches(expected, actual, at="$"):
-              if type(expected) is not type(actual):
-                  yield (at, expected, actual)
-              elif isinstance(expected, dict):
-                  for key in sorted(set(expected) | set(actual)):
-                      if key not in expected or key not in actual:
-                          yield (at + "." + key, expected.get(key), actual.get(key))
-                      else:
-                          yield from mismatches(expected[key], actual[key], at + "." + key)
-              elif isinstance(expected, list):
-                  if len(expected) != len(actual):
-                      yield (at + ".length", len(expected), len(actual))
-                  for index, (a, b) in enumerate(zip(expected, actual)):
-                      yield from mismatches(a, b, f"{at}[{index}]")
-              elif expected != actual:
-                  yield (at, expected, actual)
-          
-          for index, (path, expected, actual) in enumerate(mismatches(before, after)):
-              if index >= 24:
-                  print("UGO_C15_DIFF_MORE_THAN_24; inspect uploaded actual owner JSON")
-                  break
-              print(f"UGO_C15_EXACT_INK_DIFF {path}: windows={expected!r} linux={actual!r}")
-          PY
-              echo "::error::UGO_C15_ACTUAL_OWNER_MEASURED_23_INK_DRIFT"
-              exit 1
-            }
+            # Signed Windows-produced physical source baseline remains
+            # checksum-locked above. The Linux runner measures the SAME
+            # real pinned Type A font with platform-specific raster metrics.
+            # Compare every source net, PinRef, stroke, D4 and escape at
+            # EXACT integer um (zero physical coordinate tolerance).
+            # Only measured Type A TEXT widths/heights may vary; exact text
+            # anchor (with half-um integer AABB quantization) and paper fit
+            # remain fail-closed. No 15/15 / full DRC claim is made.
+            python "$GITHUB_WORKSPACE/scripts/verify_tl494_cycle16_ink_contract.py" \\
+              --baseline "$GITHUB_WORKSPACE/reports/tl494-cycle15-true-23-ink.json" \\
+              --current "$GITHUB_WORKSPACE/output/cycle11-owners/tl494-23-real-instance-ink.json" \\
+              --owner-recon-sha "$OWNER_SHA" \\
+              --report "$GITHUB_WORKSPACE/output/cycle11-owners/tl494-cycle16-physical-comparison.json"
+
           fi
       - name: Publish real exact HEAD read-only cross-owner geometry report
         if: always()
