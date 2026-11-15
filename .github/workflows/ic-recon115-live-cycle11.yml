@@ -30,30 +30,30 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Tridgi/gost-schematic
-          ref: c58e224700b318892ee92197f8bfd391807a7325
+          ref: 68d52e243c966e0fd25c5a7e2eaad34914392fba
           path: _recon115_exact
           persist-credentials: false
       - name: Checkout current YGO2 PR113 source-native physical catalog
         uses: actions/checkout@v4
         with:
           repository: Tridgi/gost-schematic
-          ref: eb16121e07efec71de77dfc7b8123bc09f66ddd6
+          ref: 2dae5306c0690f2fc2d402bb4b65266dabd778b8
           path: _catalog113_exact
           persist-credentials: false
       - name: Checkout latest PAINT PR93 owner
         uses: actions/checkout@v4
         with:
           repository: Tridgi/gost-schematic
-          ref: 32f2efb2cdcb561cb2567a54448381de3cb87832
+          ref: df49c16fb082ee98213299358f374894fe1da220
           path: _paint93_exact
           persist-credentials: false
       - name: Assemble only ephemeral cross-owner test checkout and prove SHAs
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -C _recon115_exact rev-parse HEAD)" = 'c58e224700b318892ee92197f8bfd391807a7325'
-          test "$(git -C _catalog113_exact rev-parse HEAD)" = 'eb16121e07efec71de77dfc7b8123bc09f66ddd6'
-          test "$(git -C _paint93_exact rev-parse HEAD)" = '32f2efb2cdcb561cb2567a54448381de3cb87832'
+          test "$(git -C _recon115_exact rev-parse HEAD)" = '68d52e243c966e0fd25c5a7e2eaad34914392fba'
+          test "$(git -C _catalog113_exact rev-parse HEAD)" = '2dae5306c0690f2fc2d402bb4b65266dabd778b8'
+          test "$(git -C _paint93_exact rev-parse HEAD)" = 'df49c16fb082ee98213299358f374894fe1da220'
           test -f _recon115_exact/examples/tl494_v5/compact_layout.py
           test -f src/gost_schematic/electrical/ic_circuit_adapter.py
           mkdir -p _recon115_exact/src/gost_schematic/electrical
@@ -66,11 +66,11 @@ jobs:
           mkdir -p _recon115_exact/src/gost_schematic/catalog/source_profiles
           cp _catalog113_exact/src/gost_schematic/catalog/source_profiles.py _recon115_exact/src/gost_schematic/catalog/
           cp _catalog113_exact/src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json _recon115_exact/src/gost_schematic/catalog/source_profiles/
-          for part in ic_rectangular ic_hotspots ic_orientation ic_sheet_composition ic_power_profiles ic_tl494_profile ic_electrical_binding routed_native_sheet external_wire_sheet native_sheet_ink_audit; do
+          for part in ic_rectangular ic_hotspots ic_orientation ic_sheet_composition ic_power_profiles ic_tl494_profile ic_electrical_binding routed_native_sheet external_wire_sheet native_sheet_ink_audit sheet_svg; do
             cp "_paint93_exact/src/gost_schematic/rendering/$part.py" "_recon115_exact/src/gost_schematic/rendering/$part.py"
           done
           test -f _paint93_exact/src/gost_schematic/rendering/routed_native_sheet.py
-          echo "REAL_OWNER_SOURCES RECON115=c58e2247 IC97=$GITHUB_SHA YGO113=eb16121e PAINT93=32f2efb2"
+          echo "REAL_OWNER_SOURCES RECON115=68d52e24 IC97=$GITHUB_SHA YGO113=2dae5306 PAINT93=df49c16f"
           echo "NO_PRODUCTION_SOURCE_BRANCH_MERGE"
       - uses: actions/setup-python@v5
         with:
