@@ -226,6 +226,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--font", type=Path, required=True)
     parser.add_argument("--owner-recon-sha", required=True)
+    parser.add_argument("--owner-ic-sha", required=True)
+    parser.add_argument("--owner-paint-sha", required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     real_head = subprocess.check_output(
@@ -233,6 +235,12 @@ def main() -> None:
     ).strip()
     require(real_head == args.owner_recon_sha,
             "UGO_C16_RECON_HEAD_NOT_EXACT")
+    for label, owner_sha in (
+        ("IC", args.owner_ic_sha), ("PAINT", args.owner_paint_sha),
+    ):
+        require(len(owner_sha) == 40 and
+                all(c in "0123456789abcdef" for c in owner_sha),
+                "UGO_C16_MISSING_EXACT_" + label + "_SHA")
     require(args.font.is_file() and
             hashlib.sha256(args.font.read_bytes()).hexdigest() == FONT_SHA256,
             "UGO_C16_SIGNED_TYPE_A_FONT_REQUIRED")
@@ -312,6 +320,8 @@ def main() -> None:
         "schema": "YGO_TL494_C16_FOUR_TRUE_23_INSTANCE_PORTAL_CONTRACT_V1",
         "source_original_sha": FROZEN_SHA,
         "recon_exact_sha": real_head,
+        "signed_physical_ic_owner_sha": args.owner_ic_sha,
+        "real_render_paint_owner_sha": args.owner_paint_sha,
         "pinned_opengost_type_a_sha256": FONT_SHA256,
         "source_net_count": 15,
         "source_memberships": 62,
