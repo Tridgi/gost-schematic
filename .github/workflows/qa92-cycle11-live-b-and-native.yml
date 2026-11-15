@@ -20,11 +20,11 @@ jobs:
         python-version: ["3.12", "3.13"]
     env:
       SOURCE_SHA: e695c415fdced164b0e0c39c5249d030795a0aa6
-      RECON_SHA: 65b68cdd89ac0c2ae0b137228da61a17ac78d339
-      IC_SHA: c8991bf232428645cad6e8b402d70abccf12a546
-      PAINT_SHA: df49c16fb082ee98213299358f374894fe1da220
-      NET_SHA: e2f6710b0f6d2f970f3353fb3171644c85d2ac75
-      YGO_SHA: 2dae5306c0690f2fc2d402bb4b65266dabd778b8
+      RECON_SHA: 021dc1a240f2d2aea21c60057f28159bf7e4ecba
+      IC_SHA: 90dab83566ba9ed8b344ab24396da084f02b5c23
+      PAINT_SHA: f71f9c47f1e6313361dfa04242c559b0d74c831c
+      NET_SHA: ffbfc5fdc4653e1a2b08ac5e6d38d96ad669dbec
+      YGO_SHA: 92347d936c71e6038c836f37992bbbee65d56196
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,27 +36,27 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 65b68cdd89ac0c2ae0b137228da61a17ac78d339
+          ref: 021dc1a240f2d2aea21c60057f28159bf7e4ecba
           path: _qa_sources/recon
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: c8991bf232428645cad6e8b402d70abccf12a546
+          ref: 90dab83566ba9ed8b344ab24396da084f02b5c23
           path: _qa_sources/ic
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: df49c16fb082ee98213299358f374894fe1da220
+          ref: f71f9c47f1e6313361dfa04242c559b0d74c831c
           path: _qa_sources/paint
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: e2f6710b0f6d2f970f3353fb3171644c85d2ac75
+          ref: ffbfc5fdc4653e1a2b08ac5e6d38d96ad669dbec
           path: _qa_sources/net
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 2dae5306c0690f2fc2d402bb4b65266dabd778b8
+          ref: 92347d936c71e6038c836f37992bbbee65d56196
           path: _qa_sources/catalog
           persist-credentials: false
       - uses: actions/setup-python@v5
@@ -84,10 +84,22 @@ jobs:
               target.parent.mkdir(parents=True, exist_ok=True)
               copy2(upstream, target)
 
+          # Frozen E695 contributes only source data/wires. Never overwrite
+          # RECON's newer real Type-A font-aware builder with historical
+          # source tl494_ic_paint_reference.py (obsolete TT family selector).
           for name in ("tl494_named_photo_sheet.py", "tl494_native_rework.py",
-                       "tl494_connected_native.py", "tl494_full_native_model.py",
-                       "tl494_ic_paint_reference.py"):
+                       "tl494_connected_native.py", "tl494_full_native_model.py"):
               stage("source", "examples/" + name)
+          old_builder = (
+              Path("_qa_sources/source/examples/tl494_ic_paint_reference.py")
+              .read_text(encoding="utf-8")
+          )
+          current_builder = (
+              root / "examples/tl494_ic_paint_reference.py"
+          ).read_text(encoding="utf-8")
+          assert "OpenGost Type A TT" in old_builder
+          assert "OpenGOST type A" in current_builder
+          assert "OpenGost Type A TT" not in current_builder
           for name in ("ic.py", "tl494cn.py", "ic_pin_alias.py",
                        "ic_serde.py", "ic_paint_bridge.py",
                        "ic_graphic_revision.py", "ic_circuit_adapter.py",
@@ -190,12 +202,13 @@ jobs:
             --node-cap 5000 \
             --output "../../output/qa92-cycle11-b-${{ matrix.python-version }}/paint-owner-native"
       - name: Independent black and white clean versus 16 green diagnostic, physical 300 DPI NO-GO
-        if: ${{ always() && steps.native_output.outcome == 'success' }}
+        if: ${{ always() && steps.native_output.outcome == 'success' && steps.b_evidence.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
           python scripts/qa_tl494_cycle11_native_300dpi.py \
             --source-dir "output/qa92-cycle11-b-${{ matrix.python-version }}/paint-owner-native" \
+            --source-b-witness "output/qa92-cycle11-b-${{ matrix.python-version }}/real-owner-two-b-markers.json" \
             --output-dir "output/qa92-cycle11-b-${{ matrix.python-version }}/qa-native-300dpi"
       - name: Keep authentic source/PART/Net/INK evidence even on owner fail
         uses: actions/upload-artifact@v4
