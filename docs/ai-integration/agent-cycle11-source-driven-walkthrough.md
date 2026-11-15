@@ -1,4 +1,4 @@
-# Cycle 11 — real TL494 source → typed AI input → native read-only MCP
+# Cycle 11/12 — real TL494 source → typed AI input → native read-only MCP
 
 Issue #74, Epic #107, existing Draft PR #111. This is a **reproducible
 engineering source-inspection pipeline**, not an autonomous Codex
@@ -11,10 +11,10 @@ reconstruction or accepted new electrical scheme.
   `a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65`, source netlist
   Git blob `c4cfd515782bf856a7a44fbe2c2ceacd303208d6`.
 - IC owner code inspected at SHA
-  `1e4baf7ea713f649e0dabb4d6119e97281901f03`.
+  `585d4e645b01ba48e8f7d0574a447a5b6c33c07f`.
 - RECON owner code inspected at SHA
-  `c58e224700b318892ee92197f8bfd391807a7325`.
-- PAINT owner SHA at task acceptance `32f2efb2cdcb561cb2567a54448381de3cb87832`;
+  `32548a704420683e0cb30bf6ab80788c68f84eae`.
+- PAINT owner SHA at task acceptance `ef1f817ab47bba7b3776341e7162ae54ad5c826a`;
   independently valid original-source/native PNG output is **not** a
   proof of complete new print-clean all-15-Net connectivity.
 
@@ -26,6 +26,18 @@ process. Static AST extracts only literal `TI_DEVICE_ID`,
 `SOURCE_SHA` and `NET_RENAMES`. This prevents an unmerged,
 potentially untrusted code checkout from affecting the agent engine.
 
+**Cycle12 integration lock:** the installed, machine-readable
+`agent_project/data/tl494_cycle12_owner_locks.json` pins the exact
+latest-reviewed owner HEADs for IC #97, RECON #115, NET #114 and PAINT
+#93, and six source/API file Git-blob IDs. The native workflow
+`ai-tl494-catalog-preflight.yml` fetches exactly the locked owner
+commits. The trusted CLI checks **all six** blob IDs before accessing
+MCP, then verifies strict source identity and AST owner interface
+signatures. This protects against silently mixing a newer owner
+contract with old test data. The lock is an auditable **snapshot**,
+not a claim the owner branches cannot move or the joint library is
+already merged.
+
 ## 1. Reproduce real source/owner compatibility
 
 In an authorized disposable local checkout of PR #111, run:
@@ -35,12 +47,15 @@ python -m pip install -e ".[dev,mcp]"
 mkdir -p output/cycle11-owner output/cycle11-original-source-proof
 
 git fetch --no-tags --depth=1 origin \
-  1e4baf7ea713f649e0dabb4d6119e97281901f03 \
-  c58e224700b318892ee92197f8bfd391807a7325
+  585d4e645b01ba48e8f7d0574a447a5b6c33c07f \
+  32548a704420683e0cb30bf6ab80788c68f84eae
 
-git show 1e4baf7ea713f649e0dabb4d6119e97281901f03:tests/fixtures/tl494_photo_23_frozen_cycle9.json > output/cycle11-owner/frozen-IC97-source.json
-git show 1e4baf7ea713f649e0dabb4d6119e97281901f03:src/gost_schematic/electrical/tl494cn.py > output/cycle11-owner/IC97-tl494cn.py
-git show c58e224700b318892ee92197f8bfd391807a7325:examples/tl494_v5/native_circuit.py > output/cycle11-owner/RECON115-native-circuit.py
+git show 585d4e645b01ba48e8f7d0574a447a5b6c33c07f:tests/fixtures/tl494_photo_23_frozen_cycle9.json > output/cycle11-owner/frozen-IC97-source.json
+git show 585d4e645b01ba48e8f7d0574a447a5b6c33c07f:src/gost_schematic/electrical/tl494cn.py > output/cycle11-owner/IC97-tl494cn.py
+git show 32548a704420683e0cb30bf6ab80788c68f84eae:examples/tl494_v5/native_circuit.py > output/cycle11-owner/RECON115-native-circuit.py
+git show 585d4e645b01ba48e8f7d0574a447a5b6c33c07f:examples/tl494_cycle9_circuit_integration.py > output/cycle11-owner/IC97-typed-integration.py
+git show 32548a704420683e0cb30bf6ab80788c68f84eae:examples/tl494_v5/cycle11_ti_bridge.py > output/cycle11-owner/RECON115-typed-ti-bridge.py
+git show 32548a704420683e0cb30bf6ab80788c68f84eae:examples/tl494_v5/cycle11_b_continuation.py > output/cycle11-owner/RECON115-typed-b-continuation.py
 
 git hash-object output/cycle11-owner/frozen-IC97-source.json
 # Must output a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65
@@ -54,6 +69,9 @@ python -m examples.agent_tl494_cycle11_pipeline \
   --owner-fixture output/cycle11-owner/frozen-IC97-source.json \
   --ic-header output/cycle11-owner/IC97-tl494cn.py \
   --recon-header output/cycle11-owner/RECON115-native-circuit.py \
+  --ic-integration output/cycle11-owner/IC97-typed-integration.py \
+  --recon-ti-bridge output/cycle11-owner/RECON115-typed-ti-bridge.py \
+  --recon-b-continuation output/cycle11-owner/RECON115-typed-b-continuation.py \
   --out output/cycle11-original-source-proof \
   > output/cycle11-source-pipeline-report.json
 ```
@@ -87,19 +105,28 @@ Git-blob bytes** at
 The wheel verifier independently checks this exact blob identity.
 `agent_readiness.py` now rejects *same-count* 15-Net requests when
 any original Net name, PinRef or member changes, with
-`SOURCE_NET_MEMBERSHIP_MISMATCH`. A full verified-source request
+`SOURCE_NET_MEMBERSHIP_MISMATCH`. A full verified-source request also carries all 23 exact original
+`source_part_id` and literal `nominal_si` values. It rejects changed
+resistor values or DA1 part aliases before routing. A full verified-source request
 reports `frozen_original_pinref_membership_verified=true`
 but remains `BLOCKED_SOURCE_NOT_IMPORTABLE`: no persisted TI
 16-pin manufacturer package, no accepted router or authoring writer.
 `source_membership_verified=false` explicitly means **not validated
 against a persisted complete P1.1 project**.
 
+At the MAIN3 Cycle12 audit (#107) the best independently verified
+compact A3 owner route remains **10/15**, with five failed Nets
+`GATE_DRIVE`, `CONTROL_REFERENCE`, `FEEDBACK`,
+`OSCILLATOR_RT`, `COMMON`. Even if the accepted partial graph's DRC
+is zero, **full 15/15 print release is BLOCKED**. This read-only
+pipeline itself never invokes the owner router.
+
 ## 2. Output artifacts — exact meaning
 
 | Artifact | Evidence | Not proof of |
 | --- | --- | --- |
 | `source-typed-request.json` | real original 23/15/62 physical design intent for stricter future generator | committed/revised E3 |
-| `source-pipeline-report.json` | actual source Git SHA, full nominal/net provenance, duplicate/missing Net denial, blocked code | finished printed drawing |
+| `source-pipeline-report.json` | actual source Git SHA, full nominal/net provenance, complete current owner API blob locks, duplicate/missing Net denial, blocked code | finished printed drawing |
 | `{part_id}.svg` + `.png` (7 pairs) | native installed catalogue glyph rendered by the real read-only MCP; SHA locked | correct complete sheet or approved ГОСТ |
 | `output/cycle11-source-pipeline-report.json` | top-level CI-collected machine-readable report | autonomous Codex LLM tool run |
 
