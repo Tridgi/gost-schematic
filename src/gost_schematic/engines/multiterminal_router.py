@@ -275,15 +275,22 @@ def _source_ink_collision(
 def _nearest_net_order(
     pins: tuple[PinRef, ...],
     positions: dict[PinRef, tuple[Point, Point]],
+    *,
+    root: PinRef | None = None,
 ) -> tuple[PinRef, ...]:
-    """Deterministic Prim order from physical PinRef, not Net-list order.
+    """Deterministic Prim order from actual physical PinRefs.
 
-    The first contact stays source-owned. Each next real contact minimizes
-    Manhattan distance to ANY already selected contact, avoiding a 400mm
-    X1.2→X2.2 initial trunk for COMMON.
+    By default the first source-owned contact stays root. Explicit ALT roots
+    must be members of this exact immutable Net: only order changes, not
+    physical anchor, name, topology or contact membership.
     """
-    visited = [pins[0]]
-    remaining = set(pins[1:])
+    if not pins or len(set(pins)) != len(pins):
+        raise ValueError("ROUTE_PRIM_INVALID_SOURCE_PINREFS")
+    first = pins[0] if root is None else root
+    if first not in pins or set(pins) - set(positions):
+        raise ValueError("ROUTE_PRIM_UNKNOWN_ROOT_OR_PHYSICAL_CONTACT")
+    visited = [first]
+    remaining = set(pins) - {first}
     while remaining:
         next_pin = min(remaining, key=lambda candidate: (
             min(
@@ -975,12 +982,32 @@ def route_circuit_net_trees(
             # Consequently a two-terminal route could never retry its legal
             # original outward corridor with a larger detour, even when a
             # nearby ink/annotation obstacle required just such a turn.
-            # First retry the SAME sourced PinRef order at a larger bounded
-            # detour, then independently reverse its physical root; only
-            # later try geometric terminal orders and coarser search.
+            # Preserve the same-source detour retry, then try the actual
+            # physical medoid as root for multi-contact Nets. COMMON's photo
+            # first PinRef X1.2 is at a distant sheet boundary; reversing
+            # the source list is NOT a Steiner/Prim search and can route
+            # another 300mm unnecessary early trunk. A medoid root minimizes
+            # real Manhattan distance to the OTHER physical terminals, then
+            # Prim grows its actual sourced tree (no fake point or Net).
+            members = known[name].members
+            if len(members) > 2:
+                medoid = min(members, key=lambda pin: (
+                    sum(
+                        abs(positions[pin][0].x - positions[peer][0].x)
+                        + abs(positions[pin][0].y - positions[peer][0].y)
+                        for peer in members
+                    ),
+                    pin.reference, pin.number,
+                ))
+                centered = _nearest_net_order(
+                    members, positions, root=medoid,
+                )
+            else:
+                centered = tuple(reversed(members))
             retries = (
                 (None, 5000, 1.6),
-                (tuple(reversed(known[name].members)), 5000, 2.0),
+                (centered, 5000, 2.0),
+                (tuple(reversed(members)), 5000, 2.0),
                 (sorted_x, 5000, 2.0),
                 (sorted_y, 10000, 2.0),
             )
