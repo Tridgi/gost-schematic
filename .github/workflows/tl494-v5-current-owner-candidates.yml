@@ -14,6 +14,7 @@ on:
       - examples/tl494_v5/test_routed_graph_contract.py
       - examples/tl494_v5/native_circuit.py
       - examples/tl494_v5/compact_layout.py
+      - examples/tl494_v5/test_compact_layout.py
       - examples/tl494_v5/route_preflight.py
       - examples/tl494_ic_paint_reference.py
       - examples/tl494_connected_native.py
