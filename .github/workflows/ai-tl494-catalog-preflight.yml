@@ -164,19 +164,19 @@ jobs:
         run: |
           mkdir -p output/cycle11-owner
           git fetch --no-tags --depth=1 origin \
-            585d4e645b01ba48e8f7d0574a447a5b6c33c07f \
-            32548a704420683e0cb30bf6ab80788c68f84eae
-          git show 585d4e645b01ba48e8f7d0574a447a5b6c33c07f:tests/fixtures/tl494_photo_23_frozen_cycle9.json \
+            7c30c209ea5e97a245844b24a3bbc4d3d30118ea \
+            73025965efeb94585e8723ba3f0b636229e8a5de
+          git show 7c30c209ea5e97a245844b24a3bbc4d3d30118ea:tests/fixtures/tl494_photo_23_frozen_cycle9.json \
             > output/cycle11-owner/frozen-IC97-source.json
-          git show 585d4e645b01ba48e8f7d0574a447a5b6c33c07f:src/gost_schematic/electrical/tl494cn.py \
+          git show 7c30c209ea5e97a245844b24a3bbc4d3d30118ea:src/gost_schematic/electrical/tl494cn.py \
             > output/cycle11-owner/IC97-tl494cn.py
-          git show 32548a704420683e0cb30bf6ab80788c68f84eae:examples/tl494_v5/native_circuit.py \
+          git show 73025965efeb94585e8723ba3f0b636229e8a5de:examples/tl494_v5/native_circuit.py \
             > output/cycle11-owner/RECON115-native-circuit.py
-          git show 585d4e645b01ba48e8f7d0574a447a5b6c33c07f:examples/tl494_cycle9_circuit_integration.py \
+          git show 7c30c209ea5e97a245844b24a3bbc4d3d30118ea:examples/tl494_cycle9_circuit_integration.py \
             > output/cycle11-owner/IC97-typed-integration.py
-          git show 32548a704420683e0cb30bf6ab80788c68f84eae:examples/tl494_v5/cycle11_ti_bridge.py \
+          git show 73025965efeb94585e8723ba3f0b636229e8a5de:examples/tl494_v5/cycle11_ti_bridge.py \
             > output/cycle11-owner/RECON115-typed-ti-bridge.py
-          git show 32548a704420683e0cb30bf6ab80788c68f84eae:examples/tl494_v5/cycle11_b_continuation.py \
+          git show 73025965efeb94585e8723ba3f0b636229e8a5de:examples/tl494_v5/cycle11_b_continuation.py \
             > output/cycle11-owner/RECON115-typed-b-continuation.py
           test "$(git hash-object output/cycle11-owner/frozen-IC97-source.json)" = \
             "a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65"
