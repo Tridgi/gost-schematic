@@ -18,6 +18,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from mcp.types import ImageContent, TextContent
 
+from gost_schematic.agent_project.owner_api_locks import verify_pinned_owner_api_files
 from gost_schematic.agent_project.catalog import CatalogResolver
 from gost_schematic.agent_project.design_assistant import (
     TL494_FROZEN_SOURCE_SHA,
@@ -205,17 +206,24 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args(argv)
     catalog = CatalogResolver()
-    source = verify_frozen_owner_fixture(
-        _read_trusted(args.owner_fixture), catalog,
-    )
+    owner_files = {
+        "ic_frozen_fixture": _read_trusted(args.owner_fixture),
+        "ic_tl494": _read_trusted(args.ic_header),
+        "ic_integration": _read_trusted(args.ic_integration),
+        "recon_native": _read_trusted(args.recon_header),
+        "recon_ti_bridge": _read_trusted(args.recon_ti_bridge),
+        "recon_b_continuation": _read_trusted(args.recon_b_continuation),
+    }
+    owner_locks = verify_pinned_owner_api_files(owner_files)
+    source = verify_frozen_owner_fixture(owner_files["ic_frozen_fixture"], catalog)
     owner = verify_pinned_owner_headers(
-        _read_trusted(args.ic_header), _read_trusted(args.recon_header),
+        owner_files["ic_tl494"], owner_files["recon_native"],
     )
     display = verify_owner_reversible_display(source, owner)
     live_bridges = verify_cycle11_owner_bridge_surfaces(
-        _read_trusted(args.ic_integration),
-        _read_trusted(args.recon_ti_bridge),
-        _read_trusted(args.recon_b_continuation),
+        owner_files["ic_integration"],
+        owner_files["recon_ti_bridge"],
+        owner_files["recon_b_continuation"],
         source,
     )
     output = args.out
@@ -261,6 +269,7 @@ def main(argv: list[str] | None = None) -> int:
         "real_source_nets": source["source_nets"],
         "owner_part_id_bridge": owner,
         "owner_cycle11_bridge": live_bridges,
+        "cycle12_exact_owner_api_locks": owner_locks,
         "reversible_net_display": display,
         "real_UGO_samples": samples,
         "typed_readiness_exit": code,
