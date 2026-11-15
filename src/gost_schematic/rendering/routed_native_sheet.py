@@ -162,19 +162,16 @@ def render_routed_native_sheet(
             raise ValueError("ROUTED_SHEET_SIGNED_IC_16_PIN_INVENTORY_MISMATCH")
         # Serialized lead inventory must match the authenticated manufacturer
         # contact map, not a caller-manufactured synthetic physical cursor.
+        expected = {
+            f"{c.component_ref}.P{c.physical_number}": c.anchor
+            for c in verified_ic_snapshot.manifest.contacts
+        }
+        if len(expected) != 16:
+            raise ValueError("ROUTED_SHEET_SIGNED_IC_MANIFEST_LOST_PINS")
         for provided in (
             physical_ic_renderings_clean[reference],
             physical_ic_renderings_diagnostic[reference],
         ):
-            expected = dict(
-                (f"{reference}.P{contact.physical_number}", contact.anchor)
-                for contact in verified_ic_snapshot.manifest.contacts
-            ) if hasattr(verified_ic_snapshot.manifest, "contacts") else {
-                f"{reference}.P{contact.physical_number}": contact.anchor
-                for contact in verified_ic_snapshot.manifest.for_unit(
-                    verified_ic_paint_binding.unit_ids[0]
-                )
-            }
             if dict(provided.pin_anchors) != expected or (
                 provided.connection_targets
                 != verified_ic_snapshot.per_unit_targets[0]
