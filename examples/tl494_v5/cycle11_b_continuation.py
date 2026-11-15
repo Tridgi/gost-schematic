@@ -97,6 +97,16 @@ def rebind_true_source_b(
     b = next(net for net in compact.nets if net.name == SOURCE_B_NAME)
     if set(b.members) != B_PHYSICAL or len(b.members) != 3:
         raise ValueError("TL494_C11_B_SOURCE_PHYSICAL_PINREF_CHANGED")
+    # The b overlay is *not* an authorization to change the remaining 14
+    # electrical Nets. Preserve every original physical tuple in the
+    # compact signed Circuit, even when the isolated b pin set still matches.
+    expected_compact = {
+        name: tuple(PinRef(*value.rsplit(".", 1)) for value in members)
+        for name, members in frozen_nets.items()
+    }
+    actual_compact = {net.name: net.members for net in compact.nets}
+    if actual_compact != expected_compact:
+        raise ValueError("TL494_C12_B_ALL_15_PHYSICAL_NETS_NOT_FROZEN")
     if (
         len(source_project.endpoints) != 2
         or len(source_project.pairs) != 1

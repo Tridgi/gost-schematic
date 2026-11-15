@@ -167,3 +167,44 @@ def test_negative_b_source_address_reciprocity_cannot_be_rewritten(
     ))
     with pytest.raises(ValueError, match="SOURCE_B_MARKER_ADDRESS_DRIFT"):
         rebind_true_source_b(incorrect, signed, a3.symbols)
+
+def test_negative_compact_non_b_net_pinref_swap_fails_closed(
+    actual_source_and_a3,
+):
+    old, assembly, signed = actual_source_and_a3
+    # b itself is unchanged and the total 23/15/62 still matches; mutating
+    # some OTHER Net is nevertheless forbidden by source-authentic routing.
+    changed = tuple(
+        Net(
+            net.name,
+            tuple(
+                PinRef("DA1", "4") if pin == PinRef("DA1", "3") else pin
+                for pin in net.members
+            ),
+        ) if net.name == "FEEDBACK" else net
+        for net in signed.nets
+    )
+    assert len(changed) == 15
+    assert sum(len(net.members) for net in changed) == 62
+    assert next(n for n in changed if n.name == SOURCE_B_NAME).members == (
+        next(n for n in signed.nets if n.name == SOURCE_B_NAME).members
+    )
+    with pytest.raises(ValueError, match="ALL_15_PHYSICAL_NETS_NOT_FROZEN"):
+        rebind_true_source_b(
+            old, Circuit(signed.components, changed), assembly.symbols,
+        )
+
+
+def test_negative_b_pin_member_order_change_not_source_exact(
+    actual_source_and_a3,
+):
+    old, assembly, signed = actual_source_and_a3
+    modified = tuple(
+        Net(net.name, tuple(reversed(net.members)))
+        if net.name == SOURCE_B_NAME else net
+        for net in signed.nets
+    )
+    with pytest.raises(ValueError, match="ALL_15_PHYSICAL_NETS_NOT_FROZEN"):
+        rebind_true_source_b(
+            old, Circuit(signed.components, modified), assembly.symbols,
+        )
