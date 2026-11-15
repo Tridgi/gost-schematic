@@ -22,12 +22,12 @@ from examples.tl494_v5.route_preflight import _owner_ic_obstacle
 
 from gost_schematic.core.geometry import Box, Point
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
-from gost_schematic.engines.orthogonal_route_planner import _resolve_real_pin
 from gost_schematic.engines.multiterminal_router import (
     _source_ink_collision,
     _source_ink_obstacles,
     route_circuit_with_order_fallback,
 )
+from gost_schematic.engines.orthogonal_route_planner import _resolve_real_pin
 from gost_schematic.engines.sheet_layout import layout_sheet
 from gost_schematic.model.circuit import PinRef
 from gost_schematic.rendering.external_wire_sheet import (
