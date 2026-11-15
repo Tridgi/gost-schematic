@@ -9,6 +9,7 @@ import importlib
 import json
 import subprocess
 from dataclasses import replace
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from gost_schematic.catalog.source_footprints import (
@@ -53,6 +54,64 @@ def _point(p):
 
 def _box(b):
     return [b.min_x, b.min_y, b.max_x, b.max_y]
+
+
+def parse_real_pin_coordinates(value: str) -> dict[str, tuple[int, int]]:
+    """Strict pin-number / integer micrometre metadata, no duplicate alias."""
+    if not isinstance(value, str) or not value:
+        raise ValueError("UGO_PIN_METADATA_MISSING")
+    result = {}
+    for item in value.split(";"):
+        pair = item.split(":")
+        if len(pair) != 2 or not pair[0] or pair[0] in result:
+            raise ValueError("UGO_PIN_METADATA_DUPLICATE_OR_INVALID_NUMBER")
+        coords = pair[1].split(",")
+        if len(coords) != 2:
+            raise ValueError("UGO_PIN_METADATA_NOT_XY")
+        try:
+            xy = tuple(int(v) for v in coords)
+        except ValueError as exc:
+            raise ValueError("UGO_PIN_METADATA_NOT_INTEGER_MICROMETRES") from exc
+        result[pair[0]] = xy
+    return result
+
+
+def _svg_decimal_um(value: str) -> int:
+    """Only exact micrometre SVG positions, never float-round near matches."""
+    try:
+        um = Decimal(value) * 1000
+        if not um.is_finite() or um != um.to_integral_value():
+            raise ValueError("UGO_MARKER_NOT_EXACT_INTEGER_MICROMETRES")
+        return int(um)
+    except InvalidOperation as exc:
+        raise ValueError("UGO_MARKER_INVALID_DECIMAL") from exc
+
+
+def verify_real_pin_markers(root, expected: dict[str, tuple[int, int]], *,
+                            diagnostic: bool) -> int:
+    """Check green-pin diagnostic rect centre and pin IDs against real tips."""
+    ns = "{http://www.w3.org/2000/svg}"
+    markers = root.findall(f".//{ns}rect[@data-editor-target='true']")
+    if not diagnostic:
+        if markers:
+            raise ValueError("UGO_CLEAN_SVG_CONTAINS_PIN_DEBUG_MARKER")
+        return 0
+    seen = set()
+    for rect in markers:
+        number = rect.get("data-physical-pin")
+        if number not in expected or number in seen:
+            raise ValueError("UGO_DEBUG_PIN_UNKNOWN_OR_DUPLICATED")
+        seen.add(number)
+        x = _svg_decimal_um(rect.get("x", ""))
+        y = _svg_decimal_um(rect.get("y", ""))
+        width = _svg_decimal_um(rect.get("width", ""))
+        height = _svg_decimal_um(rect.get("height", ""))
+        if ((width, height) != (1200, 1200)
+            or (x + 600, y + 600) != expected[number]):
+            raise ValueError("UGO_DEBUG_PIN_TIP_POSITION_MISMATCH")
+    if seen != set(expected):
+        raise ValueError("UGO_DEBUG_PHYSICAL_PIN_INVENTORY_MISMATCH")
+    return len(seen)
 
 
 def compare_native_net_strokes() -> dict:
@@ -156,42 +215,28 @@ def compare_native_paint_symbols() -> dict:
                 )
                 assert posed == dbg_pose
                 expected = {
-                    pin.number: _point(pin.at) for pin in posed.pins
+                    pin.number: (pin.at.x, pin.at.y) for pin in posed.pins
                 }
-                pairs = tuple(
-                    item.split(":", 1) for item in clean.attrib[
-                        "data-real-pin-coordinates-um"
-                    ].split(";")
+                declared = parse_real_pin_coordinates(
+                    clean.attrib["data-real-pin-coordinates-um"]
                 )
-                if any(len(pair) != 2 for pair in pairs):
-                    raise AssertionError("PAINT malformed physical PinRef metadata")
-                declared = {
-                    number: [int(v) for v in xy.split(",")]
-                    for number, xy in pairs
-                }
-                # A dict alone would silently overwrite repeated physical pin
-                # numbers: never suppress a duplicate with matching last value.
-                if len(declared) != len(pairs) or expected != declared:
+                debug_declared = parse_real_pin_coordinates(
+                    diagnostic.attrib["data-real-pin-coordinates-um"]
+                )
+                if expected != declared or debug_declared != expected:
                     raise AssertionError(
                         f"PAINT physical source PinRef drift {binding.reference}"
                     )
-                ns = "{http://www.w3.org/2000/svg}"
-                actual_clean = clean.findall(
-                    f".//{ns}rect[@data-editor-target='true']"
+                verify_real_pin_markers(clean, expected, diagnostic=False)
+                marks = verify_real_pin_markers(
+                    diagnostic, expected, diagnostic=True
                 )
-                actual_debug = diagnostic.findall(
-                    f".//{ns}rect[@data-editor-target='true']"
-                )
-                if actual_clean or len(actual_debug) != len(binding.part.pins):
-                    raise AssertionError(
-                        f"PAINT physical debug marker count mismatch {binding.reference}"
-                    )
                 if binding.reference == "VT1" and (
                     clean.attrib.get("data-source-dot") !=
                     "PHOTO_MATCH_DRAFT_NOT_VENDOR_PIN"
                 ):
                     raise AssertionError("Source-specific VT1 real dot was lost")
-                real_marks += len(actual_debug)
+                real_marks += marks
                 checked += 1
     assert checked == YGO_SOURCE_PROFILES * D4_TRANSFORMS
     assert real_marks == 28 * D4_TRANSFORMS

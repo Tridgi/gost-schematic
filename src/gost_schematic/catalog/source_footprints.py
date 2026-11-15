@@ -6,7 +6,7 @@ A pin corridor is pin-specific and does NOT waive self-symbol collisions.
 """
 from dataclasses import dataclass, replace
 
-from gost_schematic.agent_project.catalog import value_digest
+from gost_schematic.catalog.source_digest import value_digest
 from gost_schematic.catalog.source_profiles import (
     SourceGlyphBinding,
     SymbolProfileMismatch,

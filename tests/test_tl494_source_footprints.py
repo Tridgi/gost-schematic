@@ -3,11 +3,17 @@
 import json
 from dataclasses import FrozenInstanceError, replace
 from pathlib import Path
+from xml.etree import ElementTree as ET
 
 import pytest
 
 from examples.review_tl494_ugo_source_cycle9 import generate
+from scripts.verify_tl494_cycle11_owner_strokes import (
+    parse_real_pin_coordinates,
+    verify_real_pin_markers,
+)
 from gost_schematic.agent_project.catalog import value_digest
+from gost_schematic.catalog.source_digest import value_digest as source_value_digest
 from gost_schematic.catalog.source_footprints import (
     footprint_record,
     source_footprint,
@@ -337,3 +343,101 @@ def test_all_13_source_records_pinmap_is_explicit_and_unique():
     } == {
         "VD1": ["1", "2"], "VT1": ["1", "2", "3"], "R5": ["1", "2", "3"],
     }
+
+
+
+@pytest.mark.parametrize("value,expected", (
+    ("1:0,0", {"1": (0, 0)}),
+    ("A:-11000,3000;K:0,-12500",
+     {"A": (-11000, 3000), "K": (0, -12500)}),
+    ("1:0,0;2:1000,-1000;3:3500,500",
+     {"1": (0, 0), "2": (1000, -1000), "3": (3500, 500)}),
+))
+def test_real_paint_pin_metadata_exact_number_and_micrometre(value, expected):
+    assert parse_real_pin_coordinates(value) == expected
+
+
+@pytest.mark.parametrize("bad", (
+    "", "1:0,0;1:0,0", "1:0,0;1:1000,1000",
+    "1:0", "1:0,1,2", "1:0,2;", ":1,2",
+    "1:2.5,0", "1:0,1;bad", "1:0,a",
+))
+def test_real_paint_pin_metadata_negative_fails_closed(bad):
+    with pytest.raises(ValueError, match="UGO_PIN_METADATA"):
+        parse_real_pin_coordinates(bad)
+
+
+def _test_marker_root(*, coords=("0", "0"),
+                      pin="1", size="1.2"):
+    ns = "{http://www.w3.org/2000/svg}"
+    root = ET.Element(ns + "svg")
+    ET.SubElement(root, ns + "rect", {
+        "data-editor-target": "true",
+        "data-physical-pin": pin,
+        "x": coords[0],
+        "y": coords[1],
+        "width": size,
+        "height": size,
+    })
+    return root
+
+
+def test_debug_pin_marker_real_tip_on_exact_one_micrometre():
+    root = _test_marker_root(coords=("0.634", "-0.325"))
+    expected = {"1": (1234, 275)}
+    assert verify_real_pin_markers(root, expected, diagnostic=True) == 1
+    with pytest.raises(ValueError, match="UGO_CLEAN"):
+        verify_real_pin_markers(root, expected, diagnostic=False)
+    ns = "{http://www.w3.org/2000/svg}"
+    root.remove(root.find(ns + "rect"))
+    assert verify_real_pin_markers(root, expected, diagnostic=False) == 0
+    with pytest.raises(ValueError, match="UGO_DEBUG_PHYSICAL_PIN"):
+        verify_real_pin_markers(root, expected, diagnostic=True)
+
+
+@pytest.mark.parametrize("coords,pin,size,code", (
+    (("0", "0"), "1", "1.2", "UGO_DEBUG_PIN_TIP"),
+    (("0.634", "-0.325"), "2", "UGO_DEBUG_PIN_UNKNOWN"),
+    (("0.634", "-0.325"), "1", "1.3", "UGO_DEBUG_PIN_TIP"),
+    (("0.6341", "-0.325"), "1", "1.2", "UGO_MARKER_NOT_EXACT"),
+    (("nan", "-0.325"), "1", "1.2", "UGO_MARKER_NOT_EXACT"),
+    (("bad", "-0.325"), "1", "1.2", "UGO_MARKER_INVALID"),
+))
+def test_debug_marker_rejects_non_tip_drift_and_impostor(
+    coords, pin, size, code,
+):
+    root = _test_marker_root(coords=coords, pin=pin, size=size)
+    with pytest.raises(ValueError, match=code):
+        verify_real_pin_markers(root, {"1": (1234, 275)}, diagnostic=True)
+
+
+def test_debug_marker_duplicate_true_physical_pin_number_rejected():
+    root = _test_marker_root(coords=("0.634", "-0.325"))
+    ns = "{http://www.w3.org/2000/svg}"
+    ET.SubElement(root, ns + "rect", {
+        "data-editor-target": "true",
+        "data-physical-pin": "1",
+        "x": "0.634", "y": "-0.325", "width": "1.2", "height": "1.2",
+    })
+    with pytest.raises(ValueError, match="UGO_DEBUG_PIN_UNKNOWN_OR_DUPLICATED"):
+        verify_real_pin_markers(root, {"1": (1234, 275)}, diagnostic=True)
+
+
+
+@pytest.mark.parametrize("which", (
+    "VD1", "VT1", "C1", "C2", "C3", "C4", "C5", "C6", "C7",
+    "L1", "L2", "FU1", "R5",
+))
+def test_catalog_digest_matches_old_project_exact_format(which):
+    """Live owner consumers must not pull AI-agent package for SHA-only code."""
+    bound = next(entry for entry in _scene() if entry.reference == which)
+    for record in (bound.part, bound.symbol, footprint_record(source_footprint(bound))):
+        assert source_value_digest(record) == value_digest(record)
+    assert source_value_digest(bound.part) == source_footprint(bound).part_sha256
+    assert source_value_digest(bound.symbol) == source_footprint(bound).symbol_sha256
+
+
+@pytest.mark.parametrize("invalid", (object(), 3.14, {1, 2}, float("nan")))
+def test_ugo_digest_refuses_unknown_noncanonical_inputs(invalid):
+    with pytest.raises(ValueError, match="UGO_DIGEST_UNSUPPORTED"):
+        source_value_digest(invalid)

@@ -6,9 +6,9 @@ Date 2026-11-15. Existing Draft PR #113; frozen source `e695c415fdced164b0e0c39c
 
 | Independent owner | Frozen HEAD at gate authoring | Real API under test |
 | --- | --- | --- |
-| NET #114 | `3b0f29cf253e4649179afa879aa1281d982df53b` | `engines.multiterminal_router._source_ink_obstacles`, actual transformed stroked primitive AABB, real touching lead and physical PinRef identity |
-| IC #97 | `9242fa83606a881b8ff277ff051c7b46a5b63a22` | `examples.tl494_cycle9_circuit_integration.build_frozen_photo_23`; exact original 23 components/15 Nets/62 PinRef and all 16 DA1 pins tested against 13 YGO source footprints, without relocating or changing the source topology |
-| PAINT #93 | `dea3b4564fa32ef3ff040f1ffdd9aa47ab480d2d` | `rendering.svg.render_symbol_svg` via real `examples.review_tl494_ugo_source_cycle9._actual_root`, plus importable routed_native_sheet API |
+| NET #114 | `7d66b9ae3b0bebcc5bb6b4812aa603e7cd963836` | `engines.multiterminal_router._source_ink_obstacles`, actual transformed stroked primitive AABB, real touching lead and physical PinRef identity |
+| IC #97 | `90a493a2f2c08b29db50f410332b91f807869a7b` | `examples.tl494_cycle9_circuit_integration.build_frozen_photo_23`; exact original 23 components/15 Nets/62 PinRef and all 16 DA1 pins tested against 13 YGO source footprints, without relocating or changing the source topology |
+| PAINT #93 | `7ef594622f507592e4f686faf8baa5ff2a7fbd2f` | `rendering.svg.render_symbol_svg` via real `examples.review_tl494_ugo_source_cycle9._actual_root`, plus importable routed_native_sheet API |
 
 The workflow uses a detached **temporary Git worktree at each exact owner commit** and copies ONLY the YGO source-profile modules and gallery method into that disposable checkout. It never commits or pushes to an owner branch. Python imports the real owner repository package, not the older base version. Both Python 3.12 and 3.13 run.
 
@@ -23,3 +23,31 @@ The workflow uses a detached **temporary Git worktree at each exact owner commit
 **No GOST APPROVED assertions:** 36 DRAFT symbols, 0 APPROVED; source-figure 1:1 user/photo calibration and original detailed manufacturer pinouts remain BLOCKED.
 
 **Full user TL494 acceptance remains BLOCKED until** NET completes all 15 source networks (62 real memberships), RECON/PAINT renders a real new 23-component print sheet with 0 disallowed DRC errors and independent QA on pinned exact owner heads. A successful workflow here is only contract compatibility for glyph ink and PinRefs, not a substitute for 15-Net route.
+
+## Cycle 12 exact-head CI repair
+
+Previous cross-owner CI after C402 repair: NET 3.12/3.13 PASS,
+PAINT and IC 3.12/3.13 FAIL with ModuleNotFoundError:
+gost_schematic.agent_project. This was a YGO packaging/consumer
+boundary error, not a proven failed electrical source topology.
+A footprint's canonical hash is now produced in
+catalog/source_digest.py with *exactly the original canonical
+data and SHA256 algorithm*, regression-compared against the
+older agent_project.catalog.value_digest for all 13 source
+types and their exported footprint records. The owner worktree
+CI copies this small SHA-only catalog module, NOT the entire
+AI/MCP agent package, which those owners do not depend upon.
+
+The latest owner HEADs listed in the matrix are intentionally
+exact immutable SHA candidates; they are not automatically refreshed
+mid-test. If owners advance after a checkpoint, rerun the gate on
+new HEADs before certifying their current integration.
+
+The PAINT diagnostic marker validator now reads source PinRefs
+as exact integer-um data, rejects duplicate or missing pin numbers
+and validates EACH green diagnostic 1.2mm marker's center against
+the physical pin tip using Decimal (not floating-point rounding).
+A clean SVG must have ZERO green contact markers. The tests reject
+one-micrometre drift, spoofed pins, duplicate numbers, malformed
+coordinates, non-integral micrometres and unexpected debug overlays.
+All tests remain enabled; source-figure/print certification remains BLOCKED.

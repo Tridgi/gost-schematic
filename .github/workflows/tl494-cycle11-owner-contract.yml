@@ -5,6 +5,7 @@ on:
     branches: [parallel/catalog-tl494-source-fidelity-cycle9]
     paths:
       - "src/gost_schematic/catalog/source_footprints.py"
+      - "src/gost_schematic/catalog/source_digest.py"
       - "src/gost_schematic/catalog/source_profiles.py"
       - "src/gost_schematic/catalog/source_profiles/**"
       - "examples/review_tl494_ugo_source_cycle9.py"
@@ -33,22 +34,22 @@ jobs:
         include:
           - owner: net
             python-version: "3.12"
-            owner_sha: "3b0f29cf253e4649179afa879aa1281d982df53b"
+            owner_sha: "7d66b9ae3b0bebcc5bb6b4812aa603e7cd963836"
           - owner: net
             python-version: "3.13"
-            owner_sha: "3b0f29cf253e4649179afa879aa1281d982df53b"
+            owner_sha: "7d66b9ae3b0bebcc5bb6b4812aa603e7cd963836"
           - owner: paint
             python-version: "3.12"
-            owner_sha: "dea3b4564fa32ef3ff040f1ffdd9aa47ab480d2d"
+            owner_sha: "7ef594622f507592e4f686faf8baa5ff2a7fbd2f"
           - owner: paint
             python-version: "3.13"
-            owner_sha: "dea3b4564fa32ef3ff040f1ffdd9aa47ab480d2d"
+            owner_sha: "7ef594622f507592e4f686faf8baa5ff2a7fbd2f"
           - owner: ic
             python-version: "3.12"
-            owner_sha: "9242fa83606a881b8ff277ff051c7b46a5b63a22"
+            owner_sha: "90a493a2f2c08b29db50f410332b91f807869a7b"
           - owner: ic
             python-version: "3.13"
-            owner_sha: "9242fa83606a881b8ff277ff051c7b46a5b63a22"
+            owner_sha: "90a493a2f2c08b29db50f410332b91f807869a7b"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -67,6 +68,7 @@ jobs:
           git worktree add --detach "$RUNNER_TEMP/ygo-owner" "$OWNER_SHA"
           test "$(git -C "$RUNNER_TEMP/ygo-owner" rev-parse HEAD)" = "$OWNER_SHA"
           mkdir -p "$RUNNER_TEMP/ygo-owner/src/gost_schematic/catalog/source_profiles"
+          cp src/gost_schematic/catalog/source_digest.py "$RUNNER_TEMP/ygo-owner/src/gost_schematic/catalog/"
           cp src/gost_schematic/catalog/source_footprints.py "$RUNNER_TEMP/ygo-owner/src/gost_schematic/catalog/"
           cp src/gost_schematic/catalog/source_profiles.py "$RUNNER_TEMP/ygo-owner/src/gost_schematic/catalog/"
           cp src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json "$RUNNER_TEMP/ygo-owner/src/gost_schematic/catalog/source_profiles/"
