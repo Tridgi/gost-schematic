@@ -3,10 +3,11 @@
 The available CI sandbox blocks ALL navigation with ERR_BLOCKED_BY_ADMINISTRATOR;
 this E2E verifies real browser interactions but not a served localhost/Vite app.
 """
-from pathlib import Path
 import base64
 import json
 import tempfile
+from pathlib import Path
+
 from PIL import Image
 from playwright.sync_api import sync_playwright
 

@@ -3,7 +3,7 @@ export const SOURCE_SHA="e695c415fdced164b0e0c39c5249d030795a0aa6";
 function deny(code){throw Error(code)}
 const point=p=>Array.isArray(p)&&p.length===2&&p.every(n=>Number.isSafeInteger(n)&&Math.abs(n)<=1e9);
 const same=(a,b)=>a[0]===b[0]&&a[1]===b[1];
-const key=p=>p.component_id+":"+p.physical_pin_number;
+const key=p=>JSON.stringify([p.component_id,p.physical_pin_number]);
 export function auditCandidateV2(file,{pinWorld,requireFrozen=false}={}){
  if(file?.format!=="gscad-project"||file.format_version!==2||!file.project)deny("UNSUPPORTED_SCHEMA");
  const p=file.project;
@@ -66,7 +66,7 @@ export function auditCandidateV2(file,{pinWorld,requireFrozen=false}={}){
   if(p.provenance?.source_sha!==SOURCE_SHA)deny("FROZEN_SHA_MISMATCH");
   if(components.size!==23||netIds.size!==15||ownership.size!==62)deny("FROZEN_COUNTS_MISMATCH");
   const da=p.components.find(c=>c.source_refdes==="DA1");
-  if(!da||[...ownership.keys()].filter(k=>k.startsWith(da.id+":")).length!==16)deny("FROZEN_DA1_MISMATCH");
+  if(!da||p.nets.reduce((sum,n)=>sum+n.members.filter(pin=>pin.component_id===da.id).length,0)!==16)deny("FROZEN_DA1_MISMATCH");
   if(p.sheets.flatMap(s=>s.graphics.filter(g=>g.kind==="source_b_continuation")).length!==2)deny("FROZEN_B_MISMATCH");
   if(p.nets.some(n=>n.route_status==="verified"))deny("UNVERIFIED_ROUTING");
  }

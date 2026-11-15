@@ -33,3 +33,4 @@ test("duplicate sheets rejected",()=>assert.throws(()=>auditCandidateV2(modify(p
 test("source lock SHA is fixed",()=>assert.equal(SOURCE_SHA,"e695c415fdced164b0e0c39c5249d030795a0aa6"));
 test("wire orthogonal mode is required",()=>assert.throws(()=>auditCandidateV2(modify(p=>delete p.sheets[0].wires[0].mode)),/INVALID_WIRE/));
 test("wire layer id is required",()=>assert.throws(()=>auditCandidateV2(modify(p=>p.sheets[0].wires[0].layer_id="")) ,/INVALID_WIRE/));
+test("physical PinRef tuple encoding is injective for colon-containing IDs",()=>{const t=toy();t.project.components=[{id:"DA:1"},{id:"DA"}];t.project.nets=[{id:"left",members:[ref("DA:1","2")]},{id:"right",members:[ref("DA","1:2")]}];t.project.sheets[0].wires=[];assert.equal(auditCandidateV2(t).counts.memberships,2);});
