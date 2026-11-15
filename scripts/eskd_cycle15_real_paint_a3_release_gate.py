@@ -234,9 +234,34 @@ def audit(folder: Path, *, artifact_run: int, paint_sha: str,
                   (image.width, image.height) == (4961, 3508),
                   "ACTUAL_A3_PNG300_DIMENSIONS_MISMATCH")
             pixel_size = [image.width, image.height]
+            rgb = image.convert("RGB")
+            debug_targets = []
+            for lead in pin_leads:
+                # Physical EXTERNAL DA1 terminal end, never its IC-body end.
+                x = round(float(lead.get("x2", "")) / 420 * rgb.width)
+                y = round(float(lead.get("y2", "")) / 297 * rgb.height)
+                check(0 <= x < rgb.width and 0 <= y < rgb.height,
+                      "DA1_DIAGNOSTIC_PIN_OUTSIDE_PHYSICAL_A3")
+                r, g, blue = rgb.getpixel((x, y))
+                green = g >= 80 and g > 1.4 * r and g > 1.2 * blue
+                debug_targets.append({
+                    "pin": lead.get("data-pin-number"),
+                    "pixel": [x, y], "rgb": [r, g, blue],
+                    "is_debug_green": green,
+                })
+            check(len(debug_targets) == 16
+                  and len({x["pin"] for x in debug_targets}) == 16
+                  and (all(x["is_debug_green"] for x in debug_targets)
+                       if variant == "diagnostic"
+                       else not any(x["is_debug_green"] for x in debug_targets)),
+                  "DA1_16_TRUE_GREEN_ONLY_IN_DIAGNOSTIC_PNG")
         actual[variant] = {
             "svg_sha256": _sha(path), "png_sha256": _sha(png),
             "pixel_size": pixel_size, "source_b": b,
+            "true_DA1_end_point_pixel_samples": debug_targets,
+            "debug_green_true_pin_count": sum(
+                x["is_debug_green"] for x in debug_targets
+            ),
         }
     check(len(wires) == manifest["route_segments"],
           "ROUTE_MANIFEST_AND_PRINTED_WIRE_COUNT_DIFFER")
