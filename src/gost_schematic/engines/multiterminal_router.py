@@ -427,24 +427,30 @@ def _visibility_path(
     search_node_cap: int,
     grid_um: int,
     max_detour_ratio: float,
+    goal_offset: int = 0,
 ) -> tuple[tuple[Point, ...], str | None]:
     """Deterministic multi-goal Dijkstra with explicit T candidates.
 
     A candidate ending on own tree is checked with that exact proposed dot,
     but intermediate crossings cannot silently acquire new dot authority.
     """
+    if type(goal_offset) is not int or goal_offset < 0:
+        raise ValueError("ROUTE_INVALID_GOAL_WINDOW_OFFSET")
     if not goals:
         return (), "ROUTE_NO_TREE_TARGET"
     # Source's long COMMON and GATE_DRIVE require a SPARSE visibility grid.
     # A full Cartesian grid from every source wire endpoint can exceed 25k
     # nodes after just 5 nets. Keep closest genuine branch targets first;
     # retaining all pre-existing physical obstacles in edge validity checks.
-    reachable_goals = tuple(sorted(
+    sorted_goals = tuple(sorted(
         set(goals),
         key=lambda p: (
             abs(p.x - source.x) + abs(p.y - source.y), p.x, p.y,
         ),
-    ))[:24]
+    ))
+    reachable_goals = sorted_goals[goal_offset:goal_offset + 24]
+    if not reachable_goals:
+        return (), "ROUTE_NO_TREE_TARGET_IN_WINDOW"
     targets = frozenset(reachable_goals)
     x0 = min(source.x, *(p.x for p in reachable_goals))
     x1 = max(source.x, *(p.x for p in reachable_goals))
@@ -773,22 +779,38 @@ def route_multi_terminal_net(
                 ("ROUTE_PIN_TRAPPED_BY_SYMBOL_OR_TEXT:" + pin.reference
                  + "." + pin.number,), tuple(p for p in pins if p in connected),
             )
-        path, reason = _visibility_path(
-            current, outward, goals, net_name=net.name,
-            occupied=occupied, tree=tuple(branches),
-            existing_dots=dots,
-            ink_obstacles=source_ink,
-            authorized_pins=frozenset(pins),
-            goal_pin_normals={
-                at: normal for ref in connected
-                for at, normal in (locations[ref],)
-                if at in goals
-            },
-            boxes=boxes, page=page_box,
-            stroke_um=stroke_um, grid_um=grid_um,
-            search_node_cap=search_node_cap,
-            max_detour_ratio=max_detour_ratio,
-        )
+        # A tree with dozens of real interior T points can have its nearest
+        # 24 candidates blocked by another routed Net or actual UGO ink. An
+        # immutable point 25+ may be legal; previously it was NEVER tried.
+        # Search non-overlapping source-authored target windows in a bounded
+        # progression and accept ONLY a path to a real existing conductor.
+        # No synthetic electrical joint, no mixing independent route graphs.
+        path: tuple[Point, ...] = ()
+        reason: str | None = None
+        target_windows = 0
+        for target_offset in range(0, min(len(goals), 72), 24):
+            target_windows += 1
+            path, reason = _visibility_path(
+                current, outward, goals, net_name=net.name,
+                occupied=occupied, tree=tuple(branches),
+                existing_dots=dots,
+                ink_obstacles=source_ink,
+                authorized_pins=frozenset(pins),
+                goal_pin_normals={
+                    at: normal for ref in connected
+                    for at, normal in (locations[ref],)
+                    if at in goals
+                },
+                boxes=boxes, page=page_box,
+                stroke_um=stroke_um, grid_um=grid_um,
+                search_node_cap=search_node_cap,
+                max_detour_ratio=max_detour_ratio,
+                goal_offset=target_offset,
+            )
+            if reason is None:
+                break
+        if reason is not None and target_windows > 1:
+            reason += f":REAL_TREE_TARGET_WINDOWS_TRIED={target_windows}"
         if reason is not None:
             return NetTreePreview(
                 net.name, pins, tuple(branches), dots, total_bends,
