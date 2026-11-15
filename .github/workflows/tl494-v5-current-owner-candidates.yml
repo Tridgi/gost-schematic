@@ -37,10 +37,10 @@ jobs:
       - name: Pin all four unmerged current-owner source HEADs (never merge)
         run: |
           set -euxo pipefail
-          IC=ad574fd2e87e7e1636861e40d245abca7acc906a
-          PAINT=573afec0beb11df96811aa50d7ebb9eacff264e8
-          CATALOG=2dae5306c0690f2fc2d402bb4b65266dabd778b8
-          ROUTER=e77d86f958d572a2158a55d0628d9b54a87ef873
+          IC=0fdd1c799796a8afecb347d71169c001e02fe3e1
+          PAINT=18294ec6218e375c6e82be3a3ec70e15be419cd0
+          CATALOG=78935639a1c9c2c10d5f1fcf32af5d6c96e7c601
+          ROUTER=ba4735b4c7e533856c4a714c99e3d18ba2ab8be6
           SOURCE=e695c415fdced164b0e0c39c5249d030795a0aa6
           for sha in "$IC" "$PAINT" "$CATALOG" "$ROUTER" "$SOURCE"; do
             git fetch origin "$sha"
