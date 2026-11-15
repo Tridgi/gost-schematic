@@ -39,6 +39,30 @@ def require_box(raw: object, tag: str) -> list[int]:
     return raw
 
 
+def orthogonal_segment_hits_stroked_box(
+    start_um: tuple[int, int],
+    end_um: tuple[int, int],
+    stroked_box_um: list[int],
+) -> bool:
+    """Exact segment vs real ink AABB; remote coordinate alone never blocks.
+
+    This is a geometric broad-phase predicate, NOT permission for a wire
+    crossing, a routed connection, or a substitute for global DRC.
+    Callers must still run NET's real clearance/pin/foreign-net veto.
+    """
+    require(len(start_um) == len(end_um) == 2 and
+            all(type(n) is int for n in (*start_um, *end_um)),
+            "UGO_C16_NON_INTEGER_SEGMENT")
+    x0, y0, x1, y1 = require_box(stroked_box_um, "segment_query")
+    sx, sy = start_um
+    ex, ey = end_um
+    if sy == ey:
+        return y0 <= sy <= y1 and max(sx, ex) >= x0 and min(sx, ex) <= x1
+    if sx == ex:
+        return x0 <= sx <= x1 and max(sy, ey) >= y0 and min(sy, ey) <= y1
+    raise AssertionError("UGO_C16_DIAGONAL_SEGMENT_NOT_ORTHOGONAL")
+
+
 def router_obstacle_contract(snapshot: dict) -> dict:
     """Project actual strokes/text and exact PinRef-only escape portals.
 
