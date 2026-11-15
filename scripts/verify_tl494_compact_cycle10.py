@@ -6,6 +6,7 @@ raster color at every external physical TL494DA1 point.
 import argparse
 import hashlib
 import json
+from decimal import Decimal
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -77,6 +78,34 @@ def verify(folder: Path) -> dict:
     assert {(ref, number) for ref, number in members if ref == "DA1"} == {
         ("DA1", str(pin)) for pin in range(1, 17)
     }
+    # Independently compare source-backed values AND each physical net against
+    # the byte-locked IC97 JSON taken from immutable e695 photo source.
+    frozen_file = (
+        Path(__file__).resolve().parents[1]
+        / "tests/fixtures/tl494_photo_23_frozen_cycle9.json"
+    )
+    frozen = json.loads(frozen_file.read_text(encoding="utf-8"))
+    assert frozen["source_commit"] == proof["model_source"]
+    original_bom = {part["ref"]: part for part in frozen["components"]}
+    original_nets = frozen["nets"]
+    assert len(original_bom) == 23 and len(original_nets) == 15
+    for actual in bom["components"]:
+        ref = actual["reference"]
+        expected = original_bom[ref]
+        expected_part = (
+            "ti.tl494cn.pdip16" if ref == "DA1" else expected["part_id"]
+        )
+        assert actual["part_id"] == expected_part
+        source_nominal = expected["nominal_si"]
+        record = actual["nominal"]
+        assert (source_nominal is None) == (record is None)
+        if record is not None:
+            assert Decimal(record["si_value"]) == Decimal(source_nominal)
+    for net in netlist["nets"]:
+        expected = set(original_nets[net["name"]])
+        actual = {f'{pin["reference"]}.{pin["number"]}' for pin in net["pinrefs"]}
+        assert actual == expected
+        assert len(net["pinrefs"]) == len(expected)
     assert "PE" not in source_names and "CHASSIS" not in source_names
     assert proof["A3_true_catalog_bounds"]["A3_capacity_fit"]
     assert proof["status"] == "BLOCKED" and not proof["real_print_release"]
