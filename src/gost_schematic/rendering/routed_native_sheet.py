@@ -135,11 +135,16 @@ def render_routed_native_sheet(
         raise TypeError("ROUTED_SHEET_SIGNED_IC_TRIPLE_REQUIRED")
     signed_source_verified = False
     if all(item is not None for item in trust_items):
-        from gost_schematic.electrical.ic_circuit_adapter import (
-            IcCircuitBinding,
-            IcVerifiedPaintSnapshot,
-        )
-        from gost_schematic.electrical.ic_paint_bridge import IcPaintBinding
+        try:
+            from gost_schematic.electrical.ic_circuit_adapter import (
+                IcCircuitBinding,
+                IcVerifiedPaintSnapshot,
+            )
+            from gost_schematic.electrical.ic_paint_bridge import IcPaintBinding
+        except ModuleNotFoundError as exc:
+            raise RuntimeError(
+                "ROUTED_SHEET_IC97_SIGNED_RUNTIME_NOT_INSTALLED"
+            ) from exc
 
         if (
             not isinstance(verified_ic_source, IcCircuitBinding)
