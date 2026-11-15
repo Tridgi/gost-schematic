@@ -41,3 +41,14 @@ No `npm install`, third-party license, browser, network, or build step. No file 
 - #122: supply a canonical fixture loader/PinRef resolver, with exact integer validation.
 - #123: supply command adapter for T/X/junction/splice/free, moveSegment and rollback.
 - #125: integrate these tests in UI CI only after source adapters are wired and actual browser gestures exist.
+
+## Non-rendering 1000/2000-item reference probe
+
+Run `node perf-smoke.mjs`. In the reference implementation this generates 1000
+pin candidates and 2000 H/V segments, warms up, then measures 400 linear-scan
+pointer queries each. This is **NOT** React, browser, SVG DOM, production
+spatial-index, or a measured frame rate; use it only to detect changes in
+reference hit-test complexity and to set an indexed-canvas performance target.
+Sample on Node 22.16.0 Linux: approximately 0.07–0.08 ms/hitPin (1000
+candidates) and 0.10–0.11 ms/hitSegment (2000 segments), averages varied
+between local runs. Owner #120 must bench actual browser on Windows separately.
