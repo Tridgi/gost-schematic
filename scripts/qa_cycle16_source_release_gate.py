@@ -59,7 +59,7 @@ def mm_um(value: str | None) -> int:
 
 def inspect_svg(
     path: Path, mode: str, original: dict[str, list[str]],
-    b_stubs: dict, count: int, allow_partial: bool,
+    b_stubs: dict, signed_da1: dict[str, tuple[int, int]], count: int,
 ) -> tuple[str, dict]:
     root = ET.fromstring(path.read_bytes())
     demand(root.tag == SVG + "svg", "QA_C16_NOT_NATIVE_SVG")
@@ -92,6 +92,11 @@ def inspect_svg(
            {line.get("data-pin-number") for line in leads} ==
            {str(i) for i in range(1, 17)},
            "QA_C16_REAL_MANUFACTURER_16_PIN_LEADS_NOT_PRESENT")
+    for lead in leads:
+        pin_no = lead.get("data-pin-number")
+        actual_xy = (mm_um(lead.get("x2")), mm_um(lead.get("y2")))
+        demand(actual_xy == signed_da1.get(pin_no),
+               "QA_C16_MANUFACTURER_SIGNED_PIN_TIP_DRIFT_1UM")
     targets = root.findall(".//" + SVG + "g[@data-layer='editor-connection-targets']/"
                            + SVG + "rect")
     demand(len(targets) == (16 if mode == "diagnostic" else 0),
@@ -106,6 +111,13 @@ def inspect_svg(
                marker.get("data-connectable") == "true" and
                marker.get("fill") == "#148645",
                "QA_C16_FOREIGN_GREEN_NET_OR_ILLUSORY_CONTACT")
+        number = marker.get("data-pin-number")
+        signed_tip = signed_da1.get(number)
+        demand(number is not None and pin == "DA1." + number and
+               signed_tip is not None and
+               marker.get("data-external-anchor-x-um") == str(signed_tip[0]) and
+               marker.get("data-external-anchor-y-um") == str(signed_tip[1]),
+               "QA_C16_DIAGNOSTIC_MARKER_NOT_SIGNED_DA1_TIP")
     ink_wires = root.findall(".//" + SVG + "line[@data-layer='wires']")
     # Explicitly never infer full electrical connectivity from SVG line count.
     return sha(path), {
@@ -149,6 +161,26 @@ def audit(
     every_pin = [p for v in original.values() for p in v]
     demand(len(every_pin) == len(set(every_pin)),
            "QA_C16_SOURCE_PINREF_MULTIPLE_NETS")
+    original_pin_net = {
+        pin: net for net, pins in original.items() for pin in pins
+    }
+    signed = source.get("signed_DA1_pin_contacts")
+    demand(isinstance(signed, list) and len(signed) == 16,
+           "QA_C16_NO_SOURCE_SIGNED_16_FACTORY_PIN_CONTACTS")
+    signed_da1: dict[str, tuple[int, int]] = {}
+    for row in signed:
+        demand(type(row) is dict and
+               type(row.get("number")) is str and
+               type(row.get("physical_um")) is list and
+               len(row["physical_um"]) == 2 and
+               all(type(n) is int for n in row["physical_um"]) and
+               row.get("owner_Net") ==
+               original_pin_net.get("DA1." + row["number"]) and
+               row["number"] not in signed_da1,
+               "QA_C16_SOURCE_DA1_FACTORY_PIN_AND_ORIGINAL_NET_DRIFT")
+        signed_da1[row["number"]] = tuple(row["physical_um"])
+    demand(set(signed_da1) == {str(n) for n in range(1, 17)},
+           "QA_C16_FACTORY_DA1_MISSING_REAL_NUMBERS")
     demand(source.get("source_b_nonphysical_Net") == "b_NEGATIVE_OUTPUT" and
            source.get("b_marker_continuations_are_NOT_new_physical_Nets") is True,
            "QA_C16_B_SOURCE_IS_NOT_NON_ELECTRICAL")
@@ -211,8 +243,7 @@ def audit(
         name = f"TL494-{fmt}-{mode}-source-b.svg"
         demand(name in files, "QA_C16_REAL_SOURCE_SVG_NOT_IN_ARTIFACTS")
         _, views[mode] = inspect_svg(
-            root / name, mode, original, b_stubs,
-            completed, allow_partial=completed != 15,
+            root / name, mode, original, b_stubs, signed_da1, completed,
         )
         demand(views[mode]["drawn_wires"] ==
                manifest.get("routed_native_segments"),
