@@ -281,6 +281,59 @@ def audit(folder: Path, *, artifact_run: int, paint_sha: str,
           manifest["real_print_release"] is False and
           manifest["gost_approved"] is False,
           "DRAFT_OWNER_IMPERSONATES_FULL_PRINT_APPROVAL")
+    # Only scoped measured objects, not an inferred full-sheet pass.
+    coverage = {
+        "parallel_wire_3mm_projected_overlap": {
+            "status": "MEASURED_SUBSET",
+            "pair_count": ink3["all_noncoincident_overlapping_projection_pairs"],
+            "violations": len(ink3["below_3mm"]),
+        },
+        "separate_UGO_2mm_conservative_envelopes": {
+            "status": "MEASURED_CONSERVATIVE_SUBSET",
+            "pair_count": ink2_1["separate_UGO_checked_pairs"],
+            "violations_or_unresolved": len(
+                ink2_1["distinct_UGO_below_2mm"]
+            ),
+        },
+        "nonjoined_same_UGO_1mm_parallel_strokes": {
+            "status": "MEASURED_SUBSET",
+            "pair_count": ink2_1["intra_UGO_subset"][
+                "source_catalog_parallel_nonjoined_pairs"
+            ],
+            "violations": len(ink2_1["intra_UGO_subset"]["below_one_mm"]),
+        },
+        "catalog_TypeA_39_glyph_ink": {
+            "status": "UNMEASURED" if label_ink["unmeasured_count"]
+            else "BLOCKED_INDEPENDENT_RASTER",
+            "unmeasured_count": label_ink["unmeasured_count"],
+            "producer_claim_count": label_ink["producer_measured_count"],
+        },
+        "label_to_real_wire_and_symbol_ink": {
+            "status": "BLOCKED_MISSING_TEXT_AND_RASTER",
+            "tested_pairs": label_ink["measured_pair_count"],
+        },
+        "C1_and_project_10mm_text_inset": {
+            "status": "UNMEASURED_NO_C1_GLYPH_AABB"
+            if label_ink["unmeasured_count"] else "BLOCKED_RASTER",
+            "note": "PROJECT_EDITORIAL_CRITERION_NOT_GOST_DRAWING_FRAME",
+        },
+        "formal_frame_title_and_global_print_DRC": {
+            "status": "BLOCKED_NOT_FULL_PAGE_NORMATIVE_MEASURED",
+        },
+        "two_source_b_nonphysical_strokes": {
+            "status": "MEASURED_ACTUAL_SVG",
+            "count": actual["clean"]["source_b"]["actual_nonphysical_svg_lines"],
+        },
+        "COMMON_0V_not_PE": {
+            "status": "VERIFIED_EXACT_FROZEN_NETLIST",
+        },
+        "route_completion": {
+            "status": "BLOCKED" if route["routed_net_count"] < 15
+            else "BLOCKED_GLOBAL_RELEASE_NOT_PROVEN",
+            "routed": route["routed_net_count"],
+            "required": 15,
+        },
+    }
     return {
         "schema": "ESKD_CYCLE15_REAL_CURRENT_PAINT_SIGNED_A3_GATE_V1",
         "artifact_provenance": {
@@ -304,6 +357,7 @@ def audit(folder: Path, *, artifact_run: int, paint_sha: str,
         "scope_3mm_parallel_wires": ink3,
         "scope_2mm_distinct_and_1mm_internal_UGO": ink2_1,
         "scope_39_catalog_type_a_label_ink": label_ink,
+        "measurement_coverage_matrix": coverage,
         "source_C1_type_a_catalog_text_frame":
             "BLOCKED_NO_INDEPENDENT_NATIVE_LABEL_RASTER_BBOX",
         "paper_A3_420x297_svg": "PASS_REAL_FULL_PAGE_CROP_NOT_USED",
