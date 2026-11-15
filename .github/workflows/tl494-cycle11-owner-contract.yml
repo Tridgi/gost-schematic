@@ -34,28 +34,28 @@ jobs:
         include:
           - owner: net
             python-version: "3.12"
-            owner_sha: "a370d637fe67ec44870899d503f53c0a6f8ee3af"
+            owner_sha: "027cee506a8dc9b3926b44b1abba66e1ae25b183"
           - owner: net
             python-version: "3.13"
-            owner_sha: "a370d637fe67ec44870899d503f53c0a6f8ee3af"
+            owner_sha: "027cee506a8dc9b3926b44b1abba66e1ae25b183"
           - owner: paint
             python-version: "3.12"
-            owner_sha: "f872ce50ac699ad089391b0bbd58e2cb92f2b7f6"
+            owner_sha: "6ebd97d5d51facf15b733a1f909c4530262f5bc8"
           - owner: paint
             python-version: "3.13"
-            owner_sha: "f872ce50ac699ad089391b0bbd58e2cb92f2b7f6"
+            owner_sha: "6ebd97d5d51facf15b733a1f909c4530262f5bc8"
           - owner: ic
             python-version: "3.12"
-            owner_sha: "7c30c209ea5e97a245844b24a3bbc4d3d30118ea"
+            owner_sha: "d7e70a8bfaed5f4e4f7fb340fdc7dbe4fc466e7b"
           - owner: ic
             python-version: "3.13"
-            owner_sha: "7c30c209ea5e97a245844b24a3bbc4d3d30118ea"
+            owner_sha: "d7e70a8bfaed5f4e4f7fb340fdc7dbe4fc466e7b"
           - owner: recon
             python-version: "3.12"
-            owner_sha: "73025965efeb94585e8723ba3f0b636229e8a5de"
+            owner_sha: "8453ea5e2438844ad468b8a9042806ec12e1f125"
           - owner: recon
             python-version: "3.13"
-            owner_sha: "73025965efeb94585e8723ba3f0b636229e8a5de"
+            owner_sha: "8453ea5e2438844ad468b8a9042806ec12e1f125"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -113,12 +113,21 @@ jobs:
           # pinned by SHA, staged temporarily just as RECON owner does in
           # its genuine current-owner integration CI. No fake signatures.
           if test "$OWNER" = recon; then
-            IC_SHA="7c30c209ea5e97a245844b24a3bbc4d3d30118ea"
+            IC_SHA="d7e70a8bfaed5f4e4f7fb340fdc7dbe4fc466e7b"
             git fetch --no-tags --depth=1 origin "$IC_SHA"
             for file in ic.py tl494cn.py ic_pin_alias.py ic_serde.py ic_paint_bridge.py ic_graphic_revision.py ic_circuit_adapter.py ic_editor_targets.py; do
               git show "$IC_SHA:src/gost_schematic/electrical/$file" > "$RUNNER_TEMP/ygo-owner/src/gost_schematic/electrical/$file"
             done
-            echo "PINNED_REAL_IC_OWNER=$IC_SHA; RECON_OWNER=$OWNER_SHA"
+            # The reference-based RECON owner ALSO imports real PAINT
+            # modules. Without this exact stage Python fails before testing
+            # any source UGO (previous Cycle13 GitHub CI failure).
+            PAINT_SHA="6ebd97d5d51facf15b733a1f909c4530262f5bc8"
+            git fetch --no-tags --depth=1 origin "$PAINT_SHA"
+            mkdir -p "$RUNNER_TEMP/ygo-owner/src/gost_schematic/rendering"
+            for file in ic_rectangular.py ic_hotspots.py ic_orientation.py ic_power_profiles.py ic_tl494_profile.py ic_electrical_binding.py ic_sheet_composition.py external_wire_sheet.py native_sheet_ink_audit.py routed_native_sheet.py; do
+              git show "$PAINT_SHA:src/gost_schematic/rendering/$file" > "$RUNNER_TEMP/ygo-owner/src/gost_schematic/rendering/$file"
+            done
+            echo "PINNED_REAL_IC_OWNER=$IC_SHA; PINNED_REAL_PAINT_OWNER=$PAINT_SHA; RECON_OWNER=$OWNER_SHA"
           fi
           mkdir -p output/cycle11-owners
           cd "$RUNNER_TEMP/ygo-owner"
