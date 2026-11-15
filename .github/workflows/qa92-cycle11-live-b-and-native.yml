@@ -20,10 +20,10 @@ jobs:
         python-version: ["3.12", "3.13"]
     env:
       SOURCE_SHA: e695c415fdced164b0e0c39c5249d030795a0aa6
-      RECON_SHA: 73025965efeb94585e8723ba3f0b636229e8a5de
-      IC_SHA: 7c30c209ea5e97a245844b24a3bbc4d3d30118ea
-      PAINT_SHA: 2e9d3fa41794eb773645e112ec8c44fc273e9f52
-      NET_SHA: 61df41377cc9326f7fa0f594a804d329b447ec69
+      RECON_SHA: e4eb565820e54889456f64d36598b608597ca2c2
+      IC_SHA: bc03a31c5d15c9e962f9b26a209aab373e39bee6
+      PAINT_SHA: d74300580dfd28cc3400a512828dac6b49d529f0
+      NET_SHA: a370d637fe67ec44870899d503f53c0a6f8ee3af
       YGO_SHA: 3e47cdf32ccf211ded97e3be1ad874035653e090
     steps:
       - uses: actions/checkout@v4
@@ -36,22 +36,22 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 73025965efeb94585e8723ba3f0b636229e8a5de
+          ref: e4eb565820e54889456f64d36598b608597ca2c2
           path: _qa_sources/recon
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 7c30c209ea5e97a245844b24a3bbc4d3d30118ea
+          ref: bc03a31c5d15c9e962f9b26a209aab373e39bee6
           path: _qa_sources/ic
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 2e9d3fa41794eb773645e112ec8c44fc273e9f52
+          ref: d74300580dfd28cc3400a512828dac6b49d529f0
           path: _qa_sources/paint
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 61df41377cc9326f7fa0f594a804d329b447ec69
+          ref: a370d637fe67ec44870899d503f53c0a6f8ee3af
           path: _qa_sources/net
           persist-credentials: false
       - uses: actions/checkout@v4
