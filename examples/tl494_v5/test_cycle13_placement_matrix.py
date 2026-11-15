@@ -99,6 +99,7 @@ def test_partial_10_of_15_never_laundered_into_print():
         ("routes_attempted", 0, "ROUTE_NOT_ATTEMPTED_UNDISCLOSED"),
         ("routed_net_count", 16, "INVALID_ROUTE_COUNT"),
         ("print_after_released", True, "UNVERIFIED_PRINT_RELEASE"),
+        ("technical_route_eligible", True, "FALSE_FULL_GRAPH_ELIGIBILITY"),
     ],
 )
 def test_matrix_diagnostics_reject_forged_owners(key, value, error):
