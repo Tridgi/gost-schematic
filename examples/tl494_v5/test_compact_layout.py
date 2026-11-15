@@ -3,7 +3,12 @@ from dataclasses import replace
 
 import pytest
 
-from examples.tl494_v5.compact_layout import COMPACT_A3_MM, compact_source_assembly
+from examples.tl494_v5.compact_layout import (
+    COMPACT_A3_MM,
+    actual_component_occupied_mm,
+    compact_source_assembly,
+)
+from gost_schematic.core.geometry import Point
 from examples.tl494_v5.native_circuit import assemble_native_v5
 from gost_schematic.model.circuit import Circuit
 
@@ -65,3 +70,38 @@ def test_old_9_drc_errors_explicitly_preserved_in_compact_model_metadata():
         "wires": 91, "junctions": 37,
     }
     assert result.status == "DRAFT_MODEL_ONLY_NO_PRINT"
+
+
+@pytest.mark.parametrize(
+    ("delta_x_um", "delta_y_um"),
+    [(25000, 0), (-25000, 0), (0, -40000), (0, 70000)],
+)
+def test_a3_capacity_never_approves_off_paper_ink_bbox(
+    delta_x_um: int, delta_y_um: int,
+):
+    source = compact_source_assembly()
+    original = actual_component_occupied_mm(source, source.symbols)
+    assert original["A3_capacity_fit"] is True
+    assert original["A3_bbox_within_margins"] is True
+
+    # A rigid translation preserves all 23 real source strokes and their
+    # total dimensions, yet moves physical ink beyond a paper margin.
+    shifted = replace(source, circuit=Circuit(
+        tuple(
+            replace(
+                part,
+                origin=Point(
+                    part.origin.x + delta_x_um,
+                    part.origin.y + delta_y_um,
+                ),
+            )
+            for part in source.circuit.components
+        ),
+        source.circuit.nets,
+    ))
+    measured = actual_component_occupied_mm(shifted, source.symbols)
+    assert measured["width_mm"] == original["width_mm"]
+    assert measured["height_mm"] == original["height_mm"]
+    assert measured["A3_bbox_within_margins"] is False
+    assert measured["A3_capacity_fit"] is False
+    assert shifted.circuit.nets is source.circuit.nets
