@@ -236,7 +236,12 @@ def test_source_signed_ic_triple_incomplete_or_forged_rejected():
             physical_ic_renderings_diagnostic={"DD1": diagnostic},
             verified_ic_source=object(),
         )
-    with pytest.raises(TypeError, match="SIGNED_MANUFACTURER_TYPES_REQUIRED"):
+    # Base CI has no unmerged IC97 module; owner-pinned CI does.
+    # Both must reject forged authority, never silently accept raw targets.
+    with pytest.raises(
+        (TypeError, RuntimeError),
+        match="SIGNED_MANUFACTURER_TYPES_REQUIRED|IC97_SIGNED_RUNTIME_NOT_INSTALLED",
+    ):
         render_routed_native_sheet(
             circuit, graph, parts, symbols, STYLE, FixedInk(),
             physical_ic_renderings_clean={"DD1": clean},
