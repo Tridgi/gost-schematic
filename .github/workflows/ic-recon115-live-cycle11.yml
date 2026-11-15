@@ -30,30 +30,30 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Tridgi/gost-schematic
-          ref: 77f9989df4dcd8ef63836f145119d0b33c3319cf
+          ref: 8453ea5e2438844ad468b8a9042806ec12e1f125
           path: _recon115_exact
           persist-credentials: false
       - name: Checkout current YGO2 PR113 source-native physical catalog
         uses: actions/checkout@v4
         with:
           repository: Tridgi/gost-schematic
-          ref: 41bb51230e66e7f5e200f7b95c24453ab5247d5b
+          ref: 54f06f67db8ffc64262ce5d8d98b8c6b72f45b9f
           path: _catalog113_exact
           persist-credentials: false
       - name: Checkout latest PAINT PR93 owner
         uses: actions/checkout@v4
         with:
           repository: Tridgi/gost-schematic
-          ref: be2357095892c0506a50f9d15c827924eb486185
+          ref: 6ebd97d5d51facf15b733a1f909c4530262f5bc8
           path: _paint93_exact
           persist-credentials: false
       - name: Assemble only ephemeral cross-owner test checkout and prove SHAs
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -C _recon115_exact rev-parse HEAD)" = '77f9989df4dcd8ef63836f145119d0b33c3319cf'
-          test "$(git -C _catalog113_exact rev-parse HEAD)" = '41bb51230e66e7f5e200f7b95c24453ab5247d5b'
-          test "$(git -C _paint93_exact rev-parse HEAD)" = 'be2357095892c0506a50f9d15c827924eb486185'
+          test "$(git -C _recon115_exact rev-parse HEAD)" = '8453ea5e2438844ad468b8a9042806ec12e1f125'
+          test "$(git -C _catalog113_exact rev-parse HEAD)" = '54f06f67db8ffc64262ce5d8d98b8c6b72f45b9f'
+          test "$(git -C _paint93_exact rev-parse HEAD)" = '6ebd97d5d51facf15b733a1f909c4530262f5bc8'
           test -f _recon115_exact/examples/tl494_v5/compact_layout.py
           test -f src/gost_schematic/electrical/ic_circuit_adapter.py
           mkdir -p _recon115_exact/src/gost_schematic/electrical
@@ -74,7 +74,7 @@ jobs:
           test -f _paint93_exact/examples/render_tl494_compact_new_router_cycle10.py
           cp _paint93_exact/examples/render_tl494_full_native_cycle9.py _recon115_exact/examples/
           cp _paint93_exact/examples/render_tl494_compact_new_router_cycle10.py _recon115_exact/examples/
-          echo "REAL_OWNER_SOURCES RECON115=77f9989d IC97=$GITHUB_SHA YGO113=41bb5123 PAINT93=be235709"
+          echo "REAL_OWNER_SOURCES RECON115=8453ea5e IC97=$GITHUB_SHA YGO113=54f06f67 PAINT93=6ebd97d5"
           echo "NO_PRODUCTION_SOURCE_BRANCH_MERGE"
       - uses: actions/setup-python@v5
         with:
