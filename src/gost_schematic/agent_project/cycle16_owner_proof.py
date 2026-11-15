@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from decimal import Decimal, InvalidOperation
 import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -106,7 +107,9 @@ def _canonical_source(source_request: dict[str, Any]) -> dict[str, list[str]]:
     return expected
 
 
-def _svg_checks(raw: bytes, *, diagnostic: bool) -> dict[str, Any]:
+def _svg_checks(
+    raw: bytes, *, diagnostic: bool, b_stubs_expected: dict[str, Any],
+) -> dict[str, Any]:
     if b"<!DOCTYPE" in raw.upper() or b"<!ENTITY" in raw.upper():
         _reject("C16_EXTERNAL_XML_ENTITIES_FORBIDDEN")
     try:
@@ -129,6 +132,32 @@ def _svg_checks(raw: bytes, *, diagnostic: bool) -> dict[str, Any]:
     )
     if len(b_stubs) != 2 or len(leads) != 16:
         _reject("C16_NATIVE_SVG_PHYSICAL_GRAPHICS_DRIFT")
+    by_id = {
+        x.get("data-nonphysical-net-continuation"): x for x in b_stubs
+    }
+    if len(by_id) != 2 or set(by_id) != set(b_stubs_expected):
+        _reject("C16_NATIVE_B_IDS_DRIFT")
+    for name, stroke in by_id.items():
+        original = b_stubs_expected[name]
+        if (
+            stroke.get("data-source-pin-ref") != original["physical_PinRef"]
+            or stroke.get("data-nonphysical") != "true"
+            or stroke.get("data-electrical-junction") != "false"
+            or stroke.get("data-connectable") != "false"
+        ):
+            _reject("C16_NATIVE_B_ELECTRICALLY_FORGED")
+        for field, value in zip(
+            ("x1", "y1", "x2", "y2"),
+            (*original["start_um"], *original["end_um"]), strict=True,
+        ):
+            try:
+                parsed = Decimal(stroke.get(field, "")) * 1000
+            except InvalidOperation as error:
+                raise ProjectError(
+                    "C16_NATIVE_B_COORDINATE_INVALID", "Invalid b SVG coordinate",
+                ) from error
+            if not parsed.is_finite() or parsed != value:
+                _reject("C16_NATIVE_B_COORDINATE_1UM_DRIFT")
     targets = root.findall(f".//{_SVG}g[@data-layer='editor-connection-targets']")
     if diagnostic:
         if len(targets) != 1:
@@ -231,13 +260,29 @@ def review_c15_owner_proof(
     if (
         not _exact_sha(proof.get("source_font_sha256"))
         or proof["source_font_sha256"] != _FONT_SHA
-        or type(proof.get("source_b_nonphysical")) is not list
-        or len(proof["source_b_nonphysical"]) != 2
+        or type(proof.get("source_b_nonphysical")) is not dict
+        or set(proof["source_b_nonphysical"]) != {"b-X2", "b-R5"}
         or proof.get("main_or_integration_merge") is not False
         or proof.get("full_SVG_PNG300_release")
         != "BLOCKED_UNTIL_15_15_GLOBAL_DRC_QA"
     ):
         _reject("C16_C15_PROOF_SPOOFED_RELEASE")
+    for ident, pin in (("b-X2", "X2.1"), ("b-R5", "R5.2")):
+        stub = proof["source_b_nonphysical"][ident]
+        if (
+            type(stub) is not dict
+            or set(stub) != {
+                "physical_PinRef", "start_um", "end_um", "electrical",
+            }
+            or stub["physical_PinRef"] != pin
+            or stub["electrical"] is not False
+            or any(
+                type(at) is not list or len(at) != 2
+                or any(type(coord) is not int for coord in at)
+                for at in (stub["start_um"], stub["end_um"])
+            )
+        ):
+            _reject("C16_C15_B_STUB_PROVENANCE_INVALID")
     heads = proof.get("owner_exact_shas")
     if type(heads) is not dict or len(heads) < 3 or any(
         not _exact_sha(value, 40) for value in heads.values()
@@ -333,6 +378,7 @@ def review_c15_owner_proof(
         if filename.endswith(".svg"):
             accepted_artifacts[filename].update(_svg_checks(
                 raw_bytes, diagnostic=("diagnostic" in filename),
+                b_stubs_expected=proof["source_b_nonphysical"],
             ))
     raw_route = _json(_bytes(
         folder / "native" / expected_files[-1], _MAX_JSON,
