@@ -66,6 +66,7 @@ class Candidate:
     key: str
     priority: tuple[str, ...]
     move_mm: tuple[tuple[str, int | Decimal, int | Decimal], ...] = ()
+    router_mode: str = "fixed"
 
 
 def _pins(nets) -> dict[str, tuple[str, ...]]:
@@ -388,6 +389,13 @@ def run_candidate(
     """Attempt EVERY original named Net, preserving even failed PinRefs."""
     if type(node_cap) is not int or not 100 <= node_cap <= 100000:
         raise ValueError("V5_CANDIDATE_INVALID_NODE_BUDGET")
+    if config.router_mode not in ("fixed", "congested-veto"):
+        raise ValueError("V5_C13_UNRECOGNIZED_OWNER_ROUTING_MODE")
+    if (
+        config.router_mode == "congested-veto"
+        and config.priority != REAL_SOURCE_NAMES
+    ):
+        raise ValueError("V5_C13_OWNER_CONTROLS_CONGESTED_PRIORITY")
     if frozen is None or owner_binding is None:
         frozen, owner_binding = load_original_owner_fixture()
     positioned = position_only_move(compact_source_assembly(), config.move_mm)
@@ -465,16 +473,28 @@ def run_candidate(
             },
             "print_after_released": False,
         }
-    router = import_module(
+    owner_router = import_module(
         "gost_schematic.engines.multiterminal_router"
-    ).route_circuit_net_trees
-    parts = {**positioned.parts, verified_ti.signed_part_id: verified_ti.part}
-    result = router(
-        signed_circuit, parts, symbols,
-        page_box=Box(0, 0, *A3_LANDSCAPE_UM),
-        annotation_placements=guards, priority=config.priority,
-        search_node_cap=node_cap, stop_on_first_failure=False,
     )
+    parts = {**positioned.parts, verified_ti.signed_part_id: verified_ti.part}
+    if config.router_mode == "congested-veto":
+        # Owner #114's genuine bounded physical-veto restart. The owner
+        # controls the functional Net order, never the source Net identity;
+        # this is NOT an independent RECON implementation of NET routing.
+        result = owner_router.route_circuit_with_order_fallback(
+            signed_circuit, parts, symbols,
+            page_box=Box(0, 0, *A3_LANDSCAPE_UM),
+            annotation_placements=guards, search_node_cap=node_cap,
+            max_order_restarts=2, try_priorities=1, priority_offset=3,
+            physical_veto_restarts=1,
+        )
+    else:
+        result = owner_router.route_circuit_net_trees(
+            signed_circuit, parts, symbols,
+            page_box=Box(0, 0, *A3_LANDSCAPE_UM),
+            annotation_placements=guards, priority=config.priority,
+            search_node_cap=node_cap, stop_on_first_failure=False,
+        )
     # An owner's partial graph can be DRC=0 because failed tree segments
     # are NOT accepted. Do not pretend that means all 15 original Nets PASS.
     report = result.as_dict()
@@ -522,7 +542,10 @@ def run_candidate(
             ),
             "PAINT_trusted_all16_targets_verified": True,
         },
-        "priority": list(config.priority),
+        "priority": (
+            list(config.priority) if config.router_mode == "fixed" else None
+        ),
+        "router_mode": config.router_mode,
         "moves_mm": [
             [ref, str(dx), str(dy)] for ref, dx, dy in config.move_mm
         ],
