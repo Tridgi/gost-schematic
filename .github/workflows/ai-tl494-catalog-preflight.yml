@@ -384,6 +384,60 @@ jobs:
               "print_ready": False, "mcp_write_enabled": False,
           }, sort_keys=True))
           PY
+      - name: Cycle14 standalone installed-wheel native MCP user quickstart
+        shell: bash
+        run: |
+          python -m venv "$RUNNER_TEMP/gse-cycle14-standalone"
+          PY="$RUNNER_TEMP/gse-cycle14-standalone/bin/python"
+          WHEEL="$(find "$GITHUB_WORKSPACE/dist" -maxdepth 1 -name 'gost_schematic-*.whl' -print -quit)"
+          test -f "$WHEEL"
+          "$PY" -m pip install "${WHEEL}[mcp]"
+          cd "$RUNNER_TEMP"
+          "$PY" - <<'PY'
+          import importlib.util
+          from pathlib import Path
+          for name in (
+              "gost_schematic.agent_project.agent_readiness",
+              "examples.agent_tl494_cycle11_pipeline",
+              "examples.agent_tl494_cycle13_quickstart",
+          ):
+              spec = importlib.util.find_spec(name)
+              assert spec is not None and spec.origin
+              origin = Path(spec.origin).resolve()
+              assert "site-packages" in str(origin), (name, origin)
+              assert not origin.is_relative_to(Path(__import__("os").environ["GITHUB_WORKSPACE"]))
+          PY
+          "$PY" -m examples.agent_tl494_cycle13_quickstart \
+            --out "$RUNNER_TEMP/gse-cycle14-wheel-native-evidence" \
+            > "$GITHUB_WORKSPACE/output/cycle14-installed-wheel-quickstart.json"
+          "$PY" - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          output = Path(os.environ["RUNNER_TEMP"]) / "gse-cycle14-wheel-native-evidence"
+          report = json.loads(
+              (Path(os.environ["GITHUB_WORKSPACE"]) /
+               "output/cycle14-installed-wheel-quickstart.json").read_text()
+          )
+          assert json.loads((output / "source-quickstart-report.json").read_text()) == report
+          assert report["status"] == "BLOCKED_PARTIAL"
+          assert (report["physical_component_count"], report["original_net_count"],
+                  report["original_pinref_member_count"]) == (23, 15, 62)
+          assert report["actual_native_mcp_client_session"] is True
+          assert report["actual_codex_cli_llm_session"] is False
+          assert report["refusal_tests_passed"] == report["refusal_tests_total"] == 11
+          assert report["full_15_net_route_available"] is False
+          assert report["mcp_write_tool_enabled"] is False
+          assert report["source_netlist_user_approval"] == "USER_REVIEW_REQUIRED"
+          for name, meta in report["artifacts"].items():
+              blob = (output / name).read_bytes()
+              assert hashlib.sha256(blob).hexdigest() == meta["sha256"]
+          print("Installed-wheel real MCP and fail-closed CLI: PASS; full print BLOCKED")
+          PY
+          cp -a "$RUNNER_TEMP/gse-cycle14-wheel-native-evidence" \
+            "$GITHUB_WORKSPACE/output/cycle14-installed-wheel-evidence"
+
       - name: Archive actual UGO glyphs and project diagnostics
         uses: actions/upload-artifact@v4
         with:
@@ -402,5 +456,7 @@ jobs:
             output/tl494-cycle13-user/
             output/cycle13-quickstart-stdout.json
             output/cycle13-quickstart-help.txt
+            output/cycle14-installed-wheel-quickstart.json
+            output/cycle14-installed-wheel-evidence/
           if-no-files-found: error
           retention-days: 30
