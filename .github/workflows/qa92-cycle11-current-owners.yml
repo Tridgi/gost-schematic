@@ -167,6 +167,9 @@ jobs:
           FONT="$(find "$HOME/.local/share/fonts" -iname '*TypeA*.ttf' -type f | head -1)"
           test -f "$FONT"
           echo "QA_C11_GOST_FONT=$FONT" >> "$GITHUB_ENV"
+          # Real owner tests require this explicit Type-A path, otherwise
+          # pytest silently reports a skipped source-b physical test.
+          echo "TL494_TYPE_A_FONT=$FONT" >> "$GITHUB_ENV"
       - name: True live HEAD RECON + PAINT + NET + IC + YGO positive and hostile pytest
         shell: bash
         run: |
