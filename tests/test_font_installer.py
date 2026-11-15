@@ -1,11 +1,16 @@
 """Select licensed Type A release assets without Type B or arbitrary file writes."""
 
+import hashlib
 import io
 import zipfile
 
 import pytest
 
-from scripts.install_opengost_type_a import _get, select_font_asset
+from scripts.install_opengost_type_a import (
+    _get,
+    load_verified_pinned_type_a,
+    select_font_asset,
+)
 
 
 def test_direct_release_asset_preferred_over_zip():
@@ -100,3 +105,50 @@ def test_anonymous_font_lookup_does_not_attach_authorization(monkeypatch):
     )
     assert _get("https://api.github.com/repos/ingenium-am/open-gost-arm") == b"release"
     assert "Authorization" not in collected[0]
+
+
+def test_pinned_release_is_exact_and_refuses_tampered_archive(monkeypatch):
+    from scripts import install_opengost_type_a as module
+
+    face = b"\\x00\\x01\\x00\\x00" + b"pinned-font-test"
+    mem = io.BytesIO()
+    with zipfile.ZipFile(mem, "w") as archive:
+        archive.writestr("OpenGOSTtypeA-Regular.ttf", face)
+    pinned = mem.getvalue()
+    monkeypatch.setattr(module, "PINNED_ARCHIVE_SHA256", hashlib.sha256(pinned).hexdigest())
+    monkeypatch.setattr(module, "PINNED_TYPE_A_SHA256", hashlib.sha256(face).hexdigest())
+    observed = []
+
+    def fetch(url):
+        observed.append(url)
+        return pinned
+
+    name, data = load_verified_pinned_type_a(fetch)
+    assert name == "OpenGOSTtypeA-Regular.ttf"
+    assert data == face
+    assert observed == [module.PINNED_ARCHIVE_URL]
+    assert "api.github.com" not in observed[0]
+
+    with pytest.raises(ValueError, match="archive SHA256"):
+        load_verified_pinned_type_a(lambda url: pinned + b"tampered")
+
+
+def test_pinned_release_rejects_wrong_face_and_type_b(monkeypatch):
+    from scripts import install_opengost_type_a as module
+
+    def bundle(name, face):
+        blob = io.BytesIO()
+        with zipfile.ZipFile(blob, "w") as archive:
+            archive.writestr(name, face)
+        return blob.getvalue()
+
+    face = b"\\x00\\x01\\x00\\x00wrong-face"
+    wrong = bundle("OpenGOSTtypeA-Regular.ttf", face)
+    monkeypatch.setattr(module, "PINNED_ARCHIVE_SHA256", hashlib.sha256(wrong).hexdigest())
+    with pytest.raises(ValueError, match="font SHA256"):
+        load_verified_pinned_type_a(lambda url: wrong)
+
+    other = bundle("OpenGOSTtypeB-Regular.ttf", face)
+    monkeypatch.setattr(module, "PINNED_ARCHIVE_SHA256", hashlib.sha256(other).hexdigest())
+    with pytest.raises(ValueError, match="exact Type A"):
+        load_verified_pinned_type_a(lambda url: other)
