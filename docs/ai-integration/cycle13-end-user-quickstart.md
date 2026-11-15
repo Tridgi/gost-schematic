@@ -14,6 +14,26 @@ mkdir -p output
 python -m examples.agent_tl494_cycle13_quickstart --out output/tl494-cycle13-user
 ```
 
+### Запуск именно установленного пакета вне репозитория
+
+Для Windows PowerShell (Python 3.12/3.13), находясь в checkout PR #111:
+
+```powershell
+py -3.13 -m venv "$env:TEMP\\gse-ai-wheel"
+& "$env:TEMP\\gse-ai-wheel\\Scripts\\python.exe" -m pip install ".[mcp]"
+Set-Location $env:TEMP
+& "$env:TEMP\\gse-ai-wheel\\Scripts\\python.exe" -m examples.agent_tl494_cycle13_quickstart --out "$env:TEMP\\tl494-cycle13-user"
+```
+
+`pip install` здесь **не editable**: setuptools собирает и устанавливает wheel.
+После `Set-Location` путь проекта больше не участвует в поиске модуля.
+Установленный wheel включает `examples.agent_tl494_cycle11_pipeline` и
+`examples.agent_tl494_cycle13_quickstart`. Прежде чем повторять команду,
+задайте другой несуществующий каталог `--out`; старые артефакты не
+перезаписываются. Отдельный CI на Python 3.12 и 3.13 выполняет такой же
+запуск из `$RUNNER_TEMP` в изолированном venv и проверяет путь импорта
+в `site-packages`, 11 отказов и хеши артефактов.
+
 `output/tl494-cycle13-user` обязан НЕ существовать до запуска. Выход
 без перенаправлений по symlink, без перезаписи; файлы пишет только
 доверенный локальный CLI. Сервер MCP сохраняет политику read-only.
