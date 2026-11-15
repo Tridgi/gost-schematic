@@ -350,6 +350,16 @@ def render_routed_native_sheet(
                 point.x-550, point.y-550,
                 point.x+550, point.y+550,
             ))
+        if source_continuation_project is not None:
+            # Both nonphysical b glyphs are genuine PRINTED ink. Counting
+            # only components/copper silently lets labels or marker rings
+            # spill beyond an otherwise falsely 'A3 fits' physical page.
+            for endpoint in source_continuation_project.endpoints:
+                at = endpoint.anchor
+                protected_boxes.append(Box(
+                    at.x-2500, at.y-4500-style.em_height_um,
+                    at.x+2500, at.y+1000,
+                ))
         page_fits = all(
             physical_page_box.min_x <= box.min_x
             and physical_page_box.min_y <= box.min_y
