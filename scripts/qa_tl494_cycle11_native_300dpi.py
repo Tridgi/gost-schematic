@@ -77,6 +77,62 @@ def validate_real_b_native_layer(
 
 
 
+def assess_source_b_stub_ink(
+    root: ET.Element, b_witness: dict,
+) -> str:
+    """Do not call b print-faithful when only circles/text were rendered.
+
+    Actual RECON owner publishes two typed physical-to-marker stubs. A
+    missing PAINT stroke blocks print and is not silently inferred from Nets.
+    """
+    region = root.find(
+        f".//{SVG}g[@data-layer='typed-nonphysical-continuations']"
+    )
+    demand(region is not None,
+           "QA_C13_SOURCE_B_STUBS_NOT_IN_REAL_CONTINUATION_LAYER")
+    strokes = region.findall(
+        f".//{SVG}line[@data-nonphysical-net-continuation]"
+    )
+    expected = b_witness.get("source_b_stubs_um")
+    demand(isinstance(expected, dict) and set(expected) ==
+           {"X2.1", "R5.2"},
+           "QA_C13_SIGNED_B_TWO_STUB_SOURCE_WITNESS_NOT_PRESENT")
+    markers = {"b-X2": "X2.1", "b-R5": "R5.2"}
+    for name, reference in markers.items():
+        stub = expected[reference]
+        demand(isinstance(stub, dict) and
+               set(stub) == {"start", "end"} and
+               stub["end"] == b_witness["source_b_marker_um"][name] and
+               all(type(n) is int for part in stub.values()
+                   for n in part),
+               "QA_C13_SIGNED_B_SOURCE_STUB_VECTOR_NOT_AUTHENTIC")
+    if not strokes:
+        # Exactly two source-end circles alone do NOT prove a printed
+        # physical-contact-to-marker continuation. Do not invent line ink.
+        return "BLOCKED_PAINT_OMITTED_TWO_AUTHENTIC_B_STUB_STROKES"
+    demand(len(strokes) == 2 and
+           {s.get("data-nonphysical-net-continuation") for s in strokes}
+           == set(markers),
+           "QA_C13_NATIVE_B_STUB_RENDERED_ONLY_PARTIAL_OR_DUPLICATED")
+    for line in strokes:
+        eid = line.get("data-nonphysical-net-continuation")
+        ref = markers[eid]
+        stub = expected[ref]
+        actual = (
+            (Decimal(line.get("x1")) * 1000,
+             Decimal(line.get("y1")) * 1000),
+            (Decimal(line.get("x2")) * 1000,
+             Decimal(line.get("y2")) * 1000),
+        )
+        demand(actual == (tuple(stub["start"]), tuple(stub["end"])) and
+               line.get("data-source-pin-ref") == ref and
+               line.get("data-nonphysical") == "true" and
+               line.get("data-electrical-junction") == "false" and
+               line.get("data-connectable") != "true",
+               "QA_C13_REAL_B_STUB_1UM_OR_ELECTRICAL_JOIN_FORGERY")
+    return "PASS_TWO_SOURCE_SIGNED_NONPHYSICAL_STROKES"
+
+
 def adversarial_b_native_svg(
     source_dir: Path, b_anchor: dict, font_sha: str,
 ) -> dict:
@@ -340,6 +396,7 @@ def inspect_native(
         validate_real_b_native_layer(
             root, b_anchor, b_witness["GOST_A_font_SHA256"], name,
         )
+        native_b_stub_status = assess_source_b_stub_ink(root, b_witness)
         demand(len(targets) == (0 if name == "clean" else 16),
                "QA_C11_NATIVE_EDITOR_LAYER_POLICY")
         tips = {}
@@ -423,6 +480,7 @@ def inspect_native(
             "physical_leads": 16,
             "true_editor_squares": len(targets),
             "source_symbols": len(symbols),
+            "real_b_source_stub_ink": native_b_stub_status,
             "new_net_segments": len(wires),
             "print_release": "BLOCKED",
         }
@@ -440,7 +498,14 @@ def inspect_native(
         "all_views": modes,
         "original_91_wire_9_error_32_warning_source":
             "UNCHANGED_NEGATIVE_FIXTURE",
-        "source_b_continuation": "PASS_SIGNED_TWO_NONPHYSICAL_B_NOT_PRINT_RELEASE",
+        "source_b_continuation": (
+            "SOURCE_SIGNED_TWO_MARKERS_AND_STUBS"
+            if all(view["real_b_source_stub_ink"] ==
+                   "PASS_TWO_SOURCE_SIGNED_NONPHYSICAL_STROKES"
+                   for view in modes.values())
+            else "BLOCKED_SIGNED_MARKERS_ONLY_MISSING_PRINTED_B_STUB_INK"
+        ),
+        "source_b_stub_ink_check_is_not_electrical_Net_approval": True,
         "signed_b_marker_um": b_anchor,
         "eight_actual_native_b_svg_negatives": adversarial_b_native_svg(
             source_dir, b_anchor, b_witness["GOST_A_font_SHA256"],
