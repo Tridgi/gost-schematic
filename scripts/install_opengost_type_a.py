@@ -2,14 +2,13 @@
 
 Does not vendor font binaries into gost-schematic. Source:
 https://github.com/ingenium-am/open-gost-arm, release v0.7, OFL-1.1.
-The tool prints the resulting SHA256 for provenance; reproducible/regulated
-builds should pin and verify this hash before deploying schematics.
+The tool requires byte-pinned v0.7 archive and font SHA256 before installation;
+no API release metadata and no alternative font are accepted.
 """
 
 import argparse
 import hashlib
 import io
-import json
 import os
 import sys
 import urllib.parse
@@ -18,6 +17,16 @@ import zipfile
 from pathlib import Path
 
 RELEASE = "https://api.github.com/repos/ingenium-am/open-gost-arm/releases/tags/v0.7"
+# Exact upstream v0.7 release asset confirmed on 2026-11-15. Downloading
+# this immutable filename avoids GitHub's shared-IP REST API rate limit.
+PINNED_ARCHIVE_URL = (
+    "https://github.com/ingenium-am/open-gost-arm/releases/download/"
+    "v0.7/OpenGOST_TTF_0.7.zip"
+)
+PINNED_ARCHIVE_SHA256 = "b666e4f139d7ea2fc55334334e117ddde4139cea33a8dc6905aba01d089569dc"
+PINNED_TYPE_A_NAME = "OpenGOSTtypeA-Regular.ttf"
+PINNED_TYPE_A_SHA256 = "f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a"
+MAX_ARCHIVE_BYTES = 1_000_000
 
 
 def _get(url: str) -> bytes:
@@ -66,6 +75,34 @@ def select_font_asset(
     raise ValueError("No OpenGOST Type A TTF/OTF face found in the pinned release")
 
 
+def load_verified_pinned_type_a(getter=_get) -> tuple[str, bytes]:
+    """Load only SHA-pinned upstream v0.7 archive and exact Type A font.
+
+    In particular, never query anonymous release metadata, try a different
+    release, or fall back to an unrelated system font. Wrong bytes are fatal.
+    """
+    archive = getter(PINNED_ARCHIVE_URL)
+    if len(archive) > MAX_ARCHIVE_BYTES:
+        raise ValueError("Pinned OpenGOST archive exceeds bounded size")
+    if hashlib.sha256(archive).hexdigest() != PINNED_ARCHIVE_SHA256:
+        raise ValueError("Pinned OpenGOST release archive SHA256 mismatch")
+    with zipfile.ZipFile(io.BytesIO(archive)) as bundle:
+        names = [
+            name for name in bundle.namelist()
+            if Path(name).name == PINNED_TYPE_A_NAME
+            and not name.startswith("__MACOSX/")
+        ]
+        if len(names) != 1:
+            raise ValueError("Pinned OpenGOST v0.7 exact Type A face not unique")
+        entry = bundle.getinfo(names[0])
+        if entry.file_size > MAX_ARCHIVE_BYTES:
+            raise ValueError("Pinned Type A font exceeds bounded size")
+        data = bundle.read(entry)
+    if hashlib.sha256(data).hexdigest() != PINNED_TYPE_A_SHA256:
+        raise ValueError("Pinned OpenGOST Type A font SHA256 mismatch")
+    return PINNED_TYPE_A_NAME, data
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -78,8 +115,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     try:
-        release = json.loads(_get(RELEASE))
-        name, data = select_font_asset(release["assets"])
+        name, data = load_verified_pinned_type_a()
         digest = hashlib.sha256(data).hexdigest()
         if args.expected_sha256 is not None and digest != args.expected_sha256.lower():
             raise ValueError("Font checksum does not match the specified SHA256")
