@@ -221,6 +221,8 @@ class IcRouterPortContract:
             raise ValueError("IC_ROUTER_EXTERNAL_PART_REBIND_REQUIRED")
         if type(proposed_ports) is not tuple or len(proposed_ports) != 16:
             raise ValueError("IC_ROUTER_EXTERNAL_PHYSICAL_PORT_COVERAGE")
+        if any(not isinstance(p, IcRouterPort) for p in proposed_ports):
+            raise ValueError("IC_ROUTER_EXTERNAL_UNKNOWN_PINREF")
         if len({p.pin_ref for p in proposed_ports}) != 16:
             raise ValueError("IC_ROUTER_EXTERNAL_DUPLICATE_PINREF")
         by_ref = {p.pin_ref: p for p in self.ports}
