@@ -8,7 +8,6 @@ import hashlib
 import json
 import xml.etree.ElementTree as ET
 from importlib.resources import files
-from pathlib import Path
 
 import pytest
 
