@@ -98,6 +98,51 @@ def test_route_priority_trial_count_rejects_invalid_or_unbounded_inputs(n):
         )
 
 
+def test_cycle12_multicontact_prim_medoid_is_real_pin_and_not_source_rewrite():
+    pins = (
+        PinRef("X1", "2"), PinRef("X2", "2"),
+        PinRef("DA1", "7"), PinRef("R8", "2"), PinRef("C7", "2"),
+    )
+    physical = {
+        pin: (point, Point(1, 0))
+        for pin, point in zip(pins, (
+            Point(10000, 10000), Point(399000, 10000),
+            Point(125000, 138750), Point(225000, 224000),
+            Point(140000, 240000),
+        ), strict=True)
+    }
+    source_order = _nearest_net_order(pins, physical)
+    assert source_order[0] == pins[0]
+    center = min(pins, key=lambda p: (
+        sum(abs(physical[p][0].x - physical[q][0].x)
+            + abs(physical[p][0].y - physical[q][0].y)
+            for q in pins),
+        p.reference, p.number,
+    ))
+    assert center != pins[0]
+    retry = _nearest_net_order(pins, physical, root=center)
+    assert retry[0] == center
+    assert set(retry) == set(source_order) == set(pins)
+    assert len(retry) == len(pins)
+    assert pins[0] == PinRef("X1", "2")
+
+
+def test_cycle12_prim_root_forgery_and_duplicate_pinref_rejected():
+    pins = (PinRef("X1", "1"), PinRef("X2", "1"))
+    locations = {
+        pins[0]: (Point(0, 0), Point(1, 0)),
+        pins[1]: (Point(10000, 0), Point(-1, 0)),
+    }
+    with pytest.raises(ValueError, match="ROUTE_PRIM_UNKNOWN_ROOT"):
+        _nearest_net_order(
+            pins, locations, root=PinRef("FAKE", "999"),
+        )
+    with pytest.raises(ValueError, match="ROUTE_PRIM_INVALID_SOURCE"):
+        _nearest_net_order((pins[0], pins[0]), locations)
+    with pytest.raises(ValueError, match="ROUTE_PRIM_INVALID_SOURCE"):
+        _nearest_net_order((), {})
+
+
 def test_cycle12_real_native_lead_cap_creates_only_legal_route_search_lanes():
     # Actual D4-compatible graphic and physical pin: a short printed
     # vertical lead crosses the intended horizontal A Net. A 5mm uniform
