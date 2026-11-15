@@ -330,6 +330,13 @@ def _conservative_ugo_envelope(group: ET.Element) -> tuple[int, int, int, int]:
     def walk(element: ET.Element, stroke_width: str | None) -> None:
         stroke_width = element.get("stroke-width", stroke_width)
         kind = element.tag.removeprefix(SVG)
+        require(kind in {"g", "line", "rect", "path", "circle", "text"},
+                "UGO_UNRECOGNIZED_RENDERED_INK_PRIMITIVE")
+        if kind == "text":
+            # Real DA1 text is audited separately with data-ink-um.
+            # Catalog UGO must never smuggle unsupported SVG text.
+            require(group.get("data-owner") == "DA1",
+                    "UGO_CATALOG_TEXT_INSTEAD_OF_NATIVE_ANNOTATION")
         if kind in {"line", "rect", "path", "circle"}:
             require(stroke_width is not None,
                     "UGO_PRIMITIVE_UNPINNED_STROKE_WIDTH")
@@ -460,6 +467,137 @@ def distinct_ugo_2mm_envelopes(root: ET.Element) -> dict:
     }
 
 
+def source_ugo_parallel_1mm_scope(root: ET.Element) -> dict:
+    """Only non-touching co-projected parallel straight strokes within one UGO.
+
+    Do NOT apply 1mm to connected intentional graphical joints or label ink,
+    and do NOT claim this excludes 1mm violations in non-parallel/arc pairs.
+    """
+    tested: list[tuple[float, str, int, int]] = []
+    for group in root.findall(f".//{SVG}g[@data-layer='symbols']"):
+        ref = group.get("data-reference")
+        default = group.get("stroke-width")
+        lines = []
+        for index, primitive in enumerate(group.iter(f"{SVG}line")):
+            try:
+                x, y, xx, yy = (round(float(primitive.get(k, "")) * 1000)
+                                for k in ("x1", "y1", "x2", "y2"))
+                width = round(float(primitive.get("stroke-width", default))*1000)
+            except (TypeError, ValueError, OverflowError) as exc:
+                raise EvidenceError("UGO_PARALLEL_LINE_INVALID") from exc
+            require(200 <= width <= 1000, "UGO_PARALLEL_LINE_STROKE_INVALID")
+            if (x == xx) == (y == yy):
+                # Non-orthogonal MOS/SCHOTTKY arrow strokes need a separate
+                # geometry-specific audit, never certify them by this subset.
+                continue
+            lines.append((index, x, y, xx, yy, width))
+        for a, b in combinations(lines, 2):
+            i, x, y, xx, yy, w = a
+            j, u, v, uu, vv, q = b
+            horizontal = (y == yy and v == vv
+                          and min(max(x, xx), max(u, uu))
+                          > max(min(x, xx), min(u, uu)))
+            vertical = (x == xx and u == uu
+                        and min(max(y, yy), max(v, vv))
+                        > max(min(y, yy), min(v, vv)))
+            if not (horizontal or vertical):
+                continue
+            center_distance = abs(y-v) if horizontal else abs(x-u)
+            if center_distance <= (w + q)/2:
+                # Coincident/intersecting segments are deliberate single-line
+                # joins or overlap; require true primitive graph audit later.
+                continue
+            tested.append((center_distance - (w + q)/2, ref, i, j))
+    require(bool(tested), "UGO_1MM_REAL_PARALLEL_SAMPLE_MISSING")
+    tightest = min(tested)
+    return {
+        "source_catalog_parallel_nonjoined_pairs": len(tested),
+        "minimum_printed_edge_um": round(tightest[0]),
+        "minimum_owner": tightest[1],
+        "below_one_mm": [
+            {"owner": ref, "line_indices": [i, j], "gap_um": round(gap)}
+            for gap, ref, i, j in tested if gap < 1000
+        ],
+        "scope": "NONTOUCHING_PARALLEL_SAME_CATALOG_UGO_STROKES_ONLY",
+        "verdict": (
+            "PASS_1MM_RESTRICTED_PARALLEL_UGO_ONLY"
+            if all(t[0] >= 1000 for t in tested)
+            else "FAIL_1MM_RESTRICTED_PARALLEL_UGO"
+        ),
+    }
+
+
+def type_a_physical_text_and_paper_scope(root: ET.Element) -> dict:
+    """Validate 34 original PAINT IC measured ink boxes and true Type A.
+
+    Reject fake calibrated family, fake 300DPI paper size or hidden invalid
+    IC glyph geometry. 39 catalog annotation labels have no exact ink boxes
+    in this owner SVG, so 1mm text/UGO clearance remains explicitly BLOCKED.
+    """
+    view = _dimension_mm(root)
+    annotations = root.findall(f".//{SVG}text[@data-layer='annotations']")
+    ic_text = root.findall(f".//{SVG}text[@data-layer='ic-text']")
+    require(len(annotations) == 39 and len(ic_text) == 34,
+            "OWNER_TYPE_A_EXPECTED_39_PLUS_34_TEXT_GLYPHS")
+    require(all(text.get("font-family") == "OpenGOST type A"
+                and text.get("font-size") == "5.48"
+                and text.get("stroke") == "none"
+                for text in (*annotations, *ic_text)),
+            "TRUE_TYPE_A_FAMILY_AND_METRICS_INK_DRIFT")
+    require(all(text.get("data-font-sha256") == FONT_SHA for text in annotations),
+            "ANNOTATION_TYPE_A_AUTHENTIC_FONT_SHA_REQUIRED")
+    require(all(text.get("data-ink-um") is None for text in annotations),
+            "CATALOG_TEXT_INK_PROVENANCE_UNEXPECTED_DRIFT")
+    boxes = []
+    for t in ic_text:
+        raw = t.get("data-ink-um", "")
+        try:
+            values = tuple(int(v) for v in raw.split(","))
+        except ValueError as exc:
+            raise EvidenceError("IC_NATIVE_TYPE_A_MEASURED_INK_MALFORMED") from exc
+        require(len(values) == 4
+                and values[2] > values[0] and values[3] > values[1],
+                "IC_NATIVE_TYPE_A_MEASURED_INK_MALFORMED")
+        boxes.append((t.get("data-owner"), values))
+    gaps = []
+    for (left, a), (right, b) in combinations(boxes, 2):
+        dx = max(0, a[0]-b[2], b[0]-a[2])
+        dy = max(0, a[1]-b[3], b[1]-a[3])
+        gaps.append((math.hypot(dx, dy), left, right))
+    require(len(gaps) == 561, "IC_MEASURED_TEXT_34_PAIR_COUNT_DRIFT")
+    require(all(math.isfinite(x[0]) and x[0] > 0 for x in gaps),
+            "IC_NATIVE_TYPE_A_GLYPHS_OVERLAP_OR_INVALID")
+    # A3 is 420x297mm, but the inspected older owner SVG is deliberately
+    # content-cropped 402.6x244.052. The requested editorial 10mm margin
+    # must be tested against *absolute* page (0,0), not cropped viewport.
+    a3_nominal = (420.0, 297.0)
+    a3_true_sheet = (
+        abs(view[0]) < 0.001 and abs(view[1]) < 0.001
+        and abs(view[2]-a3_nominal[0]) < 0.001
+        and abs(view[3]-a3_nominal[1]) < 0.001
+    )
+    require(root.get("data-draft-paper") == "A3"
+            and root.get("data-page-frame-has-violations") == "true"
+            and not a3_true_sheet,
+            "OLD_PARTIAL_CROPPED_A3_FRAME_NEGATIVE_CONTROL_LOST")
+    require(root.get("data-release") == "BLOCKED_PARTIAL",
+            "CROPPED_A3_MASQUERADES_AS_REAL_ISSUABLE_SHEET")
+    return {
+        "calibrated_project_font_family": "OpenGOST type A",
+        "type_a_font_sha256": FONT_SHA,
+        "annotation_glyphs": len(annotations),
+        "measured_native_ic_glyphs": len(ic_text),
+        "measured_ic_glyph_pairs": len(gaps),
+        "measured_ic_min_glyph_gap_um": round(min(g[0] for g in gaps)),
+        "catalog_text_measured_ink_bboxes": "BLOCKED_OWNER_NO_INK_BOX",
+        "editorial_10mm_A3_true_page": "FAIL_SOURCE_OWNER_CROPPED_OLD_A3",
+        "viewbox_mm": view,
+        "a3_physical_page_420x297": a3_true_sheet,
+        "nonphysical_source_b_strokes": "BLOCKED_OWNER_NEEDS_REAL_STUB_GEOMETRY",
+        "font_formal_GOST_compliance": "BLOCKED_NO_PRIMARY_FIGURE_SCAN_SIGNOFF",
+    }
+
+
 def _svg_page(root: ET.Element, *, diagnostic: bool,
               manifest: dict) -> tuple[dict, list[ET.Element]]:
     view = _dimension_mm(root)
@@ -584,6 +722,11 @@ def audit(folder: Path, original_netlist: Path,
     )
     require(ugo_2mm["verdict"].startswith("PASS_"),
             "ACTUAL_OWNER_2MM_UGO_ENVELOPE_POTENTIAL_VIOLATION")
+    clean_root = _svg(folder / f"{BASENAME}-clean.svg")
+    intra_1mm = source_ugo_parallel_1mm_scope(clean_root)
+    require(not intra_1mm["below_one_mm"],
+            "ACTUAL_SOURCE_UGO_PARALLEL_1MM_INK_GAP_FAILED")
+    print_text_and_page = type_a_physical_text_and_paper_scope(clean_root)
     gaps = parallel_gaps(clean_wires)
     require(not gaps["hard_3mm_edge_violations"],
             "ACTUAL_PARTIAL_ROUTE_3MM_DISTINCT_NET_PARALLEL_FAILED")
@@ -598,13 +741,20 @@ def audit(folder: Path, original_netlist: Path,
         "current_owner_ygo_source_review": current_ygo,
         "printed_parallel_edge_3mm": gaps,
         "measured_distinct_ugo_2mm_envelopes": ugo_2mm,
+        "measured_same_ugo_parallel_1mm_subset": intra_1mm,
+        "real_type_a_paper_and_text_scope": print_text_and_page,
         "actual_real_svg_png": variants,
         "checks": {
             "new_partial_native_svg_300dpi": "PASS_DRAFT_PARTIAL_ONLY",
             "real_original_exact_named_net_export": source["source_name_parity"],
             "minimum_3mm_distinct_parallel_ink": "PASS_PARTIAL_ONLY",
             "two_mm_separate_UGO": ugo_2mm["verdict"],
-            "one_mm_same_UGO_strokes": "BLOCKED_NOT_FULL_PRIMITIVE_AUDIT",
+            "one_mm_same_UGO_strokes": intra_1mm["verdict"],
+            "one_mm_all_UGO_primitive_strokes": "BLOCKED_NOT_FULL_PRIMITIVE_AUDIT",
+            "real_paper_margin_print": print_text_and_page[
+                "editorial_10mm_A3_true_page"
+            ],
+            "type_a_glyph_ink": "PASS_NATIVE_IC_ONLY_TEXT_ANNOTATION_BLOCKED",
             "source_b_X2_R5_compact": "BLOCKED_NEEDS_SIGNED_REBIND",
             "source_photo_bitmap_overlay": "BLOCKED_NO_AUTHORITATIVE_IMAGE",
             "13_ugo_normative_approval": "BLOCKED_ALL_DRAFT",
