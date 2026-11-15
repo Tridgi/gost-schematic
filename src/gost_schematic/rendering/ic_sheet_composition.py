@@ -174,6 +174,7 @@ def append_verified_sheet_continuations(
     style,
     *,
     diagnostic: bool,
+    symbols_by_part: Mapping[str, SymbolDefinition] | None = None,
 ) -> None:
     """Paint typed b continuation addresses as nonphysical labels, not pads.
 
@@ -218,7 +219,26 @@ def append_verified_sheet_continuations(
                 and stub.start.y != stub.end.y)
         ):
             raise ValueError("SHEET_CONTINUATION_SOURCE_B_STUB_GEOMETRY_DRIFT")
-    problems = validate_net_continuations(project)
+    if not isinstance(symbols_by_part, Mapping):
+        raise TypeError("SHEET_CONTINUATION_PHYSICAL_SYMBOLS_REQUIRED")
+    by_ref = {component.reference: component for component in circuit.components}
+    if len(by_ref) != len(circuit.components):
+        raise ValueError("SHEET_CONTINUATION_DUPLICATE_PHYSICAL_PART")
+    true_pins = {}
+    for stub in project.stubs:
+        comp = by_ref.get(stub.pin.reference)
+        if comp is None:
+            raise ValueError("SHEET_CONTINUATION_MISSING_PHYSICAL_PART")
+        symbol = symbols_by_part.get(comp.part_id)
+        if not isinstance(symbol, SymbolDefinition):
+            raise ValueError("SHEET_CONTINUATION_MISSING_PHYSICAL_UGO")
+        tip = comp.pin_positions(symbol).get(stub.pin.number)
+        if tip is None or tip != stub.start:
+            raise ValueError("SHEET_CONTINUATION_SOURCE_B_PHYSICAL_TIP_DRIFT")
+        true_pins[stub.pin] = tip
+    problems = validate_net_continuations(
+        project, physical_pin_anchors=true_pins,
+    )
     if problems:
         raise ValueError(
             "SHEET_CONTINUATION_SOURCE_B_TYPED_INVALID:"
