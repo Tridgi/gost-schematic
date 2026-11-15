@@ -8,9 +8,11 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
+from examples.agent_tl494_cycle11_pipeline import _assert_readonly_tool_registry
 from examples.agent_tl494_cycle13_quickstart import _safe_new_output, run
 
 
@@ -126,3 +128,35 @@ def test_output_is_source_readonly_even_if_rerun_fails(tmp_path):
         (output / "source-typed-request.json").read_bytes()
     ).hexdigest() == head
     assert not first["new_bom_or_netlist_committed_to_e3"]
+
+
+def test_mcp_registry_refuses_future_write_even_if_falsely_marked_readonly():
+    def tool(*, read_only=True, destructive=False, open_world=False):
+        return SimpleNamespace(annotations=SimpleNamespace(
+            readOnlyHint=read_only, destructiveHint=destructive,
+            openWorldHint=open_world,
+        ))
+    good_names = (
+        "schematic_catalog_search", "schematic_catalog_select",
+        "schematic_catalog_preview", "schematic_tl494_selection_profile",
+        "schematic_tl494_pin_alias",
+    )
+    good = {name: tool() for name in good_names}
+    _assert_readonly_tool_registry(good)
+    for bad in (
+        "schematic_commit_transaction", "schematic_create_component",
+        "schematic_connect_pins", "schematic_route_net",
+        "schematic_move_component", "schematic_import_project",
+    ):
+        with pytest.raises(AssertionError, match="write tool"):
+            _assert_readonly_tool_registry({**good, bad: tool()})
+    for bad_tool in (
+        tool(read_only=False), tool(destructive=True), tool(open_world=True),
+        SimpleNamespace(annotations=None),
+    ):
+        with pytest.raises(AssertionError, match="Unsafe MCP tool"):
+            _assert_readonly_tool_registry({
+                **good, "schematic_read_new": bad_tool,
+            })
+    with pytest.raises(AssertionError, match="Missing mandatory"):
+        _assert_readonly_tool_registry({})
