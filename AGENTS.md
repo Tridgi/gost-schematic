@@ -115,7 +115,7 @@ paths in error messages.
 6. **Route all 15 typed Nets:** only after NET #114 integration
    supplies a real obstacle-aware **15/15** multi-branch route engine,
    source-locked physical PinRefs, safe explicit same-Net T junctions
-   and no visual cross-Net shorts. Current partial **8/15** is BLOCKED.
+   and no visual cross-Net shorts. At the MAIN3 Cycle12 source-native checkpoint the best accepted compact route was **10/15** (five Nets still failed: GATE_DRIVE, CONTROL_REFERENCE, FEEDBACK, OSCILLATOR_RT, COMMON), hence BLOCKED.
    Specifically investigate INPUT_POS at DA1.12 and right-side lead
    forest; do not waive `DRC_WIRE_SYMBOL_INK`. No arbitrary new Net,
    NC wiring or shorts justified by a cleaner picture.
@@ -192,6 +192,31 @@ Codex CLI binary configuration smoke is a separate CI workflow;
 absence of authorized model credentials remains a distinct
 `CODEX_MODEL_CALL_BLOCKED_NO_AUTH` from this completed deterministic
 MCP design contract. Review latest PR owner SHAs before any handoff.
+
+## Exact owner API lock, installed wheel, and Codex CLI boundaries (Cycle12)
+
+An independently executed, trusted source-inspection command uses the
+**exact real** frozen original Git-blob and six pinned current-owner
+source/API files described in
+[the Cycle12 walkthrough](docs/ai-integration/agent-cycle11-source-driven-walkthrough.md).
+The machine-readable owner/API file lock is packaged at
+`gost_schematic/agent_project/data/tl494_cycle12_owner_locks.json`,
+identifying reviewed IC #97, RECON #115, NET #114 and PAINT #93
+HEAD SHAs. The verified source still contains **23 refs, 15 original
+Net names, 62 physical PinRef memberships and 16 actual TI contacts**,
+with exact 23 original `source_part_id` and `nominal_si` strings.
+Any mismatched owner source Git blob, altered `b-X2` / `b-R5`
+physical ownership, part, Net or nominal is a hard error.
+
+The dedicated CI replays actual `mcp.ClientSession` catalog previews
+and typed source-validator subprocess; another step installs a real
+fresh wheel into a *separate* virtualenv, outside the repo checkout,
+and verifies the same full original source and a negative PinRef
+mutation. Native catalog samples SVG+PNG and a green smoke prove
+**neither 15/15 routing nor final A3/A2 printed DRC**. The real Codex
+CLI binary/MCP registration smoke tests API configuration **without**
+authenticated autonomous model execution. Do not describe that as
+a complete AI-created TL494 sheet or an authorized agent write.
 
 ## Security and signoff
 
