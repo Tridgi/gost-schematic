@@ -200,3 +200,29 @@ test('geometry oracle does not mutate caller input',()=>{
  validateWire(A,inputA);
  assert.deepEqual(A,before);
 });
+
+test('visual T from free endpoint onto middle of same-Net stroke is NOT connected',()=>{
+ const backbone=wire('base','NET',[v('left',[0,0],free('l')),v('right',[20000,0],free('r'))],[segment('bs','left','right')]);
+ const incoming=wire('tip','NET',[v('start',[10000,10000],free('start')),v('end',[10000,0],free('end'))],[segment('ts','start','end')]);
+ assert.equal(connected([backbone,incoming],'base/left','tip/start'),false);
+});
+test('1µm geometry delta persists in JSON despite subpixel display',()=>{
+ const original=[16001,-23001], other=[16002,-23001];
+ const vp=viewport({zoom:0.5,pan_px:[0,0]});
+ assert.notDeepEqual(original,other);
+ assert.ok(Math.abs(vp.worldToLocal(other)[0]-vp.worldToLocal(original)[0])<1);
+ assert.deepEqual(JSON.parse(JSON.stringify({point:original})).point,original);
+ assert.deepEqual(JSON.parse(JSON.stringify({point:other})).point,other);
+});
+test('source b continuation is graphical and has no selectable physical pin',()=>{
+ const sourceB={kind:'source_b_continuation',from_um:[1000,1000],to_um:[2000,1000]};
+ const vp=viewport({zoom:1});
+ const cursor=vp.worldToLocal(sourceB.from_um);
+ assert.equal(hitPin(cursor,[],vp).kind,'none');
+ assert.equal(sourceB.kind,'source_b_continuation');
+});
+test('wrong-Net splice identity never joins two independent Nets',()=>{
+ const w1=wire('u','N1',[v('a',[0,0],free('a')),v('b',[10000,0],splice('S'))],[segment('s1','a','b')]);
+ const w2=wire('w','N2',[v('c',[10000,0],splice('S')),v('d',[20000,0],free('d'))],[segment('s2','c','d')]);
+ assert.equal(connected([w1,w2],'u/a','w/d'),false);
+});
