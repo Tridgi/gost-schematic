@@ -76,3 +76,61 @@ Additional positive/negative/threshold tests on *typed original
 ESKD APPROVED declaration or a replacement for ESKD's 253 printed pairs
 including all 23 components and separate DA1, or 1mm printed text and
 3mm parallel-wire edge DRC. Full-sheet print still BLOCKED.
+
+
+## Cycle 14: independently tested real RECON/IC/PAINT source ink
+
+This is **LOCAL evidence**, not GitHub CI. A separate detached Windows
+worktree checked out the actual RECON source SHA
+8453ea5e2438844ad468b8a9042806ec12e1f125, staging only authentic
+IC modules from d7e70a8bfaed5f4e4f7fb340fdc7dbe4fc466e7b and PAINT
+modules from 6ebd97d5d51facf15b733a1f909c4530262f5bc8, plus YGO
+physical catalogue code from the existing Draft PR. No mock source
+graphics, fake Net, signed contact or route output was created.
+
+**LOCAL Python 3.12 and 3.13 PASS:**
+- 23 real Circuit parts, 15 Net, 62 original memberships, 16 DA1 pins
+- 13 genuine source UGO and 104 D4 poses with 224 conducting pin tips
+- 656 rendered graphic primitive obstacles across the 104 D4 source poses
+- 78 distinct source UGO pairs; shortest conservative stroke-ink gap:
+  C5 ↔ C6 = **16,315 µm = 16.315 mm** (not all 253 real printed pairs)
+- X1 moved to (17000,35000) µm: actual source glyph stroke box is
+  [10850,31850,27151,53150] µm, hence 10.850 mm left sheet margin
+- X1 historical x=16000 in-memory negative: box
+  [9850,31850,26151,53150] µm, 9.850 mm left margin, a genuine
+  **150µm violation** of the required 10mm printable paper inset
+- 36 source catalogue UGO still DRAFT, zero normative APPROVED.
+
+**Separate real owner defect, not silently patched:** RECON's
+NativeV5Assembly.symbols does not contain the actual PAINT DA1 symbolic
+geometry, although the typed Circuit contains 23 components and all
+16 real manufacturer contacts. Thus
+actual_component_occupied_mm(assembly, assembly.symbols) raises
+KeyError: 'reference.tl494cn'. RECON route_candidate_driver._build_obstacles
+synthesizes the missing *real* owner PAINT glyph independently. The
+YGO source gate now proves only the true 13 original UGO + actual X1
+stroke and explicitly exports
+whole_23_component_printed_bounds =
+BLOCKED_REAL_DA1_RENDERED_SYMBOL_NOT_IN_SOURCE_ASSEMBLY.
+It **does not** fabricate the 23rd DA1 symbol or approve the whole
+A3 sheet. RECON #115 was notified with precise owner SHAs and traceback.
+
+Earlier real 8-job YGO GitHub CI failed RECON on Python3.12/3.13 with
+ModuleNotFoundError: gost_schematic.rendering.ic_rectangular in isolated
+reference-based worktree. The updated workflow now stages ten actual
+rendering Python modules from the exact PAINT SHA together with real IC
+owner modules. No owner source branch is written to. Repeat GitHub
+Action PASS is required before upgrading this **LOCAL** evidence.
+
+**New negative tests** reject a true source contact moved exactly 1µm
+(5 source representatives), stale D4 pose (3), and disappearing VD1
+ink even with a rehashed apparently correct SHA256 (1). All **89
+source-footprint unit cases PASS on both LOCAL Python 3.12 and 3.13**;
+Ruff PASS. An attempted all-project LOCAL Windows run exposed an
+unrelated existing QA fixture hash drift; this is not a pass waiver.
+
+Finally, this source-only proof does not check the other ten printed
+components, full 253 pairs including DA1, 3/2/1mm wiring/text DRC,
+graphical b-X2/b-R5 strokes, 15/15 connected routing or calibrated
+original-photo/primary-standard GOST 1:1. All remain independently
+BLOCKED until real owner QA and ESKD acceptance.
