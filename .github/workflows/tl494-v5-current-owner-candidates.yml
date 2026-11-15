@@ -17,6 +17,7 @@ on:
       - examples/tl494_v5/test_compact_layout.py
       - examples/tl494_v5/cycle13_placement_matrix.py
       - examples/tl494_v5/test_cycle13_placement_matrix.py
+      - examples/tl494_v5/CYCLE13_SELECTIVE_INTEGRATION_MANIFEST.md
       - examples/tl494_v5/route_preflight.py
       - examples/tl494_ic_paint_reference.py
       - examples/tl494_connected_native.py
