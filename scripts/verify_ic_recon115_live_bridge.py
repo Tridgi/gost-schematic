@@ -44,6 +44,9 @@ from gost_schematic.electrical.ic_paint_bridge import (
     bind_ic_paint_text_only,
     propose_ic_paint_binding,
 )
+from gost_schematic.electrical.ic_router_ports import (
+    export_tl494_router_ports,
+)
 from gost_schematic.electrical.tl494cn import (
     TI_DEVICE_ID,
     tl494cn_device,
@@ -911,6 +914,35 @@ def _canonical_source_witness(font: Path):
                 format_mm(stub.start.x), format_mm(stub.start.y),
                 format_mm(stub.end.x), format_mm(stub.end.y),
             )
+    provenance_keys = (
+        ("IC97", "GITHUB_SHA"),
+        ("RECON115", "IC_OWNER_RECON_SHA"),
+        ("PAINT93", "IC_OWNER_PAINT_SHA"),
+        ("YGO113", "IC_OWNER_YGO_SHA"),
+    )
+    declared_owner_shas = {
+        owner: os.environ[env]
+        for owner, env in provenance_keys if os.environ.get(env)
+    }
+    physical_ports = export_tl494_router_ports(
+        signed, producer_shas=declared_owner_shas,
+        page_box_um=Box(0, 0, 420000, 297000),
+    )
+    physical_ports.verify_against(signed)
+    current = {
+        item.pin_ref.number: item for item in physical_ports.ports
+    }
+    assert current["3"].ti_name == "FEEDBACK"
+    assert current["13"].ti_name == "OUTPUT CTRL"
+    assert current["13"].electrical_type is IcPinType.INPUT
+    assert current["14"].electrical_type is IcPinType.POWER_OUTPUT
+    physical_ports.verify_external_layout(
+        signed,
+        proposed_origin_um=physical_ports.part_origin_um,
+        proposed_rotation_deg=physical_ports.rotation_deg,
+        proposed_mirror_x=physical_ports.mirror_x,
+        proposed_ports=physical_ports.ports,
+    )
     # QA C11 vendor-row mutant: the record is the vendor authority;
     # missing a redundant catalog entry must not invent/lose signed pins.
     # A PRESENT but contradictory vendor definition MUST fail closed.
@@ -1008,6 +1040,7 @@ def _canonical_source_witness(font: Path):
             "physical_tip_um": [c.world_anchor.x, c.world_anchor.y],
         } for c in pins],
         "sealed_source_circuit_sha256": snapshot.circuit_sha256,
+        "source_verified_router_ports": physical_ports.to_dict(),
         "source_b_nonphysical_stubs": [{
             "id": stub.id,
             "endpoint_id": stub.endpoint_id,
@@ -1049,6 +1082,16 @@ def test_real_cycle14_canonical_signed_source_and_b_print_witness():
         "IC_ADAPTER_CATALOG_MANUFACTURER_PINOUT_CONFLICT"
     )
     assert witness["source_circuit_net_tuple_identity_preserved"] is True
+    ports = witness["source_verified_router_ports"]
+    assert ports["source_original_net_count"] == 15
+    assert ports["source_pinref_memberships"] == 62
+    assert ports["physical_manufacturer_pins"] == 16
+    assert len(ports["ports"]) == 16
+    assert ports["printable_candidate"] is False
+    assert ports["full_15_net_route_verified"] is False
+    assert {
+        pin["pin_ref"] for pin in ports["ports"]
+    } == {f"DA1.{i}" for i in range(1, 17)}
     assert witness["clean_green_contacts"] == 0
     assert witness["diagnostic_green_contacts"] == 16
     assert witness["new_route_15_of_15_complete"] is False
@@ -1108,6 +1151,12 @@ def main() -> None:
     (args.output_dir / "source-physical-witness.json").write_text(
         json.dumps(witness, ensure_ascii=False, indent=2, sort_keys=True)
         + "\n", encoding="utf-8",
+    )
+    (args.output_dir / "DA1-tl494-router-ports.json").write_text(
+        json.dumps(
+            witness["source_verified_router_ports"],
+            ensure_ascii=False, indent=2, sort_keys=True,
+        ) + "\n", encoding="utf-8",
     )
     print(json.dumps(snapshot, sort_keys=True))
 
