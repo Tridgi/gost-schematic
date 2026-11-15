@@ -234,6 +234,34 @@ assistant's initiative.
 - Never confuse catalogue UGO sample SVG/PNG or old original-source
   negative 91-wire render with a newly routed correct A3 sheet.
 
+## Cycle13 — executable end-user source audit (no hidden model authoring)
+
+Read the [Cycle13 one-command quickstart](../../docs/ai-integration/cycle13-end-user-quickstart.md).
+A trusted local Python process with installed `.[dev,mcp]` runs:
+
+```bash
+mkdir -p output
+python -m examples.agent_tl494_cycle13_quickstart --out output/tl494-cycle13-user
+```
+
+The output directory must not exist before the command. The process
+opens a genuine `mcp.ClientSession` and SHA-checks seven installed
+UGO SVG/PNG pairs, checks the real frozen 23/15/62 original through
+the strict `agent_readiness` subprocess, then actually submits
+11 adversarial JSON requests that must all fail. Read the
+`source-typed-request.json`, `refusal-tests.json` and
+`source-quickstart-report.json` artifacts, not just the shell exit
+code. A zero shell exit means **correctly BLOCKED**, not ready-to-print.
+
+Require `source_netlist_user_approval=USER_REVIEW_REQUIRED` unless
+the user has reviewed the actual 15 original Net memberships; do not
+hallucinate a signed/accepted full physical Circuit. There are no
+MCP create/move/connect/delete/commit endpoints. Real Codex CLI MCP
+registration is a different (binary-level) smoke, not proof a model
+built a diagram or that the seven single-UGO previews are the printed
+23-part sheet. Remaining full 15/15 route, full print DRC, final
+300DPI and QA are **BLOCKED**.
+
 ## Cycle12 fixed-owner API and installed-wheel check
 
 The true original 23-component Netlist is **not** the old six-part
