@@ -1,0 +1,145 @@
+name: Annotation refdes cycle6
+
+on:
+  pull_request:
+    branches: [integration/stage0-12]
+    paths:
+      - "src/gost_schematic/engines/annotation/visual_refdes.py"
+      - "examples/review_visual_refdes.py"
+      - "tests/test_visual_refdes_cycle6.py"
+      - ".github/workflows/annotation-refdes-cycle6.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: refdes-cycle6-review
+  cancel-in-progress: true
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install library, fonts and lint
+        run: |
+          python -m pip install -e ".[dev]"
+          ruff check src/gost_schematic/engines/annotation/visual_refdes.py examples/review_visual_refdes.py tests/test_visual_refdes_cycle6.py
+          pytest -q tests/test_visual_refdes_cycle6.py
+      - name: Install the exact OpenGost Type A font (not redistributed)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/install_opengost_type_a.py --directory "$HOME/.local/share/fonts" --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a
+          fc-cache -f
+          FONT_FILE="$(find "$HOME/.local/share/fonts" -type f \( -iname '*TypeA*.ttf' -o -iname '*TypeA*.otf' \) | head -1)"
+          test -f "$FONT_FILE"
+          VIEWER_FONT="$(fc-match -f '%{file}' 'OpenGost Type A')"
+          test "$(realpath "$FONT_FILE")" = "$(realpath "$VIEWER_FONT")"
+          echo "REVIEW_FONT=$FONT_FILE" >> "$GITHUB_ENV"
+          sha256sum "$FONT_FILE"
+      - name: Generate exact physical L1 reference-label comparison
+        run: |
+          python -m examples.review_visual_refdes --font-file "$REVIEW_FONT" --output-dir output/refdes-cycle6
+      - name: Rasterize before/after clean diagnostic and L1 close-ups
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+          for POLICY in before after; do
+            for VIEW in clean diagnostic; do
+              NAME="refdes-$POLICY-$VIEW"
+              rsvg-convert --background-color white --width 2100 \
+                --output "output/refdes-cycle6/$NAME.png" \
+                "output/refdes-cycle6/$NAME.svg"
+              CLOSEUP="refdes-$POLICY-l1-$VIEW"
+              rsvg-convert --background-color white --width 1800 \
+                --output "output/refdes-cycle6/$CLOSEUP.png" \
+                "output/refdes-cycle6/$CLOSEUP.svg"
+            done
+          done
+      - name: Verify SVG, physical distances and create labelled comparison
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from PIL import Image, ImageDraw, ImageFont
+          from xml.etree import ElementTree as ET
+          root=Path("output/refdes-cycle6")
+          report=json.loads((root/"refdes-distance-report.json").read_text())
+          old=report["components"]["L1"]["legacy_ink_to_visual_mm"]
+          new=report["components"]["L1"]["proposed_ink_to_visual_mm"]
+          assert report["wires"] == 16 and len(report["junctions"]) == 3
+          assert old > 5 and new < 3 and old-new > 3, (old,new)
+          tag="{http://www.w3.org/2000/svg}"
+          for policy in ("before","after"):
+              for view in ("clean","diagnostic"):
+                  for extra in ("", "-l1"):
+                      name=f"refdes-{policy}{extra}-{view}"
+                      svgfile=root/f"{name}.svg"
+                      png=root/f"{name}.png"
+                      assert svgfile.is_file() and png.stat().st_size > 1000
+                      svg=ET.fromstring(svgfile.read_text())
+                      assert svg.get("data-approval")=="DRAFT"
+                      assert len(svg.findall(f".//{tag}circle[@data-kind='authored-junction']"))==3
+                      assert len(svg.findall(f".//{tag}line[@data-layer='wires']"))==16
+          # Confirm actual graphical strokes, wires and junction dots are
+          # byte-identical across the two label-only previews (not only counts).
+          for view in ("clean","diagnostic"):
+              left=ET.fromstring((root/f"refdes-before-{view}.svg").read_text())
+              right=ET.fromstring((root/f"refdes-after-{view}.svg").read_text())
+              for tagname, predicate in (
+                  ("g","symbols"),
+                  ("line","wires"),
+              ):
+                  a=left.findall(f".//{tag}{tagname}[@data-layer='{predicate}']")
+                  b=right.findall(f".//{tag}{tagname}[@data-layer='{predicate}']")
+                  assert [ET.tostring(x) for x in a] == [ET.tostring(x) for x in b]
+              da=left.findall(f".//{tag}circle[@data-kind='authored-junction']")
+              db=right.findall(f".//{tag}circle[@data-kind='authored-junction']")
+              assert [ET.tostring(x) for x in da] == [ET.tostring(x) for x in db]
+          for ref in ("R1","R2","C1","C2","C3"):
+              item=report["components"][ref]
+              assert item["proposed_ink_to_visual_mm"] <= (
+                  item["legacy_ink_to_visual_mm"] + .001
+              ), (ref,item)
+          font=ImageFont.truetype("DejaVuSans.ttf",42)
+          for scope, suffix in (("sheet",""), ("L1","-l1")):
+              for view in ("clean","diagnostic"):
+                  before=Image.open(
+                      root/f"refdes-before{suffix}-{view}.png"
+                  ).convert("RGB")
+                  after=Image.open(
+                      root/f"refdes-after{suffix}-{view}.png"
+                  ).convert("RGB")
+                  assert before.width == after.width
+                  margin,header=36,128
+                  out=Image.new(
+                      "RGB",
+                      (before.width+after.width+3*margin,
+                       max(before.height,after.height)+header+margin),
+                      "white",
+                  )
+                  out.paste(before,(margin,header))
+                  out.paste(after,(before.width+2*margin,header))
+                  draw=ImageDraw.Draw(out)
+                  draw.text((margin,28),
+                            f"BEFORE: L1 -> coil {old:.3f} mm",font=font,fill="black")
+                  draw.text((before.width+2*margin,28),
+                            f"AFTER: L1 -> coil {new:.3f} mm",font=font,fill="black")
+                  name=(f"refdes-{scope}-before-after-comparison"
+                        + ("-diagnostic" if view=="diagnostic" else "")+".png")
+                  out.save(root/name, dpi=(300,300))
+          assert (root/"refdes-sheet-before-after-comparison.png").is_file()
+          assert (root/"refdes-L1-before-after-comparison.png").is_file()
+          print(f"Verified same 16 wires, 3 junctions; L1 measured ink gap {old:.3f} -> {new:.3f} mm")
+          PY
+      - name: Upload independent Issue 68 SVG, PNG and measurement manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-refdes-cycle6-review
+          path: output/refdes-cycle6/*
+          if-no-files-found: error
