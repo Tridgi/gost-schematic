@@ -102,9 +102,13 @@ jobs:
           if-no-files-found: warn
       - name: Install open-license OpenGOST Type A for sample render
         if: matrix.python-version == '3.12'
+        env:
+          # Authorized release API request avoids shared-runner anonymous 403.
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           python scripts/install_opengost_type_a.py \
-            --directory "$HOME/.local/share/fonts"
+            --directory "$HOME/.local/share/fonts" \
+            --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a
           fc-cache -f
       - name: Generate GOST Type A capacitor review
         if: matrix.python-version == '3.12'
