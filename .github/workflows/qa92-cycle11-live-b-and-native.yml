@@ -20,11 +20,11 @@ jobs:
         python-version: ["3.12", "3.13"]
     env:
       SOURCE_SHA: e695c415fdced164b0e0c39c5249d030795a0aa6
-      RECON_SHA: 021dc1a240f2d2aea21c60057f28159bf7e4ecba
-      IC_SHA: 90dab83566ba9ed8b344ab24396da084f02b5c23
-      PAINT_SHA: f71f9c47f1e6313361dfa04242c559b0d74c831c
-      NET_SHA: ffbfc5fdc4653e1a2b08ac5e6d38d96ad669dbec
-      YGO_SHA: 92347d936c71e6038c836f37992bbbee65d56196
+      RECON_SHA: 73025965efeb94585e8723ba3f0b636229e8a5de
+      IC_SHA: 7c30c209ea5e97a245844b24a3bbc4d3d30118ea
+      PAINT_SHA: 2e9d3fa41794eb773645e112ec8c44fc273e9f52
+      NET_SHA: 61df41377cc9326f7fa0f594a804d329b447ec69
+      YGO_SHA: 3e47cdf32ccf211ded97e3be1ad874035653e090
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,27 +36,27 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 021dc1a240f2d2aea21c60057f28159bf7e4ecba
+          ref: 73025965efeb94585e8723ba3f0b636229e8a5de
           path: _qa_sources/recon
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 90dab83566ba9ed8b344ab24396da084f02b5c23
+          ref: 7c30c209ea5e97a245844b24a3bbc4d3d30118ea
           path: _qa_sources/ic
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: f71f9c47f1e6313361dfa04242c559b0d74c831c
+          ref: 2e9d3fa41794eb773645e112ec8c44fc273e9f52
           path: _qa_sources/paint
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: ffbfc5fdc4653e1a2b08ac5e6d38d96ad669dbec
+          ref: 61df41377cc9326f7fa0f594a804d329b447ec69
           path: _qa_sources/net
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 92347d936c71e6038c836f37992bbbee65d56196
+          ref: 3e47cdf32ccf211ded97e3be1ad874035653e090
           path: _qa_sources/catalog
           persist-credentials: false
       - uses: actions/setup-python@v5
