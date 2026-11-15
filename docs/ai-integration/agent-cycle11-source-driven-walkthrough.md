@@ -11,10 +11,10 @@ reconstruction or accepted new electrical scheme.
   `a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65`, source netlist
   Git blob `c4cfd515782bf856a7a44fbe2c2ceacd303208d6`.
 - IC owner code inspected at SHA
-  `585d4e645b01ba48e8f7d0574a447a5b6c33c07f`.
+  `7c30c209ea5e97a245844b24a3bbc4d3d30118ea`.
 - RECON owner code inspected at SHA
-  `32548a704420683e0cb30bf6ab80788c68f84eae`.
-- PAINT owner SHA at task acceptance `ef1f817ab47bba7b3776341e7162ae54ad5c826a`;
+  `73025965efeb94585e8723ba3f0b636229e8a5de`.
+- PAINT owner SHA at task acceptance `f872ce50ac699ad089391b0bbd58e2cb92f2b7f6`;
   independently valid original-source/native PNG output is **not** a
   proof of complete new print-clean all-15-Net connectivity.
 
@@ -47,15 +47,15 @@ python -m pip install -e ".[dev,mcp]"
 mkdir -p output/cycle11-owner output/cycle11-original-source-proof
 
 git fetch --no-tags --depth=1 origin \
-  585d4e645b01ba48e8f7d0574a447a5b6c33c07f \
-  32548a704420683e0cb30bf6ab80788c68f84eae
+  7c30c209ea5e97a245844b24a3bbc4d3d30118ea \
+  73025965efeb94585e8723ba3f0b636229e8a5de
 
-git show 585d4e645b01ba48e8f7d0574a447a5b6c33c07f:tests/fixtures/tl494_photo_23_frozen_cycle9.json > output/cycle11-owner/frozen-IC97-source.json
-git show 585d4e645b01ba48e8f7d0574a447a5b6c33c07f:src/gost_schematic/electrical/tl494cn.py > output/cycle11-owner/IC97-tl494cn.py
-git show 32548a704420683e0cb30bf6ab80788c68f84eae:examples/tl494_v5/native_circuit.py > output/cycle11-owner/RECON115-native-circuit.py
-git show 585d4e645b01ba48e8f7d0574a447a5b6c33c07f:examples/tl494_cycle9_circuit_integration.py > output/cycle11-owner/IC97-typed-integration.py
-git show 32548a704420683e0cb30bf6ab80788c68f84eae:examples/tl494_v5/cycle11_ti_bridge.py > output/cycle11-owner/RECON115-typed-ti-bridge.py
-git show 32548a704420683e0cb30bf6ab80788c68f84eae:examples/tl494_v5/cycle11_b_continuation.py > output/cycle11-owner/RECON115-typed-b-continuation.py
+git show 7c30c209ea5e97a245844b24a3bbc4d3d30118ea:tests/fixtures/tl494_photo_23_frozen_cycle9.json > output/cycle11-owner/frozen-IC97-source.json
+git show 7c30c209ea5e97a245844b24a3bbc4d3d30118ea:src/gost_schematic/electrical/tl494cn.py > output/cycle11-owner/IC97-tl494cn.py
+git show 73025965efeb94585e8723ba3f0b636229e8a5de:examples/tl494_v5/native_circuit.py > output/cycle11-owner/RECON115-native-circuit.py
+git show 7c30c209ea5e97a245844b24a3bbc4d3d30118ea:examples/tl494_cycle9_circuit_integration.py > output/cycle11-owner/IC97-typed-integration.py
+git show 73025965efeb94585e8723ba3f0b636229e8a5de:examples/tl494_v5/cycle11_ti_bridge.py > output/cycle11-owner/RECON115-typed-ti-bridge.py
+git show 73025965efeb94585e8723ba3f0b636229e8a5de:examples/tl494_v5/cycle11_b_continuation.py > output/cycle11-owner/RECON115-typed-b-continuation.py
 
 git hash-object output/cycle11-owner/frozen-IC97-source.json
 # Must output a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65
