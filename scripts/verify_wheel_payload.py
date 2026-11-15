@@ -59,6 +59,7 @@ _PARTS = {
 }
 _REQUIREMENTS = "standards/requirements_2026_ru.json"
 _AI_FROZEN = "agent_project/data/tl494_ic97_frozen_source.json"
+_AI_OWNER_LOCK = "agent_project/data/tl494_cycle12_owner_locks.json"
 _AI_FROZEN_BLOB = "a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65"
 
 
@@ -69,7 +70,7 @@ def verify_wheel(wheel: Path) -> dict[str, int]:
             path.removeprefix(_PREFIX)
             for path in archive.namelist() if path.startswith(_PREFIX)
         }
-        missing = (_SYMBOLS | _PARTS | {_REQUIREMENTS, _AI_FROZEN}) - payload
+        missing = (_SYMBOLS | _PARTS | {_REQUIREMENTS, _AI_FROZEN, _AI_OWNER_LOCK}) - payload
         if missing:
             raise ValueError(f"Wheel missing required data: {sorted(missing)}")
         inductors = {
@@ -82,6 +83,17 @@ def verify_wheel(wheel: Path) -> dict[str, int]:
         blob = b"blob " + str(len(frozen)).encode("ascii") + b"\x00" + frozen
         if hashlib.sha1(blob).hexdigest() != _AI_FROZEN_BLOB:
             raise ValueError("Wheel changed the signed frozen TL494 source")
+        owner_lock = json.loads(archive.read(_PREFIX + _AI_OWNER_LOCK))
+        if (
+            owner_lock["schema_version"] != 1
+            or owner_lock["frozen_source_git_sha"]
+            != "e695c415fdced164b0e0c39c5249d030795a0aa6"
+            or owner_lock["file_locks"]["ic_frozen_fixture"]["git_blob_sha1"]
+            != _AI_FROZEN_BLOB
+            or owner_lock["constraints"]["complete_15_net_route_accepted"] is not False
+            or owner_lock["constraints"]["autonomous_write_mcp_available"] is not False
+        ):
+            raise ValueError("Wheel changed Cycle12 pinned owner/API constraints")
         data = json.loads(archive.read(_PREFIX + _REQUIREMENTS))
         if data.get("profile_id") != "eskd-ru-2026-11":
             raise ValueError("Wheel contains an unexpected ESKD requirements edition")
