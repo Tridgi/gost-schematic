@@ -7,6 +7,7 @@ from gost_schematic.core.geometry import Box, Line, Point, Rectangle, Side, Styl
 from gost_schematic.core.transforms import Transform
 from gost_schematic.engines.multiterminal_router import (
     _nearest_net_order,
+    _source_priority_name_view,
     _source_ink_collision,
     _source_ink_obstacles,
     _visibility_path,
@@ -96,6 +97,52 @@ def test_route_priority_trial_count_rejects_invalid_or_unbounded_inputs(n):
             page_box=Box(0, 0, 90000, 60000),
             try_priorities=n,
         )
+
+
+def test_cycle12_true_original_15_net_names_use_valid_order_not_artwork_aliases():
+    actual = frozenset({
+        "a_INPUT_PLUS", "TRANSFER", "b_NEGATIVE_OUTPUT",
+        "FEEDBACK", "OSCILLATOR_RT", "COMMON",
+    })
+    priority = _source_priority_name_view(
+        ("INPUT_POS", "ENERGY_TRANSFER", "OUTPUT_NEG", "COMMON"),
+        actual,
+    )
+    assert priority == (
+        "a_INPUT_PLUS", "TRANSFER", "b_NEGATIVE_OUTPUT", "COMMON",
+    )
+    assert "INPUT_POS" not in priority
+    assert set(priority) <= actual
+    assert _source_priority_name_view(
+        ("INPUT_POS", "ENERGY_TRANSFER", "OUTPUT_NEG"),
+        frozenset({"INPUT_POS", "ENERGY_TRANSFER", "OUTPUT_NEG"}),
+    ) == ("INPUT_POS", "ENERGY_TRANSFER", "OUTPUT_NEG")
+    with pytest.raises(ValueError, match="ROUTE_DUPLICATE_SOURCE_ORDER_LABEL"):
+        _source_priority_name_view(
+            ("INPUT_POS", "INPUT_POS"), frozenset(actual),
+        )
+
+
+def test_cycle12_actual_source_net_identity_survives_global_priority_search():
+    circuit, parts, symbols = native_three_terminal()
+    circuit = replace(
+        circuit, nets=(Net(
+            "a_INPUT_PLUS", circuit.nets[0].members,
+        ),),
+    )
+    preview = route_circuit_with_order_fallback(
+        circuit, parts, symbols,
+        page_box=Box(0, 0, 90000, 60000),
+        try_priorities=3, max_order_restarts=1,
+    )
+    assert preview.source_circuit is circuit
+    assert preview.source_circuit.nets[0].name == "a_INPUT_PLUS"
+    assert len(preview.route_order_trials) == 3
+    assert preview.graph.segments
+    assert {w.net_name for w in preview.graph.segments} == {"a_INPUT_PLUS"}
+    assert {p for p in preview.source_circuit.nets[0].members} == set(
+        circuit.nets[0].members,
+    )
 
 
 def test_cycle12_multicontact_prim_medoid_is_real_pin_and_not_source_rewrite():
