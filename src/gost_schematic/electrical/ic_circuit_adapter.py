@@ -755,8 +755,8 @@ def bind_ic_circuit_from_catalog(
     # a PartDefinition, it must not contradict a single factory pin or type.
     # The symbol_id is deliberately not compared: it is a graphical concern
     # and can differ from the signed source-owned DRAFT surrogate.
-    supplied_ic = parts_by_id.get(record.device.identifier)
-    if supplied_ic is not None:
+    if record.device.identifier in parts_by_id:
+        supplied_ic = parts_by_id[record.device.identifier]
         factory_pins = tuple(
             (p.number, p.name, p.electrical_type.value)
             for p in record.device.pins
