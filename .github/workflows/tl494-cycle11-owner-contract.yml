@@ -12,6 +12,8 @@ on:
       - "scripts/verify_tl494_cycle11_owner_strokes.py"
       - "scripts/export_tl494_23_ink_contract.py"
       - "scripts/verify_tl494_cycle16_ink_contract.py"
+      - "scripts/export_tl494_cycle16_router_obstacles.py"
+      - "tests/test_tl494_cycle16_router_obstacles.py"
       - "tests/test_tl494_cycle16_ink_contract.py"
       - "reports/tl494-cycle15-true-23-ink.*"
       - ".github/workflows/tl494-cycle11-owner-contract.yml"
@@ -70,7 +72,7 @@ jobs:
       - name: Install the same project runtime and test dependencies
         run: python -m pip install -e ".[dev]"
       - name: Ruff current independent YGO/owner contract source
-        run: ruff check scripts/verify_tl494_cycle11_owner_strokes.py scripts/export_tl494_23_ink_contract.py scripts/verify_tl494_cycle16_ink_contract.py tests/test_tl494_cycle16_ink_contract.py
+        run: ruff check scripts/verify_tl494_cycle11_owner_strokes.py scripts/export_tl494_23_ink_contract.py scripts/verify_tl494_cycle16_ink_contract.py scripts/export_tl494_cycle16_router_obstacles.py tests/test_tl494_cycle16_ink_contract.py tests/test_tl494_cycle16_router_obstacles.py
       - name: Restore pinned OpenGOST Type A cache (source-only, never uploaded)
         uses: actions/cache@v4
         with:
@@ -179,6 +181,16 @@ jobs:
               --current "$GITHUB_WORKSPACE/output/cycle11-owners/tl494-23-real-instance-ink.json" \
               --owner-recon-sha "$OWNER_SHA" \
               --report "$GITHUB_WORKSPACE/output/cycle11-owners/tl494-cycle16-physical-comparison.json"
+            # Build FOUR fresh actual layouts on the current RECON SHA;
+            # 23 real symbols incl DA1, every original PinRef, exact TypeA,
+            # real source b graphical-only vectors and NET portal contract.
+            PYTHONPATH="$PWD/src:$PWD" python "$GITHUB_WORKSPACE/scripts/export_tl494_cycle16_router_obstacles.py" \
+              --owner-recon-sha "$OWNER_SHA" \
+              --font "$GITHUB_WORKSPACE/.font-cycle15/OpenGOST-TypeA-OpenGOSTtypeA-Regular.ttf" \
+              --output "$GITHUB_WORKSPACE/output/cycle11-owners/tl494-cycle16-four-real-placements.json"
+            sha256sum "$GITHUB_WORKSPACE/output/cycle11-owners/tl494-cycle16-four-real-placements.json" \
+              > "$GITHUB_WORKSPACE/output/cycle11-owners/tl494-cycle16-four-real-placements.sha256"
+            cat "$GITHUB_WORKSPACE/output/cycle11-owners/tl494-cycle16-four-real-placements.sha256"
 
           fi
       - name: Publish real exact HEAD read-only cross-owner geometry report
