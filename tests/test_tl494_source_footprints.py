@@ -475,3 +475,39 @@ def test_conservative_source_ugo_empty_ink_never_counts_as_clear():
         source_pair_conservative_ink_gap_um(
             replace(diode, ink_obstacles=()), mosfet,
         )
+
+
+@pytest.mark.parametrize("reference", ("VD1", "VT1", "C1", "L1", "R5"))
+def test_cycle14_true_source_pin_one_micrometre_shift_is_never_accepted(reference):
+    binding = next(x for x in _scene() if x.reference == reference)
+    shifted = (
+        Point(binding.pin_positions[0].x + 1, binding.pin_positions[0].y),
+        *binding.pin_positions[1:],
+    )
+    with pytest.raises(SymbolProfileMismatch, match="true D4 endpoint mismatch"):
+        source_footprint(replace(binding, pin_positions=shifted))
+
+
+@pytest.mark.parametrize("reference", ("VD1", "VT1", "R5"))
+def test_cycle14_changed_D4_transform_must_rebind_exact_physical_leads(reference):
+    binding = next(x for x in _scene() if x.reference == reference)
+    old = binding.instance.transform
+    rotated = replace(
+        binding.instance,
+        transform=Transform((old.rotation + 90) % 360, old.mirror_x),
+    )
+    with pytest.raises(SymbolProfileMismatch, match="true D4 endpoint mismatch"):
+        source_footprint(replace(binding, instance=rotated))
+
+
+def test_cycle14_removed_printed_ink_rehashed_cannot_forge_original_source():
+    binding = next(x for x in _scene() if x.reference == "VD1")
+    footprint = source_footprint(binding)
+    record = footprint_record(footprint)
+    record["graphic_ink"].pop()
+    record["footprint_sha256"] = source_value_digest({
+        key: value for key, value in record.items()
+        if key != "footprint_sha256"
+    })
+    with pytest.raises(SymbolProfileMismatch, match="immutable"):
+        verify_footprint_record(footprint, record)
