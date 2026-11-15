@@ -24,11 +24,11 @@ No `npm ci` is necessary for this isolated spike; the future MASTER-owned React/
 - Commands validate a cloned snapshot, then commit atomically on matching `(project_id,source_topology_hash,base_revision)`. Error leaves prior document, history, generation unmodified.
 - Undo/Redo revisions are deliberately **monotonic** to protect CAS from ABA replay. Compare only engineering model content (excluding `revision`) for Undo/Redo topology equality.
 - For pin move/rotate with wires, no silent detachment: `REROUTE_REQUIRED` without explicit consent; consent creates a Manhattan local suggestion tagged `needs_routing_review` pending collision/ERC review.
-- `validateNet()` uses DSU from **typed endpoint identities** and checks all declared physical pins participate; no status `verified` merely because some same-Net graphic exists.
+- `validateNet()` uses DSU from **typed endpoint identities**, requires actual source physical-pin membership and rejects `verified` whenever any wire is dangling or marked for DRC review. `danglingEndpoints(netId)` returns explicit per-wire-side diagnostics.
 
 ## Status and gates
 
-**PASS (local):** strict TypeScript typecheck and 38 `node:test` cases (physical pin→pin, T/X, distinct Net, foreign dot, split/merge, interior +3000 µm, corner move, exact 1µm, symbol R90, stale/ABA CAS, rollback, save/parse, source membership preservation).
+**PASS (local):** strict TypeScript typecheck and 42 `node:test` cases (physical pin→pin, T/X, distinct Net, foreign dot, split/merge, interior +3000 µm, corner move, exact 1µm, symbol R90, stale/ABA CAS, rollback, save/parse, source membership preservation, explicit dangling endpoint diagnostics).
 **BLOCKED:** #122 canonical `ProjectFileV2` adapter/fixture committed to GitHub; #120 interactive canvas + #119 independent mouse hit tests; #124 real clean SVG/PNG300; #125 integration app root and Windows browser/CI. No E695 23/15/62/16+2 source import done here; 15/15 autorouter never claimed.
 
 **CI caution:** green Python workflow runs on PR #126 do not execute this TypeScript suite. MASTER must install Node/TS and add explicit wire tests on its integration CI before declaring R3 accepted. This branch is review-only; do not merge absent user approval.
