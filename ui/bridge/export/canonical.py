@@ -151,6 +151,58 @@ class ExportResult:
     # caller retains project's native gscad-project v2 file separately
 
 
+def _check_source_ink_bounds(root: ET.Element, viewport: tuple[int, int, int, int]) -> None:
+    """Reject SVG shapes outside their claimed viewBox, including painted strokes.
+
+    Present Python engine emits Line/Rectangle/Circle/Semicircle. Check the
+    exact basic-shape extents here; a general SVG path and text glyph-ink audit
+    remains the responsibility of the source renderer/layout contract.
+    """
+    vx, vy, vw, vh = viewport
+    parents = {child: parent for parent in root.iter() for child in parent}
+
+    def stroke_padding(item: ET.Element) -> int:
+        stroke, thickness = None, None
+        cur: ET.Element | None = item
+        while cur is not None:
+            if stroke is None:
+                stroke = cur.get("stroke")
+            if thickness is None:
+                thickness = cur.get("stroke-width")
+            cur = parents.get(cur)
+        if stroke is None or stroke == "none":
+            return 0
+        if thickness is None:
+            raise ExportError("Painted source stroke lacks physical width")
+        width = _from_mm(thickness)
+        if width <= 0:
+            raise ExportError("Painted source stroke width must be positive")
+        return (width + 1) // 2
+
+    for item in root.iter():
+        kind = item.tag.rsplit("}", 1)[-1]
+        if kind == "line":
+            xs = [_from_mm(item.attrib[k]) for k in ("x1", "x2")]
+            ys = [_from_mm(item.attrib[k]) for k in ("y1", "y2")]
+        elif kind == "rect":
+            x, y = _from_mm(item.attrib["x"]), _from_mm(item.attrib["y"])
+            w, h = _from_mm(item.attrib["width"]), _from_mm(item.attrib["height"])
+            if w <= 0 or h <= 0:
+                raise ExportError("Source rectangle has non-positive dimensions")
+            xs, ys = [x, x + w], [y, y + h]
+        elif kind == "circle":
+            x, y, r = (_from_mm(item.attrib[k]) for k in ("cx", "cy", "r"))
+            if r <= 0:
+                raise ExportError("Source circle has non-positive radius")
+            xs, ys = [x - r, x + r], [y - r, y + r]
+        else:
+            continue
+        pad = stroke_padding(item)
+        if not (vx <= min(xs) - pad and max(xs) + pad <= vx + vw
+                and vy <= min(ys) - pad and max(ys) + pad <= vy + vh):
+            raise ExportError("SOURCE_VIEWBOX_CLIPS_INK: source shape exceeds viewBox")
+
+
 def _check_xml(
     data: bytes, *, strict_font: bool
 ) -> tuple[ET.Element, tuple[int, int, int, int], bool]:
@@ -196,6 +248,7 @@ def _check_xml(
             # match to the exact SHA-256 *cannot* be proven by metadata alone.
             if strict_font:
                 raise ExportError("FONT_NOT_OUTLINED: exact font rendering not verified")
+    _check_source_ink_bounds(root, (x, y, w, h))
     return root, (x, y, w, h), bool(text_count)
 
 

@@ -35,7 +35,7 @@ def engine_svg(*, with_text: bool = False, review: bool = False) -> bytes:
         '<line x1="34" y1="17" x2="60" y2="17" data-net="Net_A"/>'
         '<line x1="55" y1="10" x2="55" y2="30" data-net="Net_B"/></g>'
         '<g data-layer="explicit-junctions" fill="#000000"/>'
-        '<g data-layer="graphics" stroke="#000000">'
+        '<g data-layer="graphics" stroke="#000000" stroke-width="0.3">'
         '<line x1="61.001" y1="30" x2="70" y2="30" data-electrical="false" '
         'data-id="b-X2"/></g>' + diagnostics + text + '</svg>'
     ).encode()
@@ -180,3 +180,17 @@ def test_actual_png_all_page_sizes(page, orientation, expected):
     with Image.open(__import__("io").BytesIO(result.png)) as image:
         assert image.size == expected
         assert image.info["dpi"] == pytest.approx((300, 300), abs=0.02)
+
+
+def test_source_ink_outside_declared_viewbox_rejected():
+    """A fabricated undersized viewport must not hide cropped conductors."""
+    mismatched = engine_svg().replace(b'x2="60"', b'x2="100"')
+    with pytest.raises(ExportError, match="SOURCE_VIEWBOX_CLIPS_INK"):
+        compose_clean_svg(mismatched, ExportRequest())
+
+
+def test_source_stroke_outside_viewbox_rejected():
+    """Stroke extends beyond the geometric centreline and requires margin."""
+    bad = engine_svg().replace(b'x1="34"', b'x1="10"')
+    with pytest.raises(ExportError, match="SOURCE_VIEWBOX_CLIPS_INK"):
+        compose_clean_svg(bad, ExportRequest())
