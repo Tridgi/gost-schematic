@@ -193,6 +193,38 @@ absence of authorized model credentials remains a distinct
 `CODEX_MODEL_CALL_BLOCKED_NO_AUTH` from this completed deterministic
 MCP design contract. Review latest PR owner SHAs before any handoff.
 
+## Cycle13 end-user AI quickstart: original 23/15/62, no imagined print
+
+The runnable one-command guide is
+[Cycle13 TL494 end-user quickstart](docs/ai-integration/cycle13-end-user-quickstart.md).
+From an installed editable checkout with `.[dev,mcp]` and Python
+3.12/3.13, use a **new** output directory:
+
+```bash
+mkdir -p output
+python -m examples.agent_tl494_cycle13_quickstart --out output/tl494-cycle13-user
+```
+
+This runs a **real native stdio `mcp.ClientSession`** for the seven
+source-selected installed UGO and SHA-checks 14 native glyph SVG/PNG
+files. An actual strict subprocess CLI validates the original 23
+`source_part_id`/nominals, 15 original Net names and 62 physical
+PinRefs. Eleven deliberately malformed requests must be rejected,
+including wrong R5 or unknown UGO, invented R1 part ID, changed
+nominal, renamed historical b-Net, foreign/duplicate PinRef, stale
+revision, arbitrary transaction request, unknown output and unbounded
+retry. Every artifact receives a SHA256 and has no edit privileges.
+
+**`BLOCKED_PARTIAL` means the checks successfully refuse to claim
+a finished electrical sheet.** The command never calls the owner
+router: its `new_routed_net_count=0` is not a route benchmark; the
+independently accepted A3 compact route remains 10/15 at Cycle13.
+Its SVG/PNG are only individual catalog symbols, NOT a new 23-part
+printed sheet. `source_netlist_user_approval=USER_REVIEW_REQUIRED`:
+the agent cannot invent user approval. There is no active Codex
+model session, full-DPI print, 15/15 route, E3 commit or arbitrary
+MCP write. Source proof and a clean process exit are NOT print approval.
+
 ## Exact owner API lock, installed wheel, and Codex CLI boundaries (Cycle12)
 
 An independently executed, trusted source-inspection command uses the
