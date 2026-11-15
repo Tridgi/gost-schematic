@@ -1118,7 +1118,8 @@ def test_real_cycle16_exact_da1_port_escape_and_untrusted_elk_movement():
         Path(os.environ["IC_TYPE_A_FONT_PATH"])
     )
     contract = export_tl494_router_ports(signed)
-    signed.circuit.nets  # authoritative, never synthesized from routed SVG
+    assert len(signed.circuit.nets) == 15
+    assert sum(len(net.members) for net in signed.circuit.nets) == 62
     pins = {p.pin_ref.number: p for p in contract.ports}
     assert len(pins) == 16
     assert pins["13"].net_name == "COMMON"
