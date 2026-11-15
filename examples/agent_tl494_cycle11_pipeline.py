@@ -19,11 +19,11 @@ from mcp.client.stdio import stdio_client
 from mcp.types import ImageContent, TextContent
 
 from gost_schematic.agent_project.catalog import CatalogResolver
-from gost_schematic.agent_project.owner_api_locks import verify_pinned_owner_api_files
 from gost_schematic.agent_project.design_assistant import (
     TL494_FROZEN_SOURCE_SHA,
     TL494_REQUIRED_PARTS,
 )
+from gost_schematic.agent_project.owner_api_locks import verify_pinned_owner_api_files
 from gost_schematic.agent_project.owner_source_contract import (
     verify_cycle11_owner_bridge_surfaces,
     verify_frozen_owner_fixture,
