@@ -6,6 +6,7 @@ artwork comes from the PAINT engine and exact owner records. No SVG patch or
 retrospective fake 91-wire reconstruction.
 """
 import argparse
+import hashlib
 import json
 from importlib import import_module
 from pathlib import Path
@@ -237,6 +238,69 @@ def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 2500
             for ep in source_b.endpoints
         },
     }
+    # Source-backed BOM and Netlist are valid even when NET114 routes only
+    # some trees. Their source is the same signed, 23/15/62 immutable Circuit,
+    # never conductors guessed from SVG ink or the negative 91-wire fixture.
+    component_rows = [
+        {
+            "reference": comp.reference,
+            "part_id": comp.part_id,
+            "symbol_id": canonical_parts[comp.part_id].symbol_id,
+            "nominal": (
+                comp.nominal.to_record() if comp.nominal is not None else None
+            ),
+        }
+        for comp in circuit.components
+    ]
+    net_rows = [
+        {
+            "name": net.name,
+            "pinrefs": [
+                {"reference": pin.reference, "number": pin.number}
+                for pin in net.members
+            ],
+        }
+        for net in circuit.nets
+    ]
+    all_refs = [
+        (pin["reference"], pin["number"])
+        for net in net_rows for pin in net["pinrefs"]
+    ]
+    if (
+        len(component_rows) != 23
+        or len({row["reference"] for row in component_rows}) != 23
+        or len(net_rows) != 15
+        or len({row["name"] for row in net_rows}) != 15
+        or len(all_refs) != len(set(all_refs)) != 62
+    ):
+        raise ValueError("PAINT_BOM_NETLIST_PHYSICAL_SOURCE_IDENTITY_DRIFT")
+    exports = {
+        "TL494_COMPACT_A3_SOURCE_BOM_DRAFT.json": {
+            "schema": "paint.source-bom.v1",
+            "source_sha": SOURCE,
+            "signed_ic_owner_sha": IC,
+            "print_approved": False,
+            "components": component_rows,
+        },
+        "TL494_COMPACT_A3_SOURCE_NETLIST_DRAFT.json": {
+            "schema": "paint.source-netlist.v1",
+            "source_sha": SOURCE,
+            "signed_ic_owner_sha": IC,
+            "print_approved": False,
+            "nets": net_rows,
+        },
+    }
+    manifest["source_model_exports"] = {}
+    for name, payload in exports.items():
+        encoded = (
+            json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True)
+            + "\n"
+        ).encode("utf-8")
+        (out/name).write_bytes(encoded)
+        manifest["source_model_exports"][name] = {
+            "sha256": hashlib.sha256(encoded).hexdigest(),
+            "bytes": len(encoded),
+        }
     (out/"TL494_COMPACT_A3_NEW_ROUTER_DRC_MANIFEST.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True)+"\n",
         encoding="utf-8",
