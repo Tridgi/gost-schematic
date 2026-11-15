@@ -193,6 +193,80 @@ def test_reconstructor_a3_23_part_catalog_adapter_preserves_complete_nets():
     assert IcCircuitBinding.from_json(candidate.to_json()) == candidate
 
 
+
+def test_manufacturer_record_is_authority_without_redundant_vendor_catalog():
+    """QA C11 missing vendor row is safe: trusted TI record is the authority."""
+    binding, _ = _photo()
+    external_catalog = _synthetic_catalog_only_for_electrical_inventory(binding)
+    assert TI_DEVICE_ID not in external_catalog
+    signed = bind_ic_circuit_from_catalog(
+        binding.record, binding.circuit, external_catalog,
+        aliases=binding.aliases,
+    )
+    assert signed == binding
+    assert signed.circuit is binding.circuit
+    assert {c.pin_ref for c in signed.contacts} == {
+        PinRef("DA1", str(index)) for index in range(1, 17)
+    }
+    assert signed.contact(PinRef("DA1", "3")).electrical_type is IcPinType.INPUT
+    assert signed.contact(PinRef("DA1", "13")).electrical_type is IcPinType.INPUT
+    assert (
+        signed.contact(PinRef("DA1", "14")).electrical_type
+        is IcPinType.POWER_OUTPUT
+    )
+    supplied = {**external_catalog, TI_DEVICE_ID: binding.part}
+    explicit = bind_ic_circuit_from_catalog(
+        binding.record, binding.circuit, supplied,
+        aliases=binding.aliases,
+    )
+    assert explicit == signed
+
+
+@pytest.mark.parametrize(
+    "attack", (
+        "missing_value", "foreign_type", "foreign_id", "wrong_prefix",
+        "missing_factory_pin", "wrong_factory_number", "wrong_factory_name",
+        "wrong_factory_electrical_type", "reordered_factory_pins",
+    ),
+)
+def test_supplied_manufacturer_partdefinition_must_match_true_ti(attack):
+    """No supplied spoofed vendor PartDefinition may certify a signed DA1."""
+    binding, _ = _photo()
+    catalog = _synthetic_catalog_only_for_electrical_inventory(binding)
+    signed_factory = binding.part
+    if attack == "missing_value":
+        forged = None
+    elif attack == "foreign_type":
+        forged = "ti.tl494cn.pdip16"
+    elif attack == "foreign_id":
+        forged = replace(signed_factory, identifier="fraud.tl494.pdip16")
+    elif attack == "wrong_prefix":
+        forged = replace(signed_factory, reference_prefix="ZZ")
+    else:
+        pins = list(signed_factory.pins)
+        if attack == "missing_factory_pin":
+            pins.pop()
+        elif attack == "wrong_factory_number":
+            pins[0] = replace(pins[0], number="99")
+        elif attack == "wrong_factory_name":
+            pins[2] = replace(pins[2], name="NOT_FEEDBACK")
+        elif attack == "wrong_factory_electrical_type":
+            pins[12] = replace(
+                pins[12], electrical_type=ElectricalType.OUTPUT,
+            )
+        else:
+            pins[0], pins[1] = pins[1], pins[0]
+        forged = replace(signed_factory, pins=tuple(pins))
+    catalog[TI_DEVICE_ID] = forged
+    with pytest.raises(
+        ValueError,
+        match="IC_ADAPTER_CATALOG_MANUFACTURER_PINOUT_CONFLICT",
+    ):
+        bind_ic_circuit_from_catalog(
+            binding.record, binding.circuit, catalog,
+            aliases=binding.aliases,
+        )
+
 def test_reconstructor_catalog_foreign_missing_unknown_pin_rejected():
     binding, _ = _photo()
     parts = _synthetic_catalog_only_for_electrical_inventory(binding)
