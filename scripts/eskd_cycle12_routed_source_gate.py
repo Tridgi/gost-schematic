@@ -44,6 +44,22 @@ FAILED_SOURCE_NETS = {
     "GATE_DRIVE", "CONTROL_REFERENCE", "FEEDBACK", "OSCILLATOR_RT",
     "COMMON",
 }
+# Actual immutable artifact bytes from owner NET114 run 43654672504,
+# independently compared between Python 3.12 and 3.13.
+PINNED_ROUTER_SHA = "5c6feb90580ed846aa297c71d3c91afacfc3f0bc"
+PINNED_RECON_SHA = "e56397300875ac155a316a9bfebe2601358a4147"
+PINNED_OWNER_BLOBS = {
+    "TL494-compact-A3-clean.svg":
+        "1dee3658a93d2d437bdb4944d4779369890d8819ecb9e7b5f0b38d0fa8b9d0ac",
+    "TL494-compact-A3-diagnostic.svg":
+        "5e5c4b4879166c7f8dd2adbf54467240605750f7a37fd9262467bbff8f352baf",
+    "TL494-compact-A3-clean-300dpi.png":
+        "8d6a8dd0b2ec1fdbd39b01bed739cd124844078be28b4b06ac44d6651791ffcc",
+    "TL494-compact-A3-diagnostic-300dpi.png":
+        "0b6c0e0df825557887a5aa145e7bcaefd916a9f09e4e3546bc395a356173530f",
+    "TL494-compact-A3-route-drc.json":
+        "f13cf3e4a06c19a36abb4748268ce5cfe25d893474c3690aab7076ec620b1dd0",
+}
 
 
 class EvidenceError(ValueError):
@@ -62,6 +78,15 @@ def _read_json(path: Path) -> dict:
         raise EvidenceError("REAL_OWNER_MANIFEST_MISSING_OR_INVALID") from exc
     require(isinstance(obj, dict), "MANIFEST_NOT_OBJECT")
     return obj
+
+
+def _verify_pinned_owner_bytes(folder: Path) -> None:
+    """Reject edited evidence, byte drift, or mixing Python owner archives."""
+    for name, digest in PINNED_OWNER_BLOBS.items():
+        path = folder / name
+        require(path.is_file(), "PINNED_OWNER_REAL_ARTIFACT_MISSING")
+        require(hashlib.sha256(path.read_bytes()).hexdigest() == digest,
+                "PINNED_OWNER_REAL_ARTIFACT_SHA256_MISMATCH")
 
 
 def _svg(path: Path) -> ET.Element:
@@ -344,7 +369,11 @@ def _png(path: Path, view: tuple[float, float, float, float],
 
 
 def audit(folder: Path, original_netlist: Path) -> dict:
+    _verify_pinned_owner_bytes(folder)
     manifest = _read_json(folder / f"{BASENAME}-route-drc.json")
+    require(manifest.get("owner_router_sha") == PINNED_ROUTER_SHA
+            and manifest.get("reference_recon_sha") == PINNED_RECON_SHA,
+            "CURRENT_EVIDENCE_OWNER_SHA_NOT_THIS_PINNED_RUN")
     source = _source_model(manifest, _read_json(original_netlist))
     route = _route(manifest)
     for key in FAILED_SOURCE_NETS:
@@ -378,6 +407,9 @@ def audit(folder: Path, original_netlist: Path) -> dict:
         "schema_version": 1, "source_frozen_sha": FROZEN,
         "owner_router_sha": manifest["owner_router_sha"],
         "reference_recon_sha": manifest["reference_recon_sha"],
+        "exact_owner_run": 43654672504,
+        "owner_3p12_3p13_artifact_bytes_identical": True,
+        "latest_owner_HEAD_acceptance": "BLOCKED_NEW_HEAD_SEPARATE_RUN_REQUIRED",
         "source_inventory": source, "routed_graph": route,
         "printed_parallel_edge_3mm": gaps, "actual_real_svg_png": variants,
         "checks": {
