@@ -165,6 +165,28 @@ def validate_report(report: dict, source: dict, *, exact_net_sha: str,
                 report.get("geom_drc_pass") is False and
                 report.get("status") == "BLOCKED_PARTIAL_NOT_PRINTABLE",
                 "QA_C12_PARTIAL_ROUTE_WITH_ZERO_DRC_FAKED_SUCCESS")
+    else:
+        # Do not freeze this acceptance test at the old 10/15 failure:
+        # an actual future 15/15 can pass only with full route evidence.
+        require(routing.get("complete") is True and
+                not routing.get("diagnostics") and
+                actual_drc.get("valid") is
+                (actual_drc.get("error_count") == 0),
+                "QA_C12_15_NET_ROUTED_BUT_DRC_OR_SOURCE_FALSE")
+        if report.get("geom_drc_pass") is True:
+            require(actual_drc.get("error_count") == 0 and
+                    routing.get("print_pass") is True and
+                    report.get("status") ==
+                    "DRC_PASS_INDEPENDENT_QA_REQUIRED" and
+                    report.get("after_erc_errors") == [] and
+                    not report.get("paper_10mm_editorial_frame_violations")
+                    and report.get("source_label_layout_valid") is True and
+                    report.get("after_label_layout_valid") is True,
+                    "QA_C12_FORGED_PRINT_READY_WITH_MISSING_ERC_OR_INK")
+        else:
+            require(report.get("status") ==
+                    "BLOCKED_PARTIAL_NOT_PRINTABLE",
+                    "QA_C12_15_COMPLETED_BUT_DRC_BLOCKED_PROMOTED")
     require(report.get("verified_legacy_illegal_W2", {}).get("preflight") ==
             "REJECTED_INK_INTERSECTION",
             "QA_C12_W2_CROSS_DA1_UNSAFE_LEAD_NOT_REJECTED")
@@ -323,8 +345,15 @@ def check_svg_png(directory: Path, report: dict, paper: str) -> dict:
         png_path = directory / (stem + "-300dpi.png")
         raw = svg_path.read_bytes()
         root = ET.fromstring(raw)
+        # The owner may legitimately reach all 15/15 on a later exact
+        # SHA. Technical DRC_PASS still means QA/UGO/photo not approved.
+        owner_release = (
+            "DRC_PASS_QA_NOT_APPROVED"
+            if report.get("geom_drc_pass") is True
+            else "BLOCKED_PARTIAL"
+        )
         require(root.tag == S + "svg" and
-                root.get("data-release") == "BLOCKED_PARTIAL" and
+                root.get("data-release") == owner_release and
                 root.get("data-draft-paper") == paper and
                 root.get("data-owner-router-sha") ==
                 report["owner_router_sha"] and
@@ -345,6 +374,9 @@ def check_svg_png(directory: Path, report: dict, paper: str) -> dict:
         true_paper = all(abs(a - b) < 0.001 for a, b in zip(
             mm, desired, strict=True
         ))
+        if report.get("geom_drc_pass") is True:
+            require(true_paper,
+                    "QA_C12_FULL_DRC_PASS_WITH_WRONG_PAPER_SIZE")
         if not true_paper:
             require(bool(report.get("paper_10mm_editorial_frame_violations")),
                     "QA_C12_MISLABELED_SHEET_MM_WITH_FALSE_PAGE_FIT")
