@@ -414,6 +414,8 @@ jobs:
               "gost_schematic.agent_project.agent_readiness",
               "examples.agent_tl494_cycle11_pipeline",
               "examples.agent_tl494_cycle13_quickstart",
+              "examples.agent_tl494_cycle16_owner_proof",
+              "gost_schematic.agent_project.cycle16_owner_proof",
           ):
               spec = importlib.util.find_spec(name)
               assert spec is not None and spec.origin
@@ -465,6 +467,26 @@ jobs:
           PY
           cp -a "$RUNNER_TEMP/gse-cycle14-wheel-native-evidence" \
             "$GITHUB_WORKSPACE/output/cycle14-installed-wheel-evidence"
+          # A real installed, non-editable wheel must expose the read-only
+          # Cycle16 owner-consumer CLI even when no external owner manifest
+          # exists. Missing proof is BLOCKED, never a fabricated 15-Net route.
+          "$PY" -m examples.agent_tl494_cycle16_owner_proof \
+            --out "$RUNNER_TEMP/gse-cycle16-installed-wheel-no-owner" \
+            > "$GITHUB_WORKSPACE/output/cycle16-installed-wheel-no-owner.json"
+          "$PY" - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          folder = Path(os.environ["RUNNER_TEMP"]) / "gse-cycle16-installed-wheel-no-owner"
+          report = json.loads((folder / "source-c16-owner-candidate-proof.json").read_text())
+          assert report["status"] == "BLOCKED_NO_OWNER_C15_PROOF"
+          assert report["source_snapshot"]["original_nets"] == 15
+          assert report["source_snapshot"]["physical_pinrefs"] == 62
+          assert report["mcp_write_tools_enabled"] is False
+          assert report["print_ready"] is False
+          PY
+          cp -a "$RUNNER_TEMP/gse-cycle16-installed-wheel-no-owner" \
+            "$GITHUB_WORKSPACE/output/cycle16-installed-wheel-no-owner"
 
       - name: Archive actual UGO glyphs and project diagnostics
         uses: actions/upload-artifact@v4
@@ -486,5 +508,7 @@ jobs:
             output/cycle13-quickstart-help.txt
             output/cycle14-installed-wheel-quickstart.json
             output/cycle14-installed-wheel-evidence/
+            output/cycle16-installed-wheel-no-owner.json
+            output/cycle16-installed-wheel-no-owner/
           if-no-files-found: error
           retention-days: 30
