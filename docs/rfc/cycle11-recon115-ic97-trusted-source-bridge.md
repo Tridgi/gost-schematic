@@ -100,3 +100,78 @@ PR #97, #93, #115, #113, integration and main are not merged or modified
 by this read-only testing workflow. Never call a merely drawn clean SVG
 "print PASS" without NET #114 full routing, PAINT printed-ink and independent
 QA/ESKD source acceptance.
+
+
+## Cycle13 / 15.11.2026 — exact current signed-manufacturer handoff
+
+The SHA list at the top of this RFC is **historical Cycle11 evidence**, not
+proof of current owner versions. The renewed `.github/workflows/ic-recon115-live-cycle11.yml`
+stages these **immutable Cycle13 snapshots**, with `git rev-parse HEAD`
+assertions on every job and no owner-branch merge:
+
+| Owner | Verified checkout SHA |
+|---|---|
+| RECON PR #115 | `5244608f7e554bb453075f4beb4e46d9a83b6bd1` |
+| PAINT PR #93 | `a16c20bc3414434c3af7f9b12192e3e7ea7c55a4` |
+| YGO PR #113 | `92347d936c71e6038c836f37992bbbee65d56196` |
+
+These commits are **CI-pinned snapshots**, not promises that other branches
+will stop changing. All cross-owner changes require a fresh SHA and a new CI
+run; earlier green Actions are not proof for new code.
+
+### Actual typed consumer and renderer contracts
+
+The authoritative RECON consumer is
+`examples.tl494_v5.cycle11_ti_bridge.bind_verified_compact_ti(assembly, source_circuit)`.
+It rejects a merely value-equal but newly allocated `components` tuple
+(`source_circuit.components is not assembly.circuit.components`), even
+where all 23 component values match, and it returns
+`VerifiedCompactTiBinding`. Its `reverse_source()` returns the **same
+source Circuit object**. The signed model preserves the original **Net tuple
+object**, all 15 named Nets, all 62 physical PinRefs and the full factory
+pinout, including `DA1.3` FEEDBACK INPUT/FB and `DA1.13` OUTPUT CTRL
+INPUT/OC.
+
+After the actual `propose_ic_paint_binding(...)`, the owner can call
+`verified_owner.seal_paint(proposal)`, returning
+`(revised: IcCircuitBinding, snapshot: IcVerifiedPaintSnapshot)`.
+Any move of real physical terminals is tied to exact-source
+`IcGeometryConsent`. When composing a whole PAINT routed-native sheet,
+the three **inseparable** keyword arguments are:
+
+```python
+verified_ic_source=revised,
+verified_ic_paint_binding=proposal,
+verified_ic_snapshot=snapshot,
+```
+
+Together with real matched
+`physical_ic_renderings_clean={"DA1": clean}` and
+`physical_ic_renderings_diagnostic={"DA1": diagnostic}`, where `clean`
+and `diagnostic` are produced by `snapshot.render(revised, proposal, ...)`.
+`render_routed_native_sheet` validates the signed Circuit identity, 16
+factory anchors, complete manifest, serialized clean/diagnostic ink and all
+source counts. Neither a standalone cosmetic 16-tip overlay nor two
+apparently identical `IcRendered` objects are a trusted manufacturer proof.
+A **partial** signed triple, substituted digest or modified clean SVG must
+fail closed; CI includes those exact negatives.
+
+The source-Named `b_NEGATIVE_OUTPUT` Net is **one electrical Net with
+exactly three physical members**: `FU1.2`, `X2.1`, `R5.2`. In RECON's
+legacy namespace it is `OUTPUT_NEG`. The two source `b-X2` and `b-R5`
+markers are *typed non-electrical continuation glyphs* — **not** extra
+components, Nets or PinRefs. The new IC negative test adds a spurious
+`X2.2` PinRef to that original Net and requires the source-binding
+adapter to reject it. Actual continuation vector relocation remains
+RECON #115 / PAINT #93 responsibility and still requires a valid
+`source_continuation_project`; the isolated empty-route smoke has
+`source_continuation_project=None` and is **BLOCKED**.
+
+The current signed zero-segment whole-sheet test checks
+`manifest["signed_manufacturer_ic_16_verified"] is True` while
+`printable_candidate is False`, real **zero green contact targets**
+on the clean sheet and exactly 16 in diagnostic, source 23/15/62/16.
+The full output is **not** ESKD released: independent complete 15/15 route,
+3/2/1 mm wire/UGO/Type A DRC, both b markers, QA and original-user-photo
+verification remain separate gates. PNG300DPI from this isolated workflow
+proves the genuine physical IC rendering, not a fully wired printable A3.
