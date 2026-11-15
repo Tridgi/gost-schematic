@@ -8,14 +8,12 @@ accepts a photo guess or releases a partially routed sheet.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import subprocess
 from copy import deepcopy
 from pathlib import Path
 
-from examples.render_tl494_full_native_cycle9 import (
-    _compose_frozen_circuit_with_real_type_a,
-)
 from examples.tl494_named_photo_sheet import compose_circuit
 from examples.tl494_v5.compact_layout import compact_source_assembly
 from examples.tl494_v5.route_candidate_driver import (
@@ -31,6 +29,7 @@ RECON_SHA = "e4eb565820e54889456f64d36598b608597ca2c2"
 ORIGINAL_SHA = "e695c415fdced164b0e0c39c5249d030795a0aa6"
 PHYSICAL_B = {"FU1.2", "X2.1", "R5.2"}
 B_STUBS = {"b-X2": "X2.1", "b-R5": "R5.2"}
+TYPE_A_SHA256 = "f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a"
 A3 = (420000, 297000)
 MARGIN = 10000
 
@@ -46,13 +45,24 @@ def require(condition: bool, code: str) -> None:
 
 def immutable_expected(font_file: Path) -> dict:
     """Derive source b vectors from E695 native DATA, not a screenshot."""
-    # E695's obsolete `OpenGost Type A TT` family selector must be adapted
-    # ONLY at the original source function boundary to genuine verified
-    # OpenGOST type A. PAINT's existing scoped adapter restores the selector
-    # afterwards and never edits original geometry, wires or font bytes.
-    original = _compose_frozen_circuit_with_real_type_a(
-        compose_circuit, font_file,
-    )[-1]
+    # Execute E695's genuine staged compose_circuit against the modern
+    # source-authenticated RECON builder, without depending on PAINT's
+    # rendering-only Type A AST adapter. This is intentionally an independent
+    # physical SOURCE oracle even if PAINT cannot produce an SVG.
+    from examples import tl494_connected_native, tl494_ic_paint_reference
+
+    require(tl494_connected_native.build_paint_ic is
+            tl494_ic_paint_reference.build,
+            "QA_B_SOURCE_MODERN_FONT_BUILDER_ALIAS_DRIFT")
+    require(hashlib.sha256(font_file.read_bytes()).hexdigest() ==
+            TYPE_A_SHA256, "QA_B_SOURCE_FONT_SHA_DRIFT")
+    font = inspect_type_a_font(
+        font_file, h_um=3500, family="OpenGOST type A",
+        require_family_match=True,
+    )
+    require(font.measured_cap_height_um == 3500,
+            "QA_B_SOURCE_TYPE_A_TRUE_CAP_HEIGHT_DRIFT")
+    original = compose_circuit(font_file)[-1]
     assembly = compact_source_assembly()
     assembly.verify()
     frozen, _typed_ti = load_original_owner_fixture()
@@ -197,9 +207,8 @@ def live_real_rebinding_gate(font_file: Path, expected: dict) -> dict:
     from gost_schematic.core.geometry import Point
     from gost_schematic.model.circuit import Circuit, Net
 
-    original = _compose_frozen_circuit_with_real_type_a(
-        compose_circuit, font_file,
-    )[-1]
+    # Real source composition does not require any PAINT-only font adapter.
+    original = compose_circuit(font_file)[-1]
     assembly = compact_source_assembly()
     frozen, _ = load_original_owner_fixture()
     source = restore_original_named_nets(assembly, frozen)
