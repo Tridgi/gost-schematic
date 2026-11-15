@@ -38,6 +38,54 @@ automatic component placement and wire routing, comprehensive ERC, formally cert
 ГОСТ font outlines, PDF export, an approved ГОСТ symbol catalog, BOM and document
 composition. These are planned stages, not current features.
 
+## AI / MCP read-only TL494 engineering workflow (Cycle 12, DRAFT)
+
+The user-source target is the **actual immutable TL494CN E3**:
+23 components, 15 original named physical Nets, 62 `PinRef`
+memberships, all 16 TI DA1 pins, 91 historical wire segments,
+37 historical nodes and two nonphysical `b` continuation markers.
+Frozen reference commit:
+`e695c415fdced164b0e0c39c5249d030795a0aa6`.
+The original 9 DRC ERROR + 32 WARNING are a **negative fixture**,
+not a completed printable drawing.
+
+Present working surfaces: exact installed source-symbol selection
+(`schematic_catalog_search`, `schematic_catalog_select`,
+`schematic_catalog_preview`), true native SVG/PNG catalogue glyph
+previews, saved P1.1 E3 read-only list/open/describe/validate and
+partial preflight/diagnostic render, all via `mcp.ClientSession`
+stdio. The original 23/15/62 physical source and exact original BOM
+nominal strings are verified through the Git-blob locked
+`agent_project.agent_readiness` CLI; unknown Net or silently
+substituted `part_id` is **rejected**, not guessed.
+
+```bash
+python -m pip install -e ".[dev,mcp]"
+python -m pytest -q tests/agent_project/test_agent_readiness_cli.py \
+  tests/agent_project/test_tl494_owner_contract_cycle11.py \
+  tests/agent_project/test_tl494_owner_pipeline_cycle11.py \
+  tests/agent_project/test_owner_api_locks_cycle12.py
+python -m ruff check .
+```
+
+The **real source-to-MCP reproducible operator command**, exact
+IC #97 / RECON #115 HEAD locks, required six source-file arguments
+and generated SHA-checked evidence are specified in the
+[Cycle12 agent walkthrough](docs/ai-integration/agent-cycle11-source-driven-walkthrough.md).
+The [root agent instructions](AGENTS.md) and
+[agent Skill](skills/gost-schematic/SKILL.md) are constraints for an
+assistant, not proof that the language model has built the diagram.
+
+The MAIN3 Cycle12 source-native router checkpoint was **10/15**
+complete (five failed Nets); accepted partial-graph DRC=0 does not
+qualify the full page. A full **15/15 routed, print-clean** native A3
+(or justified A2/multisheet) design, QA 1:1, fully accepted GOST
+figures and authenticated autonomous model transaction pipeline are
+**BLOCKED**. All unapproved UGO remain DRAFT. There are **NO
+arbitrary MCP write/commit tools**. The separate Codex CLI workflow
+tests the real executable and MCP registry without model-based
+schematic construction.
+
 ## Development
 
 Requires Python 3.12+.
