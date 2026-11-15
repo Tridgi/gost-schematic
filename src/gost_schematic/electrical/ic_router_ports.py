@@ -53,11 +53,20 @@ _FROZEN_NETS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("a_INPUT_PLUS", ("X1.1", "L1.1", "DA1.12", "DA1.8", "DA1.11")),
     ("b_NEGATIVE_OUTPUT", ("FU1.2", "X2.1", "R5.2")),
 )
-_EXPECTED_COMPONENTS = frozenset((
-    "DA1", "VT1", "VD1", "L1", "L2", "FU1", "X1", "X2",
-    *(f"C{i}" for i in range(1, 8)),
-    *(f"R{i}" for i in range(1, 9)),
-))
+_FROZEN_PART_IDS = {
+    **{f"C{i}": "capacitor.polarized" for i in (1, 2, 3, 5, 6)},
+    **{f"C{i}": "capacitor.fixed" for i in (4, 7)},
+    **{f"R{i}": "resistor.fixed" for i in (1, 2, 3, 4, 6, 7, 8)},
+    "R5": "resistor.variable",
+    "VT1": "transistor.mosfet_n_enh",
+    "VD1": "diode.schottky",
+    "L1": "inductor.ferromagnetic",
+    "L2": "inductor.ferromagnetic",
+    "FU1": "fuse.general",
+    "X1": "reference.connector.x1",
+    "X2": "reference.connector.x2",
+    "DA1": TI_DEVICE_ID,
+}
 _ESCAPE_LENGTH_UM = 1800
 _ESCAPE_HALF_WIDTH_UM = 400
 _DEFAULT_PAGE_BOX_UM = Box(0, 0, 420000, 297000)
@@ -199,8 +208,11 @@ class IcRouterPortContract:
         and independent approval of all connected wire reroutes first.
         """
         self.verify_against(binding)
-        if consent is not None and not isinstance(consent, IcGeometryConsent):
-            raise TypeError("IC_ROUTER_GEOMETRY_CONSENT_TYPED_REQUIRED")
+        if consent is not None:
+            if not isinstance(consent, IcGeometryConsent):
+                raise TypeError("IC_ROUTER_GEOMETRY_CONSENT_TYPED_REQUIRED")
+            if consent.source_sha256 != self.manufacturer_record_sha256:
+                raise ValueError("IC_ROUTER_GEOMETRY_CONSENT_SOURCE_STALE")
         if (
             proposed_origin_um != self.part_origin_um
             or proposed_rotation_deg != self.rotation_deg
@@ -249,7 +261,8 @@ def export_tl494_router_ports(
     if binding.record.device.identifier != TI_DEVICE_ID or binding.component_ref != "DA1":
         raise ValueError("IC_ROUTER_NOT_TL494_DA1")
     if (len(binding.circuit.components) != 23
-            or {c.reference for c in binding.circuit.components} != _EXPECTED_COMPONENTS
+            or {c.reference: c.part_id for c in binding.circuit.components}
+            != _FROZEN_PART_IDS
             or len(binding.circuit.nets) != 15
             or sum(len(n.members) for n in binding.circuit.nets) != 62
             or _source_members(binding) != tuple(sorted(_FROZEN_NETS))):
