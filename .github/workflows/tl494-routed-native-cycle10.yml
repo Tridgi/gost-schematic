@@ -93,6 +93,7 @@ jobs:
           test -f examples/tl494_cycle9_circuit_integration.py
           test -f src/gost_schematic/electrical/netrefs.py
           test -f examples/tl494_v5/cycle11_ti_bridge.py
+          test -f examples/tl494_v5/cycle11_b_continuation.py
           test -f examples/tl494_v5/route_candidate_driver.py
           test -f src/gost_schematic/catalog/source_footprints.py
           test -f src/gost_schematic/engines/multiterminal_router.py
@@ -108,6 +109,7 @@ jobs:
           FONT_FILE="$(find "$HOME/.local/share/fonts" -type f \( -iname '*TypeA*.ttf' -o -iname '*TypeA*.otf' \) | head -1)"
           test -f "$FONT_FILE"
           echo "REVIEW_FONT=$FONT_FILE" >> "$GITHUB_ENV"
+          echo "TL494_TYPE_A_FONT=$FONT_FILE" >> "$GITHUB_ENV"
           sudo apt-get update -qq
           sudo apt-get install -y -qq librsvg2-bin
       - name: Ruff plus 9 owner-agnostic hostile new route print cases
@@ -116,8 +118,10 @@ jobs:
             examples/render_tl494_new_router_cycle10.py \
             examples/render_tl494_compact_new_router_cycle10.py \
             scripts/verify_tl494_compact_cycle10.py \
-            tests/test_routed_native_sheet_cycle10.py
+            tests/test_routed_native_sheet_cycle10.py \
+            tests/test_compact_real_source_cycle12.py
           pytest -q tests/test_routed_native_sheet_cycle10.py \
+            tests/test_compact_real_source_cycle12.py \
             examples/tl494_v5/test_cycle11_ti_bridge.py
       - name: Genuine new NET114 graph -> PAINT full native engine, no old 91 wire reuse
         run: |
