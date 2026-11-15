@@ -44,6 +44,25 @@ A later `COMMIT_GATE` is **not one of the seven drawing stages**.
 It is a separately authorized P1.2 transaction boundary, blocked until
 the independent acceptance of Draft RFC PR #102.
 
+## Executable source-verified handoff (no generator)
+
+The actual Cycle13 user quickstart now emits
+`source-generation-handoff.json`, built from its original, freshly
+revalidated typed CLI request and real native MCP catalogue result.
+`build_readonly_tl494_handoff` (in
+`gost_schematic.agent_project.generation_handoff`) recomputes the
+immutable source validator and compares the entire CLI report, checks
+seven exact part+symbol SHA locks and refuses forged DRAFT approval.
+The JSON includes the source request SHA256, canonical sorted physical
+Net-member SHA256, 15 literal original names, 13 exact source-selected
+UGO references, stage state and required six outputs. All seven
+`stages[].verified_complete` remain false; no actual routing, printed
+DRC, file writer or authenticated model session is implied.
+Future NET/RECON/IC/PAINT/QA adapters must independently prove their
+native physical results and corresponding artifact SHA before any
+generator-ready status can exist. This preflight envelope itself cannot
+approve a user-supplied candidate or a fake final SVG/PNG.
+
 ## Machine-readable response
 
 The existing strict stdin CLI already returns `status`, `code` for
