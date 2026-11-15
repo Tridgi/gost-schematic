@@ -62,8 +62,8 @@ def validate_real_b_native_layer(
     )
     demand(len(b_labels) == 2 and
            all(t.text == "b" and t.get("data-nonphysical") == "true" and
-               t.get("data-font-sha256") ==
-               font_sha
+               t.get("data-font-sha256") == font_sha and
+               t.get("font-family") == "OpenGOST type A"
                for t in b_labels),
            "QA_C13_B_TEXT_IS_NOT_GENUINE_SOURCE_TYPE_A_LABEL")
     b_editor = regions[0].findall(
@@ -80,63 +80,81 @@ def validate_real_b_native_layer(
 def assess_source_b_stub_ink(
     root: ET.Element, b_witness: dict,
 ) -> str:
-    """Do not call b print-faithful when only circles/text were rendered.
+    """Require exactly two visible, authenticated, non-electric SVG strokes.
 
-    Actual RECON owner publishes two typed physical-to-marker stubs. A
-    missing PAINT stroke blocks print and is not silently inferred from Nets.
+    A text label, a marker circle or a nonphysical metadata claim alone is
+    never sufficient. Match the ORIGINAL RECON source vectors at 1-um
+    resolution; do not infer a new Circuit.Net or physical conductor.
     """
-    region = root.find(
+    regions = root.findall(
         f".//{SVG}g[@data-layer='typed-nonphysical-continuations']"
     )
-    demand(region is not None,
-           "QA_C13_SOURCE_B_STUBS_NOT_IN_REAL_CONTINUATION_LAYER")
-    strokes = region.findall(
-        f".//{SVG}line[@data-nonphysical-net-continuation]"
-    )
+    demand(len(regions) == 1,
+           "QA_C13_B_STUB_LAYER_MISSING_OR_DUPLICATE")
+    region = regions[0]
+    strokes = region.findall(f"./{SVG}line")
     expected = b_witness.get("source_b_stubs_um")
     demand(isinstance(expected, dict) and set(expected) ==
            {"X2.1", "R5.2"},
            "QA_C13_SIGNED_B_TWO_STUB_SOURCE_WITNESS_NOT_PRESENT")
     markers = {"b-X2": "X2.1", "b-R5": "R5.2"}
+    anchors = b_witness.get("source_b_marker_um")
+    demand(isinstance(anchors, dict) and set(anchors) == set(markers),
+           "QA_C13_SIGNED_B_MARKER_INVENTORY_CHANGED")
     for name, reference in markers.items():
         stub = expected[reference]
         demand(isinstance(stub, dict) and
                set(stub) == {"start", "end"} and
-               stub["end"] == b_witness["source_b_marker_um"][name] and
-               all(type(n) is int for part in stub.values()
-                   for n in part),
+               stub["end"] == anchors[name] and
+               all(isinstance(p, list) and len(p) == 2 and
+                   all(type(n) is int for n in p)
+                   for p in stub.values()) and
+               stub["start"] != stub["end"] and
+               (stub["start"][0] == stub["end"][0] or
+                stub["start"][1] == stub["end"][1]),
                "QA_C13_SIGNED_B_SOURCE_STUB_VECTOR_NOT_AUTHENTIC")
-    if not strokes:
-        # Exactly two source-end circles alone do NOT prove a printed
-        # physical-contact-to-marker continuation. Do not invent line ink.
-        return "BLOCKED_PAINT_OMITTED_TWO_AUTHENTIC_B_STUB_STROKES"
     demand(len(strokes) == 2 and
-           {s.get("data-nonphysical-net-continuation") for s in strokes}
-           == set(markers),
-           "QA_C13_NATIVE_B_STUB_RENDERED_ONLY_PARTIAL_OR_DUPLICATED")
+           {line.get("data-nonphysical-net-continuation")
+            for line in strokes} == set(markers),
+           "QA_C13_NATIVE_B_STUB_MISSING_DUPLICATED_OR_ANONYMOUS")
+    ids = set()
     for line in strokes:
-        eid = line.get("data-nonphysical-net-continuation")
-        ref = markers[eid]
-        stub = expected[ref]
+        name = line.get("data-nonphysical-net-continuation")
+        reference = markers[name]
+        stub = expected[reference]
         actual = (
             (Decimal(line.get("x1")) * 1000,
              Decimal(line.get("y1")) * 1000),
             (Decimal(line.get("x2")) * 1000,
              Decimal(line.get("y2")) * 1000),
         )
+        stub_id = line.get("data-source-stub-id")
+        demand(stub_id is not None and stub_id != "" and
+               stub_id not in ids,
+               "QA_C13_B_STUB_SOURCE_ID_MISSING_OR_DUPLICATED")
+        ids.add(stub_id)
         demand(actual == (tuple(stub["start"]), tuple(stub["end"])) and
-               line.get("data-source-pin-ref") == ref and
+               line.get("data-source-pin-ref") == reference and
+               line.get("data-layer") == "nonphysical-continuation-stub" and
                line.get("data-nonphysical") == "true" and
                line.get("data-electrical-junction") == "false" and
-               line.get("data-connectable") != "true",
-               "QA_C13_REAL_B_STUB_1UM_OR_ELECTRICAL_JOIN_FORGERY")
+               line.get("data-connectable") == "false" and
+               line.get("stroke") == "#000000" and
+               line.get("stroke-width") == "0.3" and
+               line.get("fill") == "none",
+               "QA_C13_B_STUB_1UM_GEOMETRY_STYLE_OR_ELECTRICITY_FORGERY")
+    demand(not region.findall(f"./{SVG}path") and
+           not region.findall(f"./{SVG}polyline"),
+           "QA_C13_B_STUB_HIDDEN_ALTERNATIVE_PATH")
     return "PASS_TWO_SOURCE_SIGNED_NONPHYSICAL_STROKES"
 
 
 def adversarial_b_native_svg(
-    source_dir: Path, b_anchor: dict, font_sha: str,
+    source_dir: Path, b_anchor: dict, font_sha: str, b_witness: dict,
 ) -> dict:
-    """Mutate genuine native XML in RAM; never change a producer artifact."""
+    """Hostile mutations of actual PAINT XML only, never a surrogate sheet."""
+    from copy import deepcopy
+
     authentic = (source_dir /
                  "TL494_COMPACT_A3_NEW_ROUTE_BLOCKED_diagnostic.svg").read_bytes()
 
@@ -147,39 +165,104 @@ def adversarial_b_native_svg(
         demand(candidate is not None, "QA_C13_B_NEGATIVE_NO_GENUINE_LAYER")
         return candidate
 
-    def one_circle(g: ET.Element) -> ET.Element:
+    def circle(g: ET.Element) -> ET.Element:
         return g.findall(f"./{SVG}circle")[0]
 
-    def one_text(g: ET.Element) -> ET.Element:
+    def label(g: ET.Element) -> ET.Element:
         return g.findall(f"./{SVG}text")[0]
 
-    def one_editor(g: ET.Element) -> ET.Element:
+    def editor(g: ET.Element) -> ET.Element:
         return g.findall(f"./{SVG}rect")[0]
 
+    def stroke(g: ET.Element) -> ET.Element:
+        return g.findall(f"./{SVG}line")[0]
+
+    def without_strokes(g: ET.Element) -> None:
+        for line in list(g.findall(f"./{SVG}line")):
+            g.remove(line)
+
+    def swap_endpoints(g: ET.Element) -> None:
+        line = stroke(g)
+        x1, y1 = line.get("x1"), line.get("y1")
+        line.set("x1", line.get("x2"))
+        line.set("y1", line.get("y2"))
+        line.set("x2", x1)
+        line.set("y2", y1)
+
     cases = {
-        "one_um_marker_x_shift": lambda g: one_circle(g).set(
-            "cx", str(Decimal(one_circle(g).get("cx")) + Decimal("0.001"))
+        "one_um_marker_x_shift": lambda g: circle(g).set(
+            "cx", str(Decimal(circle(g).get("cx")) + Decimal("0.001"))
         ),
-        "foreign_nonphysical_b_id": lambda g: one_circle(g).set(
+        "foreign_nonphysical_b_id": lambda g: circle(g).set(
             "data-nonphysical-net-continuation", "a-X2"
         ),
-        "fake_electrical_connection_dot": lambda g: one_circle(g).set(
+        "fake_electrical_connection_dot": lambda g: circle(g).set(
             "data-electrical-junction", "true"
         ),
-        "copied_b_end_id": lambda g: one_circle(g).set(
+        "copied_b_end_id": lambda g: circle(g).set(
             "data-nonphysical-net-continuation", "b-R5"
         ),
-        "forged_a_label": lambda g: setattr(one_text(g), "text", "a"),
-        "wrong_TypeA_font_sha": lambda g: one_text(g).set(
+        "forged_a_label": lambda g: setattr(label(g), "text", "a"),
+        "wrong_TypeA_font_sha": lambda g: label(g).set(
             "data-font-sha256", "0" * 64
         ),
-        "faked_active_green_continuation_pad": lambda g: one_editor(g).set(
+        "wrong_TypeA_family": lambda g: label(g).set(
+            "font-family", "OpenGost Type A TT"
+        ),
+        "faked_active_green_continuation_pad": lambda g: editor(g).set(
             "data-connectable", "true"
         ),
         "removed_nonphysical_source_policy": lambda g: g.set(
             "data-do-not-infer-net-from-shapes", "false"
         ),
+        "missing_b_X2_stub_line": lambda g: g.remove(stroke(g)),
+        "missing_both_stub_lines": without_strokes,
+        "duplicated_b_X2_stub_line": lambda g: g.append(
+            deepcopy(stroke(g))
+        ),
+        "false_source_pinref": lambda g: stroke(g).set(
+            "data-source-pin-ref", "X2.2"
+        ),
+        "false_continuation_id": lambda g: stroke(g).set(
+            "data-nonphysical-net-continuation", "a-X2"
+        ),
+        "one_um_stub_start_shift": lambda g: stroke(g).set(
+            "x1", str(Decimal(stroke(g).get("x1")) + Decimal("0.001"))
+        ),
+        "one_um_stub_end_shift": lambda g: stroke(g).set(
+            "y2", str(Decimal(stroke(g).get("y2")) + Decimal("0.001"))
+        ),
+        "reversed_stub_vector": swap_endpoints,
+        "forged_electrical_stub": lambda g: stroke(g).set(
+            "data-connectable", "true"
+        ),
+        "forged_junction_stub": lambda g: stroke(g).set(
+            "data-electrical-junction", "true"
+        ),
+        "wired_layer_stub": lambda g: stroke(g).set(
+            "data-layer", "wires"
+        ),
+        "invisible_stub": lambda g: stroke(g).set(
+            "stroke", "#ffffff"
+        ),
+        "thin_stub_ink": lambda g: stroke(g).set(
+            "stroke-width", "0.2"
+        ),
+        "duplicated_source_stub_id": lambda g: g.findall(
+            f"./{SVG}line"
+        )[1].set("data-source-stub-id", stroke(g).get("data-source-stub-id")),
+        "anonymous_extra_line": lambda g: ET.SubElement(
+            g, SVG + "line", {"x1": "0", "y1": "0",
+                             "x2": "1", "y2": "0"}
+        ),
     }
+    genuine = ET.fromstring(authentic)
+    validate_real_b_native_layer(
+        genuine, b_anchor, font_sha, "diagnostic",
+    )
+    demand(assess_source_b_stub_ink(genuine, b_witness) ==
+           "PASS_TWO_SOURCE_SIGNED_NONPHYSICAL_STROKES",
+           "QA_C13_NOT_A_POSITIVE_REAL_OWNER_B_STROKE_FIXTURE")
     rejected = {}
     for key, mutate in cases.items():
         root = ET.fromstring(authentic)
@@ -188,11 +271,13 @@ def adversarial_b_native_svg(
             validate_real_b_native_layer(
                 root, b_anchor, font_sha, "diagnostic",
             )
+            assess_source_b_stub_ink(root, b_witness)
         except AssertionError:
             rejected[key] = "REJECTED_GENUINE_NATIVE_B_SOURCE"
         else:
             raise AssertionError("QA_C13_B_SVG_NEGATIVE_BYPASS:" + key)
-    demand(len(rejected) == 8, "QA_C13_B_NOT_ALL_8_SVG_NEGATIVES_RUN")
+    demand(len(rejected) == len(cases) == 24,
+           "QA_C13_B_NOT_ALL_24_SVG_NEGATIVES_RUN")
     return rejected
 
 
@@ -507,8 +592,9 @@ def inspect_native(
         ),
         "source_b_stub_ink_check_is_not_electrical_Net_approval": True,
         "signed_b_marker_um": b_anchor,
-        "eight_actual_native_b_svg_negatives": adversarial_b_native_svg(
+        "twenty_four_native_b_svg_hostile_negatives": adversarial_b_native_svg(
             source_dir, b_anchor, b_witness["GOST_A_font_SHA256"],
+            b_witness,
         ),
         "photo_parity": "BLOCKED_TRUSTED_ORIGINAL_PHOTO_NOT_AVAILABLE",
         "normative_UGO": "DRAFT_NOT_APPROVED",
