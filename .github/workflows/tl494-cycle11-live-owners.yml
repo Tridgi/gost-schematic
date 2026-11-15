@@ -1,0 +1,126 @@
+name: Cycle11 TL494 source-typed current-owner contract
+
+on:
+  push:
+    branches:
+      - parallel/electrical-routing-drc-tl494-cycle9
+    paths:
+      - examples/tl494_cycle11_active_owner_smoke.py
+      - .github/workflows/tl494-cycle11-live-owners.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-owners:
+    name: current #97 + #93 + #113 + #115, source 23/15/62 (${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - name: Existing Draft PR #114, never integration or main
+        uses: actions/checkout@v4
+      - name: Immutable TL494 original
+        uses: actions/checkout@v4
+        with:
+          repository: Tridgi/gost-schematic
+          ref: e695c415fdced164b0e0c39c5249d030795a0aa6
+          path: _active_source
+          persist-credentials: false
+      - name: Current IC #97 manufacturer identity owner
+        uses: actions/checkout@v4
+        with:
+          repository: Tridgi/gost-schematic
+          ref: 7c30c209ea5e97a245844b24a3bbc4d3d30118ea
+          path: _active_ic
+          persist-credentials: false
+      - name: Current PAINT #93 routed native sheet owner
+        uses: actions/checkout@v4
+        with:
+          repository: Tridgi/gost-schematic
+          ref: f872ce50ac699ad089391b0bbd58e2cb92f2b7f6
+          path: _active_paint
+          persist-credentials: false
+      - name: Current YGO2 #113 source UGO owner
+        uses: actions/checkout@v4
+        with:
+          repository: Tridgi/gost-schematic
+          ref: 3e47cdf32ccf211ded97e3be1ad874035653e090
+          path: _active_ygo
+          persist-credentials: false
+      - name: Current RECON #115 positioned 23/15/62 owner
+        uses: actions/checkout@v4
+        with:
+          repository: Tridgi/gost-schematic
+          ref: 73025965efeb94585e8723ba3f0b636229e8a5de
+          path: _active_recon
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Load only exact independent owner source into ephemeral CI worktree
+        run: |
+          set -euo pipefail
+          test "$(git -C _active_source rev-parse HEAD)" = e695c415fdced164b0e0c39c5249d030795a0aa6
+          test "$(git -C _active_ic rev-parse HEAD)" = 7c30c209ea5e97a245844b24a3bbc4d3d30118ea
+          test "$(git -C _active_paint rev-parse HEAD)" = f872ce50ac699ad089391b0bbd58e2cb92f2b7f6
+          test "$(git -C _active_ygo rev-parse HEAD)" = 3e47cdf32ccf211ded97e3be1ad874035653e090
+          test "$(git -C _active_recon rev-parse HEAD)" = 73025965efeb94585e8723ba3f0b636229e8a5de
+          for F in tl494_native_rework tl494_connected_native tl494_full_native_model tl494_ic_paint_reference tl494_named_photo_sheet; do
+            cp "_active_source/examples/$F.py" "examples/$F.py"
+          done
+          cp -a _active_recon/examples/tl494_v4 examples/
+          cp -a _active_recon/examples/tl494_v5 examples/
+          cp _active_ic/examples/tl494_cycle9_circuit_integration.py examples/
+          mkdir -p tests/fixtures
+          cp _active_ic/tests/fixtures/tl494_photo_23_frozen_cycle9.json tests/fixtures/
+          cp _active_ic/src/gost_schematic/electrical/*.py src/gost_schematic/electrical/
+          cp _active_paint/src/gost_schematic/rendering/*.py src/gost_schematic/rendering/
+          cp _active_ygo/src/gost_schematic/catalog/source_profiles.py src/gost_schematic/catalog/
+          cp _active_ygo/src/gost_schematic/catalog/source_footprints.py src/gost_schematic/catalog/
+          cp _active_ygo/src/gost_schematic/catalog/source_digest.py src/gost_schematic/catalog/
+          mkdir -p src/gost_schematic/catalog/source_profiles
+          cp -a _active_ygo/src/gost_schematic/catalog/source_profiles/. src/gost_schematic/catalog/source_profiles/
+          python -m pip install -e ".[dev,mcp]"
+          python -m compileall -q examples/tl494_cycle11_active_owner_smoke.py examples/tl494_v4 examples/tl494_v5
+      - name: Current actual owner positive/negative source 23/15/62 adapter
+        run: |
+          set -euo pipefail
+          mkdir -p output/cycle11-current-owners
+          python -m examples.tl494_cycle11_active_owner_smoke \
+            --ic-sha 7c30c209ea5e97a245844b24a3bbc4d3d30118ea \
+            --paint-sha f872ce50ac699ad089391b0bbd58e2cb92f2b7f6 \
+            --ygo-sha 3e47cdf32ccf211ded97e3be1ad874035653e090 \
+            --recon-sha 73025965efeb94585e8723ba3f0b636229e8a5de \
+            --output output/cycle11-current-owners/typed-source-contract.json \
+            2>&1 | tee output/cycle11-current-owners/typed-source-contract.log
+      - name: Typed adapter manifest MUST preserve exactly all 62 source PinRef members
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("output/cycle11-current-owners/typed-source-contract.json")
+          j=json.loads(p.read_text(encoding="utf-8"))
+          assert (j["real_components"],j["real_nets"],j["real_physical_memberships"],j["real_DA1_pins"])==(23,15,62,16)
+          assert j["before_part_id"]=="reference.tl494cn"
+          assert j["after_part_id"]=="ti.tl494cn.pdip16"
+          assert j["pose_unchanged"] and j["no_source_file_or_net_mutation"]
+          assert set(j["forged_negatives_rejected"])=={
+              "FORGED_DA1_PART_ID","MISSING_ONE_PINREF","DA1_POSE_DRIFT"
+          }
+          assert j["source_net_diff"]=={"added":[],"removed":[],"modified":[]}
+          assert j["current_paint_render_route_typed_api"]
+          assert j["print_pass"] is False and j["actual_route_15_15"] is False
+          print("PASS actual current manufacturer/RECON/PAINT/YGO source-only typed contract; NO print approval")
+          PY
+      - name: Upload true results including negative trace if owner binding fails
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cycle11-current-owners-typed-${{ matrix.python-version }}
+          path: output/cycle11-current-owners/
+          if-no-files-found: warn

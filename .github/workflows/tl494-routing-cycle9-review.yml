@@ -1,0 +1,253 @@
+name: Cycle9 TL494 E3 geometric DRC and route preview
+
+on:
+  push:
+    branches:
+      - parallel/electrical-routing-drc-tl494-cycle9
+  pull_request:
+    branches:
+      - integration/stage0-12
+    paths:
+      - "src/gost_schematic/validation/route_drc.py"
+      - "src/gost_schematic/engines/orthogonal_route_planner.py"
+      - "src/gost_schematic/electrical/reference_markers.py"
+      - "examples/review_tl494_route_drc.py"
+      - "tests/test_route_drc_cycle9.py"
+      - "tests/test_route_candidate_clearance_cycle9.py"
+      - "tests/test_multiterminal_router_cycle9.py"
+      - "src/gost_schematic/engines/multiterminal_router.py"
+      - "examples/review_tl494_multi_route.py"
+      - "tests/fixtures/tl494_cycle9_known_bad_nine_drc.json"
+      - ".github/workflows/tl494-routing-cycle9-review.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  routing-drc:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install exact project deps
+        run: python -m pip install -e ".[dev,mcp]"
+      - name: Ruff and source-frozen DRC negative tests
+        run: |
+          ruff check src/gost_schematic/validation/route_drc.py src/gost_schematic/engines/orthogonal_route_planner.py src/gost_schematic/engines/multiterminal_router.py src/gost_schematic/electrical/reference_markers.py examples/review_tl494_route_drc.py tests/test_route_drc_cycle9.py tests/test_route_candidate_clearance_cycle9.py tests/test_multiterminal_router_cycle9.py
+          pytest -q tests/test_route_drc_cycle9.py tests/test_route_candidate_clearance_cycle9.py tests/test_multiterminal_router_cycle9.py
+      - name: Generate source identity and complete numeric spacing audit
+        run: |
+          python -m examples.review_tl494_route_drc \
+            --output-dir output/tl494-routing-cycle9
+      - name: Verify exact source 23/15/16/91 and fail-closed diagnostic output
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+
+          out = Path("output/tl494-routing-cycle9")
+          report = json.loads((out / "TL494-routing-drc.json").read_text("utf-8"))
+          assert (report["component_count"], report["net_count"], report["wire_count"]) == (23, 15, 91)
+          assert report["source_revision"] == "e695c415fdced164b0e0c39c5249d030795a0aa6"
+          assert report["explicit_junctions"] == 37
+          physical = [p.split(".")[1] for members in report["source_pin_inventory"].values()
+                      for p in members if p.startswith("DA1.")]
+          assert sorted(physical, key=int) == [str(i) for i in range(1, 17)]
+          assert len(report["parallel_measurements"]) > 0
+          assert report["error_count"] > 0 and not report["valid"]
+          assert not report["checked_symbol_geometry"] and not report["checked_measured_text"]
+          assert not report["full_3_2_1mm_sheet_certified"]
+          for view in ("clean", "drc-diagnostic"):
+              text = (out / f"TL494-routing-{view}.svg").read_text("utf-8") if view != "clean" else (
+                  out / "TL494-routing-source-clean.svg"
+              ).read_text("utf-8")
+              root = ET.fromstring(text)
+              uri = "{http://www.w3.org/2000/svg}"
+              assert root.tag == uri + "svg"
+              assert text.count('xmlns="http://www.w3.org/2000/svg"') == 1
+              assert len(root.findall(f".//{uri}line[@data-layer='wires']")) == 91
+              assert ("editor-route-drc" in text) == (view != "clean")
+          print("SOURCE 23/15/16/91 pinned; all wire DRC violations retained, not hidden")
+          PY
+      - name: Install pinned real OpenGost Type A
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/install_opengost_type_a.py \
+            --directory "$HOME/.local/share/fonts"
+          fc-cache -f
+          fc-match 'OpenGost Type A'
+      - name: Rasterize actual full source and DRC overlay at 300DPI
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+          for VIEW in source-clean drc-diagnostic; do
+            rsvg-convert --background-color white --dpi-x 300 --dpi-y 300 \
+              --output "output/tl494-routing-cycle9/TL494-routing-$VIEW-300dpi.png" \
+              "output/tl494-routing-cycle9/TL494-routing-$VIEW.svg"
+          done
+      - name: Verify true full-sheet raster dimensions and pure clean
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+
+          out = Path("output/tl494-routing-cycle9")
+          for view in ("source-clean", "drc-diagnostic"):
+              path = out / f"TL494-routing-{view}-300dpi.png"
+              with Image.open(path) as png:
+                  assert png.format == "PNG"
+                  assert 8000 <= png.width <= 8100
+                  assert 2500 <= png.height <= 2700
+                  assert png.width > 420 * 300 / 25.4
+          print("Full 679.3mm drawing rendered at actual 300DPI; A3/A2 width fails")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: draft-tl494-cycle9-${{ matrix.python-version }}
+          path: output/tl494-routing-cycle9/**
+          if-no-files-found: error
+
+  source-native-tl494:
+    name: Immutable original 23-part 15-Net source rerouting review (${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - name: Checkout routing owner PR #114
+        uses: actions/checkout@v4
+      - name: Checkout EXACT reference HEAD (read-only, independent original)
+        uses: actions/checkout@v4
+        with:
+          repository: Tridgi/gost-schematic
+          ref: e695c415fdced164b0e0c39c5249d030795a0aa6
+          path: cycle9-source-reference
+          persist-credentials: false
+      - name: Checkout isolated PAINT source engine HEAD (not merged)
+        uses: actions/checkout@v4
+        with:
+          repository: Tridgi/gost-schematic
+          ref: ca3ab815fa5d79756a7f34f06520f760fcb8674d
+          path: cycle9-paint-owner
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install source model + strict test tools
+        run: |
+          python -m pip install -e ".[dev,mcp]"
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin fontconfig
+      - name: Pin original source and import ONLY exact immutable adapter files
+        run: |
+          test "$(git -C cycle9-source-reference rev-parse HEAD)" = "e695c415fdced164b0e0c39c5249d030795a0aa6"
+          for F in tl494_native_rework tl494_connected_native tl494_full_native_model tl494_ic_paint_reference tl494_named_photo_sheet; do
+            cp "cycle9-source-reference/examples/$F.py" "examples/$F.py"
+          done
+          test "$(git -C cycle9-paint-owner rev-parse HEAD)" = "ca3ab815fa5d79756a7f34f06520f760fcb8674d"
+          for F in ic_rectangular ic_hotspots ic_orientation ic_power_profiles ic_tl494_profile ic_electrical_binding ic_sheet_composition; do
+            cp "cycle9-paint-owner/src/gost_schematic/rendering/$F.py" \
+              "src/gost_schematic/rendering/$F.py"
+          done
+          python -m compileall -q examples/review_tl494_multi_route.py examples/tl494_named_photo_sheet.py
+      - name: Install EXACT historical OpenGost Type A TT from original reference
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y -qq rpm2cpio cpio
+          curl --fail --location --retry 5 \
+            https://fr2.rpmfind.net/linux/opensuse/tumbleweed/repo/oss/noarch/opengost-ttf-fonts-0.3-7.32.noarch.rpm \
+            -o /tmp/cycle9-source-opengost.rpm
+          mkdir -p /tmp/cycle9-source-fonts
+          (cd /tmp/cycle9-source-fonts && rpm2cpio /tmp/cycle9-source-opengost.rpm | cpio -idm --quiet)
+          ORIGINAL_FONT="$(find /tmp/cycle9-source-fonts -name 'OpenGostTypeA-Regular.ttf' -print -quit)"
+          test -f "$ORIGINAL_FONT"
+          printf '%s  %s\n' \
+            'f5c539d432e2fceae137ad746d4acfdcca941d2c7349f013a5bf60231d3e6d01' \
+            "$ORIGINAL_FONT" | sha256sum --check
+          mkdir -p "$HOME/.local/share/fonts"
+          cp "$ORIGINAL_FONT" "$HOME/.local/share/fonts/OpenGostTypeA-Regular.ttf"
+          fc-cache -f
+          fc-match 'OpenGost Type A TT'
+      - name: Run actual source-native 15-Net global route with fail-closed DRC
+        run: |
+          FONT_FILE="$HOME/.local/share/fonts/OpenGostTypeA-Regular.ttf"
+          test -f "$FONT_FILE"
+          python -m examples.review_tl494_multi_route \
+            --font-file "$FONT_FILE" \
+            --source-sha e695c415fdced164b0e0c39c5249d030795a0aa6 \
+            --page A1 --max-nodes 25000 \
+            --output-dir output/tl494-source-global-routing
+      - name: Assert negative 9-error baseline and exact source Net diff
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+
+          out = Path("output/tl494-source-global-routing")
+          result = json.loads((out / "TL494-before-and-after-drc.json").read_text("utf-8"))
+          assert (result["model_parts"], result["model_nets"], result["model_DA1_physical_pin_count"]) == (23, 15, 16)
+          assert result["source_commit"] == "e695c415fdced164b0e0c39c5249d030795a0aa6"
+          assert result["source_before"]["wire_count"] == 91
+          assert result["source_before"]["error_count"] == 9
+          assert result["source_before"]["warning_count"] == 32
+          assert result["source_net_diff"] == {
+              "added_nets": [], "removed_nets": [], "changed_pinref_members": {},
+          }
+          assert result["after_attempt"]["wire_count"] == result["routed_segments"]
+          assert result["after_attempt"]["checked_symbol_geometry"]
+          assert result["after_attempt"]["checked_measured_text"]
+          # No release promotion can follow from an incomplete graph or red DRC.
+          assert not result["attempt_accepted_print_drc_only"] or (
+              result["attempt_routing"]["complete"]
+              and result["after_attempt"]["valid"]
+              and result["attempt_layout_ok"]
+          )
+          root = "{http://www.w3.org/2000/svg}"
+          for name, count in [
+              ("TL494-original-known-bad.svg", 91),
+              ("TL494-after-router-attempt.svg", result["routed_segments"]),
+          ]:
+              svg = ET.parse(out / name).getroot()
+              assert svg.tag == root + "svg"
+              assert len(svg.findall(f".//{root}line[@data-layer='wires']")) == count
+          print(
+              "P0 pinned source 23/15/16/91, 9 known-bad ERR, zero Net-diff;"
+              " AFTER route DRC retained explicitly:", result["release"],
+          )
+          PY
+      - name: Rasterize actual SOURCE and AFTER candidate at 300 DPI
+        run: |
+          for NAME in TL494-original-known-bad TL494-after-router-attempt; do
+            rsvg-convert --background-color white \
+              --dpi-x 300 --dpi-y 300 \
+              --output "output/tl494-source-global-routing/$NAME-300dpi.png" \
+              "output/tl494-source-global-routing/$NAME.svg"
+          done
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+
+          out = Path("output/tl494-source-global-routing")
+          for name in ("TL494-original-known-bad", "TL494-after-router-attempt"):
+              with Image.open(out / f"{name}-300dpi.png") as image:
+                  assert image.format == "PNG"
+                  assert image.width > 1500 and image.height > 1000
+          print("Both authentic native renderings rasterized at 300 DPI")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cycle9-real-source-15net-${{ matrix.python-version }}
+          path: output/tl494-source-global-routing/**
+          if-no-files-found: error
