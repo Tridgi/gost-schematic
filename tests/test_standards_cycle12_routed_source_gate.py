@@ -339,3 +339,126 @@ def test_non_pinned_rotated_or_elliptic_svg_arc_cannot_fake_2mm_pass(d):
     with pytest.raises(gate.EvidenceError,
                        match="UGO_ARC_NONCIRCULAR_NOT_CALIBRATED"):
         gate._conservative_ugo_envelope(group)
+
+
+
+@pytest.mark.parametrize(("center_gap_mm", "expected_ink_um", "should_pass"), [
+    (1.299, 999, False),
+    (1.300, 1000, True),
+    (1.301, 1001, True),
+])
+def test_one_mm_same_ugo_printed_parallel_thick_strokes(
+    center_gap_mm, expected_ink_um, should_pass
+):
+    # One UGO with two unconnected parallel line primitives, real stroke 0.3mm.
+    root = ET.Element(f"{gate.SVG}svg")
+    sym = ET.SubElement(root, f"{gate.SVG}g", {
+        "data-layer": "symbols", "data-reference": "C1",
+        "stroke-width": "0.3",
+    })
+    for x in (0.0, center_gap_mm):
+        ET.SubElement(sym, f"{gate.SVG}line", {
+            "x1": str(x), "y1": "0", "x2": str(x), "y2": "10",
+        })
+    result = gate.source_ugo_parallel_1mm_scope(root)
+    assert result["source_catalog_parallel_nonjoined_pairs"] == 1
+    assert result["minimum_printed_edge_um"] == expected_ink_um
+    assert not result["below_one_mm"] if should_pass else bool(
+        result["below_one_mm"]
+    )
+
+
+def test_one_mm_never_imposes_parallel_rule_on_x_t_or_joined_strokes():
+    root = ET.Element(f"{gate.SVG}svg")
+    g = ET.SubElement(root, f"{gate.SVG}g", {
+        "data-layer": "symbols", "data-reference": "VT1",
+        "stroke-width": "0.3",
+    })
+    # Horizontal and vertical intersect; this is a connected junction,
+    # not a pair of distinct adjacent parallel UGO strokes.
+    ET.SubElement(g, f"{gate.SVG}line", {
+        "x1": "0", "y1": "5", "x2": "10", "y2": "5",
+    })
+    ET.SubElement(g, f"{gate.SVG}line", {
+        "x1": "5", "y1": "0", "x2": "5", "y2": "10",
+    })
+    with pytest.raises(gate.EvidenceError,
+                       match="UGO_1MM_REAL_PARALLEL_SAMPLE_MISSING"):
+        gate.source_ugo_parallel_1mm_scope(root)
+
+
+@pytest.mark.parametrize("tag", ["polygon", "polyline", "ellipse", "use"])
+def test_unknown_visible_ugo_ink_primitive_must_fail_closed(tag):
+    g = ET.Element(f"{gate.SVG}g", {
+        "data-layer": "symbols", "data-reference": "C1",
+        "stroke-width": "0.3",
+    })
+    ET.SubElement(g, f"{gate.SVG}line", {
+        "x1": "0", "y1": "0", "x2": "5", "y2": "0",
+    })
+    ET.SubElement(g, f"{gate.SVG}{tag}", {"points": "0,0 2,2"})
+    with pytest.raises(gate.EvidenceError,
+                       match="UGO_UNRECOGNIZED_RENDERED_INK_PRIMITIVE"):
+        gate._conservative_ugo_envelope(g)
+
+
+def _type_a_cropped_svg_fixture():
+    root = ET.Element(f"{gate.SVG}svg", {
+        "width": "402.6mm", "height": "244.052mm",
+        "viewBox": "5.55 6.1 402.6 244.052",
+        "data-draft-paper": "A3",
+        "data-page-frame-has-violations": "true",
+        "data-release": "BLOCKED_PARTIAL",
+    })
+    for i in range(39):
+        ET.SubElement(root, f"{gate.SVG}text", {
+            "data-layer": "annotations", "data-owner": "C1",
+            "font-family": "OpenGOST type A", "font-size": "5.48",
+            "stroke": "none", "data-font-sha256": gate.FONT_SHA,
+        }).text = f"C{i}"
+    for i in range(34):
+        # All typed glyphs mutually separated by 6mm, exact 3.5mm cap.
+        ET.SubElement(root, f"{gate.SVG}text", {
+            "data-layer": "ic-text", "data-owner": f"DA1.P{i}",
+            "font-family": "OpenGOST type A", "font-size": "5.48",
+            "stroke": "none",
+            "data-ink-um": f"0,{i*6000},3500,{i*6000+3500}",
+        }).text = f"{i}"
+    return root
+
+
+def test_real_type_a_measured_ic_text_distinct_from_39_unmeasured_annotations():
+    output = gate.type_a_physical_text_and_paper_scope(
+        _type_a_cropped_svg_fixture()
+    )
+    assert output["measured_native_ic_glyphs"] == 34
+    assert output["measured_ic_glyph_pairs"] == 561
+    assert output["annotation_glyphs"] == 39
+    assert output["measured_ic_min_glyph_gap_um"] == 2500
+    assert output["editorial_10mm_A3_true_page"].startswith("FAIL_")
+    assert output["a3_physical_page_420x297"] is False
+
+
+@pytest.mark.parametrize(("mutation", "reason"), [
+    ("font_swap", "TRUE_TYPE_A_FAMILY_AND_METRICS_INK_DRIFT"),
+    ("hash_swap", "ANNOTATION_TYPE_A_AUTHENTIC_FONT_SHA_REQUIRED"),
+    ("ic_overlap", "IC_NATIVE_TYPE_A_GLYPHS_OVERLAP_OR_INVALID"),
+    ("faked_A3_release", "OLD_PARTIAL_CROPPED_A3_FRAME_NEGATIVE_CONTROL_LOST"),
+    ("cropped_sheet_released", "CROPPED_A3_MASQUERADES_AS_REAL_ISSUABLE_SHEET"),
+])
+def test_type_a_and_page_margin_negative_cases(mutation, reason):
+    root = _type_a_cropped_svg_fixture()
+    annotation = root.findall(f".//{gate.SVG}text[@data-layer='annotations']")
+    ic_text = root.findall(f".//{gate.SVG}text[@data-layer='ic-text']")
+    if mutation == "font_swap":
+        annotation[0].set("font-family", "DejaVuSans")
+    elif mutation == "hash_swap":
+        annotation[0].set("data-font-sha256", "0" * 64)
+    elif mutation == "ic_overlap":
+        ic_text[1].set("data-ink-um", "0,0,3500,3500")
+    elif mutation == "faked_A3_release":
+        root.set("data-page-frame-has-violations", "false")
+    elif mutation == "cropped_sheet_released":
+        root.set("data-release", "PRINT_PASS")
+    with pytest.raises(gate.EvidenceError, match=reason):
+        gate.type_a_physical_text_and_paper_scope(root)
