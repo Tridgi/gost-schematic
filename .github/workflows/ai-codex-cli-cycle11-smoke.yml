@@ -1,4 +1,4 @@
-name: Cycle11 real Codex CLI binary + read-only MCP smoke
+name: Cycle13 real Codex CLI binary + original-source read-only MCP smoke
 
 on:
   pull_request:
@@ -9,6 +9,9 @@ on:
       - "src/gost_schematic/agent_project/owner_source_contract.py"
       - "src/gost_schematic/agent_project/data/tl494_ic97_frozen_source.json"
       - "examples/agent_tl494_cycle11_pipeline.py"
+      - "examples/agent_tl494_cycle13_quickstart.py"
+      - "tests/agent_project/test_agent_tl494_cycle13_quickstart.py"
+      - "docs/ai-integration/cycle13-end-user-quickstart.md"
       - "docs/ai-integration/agent-cycle11-source-driven-walkthrough.md"
       - ".github/workflows/ai-codex-cli-cycle11-smoke.yml"
   workflow_dispatch:
@@ -84,7 +87,32 @@ jobs:
             tests/agent_project/test_tl494_catalog_preflight_stdio.py \
             tests/agent_project/test_tl494_ai_selection_cycle9.py \
             tests/agent_project/test_tl494_owner_contract_cycle11.py \
-            tests/agent_project/test_tl494_owner_pipeline_cycle11.py
+            tests/agent_project/test_tl494_owner_pipeline_cycle11.py \
+            tests/agent_project/test_agent_tl494_cycle13_quickstart.py
+      - name: Cycle13 real end-user native MCP quickstart — no Codex model call
+        shell: bash
+        run: |
+          python -m examples.agent_tl494_cycle13_quickstart             --out output/codex-cycle11/physical-source-quickstart             > output/codex-cycle11/physical-source-quickstart-stdout.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("output/codex-cycle11")
+          proof = json.loads((root / "physical-source-quickstart-stdout.json").read_text())
+          assert proof["status"] == "BLOCKED_PARTIAL"
+          assert proof["actual_native_mcp_client_session"] is True
+          assert proof["source_netlist_user_approval"] == "USER_REVIEW_REQUIRED"
+          assert proof["refusal_tests_passed"] == 11
+          assert proof["original_net_count"] == 15
+          assert proof["original_pinref_member_count"] == 62
+          assert proof["actual_codex_cli_llm_session"] is False
+          assert proof["complete_print_clean_svg_available"] is False
+          assert proof["full_print_drc_executed"] is False
+          assert proof["mcp_write_tool_enabled"] is False
+          assert proof == json.loads(
+              (root / "physical-source-quickstart/source-quickstart-report.json"
+              ).read_text()
+          )
+          PY
       - name: Archive true Codex CLI configuration & proof (NO model call)
         uses: actions/upload-artifact@v4
         with:
