@@ -8,9 +8,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from examples.tl494_v5.native_circuit import NativeV5Assembly
 from gost_schematic.electrical.ic_circuit_adapter import IcCircuitBinding
 from gost_schematic.electrical.tl494cn import TI_DEVICE_ID
+
+from examples.tl494_v5.native_circuit import NativeV5Assembly
 from gost_schematic.model.circuit import Circuit, PinRef
 from gost_schematic.model.part import PartDefinition
 
@@ -56,8 +57,8 @@ class VerifiedCompactTiBinding:
             or after[PHYSICAL_REF].part_id != TI_DEVICE_ID
         ):
             raise ValueError("TL494_C11_UNVERIFIED_IC_PART_SUBSTITUTION")
-        for ref in before:
-            old, new = before[ref], after[ref]
+        for ref, old in before.items():
+            new = after[ref]
             if (
                 old.reference != new.reference
                 or old.nominal != new.nominal

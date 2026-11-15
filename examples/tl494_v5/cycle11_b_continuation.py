@@ -40,7 +40,7 @@ def rebind_true_source_b(
     compact: Circuit,
     symbols_by_part: dict[str, SymbolDefinition],
     *,
-    page: Box = Box(0, 0, 420000, 297000),
+    page: Box | None = None,
 ) -> NetContinuationProject:
     """Reposition genuine b stub vectors on REAL compact physical pin tips.
 
@@ -48,6 +48,8 @@ def rebind_true_source_b(
     exactly, not transcribed or adjusted to get a pretty diagram. If moving
     it causes a margin violation or any typed provenance issue, fail closed.
     """
+    if page is None:
+        page = Box(0, 0, 420000, 297000)
     if not isinstance(source_project, NetContinuationProject) or not isinstance(
         compact, Circuit,
     ):
@@ -99,8 +101,8 @@ def rebind_true_source_b(
         len(source_project.endpoints) != 2
         or len(source_project.pairs) != 1
         or len(source_project.stubs) != 2
-        or set(e.id for e in source_project.endpoints) != set(SOURCE_B_STUBS)
-        or set(s.endpoint_id for s in source_project.stubs) != set(SOURCE_B_STUBS)
+        or {e.id for e in source_project.endpoints} != set(SOURCE_B_STUBS)
+        or {s.endpoint_id for s in source_project.stubs} != set(SOURCE_B_STUBS)
         or source_project.pairs[0].scope != ContinuationScope.SHEET_LOCAL
         or {e.direction for e in source_project.endpoints} != {
             ContinuationDirection.SOURCE, ContinuationDirection.TARGET
@@ -151,13 +153,15 @@ def rebind_true_source_b(
     if len(parts) != 23:
         raise ValueError("TL494_C11_B_DUPLICATE_COMPACT_COMPONENT")
     new_tips = {}
-    for marker, pin in SOURCE_B_STUBS.items():
+    for pin in SOURCE_B_STUBS.values():
         component = parts.get(pin.reference)
         if component is None:
             raise ValueError("TL494_C11_B_MISSING_PHYSICAL_COMPONENT")
         symbol = symbols_by_part.get(component.part_id)
-        if not isinstance(symbol, SymbolDefinition):
+        if symbol is None:
             raise ValueError("TL494_C11_B_MISSING_REAL_SOURCE_SYMBOL")
+        if not isinstance(symbol, SymbolDefinition):
+            raise TypeError("TL494_C11_B_INVALID_REAL_SOURCE_SYMBOL_TYPE")
         pins = component.pin_positions(symbol)
         if pin.number not in pins:
             raise ValueError("TL494_C11_B_UNKNOWN_PHYSICAL_PIN")

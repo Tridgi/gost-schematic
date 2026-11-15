@@ -16,14 +16,14 @@ from decimal import Decimal, InvalidOperation
 from importlib import import_module
 from pathlib import Path
 
-from examples.tl494_v5.cycle11_ti_bridge import bind_verified_compact_ti
-from examples.tl494_v5.cycle11_b_continuation import rebind_true_source_b
 from examples.tl494_v5.compact_layout import (
     A3_LANDSCAPE_UM,
     COMPACT_A3_MM,
     actual_component_occupied_mm,
     compact_source_assembly,
 )
+from examples.tl494_v5.cycle11_b_continuation import rebind_true_source_b
+from examples.tl494_v5.cycle11_ti_bridge import bind_verified_compact_ti
 from examples.tl494_v5.native_circuit import (
     NET_RENAMES,
     NativeV5Assembly,

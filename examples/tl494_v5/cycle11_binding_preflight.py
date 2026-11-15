@@ -9,17 +9,18 @@ import argparse
 import json
 from pathlib import Path
 
+from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
+
 from examples.tl494_v5.compact_layout import compact_source_assembly
 from examples.tl494_v5.cycle11_b_continuation import rebind_true_source_b
 from examples.tl494_v5.cycle11_ti_bridge import bind_verified_compact_ti
 from examples.tl494_v5.route_candidate_driver import (
-    OWNER_SHAS,
     ORIGINAL_BAD_DRC,
+    OWNER_SHAS,
     SOURCE_SHA,
     load_original_owner_fixture,
     restore_original_named_nets,
 )
-from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.model.circuit import PinRef
 from gost_schematic.standards.type_a_font import inspect_type_a_font

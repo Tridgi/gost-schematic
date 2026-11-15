@@ -3,6 +3,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from gost_schematic.electrical.tl494cn import TI_DEVICE_ID
 
 from examples.tl494_v5.compact_layout import compact_source_assembly
 from examples.tl494_v5.cycle11_ti_bridge import (
@@ -15,7 +16,6 @@ from examples.tl494_v5.route_candidate_driver import (
     restore_original_named_nets,
 )
 from gost_schematic.core.geometry import Point
-from gost_schematic.electrical.tl494cn import TI_DEVICE_ID
 from gost_schematic.model.circuit import Circuit, Net, PinRef
 
 
@@ -127,11 +127,12 @@ def test_negative_swapped_signed_ic_circuit_is_not_reversible():
 
 def test_real_16_pin_signed_paint_overlay_and_wrong_record_fails(
 ):
+    import os
+
     from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
+
     from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
     from gost_schematic.standards.type_a_font import inspect_type_a_font
-
-    import os
 
     font = os.getenv("TL494_TYPE_A_FONT")
     if not font:
