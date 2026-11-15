@@ -29,8 +29,8 @@ from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
 from gost_schematic.model.obstacles import WireObstacle
 from gost_schematic.model.pins import ElectricalType, PhysicalPin
 from scripts.verify_tl494_cycle11_owner_strokes import (
-    source_pair_conservative_ink_gap_um,
     parse_real_pin_coordinates,
+    source_pair_conservative_ink_gap_um,
     verify_real_pin_markers,
 )
 
