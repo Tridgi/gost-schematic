@@ -10,6 +10,7 @@ on:
       - "src/gost_schematic/catalog/source_profiles/**"
       - "examples/review_tl494_ugo_source_cycle9.py"
       - "scripts/verify_tl494_cycle11_owner_strokes.py"
+      - "scripts/export_tl494_23_ink_contract.py"
       - ".github/workflows/tl494-cycle11-owner-contract.yml"
   pull_request:
     branches: [integration/stage0-12]
@@ -19,6 +20,7 @@ on:
       - "src/gost_schematic/catalog/source_profiles/**"
       - "examples/review_tl494_ugo_source_cycle9.py"
       - "scripts/verify_tl494_cycle11_owner_strokes.py"
+      - "scripts/export_tl494_23_ink_contract.py"
       - ".github/workflows/tl494-cycle11-owner-contract.yml"
   workflow_dispatch:
 
@@ -34,10 +36,10 @@ jobs:
         include:
           - owner: net
             python-version: "3.12"
-            owner_sha: "027cee506a8dc9b3926b44b1abba66e1ae25b183"
+            owner_sha: "b2a7a46c2f031dd125dd0879c9d59d24e27decbf"
           - owner: net
             python-version: "3.13"
-            owner_sha: "027cee506a8dc9b3926b44b1abba66e1ae25b183"
+            owner_sha: "b2a7a46c2f031dd125dd0879c9d59d24e27decbf"
           - owner: paint
             python-version: "3.12"
             owner_sha: "252fed9077351493378348f4c0a0138c5e04c8b5"
@@ -52,10 +54,10 @@ jobs:
             owner_sha: "632d5cf4222f188a65d0ec4a6ed22d8dcf1c8617"
           - owner: recon
             python-version: "3.12"
-            owner_sha: "324a87fc736cde8c6393e6c4cee4dc5d3e2e1241"
+            owner_sha: "88ec53babdcbb4246986b787816c999cda1e7f6d"
           - owner: recon
             python-version: "3.13"
-            owner_sha: "324a87fc736cde8c6393e6c4cee4dc5d3e2e1241"
+            owner_sha: "88ec53babdcbb4246986b787816c999cda1e7f6d"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -64,7 +66,7 @@ jobs:
       - name: Install the same project runtime and test dependencies
         run: python -m pip install -e ".[dev]"
       - name: Ruff current independent YGO/owner contract source
-        run: ruff check scripts/verify_tl494_cycle11_owner_strokes.py
+        run: ruff check scripts/verify_tl494_cycle11_owner_strokes.py scripts/export_tl494_23_ink_contract.py
       - name: Fetch exact owner HEAD and overlay ONLY read-only YGO modules in temporary worktree
         env:
           OWNER_SHA: ${{ matrix.owner_sha }}
@@ -127,6 +129,9 @@ jobs:
             for file in ic_rectangular.py ic_hotspots.py ic_orientation.py ic_power_profiles.py ic_tl494_profile.py ic_electrical_binding.py ic_sheet_composition.py external_wire_sheet.py native_sheet_ink_audit.py routed_native_sheet.py sheet_svg.py; do
               git show "$PAINT_SHA:src/gost_schematic/rendering/$file" > "$RUNNER_TEMP/ygo-owner/src/gost_schematic/rendering/$file"
             done
+            mkdir -p "$RUNNER_TEMP/ygo-owner/tests/fixtures"
+            git show "$IC_SHA:examples/tl494_cycle9_circuit_integration.py" > "$RUNNER_TEMP/ygo-owner/examples/tl494_cycle9_circuit_integration.py"
+            git show "$IC_SHA:tests/fixtures/tl494_photo_23_frozen_cycle9.json" > "$RUNNER_TEMP/ygo-owner/tests/fixtures/tl494_photo_23_frozen_cycle9.json"
             echo "PINNED_REAL_IC_OWNER=$IC_SHA; PINNED_REAL_PAINT_OWNER=$PAINT_SHA; RECON_OWNER=$OWNER_SHA"
           fi
           mkdir -p output/cycle11-owners
@@ -136,6 +141,19 @@ jobs:
             --output "$GITHUB_WORKSPACE/output/cycle11-owners/$OWNER.json"
           sha256sum "$GITHUB_WORKSPACE/output/cycle11-owners/$OWNER.json" > "$GITHUB_WORKSPACE/output/cycle11-owners/$OWNER.sha256"
           cat "$GITHUB_WORKSPACE/output/cycle11-owners/$OWNER.sha256"
+          if test "$OWNER" = recon; then
+            # Never approximate/relabel the font: v0.7 Type A face SHA lock.
+            python "$GITHUB_WORKSPACE/scripts/install_opengost_type_a.py" \
+              --directory "$GITHUB_WORKSPACE/.font-cycle15" \
+              --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a
+            python "$GITHUB_WORKSPACE/scripts/export_tl494_23_ink_contract.py" \
+              --owner-recon-sha "$OWNER_SHA" \
+              --font "$GITHUB_WORKSPACE/.font-cycle15/OpenGOST-TypeA-OpenGOSTtypeA-Regular.ttf" \
+              --output "$GITHUB_WORKSPACE/output/cycle11-owners/tl494-23-real-instance-ink.json"
+            sha256sum "$GITHUB_WORKSPACE/output/cycle11-owners/tl494-23-real-instance-ink.json" \
+              > "$GITHUB_WORKSPACE/output/cycle11-owners/tl494-23-real-instance-ink.sha256"
+            cat "$GITHUB_WORKSPACE/output/cycle11-owners/tl494-23-real-instance-ink.sha256"
+          fi
       - name: Publish real exact HEAD read-only cross-owner geometry report
         uses: actions/upload-artifact@v4
         with:
