@@ -55,7 +55,7 @@ SOURCE_PHOTO_RIGHT=("12","15","14","13","8","11","9","10")
 
 def build(font_file: Path):
     inspection=inspect_type_a_font(
-        font_file,h_um=3500,family="OpenGost Type A TT",require_family_match=True,
+        font_file,h_um=3500,family="OpenGOST type A",require_family_match=True,
     )
     style=inspection.style
     measurer=PillowTextMeasurer()
