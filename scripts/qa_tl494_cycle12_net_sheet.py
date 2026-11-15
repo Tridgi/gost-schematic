@@ -39,7 +39,7 @@ def require(condition: bool, marker: str) -> None:
 def original_source_fixture(path: Path) -> dict:
     payload = path.read_bytes()
     signature = hashlib.sha1(
-        b"blob " + str(len(payload)).encode("ascii") + b"\\0" + payload
+        b"blob " + str(len(payload)).encode("ascii") + bytes((0,)) + payload
     ).hexdigest()
     require(signature == FIXTURE_GIT_BLOB_SHA1,
             "QA_C12_ORIGINAL_FIXTURE_GIT_BLOB_CHANGED")
