@@ -20,9 +20,9 @@ def verify(folder: Path) -> dict:
     assert (proof["source_components"], proof["source_nets"],
             proof["source_net_pinrefs"]) == (23, 15, 62)
     assert proof["model_source"] == "e695c415fdced164b0e0c39c5249d030795a0aa6"
-    assert proof["NET114_owner_sha"] == "e604ab355f1f704aa11f5545d048a0087c97e39a"
-    assert proof["RECON115_owner_sha"] == "68d52e243c966e0fd25c5a7e2eaad34914392fba"
-    assert proof["IC97_owner_sha"] == "c8991bf232428645cad6e8b402d70abccf12a546"
+    assert proof["NET114_owner_sha"] == "ef48b2a1a6a77ed8d2e18528aeeeb1f0e0e41d2d"
+    assert proof["RECON115_owner_sha"] == "d9286dc2719157109c110db86581951cd58192ab"
+    assert proof["IC97_owner_sha"] == "892640cfff9780bb4f13c1a6753dbba5f7754a96"
     assert proof["canonical_ti_part_id_verified"] == "ti.tl494cn.pdip16"
     assert proof["trusted_97_part_rebinding"]
     assert proof["legacy_part_id_preserved_only_in_frozen_fixture"]
