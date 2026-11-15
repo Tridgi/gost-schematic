@@ -180,7 +180,10 @@ def append_verified_sheet_continuations(
     The caller's NetContinuationProject is source-validated by the electrical
     owner. Refuse foreign circuit Net membership or invented a indicators.
     """
-    from gost_schematic.electrical.netrefs import NetContinuationProject
+    from gost_schematic.electrical.netrefs import (
+        NetContinuationProject,
+        validate_net_continuations,
+    )
 
     if not isinstance(project, NetContinuationProject):
         raise TypeError("SHEET_CONTINUATION_SOURCE_TYPED_PROJECT_REQUIRED")
@@ -192,11 +195,63 @@ def append_verified_sheet_continuations(
         raise ValueError("SHEET_CONTINUATION_SOURCE_B_PAIR_MISMATCH")
     if {endpoint.label for endpoint in project.endpoints} != {"b"}:
         raise ValueError("SHEET_CONTINUATION_FORGED_A_SOURCE_LABEL")
+    expected_pins = {
+        "b-X2": PinRef("X2", "1"),
+        "b-R5": PinRef("R5", "2"),
+    }
+    if (
+        project.schema_version != 2
+        or len(project.nets) != 1
+        or len(project.stubs) != 2
+        or {stub.endpoint_id for stub in project.stubs} != set(expected_pins)
+        or any(stub.pin != expected_pins[stub.endpoint_id]
+               for stub in project.stubs)
+    ):
+        raise ValueError("SHEET_CONTINUATION_SOURCE_B_STUB_INVENTORY_DRIFT")
+    endpoints = {item.id: item for item in project.endpoints}
+    for stub in project.stubs:
+        endpoint = endpoints[stub.endpoint_id]
+        if (
+            stub.end != endpoint.anchor
+            or stub.start == stub.end
+            or (stub.start.x != stub.end.x
+                and stub.start.y != stub.end.y)
+        ):
+            raise ValueError("SHEET_CONTINUATION_SOURCE_B_STUB_GEOMETRY_DRIFT")
+    problems = validate_net_continuations(project)
+    if problems:
+        raise ValueError(
+            "SHEET_CONTINUATION_SOURCE_B_TYPED_INVALID:"
+            + ",".join(item.code for item in problems)
+        )
     region = ET.SubElement(root, _NS+"g", {
         "data-layer": "typed-nonphysical-continuations",
         "data-nonphysical": "true",
         "data-do-not-infer-net-from-shapes": "true",
     })
+    # Source-authored NON-ELECTRICAL visible local b stubs: they do not
+    # enter Circuit.Nets, ExternalWireGraph, junctions or green hotspots.
+    # Draw these BEFORE the terminal marker circles so the white centers
+    # remain legible. Exact integer-µm coordinates come from project.stubs.
+    for stub in project.stubs:
+        ET.SubElement(region, _NS+"line", {
+            "x1": format_mm(stub.start.x),
+            "y1": format_mm(stub.start.y),
+            "x2": format_mm(stub.end.x),
+            "y2": format_mm(stub.end.y),
+            "stroke": "#000000",
+            "stroke-width": "0.3",
+            "fill": "none",
+            "data-layer": "nonphysical-continuation-stub",
+            "data-nonphysical": "true",
+            "data-electrical-junction": "false",
+            "data-connectable": "false",
+            "data-source-pin-ref": (
+                f"{stub.pin.reference}.{stub.pin.number}"
+            ),
+            "data-nonphysical-net-continuation": stub.endpoint_id,
+            "data-source-stub-id": stub.id,
+        })
     for end in project.endpoints:
         at = end.anchor
         ET.SubElement(region, _NS+"circle", {
