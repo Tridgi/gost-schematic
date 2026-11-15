@@ -25,6 +25,41 @@ NET = "8499d2311681b60f3c510ad65bd4ee5cbc61882a"
 RECON = "8f8b3645beacdc3b7c4382ec97b12268624fdd76"
 
 
+
+def _bind_verified_source_b(font_file: Path, circuit, symbols_by_part):
+    """Rebind *only* the two frozen source b endpoints to actual compact pins.
+
+    Use the source's typed NetContinuationProject and RECON's checked exact
+    historical stub vectors; never move marker artwork by guessed pixels.
+    """
+    old_native = import_module(
+        "examples.render_tl494_full_native_cycle9"
+    ).construct_native_paint(font_file)
+    original_b = old_native[8]
+    rebound = import_module(
+        "examples.tl494_v5.cycle11_b_continuation"
+    ).rebind_true_source_b(original_b, circuit, symbols_by_part)
+    errors = import_module(
+        "gost_schematic.electrical.netrefs"
+    ).validate_net_continuations(
+        rebound,
+        physical_pin_anchors={stub.pin: stub.start for stub in rebound.stubs},
+    )
+    if errors:
+        raise ValueError(
+            "PAINT_COMPACT_B_REBIND_REVALIDATION_FAILED:"
+            + ",".join(item.code for item in errors)
+        )
+    if (
+        rebound.circuit.nets is not circuit.nets
+        or len(rebound.endpoints) != 2
+        or {item.id for item in rebound.endpoints} != {"b-X2", "b-R5"}
+        or {item.label for item in rebound.endpoints} != {"b"}
+    ):
+        raise ValueError("PAINT_COMPACT_B_SOURCE_TWO_NONPHYSICAL_ONLY_REQUIRED")
+    return rebound
+
+
 def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 25000):
     # Optional unmerged owner modules are staged only in isolated CI.
     # Resolve at use site to pass Ruff in both base and cross-owner checkouts.
@@ -115,6 +150,7 @@ def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 2500
     if any(c.part_id not in by_part for c in circuit.components):
         raise ValueError("COMPACT_CATALOG_SYMBOL_NOT_RESOLVED")
     footprint = actual_component_occupied_mm(assembly, by_part)
+    source_b = _bind_verified_source_b(font_file, circuit, by_part)
     original_nets = circuit.nets
     placement = layout_sheet(circuit, by_part, style, measurer)
     # This true independent owner measured ink is a router keepout, NOT
@@ -147,7 +183,7 @@ def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 2500
         physical_ic_renderings_clean={"DA1": clean},
         physical_ic_renderings_diagnostic={"DA1": diagnostic},
         route_preview=route,
-        source_continuation_project=None,  # no fabricated old b at new coords
+        source_continuation_project=source_b,  # typed checked real b pair
         expected_component_count=23,
         expected_net_count=15,
         expected_net_pinrefs=62,
@@ -189,9 +225,17 @@ def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 2500
         "real_GOST_Type_A_h_mm": 3.5,
         "source_photo_raster_comparison": "BLOCKED_NO_AUTHORITATIVE_RASTER",
         "real_print_release": False,
-        "nonphysical_b_marker_status": (
-            "BLOCKED_OWNER_NO_COMPACT_RELOCATION_VALIDATED"
-        ),
+        "nonphysical_b_marker_status": "VERIFIED_SOURCE_B_REBOUND",
+        "two_source_b_markers": {
+            ep.id: {
+                "net": next(n.net_name for n in source_b.nets
+                            if n.id == ep.net_id),
+                "x_um": ep.anchor.x,
+                "y_um": ep.anchor.y,
+                "printed_label": ep.label,
+            }
+            for ep in source_b.endpoints
+        },
     }
     (out/"TL494_COMPACT_A3_NEW_ROUTER_DRC_MANIFEST.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True)+"\n",
