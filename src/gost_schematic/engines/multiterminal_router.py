@@ -453,6 +453,7 @@ def _visibility_path(
     max_detour_ratio: float,
     goal_offset: int = 0,
     prefer_astar: bool = False,
+    astar_on_limit: bool = False,
 ) -> tuple[tuple[Point, ...], str | None]:
     """Deterministic multi-goal Dijkstra with explicit T candidates.
 
@@ -740,7 +741,7 @@ def _visibility_path(
             continue
         visited += 1
         if visited > search_node_cap * 3:
-            if not prefer_astar:
+            if astar_on_limit and not prefer_astar:
                 # Preserve every successful Dijkstra route. Only a failed
                 # bounded exploration receives one admissible A* retry.
                 # This is a SEARCH restart, not permission to cross UGO ink,
@@ -756,6 +757,7 @@ def _visibility_path(
                     search_node_cap=search_node_cap, grid_um=grid_um,
                     max_detour_ratio=max_detour_ratio,
                     goal_offset=goal_offset, prefer_astar=True,
+                    astar_on_limit=False,
                 )
             return (), "ROUTE_SEARCH_EXPANSION_LIMIT"
         here = Point(xs[ix], ys[iy])
@@ -913,6 +915,7 @@ def route_multi_terminal_net(
     search_node_cap: int = 25000,
     max_detour_ratio: float = 3.0,
     terminal_order: tuple[PinRef, ...] | None = None,
+    astar_on_limit: bool = False,
 ) -> NetTreePreview:
     """Route all real pins of ONE declared net to an explicit branched tree."""
     if net not in circuit.nets:
@@ -1006,6 +1009,7 @@ def route_multi_terminal_net(
                 search_node_cap=search_node_cap,
                 max_detour_ratio=max_detour_ratio,
                 goal_offset=target_offset,
+                astar_on_limit=astar_on_limit,
             )
             if reason is None:
                 break
@@ -1108,6 +1112,7 @@ def route_circuit_net_trees(
     max_detour_ratio: float = 3.0,
     stop_on_first_failure: bool = True,
     max_order_restarts: int = 1,
+    astar_on_limit: bool = False,
 ) -> GlobalRoutePreview:
     """Route all original Nets; release only after full DRC+physical connectivity.
 
@@ -1138,6 +1143,7 @@ def route_circuit_net_trees(
             annotation_placements=annotation_placements,
             stroke_um=stroke_um, search_node_cap=search_node_cap,
             max_detour_ratio=max_detour_ratio,
+            astar_on_limit=astar_on_limit,
         )
         if not tree.complete and max_order_restarts:
             positions = _pin_catalog(circuit, known[name], parts, symbols)
@@ -1197,6 +1203,7 @@ def route_circuit_net_trees(
                     max_detour_ratio=min(max_detour_ratio * scale, 6.0),
                     grid_um=grid,
                     terminal_order=order,
+                    astar_on_limit=astar_on_limit,
                 )
                 if (other.complete or
                         len(other.completed_pins) > len(tree.completed_pins)):
@@ -1292,6 +1299,7 @@ def _reroute_real_net(
     stroke_um: int,
     search_node_cap: int,
     max_detour_ratio: float,
+    astar_on_limit: bool = False,
 ) -> NetTreePreview:
     """Rebuild a sourced physical tree, optionally trying its true reverse.
 
@@ -1304,6 +1312,7 @@ def _reroute_real_net(
         annotation_placements=annotation_placements,
         stroke_um=stroke_um, search_node_cap=search_node_cap,
         max_detour_ratio=max_detour_ratio,
+        astar_on_limit=astar_on_limit,
     )
     if first.complete or len(net.members) < 2:
         return first
@@ -1314,6 +1323,7 @@ def _reroute_real_net(
         stroke_um=stroke_um, search_node_cap=search_node_cap,
         max_detour_ratio=max_detour_ratio,
         terminal_order=tuple(reversed(net.members)),
+        astar_on_limit=astar_on_limit,
     )
     if reverse.complete or len(reverse.completed_pins) > len(first.completed_pins):
         return reverse
@@ -1331,6 +1341,7 @@ def _conflict_directed_ripup(
     search_node_cap: int,
     max_detour_ratio: float,
     budget: int,
+    astar_on_limit: bool = False,
 ) -> GlobalRoutePreview:
     """Bounded physical rip-up/rebuild search, never a DRC or topology waiver.
 
@@ -1382,6 +1393,7 @@ def _conflict_directed_ripup(
                 annotation_placements=annotation_placements,
                 stroke_um=stroke_um, search_node_cap=search_node_cap,
                 max_detour_ratio=max_detour_ratio,
+                astar_on_limit=astar_on_limit,
             )
             if not restored.complete:
                 history.append((blocked, blocker, best_count, "BLOCKED_PIN_OR_INK"))
@@ -1393,6 +1405,7 @@ def _conflict_directed_ripup(
                 annotation_placements=annotation_placements,
                 stroke_um=stroke_um, search_node_cap=search_node_cap,
                 max_detour_ratio=max_detour_ratio,
+                astar_on_limit=astar_on_limit,
             )
             replacements = {blocked: restored, blocker: rebuilt}
             new_trees = tuple(
@@ -1493,6 +1506,7 @@ def _conflict_group_reroute(
     search_node_cap: int,
     max_detour_ratio: float,
     attempts: int,
+    astar_on_limit: bool = False,
 ) -> GlobalRoutePreview:
     """Bounded 2+1 Net simultaneous genuine physical copper re-planning.
 
@@ -1544,6 +1558,7 @@ def _conflict_group_reroute(
                 annotation_placements=annotation_placements,
                 stroke_um=stroke_um, search_node_cap=search_node_cap,
                 max_detour_ratio=max_detour_ratio,
+                astar_on_limit=astar_on_limit,
             )
             if not blocked_tree.complete:
                 history.append((
@@ -1731,6 +1746,7 @@ def route_circuit_with_order_fallback(
     physical_veto_restarts: int = 0,
     physical_ripup_attempts: int = 0,
     physical_group_attempts: int = 0,
+    astar_on_limit: bool = False,
 ) -> GlobalRoutePreview:
     """Search independent functional route-order permutations without rewiring.
 
@@ -1798,6 +1814,7 @@ def route_circuit_with_order_fallback(
             max_detour_ratio=max_detour_ratio,
             stop_on_first_failure=False,
             max_order_restarts=max_order_restarts,
+            astar_on_limit=astar_on_limit,
         )
         accepted = sum(tree.complete for tree in preview.net_trees)
         errors = (
@@ -1848,6 +1865,7 @@ def route_circuit_with_order_fallback(
                 max_detour_ratio=max_detour_ratio,
                 stop_on_first_failure=False,
                 max_order_restarts=max_order_restarts,
+                astar_on_limit=astar_on_limit,
             )
             count = sum(tree.complete for tree in independent.net_trees)
             errors = (
@@ -1869,10 +1887,12 @@ def route_circuit_with_order_fallback(
         annotation_placements=annotation_placements,
         stroke_um=stroke_um, search_node_cap=search_node_cap,
         max_detour_ratio=max_detour_ratio, budget=physical_ripup_attempts,
+        astar_on_limit=astar_on_limit,
     )
     return _conflict_group_reroute(
         paired, parts, symbols, page_box=page_box,
         annotation_placements=annotation_placements,
         stroke_um=stroke_um, search_node_cap=search_node_cap,
         max_detour_ratio=max_detour_ratio, attempts=physical_group_attempts,
+        astar_on_limit=astar_on_limit,
     )

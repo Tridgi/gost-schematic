@@ -51,6 +51,7 @@ def produce(
     priority_trials: int = 2, priority_offset: int = 0,
     physical_veto_restarts: int = 0, physical_ripup_attempts: int = 0,
     physical_group_attempts: int = 0,
+    astar_on_limit: bool = False,
     page_format: str = "A3",
 ) -> dict:
     if len(owner_sha) != 40 or len(reference_sha) != 40:
@@ -186,6 +187,7 @@ def produce(
         physical_veto_restarts=physical_veto_restarts,
         physical_ripup_attempts=physical_ripup_attempts,
         physical_group_attempts=physical_group_attempts,
+        astar_on_limit=astar_on_limit,
     )
     model.verify()
     if {
@@ -436,6 +438,7 @@ def produce(
         "route_physical_veto_restarts": physical_veto_restarts,
         "route_physical_ripup_attempts": physical_ripup_attempts,
         "route_physical_group_attempts": physical_group_attempts,
+        "route_astar_retry_on_limit": astar_on_limit,
         "routing": route.as_dict(),
         "new_after_drc": after_drc.as_dict(),
         "after_erc_errors": erc_errors if route.complete else [
@@ -561,6 +564,7 @@ def main() -> None:
     parser.add_argument("--physical-veto-restarts", type=int, default=0)
     parser.add_argument("--physical-ripup-attempts", type=int, default=0)
     parser.add_argument("--physical-group-attempts", type=int, default=0)
+    parser.add_argument("--astar-on-limit", action="store_true")
     parser.add_argument("--page-format", choices=("A3", "A2"), default="A3")
     args = parser.parse_args()
     produce(
@@ -571,6 +575,7 @@ def main() -> None:
         physical_veto_restarts=args.physical_veto_restarts,
         physical_ripup_attempts=args.physical_ripup_attempts,
         physical_group_attempts=args.physical_group_attempts,
+        astar_on_limit=args.astar_on_limit,
         page_format=args.page_format,
     )
 

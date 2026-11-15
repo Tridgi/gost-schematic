@@ -105,6 +105,7 @@ def run_matrix(
     max_nodes: int,
     physical_ripup_attempts: int,
     physical_group_attempts: int = 0,
+    astar_on_limit: bool = False,
     priority_offset: int = 0,
 ) -> dict:
     if (
@@ -165,6 +166,7 @@ def run_matrix(
             physical_veto_restarts=0,
             physical_ripup_attempts=physical_ripup_attempts,
             physical_group_attempts=physical_group_attempts,
+            astar_on_limit=astar_on_limit,
             page_format="A3",
         )
         report_path = folder / "TL494-compact-A3-route-drc.json"
@@ -221,6 +223,7 @@ def run_matrix(
         "physical_veto_restarts": 0,
         "physical_ripup_attempts": physical_ripup_attempts,
         "physical_group_attempts": physical_group_attempts,
+        "astar_on_limit": astar_on_limit,
         "matrix": results,
         "legal_print_15_15_verified": False,
         "global_post_render_3_2_1mm_signed": False,
@@ -251,6 +254,7 @@ def main() -> None:
     parser.add_argument("--priority-offset", type=int, default=0)
     parser.add_argument("--physical-ripup-attempts", type=int, default=0)
     parser.add_argument("--physical-group-attempts", type=int, default=0)
+    parser.add_argument("--astar-on-limit", action="store_true")
     parser.add_argument(
         "--variant", action="append", choices=tuple(MOVE_VARIANTS),
     )
@@ -264,6 +268,7 @@ def main() -> None:
         priority_offset=args.priority_offset,
         physical_ripup_attempts=args.physical_ripup_attempts,
         physical_group_attempts=args.physical_group_attempts,
+        astar_on_limit=args.astar_on_limit,
     )
 
 
