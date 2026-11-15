@@ -10,16 +10,6 @@ import json
 from importlib import import_module
 from pathlib import Path
 
-from examples.tl494_v5.compact_layout import (
-    A3_LANDSCAPE_UM,
-    actual_component_occupied_mm,
-    compact_source_assembly,
-)
-from examples.tl494_v5.route_preflight import (
-    MeasuredInkGuard,
-    _owner_ic_obstacle,
-)
-
 from gost_schematic.core.geometry import Box
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.engines.sheet_layout import layout_sheet
@@ -40,12 +30,24 @@ def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 2500
     # Resolve at use site to pass Ruff in both base and cross-owner checkouts.
     from dataclasses import replace
 
-    from examples.tl494_v5.cycle11_ti_bridge import bind_verified_compact_ti
-    from examples.tl494_v5.route_candidate_driver import (
-        load_original_owner_fixture,
-        restore_original_named_nets,
-    )
-    from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
+    # These modules are supplied by separately pinned owner branches in CI.
+    # A late import is required because the base checkout has no v5 package.
+    compact = import_module("examples.tl494_v5.compact_layout")
+    preflight = import_module("examples.tl494_v5.route_preflight")
+    driver = import_module("examples.tl494_v5.route_candidate_driver")
+    bind_verified_compact_ti = import_module(
+        "examples.tl494_v5.cycle11_ti_bridge"
+    ).bind_verified_compact_ti
+    propose_ic_paint_binding = import_module(
+        "gost_schematic.electrical.ic_paint_bridge"
+    ).propose_ic_paint_binding
+    A3_LANDSCAPE_UM = compact.A3_LANDSCAPE_UM
+    actual_component_occupied_mm = compact.actual_component_occupied_mm
+    compact_source_assembly = compact.compact_source_assembly
+    MeasuredInkGuard = preflight.MeasuredInkGuard
+    _owner_ic_obstacle = preflight._owner_ic_obstacle
+    load_original_owner_fixture = driver.load_original_owner_fixture
+    restore_original_named_nets = driver.restore_original_named_nets
 
     assembly = compact_source_assembly()
     assembly.verify()
