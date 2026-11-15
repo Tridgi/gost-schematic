@@ -222,6 +222,61 @@ def render_routed_native_sheet(
     }
     if missing_parts:
         raise ValueError("ROUTED_SHEET_UNKNOWN_SOURCE_PART:" + repr(missing_parts))
+    # The two historical b glyphs are NOT electrical Net memberships.
+    # A plausibly shaped continuation project is insufficient: verify its
+    # original Net, actual X2.1/R5.2 tips and the signed physical stub starts.
+    source_b_verified = False
+    if (
+        (len(circuit.components), len(circuit.nets),
+         sum(len(n.members) for n in circuit.nets)) == (23, 15, 62)
+        and source_continuation_project is not None
+    ):
+        try:
+            from gost_schematic.electrical.netrefs import (
+                NetContinuationProject,
+                validate_net_continuations,
+            )
+        except ModuleNotFoundError as exc:
+            raise RuntimeError(
+                "ROUTED_SHEET_TYPED_B_OWNER_NOT_INSTALLED"
+            ) from exc
+        project = source_continuation_project
+        if not isinstance(project, NetContinuationProject):
+            raise TypeError("ROUTED_SHEET_SOURCE_B_TYPED_PROJECT_REQUIRED")
+        expected_stubs = {("X2", "1"), ("R5", "2")}
+        if (
+            project.schema_version != 2
+            or project.circuit is not circuit
+            or len(project.nets) != 1
+            or project.nets[0].net_name != "b_NEGATIVE_OUTPUT"
+            or len(project.endpoints) != 2
+            or len(project.stubs) != 2
+            or {(s.pin.reference, s.pin.number) for s in project.stubs}
+            != expected_stubs
+            or {ep.id for ep in project.endpoints} != {"b-X2", "b-R5"}
+            or {ep.label for ep in project.endpoints} != {"b"}
+        ):
+            raise ValueError("ROUTED_SHEET_SOURCE_B_PHYSICAL_IDENTITY_DRIFT")
+        by_reference = {item.reference: item for item in circuit.components}
+        actual_anchors = {}
+        for stub in project.stubs:
+            component = by_reference.get(stub.pin.reference)
+            if component is None:
+                raise ValueError("ROUTED_SHEET_SOURCE_B_MISSING_COMPONENT")
+            symbol = symbols_by_part[component.part_id]
+            true_tip = component.pin_positions(symbol).get(stub.pin.number)
+            if true_tip is None:
+                raise ValueError("ROUTED_SHEET_SOURCE_B_MISSING_REAL_PIN")
+            actual_anchors[stub.pin] = true_tip
+        violations = validate_net_continuations(
+            project, physical_pin_anchors=actual_anchors,
+        )
+        if violations:
+            raise ValueError(
+                "ROUTED_SHEET_SOURCE_B_PHYSICAL_PROVENANCE_INVALID:"
+                + ",".join(item.code for item in violations)
+            )
+        source_b_verified = True
     for index, segment in enumerate(graph.segments):
         if segment.net_name not in net_names:
             raise ValueError(f"ROUTED_SHEET_FORGED_FOREIGN_NET:{index}:{segment.net_name}")
@@ -424,6 +479,7 @@ def render_routed_native_sheet(
     manifest = {
         "schema": "paint.routed-native.v1",
         "signed_manufacturer_ic_16_verified": signed_source_verified,
+        "source_b_two_physical_vectors_verified": source_b_verified,
         "status": "TECHNICAL_GATE_PASS_QA_REQUIRED" if full else "BLOCKED",
         "source_components": physical_count,
         "source_nets": len(circuit.nets),
