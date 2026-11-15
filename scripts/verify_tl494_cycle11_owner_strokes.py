@@ -158,15 +158,20 @@ def compare_native_paint_symbols() -> dict:
                 expected = {
                     pin.number: _point(pin.at) for pin in posed.pins
                 }
-                declared = dict(
-                    (number, [int(v) for v in xy.split(",")])
-                    for number, xy in (
-                        item.split(":", 1) for item in clean.attrib[
-                            "data-real-pin-coordinates-um"
-                        ].split(";")
-                    )
+                pairs = tuple(
+                    item.split(":", 1) for item in clean.attrib[
+                        "data-real-pin-coordinates-um"
+                    ].split(";")
                 )
-                if expected != declared:
+                if any(len(pair) != 2 for pair in pairs):
+                    raise AssertionError("PAINT malformed physical PinRef metadata")
+                declared = {
+                    number: [int(v) for v in xy.split(",")]
+                    for number, xy in pairs
+                }
+                # A dict alone would silently overwrite repeated physical pin
+                # numbers: never suppress a duplicate with matching last value.
+                if len(declared) != len(pairs) or expected != declared:
                     raise AssertionError(
                         f"PAINT physical source PinRef drift {binding.reference}"
                     )
