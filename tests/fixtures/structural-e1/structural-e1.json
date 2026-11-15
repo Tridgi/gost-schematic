@@ -1,0 +1,359 @@
+{
+  "blocks": [
+    {
+      "height_um": 30000,
+      "id": "B1",
+      "name": "ДАТЧИК СИГНАЛА",
+      "origin_um": [
+        46000,
+        25000
+      ],
+      "width_um": 48000
+    },
+    {
+      "height_um": 36000,
+      "id": "B2",
+      "name": "ОБРАБОТКА СИГНАЛА",
+      "origin_um": [
+        142000,
+        22000
+      ],
+      "width_um": 56000
+    },
+    {
+      "height_um": 36000,
+      "id": "B3",
+      "name": "МОДУЛЬ СВЯЗИ",
+      "origin_um": [
+        252000,
+        22000
+      ],
+      "width_um": 56000
+    },
+    {
+      "height_um": 36000,
+      "id": "B4",
+      "name": "СИСТЕМА ИНДИКАЦИИ",
+      "origin_um": [
+        250000,
+        102000
+      ],
+      "width_um": 60000
+    },
+    {
+      "height_um": 36000,
+      "id": "B5",
+      "name": "УПРАВЛЯЮЩИЙ БЛОК",
+      "origin_um": [
+        142000,
+        102000
+      ],
+      "width_um": 56000
+    },
+    {
+      "height_um": 36000,
+      "id": "B6",
+      "name": "ИСПОЛНИТЕЛЬНЫЙ УЗЕЛ",
+      "origin_um": [
+        40000,
+        102000
+      ],
+      "width_um": 60000
+    },
+    {
+      "height_um": 36000,
+      "id": "B7",
+      "name": "ОБРАТНАЯ СВЯЗЬ",
+      "origin_um": [
+        352000,
+        102000
+      ],
+      "width_um": 56000
+    }
+  ],
+  "diagram_type": "E1",
+  "links": [
+    {
+      "id": "L1",
+      "source": {
+        "block_id": "B1",
+        "port_id": "data_out"
+      },
+      "target": {
+        "block_id": "B2",
+        "port_id": "data_in"
+      }
+    },
+    {
+      "id": "L2",
+      "source": {
+        "block_id": "B2",
+        "port_id": "a"
+      },
+      "target": {
+        "block_id": "B3",
+        "port_id": "a"
+      }
+    },
+    {
+      "id": "L3",
+      "source": {
+        "block_id": "B2",
+        "port_id": "b"
+      },
+      "target": {
+        "block_id": "B3",
+        "port_id": "b"
+      }
+    },
+    {
+      "id": "L4",
+      "source": {
+        "block_id": "B2",
+        "port_id": "c"
+      },
+      "target": {
+        "block_id": "B3",
+        "port_id": "c"
+      }
+    },
+    {
+      "id": "L5",
+      "source": {
+        "block_id": "B3",
+        "port_id": "out"
+      },
+      "target": {
+        "block_id": "B4",
+        "port_id": "in"
+      }
+    },
+    {
+      "id": "L6",
+      "source": {
+        "block_id": "B4",
+        "port_id": "out"
+      },
+      "target": {
+        "block_id": "B5",
+        "port_id": "in"
+      }
+    },
+    {
+      "id": "L7",
+      "source": {
+        "block_id": "B5",
+        "port_id": "out"
+      },
+      "target": {
+        "block_id": "B6",
+        "port_id": "in"
+      }
+    },
+    {
+      "id": "L8",
+      "source": {
+        "block_id": "B4",
+        "port_id": "branch_out"
+      },
+      "target": {
+        "block_id": "B7",
+        "port_id": "branch_in"
+      }
+    },
+    {
+      "id": "L9",
+      "source": {
+        "block_id": "B7",
+        "port_id": "feedback_out"
+      },
+      "target": {
+        "block_id": "B6",
+        "port_id": "feedback_in"
+      }
+    }
+  ],
+  "ports": [
+    {
+      "block_id": "B1",
+      "direction": "output",
+      "id": "data_out",
+      "position": [
+        1,
+        2
+      ],
+      "side": "right"
+    },
+    {
+      "block_id": "B2",
+      "direction": "input",
+      "id": "data_in",
+      "position": [
+        1,
+        2
+      ],
+      "side": "left"
+    },
+    {
+      "block_id": "B2",
+      "direction": "output",
+      "id": "a",
+      "position": [
+        1,
+        4
+      ],
+      "side": "right"
+    },
+    {
+      "block_id": "B2",
+      "direction": "output",
+      "id": "b",
+      "position": [
+        1,
+        2
+      ],
+      "side": "right"
+    },
+    {
+      "block_id": "B2",
+      "direction": "output",
+      "id": "c",
+      "position": [
+        3,
+        4
+      ],
+      "side": "right"
+    },
+    {
+      "block_id": "B3",
+      "direction": "input",
+      "id": "a",
+      "position": [
+        1,
+        4
+      ],
+      "side": "left"
+    },
+    {
+      "block_id": "B3",
+      "direction": "input",
+      "id": "b",
+      "position": [
+        1,
+        2
+      ],
+      "side": "left"
+    },
+    {
+      "block_id": "B3",
+      "direction": "input",
+      "id": "c",
+      "position": [
+        3,
+        4
+      ],
+      "side": "left"
+    },
+    {
+      "block_id": "B3",
+      "direction": "output",
+      "id": "out",
+      "position": [
+        1,
+        2
+      ],
+      "side": "bottom"
+    },
+    {
+      "block_id": "B4",
+      "direction": "input",
+      "id": "in",
+      "position": [
+        1,
+        2
+      ],
+      "side": "top"
+    },
+    {
+      "block_id": "B4",
+      "direction": "output",
+      "id": "out",
+      "position": [
+        1,
+        2
+      ],
+      "side": "left"
+    },
+    {
+      "block_id": "B4",
+      "direction": "output",
+      "id": "branch_out",
+      "position": [
+        1,
+        2
+      ],
+      "side": "right"
+    },
+    {
+      "block_id": "B5",
+      "direction": "input",
+      "id": "in",
+      "position": [
+        1,
+        2
+      ],
+      "side": "right"
+    },
+    {
+      "block_id": "B5",
+      "direction": "output",
+      "id": "out",
+      "position": [
+        1,
+        2
+      ],
+      "side": "left"
+    },
+    {
+      "block_id": "B6",
+      "direction": "input",
+      "id": "in",
+      "position": [
+        1,
+        2
+      ],
+      "side": "right"
+    },
+    {
+      "block_id": "B6",
+      "direction": "input",
+      "id": "feedback_in",
+      "position": [
+        1,
+        2
+      ],
+      "side": "bottom"
+    },
+    {
+      "block_id": "B7",
+      "direction": "input",
+      "id": "branch_in",
+      "position": [
+        1,
+        2
+      ],
+      "side": "left"
+    },
+    {
+      "block_id": "B7",
+      "direction": "output",
+      "id": "feedback_out",
+      "position": [
+        1,
+        2
+      ],
+      "side": "bottom"
+    }
+  ],
+  "schema_version": 1
+}

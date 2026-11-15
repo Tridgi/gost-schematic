@@ -1,0 +1,20 @@
+{
+  "anchor_mismatch_count": 0,
+  "auto_electrical_nets": 0,
+  "block_count": 7,
+  "clean_svg_sha256": "2e06432e0e774405f2fa205315c8901d45f559ab9299ff7237d9d45fc9da2197",
+  "coincident_port_count": 0,
+  "diagnostic_svg_sha256": "845aa2774704bd42b9774dd0253f4f3b7588f7bd10f0409b2fc2bbe2b9798d2a",
+  "diagram_type": "E1",
+  "link_count": 9,
+  "model_json_sha256": "23dfa013bf005679feb09120804fa729d0ebf9ed4ff1ff40424cc1df271be09e",
+  "notes": "Only exact source and SVG geometry verified. This does not certify font ink dimensions, GOST spacing or a production routed overlay.",
+  "port_count": 18,
+  "single_adapter_delta": [
+    "diagram_type:E1 (required but omitted by PR78 projection)"
+  ],
+  "status": "DRAFT_TYPED_E1_YGO2_PR78_INTEROP",
+  "visual_fixture_sha256": "80656bac02f84230635d8fc782c81d0e814d5c2f5a181cefbc1a6166df185212",
+  "ygo_source_git_blob": "85fcf7bc5aff7057f5c489d3f5b697d10c36f119",
+  "ygo_source_sha256": "0cc55797fe7efb98fe1a3d9f669c7cd8087de23454743d2aa5cc69d162cf8fea"
+}
