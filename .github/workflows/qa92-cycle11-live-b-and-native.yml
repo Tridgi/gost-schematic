@@ -22,7 +22,7 @@ jobs:
       SOURCE_SHA: e695c415fdced164b0e0c39c5249d030795a0aa6
       RECON_SHA: e4eb565820e54889456f64d36598b608597ca2c2
       IC_SHA: bc03a31c5d15c9e962f9b26a209aab373e39bee6
-      PAINT_SHA: d74300580dfd28cc3400a512828dac6b49d529f0
+      PAINT_SHA: 910e6c7382137f0878a68097d40dd565be5bedbc
       NET_SHA: a370d637fe67ec44870899d503f53c0a6f8ee3af
       YGO_SHA: 3e47cdf32ccf211ded97e3be1ad874035653e090
     steps:
@@ -46,7 +46,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: d74300580dfd28cc3400a512828dac6b49d529f0
+          ref: 910e6c7382137f0878a68097d40dd565be5bedbc
           path: _qa_sources/paint
           persist-credentials: false
       - uses: actions/checkout@v4
@@ -137,6 +137,8 @@ jobs:
           ruff check scripts/qa_install_opengost_release.py \
             scripts/qa_tl494_cycle11_b_binding_gate.py \
             scripts/qa_tl494_cycle11_native_300dpi.py \
+            scripts/qa_tl494_cycle14_b_xml_gate.py \
+            scripts/qa_tl494_cycle14_resvg_png.py \
             tests/test_qa_font_direct_release.py
           python -m pytest -q tests/test_qa_font_direct_release.py
           python scripts/qa_install_opengost_release.py \
@@ -201,6 +203,26 @@ jobs:
             --font-file "$QA_B_TYPE_A_FONT" \
             --node-cap 5000 \
             --output "../../output/qa92-cycle11-b-${{ matrix.python-version }}/paint-owner-native"
+      - name: QA14 exact actual b-X2 b-R5 SVG strokes, signed source and 24 in-memory hostile XML mutations
+        id: qa14_source_svg
+        if: ${{ always() && steps.native_output.outcome == 'success' && steps.b_evidence.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/qa_tl494_cycle14_b_xml_gate.py \
+            --source-dir "output/qa92-cycle11-b-${{ matrix.python-version }}/paint-owner-native" \
+            --source-b-witness "output/qa92-cycle11-b-${{ matrix.python-version }}/real-owner-two-b-markers.json" \
+            --output "output/qa92-cycle11-b-${{ matrix.python-version }}/qa14-genuine-source-svg-24-hostile.json"
+      - name: QA14 independent Resvg true A3 300DPI black-white and all 16 visible manufacturer hotspots, never full print
+        if: ${{ always() && steps.qa14_source_svg.outcome == 'success' && steps.font.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/qa_tl494_cycle14_resvg_png.py \
+            --source-dir "output/qa92-cycle11-b-${{ matrix.python-version }}/paint-owner-native" \
+            --source-b-witness "output/qa92-cycle11-b-${{ matrix.python-version }}/real-owner-two-b-markers.json" \
+            --font-file "$QA_B_TYPE_A_FONT" \
+            --output-dir "output/qa92-cycle11-b-${{ matrix.python-version }}/qa14-resvg-300dpi"
       - name: Independent black and white clean versus 16 green diagnostic, physical 300 DPI NO-GO
         if: ${{ always() && steps.native_output.outcome == 'success' && steps.b_evidence.outcome == 'success' }}
         shell: bash
