@@ -565,6 +565,59 @@ def _visibility_path(
     }
     x_idx = {x: i for i, x in enumerate(xs)}
     y_idx = {y: i for i, y in enumerate(ys)}
+    # Physical T/pin fast path is a *strictly legal* geometry check, NOT a
+    # routing/DRC exception. New lead-cap visibility grid lanes can make a
+    # much longer detour look attractive before reaching an already printed
+    # same-Net T on the very same axis. The shortest direct wire is allowed
+    # only if it exits the source pin outward, reaches a true original PinRef
+    # from its exterior when applicable, and clears all actual native UGO,
+    # measured Type A text and existing full-graph wires. Any crossing with
+    # warning is deferred to the normal Dijkstra search.
+    for goal in reachable_goals:
+        if goal == source or not (
+            source.x == goal.x or source.y == goal.y
+        ):
+            continue
+        if (
+            (goal.x - source.x) * normal.x
+            + (goal.y - source.y) * normal.y
+        ) <= 0:
+            continue
+        goal_normal = goal_pin_normals.get(goal)
+        if goal_normal is not None and (
+            (source.x - goal.x) * goal_normal.x
+            + (source.y - goal.y) * goal_normal.y
+        ) <= 0:
+            continue
+        wire = WireSegment(source, goal, net_name)
+        graphic = Line(source, goal)
+        guard_boxes = (
+            boxes_by_y[source.y] if source.y == goal.y
+            else boxes_by_x[source.x]
+        )
+        guard_ink = (
+            ink_by_y[source.y] if source.y == goal.y
+            else ink_by_x[source.x]
+        )
+        if any(segment_intersects_box(graphic, box) for box in guard_boxes):
+            continue
+        if _source_ink_collision(
+            wire, guard_ink, authorized_pins=authorized_pins,
+        ) is not None:
+            continue
+        junctions = frozenset((
+            *occupied.junctions, *existing_dots, goal,
+        ))
+        checks = tuple(
+            candidate_wire_clearance(
+                wire, old,
+                candidate_stroke_um=stroke_um,
+                existing_stroke_um=stroke_um,
+                explicit_junctions=junctions,
+            ) for old in (*occupied.segments, *tree)
+        )
+        if all(check.valid and not check.warnings for check in checks):
+            return (source, goal), None
     start = (x_idx[source.x], y_idx[source.y], -1)
     active = (*occupied.segments, *tree)
     permanent_dots = frozenset((*occupied.junctions, *existing_dots))
