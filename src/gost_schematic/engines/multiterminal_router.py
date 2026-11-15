@@ -522,10 +522,15 @@ def _visibility_path(
         ):
             continue
         bound = lead.collision_bounds
-        if not any(
-            bound.min_x - 16000 <= p.x <= bound.max_x + 16000
-            and bound.min_y - 16000 <= p.y <= bound.max_y + 16000
-            for p in (source, *reachable_goals)
+        # Include lead-cap lanes intersecting the actual source-to-goal
+        # corridor, even when both endpoints are more than 16mm from the
+        # obstruction. Endpoint-only proximity incorrectly skipped the ink
+        # exactly halfway along a long straight run.
+        if not (
+            bound.max_x + 16000 >= x0
+            and bound.min_x - 16000 <= x1
+            and bound.max_y + 16000 >= y0
+            and bound.min_y - 16000 <= y1
         ):
             continue
         x_set.update((bound.min_x - 1, bound.max_x + 1))
@@ -638,9 +643,12 @@ def _visibility_path(
     heap = [(0, 0, 0, 0, *start)]
     reached = None
     visited = 0
+    # A goal-window retry must use only its selected real T candidates.
+    # Earlier unreachable goals outside the window cannot impose their
+    # shorter distance as a false detour bound on a farther physical T.
     best_direct = min(
         abs(source.x - goal.x) + abs(source.y - goal.y)
-        for goal in goals
+        for goal in reachable_goals
     )
     cache: dict[tuple[Point, Point, bool], tuple[bool, int]] = {}
     ink_rejections: dict[tuple[str, int, str], tuple[Point, Point]] = {}
