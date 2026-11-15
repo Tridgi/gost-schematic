@@ -271,7 +271,8 @@ def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 2500
         or len({row["reference"] for row in component_rows}) != 23
         or len(net_rows) != 15
         or len({row["name"] for row in net_rows}) != 15
-        or len(all_refs) != len(set(all_refs)) != 62
+        or len(all_refs) != 62
+        or len(set(all_refs)) != 62
     ):
         raise ValueError("PAINT_BOM_NETLIST_PHYSICAL_SOURCE_IDENTITY_DRIFT")
     exports = {
