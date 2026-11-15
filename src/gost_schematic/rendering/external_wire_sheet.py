@@ -168,7 +168,7 @@ def render_external_wire_sheet(
     if source_continuation_project is not None:
         append_verified_sheet_continuations(
             root, circuit, source_continuation_project, style,
-            diagnostic=diagnostic,
+            diagnostic=diagnostic, symbols_by_part=symbols_by_part,
         )
     if diagnostic:
         annotations = ET.SubElement(root, _SVG + "metadata", {
