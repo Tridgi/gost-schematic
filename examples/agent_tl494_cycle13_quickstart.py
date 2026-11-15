@@ -57,7 +57,8 @@ def _mutation_matrix(original: dict[str, Any]) -> list[dict[str, Any]]:
                 f"Invalid source request not denied: {name}: {code} / {report}"
             )
         cases.append({"case": name, "exit_code": code,
-                      "diagnostic_code": report["code"], "rejected": True})
+                      "diagnostic_code": report["code"],
+                      "diagnostic": report["diagnostic"], "rejected": True})
 
     def component(request: dict[str, Any], reference: str) -> dict[str, Any]:
         return next(c for c in request["components"] if c["reference"] == reference)
@@ -188,6 +189,7 @@ def run(output: Path) -> dict[str, Any]:
         "cli_verified_read_only_exit_code": exit_code,
         "refusal_tests_passed": len(negatives),
         "refusal_tests_total": len(negatives),
+        "blocked_stage_diagnostics": report["diagnostics"],
         "artifacts": artifacts,
         "next_unmet_gate": (
             "Separate trusted full manufacturer Circuit import with reviewed "
