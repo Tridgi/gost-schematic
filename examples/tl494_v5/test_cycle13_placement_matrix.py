@@ -1,4 +1,6 @@
 """Cycle13 deterministic source-only relocation and fail-closed evidence tests."""
+from pathlib import Path
+
 import pytest
 
 from examples.tl494_v5.compact_layout import (
@@ -11,9 +13,12 @@ from examples.tl494_v5.cycle13_placement_matrix import (
     summarize_trial,
 )
 from examples.tl494_v5.route_candidate_driver import (
+    REAL_SOURCE_NAMES,
+    Candidate,
     load_original_owner_fixture,
     position_only_move,
     restore_original_named_nets,
+    run_candidate,
 )
 
 
@@ -116,3 +121,20 @@ def test_layout_block_is_explicit_not_zero_drc_success():
     assert report["status"] == "BLOCKED_LAYOUT_NO_ROUTE_ATTEMPT"
     assert report["completed_nets"] == 0
     assert report["print_after_released"] is False
+
+
+@pytest.mark.parametrize(
+    ("mode", "priority", "expected_error"),
+    [
+        ("none", REAL_SOURCE_NAMES, "UNRECOGNIZED_OWNER_ROUTING_MODE"),
+        ("congested-veto", ("SWITCH",), "OWNER_CONTROLS_CONGESTED_PRIORITY"),
+    ],
+)
+def test_owner_routing_mode_must_not_approve_forged_net_priority(
+    mode, priority, expected_error,
+):
+    # The owner routing interface is checked BEFORE any font or file IO.
+    # A source-authentic priority cannot be silently replaced by a typo.
+    trial = Candidate("invalid", priority, router_mode=mode)
+    with pytest.raises(ValueError, match=expected_error):
+        run_candidate(Path("/unavailable/source.ttf"), trial, node_cap=100)
