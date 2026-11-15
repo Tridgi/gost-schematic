@@ -2,9 +2,9 @@ name: Visual CAD R1 source gate
 on:
   push:
     branches: [ui/visual-cad-mvp]
-    paths: ['ui/integration/**', 'ui/experiments/r0/**', '.github/workflows/visual-cad-r1.yml']
+    paths: ['ui/integration/**', 'ui/experiments/r0/**', 'ui/contracts/**', 'ui/editor/src/model/**', 'ui/editor/src/wires/**', 'ui/editor/src/canvas/**', 'ui/fixtures/**', 'ui/qa/chat3-canvas/**', '.github/workflows/visual-cad-r1.yml']
   pull_request:
-    paths: ['ui/integration/**', 'ui/experiments/r0/**', '.github/workflows/visual-cad-r1.yml']
+    paths: ['ui/integration/**', 'ui/experiments/r0/**', 'ui/contracts/**', 'ui/editor/src/model/**', 'ui/editor/src/wires/**', 'ui/editor/src/canvas/**', 'ui/fixtures/**', 'ui/qa/chat3-canvas/**', '.github/workflows/visual-cad-r1.yml']
   workflow_dispatch:
 jobs:
   candidate-v2:
@@ -33,3 +33,52 @@ jobs:
           node --check ui/experiments/r0/app.mjs
       - name: R0 UI model regression (NOT React/Tauri acceptance)
         run: node --test ui/experiments/r0/tests/core.test.mjs
+
+  source-v2-model:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned standalone model test requirements
+        run: python -m pip install -r ui/editor/src/model/requirements-dev.txt
+      - name: Source-locked model, schema and negative fixtures
+        env:
+          PYTHONPATH: ui/editor/src/model
+        run: python -m pytest -q ui/editor/src/model/tests
+  manual-wire-domain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ui/editor/src/wires
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned TypeScript for standalone wire tests (not production app lock)
+        run: npm install --no-audit --no-fund --ignore-scripts --no-save typescript@5.8.3
+      - name: Strict TS wire typecheck
+        run: npm run typecheck
+      - name: Compile standalone wire engine
+        run: npm run build
+      - name: Manual wire graph positive/negative suite
+        run: npm test
+  canvas-and-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Static canvas source
+        run: |
+          node --check ui/editor/src/canvas/precision.mjs
+          node --check ui/editor/src/canvas/scene-projection.mjs
+          node --check ui/qa/chat3-canvas/oracle.mjs
+      - name: Independent signed-geometry and QA oracle
+        run: node --test ui/editor/src/canvas/*.test.mjs ui/qa/chat3-canvas/*.test.mjs
