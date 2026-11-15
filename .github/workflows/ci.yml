@@ -100,12 +100,24 @@ jobs:
           name: sheet-label-geometry-review
           path: output/sheet-review/*.svg
           if-no-files-found: warn
+      - name: Restore pinned SIL OFL OpenGOST Type A from verified actions cache
+        if: matrix.python-version == '3.12'
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/fonts/OpenGOST-TypeA-OpenGOSTtypeA-Regular.ttf
+          key: opengost-type-a-v0.7-f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a
       - name: Install open-license OpenGOST Type A for sample render
         if: matrix.python-version == '3.12'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           python scripts/install_opengost_type_a.py \
-            --directory "$HOME/.local/share/fonts"
+            --directory "$HOME/.local/share/fonts" \
+            --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a
           fc-cache -f
+          FONT_FILE="$HOME/.local/share/fonts/OpenGOST-TypeA-OpenGOSTtypeA-Regular.ttf"
+          test -f "$FONT_FILE"
+          test "$(realpath "$FONT_FILE")" = "$(realpath "$(fc-match -f '%{file}' 'OpenGost Type A')")"
       - name: Generate GOST Type A capacitor review
         if: matrix.python-version == '3.12'
         run: |
