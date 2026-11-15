@@ -7,7 +7,11 @@ and pinned YGO2 #113 selects/validates 13 original catalog UGO. The full
 sheet is composed by the renderer from 23 native components.
 """
 import argparse
+import ast
+import hashlib
+import inspect
 import json
+from textwrap import dedent
 from dataclasses import asdict, replace
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -91,42 +95,90 @@ def _net_pin_id_map(circuit: Circuit):
     return owner
 
 
-def _compose_frozen_circuit_with_real_type_a(compose_circuit, font_file: Path):
-    """Use authentic OpenGOST Type A where 2026 frozen fixture says obsolete TT.
+def _declared_type_a_family(builder) -> str:
+    """Read the *actual* owner builder's strict font request, not an alias.
 
-    Source's legacy inspection hardcodes 'OpenGost Type A TT', which is NOT
-    the real upstream font's reported face 'OpenGOST type A'. Apply a scoped
-    dependency injection for the FONT FACE SELECTOR ONLY; restore it on
-    return, never modify the source builder, physical pinout, GOST glyphs,
-    typed Circuit, reference SHA or any saved SVG.
+    Only literal, non-optional 3500um Type-A inspection on the genuine
+    build() callable is accepted. A renamed or runtime-dynamic selector is
+    not permission to silently relax the font-family security check.
     """
-    from examples import tl494_ic_paint_reference as frozen_ic
+    if builder.__name__ != "build" or (
+        builder.__module__ != "examples.tl494_ic_paint_reference"
+    ):
+        raise ValueError("FULL_NATIVE_TYPE_A_UNTRUSTED_OWNER_BUILDER")
+    tree = ast.parse(dedent(inspect.getsource(builder)))
+    calls = [
+        node for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "inspect_type_a_font"
+    ]
+    if len(calls) != 1 or calls[0].args:
+        raise ValueError("FULL_NATIVE_TYPE_A_OWNER_SELECTOR_NOT_LITERAL")
+    keywords = {item.arg: item.value for item in calls[0].keywords}
+    if set(keywords) != {"h_um", "family", "require_family_match"} or any(
+        not isinstance(item, ast.Constant) for item in keywords.values()
+    ) or keywords["h_um"].value != 3500 or (
+        keywords["require_family_match"].value is not True
+    ):
+        raise ValueError("FULL_NATIVE_TYPE_A_OWNER_SELECTOR_NOT_LITERAL")
+    family = keywords["family"].value
+    if family not in ("OpenGost Type A TT", "OpenGOST type A"):
+        raise ValueError("FULL_NATIVE_TYPE_A_UNKNOWN_SOURCE_FAMILY")
+    return family
+
+
+def _compose_frozen_circuit_with_real_type_a(compose_circuit, font_file: Path):
+    """Require the actual 3500um SHA-pinned Type A for either source builder.
+
+    Historical e695 builder requests an OBSOLETE face 'OpenGost Type A TT';
+    only for that verified source callable, inject a scoped actual-font
+    selector. Modern RECON builder requests 'OpenGOST type A': call it
+    WITHOUT monkeypatching. Neither path weakens family/SHA/cap checking.
+    """
+    from examples import tl494_connected_native as connected
+    from examples import tl494_ic_paint_reference as source_ic
     from gost_schematic.standards.type_a_font import inspect_type_a_font
 
-    original = frozen_ic.inspect_type_a_font
+    if connected.build_paint_ic is not source_ic.build:
+        raise ValueError("FULL_NATIVE_TYPE_A_BUILDER_ALIAS_DRIFT")
+    family = _declared_type_a_family(source_ic.build)
+    requested = Path(font_file)
+    if hashlib.sha256(requested.read_bytes()).hexdigest() != (
+        "f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a"
+    ):
+        raise ValueError("FULL_NATIVE_TYPE_A_PINNED_SHA_MISMATCH")
+    verified = inspect_type_a_font(
+        requested, h_um=3500, family="OpenGOST type A",
+        require_family_match=True,
+    )
+    if (
+        verified.measured_cap_height_um != 3500
+        or verified.requested_cap_height_um != 3500
+    ):
+        raise ValueError("FULL_NATIVE_TYPE_A_TRUE_CAP_HEIGHT_INVALID")
+    if family == "OpenGOST type A":
+        return compose_circuit(requested)
+
+    original = source_ic.inspect_type_a_font
 
     def inspect_actual_open_gost(
         font_path, *, h_um, family, require_family_match,
     ):
-        if family != "OpenGost Type A TT" or not require_family_match:
-            raise ValueError("FROZEN_REFERENCE_TYPE_A_SIGNATURE_CHANGED")
-        result = inspect_type_a_font(
-            font_path, h_um=h_um,
-            family="OpenGOST type A", require_family_match=True,
-        )
         if (
-            result.measured_cap_height_um != 3500
-            or result.requested_cap_height_um != 3500
+            family != "OpenGost Type A TT"
+            or h_um != 3500
+            or require_family_match is not True
+            or Path(font_path).resolve() != requested.resolve()
         ):
-            raise ValueError("FULL_NATIVE_TYPE_A_TRUE_CAP_HEIGHT_INVALID")
-        return result
+            raise ValueError("FROZEN_REFERENCE_TYPE_A_SIGNATURE_CHANGED")
+        return verified
 
-    frozen_ic.inspect_type_a_font = inspect_actual_open_gost
+    source_ic.inspect_type_a_font = inspect_actual_open_gost
     try:
-        return compose_circuit(font_file)
+        return compose_circuit(requested)
     finally:
-        frozen_ic.inspect_type_a_font = original
-
+        source_ic.inspect_type_a_font = original
 
 def construct_native_paint(font_file: Path):
     """Build real electrical Circuit AND source-correct owner model, once."""
