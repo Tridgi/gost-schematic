@@ -106,6 +106,7 @@ def _invoke(scene, **updates):
 def test_signed_16_true_source_render_is_blocked_on_empty_route(real_signed_scene):
     result = _invoke(real_signed_scene)
     assert result.manifest["signed_manufacturer_ic_16_verified"]
+    assert result.manifest["source_b_two_physical_vectors_verified"]
     assert not result.printable_candidate
     assert "TL494_SIGNED_MANUFACTURER_PHYSICAL_BINDING_MISSING" not in (
         result.manifest["blockers"]
@@ -150,3 +151,48 @@ def test_raw_sixteen_pin_overlay_is_not_trusted(real_signed_scene):
         raw.manifest["blockers"]
     )
     assert not raw.printable_candidate
+
+
+def test_signed_source_b_rejects_one_micrometre_forged_physical_tip(
+    real_signed_scene,
+):
+    geo = import_module("gost_schematic.core.geometry")
+    source_b = real_signed_scene[11]
+    first = source_b.stubs[0]
+    moved = replace(
+        first, start=geo.Point(first.start.x + 1, first.start.y),
+    )
+    forged = replace(source_b, stubs=(moved, *source_b.stubs[1:]))
+    with pytest.raises(
+        ValueError, match="SOURCE_B_PHYSICAL_PROVENANCE_INVALID.*PHYSICAL_MISMATCH",
+    ):
+        _invoke(real_signed_scene, source_continuation_project=forged)
+
+
+def test_signed_source_b_rejects_forged_a_marker_without_new_net(
+    real_signed_scene,
+):
+    source_b = real_signed_scene[11]
+    modified = replace(
+        source_b.endpoints[0], label="a",
+    )
+    forged = replace(
+        source_b, endpoints=(modified, *source_b.endpoints[1:]),
+    )
+    with pytest.raises(ValueError, match="SOURCE_B_PHYSICAL_IDENTITY_DRIFT"):
+        _invoke(real_signed_scene, source_continuation_project=forged)
+
+
+def test_signed_source_b_rejects_missing_physical_r5_pin(
+    real_signed_scene,
+):
+    source_b = real_signed_scene[11]
+    model = import_module("gost_schematic.model.circuit")
+    altered = replace(
+        source_b.stubs[1], pin=model.PinRef("DA1", "16"),
+    )
+    forged = replace(
+        source_b, stubs=(source_b.stubs[0], altered),
+    )
+    with pytest.raises(ValueError, match="SOURCE_B_PHYSICAL_IDENTITY_DRIFT"):
+        _invoke(real_signed_scene, source_continuation_project=forged)
