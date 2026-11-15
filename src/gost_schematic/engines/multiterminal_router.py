@@ -897,6 +897,12 @@ def route_circuit_net_trees(
         raise ValueError("ROUTE_DUPLICATE_CIRCUIT_NET")
     if type(max_order_restarts) is not int or not 0 <= max_order_restarts <= 5:
         raise ValueError("ROUTE_INVALID_MAX_RESTARTS")
+    if (
+        type(priority) is not tuple
+        or any(type(name) is not str for name in priority)
+        or len(set(priority)) != len(priority)
+    ):
+        raise ValueError("ROUTE_INVALID_DUPLICATED_NET_PRIORITY")
     known = {net.name: net for net in circuit.nets}
     names = tuple(x for x in priority if x in known)
     names += tuple(sorted(set(known) - set(names)))
@@ -999,6 +1005,7 @@ def route_circuit_with_order_fallback(
     max_detour_ratio: float = 3.0,
     max_order_restarts: int = 2,
     try_priorities: int = 3,
+    priority_offset: int = 0,
 ) -> GlobalRoutePreview:
     """Search independent functional route-order permutations without rewiring.
 
@@ -1008,9 +1015,17 @@ def route_circuit_with_order_fallback(
     fewer post-route DRC errors, fewer crossings/bends and shorter length.
     A partial graph always remains BLOCKED, even if geometric DRC is clean.
     """
-    if type(try_priorities) is not int or not 1 <= try_priorities <= 3:
-        raise ValueError("ROUTE_INVALID_FUNCTIONAL_ORDER_TRIAL_COUNT")
     original = SOURCE_TL494_ROUTE_PRIORITY
+    congested = (
+        "FEEDBACK", "OSCILLATOR_RT", "CONTROL_REFERENCE",
+        "GATE_DRIVE", "COMMON",
+    )
+    # A rejected net may reserve a scarce physical IC pin lane only if its
+    # successfully routed *previous* Nets already occupy that corridor.
+    # Test independent whole-graph orders, never splice wires between trials.
+    # In particular, front-load the five real current SOURCE bottlenecks:
+    # the default order put FEEDBACK/RT/COMMON after many other Net trunks.
+    # These are routing search heuristics, not modified electrical Nets.
     orders = (
         ("SOURCE_FUNCTIONAL", original),
         ("COMMON_FIRST", ("COMMON", *(p for p in original if p != "COMMON"))),
@@ -1019,7 +1034,24 @@ def route_circuit_with_order_fallback(
             *(p for p in original if p not in
               {"INPUT_POS", "SWITCH", "COMMON"}),
         )),
-    )[:try_priorities]
+        ("CONGESTED_PIN_FANOUT_FIRST", (
+            *congested, *(p for p in original if p not in congested),
+        )),
+        ("CONGESTED_REVERSE_ROOTS", (
+            *reversed(congested),
+            *(p for p in original if p not in congested),
+        )),
+        ("SOURCE_REVERSE", tuple(reversed(original))),
+    )
+    if (
+        type(try_priorities) is not int
+        or type(priority_offset) is not int
+        or not 1 <= try_priorities <= len(orders)
+        or not 0 <= priority_offset < len(orders)
+        or priority_offset + try_priorities > len(orders)
+    ):
+        raise ValueError("ROUTE_INVALID_FUNCTIONAL_ORDER_TRIAL_COUNT")
+    orders = orders[priority_offset:priority_offset + try_priorities]
     history: list[tuple[str, int, int]] = []
     candidate_results: list[tuple[str, GlobalRoutePreview]] = []
     for strategy, priority in orders:
