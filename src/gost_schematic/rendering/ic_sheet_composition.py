@@ -230,8 +230,10 @@ def append_verified_sheet_continuations(
         if comp is None:
             raise ValueError("SHEET_CONTINUATION_MISSING_PHYSICAL_PART")
         symbol = symbols_by_part.get(comp.part_id)
-        if not isinstance(symbol, SymbolDefinition):
+        if symbol is None:
             raise ValueError("SHEET_CONTINUATION_MISSING_PHYSICAL_UGO")
+        if not isinstance(symbol, SymbolDefinition):
+            raise TypeError("SHEET_CONTINUATION_INVALID_PHYSICAL_UGO_TYPE")
         tip = comp.pin_positions(symbol).get(stub.pin.number)
         if tip is None or tip != stub.start:
             raise ValueError("SHEET_CONTINUATION_SOURCE_B_PHYSICAL_TIP_DRIFT")
