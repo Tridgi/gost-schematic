@@ -8,8 +8,8 @@ from examples.tl494_v5.compact_layout import (
     actual_component_occupied_mm,
     compact_source_assembly,
 )
-from gost_schematic.core.geometry import Point
 from examples.tl494_v5.native_circuit import assemble_native_v5
+from gost_schematic.core.geometry import Point
 from gost_schematic.model.circuit import Circuit
 
 
