@@ -116,7 +116,11 @@ jobs:
           FONT="$(find "$HOME/.local/share/fonts" -name '*TypeA*' -type f -print -quit)"
           test -f "$FONT"
           TRIALS=2
-          if [ "$PAPER" = "A2" ]; then TRIALS=1; fi
+          OFFSET=0
+          # Earlier exact A2 and A3 are both independently verified 10/15.
+          # Probe source-safe *congested Nets first* on A2, not fake resizing:
+          # preserve all 23 positions/15 Nets/62 physical PinRefs.
+          if [ "$PAPER" = "A2" ]; then OFFSET=3; fi
           python -m examples.review_tl494_compact_cycle9 \
             --font-file "$FONT" \
             --owner-sha "$GITHUB_SHA" \
@@ -124,6 +128,7 @@ jobs:
             --max-nodes 25000 \
             --page-format "$PAPER" \
             --priority-trials "$TRIALS" \
+            --priority-offset "$OFFSET" \
             --output "$OUT" \
             2>&1 | tee "$OUT/owner-route-trace.log"
       - name: Check actual 23/15/16/62 and blocked-safe native SVG
@@ -144,6 +149,15 @@ jobs:
               "added": [], "removed": [], "physical_members_changed": [],
           }
           assert data["measured_annotation_guards"] >= 39
+          assert data["route_priority_trials"] == 2
+          assert data["route_priority_offset"] == (3 if paper == "A2" else 0)
+          expected_strategies = (
+              ("CONGESTED_PIN_FANOUT_FIRST", "CONGESTED_REVERSE_ROOTS")
+              if paper == "A2" else ("SOURCE_FUNCTIONAL", "COMMON_FIRST")
+          )
+          assert tuple(
+              item["strategy"] for item in data["routing"]["route_order_trials"]
+          ) == expected_strategies
           assert data["real_source_UGO_draft_count"] == 13
           assert "VT1" in data["actual_source_UGO_authority"]
           assert all(
