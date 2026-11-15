@@ -9,7 +9,12 @@ import pytest
 from PIL import Image
 
 from ui.bridge.export.canonical import (
-    ExportError, ExportRequest, compose_clean_svg, export, mm, pixels,
+    ExportError,
+    ExportRequest,
+    compose_clean_svg,
+    export,
+    mm,
+    pixels,
 )
 
 SVG = "{http://www.w3.org/2000/svg}"
@@ -45,10 +50,10 @@ def test_exact_mm_and_page_dpi():
                                                    "landscape"))
         svg, warnings = compose_clean_svg(engine_svg(), req)
         root = ET.fromstring(svg)
-        assert root.attrib["width"] == mm((210000 if page == "A4" else
-                                            420000 if page == "A3" else 594000)) + "mm"
-        assert root.attrib["height"] == mm((297000 if page in {"A4", "A3"} else
-                                             420000)) + "mm"
+        expected_w_um = {"A4": 210000, "A3": 420000, "A2": 594000}[page]
+        expected_h_um = {"A4": 297000, "A3": 297000, "A2": 420000}[page]
+        assert root.attrib["width"] == mm(expected_w_um) + "mm"
+        assert root.attrib["height"] == mm(expected_h_um) + "mm"
         assert not warnings
         assert (pixels(int(root.attrib["width"][:-2].split('.')[0]) * 1000, 300),
                 pixels(int(root.attrib["height"][:-2].split('.')[0]) * 1000, 300)) == expected
@@ -110,15 +115,15 @@ def test_region_png_pixels():
 
 
 @pytest.mark.parametrize("bad", [
-    b'<svg xmlns="http://www.w3.org/2000/svg" width="80mm" height="40mm" '
-    b'viewBox="10 5 80 40"><script/></svg>',
-    b'<svg xmlns="http://www.w3.org/2000/svg" width="80mm" height="40mm" '
-    b'viewBox="10 5 80 40"><image href="evil"/></svg>',
-    b'<!DOCTYPE svg [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>'
-    b'<svg xmlns="http://www.w3.org/2000/svg" width="80mm" height="40mm" '
-    b'viewBox="10 5 80 40"/>',
-    b'<svg xmlns="http://www.w3.org/2000/svg" width="80mm" height="41mm" '
-    b'viewBox="10 5 80 40"/>',
+    (b'<svg xmlns="http://www.w3.org/2000/svg" width="80mm" height="40mm" '
+     b'viewBox="10 5 80 40"><script/></svg>'),
+    (b'<svg xmlns="http://www.w3.org/2000/svg" width="80mm" height="40mm" '
+     b'viewBox="10 5 80 40"><image href="evil"/></svg>'),
+    (b'<!DOCTYPE svg [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>'
+     b'<svg xmlns="http://www.w3.org/2000/svg" width="80mm" height="40mm" '
+     b'viewBox="10 5 80 40"/>'),
+    (b'<svg xmlns="http://www.w3.org/2000/svg" width="80mm" height="41mm" '
+     b'viewBox="10 5 80 40"/>'),
 ])
 def test_unsafe_or_mismatched_svg_fails_closed(bad):
     with pytest.raises(ExportError):

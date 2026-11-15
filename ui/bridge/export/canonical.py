@@ -14,7 +14,7 @@ import hashlib
 import io
 import re
 from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Literal
 from xml.etree import ElementTree as ET
 
@@ -70,7 +70,7 @@ def _from_mm(text: str) -> int:
 def pixels(um: int, dpi: int) -> int:
     if type(dpi) is not int or not 72 <= dpi <= 600 or type(um) is not int or um <= 0:
         raise ExportError("DPI must be 72..600 and physical size positive integer µm")
-    return int((Decimal(um) * dpi / 25_400).quantize(Decimal("1"),
+    return int((Decimal(um) * dpi / 25_400).quantize(Decimal(1),
                                                       rounding=ROUND_HALF_UP))
 
 
