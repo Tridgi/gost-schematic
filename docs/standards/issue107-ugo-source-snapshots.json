@@ -1,0 +1,1048 @@
+{
+  "schema": 1,
+  "baseline": "afd359cf2c63337471e746e5ff7f399b76394612",
+  "reference_branch": "reference/tl494-native-rework-20261114",
+  "reference_head": "e695c415fdced164b0e0c39c5249d030795a0aa6",
+  "cards": [
+    {
+      "id": "diode.general",
+      "owner_file": "src/gost_schematic/catalog/symbols/diodes/general.json",
+      "owner_blob_sha": "d632f3bafde7ab794cb72e8af9cc67ba33960c0e",
+      "owner_stroke_mm": 0.3,
+      "geometry": {
+        "rectangles": [],
+        "lines": [
+          [
+            [
+              -10,
+              0
+            ],
+            [
+              -2.5,
+              0
+            ]
+          ],
+          [
+            [
+              2.5,
+              0
+            ],
+            [
+              10,
+              0
+            ]
+          ],
+          [
+            [
+              -2.5,
+              -3
+            ],
+            [
+              2.5,
+              0
+            ]
+          ],
+          [
+            [
+              2.5,
+              0
+            ],
+            [
+              -2.5,
+              3
+            ]
+          ],
+          [
+            [
+              -2.5,
+              3
+            ],
+            [
+              -2.5,
+              -3
+            ]
+          ],
+          [
+            [
+              2.5,
+              -3.3
+            ],
+            [
+              2.5,
+              3.3
+            ]
+          ]
+        ],
+        "circles": []
+      },
+      "pins": [
+        {
+          "number": "1",
+          "at_mm": [
+            -10,
+            0
+          ],
+          "side": "left",
+          "label": "A"
+        },
+        {
+          "number": "2",
+          "at_mm": [
+            10,
+            0
+          ],
+          "side": "right",
+          "label": "K"
+        }
+      ],
+      "coil_profile": null
+    },
+    {
+      "id": "diode.schottky",
+      "owner_file": "src/gost_schematic/catalog/symbols/diodes/schottky.json",
+      "owner_blob_sha": "38cf0cd20b111719cb2b9b3147397346e455b231",
+      "owner_stroke_mm": 0.3,
+      "geometry": {
+        "rectangles": [],
+        "lines": [
+          [
+            [
+              -10,
+              0
+            ],
+            [
+              -2.5,
+              0
+            ]
+          ],
+          [
+            [
+              2.5,
+              0
+            ],
+            [
+              10,
+              0
+            ]
+          ],
+          [
+            [
+              -2.5,
+              -3
+            ],
+            [
+              2.5,
+              0
+            ]
+          ],
+          [
+            [
+              2.5,
+              0
+            ],
+            [
+              -2.5,
+              3
+            ]
+          ],
+          [
+            [
+              -2.5,
+              3
+            ],
+            [
+              -2.5,
+              -3
+            ]
+          ],
+          [
+            [
+              2.5,
+              -3.3
+            ],
+            [
+              2.5,
+              3.3
+            ]
+          ],
+          [
+            [
+              2.5,
+              -3.3
+            ],
+            [
+              4.2,
+              -3.3
+            ]
+          ],
+          [
+            [
+              4.2,
+              -3.3
+            ],
+            [
+              4.2,
+              -1.8
+            ]
+          ],
+          [
+            [
+              2.5,
+              3.3
+            ],
+            [
+              0.8,
+              3.3
+            ]
+          ],
+          [
+            [
+              0.8,
+              3.3
+            ],
+            [
+              0.8,
+              4.8
+            ]
+          ]
+        ],
+        "circles": []
+      },
+      "pins": [
+        {
+          "number": "1",
+          "at_mm": [
+            -10,
+            0
+          ],
+          "side": "left",
+          "label": "A"
+        },
+        {
+          "number": "2",
+          "at_mm": [
+            10,
+            0
+          ],
+          "side": "right",
+          "label": "K"
+        }
+      ],
+      "coil_profile": null
+    },
+    {
+      "id": "transistor.mosfet_n_enh",
+      "owner_file": "src/gost_schematic/catalog/symbols/transistors/mosfet_n_enh.json",
+      "owner_blob_sha": "0ca4a854d72ba314aca897b067477c2aca621ab5",
+      "owner_stroke_mm": 0.3,
+      "geometry": {
+        "rectangles": [],
+        "lines": [
+          [
+            [
+              -11,
+              0
+            ],
+            [
+              -4,
+              0
+            ]
+          ],
+          [
+            [
+              0,
+              -18
+            ],
+            [
+              0,
+              -5
+            ]
+          ],
+          [
+            [
+              0,
+              5
+            ],
+            [
+              0,
+              11
+            ]
+          ],
+          [
+            [
+              -4,
+              -3
+            ],
+            [
+              -4,
+              3
+            ]
+          ],
+          [
+            [
+              0,
+              -5
+            ],
+            [
+              0,
+              -1
+            ]
+          ],
+          [
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              5
+            ]
+          ],
+          [
+            [
+              4,
+              0
+            ],
+            [
+              1,
+              0
+            ]
+          ],
+          [
+            [
+              2.4,
+              -1
+            ],
+            [
+              1,
+              0
+            ]
+          ],
+          [
+            [
+              2.4,
+              1
+            ],
+            [
+              1,
+              0
+            ]
+          ]
+        ],
+        "circles": []
+      },
+      "pins": [
+        {
+          "number": "1",
+          "at_mm": [
+            -11,
+            0
+          ],
+          "side": "left",
+          "label": "G"
+        },
+        {
+          "number": "2",
+          "at_mm": [
+            0,
+            -18
+          ],
+          "side": "top",
+          "label": "D"
+        },
+        {
+          "number": "3",
+          "at_mm": [
+            0,
+            11
+          ],
+          "side": "bottom",
+          "label": "S"
+        }
+      ],
+      "coil_profile": null
+    },
+    {
+      "id": "transistor.bjt_npn",
+      "owner_file": "src/gost_schematic/catalog/symbols/transistors/bjt_npn.json",
+      "owner_blob_sha": "219b123fbdcd87964e91df37db8ca4420744059a",
+      "owner_stroke_mm": 0.3,
+      "geometry": {
+        "rectangles": [],
+        "lines": [
+          [
+            [
+              -11,
+              0
+            ],
+            [
+              -2,
+              0
+            ]
+          ],
+          [
+            [
+              9,
+              -10
+            ],
+            [
+              -2,
+              -2
+            ]
+          ],
+          [
+            [
+              -2,
+              2
+            ],
+            [
+              9,
+              10
+            ]
+          ],
+          [
+            [
+              -2,
+              -3
+            ],
+            [
+              -2,
+              3
+            ]
+          ],
+          [
+            [
+              4.25,
+              7.5
+            ],
+            [
+              6.25,
+              8
+            ]
+          ],
+          [
+            [
+              5,
+              6.4
+            ],
+            [
+              6.25,
+              8
+            ]
+          ]
+        ],
+        "circles": []
+      },
+      "pins": [
+        {
+          "number": "1",
+          "at_mm": [
+            -11,
+            0
+          ],
+          "side": "left",
+          "label": "B"
+        },
+        {
+          "number": "2",
+          "at_mm": [
+            9,
+            -10
+          ],
+          "side": "right",
+          "label": "C"
+        },
+        {
+          "number": "3",
+          "at_mm": [
+            9,
+            10
+          ],
+          "side": "right",
+          "label": "E"
+        }
+      ],
+      "coil_profile": null
+    },
+    {
+      "id": "transistor.bjt_pnp",
+      "owner_file": "src/gost_schematic/catalog/symbols/transistors/bjt_pnp.json",
+      "owner_blob_sha": "9243b2b4d5018102fab41129b497e89bfa7c139d",
+      "owner_stroke_mm": 0.3,
+      "geometry": {
+        "rectangles": [],
+        "lines": [
+          [
+            [
+              -11,
+              0
+            ],
+            [
+              -2,
+              0
+            ]
+          ],
+          [
+            [
+              9,
+              -10
+            ],
+            [
+              -2,
+              -2
+            ]
+          ],
+          [
+            [
+              -2,
+              2
+            ],
+            [
+              9,
+              10
+            ]
+          ],
+          [
+            [
+              -2,
+              -3
+            ],
+            [
+              -2,
+              3
+            ]
+          ],
+          [
+            [
+              1,
+              2.7
+            ],
+            [
+              -0.625,
+              3
+            ]
+          ],
+          [
+            [
+              0.3,
+              4.4
+            ],
+            [
+              -0.625,
+              3
+            ]
+          ]
+        ],
+        "circles": []
+      },
+      "pins": [
+        {
+          "number": "1",
+          "at_mm": [
+            -11,
+            0
+          ],
+          "side": "left",
+          "label": "B"
+        },
+        {
+          "number": "2",
+          "at_mm": [
+            9,
+            -10
+          ],
+          "side": "right",
+          "label": "C"
+        },
+        {
+          "number": "3",
+          "at_mm": [
+            9,
+            10
+          ],
+          "side": "right",
+          "label": "E"
+        }
+      ],
+      "coil_profile": null
+    },
+    {
+      "id": "capacitor.fixed",
+      "owner_file": "src/gost_schematic/catalog/symbols/capacitors/fixed.json",
+      "owner_blob_sha": "3e173b1cd52120f4cedd26e0f43348864119ec47",
+      "owner_stroke_mm": 0.3,
+      "geometry": {
+        "rectangles": [],
+        "lines": [
+          [
+            [
+              -8,
+              0
+            ],
+            [
+              -0.75,
+              0
+            ]
+          ],
+          [
+            [
+              0.75,
+              0
+            ],
+            [
+              8,
+              0
+            ]
+          ],
+          [
+            [
+              -0.75,
+              -4
+            ],
+            [
+              -0.75,
+              4
+            ]
+          ],
+          [
+            [
+              0.75,
+              -4
+            ],
+            [
+              0.75,
+              4
+            ]
+          ]
+        ],
+        "circles": []
+      },
+      "pins": [
+        {
+          "number": "1",
+          "at_mm": [
+            -8,
+            0
+          ],
+          "side": "left",
+          "label": ""
+        },
+        {
+          "number": "2",
+          "at_mm": [
+            8,
+            0
+          ],
+          "side": "right",
+          "label": ""
+        }
+      ],
+      "coil_profile": null
+    },
+    {
+      "id": "capacitor.polarized",
+      "owner_file": "src/gost_schematic/catalog/symbols/capacitors/polarized.json",
+      "owner_blob_sha": "ba14a82d52696f8ffb8f89344c39b153374ffaa0",
+      "owner_stroke_mm": 0.3,
+      "geometry": {
+        "rectangles": [],
+        "lines": [
+          [
+            [
+              -8,
+              0
+            ],
+            [
+              -0.75,
+              0
+            ]
+          ],
+          [
+            [
+              0.75,
+              0
+            ],
+            [
+              8,
+              0
+            ]
+          ],
+          [
+            [
+              -0.75,
+              -4
+            ],
+            [
+              -0.75,
+              4
+            ]
+          ],
+          [
+            [
+              0.75,
+              -4
+            ],
+            [
+              0.75,
+              4
+            ]
+          ],
+          [
+            [
+              -3.5,
+              -4
+            ],
+            [
+              -2.5,
+              -4
+            ]
+          ],
+          [
+            [
+              -3,
+              -4.5
+            ],
+            [
+              -3,
+              -3.5
+            ]
+          ]
+        ],
+        "circles": []
+      },
+      "pins": [
+        {
+          "number": "1",
+          "at_mm": [
+            -8,
+            0
+          ],
+          "side": "left",
+          "label": "+"
+        },
+        {
+          "number": "2",
+          "at_mm": [
+            8,
+            0
+          ],
+          "side": "right",
+          "label": "-"
+        }
+      ],
+      "coil_profile": null
+    },
+    {
+      "id": "capacitor.electrolytic",
+      "owner_file": "src/gost_schematic/catalog/symbols/capacitors/electrolytic.json",
+      "owner_blob_sha": "8094edd30765c502c3474d75724e543da6bcb211",
+      "owner_stroke_mm": 0.3,
+      "geometry": {
+        "rectangles": [],
+        "lines": [
+          [
+            [
+              -9,
+              0
+            ],
+            [
+              -2.25,
+              0
+            ]
+          ],
+          [
+            [
+              2.25,
+              0
+            ],
+            [
+              9,
+              0
+            ]
+          ],
+          [
+            [
+              -2.25,
+              -4
+            ],
+            [
+              -0.75,
+              -4
+            ]
+          ],
+          [
+            [
+              -0.75,
+              -4
+            ],
+            [
+              -0.75,
+              4
+            ]
+          ],
+          [
+            [
+              -0.75,
+              4
+            ],
+            [
+              -2.25,
+              4
+            ]
+          ],
+          [
+            [
+              -2.25,
+              4
+            ],
+            [
+              -2.25,
+              -4
+            ]
+          ],
+          [
+            [
+              0.75,
+              -4
+            ],
+            [
+              2.25,
+              -4
+            ]
+          ],
+          [
+            [
+              2.25,
+              -4
+            ],
+            [
+              2.25,
+              4
+            ]
+          ],
+          [
+            [
+              2.25,
+              4
+            ],
+            [
+              0.75,
+              4
+            ]
+          ],
+          [
+            [
+              0.75,
+              4
+            ],
+            [
+              0.75,
+              -4
+            ]
+          ],
+          [
+            [
+              -4,
+              -4.5
+            ],
+            [
+              -3,
+              -4.5
+            ]
+          ],
+          [
+            [
+              -3.5,
+              -5
+            ],
+            [
+              -3.5,
+              -4
+            ]
+          ]
+        ],
+        "circles": []
+      },
+      "pins": [
+        {
+          "number": "1",
+          "at_mm": [
+            -9,
+            0
+          ],
+          "side": "left",
+          "label": "+"
+        },
+        {
+          "number": "2",
+          "at_mm": [
+            9,
+            0
+          ],
+          "side": "right",
+          "label": ""
+        }
+      ],
+      "coil_profile": null
+    },
+    {
+      "id": "resistor.variable",
+      "owner_file": "src/gost_schematic/catalog/symbols/resistors/variable.json",
+      "owner_blob_sha": "3f0d4c2f2a8ff0a85cf33f80e25862cf168d43db",
+      "owner_stroke_mm": 0.3,
+      "geometry": {
+        "rectangles": [
+          [
+            -5,
+            -2,
+            5,
+            2
+          ]
+        ],
+        "lines": [
+          [
+            [
+              -9,
+              0
+            ],
+            [
+              -5,
+              0
+            ]
+          ],
+          [
+            [
+              5,
+              0
+            ],
+            [
+              9,
+              0
+            ]
+          ],
+          [
+            [
+              0,
+              -9
+            ],
+            [
+              0,
+              -2
+            ]
+          ],
+          [
+            [
+              -1,
+              -3.5
+            ],
+            [
+              0,
+              -2
+            ]
+          ],
+          [
+            [
+              1,
+              -3.5
+            ],
+            [
+              0,
+              -2
+            ]
+          ]
+        ],
+        "circles": []
+      },
+      "pins": [
+        {
+          "number": "1",
+          "at_mm": [
+            -9,
+            0
+          ],
+          "side": "left",
+          "label": "A"
+        },
+        {
+          "number": "2",
+          "at_mm": [
+            9,
+            0
+          ],
+          "side": "right",
+          "label": "B"
+        },
+        {
+          "number": "3",
+          "at_mm": [
+            0,
+            -9
+          ],
+          "side": "top",
+          "label": "W"
+        }
+      ],
+      "coil_profile": null
+    },
+    {
+      "id": "inductor.ferromagnetic",
+      "owner_file": "src/gost_schematic/catalog/inductors/inductor.ferromagnetic.json",
+      "owner_blob_sha": "d1030f7b79778b3ecb69135db2a6c59c10b86c66",
+      "owner_stroke_mm": 0.3,
+      "geometry": null,
+      "pins": null,
+      "coil_profile": {
+        "schema_version": 1,
+        "id": "inductor.ferromagnetic",
+        "revision": 1,
+        "turns": 4,
+        "radius_mm": "2",
+        "lead_mm": "4",
+        "line_width_mm": "0.3",
+        "core": "ferromagnetic",
+        "normative_relation": "table_1_composition",
+        "normative_basis": "ГОСТ 2.723-68, табл. 1, пп. 1 и 2а — обмотка + ферромагнитный магнитопровод"
+      }
+    },
+    {
+      "id": "choke.ferromagnetic",
+      "owner_file": "src/gost_schematic/catalog/inductors/choke.ferromagnetic.json",
+      "owner_blob_sha": "f893514eb8282524927ef8e3c1f50902ef8c1b4b",
+      "owner_stroke_mm": 0.3,
+      "geometry": null,
+      "pins": null,
+      "coil_profile": {
+        "schema_version": 1,
+        "id": "choke.ferromagnetic",
+        "revision": 1,
+        "turns": 4,
+        "radius_mm": "2",
+        "lead_mm": "4",
+        "line_width_mm": "0.3",
+        "core": "ferromagnetic",
+        "normative_relation": "table_2_example",
+        "normative_basis": "ГОСТ 2.723-68, табл. 2, п. 8 — дроссель с ферромагнитным магнитопроводом"
+      }
+    },
+    {
+      "id": "inductor.magnetodielectric",
+      "owner_file": "src/gost_schematic/catalog/inductors/inductor.magnetodielectric.json",
+      "owner_blob_sha": "421fa3c2fe75f943d0c0837d6a45696b09e5b4fc",
+      "owner_stroke_mm": 0.3,
+      "geometry": null,
+      "pins": null,
+      "coil_profile": {
+        "schema_version": 1,
+        "id": "inductor.magnetodielectric",
+        "revision": 1,
+        "turns": 4,
+        "radius_mm": "2",
+        "lead_mm": "4",
+        "line_width_mm": "0.3",
+        "core": "magnetodielectric",
+        "normative_relation": "table_2_example",
+        "normative_basis": "ГОСТ 2.723-68, табл. 2, п. 5 — магнитодиэлектрический сердечник"
+      }
+    }
+  ]
+}

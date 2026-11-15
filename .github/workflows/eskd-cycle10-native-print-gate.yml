@@ -1,0 +1,203 @@
+name: ESKD Cycle10 real native TL494 print gate
+on:
+  pull_request:
+    branches: [integration/stage0-12]
+    paths:
+      - scripts/eskd_cycle10_native_print_gate.py
+      - tests/test_standards_cycle10_native_print_gate.py
+      - .github/workflows/eskd-cycle10-native-print-gate.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-native-print:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    env:
+      SOURCE_SHA: e695c415fdced164b0e0c39c5249d030795a0aa6
+      PAINT_SHA: 32f2efb2cdcb561cb2567a54448381de3cb87832
+      IC_SHA: 6161e9102cbc0c9e0491fb27ed7a496dc0b274bc
+      YGO_SHA: edc71a48035723d48a203ae2ea12588701f68ba8
+      PAINT_PINNED_NATIVE_REQUIRED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Unit and negative ESKD acceptance
+        run: |
+          python -m pip install -e ".[dev]"
+          ruff check scripts/eskd_cycle10_native_print_gate.py tests/test_standards_cycle10_native_print_gate.py
+          pytest -q tests/test_standards_cycle10_native_print_gate.py
+      - name: Worktree pinned actual PAINT owner, never merge
+        run: |
+          git fetch --no-tags --depth=1 origin "$PAINT_SHA" "$SOURCE_SHA" "$IC_SHA" "$YGO_SHA"
+          git worktree add --detach "$RUNNER_TEMP/tl494-paint-owner" "$PAINT_SHA"
+          echo "PAINT_OWNER_ROOT=$RUNNER_TEMP/tl494-paint-owner" >> "$GITHUB_ENV"
+          test "$(git -C "$RUNNER_TEMP/tl494-paint-owner" rev-parse HEAD)" = "$PAINT_SHA"
+      - name: Inject exact source models and electrical/catalog owner files read-only
+        working-directory: ${{ env.PAINT_OWNER_ROOT }}
+        run: |
+          for p in examples/tl494_named_photo_sheet.py examples/tl494_connected_native.py \
+            examples/tl494_native_rework.py examples/tl494_full_native_model.py \
+            examples/tl494_ic_paint_reference.py; do
+            git show "$SOURCE_SHA:$p" > "$p"
+          done
+          # Frozen TL494 source imports the REAL CatalogResolver from
+          # agent_project.  Merely copying five examples leaves that import
+          # missing, and PAINT's strict-positive tests must remain enabled.
+          for p in $(git ls-tree -r --name-only "$SOURCE_SHA" src/gost_schematic/agent_project); do
+            mkdir -p "$(dirname "$p")"
+            git show "$SOURCE_SHA:$p" > "$p"
+          done
+          test -s src/gost_schematic/agent_project/catalog.py
+          test -s src/gost_schematic/agent_project/__init__.py
+          # IMPORTANT: detached PAINT PR has only 18 catalog paths, while
+          # source e695c415 requires 52. Its old test passed against a
+          # different merged checkout; in this honest exact-HEAD worktree
+          # install ALL genuine source JSON symbols/parts/coil profiles.
+          # Never synthesize or alter production symbol JSON in our PR.
+          for p in $(git ls-tree -r --name-only "$SOURCE_SHA" \
+            src/gost_schematic/catalog/symbols \
+            src/gost_schematic/catalog/parts \
+            src/gost_schematic/catalog/inductors); do
+            mkdir -p "$(dirname "$p")"
+            git show "$SOURCE_SHA:$p" > "$p"
+          done
+          test -s src/gost_schematic/catalog/symbols/transistors/mosfet_n_enh.json
+          test -s src/gost_schematic/catalog/parts/transistors/mosfet_n_enh.json
+          test -s src/gost_schematic/catalog/symbols/diodes/schottky.json
+          for p in $(git ls-tree -r --name-only "$IC_SHA" src/gost_schematic/electrical); do
+            mkdir -p "$(dirname "$p")"
+            git show "$IC_SHA:$p" > "$p"
+          done
+          for p in src/gost_schematic/catalog/source_profiles.py \
+            src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json; do
+            mkdir -p "$(dirname "$p")"
+            git show "$YGO_SHA:$p" > "$p"
+          done
+          test -s src/gost_schematic/electrical/tl494cn.py
+          # Legacy source's typed named continuation engine is NOT in the
+          # IC owner branch snapshot; source-lock these genuine modules,
+          # preserving the IC owner version if one is present.
+          for p in src/gost_schematic/electrical/netrefs.py \
+            src/gost_schematic/electrical/netrefs_serde.py; do
+            if [ ! -f "$p" ]; then
+              mkdir -p "$(dirname "$p")"
+              git show "$SOURCE_SHA:$p" > "$p"
+            fi
+          done
+          test -s src/gost_schematic/electrical/netrefs.py
+          test "$(git rev-parse "$SOURCE_SHA")" = "$SOURCE_SHA"
+          test "$(git rev-parse "$IC_SHA")" = "$IC_SHA"
+          test "$(git rev-parse "$YGO_SHA")" = "$YGO_SHA"
+          # Verify import from the exact detached owner worktree. No shim.
+          PYTHONPATH="$PWD/src:$PWD" python - <<'PY'
+          import inspect
+          from examples.tl494_named_photo_sheet import compose_circuit
+          from gost_schematic.agent_project.catalog import CatalogResolver
+          resolver = CatalogResolver()
+          for symbol_id in (
+              "transistor.mosfet_n_enh", "diode.schottky",
+              "capacitor.polarized", "capacitor.fixed",
+              "inductor.ferromagnetic", "resistor.variable", "fuse.general",
+          ):
+              assert symbol_id in resolver.symbols, symbol_id
+          from gost_schematic.catalog.source_profiles import PINNED_REFERENCE_SHA
+          from gost_schematic.electrical.tl494cn import tl494cn_device
+          from gost_schematic.electrical.netrefs import NetContinuationProject
+          assert NetContinuationProject.__module__ == "gost_schematic.electrical.netrefs"
+          assert PINNED_REFERENCE_SHA == "e695c415fdced164b0e0c39c5249d030795a0aa6"
+          assert inspect.isfunction(compose_circuit)
+          assert CatalogResolver.__module__ == "gost_schematic.agent_project.catalog"
+          assert inspect.isfunction(tl494cn_device)
+          print("PASS true original agent_project + IC + catalog source imports")
+          PY
+      - name: Install actual Type A and SVG rasterizer
+        working-directory: ${{ env.PAINT_OWNER_ROOT }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python -m pip install -e ".[dev]"
+          python scripts/install_opengost_type_a.py \
+            --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a \
+            --directory "$HOME/.local/share/fonts"
+          fc-cache -f
+          FONT_FILE="$(find "$HOME/.local/share/fonts" -type f \( -iname '*TypeA*.ttf' -o -iname '*TypeA*.otf' \) | head -1)"
+          test -f "$FONT_FILE"
+          echo "REVIEW_FONT=$FONT_FILE" >> "$GITHUB_ENV"
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+      - name: Actual engine FULL 23-part source render and physical PNG
+        working-directory: ${{ env.PAINT_OWNER_ROOT }}
+        run: |
+          pytest -q tests/test_full_native_cycle9.py
+          python -m examples.render_tl494_full_native_cycle9 \
+            --font-file "$REVIEW_FONT" --output output/eskd-cycle10-real-paint
+          # Rebuild the ACTUAL typed frozen Circuit, independent of rendered
+          # SVG and of the owner-produced declarative manifest. Fail if the
+          # original 62 physical PinRefs or 16 DA1 numbers are lost.
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          from examples.render_tl494_full_native_cycle9 import construct_native_paint
+          source = construct_native_paint(Path(os.environ["REVIEW_FONT"]))
+          circuit, graph, _, _, _, _, _, _, continuation, _, _ = source
+          facts = {
+              "source_sha": os.environ["SOURCE_SHA"],
+              "components": sorted(part.reference for part in circuit.components),
+              "nets": [
+                  {
+                      "name": net.name,
+                      "members": sorted(f"{m.reference}.{m.number}" for m in net.members)
+                  } for net in circuit.nets
+              ],
+              "wire_segments": len(graph.segments),
+              "junctions": len(graph.junctions),
+              "nonphysical_b": [end.id for end in continuation.endpoints],
+              "all_15_nets_routed": False,
+          }
+          refs = [r for n in facts["nets"] for r in n["members"]]
+          assert len(facts["components"]) == 23
+          assert len(facts["nets"]) == 15
+          assert len(refs) == len(set(refs)) == 62
+          assert len(graph.segments) == 91 and len(graph.junctions) == 37
+          assert {r.split(".", 1)[1] for r in refs if r.startswith("DA1.")} == {
+              str(i) for i in range(1,17)
+          }
+          path = Path("output/eskd-cycle10-real-paint/TL494_real_source_62_pinrefs.json")
+          path.write_text(json.dumps(facts, indent=2, sort_keys=True)+"\n")
+          print("PASS independent true source: 23 parts, 15 Nets, 62 PinRef, 16 DA1")
+          PY
+          for mode in clean diagnostic; do
+            svg="output/eskd-cycle10-real-paint/TL494_native_23_bottom_to_top_${mode}.svg"
+            test -s "$svg"
+            rsvg-convert --background-color white --dpi-x 300 --dpi-y 300 \
+              --output "${svg%.svg}-300dpi.png" "$svg"
+          done
+      - name: Independent exact-owner print acceptance with explicit DRC FAIL
+        working-directory: ${{ env.PAINT_OWNER_ROOT }}
+        run: |
+          python "$GITHUB_WORKSPACE/scripts/eskd_cycle10_native_print_gate.py" \
+            --folder output/eskd-cycle10-real-paint \
+            --profile src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json \
+            --out "$GITHUB_WORKSPACE/output/eskd_cycle10_native_print_gate.json" \
+            --verify-png \
+            --typed-inventory output/eskd-cycle10-real-paint/TL494_real_source_62_pinrefs.json \
+            --expect-source-blocked
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ESKD-real-native-NOGO-${{ matrix.python-version }}
+          path: |
+            output/eskd_cycle10_native_print_gate.json
+            ${{ env.PAINT_OWNER_ROOT }}/output/eskd-cycle10-real-paint/TL494_full_native_23_engine_manifest.json
+            ${{ env.PAINT_OWNER_ROOT }}/output/eskd-cycle10-real-paint/TL494_real_source_62_pinrefs.json
+            ${{ env.PAINT_OWNER_ROOT }}/output/eskd-cycle10-real-paint/TL494_native_23_bottom_to_top_clean.svg
+            ${{ env.PAINT_OWNER_ROOT }}/output/eskd-cycle10-real-paint/TL494_native_23_bottom_to_top_diagnostic.svg
+            ${{ env.PAINT_OWNER_ROOT }}/output/eskd-cycle10-real-paint/TL494_native_23_bottom_to_top_clean-300dpi.png
+            ${{ env.PAINT_OWNER_ROOT }}/output/eskd-cycle10-real-paint/TL494_native_23_bottom_to_top_diagnostic-300dpi.png
+          if-no-files-found: error

@@ -1,0 +1,163 @@
+name: ESKD Cycle15 real PAINT signed TL494 A3 end-to-end NO-GO gate
+on:
+  pull_request:
+    branches: [integration/stage0-12]
+    paths:
+      - scripts/eskd_cycle15_real_paint_a3_release_gate.py
+      - scripts/eskd_cycle16_label_ink_gate.py
+      - tests/test_standards_cycle16_label_ink_gate.py
+      - scripts/eskd_cycle13_signed_b_print_gate.py
+      - scripts/eskd_cycle12_routed_source_gate.py
+      - .github/workflows/eskd-cycle15-real-paint-a3-gate.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  full-actual-artifact-evidence:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Ruff and source safety tests
+        run: |
+          python -m pip install -e ".[dev]"
+          ruff check scripts/eskd_cycle15_real_paint_a3_release_gate.py scripts/eskd_cycle16_label_ink_gate.py scripts/eskd_cycle12_routed_source_gate.py scripts/eskd_cycle13_signed_b_print_gate.py tests/test_standards_cycle16_label_ink_gate.py
+          pytest -q tests/test_standards_cycle12_routed_source_gate.py tests/test_standards_cycle13_signed_b_print_gate.py tests/test_standards_cycle16_label_ink_gate.py
+      - name: Download REAL PAINT signed native 23-part A3 clean diagnostic SVG PNG and DRC
+        uses: actions/download-artifact@v4
+        with:
+          repository: Tridgi/gost-schematic
+          run-id: 43720996792
+          github-token: ${{ github.token }}
+          name: TL494-PROOF-real-NEW-router-graph-NOT-printable-3.12
+          path: evidence/real-PAINT-C10
+      - name: Independently prove true two b lines, 16 physical DA1 and blocked full release
+        run: |
+          python -m scripts.eskd_cycle15_real_paint_a3_release_gate \
+            --folder evidence/real-PAINT-C10/tl494-C10-compact-A3-new-graph \
+            --artifact-run 43720996792 \
+            --paint-sha 252fed9077351493378348f4c0a0138c5e04c8b5 \
+            --clean-sha b944ac04a217b76599a67a334d8833ac16c691eaca2149d96387e7ccbec1e469 \
+            --out output/ESKD_C15_REAL_PAINT_A3_${{ matrix.python-version }}_BLOCKED.json \
+            --expect-blocked
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          p = next(Path("output").glob("*.json"))
+          x = json.loads(p.read_text(encoding="utf-8"))
+          assert x["actual_new_route"]["routed_nets"] == 6
+          assert x["actual_new_route"]["real_printed_segment_count"] == 37
+          assert x["original_physical_inventory"] == {"components":23,"nets":15,"pinrefs":62,"DA1_pins":16}
+          assert x["real_files"]["clean"]["source_b"]["actual_nonphysical_svg_lines"] == 2
+          assert x["real_files"]["diagnostic"]["source_b"]["actual_electrical_added_nets"] == 0
+          assert x["scope_2mm_distinct_and_1mm_internal_UGO"]["distinct_UGO_count"] == 23
+          assert x["scope_2mm_distinct_and_1mm_internal_UGO"]["separate_UGO_checked_pairs"] == 253
+          assert x["scope_39_catalog_type_a_label_ink"]["unmeasured_count"] == 39
+          assert x["scope_39_catalog_type_a_label_ink"]["producer_measured_count"] == 0
+          assert x["scope_39_catalog_type_a_label_ink"]["full_label_ink_verdict"].startswith("BLOCKED")
+          assert x["release_verdict"].startswith("NO_GO_")
+          print("TRUE OWNER ARTIFACT BLOCKED AS REQUIRED; no false full-route print PASS")
+          PY
+      - name: Hostile mutations on REAL downloaded native owner outputs
+        run: |
+          python - <<'PY'
+          from PIL import Image
+          import hashlib
+          import json
+          import shutil
+          import tempfile
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+          from scripts.eskd_cycle15_real_paint_a3_release_gate import (
+              NativeReleaseError, ROOT, audit,
+          )
+          from scripts.eskd_cycle13_signed_b_print_gate import SignedBPrintError
+
+          source = Path("evidence/real-PAINT-C10/tl494-C10-compact-A3-new-graph")
+          sha = "252fed9077351493378348f4c0a0138c5e04c8b5"
+          svg_ns = "{http://www.w3.org/2000/svg}"
+          tested = 0
+          for mutation, expected_code in [
+              ("remove_real_b_line", "SOURCE_B_TWO_ACTUAL_PHYSICAL_LOCAL_INK_LINES_MISSING"),
+              ("move_real_b_tip_1um", "SOURCE_B_REAL_INK_DOES_NOT_REACH_SIGNED_STUB_ENDPOINTS"),
+              ("drop_real_DA1_pin", "TRUE_DA1_16_PIN_SVG_NOT_PRESENT"),
+              ("fake_full_release", "PARTIAL_SVG_FAKES_FULL_RELEASE"),
+              ("swap_original_non_b_member", "FROZEN_15_EXACT_NET_MEMBER_SETS_REQUIRED"),
+              ("clean_forged_green", "DA1_16_TRUE_GREEN_ONLY_IN_DIAGNOSTIC_PNG"),
+              ("diagnostic_missing_green", "DA1_16_TRUE_GREEN_ONLY_IN_DIAGNOSTIC_PNG"),
+          ]:
+              with tempfile.TemporaryDirectory() as tmp:
+                  target = Path(tmp) / "owner"
+                  shutil.copytree(source, target)
+                  clean = target / f"{ROOT}_clean.svg"
+                  if mutation == "swap_original_non_b_member":
+                      netlist_file = target / "TL494_COMPACT_A3_SOURCE_NETLIST_DRAFT.json"
+                      source_nets = json.loads(netlist_file.read_text(encoding="utf-8"))
+                      x = next(n for n in source_nets["nets"] if n["name"] == "FEEDBACK")
+                      y = next(n for n in source_nets["nets"] if n["name"] == "GATE_DRIVE")
+                      x["pinrefs"][0], y["pinrefs"][0] = (
+                          y["pinrefs"][0], x["pinrefs"][0]
+                      )
+                      netlist_file.write_text(json.dumps(source_nets), encoding="utf-8")
+                  elif mutation in ("clean_forged_green", "diagnostic_missing_green"):
+                      selected = (
+                          f"{ROOT}_clean-300dpi.png"
+                          if mutation == "clean_forged_green"
+                          else f"{ROOT}_diagnostic-300dpi.png"
+                      )
+                      raster = target / selected
+                      root = ET.parse(clean).getroot()
+                      pin = next(x for x in root.iter(f"{svg_ns}line")
+                                 if x.get("data-real-anchor") == "true")
+                      with Image.open(raster) as source_image:
+                          pixels = source_image.convert("RGB")
+                          px = round(float(pin.get("x2")) / 420 * pixels.width)
+                          py = round(float(pin.get("y2")) / 297 * pixels.height)
+                          pixels.putpixel(
+                              (px, py),
+                              (20, 134, 69) if mutation == "clean_forged_green"
+                              else (0, 0, 0),
+                          )
+                          pixels.save(raster, format="PNG")
+                  else:
+                      root = ET.parse(clean).getroot()
+                      if mutation == "remove_real_b_line":
+                          area = next(g for g in root.iter(f"{svg_ns}g")
+                                      if g.get("data-layer") == "typed-nonphysical-continuations")
+                          line = next(x for x in area.iter(f"{svg_ns}line")
+                                      if x.get("data-layer") == "nonphysical-continuation-stub")
+                          area.remove(line)
+                      elif mutation == "move_real_b_tip_1um":
+                          line = next(x for x in root.iter(f"{svg_ns}line")
+                                      if x.get("data-layer") == "nonphysical-continuation-stub")
+                          line.set("x1", str(float(line.get("x1")) + 0.001))
+                      elif mutation == "drop_real_DA1_pin":
+                          parent = next(g for g in root.iter(f"{svg_ns}g")
+                                        if g.get("data-layer") == "ic-physical-pin-leads")
+                          parent.remove(next(iter(parent)))
+                      elif mutation == "fake_full_release":
+                          root.set("data-release", "PRINT_PASS")
+                      clean.write_bytes(ET.tostring(root, encoding="utf-8"))
+                  current_sha = hashlib.sha256(clean.read_bytes()).hexdigest()
+                  try:
+                      audit(target, artifact_run=43720996792,
+                            paint_sha=sha, expected_clean_sha=current_sha)
+                  except (NativeReleaseError, SignedBPrintError) as exc:
+                      assert expected_code in str(exc), (mutation, str(exc))
+                  else:
+                      raise AssertionError(f"FORGED_OWNER_ARTIFACT_ACCEPTED:{mutation}")
+                  tested += 1
+          print(f"PASS {tested} real-owner hostile SVG/Netlist mutations fail closed")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ESKD-C15-PAINT-REAL-6of15-SIGNED-B-NO-GO-${{ matrix.python-version }}
+          path: output/ESKD_C15_REAL_PAINT_A3_*.json
+          if-no-files-found: error

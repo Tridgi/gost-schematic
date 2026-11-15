@@ -1,0 +1,85 @@
+name: ESKD Cycle12 true owner partial-route source and printed ink audit
+on:
+  pull_request:
+    branches: [integration/stage0-12]
+    paths:
+      - scripts/eskd_cycle12_routed_source_gate.py
+      - tests/test_standards_cycle12_routed_source_gate.py
+      - scripts/eskd_cycle13_signed_b_print_gate.py
+      - tests/test_standards_cycle13_signed_b_print_gate.py
+      - .github/workflows/eskd-cycle12-routed-source-gate.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  actual-owner-partial-not-print:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    env:
+      SOURCE_SHA: e695c415fdced164b0e0c39c5249d030795a0aa6
+      SOURCE_NETLIST_BLOB: c4cfd515782bf856a7a44fbe2c2ceacd303208d6
+      ROUTE_RUN: "43654672504"
+      YGO_SHA: 78935639a1c9c2c10d5f1fcf32af5d6c96e7c601
+      YGO_PROFILE_BLOB: eb1fa4649a9edc38882e6094f44b4d72f7f8423f
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Positive, boundary, hostile real source PinRef tests
+        run: |
+          python -m pip install -e ".[dev]"
+          ruff check scripts/eskd_cycle12_routed_source_gate.py tests/test_standards_cycle12_routed_source_gate.py scripts/eskd_cycle13_signed_b_print_gate.py tests/test_standards_cycle13_signed_b_print_gate.py
+          pytest -q tests/test_standards_cycle12_routed_source_gate.py tests/test_standards_cycle13_signed_b_print_gate.py
+      - name: Restore exact original immutable typed PinRef netlist
+        run: |
+          git fetch --no-tags --depth=1 origin "$SOURCE_SHA"
+          git show "$SOURCE_SHA:examples/tl494_model_output/TL494_full_typed_netlist.json" > "$RUNNER_TEMP/frozen-e695-source-netlist.json"
+          test "$(git hash-object "$RUNNER_TEMP/frozen-e695-source-netlist.json")" = "$SOURCE_NETLIST_BLOB"
+          echo "SOURCE_NETLIST=$RUNNER_TEMP/frozen-e695-source-netlist.json" >> "$GITHUB_ENV"
+      - name: Pin current YGO2 13-symbol REAL DRAFT source selection
+        run: |
+          git fetch --no-tags --depth=1 origin "$YGO_SHA"
+          git show "$YGO_SHA:src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json" > "$RUNNER_TEMP/ygo-real-13-profile.json"
+          test "$(git hash-object "$RUNNER_TEMP/ygo-real-13-profile.json")" = "$YGO_PROFILE_BLOB"
+          echo "YGO_PROFILE=$RUNNER_TEMP/ygo-real-13-profile.json" >> "$GITHUB_ENV"
+      - name: Obtain ACTUAL owner NET114 compact SVG and PNG, not a fabricated fixture
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 43654672504
+          github-token: ${{ github.token }}
+          repository: Tridgi/gost-schematic
+          name: owner-114-compact-A3-source-23net-${{ matrix.python-version }}
+          path: evidence/owner-114-compact-A3
+      - name: Independent ESKD source membership and measured 300dpi gate
+        run: |
+          python scripts/eskd_cycle12_routed_source_gate.py \
+            --folder evidence/owner-114-compact-A3 \
+            --original-netlist "$SOURCE_NETLIST" \
+            --ygo-profile "$YGO_PROFILE" --ygo-head "$YGO_SHA" \
+            --out output/ESKD_C12_REAL_OWNER_NOT_PRINTABLE_${{ matrix.python-version }}.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=next(Path("output").glob("ESKD_C12_REAL_OWNER_NOT_PRINTABLE_*.json"))
+          data=json.loads(p.read_text(encoding="utf-8"))
+          assert data["routed_graph"]["complete"] == 10
+          assert data["routed_graph"]["required"] == 15
+          assert data["source_inventory"]["original_pinref_memberships_exact_after_alias"]
+          assert data["current_owner_ygo_source_review"]["sources_13"] == 13
+          assert data["current_owner_ygo_source_review"]["formal_approved"] == 0
+          assert data["actual_real_svg_png"]["clean"]["22_catalog_plus_one_true_ic"] == 23
+          assert data["actual_real_svg_png"]["diagnostic"]["source_real_ic_leads"] == 16
+          assert data["printed_parallel_edge_3mm"]["hard_3mm_edge_violations"] == []
+          assert data["release_verdict"].startswith("NO_GO_")
+          print("PASS truthful independent source and true PNG; source NO_GO")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ESKD-C12-owner114-exact-source-PARTIAL-NOGO-${{ matrix.python-version }}
+          path: output/ESKD_C12_REAL_OWNER_NOT_PRINTABLE_*.json
+          if-no-files-found: error

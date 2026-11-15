@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "title": "ESKD Cycle11 independent byte-audited real PAINT source-native TL494 print",
+  "archive_owner": "PAINT #93",
+  "archive_actions_run": 43643582503,
+  "archive_artifact_id": 14132718215,
+  "archive_owner_head": "161c31bd0b538c6e827341ae465c3b3a59f6637d",
+  "frozen_original": "e695c415fdced164b0e0c39c5249d030795a0aa6",
+  "archive_sha256": "471dabff3ed6c02106c3f9130883a5221804627277383190dec03715a40475cc",
+  "files": {
+    "manifest": {
+      "name": "TL494_full_native_23_engine_manifest.json",
+      "sha256": "fee2a7785661520f4965363ce73e32cf580729c7c8a60c675b647ed0cecc76a1"
+    },
+    "clean_svg": {
+      "name": "TL494_native_23_bottom_to_top_clean.svg",
+      "sha256": "9a32d3a0f97277ede23fe5ee92df99f444ca1dbbd131e9cd0f05910e9f1800d8"
+    },
+    "debug_svg": {
+      "name": "TL494_native_23_bottom_to_top_diagnostic.svg",
+      "sha256": "c2b4974ac2aba3a6208f0dea73290545daab8c58ec45806a2d0f5721f8ec6a4f"
+    },
+    "clean_png": {
+      "name": "TL494_native_23_bottom_to_top_clean-300dpi.png",
+      "sha256": "850373e2db6613649a94ad74b58ab716b829ceb3ae1b1639988841db23a2e1c4"
+    },
+    "debug_png": {
+      "name": "TL494_native_23_bottom_to_top_diagnostic-300dpi.png",
+      "sha256": "963c48e791bde5615f91010063c79e820ce4763348f43c54c96aaac2353e7a0d"
+    },
+    "pixel_owner_proof": {
+      "name": "native_23_GREEN_PIXEL_PRINT_VERIFICATION.json",
+      "sha256": "074f4eada17f1b32b2ff5338da6724f6e3d3432e76757aef553472b3d4e633d9"
+    }
+  },
+  "measurements_from_direct_zip_svg_png": {
+    "full_sheet_native_print_mm": {
+      "width": 667.3,
+      "height": 208.051
+    },
+    "full_sheet_clean_png_px": {
+      "width": 7882,
+      "height": 2458
+    },
+    "true_render_dpi": 300,
+    "native_ugo_groups": 23,
+    "typed_nets_as_declared_by_owner_manifest": 15,
+    "authored_wire_segments_recounted_from_svg": 91,
+    "real_ic_pin_number_leads_recounted": 16,
+    "authored_electrical_junctions_recounted": 37,
+    "physical_green_pin_center_raster_samples_pass": 16,
+    "clean_png_RGB_channels_identical": true,
+    "function_PWM_real_transform": "matrix(0 -1 1 0 96.75 98.573)",
+    "function_PWM_reading": "bottom_to_top",
+    "nonphysical_continuations": [
+      {
+        "id": "b-X2",
+        "electrical_junction": false
+      },
+      {
+        "id": "b-R5",
+        "electrical_junction": false
+      }
+    ],
+    "font_sha256": "f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a"
+  },
+  "independent_real_svg_wire_3mm_DRC": {
+    "scope": "distinct Net orthogonal parallel printed strokes with strictly positive projected overlap; measured center line minus half of both ink widths",
+    "pair_count": 4095,
+    "required_edge_clearance_um": 3000,
+    "status": "FAIL",
+    "violations": [
+      {
+        "wire_a": 27,
+        "wire_b": 62,
+        "net_a": "COMMON",
+        "net_b": "FEEDBACK",
+        "edge_gap_um": 1950
+      },
+      {
+        "wire_a": 28,
+        "wire_b": 71,
+        "net_a": "COMMON",
+        "net_b": "OSCILLATOR_CT",
+        "edge_gap_um": 1450
+      },
+      {
+        "wire_a": 42,
+        "wire_b": 85,
+        "net_a": "CONTROL_REFERENCE",
+        "net_b": "COMMON",
+        "edge_gap_um": 1700
+      },
+      {
+        "wire_a": 54,
+        "wire_b": 63,
+        "net_a": "SOFT_START",
+        "net_b": "FEEDBACK",
+        "edge_gap_um": 1700
+      },
+      {
+        "wire_a": 56,
+        "wire_b": 72,
+        "net_a": "ERROR_INPUT",
+        "net_b": "OSCILLATOR_CT",
+        "edge_gap_um": 700
+      }
+    ]
+  },
+  "scope_verdicts": {
+    "native_source_artifact_structural_count": "PASS_DRAFT",
+    "PWM_render_bottom_up": "PASS_DRAFT",
+    "diagnostic_only_green_and_clean_RGB": "PASS_DRAFT",
+    "source_91_wire_parallel_3mm": "FAIL",
+    "unmodified_original_9_error_32_warning": "KNOWN_NEGATIVE_NOT_RECOMPUTED_HERE",
+    "new_15_of_15_routed_print": "BLOCKED_NOT_IN_THIS_ARCHIVE",
+    "true_62_PinRef_model_inventory": "PASS_FROZEN_SOURCE_EXACT_62; CURRENT_OWNER_RUNNER_CI_PENDING",
+    "physical_1_and_2_mm_full_symbol_ink": "BLOCKED_NO_FULL_FIGURE_CALIBRATION",
+    "original_user_bitmap_and_GOST_figure_1to1": "BLOCKED_NO_INDEPENDENT_ORIGINAL_RASTER",
+    "source_draft_UGO_approval": "DRAFT_0_APPROVED"
+  },
+  "notes": "Actual artifacts independently inspected from GitHub Actions archive. This is old source 91-wire print with real known FAIL, not a freshly rerouted A3 15Net candidate. For 62 PinRef original Circuit evidence use new independent ESKD typed-inventory workflow after it finishes. This record does not alter catalog, source, PNG, or owner PR.",
+  "independent_frozen_typed_circuit_source": {
+    "source_path": "examples/tl494_full_native_model.py",
+    "source_git_blob_sha1": "049c32ff6e3bf2c839641d0102e3a63fcb86caaf",
+    "source_commit": "e695c415fdced164b0e0c39c5249d030795a0aa6",
+    "proof_method": "independent read of immutable TRACED_NETS literal; count physical (reference,pin-number) tuples and their unique membership; no SVG or owner manifest inferred Net",
+    "net_count": 15,
+    "PinRef_memberships": 62,
+    "unique_PinRef_memberships": 62,
+    "DA1_memberships": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16
+    ],
+    "COMMON_net_separate_from_PE": true,
+    "status": "PASS_FROZEN_ELECTRICAL_TOPOLOGY_SOURCE_ONLY_NOT_NEW_ROUTING"
+  }
+}

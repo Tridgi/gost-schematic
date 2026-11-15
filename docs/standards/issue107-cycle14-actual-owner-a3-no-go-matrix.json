@@ -1,0 +1,100 @@
+{
+  "schema": "ESKD_CYCLE14_PINNED_ACTUAL_A3_PARTIAL_NO_GO_V1",
+  "date": "2026-11-15",
+  "owner_run_id": 43654672504,
+  "owner_router_sha": "5c6feb90580ed846aa297c71d3c91afacfc3f0bc",
+  "owner_reconstruction_sha": "e56397300875ac155a316a9bfebe2601358a4147",
+  "frozen_source_sha": "e695c415fdced164b0e0c39c5249d030795a0aa6",
+  "frozen_source": {
+    "components": 23,
+    "original_nets": 15,
+    "physical_pinref_memberships": 62,
+    "DA1_physical_pins": 16,
+    "old_wire_segments": 91,
+    "old_junctions": 37,
+    "old_drc_errors": 9,
+    "old_drc_warnings": 32,
+    "nonphysical_b": [
+      "b-X2",
+      "b-R5"
+    ],
+    "COMMON": "SIGNAL_0V_NOT_PE"
+  },
+  "actual_partial": {
+    "routed_nets": 10,
+    "failed_nets": [
+      "GATE_DRIVE",
+      "CONTROL_REFERENCE",
+      "FEEDBACK",
+      "OSCILLATOR_RT",
+      "COMMON"
+    ],
+    "new_wire_segments": 62,
+    "new_junctions": 15,
+    "actual_UGO_count": 23,
+    "inter_UGO_2mm_pairs": 253,
+    "min_separate_UGO_gap_um": 4700,
+    "min_separate_pair": [
+      "FU1",
+      "X2"
+    ],
+    "intra_UGO_parallel_1mm_pairs": 34,
+    "min_intra_UGO_parallel_gap_um": 1200,
+    "interconnection_3mm_same_net_pairs": 38,
+    "interconnection_3mm_different_net_pairs": 184,
+    "min_interconnection_3mm_gap_um": 3000,
+    "violations_3mm": 0,
+    "native_type_a_IC_measured_glyphs": 34,
+    "native_IC_text_pairs": 561,
+    "min_IC_glyph_gap_um": 3850,
+    "unmeasured_catalog_annotations": 39,
+    "old_preview_svg_size_mm": [
+      402.6,
+      244.052
+    ],
+    "old_preview_viewBox_mm": [
+      5.55,
+      6.1,
+      402.6,
+      244.052
+    ],
+    "A3_expected_sheet_size_mm": [
+      420,
+      297
+    ],
+    "type_a_font_sha256": "f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a"
+  },
+  "actual_owner_sha256": {
+    "TL494-compact-A3-clean.svg": "1dee3658a93d2d437bdb4944d4779369890d8819ecb9e7b5f0b38d0fa8b9d0ac",
+    "TL494-compact-A3-diagnostic.svg": "5e5c4b4879166c7f8dd2adbf54467240605750f7a37fd9262467bbff8f352baf",
+    "TL494-compact-A3-clean-300dpi.png": "8d6a8dd0b2ec1fdbd39b01bed739cd124844078be28b4b06ac44d6651791ffcc",
+    "TL494-compact-A3-diagnostic-300dpi.png": "0b6c0e0df825557887a5aa145e7bcaefd916a9f09e4e3546bc395a356173530f",
+    "TL494-compact-A3-route-drc.json": "f13cf3e4a06c19a36abb4748268ce5cfe25d893474c3690aab7076ec620b1dd0"
+  },
+  "standard": {
+    "id": "GOST_2.701-2008",
+    "clause": "5.3.4",
+    "registry": "https://protect.gost.ru/gost/details/87f1f382-a055-48b7-ae80-f359ff5e1f4e",
+    "min_intra_UGO_line_mm": 1,
+    "min_between_UGO_mm": 2,
+    "min_neighboring_parallel_interconnection_mm": 3,
+    "same_net_parallel_exemption": "NOT_STATED",
+    "PNG_300dpi_is_project_QA_not_GOST_claim": true,
+    "margin_10mm_is_project_keepout_not_normative_frame": true
+  },
+  "honest_release_gates": {
+    "same_source_all_15_net_pinrefs": "PASS_EXPLICIT_OWNER_ALIASES_ONLY",
+    "same_net_plus_cross_net_3mm_on_partial": "PASS_SCOPE_222_PAIRS_ONLY",
+    "intra_UGO_1mm": "PASS_RESTRICTED_34_NONJOINED_PARALLEL_PAIRS",
+    "separate_UGO_2mm": "PASS_CONSERVATIVE_STROKE_AABB_253_PAIRS",
+    "whole_page_text_ink": "BLOCKED_39_UNMEASURED_CATALOG_LABELS",
+    "all_UGO_lines_including_arcs": "BLOCKED_NOT_FULL_PRIMITIVE_DRC",
+    "real_b_stub_ink": "BLOCKED_OLDER_OWNER_PREVIEW_HAS_NO_SIGNED_B_STUBS",
+    "native_full_A3_frame_title": "FAIL_OLD_PREVIEW_CROPPED",
+    "all_15_new_nets": "FAIL_5_NOT_ROUTED",
+    "original_photo_parity": "BLOCKED_SOURCE_BITMAP_NOT_AVAILABLE",
+    "normative_UGO_approved": 0,
+    "actual_full_sheet_drc": "BLOCKED_INCOMPLETE_ROUTE"
+  },
+  "status": "NO_GO_PARTIAL_10_OF_15_UNAPPROVED_SOURCE_SCOPE"
+}
