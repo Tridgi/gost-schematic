@@ -369,23 +369,34 @@ def test_real_current_paint_renders_b_source_stubs_not_electrical_junctions():
     assert sum(len(n.members) for n in physical.circuit.nets) == 62
 
 
-@pytest.mark.parametrize("attack", ("missing_stub", "wrong_physical_pin"))
+@pytest.mark.parametrize(
+    "attack", ("missing_stub", "wrong_physical_pin", "one_um_marker_drift"),
+)
 def test_real_current_paint_rejects_forged_b_local_stubs(attack):
     """The two b markers are not free-form decorative wires or fake pins."""
     physical, style, project = _true_source_b_rendering(
         Path(os.environ["IC_TYPE_A_FONT_PATH"])
     )
+    expected = "SHEET_CONTINUATION_SOURCE_B_STUB_INVENTORY_DRIFT"
     if attack == "missing_stub":
         forged = replace(project, stubs=project.stubs[:1])
-    else:
+    elif attack == "wrong_physical_pin":
         forged = replace(project, stubs=(
             replace(project.stubs[0], pin=PinRef("X2", "2")),
             project.stubs[1],
         ))
+    else:
+        stub = project.stubs[0]
+        moved_end = Point(
+            stub.end.x + int(stub.start.y == stub.end.y),
+            stub.end.y + int(stub.start.x == stub.end.x),
+        )
+        forged = replace(project, stubs=(
+            replace(stub, end=moved_end), project.stubs[1],
+        ))
+        expected = "SHEET_CONTINUATION_SOURCE_B_STUB_GEOMETRY_DRIFT"
     root = ET.Element(_NS + "svg")
-    with pytest.raises(
-        ValueError, match="SHEET_CONTINUATION_SOURCE_B_STUB_INVENTORY_DRIFT"
-    ):
+    with pytest.raises(ValueError, match=expected):
         import_module(
             "gost_schematic.rendering.ic_sheet_composition"
         ).append_verified_sheet_continuations(
@@ -393,6 +404,22 @@ def test_real_current_paint_rejects_forged_b_local_stubs(attack):
         )
     assert not list(root)
     assert project.circuit.nets is physical.circuit.nets
+
+
+def test_real_current_type_a_font_does_not_accept_obsolete_family_silently():
+    """Real upstream Type A is SHA checked, not an alias for obsolete TT."""
+    font = Path(os.environ["IC_TYPE_A_FONT_PATH"])
+    current = inspect_type_a_font(
+        font, h_um=3500, family="OpenGOST type A",
+        require_family_match=True,
+    )
+    assert current.style.font_sha256 == _FONT_SHA256
+    assert current.measured_cap_height_um == 3500
+    with pytest.raises(ValueError):
+        inspect_type_a_font(
+            font, h_um=3500, family="OpenGost Type A TT",
+            require_family_match=True,
+        )
 
 def test_legacy_id_is_not_implicitly_equivalent_to_ti_manufacturer():
     native = compact_source_assembly()
