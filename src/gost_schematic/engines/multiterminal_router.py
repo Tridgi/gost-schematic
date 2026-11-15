@@ -1092,6 +1092,63 @@ def _source_priority_name_view(
     return translated
 
 
+def _physical_wire_veto_priority_trials(
+    priority: tuple[str, ...],
+    trees: tuple[NetTreePreview, ...],
+    *,
+    limit: int,
+) -> tuple[tuple[str, tuple[str, ...]], ...]:
+    """Promote only REAL failed Net before a prior REAL blocking-wire owner.
+
+    Each source diagnosis is an observed invalid trial against already
+    accepted *foreign* physical copper. The resulting order is a candidate
+    to rerun from EMPTY; this helper never edits or combines routed graphs.
+    A symbol-ink veto by itself provides no evidence for reordering.
+    """
+    if type(limit) is not int or not 0 <= limit <= 4:
+        raise ValueError("ROUTE_INVALID_PHYSICAL_VETO_TRIAL_LIMIT")
+    if len(set(priority)) != len(priority):
+        raise ValueError("ROUTE_PHYSICAL_VETO_DUPLICATE_NET_PRIORITY")
+    positions = {name: i for i, name in enumerate(priority)}
+    outcomes: list[tuple[str, tuple[str, ...]]] = []
+    seen: set[tuple[str, ...]] = {priority}
+    for tree in trees:
+        blocked = tree.net_name
+        if tree.complete or blocked not in positions:
+            continue
+        for diagnostic in tree.diagnostics:
+            if ":WIRE_VETO=" not in diagnostic:
+                continue
+            entries = diagnostic.split(":WIRE_VETO=", 1)[1].split(";")
+            for entry in entries:
+                foreign = entry.split(":", 1)[0]
+                if (
+                    foreign not in positions
+                    or foreign == blocked
+                    or positions[foreign] >= positions[blocked]
+                ):
+                    continue
+                # This is only an independent whole-graph priority proposal.
+                # Never remove any Net, change membership or authorize the
+                # failed foreign-Net contact. It must be routed anew and
+                # independently pass symbol/text/wire DRC.
+                move = tuple(name for name in priority if name != blocked)
+                index = move.index(foreign)
+                reordered = (
+                    *move[:index], blocked, *move[index:],
+                )
+                if reordered in seen:
+                    continue
+                seen.add(reordered)
+                outcomes.append((
+                    f"VETO_REORDER_{blocked}_BEFORE_{foreign}",
+                    reordered,
+                ))
+                if len(outcomes) == limit:
+                    return tuple(outcomes)
+    return tuple(outcomes)
+
+
 def route_circuit_with_order_fallback(
     circuit: Circuit,
     parts: dict[str, PartDefinition],
@@ -1105,6 +1162,7 @@ def route_circuit_with_order_fallback(
     max_order_restarts: int = 2,
     try_priorities: int = 3,
     priority_offset: int = 0,
+    physical_veto_restarts: int = 0,
 ) -> GlobalRoutePreview:
     """Search independent functional route-order permutations without rewiring.
 
@@ -1153,6 +1211,11 @@ def route_circuit_with_order_fallback(
         or priority_offset + try_priorities > len(orders)
     ):
         raise ValueError("ROUTE_INVALID_FUNCTIONAL_ORDER_TRIAL_COUNT")
+    if (
+        type(physical_veto_restarts) is not int
+        or not 0 <= physical_veto_restarts <= 4
+    ):
+        raise ValueError("ROUTE_INVALID_PHYSICAL_VETO_TRIAL_LIMIT")
     orders = orders[priority_offset:priority_offset + try_priorities]
     history: list[tuple[str, int, int]] = []
     candidate_results: list[tuple[str, GlobalRoutePreview]] = []
@@ -1192,6 +1255,41 @@ def route_circuit_with_order_fallback(
         )
 
     chosen_strategy, chosen = min(candidate_results, key=ranking)
+    if physical_veto_restarts and not chosen.print_pass:
+        chosen_priority = next(
+            priority for label, priority in orders
+            if label == chosen_strategy
+        )
+        actual = frozenset(net.name for net in circuit.nets)
+        actual_priority = tuple(
+            name for name in chosen_priority if name in actual
+        )
+        actual_priority += tuple(sorted(actual - set(actual_priority)))
+        proposals = _physical_wire_veto_priority_trials(
+            actual_priority, chosen.net_trees,
+            limit=physical_veto_restarts,
+        )
+        for strategy, priority in proposals:
+            independent = route_circuit_net_trees(
+                circuit, parts, symbols,
+                page_box=page_box, priority=priority,
+                annotation_placements=annotation_placements,
+                stroke_um=stroke_um, search_node_cap=search_node_cap,
+                max_detour_ratio=max_detour_ratio,
+                stop_on_first_failure=False,
+                max_order_restarts=max_order_restarts,
+            )
+            count = sum(tree.complete for tree in independent.net_trees)
+            errors = (
+                sum(f.severity == "error" for f in independent.drc.findings)
+                if independent.drc is not None else 1
+            )
+            history.append((strategy, count, errors))
+            challenger = (strategy, independent)
+            if ranking(challenger) < ranking((chosen_strategy, chosen)):
+                chosen_strategy, chosen = challenger
+            if chosen.print_pass:
+                break
     return replace(
         chosen, routing_strategy=chosen_strategy,
         route_order_trials=tuple(history),
