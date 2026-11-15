@@ -261,6 +261,9 @@ registration is a different (binary-level) smoke, not proof a model
 built a diagram or that the seven single-UGO previews are the printed
 23-part sheet. Remaining full 15/15 route, full print DRC, final
 300DPI and QA are **BLOCKED**.
+[Cycle14 typed retry and future generator contract](../../docs/ai-integration/cycle14-readonly-retry-and-future-generator-contract.md):
+unknown error codes deny retry, stale saved revision permits one newly
+authorized read-only snapshot recheck, no physical Net edits.
 
 ## Cycle12 fixed-owner API and installed-wheel check
 
