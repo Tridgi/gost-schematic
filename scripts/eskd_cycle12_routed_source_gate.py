@@ -10,6 +10,7 @@ import argparse
 import hashlib
 import json
 import math
+import re
 from itertools import combinations
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -316,6 +317,143 @@ def parallel_gaps(wires: list[dict]) -> dict:
             "rule": "PROJECTED_OVERLAP_PARALLEL_DIFFERENT_NET_ONLY"}
 
 
+def _conservative_ugo_envelope(group: ET.Element) -> tuple[int, int, int, int]:
+    """Stroke-expanded conservative AABB (um), no pretend font/pixel parity.
+
+    Lines and rectangles are exact for their bounding boxes. SVG arc bounding
+    is DELIBERATELY enlarged by its radii, so a PASS certifies a lower bound
+    even though the enclosed box can be bigger than real rendered ink.
+    Unknown paths must fail rather than be silently skipped.
+    """
+    primitive_boxes: list[tuple[float, float, float, float]] = []
+
+    def walk(element: ET.Element, stroke_width: str | None) -> None:
+        stroke_width = element.get("stroke-width", stroke_width)
+        kind = element.tag.removeprefix(SVG)
+        if kind in {"line", "rect", "path", "circle"}:
+            require(stroke_width is not None,
+                    "UGO_PRIMITIVE_UNPINNED_STROKE_WIDTH")
+            try:
+                half = float(stroke_width) / 2
+                require(math.isfinite(half) and 0.1 <= half <= 0.5,
+                        "UGO_PRIMITIVE_STROKE_NOT_0P2_TO_1MM")
+                if kind == "line":
+                    x, y, xx, yy = (
+                        float(element.get(key, ""))
+                        for key in ("x1", "y1", "x2", "y2")
+                    )
+                    bound = (
+                        min(x, xx) - half, min(y, yy) - half,
+                        max(x, xx) + half, max(y, yy) + half,
+                    )
+                elif kind == "rect":
+                    x, y, width, height = (
+                        float(element.get(key, ""))
+                        for key in ("x", "y", "width", "height")
+                    )
+                    require(width > 0 and height > 0,
+                            "UGO_RECT_NONPOSITIVE_SIZE")
+                    bound = (x-half, y-half, x+width+half, y+height+half)
+                elif kind == "circle":
+                    x, y, radius = (
+                        float(element.get(key, ""))
+                        for key in ("cx", "cy", "r")
+                    )
+                    require(radius > 0, "UGO_CIRCLE_NONPOSITIVE_RADIUS")
+                    bound = (
+                        x-radius-half, y-radius-half,
+                        x+radius+half, y+radius+half,
+                    )
+                else:
+                    path = element.get("d", "")
+                    require(bool(re.fullmatch(
+                        r"M\s+[-+\d.]+\s+[-+\d.]+\s+A\s+"
+                        r"[-+\d.]+\s+[-+\d.]+\s+[-+\d.]+\s+"
+                        r"[01]\s+[01]\s+[-+\d.]+\s+[-+\d.]+",
+                        path,
+                    )), "UGO_ARC_PATH_NOT_SIMPLE_SOURCE_ARC")
+                    nums = [float(x) for x in re.findall(
+                        r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)", path
+                    )]
+                    require(len(nums) == 9,
+                            "UGO_ARC_NUMERIC_FORM_NOT_PINNED")
+                    x, y, rx, ry, _, _, _, xx, yy = nums
+                    require(rx > 0 and ry > 0,
+                            "UGO_ARC_NONPOSITIVE_RADIUS")
+                    bound = (
+                        min(x, xx)-rx-half, min(y, yy)-ry-half,
+                        max(x, xx)+rx+half, max(y, yy)+ry+half,
+                    )
+                require(all(math.isfinite(v) for v in bound),
+                        "UGO_PRIMITIVE_NONFINITE_GEOMETRY")
+                primitive_boxes.append(bound)
+            except (TypeError, ValueError, OverflowError) as exc:
+                if isinstance(exc, EvidenceError):
+                    raise
+                raise EvidenceError("UGO_PRIMITIVE_MALFORMED_COORDINATES") from exc
+        for child in element:
+            walk(child, stroke_width)
+
+    walk(group, None)
+    require(primitive_boxes, "UGO_WITH_NO_REAL_STROKED_PRIMITIVE")
+    # Floor min and ceil max are conservative at integer-um precision.
+    return (
+        math.floor(min(b[0] for b in primitive_boxes)*1000),
+        math.floor(min(b[1] for b in primitive_boxes)*1000),
+        math.ceil(max(b[2] for b in primitive_boxes)*1000),
+        math.ceil(max(b[3] for b in primitive_boxes)*1000),
+    )
+
+
+def distinct_ugo_2mm_envelopes(root: ET.Element) -> dict:
+    """Conservative ink envelope check for all 22 UGO and true DA1.
+
+    A rectangle envelope may overestimate actual ink, so a <2mm envelope
+    is INCONCLUSIVE, not automatic normative FAIL. >=2mm guarantees actual
+    primitive ink separation for the modeled shapes, excluding text.
+    """
+    groups = {
+        g.get("data-reference"): g
+        for g in root.findall(f".//{SVG}g[@data-layer='symbols']")
+    }
+    require(len(groups) == 22 and None not in groups,
+            "UGO_22_CATALOG_GLYPH_GROUPS_REQUIRED")
+    ic = [g for g in root.iter(f"{SVG}g") if g.get("data-owner") == "DA1"
+          and g.get("data-ink-source") == "real-native-PAINT-original-16leads"]
+    require(len(ic) == 1 and "DA1" not in groups,
+            "UGO_PHYSICAL_DA1_REQUIRED_SEPARATELY")
+    groups["DA1"] = ic[0]
+    ink = {name: _conservative_ugo_envelope(g) for name, g in groups.items()}
+    candidates = []
+    uncertain = []
+    for left, right in combinations(sorted(ink), 2):
+        a, b = ink[left], ink[right]
+        dx = max(0, a[0]-b[2], b[0]-a[2])
+        dy = max(0, a[1]-b[3], b[1]-a[3])
+        distance_um = math.hypot(dx, dy)
+        candidates.append((distance_um, left, right))
+        if distance_um < 2000:
+            uncertain.append({
+                "reference_pair": [left, right],
+                "conservative_lower_bound_um": round(distance_um),
+            })
+    require(len(candidates) == 253,
+            "UGO_EXPECTED_ALL_23_DISTINCT_PAIRS_NOT_EVALUATED")
+    return {
+        "actual_distinct_symbol_count": 23,
+        "all_distinct_symbol_pairs": len(candidates),
+        "minimum_conservative_ink_gap_um": round(min(c[0] for c in candidates)),
+        "minimum_pair": list(min(candidates)[1:]),
+        "potentially_close_or_overlapping_envelopes": uncertain,
+        "verdict": (
+            "PASS_CONSERVATIVE_2MM_23_UGO_PARTIAL_SOURCE_PRINT"
+            if not uncertain else "BLOCKED_CONSERVATIVE_AABB_NOT_EXACT_INK"
+        ),
+        "limitations": "UGO stroke primitives only; font ink, new full route "
+                       "and formal GOST source figure signoff NOT certified",
+    }
+
+
 def _svg_page(root: ET.Element, *, diagnostic: bool,
               manifest: dict) -> tuple[dict, list[ET.Element]]:
     view = _dimension_mm(root)
@@ -435,6 +573,11 @@ def audit(folder: Path, original_netlist: Path,
             require(clean_wires == wires, "CLEAN_DEBUG_WIRE_GRAPH_CHANGED")
         else:
             clean_wires = wires
+    ugo_2mm = distinct_ugo_2mm_envelopes(
+        _svg(folder / f"{BASENAME}-clean.svg")
+    )
+    require(ugo_2mm["verdict"].startswith("PASS_"),
+            "ACTUAL_OWNER_2MM_UGO_ENVELOPE_POTENTIAL_VIOLATION")
     gaps = parallel_gaps(clean_wires)
     require(not gaps["hard_3mm_edge_violations"],
             "ACTUAL_PARTIAL_ROUTE_3MM_DISTINCT_NET_PARALLEL_FAILED")
@@ -447,12 +590,14 @@ def audit(folder: Path, original_netlist: Path,
         "latest_owner_HEAD_acceptance": "BLOCKED_NEW_HEAD_SEPARATE_RUN_REQUIRED",
         "source_inventory": source, "routed_graph": route,
         "current_owner_ygo_source_review": current_ygo,
-        "printed_parallel_edge_3mm": gaps, "actual_real_svg_png": variants,
+        "printed_parallel_edge_3mm": gaps,
+        "measured_distinct_ugo_2mm_envelopes": ugo_2mm,
+        "actual_real_svg_png": variants,
         "checks": {
             "new_partial_native_svg_300dpi": "PASS_DRAFT_PARTIAL_ONLY",
             "real_original_exact_named_net_export": source["source_name_parity"],
             "minimum_3mm_distinct_parallel_ink": "PASS_PARTIAL_ONLY",
-            "two_mm_separate_UGO": "BLOCKED_NOT_FULL_PRIMITIVE_AUDIT",
+            "two_mm_separate_UGO": ugo_2mm["verdict"],
             "one_mm_same_UGO_strokes": "BLOCKED_NOT_FULL_PRIMITIVE_AUDIT",
             "source_b_X2_R5_compact": "BLOCKED_NEEDS_SIGNED_REBIND",
             "source_photo_bitmap_overlay": "BLOCKED_NO_AUTHORITATIVE_IMAGE",
