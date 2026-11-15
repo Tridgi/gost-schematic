@@ -41,32 +41,32 @@ jobs:
           ref: e695c415fdced164b0e0c39c5249d030795a0aa6
           path: _owner_source
           persist-credentials: false
-      - name: Frozen actual RECON compact A3
+      - name: Exact Cycle13 RECON compact A3 source-corrected X1 mm
         uses: actions/checkout@v4
         with:
           repository: Tridgi/gost-schematic
-          ref: e56397300875ac155a316a9bfebe2601358a4147
+          ref: 73025965efeb94585e8723ba3f0b636229e8a5de
           path: _owner_recon
           persist-credentials: false
-      - name: Frozen ELEKTRIK IC physical model
+      - name: Exact Cycle13 ELEKTRIK IC physical model
         uses: actions/checkout@v4
         with:
           repository: Tridgi/gost-schematic
-          ref: 6161e9102cbc0c9e0491fb27ed7a496dc0b274bc
+          ref: 7c30c209ea5e97a245844b24a3bbc4d3d30118ea
           path: _owner_ic
           persist-credentials: false
-      - name: Frozen catalog owner 13 source symbols
+      - name: Exact Cycle13 YGO owner 13 source symbols
         uses: actions/checkout@v4
         with:
           repository: Tridgi/gost-schematic
-          ref: edc71a48035723d48a203ae2ea12588701f68ba8
+          ref: 3e47cdf32ccf211ded97e3be1ad874035653e090
           path: _owner_ygo
           persist-credentials: false
-      - name: Frozen PAINT actual 16 physical IC leads
+      - name: Exact Cycle13 PAINT actual 16 physical IC leads
         uses: actions/checkout@v4
         with:
           repository: Tridgi/gost-schematic
-          ref: e3ea841dbe087952577121d5690fe41e9a9a5c83
+          ref: f872ce50ac699ad089391b0bbd58e2cb92f2b7f6
           path: _owner_paint
           persist-credentials: false
       - uses: actions/setup-python@v5
@@ -81,10 +81,10 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C _owner_source rev-parse HEAD)" = e695c415fdced164b0e0c39c5249d030795a0aa6
-          test "$(git -C _owner_recon rev-parse HEAD)" = e56397300875ac155a316a9bfebe2601358a4147
-          test "$(git -C _owner_ic rev-parse HEAD)" = 6161e9102cbc0c9e0491fb27ed7a496dc0b274bc
-          test "$(git -C _owner_ygo rev-parse HEAD)" = edc71a48035723d48a203ae2ea12588701f68ba8
-          test "$(git -C _owner_paint rev-parse HEAD)" = e3ea841dbe087952577121d5690fe41e9a9a5c83
+          test "$(git -C _owner_recon rev-parse HEAD)" = 73025965efeb94585e8723ba3f0b636229e8a5de
+          test "$(git -C _owner_ic rev-parse HEAD)" = 7c30c209ea5e97a245844b24a3bbc4d3d30118ea
+          test "$(git -C _owner_ygo rev-parse HEAD)" = 3e47cdf32ccf211ded97e3be1ad874035653e090
+          test "$(git -C _owner_paint rev-parse HEAD)" = f872ce50ac699ad089391b0bbd58e2cb92f2b7f6
           for F in tl494_native_rework tl494_connected_native tl494_full_native_model tl494_ic_paint_reference tl494_named_photo_sheet; do
             cp "_owner_source/examples/$F.py" "examples/$F.py"
           done
@@ -127,7 +127,7 @@ jobs:
           python -m examples.review_tl494_compact_cycle9 \
             --font-file "$FONT" \
             --owner-sha "$GITHUB_SHA" \
-            --reference-sha e56397300875ac155a316a9bfebe2601358a4147 \
+            --reference-sha 73025965efeb94585e8723ba3f0b636229e8a5de \
             --max-nodes 25000 \
             --page-format "$PAPER" \
             --priority-trials "$TRIALS" \
