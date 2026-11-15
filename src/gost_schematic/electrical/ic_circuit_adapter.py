@@ -749,6 +749,28 @@ def bind_ic_circuit_from_catalog(
         raise TypeError("IC_ADAPTER_CATALOG_REQUIRES_TYPED_RECORD_AND_CIRCUIT")
     if not isinstance(parts_by_id, Mapping):
         raise TypeError("IC_ADAPTER_CATALOG_MAPPING_REQUIRED")
+    # The manufacturer-authenticated IcLibraryRecord is the canonical IC
+    # source. Its typed pins are usable even if a legacy/external-only parts
+    # catalog has no separate entry for the IC. If a caller DOES supply such
+    # a PartDefinition, it must not contradict a single factory pin or type.
+    # The symbol_id is deliberately not compared: it is a graphical concern
+    # and can differ from the signed source-owned DRAFT surrogate.
+    supplied_ic = parts_by_id.get(record.device.identifier)
+    if supplied_ic is not None:
+        factory_pins = tuple(
+            (p.number, p.name, p.electrical_type.value)
+            for p in record.device.pins
+        )
+        if not isinstance(supplied_ic, PartDefinition) or (
+            supplied_ic.identifier != record.device.identifier
+            or supplied_ic.reference_prefix
+            != record.device.kind.reference_prefix
+            or tuple(
+                (p.number, p.name, p.electrical_type.value)
+                for p in supplied_ic.pins
+            ) != factory_pins
+        ):
+            raise ValueError("IC_ADAPTER_CATALOG_MANUFACTURER_PINOUT_CONFLICT")
     ref = record.placements[0].component_ref
     ic_instances = [c for c in circuit.components if c.reference == ref]
     if len(ic_instances) != 1 or (
