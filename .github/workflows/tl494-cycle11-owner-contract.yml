@@ -170,34 +170,34 @@ jobs:
               # boxes; NEVER convert a failure to a PASS by rounding.
               python - "$GITHUB_WORKSPACE/reports/tl494-cycle15-true-23-ink.json" \
                        "$GITHUB_WORKSPACE/output/cycle11-owners/tl494-23-real-instance-ink.json" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-before, after = (json.loads(Path(p).read_text(encoding="utf-8")) for p in sys.argv[1:])
-def mismatches(expected, actual, at="$"):
-    if type(expected) is not type(actual):
-        yield (at, expected, actual)
-    elif isinstance(expected, dict):
-        for key in sorted(set(expected) | set(actual)):
-            if key not in expected or key not in actual:
-                yield (at + "." + key, expected.get(key), actual.get(key))
-            else:
-                yield from mismatches(expected[key], actual[key], at + "." + key)
-    elif isinstance(expected, list):
-        if len(expected) != len(actual):
-            yield (at + ".length", len(expected), len(actual))
-        for index, (a, b) in enumerate(zip(expected, actual)):
-            yield from mismatches(a, b, f"{at}[{index}]")
-    elif expected != actual:
-        yield (at, expected, actual)
-
-for index, (path, expected, actual) in enumerate(mismatches(before, after)):
-    if index >= 24:
-        print("UGO_C15_DIFF_MORE_THAN_24; inspect uploaded actual owner JSON")
-        break
-    print(f"UGO_C15_EXACT_INK_DIFF {path}: windows={expected!r} linux={actual!r}")
-PY
+          import json
+          import sys
+          from pathlib import Path
+          
+          before, after = (json.loads(Path(p).read_text(encoding="utf-8")) for p in sys.argv[1:])
+          def mismatches(expected, actual, at="$"):
+              if type(expected) is not type(actual):
+                  yield (at, expected, actual)
+              elif isinstance(expected, dict):
+                  for key in sorted(set(expected) | set(actual)):
+                      if key not in expected or key not in actual:
+                          yield (at + "." + key, expected.get(key), actual.get(key))
+                      else:
+                          yield from mismatches(expected[key], actual[key], at + "." + key)
+              elif isinstance(expected, list):
+                  if len(expected) != len(actual):
+                      yield (at + ".length", len(expected), len(actual))
+                  for index, (a, b) in enumerate(zip(expected, actual)):
+                      yield from mismatches(a, b, f"{at}[{index}]")
+              elif expected != actual:
+                  yield (at, expected, actual)
+          
+          for index, (path, expected, actual) in enumerate(mismatches(before, after)):
+              if index >= 24:
+                  print("UGO_C15_DIFF_MORE_THAN_24; inspect uploaded actual owner JSON")
+                  break
+              print(f"UGO_C15_EXACT_INK_DIFF {path}: windows={expected!r} linux={actual!r}")
+          PY
               echo "::error::UGO_C15_ACTUAL_OWNER_MEASURED_23_INK_DRIFT"
               exit 1
             }
