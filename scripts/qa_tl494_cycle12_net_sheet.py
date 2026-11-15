@@ -94,6 +94,14 @@ def validate_report(report: dict, source: dict, *, exact_net_sha: str,
             report.get("real_source_UGO_draft_count") == 13 and
             report.get("VT1_source_UGO_normative_approved") is False,
             "QA_C12_PIN_LOST_OR_DRAFT_UGO_FALSIFIED")
+    source_figures = report.get("actual_source_UGO_authority")
+    require(isinstance(source_figures, dict) and
+            len(source_figures) == 13 and
+            all(isinstance(item, dict) and
+                item.get("status") == "draft" and
+                bool(item.get("figure"))
+                for item in source_figures.values()),
+            "QA_C12_UNVERIFIED_UGO_CLAIMED_NORMATIVE_APPROVED")
     require(report.get("editor_targets") == {
         "physical_tip_count": 16, "only_in_diagnostic": True,
         "source": "typed-native-PinRef-and-original-Circuit.Net",
@@ -170,6 +178,19 @@ def validate_report(report: dict, source: dict, *, exact_net_sha: str,
         "accepted_wire_segments": wire_count,
         "real_new_graph_drc_errors": actual_drc["error_count"],
         "source_original_bad_DRC": OLD_DRC,
+        "complete_electrical_ERC": (
+            "BLOCKED_GRAPH_PARTIAL" if connected_nets < 15
+            else "REQUIRES_SEPARATE_SIGNED_OWNER_ERC"
+        ),
+        "source_b_X2_and_R5_nonphysical_placement": (
+            "BLOCKED_NET_ROUTE_REPORT_IS_NOT_TWO_MARKER_BINDING"
+        ),
+        "manufacturer_partID_signature": (
+            "REQUIRES_SEPARATE_VERIFIED_IC97_RECON115_SOURCE_BRIDGE"
+        ),
+        "original_user_photo_pixel_parity": (
+            "BLOCKED_NO_AUTHORITATIVE_SOURCE_IMAGE"
+        ),
         "full_print_approved": False,
         "release": "BLOCKED_UNTIL_15_15_AND_FINAL_QA_AND_GOST",
     }
@@ -219,6 +240,16 @@ def check_svg_png(directory: Path, report: dict, paper: str) -> dict:
                 "QA_C12_SVG_NOT_PHYSICAL_MM")
         mm = (float(width[:-2]), float(height[:-2]))
         require(all(d > 0 for d in mm), "QA_C12_NONPHYSICAL_PAGE")
+        desired = {"A3": (420.0, 297.0), "A2": (594.0, 420.0)}[paper]
+        true_paper = all(abs(a - b) < 0.001 for a, b in zip(
+            mm, desired, strict=True
+        ))
+        if not true_paper:
+            require(bool(report.get("paper_10mm_editorial_frame_violations")),
+                    "QA_C12_MISLABELED_SHEET_MM_WITH_FALSE_PAGE_FIT")
+            require(report.get("geom_drc_pass") is False and
+                    report.get("print_pass") is False,
+                    "QA_C12_WRONG_PAPER_SIZE_PRETENDED_CERTIFIED")
         with Image.open(png_path) as img:
             require(img.format == "PNG", "QA_C12_NO_REAL_300DPI_PNG")
             expected_pixels = tuple(
@@ -234,6 +265,12 @@ def check_svg_png(directory: Path, report: dict, paper: str) -> dict:
         summary[mode] = {
             "source_sha256": hashlib.sha256(raw).hexdigest(),
             "real_svg_size_mm": list(mm), "png_300dpi_pixels": expected_pixels,
+            "requested_nominal_paper_mm": desired,
+            "physically_exact_claimed_A3_A2_size": true_paper,
+            "paper_size_release": (
+                "BLOCKED_FRAME_OUTSIDE_NOMINAL_PAPER"
+                if not true_paper else "SOURCE_PREVIEW_ONLY_NO_PRINT"
+            ),
             "physical_leads": 16,
             "diagnostic_markers": 16 if mode == "diagnostic" else 0,
             "actual_new_wires": len(lines),
