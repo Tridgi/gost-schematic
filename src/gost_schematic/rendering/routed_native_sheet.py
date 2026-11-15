@@ -264,10 +264,12 @@ def render_routed_native_sheet(
         source_continuation_project=source_continuation_project,
         physical_page_box=physical_page_box,
     ))
-    if (len(circuit.components), len(circuit.nets),
-            sum(len(net.members) for net in circuit.nets)) == (23, 15, 62):
-        if not signed_source_verified:
-            blockers.append("TL494_SIGNED_MANUFACTURER_PHYSICAL_BINDING_MISSING")
+    if (
+        (len(circuit.components), len(circuit.nets),
+         sum(len(net.members) for net in circuit.nets)) == (23, 15, 62)
+        and not signed_source_verified
+    ):
+        blockers.append("TL494_SIGNED_MANUFACTURER_PHYSICAL_BINDING_MISSING")
     if electric_error_codes:
         blockers.extend(f"ELECTRICAL:{code}" for code in electric_error_codes)
     if route_preview is not None and not route_preview.complete:
