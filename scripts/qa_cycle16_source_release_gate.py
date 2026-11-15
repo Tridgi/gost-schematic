@@ -218,6 +218,11 @@ def audit(
                manifest.get("routed_native_segments"),
                "QA_C16_ROUTE_WIRE_COUNT_NOT_NATIVE_GRAPH")
 
+    demand(manifest.get("routed_native_drc_errors") == 0 and
+           manifest.get("native_paper_frame_errors") == [] and
+           manifest.get("paper", {}).get("measured_text_10mm_frame_fit") is True and
+           manifest.get("paper", {}).get("absolute_10mm_component_ink_fit") is True,
+           "QA_C16_GENUINE_PARTIAL_SOURCE_DRC_OR_FRAME_INVALID")
     outcome = {
         "schema": "QA_CYCLE16_SOURCE_RELEASE_GATE_V1",
         "immutable_source": ORIGINAL,
