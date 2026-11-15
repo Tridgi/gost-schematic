@@ -31,7 +31,6 @@ from gost_schematic.agent_project.owner_source_contract import (
     verify_pinned_owner_headers,
 )
 
-
 _REQUIRED_CATALOG_TOOLS = frozenset({
     "schematic_catalog_search", "schematic_catalog_select",
     "schematic_catalog_preview", "schematic_tl494_selection_profile",
