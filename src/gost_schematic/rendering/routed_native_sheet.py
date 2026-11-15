@@ -11,7 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from importlib import import_module
 from math import gcd
 from xml.etree import ElementTree as ET
@@ -244,11 +244,39 @@ def render_routed_native_sheet(
         if not isinstance(project, NetContinuationProject):
             raise TypeError("ROUTED_SHEET_SOURCE_B_TYPED_PROJECT_REQUIRED")
         expected_stubs = {("X2", "1"), ("R5", "2")}
+        # The genuine frozen photo has legacy OUTPUT_NEG + reference.tl494cn.
+        # Its source-built electrical Circuit is re-signed for TI graphics,
+        # but b retains original typed source membership and physical tips.
+        # Only that exact reversible DA1 part-ID substitution is permitted.
+        direct_compact = (
+            project.circuit is circuit
+            and len(project.nets) == 1
+            and project.nets[0].net_name == "b_NEGATIVE_OUTPUT"
+        )
+        original_components = project.circuit.components
+        signed_components = circuit.components
+        signed_legacy = (
+            len(project.nets) == 1
+            and project.nets[0].net_name == "OUTPUT_NEG"
+            and project.circuit.nets == circuit.nets
+            and len(original_components) == len(signed_components) == 23
+            and all(
+                original == current
+                if original.reference != "DA1"
+                else (
+                    original.part_id == "reference.tl494cn"
+                    and current.part_id == "ti.tl494cn.pdip16"
+                    and replace(original, part_id=current.part_id) == current
+                )
+                for original, current in zip(
+                    original_components, signed_components, strict=True
+                )
+            )
+        )
         if (
             project.schema_version != 2
-            or project.circuit is not circuit
+            or not (direct_compact or signed_legacy)
             or len(project.nets) != 1
-            or project.nets[0].net_name != "b_NEGATIVE_OUTPUT"
             or len(project.endpoints) != 2
             or len(project.stubs) != 2
             or {(s.pin.reference, s.pin.number) for s in project.stubs}
