@@ -93,7 +93,9 @@ def test_source_hash_manifest_and_genuine_modules(upstream):
     assert SOURCE_COMMITS["model"].startswith("9c7f6251")
     assert SOURCE_COMMITS["graphics"].startswith("c49b7632")
     assert "qa-e1-upstream-" in model.__file__
-    assert model.__file__.endswith("gost_schematic/structural/__init__.py")
+    assert model.__file__.replace("\\", "/").endswith(
+        "gost_schematic/structural/__init__.py"
+    )
     assert visual.__file__.endswith("review_structural_e1_design.py")
     assert model_example.__file__.endswith("review_structural_e1.py")
     assert model.FunctionalBlock.__module__ == "gost_schematic.structural.model"

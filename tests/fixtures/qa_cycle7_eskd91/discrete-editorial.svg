@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 450 195" width="450mm" height="195mm" data-approval="DRAFT" data-purpose="NOT_A_NORMATIVE_1_TO_1_SYMBOL_OVERLAY" data-manufacturer-footprint="none">
+<rect width="450" height="195" fill="white"/>
+<g stroke="#000" stroke-width="0.35" fill="none" stroke-linejoin="round" stroke-linecap="square">
+<path data-candidate="potentiometer" d="M 20 57 H 38 M 58 57 H 76 M 38 52 H 58 V 62 H 38 Z M 48 26 V 43 M 48 43 L 45 37 M 48 43 L 51 37" />
+<path data-candidate="fuse" d="M 116 57 H 139 M 153 57 H 174 M 139 51 H 153 V 63 H 139 Z M 146 51 V 63" />
+<path data-candidate="schottky" d="M 210 57 H 228 M 246 57 H 267 M 228 47 V 67 L 246 57 Z M 246 47 V 67 M 246 47 H 250 V 43 M 246 67 H 242 V 71" />
+<path data-candidate="npn" d="M 314 58 H 337 M 337 39 V 77 M 337 48 L 359 31 M 337 68 L 359 85 M 349 76 L 359 85 L 350 83" />
+<path data-candidate="pnp" d="M 30 140 H 53 M 53 121 V 159 M 53 131 L 75 114 M 53 149 L 75 166 M 53 149 L 61 144 L 57 154" />
+<path data-candidate="mos_n" d="M 127 140 H 148 M 148 126 V 153 M 156 121 V 127 M 156 133 V 140 M 156 146 V 159 M 156 121 H 181 M 156 159 H 181 M 181 106 V 121 M 181 159 V 173" />
+<path data-candidate="plug_socket" d="M 227 140 H 247 M 247 136 H 260 V 144 H 247 Z M 260 140 H 272 M 273 136 Q 266 140 273 144 M 273 140 H 291" />
+<path data-candidate="continuation" d="M 340 140 H 373 M 373 140 L 385 132 M 373 140 L 385 148 M 373 140 H 395" />
+</g>
+<text x="16" y="19" font-size="3.8" font-family="sans-serif" fill="black">R - variable / wiper</text>
+<text x="112" y="19" font-size="3.8" font-family="sans-serif" fill="black">FU - fuse (table3 pos2)</text>
+<text x="208" y="19" font-size="3.8" font-family="sans-serif" fill="black">VD - Schottky</text>
+<text x="305" y="19" font-size="3.8" font-family="sans-serif" fill="black">VT - NPN (UNVERIFIED)</text>
+<text x="16" y="105" font-size="3.8" font-family="sans-serif" fill="black">VT - PNP (UNVERIFIED)</text>
+<text x="115" y="105" font-size="3.8" font-family="sans-serif" fill="black">VT - N MOS (UNVERIFIED)</text>
+<text x="220" y="105" font-size="3.8" font-family="sans-serif" fill="black">XP / XS physical</text>
+<text x="335" y="105" font-size="3.8" font-family="sans-serif" fill="black">NET continuation: NO part</text>
+<text x="16" y="183" font-size="3.2" font-family="sans-serif" fill="black">Symbols are ORIGINAL EDITORIAL sketches for review only. Compare actual table figures before production approval.</text>
+</svg>

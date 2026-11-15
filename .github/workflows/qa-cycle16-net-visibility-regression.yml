@@ -1,0 +1,79 @@
+name: QA Cycle16 independent actual NET 1um offpath visibility MRE and DRC
+on:
+  push:
+    branches: [parallel/qa-electronic-cycle7]
+    paths:
+      - scripts/qa_cycle16_visibility_mre.py
+      - .github/workflows/qa-cycle16-net-visibility-regression.yml
+  pull_request:
+    branches: [integration/stage0-12]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-net-owner-negative-before-fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    env:
+      NET_HEAD: fca626e363c3137317759ad6549034cd5afd3ef0
+      SOURCE_SHA: e695c415fdced164b0e0c39c5249d030795a0aa6
+    steps:
+      - name: Checkout QA own draft only
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Isolated exact REAL NET owner checkout
+        uses: actions/checkout@v4
+        with:
+          repository: Tridgi/gost-schematic
+          ref: fca626e363c3137317759ad6549034cd5afd3ef0
+          path: _qa_cycle16_NET
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install real tested NET and independent Ruff
+        run: |
+          python -m pip install -e "./_qa_cycle16_NET[dev,mcp]"
+          python -m ruff check scripts/qa_cycle16_visibility_mre.py
+      - name: Verify actual Git SHA, no owner code changed
+        run: |
+          test "$(git -C _qa_cycle16_NET rev-parse HEAD)" = "$NET_HEAD"
+          test "$(git -C _qa_cycle16_NET status --porcelain)" = ""
+          test "$SOURCE_SHA" = e695c415fdced164b0e0c39c5249d030795a0aa6
+      - name: Reproduce 1um OFF-PATH false negative + 5 genuine DRC guards
+        run: |
+          python scripts/qa_cycle16_visibility_mre.py \
+            --net-root _qa_cycle16_NET --expected-head "$NET_HEAD" \
+            --expect-known-defect \
+            --output output/cycle16-net-visibility-mre-${{ matrix.python-version }}.json
+      - name: Strict future acceptance must FAIL on this known buggy HEAD
+        run: |
+          set +e
+          python scripts/qa_cycle16_visibility_mre.py \
+            --net-root _qa_cycle16_NET --expected-head "$NET_HEAD" \
+            --require-fixed \
+            --output output/cycle16-unfixed-cannot-be-release-${{ matrix.python-version }}.json \
+            > output/cycle16-strict-negative-${{ matrix.python-version }}.log 2>&1
+          status=$?
+          set -e
+          test "$status" -ne 0
+          grep -q QA_C16_REAL_NET_OFFPATH_1UM_FALSE_NO_ROUTE_UNFIXED \
+            output/cycle16-strict-negative-${{ matrix.python-version }}.log
+          test ! -f output/cycle16-unfixed-cannot-be-release-${{ matrix.python-version }}.json
+          echo "Expected current OWNER failure is retained; no release approval"
+      - name: Upload actual independent source-signed regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-cycle16-net-real-false-no-route-${{ matrix.python-version }}
+          path: |
+            output/cycle16-net-visibility-mre-${{ matrix.python-version }}.json
+            output/cycle16-strict-negative-${{ matrix.python-version }}.log
+          if-no-files-found: warn

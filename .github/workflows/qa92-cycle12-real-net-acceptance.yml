@@ -1,0 +1,201 @@
+name: QA92 Cycle12 exact current NET114 native A3 A2 23-15-62 print gate
+
+on:
+  push:
+    branches: [parallel/qa-electronic-cycle7]
+  pull_request:
+    branches: [integration/stage0-12]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-net-acceptance:
+    name: real signed source and NET routed native ${{ matrix.paper }} py${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {python: "3.12", paper: "A3", node_cap: 25000}
+          - {python: "3.13", paper: "A3", node_cap: 25000}
+          - {python: "3.13", paper: "A2", node_cap: 25000}
+    env:
+      ORIGINAL: e695c415fdced164b0e0c39c5249d030795a0aa6
+      NET_SHA: 219946b73ba67d8f9a0f7dccb7ea4dcabb63c246
+      RECON_SHA: 6b451797dea682283b2627ccacaa36e50e4a1117
+      IC_SHA: 90a493a2f2c08b29db50f410332b91f807869a7b
+      PAINT_SHA: 21d39840f016d8418e658ce13842ff2031fefddc
+      YGO_SHA: e4de411bcf1d8a910687fd914143e92652dc3f92
+    steps:
+      - name: Existing QA 2 Draft PR, exact test source, never merge
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 219946b73ba67d8f9a0f7dccb7ea4dcabb63c246
+          path: _c12/net
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 6b451797dea682283b2627ccacaa36e50e4a1117
+          path: _c12/recon
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 90a493a2f2c08b29db50f410332b91f807869a7b
+          path: _c12/ic
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 21d39840f016d8418e658ce13842ff2031fefddc
+          path: _c12/paint
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: e4de411bcf1d8a910687fd914143e92652dc3f92
+          path: _c12/ygo
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: e695c415fdced164b0e0c39c5249d030795a0aa6
+          path: _c12/original
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Verify exact owner HEADs and stage only real modules in disposable NET checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          for target in net recon ic paint ygo; do
+            case "$target" in
+              net) expect="$NET_SHA";; recon) expect="$RECON_SHA";;
+              ic) expect="$IC_SHA";; paint) expect="$PAINT_SHA";;
+              ygo) expect="$YGO_SHA";;
+            esac
+            test "$(git -C "_c12/$target" rev-parse HEAD)" = "$expect"
+          done
+          test "$(git -C _c12/original rev-parse HEAD)" = "$ORIGINAL"
+          for stem in tl494_native_rework tl494_connected_native \
+                      tl494_full_native_model tl494_ic_paint_reference \
+                      tl494_named_photo_sheet; do
+            cp "_c12/original/examples/$stem.py" "_c12/net/examples/$stem.py"
+          done
+          cp -a _c12/recon/examples/tl494_v4 _c12/net/examples/
+          cp -a _c12/recon/examples/tl494_v5 _c12/net/examples/
+          cp _c12/ic/examples/tl494_cycle9_circuit_integration.py _c12/net/examples/
+          mkdir -p _c12/net/tests/fixtures
+          cp _c12/ic/tests/fixtures/tl494_photo_23_frozen_cycle9.json \
+             _c12/net/tests/fixtures/
+          cp -a _c12/ic/src/gost_schematic/electrical/. \
+            _c12/net/src/gost_schematic/electrical/
+          cp -a _c12/paint/src/gost_schematic/rendering/. \
+            _c12/net/src/gost_schematic/rendering/
+          cp _c12/ygo/src/gost_schematic/catalog/source_profiles.py \
+            _c12/net/src/gost_schematic/catalog/
+          cp _c12/ygo/src/gost_schematic/catalog/source_footprints.py \
+            _c12/net/src/gost_schematic/catalog/
+          cp _c12/ygo/src/gost_schematic/catalog/source_digest.py \
+            _c12/net/src/gost_schematic/catalog/
+          mkdir -p _c12/net/src/gost_schematic/catalog/source_profiles
+          cp -a _c12/ygo/src/gost_schematic/catalog/source_profiles/. \
+            _c12/net/src/gost_schematic/catalog/source_profiles/
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+
+          p = Path("_c12/net/tests/fixtures/tl494_photo_23_frozen_cycle9.json")
+          b = p.read_bytes()
+          git_blob_sha = hashlib.sha1(
+              b"blob " + str(len(b)).encode("ascii") + bytes((0,)) + b
+          ).hexdigest()
+          assert git_blob_sha == "a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65"
+          PY
+      - name: QA code Ruff and five hostile verified-font negatives
+        shell: bash
+        id: font
+        run: |
+          set -euo pipefail
+          python -m pip install -e "./_c12/net[dev,mcp,fonts]" cairosvg
+          ruff check scripts/qa_tl494_cycle12_net_sheet.py \
+            scripts/qa_install_opengost_release.py \
+            tests/test_qa_font_direct_release.py
+          python -m pytest -q tests/test_qa_font_direct_release.py
+          python scripts/qa_install_opengost_release.py \
+            --directory "$HOME/.local/share/fonts"
+          fc-cache -f
+          FONT="$(find "$HOME/.local/share/fonts" -iname '*TypeA*.ttf' -type f | head -1)"
+          test -f "$FONT"
+          echo "TL494_TYPE_A_FONT=$FONT" >> "$GITHUB_ENV"
+      - name: Real NET source and adversarial owner router pytest
+        if: ${{ always() && steps.font.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd _c12/net
+          PYTHONPATH=src:. python -m pytest -q \
+            tests/test_multiterminal_router_cycle9.py \
+            tests/test_route_drc_cycle9.py
+      - name: Actual owner NET114 with IC97 PAINT93 UGO113 RECON115 route A3/A2
+        id: routed
+        if: ${{ always() && steps.font.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "output/qa92-c12-${{ matrix.paper }}-${{ matrix.python }}"
+          cd _c12/net
+          PYTHONPATH=src:. python -m examples.review_tl494_compact_cycle9 \
+            --font-file "$TL494_TYPE_A_FONT" \
+            --owner-sha "$NET_SHA" --reference-sha "$RECON_SHA" \
+            --max-nodes ${{ matrix.node_cap }} \
+            --page-format "${{ matrix.paper }}" \
+            --priority-trials 2 \
+            --output "../../output/qa92-c12-${{ matrix.paper }}-${{ matrix.python }}"
+      - name: Render produced actual native SVG bytes directly at 300 DPI, never redraw
+        if: ${{ always() && steps.routed.outcome == 'success' }}
+        id: png
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import cairosvg
+          from PIL import Image
+          import os
+
+          paper = "${{ matrix.paper }}"
+          ver = "${{ matrix.python }}"
+          out = Path(f"output/qa92-c12-{paper}-{ver}")
+          for mode in ("clean", "diagnostic"):
+              name = f"TL494-compact-{paper}-{mode}"
+              svg = out / (name + ".svg")
+              png = out / (name + "-300dpi.png")
+              raw = svg.read_bytes()
+              cairosvg.svg2png(bytestring=raw, write_to=str(png), dpi=300)
+              with Image.open(png) as image:
+                  image.save(png, dpi=(300, 300))
+              assert svg.read_bytes() == raw
+          PY
+      - name: Independent QA exact 15 source trees, 16 physical pins, real ink and 16 adversarial false-print mutations
+        if: ${{ always() && steps.png.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/qa_tl494_cycle12_net_sheet.py \
+            --source-fixture "_c12/ic/tests/fixtures/tl494_photo_23_frozen_cycle9.json" \
+            --output-dir "output/qa92-c12-${{ matrix.paper }}-${{ matrix.python }}" \
+            --paper "${{ matrix.paper }}" \
+            --net-sha "$NET_SHA" --recon-sha "$RECON_SHA" \
+            --qa-report "output/qa92-c12-${{ matrix.paper }}-${{ matrix.python }}/independent-QA-C12-native-A3-A2.json"
+      - name: Preserve authentic owner evidence (including failed partial graph)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qa92-c12-physical-NET-${{ matrix.paper }}-py${{ matrix.python }}
+          path: output/qa92-c12-${{ matrix.paper }}-${{ matrix.python }}/
+          retention-days: 30
+          if-no-files-found: warn

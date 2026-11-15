@@ -1,0 +1,59 @@
+name: QA92 TL494 future 15-net physical router contract (NO-GO until native AFTER)
+
+on:
+  push:
+    branches: ["parallel/qa-electronic-cycle7"]
+  pull_request:
+    branches: ["integration/stage0-12"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  independent-native-router-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - name: Checkout independent QA own branch only
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Checkout immutable genuine 23/15 reference source
+        uses: actions/checkout@v4
+        with:
+          ref: e695c415fdced164b0e0c39c5249d030795a0aa6
+          path: _qa_sources/reference
+          persist-credentials: false
+      - name: Source-lock original and run QA-only code in disposable worktree
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C _qa_sources/reference rev-parse HEAD)" = e695c415fdced164b0e0c39c5249d030795a0aa6
+          cp scripts/qa_tl494_router_contract.py _qa_sources/reference/scripts/
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install real native model and lint QA code
+        run: |
+          python -m pip install -e "./_qa_sources/reference[dev,fonts,mcp]"
+          ruff check scripts/qa_tl494_router_contract.py
+      - name: Run source-backed negative mutations and 15-Net fail-closed candidate contract
+        shell: bash
+        run: |
+          cd _qa_sources/reference
+          PYTHONPATH=src:. python scripts/qa_tl494_router_contract.py \
+            --reference-root . \
+            --report "../../output/qa92-router-contract-py${{ matrix.python-version }}.json"
+      - name: Upload honest contract matrix even when a gate fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa92-future-router-contract-py${{ matrix.python-version }}
+          path: output/qa92-router-contract-py${{ matrix.python-version }}.json
+          if-no-files-found: warn
+          retention-days: 30

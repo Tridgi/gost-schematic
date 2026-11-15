@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="530mm" height="238mm" viewBox="0 0 530 238" data-status="DRAFT" data-standard="GOST-2.743-91-editorial-example" data-real-physical-pinmap="false">
+<rect width="530" height="238" fill="white"/>
+<text x="18" y="11" font-family="OpenGost Type A, sans-serif" font-size="5" fill="#000" >Issue #91 / schematic IC synthetic placement review</text>
+<text x="18" y="18" font-family="OpenGost Type A, sans-serif" font-size="3.3" fill="#000" >NOT VENDOR PINOUT. Digit positions ABOVE lead; numbers are synthetic test IDs.</text>
+<g data-ic="TEST_IC_4" data-synthetic-only="true" stroke="#000" fill="none" stroke-width="0.35">
+<rect x="46" y="41" width="62" height="22.5"/>
+<path d="M 62 41 V 63.5 M 92 41 V 63.5"/>
+<path d="M 35 48.5 H 46 M 108 48.5 H 119" data-pinleft="1" data-pinright="3"/>
+<path d="M 35 56 H 46 M 108 56 H 119" data-pinleft="2" data-pinright="4"/>
+</g>
+<text x="46" y="32" font-family="OpenGost Type A, sans-serif" font-size="4.6" fill="#000" >TEST_IC_4 — TEST 4 pins</text>
+<text x="66" y="46.2" font-family="OpenGost Type A, sans-serif" font-size="3.8" fill="#000" data-main-function="BUF">BUF</text>
+<text x="36.5" y="46.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="1">1</text>
+<text x="110" y="46.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="3">3</text>
+<text x="48.5" y="49.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I0</text>
+<text x="93.5" y="49.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O0</text>
+<text x="36.5" y="54.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="2">2</text>
+<text x="110" y="54.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="4">4</text>
+<text x="48.5" y="57.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I1</text>
+<text x="93.5" y="57.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O1</text>
+<text x="66" y="71.5" font-family="OpenGost Type A, sans-serif" font-size="3.1" fill="#000" >M=2.5 mm; pitch=7.5 mm</text>
+<g data-ic="TEST_IC_14" data-synthetic-only="true" stroke="#000" fill="none" stroke-width="0.35">
+<rect x="202" y="41" width="62" height="60"/>
+<path d="M 218 41 V 101 M 248 41 V 101"/>
+<path d="M 191 48.5 H 202 M 264 48.5 H 275" data-pinleft="1" data-pinright="8"/>
+<path d="M 191 56 H 202 M 264 56 H 275" data-pinleft="2" data-pinright="9"/>
+<path d="M 191 63.5 H 202 M 264 63.5 H 275" data-pinleft="3" data-pinright="10"/>
+<path d="M 191 71 H 202 M 264 71 H 275" data-pinleft="4" data-pinright="11"/>
+<path d="M 191 78.5 H 202 M 264 78.5 H 275" data-pinleft="5" data-pinright="12"/>
+<path d="M 191 86 H 202 M 264 86 H 275" data-pinleft="6" data-pinright="13"/>
+<path d="M 191 93.5 H 202 M 264 93.5 H 275" data-pinleft="7" data-pinright="14"/>
+</g>
+<text x="202" y="32" font-family="OpenGost Type A, sans-serif" font-size="4.6" fill="#000" >TEST_IC_14 — TEST 14 pins</text>
+<text x="222" y="46.2" font-family="OpenGost Type A, sans-serif" font-size="3.8" fill="#000" data-main-function="&amp;">&amp;</text>
+<text x="192.5" y="46.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="1">1</text>
+<text x="266" y="46.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="8">8</text>
+<text x="204.5" y="49.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I0</text>
+<text x="249.5" y="49.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O0</text>
+<text x="192.5" y="54.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="2">2</text>
+<text x="266" y="54.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="9">9</text>
+<text x="204.5" y="57.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I1</text>
+<text x="249.5" y="57.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O1</text>
+<text x="192.5" y="61.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="3">3</text>
+<text x="266" y="61.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="10">10</text>
+<text x="204.5" y="64.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I2</text>
+<text x="249.5" y="64.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O2</text>
+<text x="192.5" y="69.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="4">4</text>
+<text x="266" y="69.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="11">11</text>
+<text x="204.5" y="72.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I3</text>
+<text x="249.5" y="72.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O3</text>
+<text x="192.5" y="76.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="5">5</text>
+<text x="266" y="76.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="12">12</text>
+<text x="204.5" y="79.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I4</text>
+<text x="249.5" y="79.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O4</text>
+<text x="192.5" y="84.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="6">6</text>
+<text x="266" y="84.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="13">13</text>
+<text x="204.5" y="87.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I5</text>
+<text x="249.5" y="87.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O5</text>
+<text x="192.5" y="91.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="7">7</text>
+<text x="266" y="91.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="14">14</text>
+<text x="204.5" y="94.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I6</text>
+<text x="249.5" y="94.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O6</text>
+<text x="222" y="109" font-family="OpenGost Type A, sans-serif" font-size="3.1" fill="#000" >M=2.5 mm; pitch=7.5 mm</text>
+<g data-ic="TEST_IC_40" data-synthetic-only="true" stroke="#000" fill="none" stroke-width="0.35">
+<rect x="368" y="41" width="62" height="157.5"/>
+<path d="M 384 41 V 198.5 M 414 41 V 198.5"/>
+<path d="M 357 48.5 H 368 M 430 48.5 H 441" data-pinleft="1" data-pinright="21"/>
+<path d="M 357 56 H 368 M 430 56 H 441" data-pinleft="2" data-pinright="22"/>
+<path d="M 357 63.5 H 368 M 430 63.5 H 441" data-pinleft="3" data-pinright="23"/>
+<path d="M 357 71 H 368 M 430 71 H 441" data-pinleft="4" data-pinright="24"/>
+<path d="M 357 78.5 H 368 M 430 78.5 H 441" data-pinleft="5" data-pinright="25"/>
+<path d="M 357 86 H 368 M 430 86 H 441" data-pinleft="6" data-pinright="26"/>
+<path d="M 357 93.5 H 368 M 430 93.5 H 441" data-pinleft="7" data-pinright="27"/>
+<path d="M 357 101 H 368 M 430 101 H 441" data-pinleft="8" data-pinright="28"/>
+<path d="M 357 108.5 H 368 M 430 108.5 H 441" data-pinleft="9" data-pinright="29"/>
+<path d="M 357 116 H 368 M 430 116 H 441" data-pinleft="10" data-pinright="30"/>
+<path d="M 357 123.5 H 368 M 430 123.5 H 441" data-pinleft="11" data-pinright="31"/>
+<path d="M 357 131 H 368 M 430 131 H 441" data-pinleft="12" data-pinright="32"/>
+<path d="M 357 138.5 H 368 M 430 138.5 H 441" data-pinleft="13" data-pinright="33"/>
+<path d="M 357 146 H 368 M 430 146 H 441" data-pinleft="14" data-pinright="34"/>
+<path d="M 357 153.5 H 368 M 430 153.5 H 441" data-pinleft="15" data-pinright="35"/>
+<path d="M 357 161 H 368 M 430 161 H 441" data-pinleft="16" data-pinright="36"/>
+<path d="M 357 168.5 H 368 M 430 168.5 H 441" data-pinleft="17" data-pinright="37"/>
+<path d="M 357 176 H 368 M 430 176 H 441" data-pinleft="18" data-pinright="38"/>
+<path d="M 357 183.5 H 368 M 430 183.5 H 441" data-pinleft="19" data-pinright="39"/>
+<path d="M 357 191 H 368 M 430 191 H 441" data-pinleft="20" data-pinright="40"/>
+</g>
+<text x="368" y="32" font-family="OpenGost Type A, sans-serif" font-size="4.6" fill="#000" >TEST_IC_40 — TEST 40 pins</text>
+<text x="388" y="46.2" font-family="OpenGost Type A, sans-serif" font-size="3.8" fill="#000" data-main-function="ROM">ROM</text>
+<text x="358.5" y="46.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="1">1</text>
+<text x="432" y="46.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="21">21</text>
+<text x="370.5" y="49.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I0</text>
+<text x="415.5" y="49.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O0</text>
+<text x="358.5" y="54.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="2">2</text>
+<text x="432" y="54.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="22">22</text>
+<text x="370.5" y="57.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I1</text>
+<text x="415.5" y="57.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O1</text>
+<text x="358.5" y="61.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="3">3</text>
+<text x="432" y="61.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="23">23</text>
+<text x="370.5" y="64.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I2</text>
+<text x="415.5" y="64.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O2</text>
+<text x="358.5" y="69.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="4">4</text>
+<text x="432" y="69.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="24">24</text>
+<text x="370.5" y="72.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I3</text>
+<text x="415.5" y="72.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O3</text>
+<text x="358.5" y="76.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="5">5</text>
+<text x="432" y="76.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="25">25</text>
+<text x="370.5" y="79.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I4</text>
+<text x="415.5" y="79.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O4</text>
+<text x="358.5" y="84.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="6">6</text>
+<text x="432" y="84.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="26">26</text>
+<text x="370.5" y="87.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I5</text>
+<text x="415.5" y="87.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O5</text>
+<text x="358.5" y="91.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="7">7</text>
+<text x="432" y="91.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="27">27</text>
+<text x="370.5" y="94.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I6</text>
+<text x="415.5" y="94.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O6</text>
+<text x="358.5" y="99.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="8">8</text>
+<text x="432" y="99.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="28">28</text>
+<text x="370.5" y="102.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I7</text>
+<text x="415.5" y="102.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O7</text>
+<text x="358.5" y="106.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="9">9</text>
+<text x="432" y="106.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="29">29</text>
+<text x="370.5" y="109.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I8</text>
+<text x="415.5" y="109.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O8</text>
+<text x="358.5" y="114.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="10">10</text>
+<text x="432" y="114.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="30">30</text>
+<text x="370.5" y="117.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I9</text>
+<text x="415.5" y="117.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O9</text>
+<text x="358.5" y="121.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="11">11</text>
+<text x="432" y="121.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="31">31</text>
+<text x="370.5" y="124.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I10</text>
+<text x="415.5" y="124.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O10</text>
+<text x="358.5" y="129.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="12">12</text>
+<text x="432" y="129.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="32">32</text>
+<text x="370.5" y="132.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I11</text>
+<text x="415.5" y="132.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O11</text>
+<text x="358.5" y="136.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="13">13</text>
+<text x="432" y="136.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="33">33</text>
+<text x="370.5" y="139.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I12</text>
+<text x="415.5" y="139.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O12</text>
+<text x="358.5" y="144.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="14">14</text>
+<text x="432" y="144.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="34">34</text>
+<text x="370.5" y="147.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I13</text>
+<text x="415.5" y="147.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O13</text>
+<text x="358.5" y="151.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="15">15</text>
+<text x="432" y="151.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="35">35</text>
+<text x="370.5" y="154.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I14</text>
+<text x="415.5" y="154.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O14</text>
+<text x="358.5" y="159.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="16">16</text>
+<text x="432" y="159.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="36">36</text>
+<text x="370.5" y="162.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I15</text>
+<text x="415.5" y="162.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O15</text>
+<text x="358.5" y="166.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="17">17</text>
+<text x="432" y="166.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="37">37</text>
+<text x="370.5" y="169.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I16</text>
+<text x="415.5" y="169.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O16</text>
+<text x="358.5" y="174.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="18">18</text>
+<text x="432" y="174.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="38">38</text>
+<text x="370.5" y="177.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I17</text>
+<text x="415.5" y="177.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O17</text>
+<text x="358.5" y="181.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="19">19</text>
+<text x="432" y="181.9" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="39">39</text>
+<text x="370.5" y="184.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I18</text>
+<text x="415.5" y="184.6" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O18</text>
+<text x="358.5" y="189.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-input-lead" data-physical-number="20">20</text>
+<text x="432" y="189.4" font-family="OpenGost Type A, sans-serif" font-size="3.2" fill="#000" data-position="above-output-lead" data-physical-number="40">40</text>
+<text x="370.5" y="192.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="left">I19</text>
+<text x="415.5" y="192.1" font-family="OpenGost Type A, sans-serif" font-size="2.7" fill="#000" data-port-label="right">O19</text>
+<text x="388" y="206.5" font-family="OpenGost Type A, sans-serif" font-size="3.1" fill="#000" >M=2.5 mm; pitch=7.5 mm</text>
+<text x="18" y="227" font-family="OpenGost Type A, sans-serif" font-size="3.3" fill="#000" >ГОСТ 2.743-91 §§2.1.3, 2.3.12; module &amp; dimensions EDITORIAL. Text font unverified; approval DRAFT.</text>
+</svg>
