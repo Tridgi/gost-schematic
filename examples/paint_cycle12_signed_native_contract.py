@@ -196,3 +196,114 @@ def test_signed_source_b_rejects_missing_physical_r5_pin(
     )
     with pytest.raises(ValueError, match="SOURCE_B_PHYSICAL_IDENTITY_DRIFT"):
         _invoke(real_signed_scene, source_continuation_project=forged)
+
+
+def test_signed_real_b_native_strokes_exact_physical_endpoints_and_not_copper(
+    real_signed_scene,
+):
+    from xml.etree import ElementTree as ET
+
+    source_b = real_signed_scene[11]
+    expected = {stub.endpoint_id: stub for stub in source_b.stubs}
+    assert {k: f"{v.pin.reference}.{v.pin.number}"
+            for k, v in expected.items()} == {
+        "b-X2": "X2.1", "b-R5": "R5.2",
+    }
+    before_nets = real_signed_scene[1].nets
+    svg_ns = "{http://www.w3.org/2000/svg}"
+    for svg in (_invoke(real_signed_scene).clean_svg,
+                _invoke(real_signed_scene).diagnostic_svg):
+        root = ET.fromstring(svg)
+        lines = root.findall(
+            f".//{svg_ns}g[@data-layer='typed-nonphysical-continuations']/"
+            f"{svg_ns}line[@data-layer='nonphysical-continuation-stub']"
+        )
+        assert len(lines) == 2
+        assert len(root.findall(f".//{svg_ns}line[@data-layer='wires']")) == 0
+        assert {line.get("data-nonphysical-net-continuation")
+                for line in lines} == set(expected)
+        for line in lines:
+            stub = expected[line.get("data-nonphysical-net-continuation")]
+            assert line.get("data-source-pin-ref") == (
+                f"{stub.pin.reference}.{stub.pin.number}"
+            )
+            assert line.get("data-source-stub-id") == stub.id
+            assert line.get("data-nonphysical") == "true"
+            assert line.get("data-electrical-junction") == "false"
+            assert line.get("data-connectable") == "false"
+            assert tuple(round(float(line.get(field)) * 1000) for field in (
+                "x1", "y1", "x2", "y2",
+            )) == (
+                stub.start.x, stub.start.y, stub.end.x, stub.end.y,
+            )
+    assert real_signed_scene[1].nets is before_nets
+
+
+@pytest.mark.parametrize("fault", ("missing", "duplicate", "off_anchor", "wrong_pin"))
+def test_real_b_stroke_fail_closed_on_source_project_tampering(
+    real_signed_scene, fault,
+):
+    from xml.etree import ElementTree as ET
+
+    project = real_signed_scene[11]
+    first, second = project.stubs
+    if fault == "missing":
+        changed = (first,)
+    elif fault == "duplicate":
+        changed = (first, first)
+    elif fault == "off_anchor":
+        geo = import_module("gost_schematic.core.geometry")
+        changed = (
+            replace(first, end=geo.Point(first.end.x + 1, first.end.y)),
+            second,
+        )
+    else:
+        pin = import_module("gost_schematic.model.circuit").PinRef
+        changed = (replace(first, pin=pin("R5", "2")), second)
+    altered = replace(project, stubs=changed)
+    composer = import_module("gost_schematic.rendering.ic_sheet_composition")
+    root = ET.Element("{http://www.w3.org/2000/svg}svg")
+    with pytest.raises(ValueError, match="SHEET_CONTINUATION_SOURCE_B"):
+        composer.append_verified_sheet_continuations(
+            root, real_signed_scene[1], altered,
+            real_signed_scene[4], diagnostic=False,
+        )
+    assert not list(root)
+
+
+def test_modern_type_a_builder_real_declared_face_and_pinned_sha(
+    real_signed_scene,
+):
+    import hashlib
+
+    reference = import_module("examples.tl494_ic_paint_reference")
+    paint = import_module("examples.render_tl494_full_native_cycle9")
+    font_path = Path(os.environ["TL494_TYPE_A_FONT"])
+    assert paint._declared_type_a_family(reference.build) == "OpenGOST type A"
+    assert hashlib.sha256(font_path.read_bytes()).hexdigest() == (
+        "f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a"
+    )
+    assert real_signed_scene[4].font_sha256 == (
+        "f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a"
+    )
+
+
+def test_modern_type_a_owner_adapter_rejects_corrupted_font_and_alias(
+    real_signed_scene, tmp_path, monkeypatch,
+):
+    reference = import_module("examples.tl494_ic_paint_reference")
+    paint = import_module("examples.render_tl494_full_native_cycle9")
+    named = import_module("examples.tl494_named_photo_sheet")
+    original = Path(os.environ["TL494_TYPE_A_FONT"])
+    corrupt = tmp_path/"corrupt-type-a.otf"
+    data = original.read_bytes()
+    corrupt.write_bytes(data[:-1] + bytes([data[-1] ^ 1]))
+    with pytest.raises(ValueError, match="PINNED_SHA_MISMATCH"):
+        paint._compose_frozen_circuit_with_real_type_a(
+            named.compose_circuit, corrupt,
+        )
+    monkeypatch.setattr(reference, "build", lambda _path: None)
+    with pytest.raises(ValueError, match="BUILDER_ALIAS_DRIFT"):
+        paint._compose_frozen_circuit_with_real_type_a(
+            named.compose_circuit, original,
+        )
