@@ -60,6 +60,74 @@ jobs:
           assert x["release_verdict"].startswith("NO_GO_")
           print("TRUE OWNER ARTIFACT BLOCKED AS REQUIRED; no false full-route print PASS")
           PY
+      - name: Hostile mutations on REAL downloaded native owner outputs
+        run: |
+          python - <<'PY'
+          import copy
+          import hashlib
+          import json
+          import shutil
+          import tempfile
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+          from scripts.eskd_cycle15_real_paint_a3_release_gate import (
+              NativeReleaseError, ROOT, audit,
+          )
+
+          source = Path("evidence/real-PAINT-C10/tl494-C10-compact-A3-new-graph")
+          sha = "252fed9077351493378348f4c0a0138c5e04c8b5"
+          svg_ns = "{http://www.w3.org/2000/svg}"
+          tested = 0
+          for mutation, expected_code in [
+              ("remove_real_b_line", "SOURCE_B_TWO_ACTUAL_PHYSICAL_LOCAL_INK_LINES_MISSING"),
+              ("move_real_b_tip_1um", "SOURCE_B_REAL_INK_DOES_NOT_REACH_SIGNED_STUB_ENDPOINTS"),
+              ("drop_real_DA1_pin", "TRUE_DA1_16_PIN_SVG_NOT_PRESENT"),
+              ("fake_full_release", "PARTIAL_SVG_FAKES_FULL_RELEASE"),
+              ("swap_original_non_b_member", "FROZEN_15_EXACT_NET_MEMBER_SETS_REQUIRED"),
+          ]:
+              with tempfile.TemporaryDirectory() as tmp:
+                  target = Path(tmp) / "owner"
+                  shutil.copytree(source, target)
+                  clean = target / f"{ROOT}_clean.svg"
+                  if mutation == "swap_original_non_b_member":
+                      netlist_file = target / "TL494_COMPACT_A3_SOURCE_NETLIST_DRAFT.json"
+                      source_nets = json.loads(netlist_file.read_text(encoding="utf-8"))
+                      x = next(n for n in source_nets["nets"] if n["name"] == "FEEDBACK")
+                      y = next(n for n in source_nets["nets"] if n["name"] == "GATE_DRIVE")
+                      x["pinrefs"][0], y["pinrefs"][0] = (
+                          y["pinrefs"][0], x["pinrefs"][0]
+                      )
+                      netlist_file.write_text(json.dumps(source_nets), encoding="utf-8")
+                  else:
+                      root = ET.parse(clean).getroot()
+                      if mutation == "remove_real_b_line":
+                          area = next(g for g in root.iter(f"{svg_ns}g")
+                                      if g.get("data-layer") == "typed-nonphysical-continuations")
+                          line = next(x for x in area.iter(f"{svg_ns}line")
+                                      if x.get("data-layer") == "nonphysical-continuation-stub")
+                          area.remove(line)
+                      elif mutation == "move_real_b_tip_1um":
+                          line = next(x for x in root.iter(f"{svg_ns}line")
+                                      if x.get("data-layer") == "nonphysical-continuation-stub")
+                          line.set("x1", str(float(line.get("x1")) + 0.001))
+                      elif mutation == "drop_real_DA1_pin":
+                          parent = next(g for g in root.iter(f"{svg_ns}g")
+                                        if g.get("data-layer") == "ic-physical-pin-leads")
+                          parent.remove(next(iter(parent)))
+                      elif mutation == "fake_full_release":
+                          root.set("data-release", "PRINT_PASS")
+                      clean.write_bytes(ET.tostring(root, encoding="utf-8"))
+                  current_sha = hashlib.sha256(clean.read_bytes()).hexdigest()
+                  try:
+                      audit(target, artifact_run=43720996792,
+                            paint_sha=sha, expected_clean_sha=current_sha)
+                  except NativeReleaseError as exc:
+                      assert expected_code in str(exc), (mutation, str(exc))
+                  else:
+                      raise AssertionError(f"FORGED_OWNER_ARTIFACT_ACCEPTED:{mutation}")
+                  tested += 1
+          print(f"PASS {tested} real-owner hostile SVG/Netlist mutations fail closed")
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: ESKD-C15-PAINT-REAL-6of15-SIGNED-B-NO-GO-${{ matrix.python-version }}
