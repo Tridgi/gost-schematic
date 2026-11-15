@@ -28,6 +28,7 @@ from .design_assistant import (
 from .design_selection import require_api_version, require_sha
 from .owner_source_contract import verify_frozen_owner_fixture
 from .read_access import ReadOnlyProjectAccess
+from .retry_contract import blocked_generation_diagnostics, readonly_error_diagnostic
 from .service import ProjectSnapshot
 
 _MAX_INPUT_BYTES = 131_072
@@ -265,6 +266,13 @@ def review_request(request: dict[str, Any],
                 "SOURCE_NOMINAL_MISMATCH",
                 "Exact source nominal literal differs from frozen original BOM",
             )
+        blocker_reasons = [
+            "TI_TL494_16_PIN_P11_ADAPTER_NOT_INSTALLED",
+            "SOURCE_62_PINREF_MEMBERSHIP_NOT_VERIFIED_IN_P11",
+            "GLOBAL_15_NET_ROUTER_NOT_ACCEPTED",
+            "PRINT_INK_AND_A3_DRC_NOT_ACCEPTED",
+            "NO_TRUSTED_TYPED_GENERATOR_OR_CAS_COMMIT",
+        ]
         return {
             "schema_version": 1, "intent": request["intent"],
             "status": "BLOCKED_SOURCE_NOT_IMPORTABLE",
@@ -279,13 +287,8 @@ def review_request(request: dict[str, Any],
             "frozen_source_typed_manifest_sha256": frozen[
                 "source_typed_manifest_sha256"
             ],
-            "reasons": [
-                "TI_TL494_16_PIN_P11_ADAPTER_NOT_INSTALLED",
-                "SOURCE_62_PINREF_MEMBERSHIP_NOT_VERIFIED_IN_P11",
-                "GLOBAL_15_NET_ROUTER_NOT_ACCEPTED",
-                "PRINT_INK_AND_A3_DRC_NOT_ACCEPTED",
-                "NO_TRUSTED_TYPED_GENERATOR_OR_CAS_COMMIT",
-            ],
+            "reasons": blocker_reasons,
+            "diagnostics": blocked_generation_diagnostics(blocker_reasons),
             "requested_outputs": requested,
             "outputs_created": [],
             "route_attempts_executed": 0,
@@ -371,12 +374,14 @@ def main() -> int:
         print(json.dumps({
             "schema_version": 1, "status": "REJECTED",
             "code": exc.code, "read_only": True, "mutated": False,
+            "diagnostic": readonly_error_diagnostic(exc.code),
         }, sort_keys=True))
         return 3
     except (OSError, ValueError, TypeError, RecursionError):
         print(json.dumps({
             "schema_version": 1, "status": "REJECTED",
             "code": "REQUEST_FAILED", "read_only": True, "mutated": False,
+            "diagnostic": readonly_error_diagnostic("REQUEST_FAILED"),
         }, sort_keys=True))
         return 3
     print(json.dumps(report, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
