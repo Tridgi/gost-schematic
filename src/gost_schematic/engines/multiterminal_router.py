@@ -1064,6 +1064,34 @@ def route_circuit_net_trees(
     )
 
 
+def _source_priority_name_view(
+    original: tuple[str, ...],
+    actual_names: frozenset[str],
+) -> tuple[str, ...]:
+    """Choose REAL source names, not fabricated alias Nets, for route order.
+
+    The user photo records a_INPUT_PLUS / TRANSFER / b_NEGATIVE_OUTPUT,
+    while older RECON display art called these INPUT_POS /
+    ENERGY_TRANSFER / OUTPUT_NEG. All three pairs have the same original
+    *physical PinRef tuples*. The source-typed graph MUST retain whichever
+    actual Circuit.Net.name was provided, never rewrite or merge the Net.
+    """
+    aliases = {
+        "INPUT_POS": "a_INPUT_PLUS",
+        "ENERGY_TRANSFER": "TRANSFER",
+        "OUTPUT_NEG": "b_NEGATIVE_OUTPUT",
+    }
+    if len(set(original)) != len(original):
+        raise ValueError("ROUTE_DUPLICATE_SOURCE_ORDER_LABEL")
+    translated = tuple(
+        name if name in actual_names else aliases.get(name, name)
+        for name in original
+    )
+    if len(set(translated)) != len(translated):
+        raise ValueError("ROUTE_SOURCE_ALIAS_PRIORITY_COLLISION")
+    return translated
+
+
 def route_circuit_with_order_fallback(
     circuit: Circuit,
     parts: dict[str, PartDefinition],
@@ -1086,7 +1114,10 @@ def route_circuit_with_order_fallback(
     fewer post-route DRC errors, fewer crossings/bends and shorter length.
     A partial graph always remains BLOCKED, even if geometric DRC is clean.
     """
-    original = SOURCE_TL494_ROUTE_PRIORITY
+    actual_net_names = frozenset(net.name for net in circuit.nets)
+    original = _source_priority_name_view(
+        SOURCE_TL494_ROUTE_PRIORITY, actual_net_names,
+    )
     congested = (
         "FEEDBACK", "OSCILLATOR_RT", "CONTROL_REFERENCE",
         "GATE_DRIVE", "COMMON",
@@ -1101,9 +1132,9 @@ def route_circuit_with_order_fallback(
         ("SOURCE_FUNCTIONAL", original),
         ("COMMON_FIRST", ("COMMON", *(p for p in original if p != "COMMON"))),
         ("POWER_THEN_COMMON", (
-            "INPUT_POS", "SWITCH", "COMMON",
+            original[0], "SWITCH", "COMMON",
             *(p for p in original if p not in
-              {"INPUT_POS", "SWITCH", "COMMON"}),
+              {original[0], "SWITCH", "COMMON"}),
         )),
         ("CONGESTED_PIN_FANOUT_FIRST", (
             *congested, *(p for p in original if p not in congested),
