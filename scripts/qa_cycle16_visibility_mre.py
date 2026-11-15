@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import itertools
 import json
 import subprocess
 import sys
@@ -35,13 +36,14 @@ def verify(net_root: Path, expected_head: str, *, expect_known_defect: bool) -> 
     src_root = str(root / "src")
     sys.path.insert(0, src_root)
 
+    from gost_schematic.validation.route_drc import candidate_wire_clearance
+
     from gost_schematic.core.geometry import Box, Point
     from gost_schematic.engines import multiterminal_router as router
     from gost_schematic.validation.external_wire_checks import (
         ExternalWireGraph,
         WireSegment,
     )
-    from gost_schematic.validation.route_drc import candidate_wire_clearance
 
     require(Path(router.__file__).resolve() == module.resolve(),
             "QA_C16_IMPORTED_NONOWNER_ROUTER")
@@ -116,7 +118,7 @@ def verify(net_root: Path, expected_head: str, *, expect_known_defect: bool) -> 
                 "QA_C16_REAL_NET_OFFPATH_1UM_FALSE_NO_ROUTE_UNFIXED")
 
     physically_on, on_reason = search((on,))
-    for a, b in zip(physically_on, physically_on[1:]):
+    for a, b in itertools.pairwise(physically_on):
         require((a.x == b.x) != (a.y == b.y),
                 "QA_C16_ONPATH_CANDIDATE_NON_ORTHOGONAL")
         if a.y == b.y and on.min_y < a.y < on.max_y:
