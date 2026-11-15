@@ -67,6 +67,13 @@ def summarize_trial(name: str, trial: dict) -> dict:
         "a3_capacity_fit": footprint["A3_capacity_fit"],
         "layout_valid": trial["layout_valid"],
         "manufacturer_binding": trial.get("manufacturer_binding"),
+        "router_mode": trial.get("router_mode"),
+        "owner_order_trials": trial.get(
+            "owner_router_report", {},
+        ).get("route_order_trials", []),
+        "accepted_wire_segments": trial.get(
+            "accepted_graph_nonprintable", {},
+        ).get("total_segment_count", 0),
         "b_continuation_rebound": trial.get("b_continuation_rebound"),
         "named_net_status": trial.get("named_net_status", {}),
         "technical_route_eligible": trial["technical_route_eligible"],
@@ -87,11 +94,16 @@ def run_placement_matrix(
     original_nets = {
         net.name: tuple(net.members) for net in source.nets
     }
-    assert len(base.circuit.components) == 23
-    assert len(original_nets) == 15
-    assert sum(map(len, original_nets.values())) == 62
-    assert {pin.number for net in source.nets for pin in net.members
-            if pin.reference == "DA1"} == set(map(str, range(1, 17)))
+    if (
+        len(base.circuit.components) != 23
+        or len(original_nets) != 15
+        or sum(len(pins) for pins in original_nets.values()) != 62
+        or {
+            pin.number for net in source.nets for pin in net.members
+            if pin.reference == "DA1"
+        } != {str(i) for i in range(1, 17)}
+    ):
+        raise ValueError("C13_PLACEMENT_ORIGINAL_23_15_62_16_DRIFT")
 
     variants = []
     for key, changes in PLACEMENT_TRIALS:
