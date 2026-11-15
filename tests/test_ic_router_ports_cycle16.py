@@ -256,6 +256,33 @@ def test_cycle16_producer_sha_provenance_fails_closed(badsha):
         )
 
 
+def test_cycle16_source_23_component_partid_cannot_be_spoofed():
+    binding, _ = _contract()
+    comps = list(binding.circuit.components)
+    pos = next(i for i, c in enumerate(comps) if c.reference == "R8")
+    comps[pos] = replace(comps[pos], part_id="diode.schottky")
+    changed = replace(binding.circuit, components=tuple(comps))
+    counterfeit = replace(binding, circuit=changed)
+    with pytest.raises(ValueError):
+        export_tl494_router_ports(counterfeit)
+
+
+def test_cycle16_external_stale_placement_consent_is_never_accepted():
+    binding, contract = _contract()
+    stale = IcGeometryConsent("f" * 64, ())
+    with pytest.raises(
+        ValueError, match="IC_ROUTER_GEOMETRY_CONSENT_SOURCE_STALE",
+    ):
+        contract.verify_external_layout(
+            binding,
+            proposed_origin_um=contract.part_origin_um,
+            proposed_rotation_deg=contract.rotation_deg,
+            proposed_mirror_x=contract.mirror_x,
+            proposed_ports=contract.ports,
+            consent=stale,
+        )
+
+
 def test_cycle16_source_contract_never_accepts_forced_foreign_part():
     binding, _ = _contract()
     fake = replace(binding, part=replace(
@@ -268,8 +295,8 @@ def test_cycle16_source_contract_never_accepts_forced_foreign_part():
 def test_cycle16_original_pinref_identity_exact_without_phantom_x_or_t():
     _, contract = _contract()
     original = {
-        item for item in contract.to_dict()["source_original_nets"]
-        for item in item["members"]
+        item for net in contract.to_dict()["source_original_nets"]
+        for item in net["members"]
     }
     assert len(original) == 62
     assert {f"DA1.{i}" for i in range(1, 17)} <= original
