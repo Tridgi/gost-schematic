@@ -116,21 +116,21 @@ def test_cycle13_real_wire_veto_only_generates_source_legal_backtrack_priority()
         NetTreePreview(
             "GATE_DRIVE", pins, (), (), 0, 0, 0,
             (
-                "ROUTE_NO_CLEAR_ORTHOGONAL_TREE_PATH:"
-                "INK_VETO=DA1#12:DA1.10:205000,116250->203455,116250:"
-                "WIRE_VETO=a_INPUT_PLUS:DRC_FOREIGN_NET_ENDPOINT_CONTACT:"
-                "existing=205302,123750->205302,101250:"
-                "trial=205000,116250->205302,116250:DA1.10",
+                ("ROUTE_NO_CLEAR_ORTHOGONAL_TREE_PATH:"
+                 "INK_VETO=DA1#12:DA1.10:205000,116250->203455,116250:"
+                 "WIRE_VETO=a_INPUT_PLUS:DRC_FOREIGN_NET_ENDPOINT_CONTACT:"
+                 "existing=205302,123750->205302,101250:"
+                 "trial=205000,116250->205302,116250:DA1.10"),
             ),
             (pins[0],),
         ),
         NetTreePreview(
             "FEEDBACK", pins, (), (), 0, 0, 0,
             (
-                "ROUTE_NO_CLEAR_ORTHOGONAL_TREE_PATH:"
-                "WIRE_VETO=ERROR_INPUT:DRC_PARALLEL_STROKE_CLEARANCE:"
-                "existing=10000,20000->20000,20000:"
-                "trial=10000,20300->20000,20300:DA1.3",
+                ("ROUTE_NO_CLEAR_ORTHOGONAL_TREE_PATH:"
+                 "WIRE_VETO=ERROR_INPUT:DRC_PARALLEL_STROKE_CLEARANCE:"
+                 "existing=10000,20000->20000,20000:"
+                 "trial=10000,20300->20000,20300:DA1.3"),
             ),
             (pins[0],),
         ),
