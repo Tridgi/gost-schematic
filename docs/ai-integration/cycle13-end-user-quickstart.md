@@ -56,6 +56,14 @@ Set-Location $env:TEMP
 | 7 `*.svg` + 7 `*.png` | Настоящие нативные изображения **отдельных каталожных УГО**, полученные через `mcp.ClientSession`, SHA256 каждого | Полный SVG/PNG 300 DPI схемы |
 | `source-quickstart-report.json` | Машинные статусы, SHA и размеры артефактов, source 91 исторический wire / 37 junction / 2 графических b | Производственная приёмка |
 
+В Cycle14 отчёт `source-quickstart-report.json` дополнительно содержит
+`blocked_stage_diagnostics`: структурированные коды и стадии
+`SOURCE_MODEL`/`ROUTING`/`ERC_DRC`/`COMMIT_GATE`, все без права записи.
+Каждая запись `refusal-tests.json` содержит собственный `diagnostic`
+с запрещённой автоматической повторной попыткой. Внутри
+`source-validation.json` сохранены исходные `reasons` и новые
+`diagnostics`; контракт обратно совместим по статусам и кодам.
+
 Статус **`BLOCKED_PARTIAL`** — ожидаемый. Запуск возвращает 0 только
 если корректно установлено, что состав исходника верен, а генерация
 **НЕ** выполнена. `new_routed_net_count=0` здесь означает, что
