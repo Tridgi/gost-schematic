@@ -102,11 +102,9 @@ jobs:
           if-no-files-found: warn
       - name: Install open-license OpenGOST Type A for sample render
         if: matrix.python-version == '3.12'
-        env:
-          # Authenticated GitHub release metadata avoids anonymous shared-IP
-          # API 403 on Actions. Installer sends token ONLY to api.github.com.
-          GITHUB_TOKEN: ${{ github.token }}
         run: |
+          # Fixed v0.7 release archive and Type A face are SHA256 pinned by
+          # the installer; no GitHub REST API token, substitute or font vendoring.
           python scripts/install_opengost_type_a.py \
             --directory "$HOME/.local/share/fonts"
           fc-cache -f
