@@ -108,7 +108,7 @@ def _make_owner(tmp_path, completed=9):
         complete = i < completed
         connected = pins[:] if complete else pins[:1]
         progress[name] = {
-            "source_pinrefs": pins, "connected_pinrefs": connected,
+            "source_pinrefs": pins[:], "connected_pinrefs": connected,
             "complete": complete, "diagnostics": [] if complete else ["SEARCH_BLOCKED"],
             "segments": [],
         }
