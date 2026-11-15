@@ -1,4 +1,4 @@
-name: YGO Cycle11 actual NET and PAINT owner source UGO integration
+name: YGO physical source UGO cross-owner exact HEAD (NET PAINT IC)
 
 on:
   push:
@@ -34,22 +34,22 @@ jobs:
         include:
           - owner: net
             python-version: "3.12"
-            owner_sha: "7d66b9ae3b0bebcc5bb6b4812aa603e7cd963836"
+            owner_sha: "ffbfc5fdc4653e1a2b08ac5e6d38d96ad669dbec"
           - owner: net
             python-version: "3.13"
-            owner_sha: "7d66b9ae3b0bebcc5bb6b4812aa603e7cd963836"
+            owner_sha: "ffbfc5fdc4653e1a2b08ac5e6d38d96ad669dbec"
           - owner: paint
             python-version: "3.12"
-            owner_sha: "7ef594622f507592e4f686faf8baa5ff2a7fbd2f"
+            owner_sha: "f71f9c47f1e6313361dfa04242c559b0d74c831c"
           - owner: paint
             python-version: "3.13"
-            owner_sha: "7ef594622f507592e4f686faf8baa5ff2a7fbd2f"
+            owner_sha: "f71f9c47f1e6313361dfa04242c559b0d74c831c"
           - owner: ic
             python-version: "3.12"
-            owner_sha: "90a493a2f2c08b29db50f410332b91f807869a7b"
+            owner_sha: "90dab83566ba9ed8b344ab24396da084f02b5c23"
           - owner: ic
             python-version: "3.13"
-            owner_sha: "90a493a2f2c08b29db50f410332b91f807869a7b"
+            owner_sha: "90dab83566ba9ed8b344ab24396da084f02b5c23"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
