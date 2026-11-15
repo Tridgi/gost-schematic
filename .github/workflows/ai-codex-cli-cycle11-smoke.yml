@@ -11,6 +11,8 @@ on:
       - "examples/agent_tl494_cycle11_pipeline.py"
       - "examples/agent_tl494_cycle13_quickstart.py"
       - "tests/agent_project/test_agent_tl494_cycle13_quickstart.py"
+      - "src/gost_schematic/agent_project/generation_handoff.py"
+      - "tests/agent_project/test_generation_handoff_cycle14.py"
       - "docs/ai-integration/cycle13-end-user-quickstart.md"
       - "docs/ai-integration/agent-cycle11-source-driven-walkthrough.md"
       - ".github/workflows/ai-codex-cli-cycle11-smoke.yml"
@@ -88,6 +90,7 @@ jobs:
             tests/agent_project/test_tl494_ai_selection_cycle9.py \
             tests/agent_project/test_tl494_owner_contract_cycle11.py \
             tests/agent_project/test_tl494_owner_pipeline_cycle11.py \
+            tests/agent_project/test_generation_handoff_cycle14.py \
             tests/agent_project/test_agent_tl494_cycle13_quickstart.py
       - name: Cycle13 real end-user native MCP quickstart — no Codex model call
         shell: bash
@@ -102,6 +105,7 @@ jobs:
           assert proof["actual_native_mcp_client_session"] is True
           assert proof["source_netlist_user_approval"] == "USER_REVIEW_REQUIRED"
           assert proof["refusal_tests_passed"] == 11
+          assert proof["generation_handoff_status"] == "BLOCKED_GENERATOR_NOT_INTEGRATED"
           assert proof["original_net_count"] == 15
           assert proof["original_pinref_member_count"] == 62
           assert proof["actual_codex_cli_llm_session"] is False
