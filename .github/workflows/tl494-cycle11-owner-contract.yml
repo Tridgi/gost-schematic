@@ -188,7 +188,7 @@ jobs:
             # Build FOUR fresh actual layouts on the current RECON SHA;
             # 23 real symbols incl DA1, every original PinRef, exact TypeA,
             # real source b graphical-only vectors and NET portal contract.
-            PYTHONPATH="$PWD/src:$PWD" python "$GITHUB_WORKSPACE/scripts/export_tl494_cycle16_router_obstacles.py" \
+            PYTHONPATH="$PWD/src:$PWD:$GITHUB_WORKSPACE" python "$GITHUB_WORKSPACE/scripts/export_tl494_cycle16_router_obstacles.py" \
               --owner-recon-sha "$OWNER_SHA" \
               --font "$GITHUB_WORKSPACE/.font-cycle15/OpenGOST-TypeA-OpenGOSTtypeA-Regular.ttf" \
               --output "$GITHUB_WORKSPACE/output/cycle11-owners/tl494-cycle16-four-real-placements.json"
