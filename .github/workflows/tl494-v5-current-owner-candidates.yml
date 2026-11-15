@@ -1,0 +1,349 @@
+name: TL494 V5 current-owner 23/15/62 all-Net route candidates
+on:
+  push:
+    branches: [reference/tl494-audit-v4-20261114]
+    paths:
+      - examples/tl494_v5/cycle11_ti_bridge.py
+      - examples/tl494_v5/test_cycle11_ti_bridge.py
+      - examples/tl494_v5/cycle11_binding_preflight.py
+      - examples/tl494_v5/cycle11_b_continuation.py
+      - examples/tl494_v5/test_cycle11_b_continuation.py
+      - examples/tl494_v5/route_candidate_driver.py
+      - examples/tl494_v5/test_route_candidate_driver.py
+      - examples/tl494_v5/routed_graph_contract.py
+      - examples/tl494_v5/test_routed_graph_contract.py
+      - examples/tl494_v5/native_circuit.py
+      - examples/tl494_v5/compact_layout.py
+      - examples/tl494_v5/test_compact_layout.py
+      - examples/tl494_v5/cycle13_placement_matrix.py
+      - examples/tl494_v5/test_cycle13_placement_matrix.py
+      - examples/tl494_v5/cycle14_pin_corridor_probe.py
+      - examples/tl494_v5/cycle15_delivery.py
+      - examples/tl494_v5/test_cycle15_delivery.py
+      - examples/tl494_v5/test_cycle14_pin_corridor_probe.py
+      - examples/tl494_v5/CYCLE13_SELECTIVE_INTEGRATION_MANIFEST.md
+      - examples/tl494_v5/route_preflight.py
+      - examples/tl494_ic_paint_reference.py
+      - examples/tl494_connected_native.py
+      - examples/tl494_named_photo_sheet.py
+      - .github/workflows/tl494-v5-current-owner-candidates.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-all15-source-names:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Pin all four unmerged current-owner source HEADs (never merge)
+        run: |
+          set -euxo pipefail
+          IC=632d5cf4222f188a65d0ec4a6ed22d8dcf1c8617
+          PAINT=252fed9077351493378348f4c0a0138c5e04c8b5
+          CATALOG=d6f8a3a6c54ceaca42111e6534dbc99e72b09a65
+          ROUTER=b2a7a46c2f031dd125dd0879c9d59d24e27decbf
+          SOURCE=e695c415fdced164b0e0c39c5249d030795a0aa6
+          for sha in "$IC" "$PAINT" "$CATALOG" "$ROUTER" "$SOURCE"; do
+            git fetch origin "$sha"
+            test "$(git rev-parse FETCH_HEAD)" = "$sha"
+          done
+          for f in ic.py tl494cn.py ic_pin_alias.py ic_serde.py ic_paint_bridge.py ic_graphic_revision.py ic_circuit_adapter.py ic_editor_targets.py; do
+            git show "$IC:src/gost_schematic/electrical/$f" > "src/gost_schematic/electrical/$f"
+          done
+          git show "$IC:examples/tl494_cycle9_circuit_integration.py" > examples/tl494_cycle9_circuit_integration.py
+          mkdir -p tests/fixtures
+          git show "$IC:tests/fixtures/tl494_photo_23_frozen_cycle9.json" > tests/fixtures/tl494_photo_23_frozen_cycle9.json
+          test "$(git hash-object tests/fixtures/tl494_photo_23_frozen_cycle9.json)" = a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65
+          for f in ic_rectangular.py ic_hotspots.py ic_orientation.py ic_power_profiles.py ic_tl494_profile.py ic_electrical_binding.py ic_sheet_composition.py external_wire_sheet.py sheet_svg.py native_sheet_ink_audit.py routed_native_sheet.py; do
+            git show "$PAINT:src/gost_schematic/rendering/$f" > "src/gost_schematic/rendering/$f"
+          done
+          mkdir -p src/gost_schematic/catalog/source_profiles
+          git show "$CATALOG:src/gost_schematic/catalog/source_profiles.py" > src/gost_schematic/catalog/source_profiles.py
+          git show "$CATALOG:src/gost_schematic/catalog/source_footprints.py" > src/gost_schematic/catalog/source_footprints.py
+          git show "$CATALOG:scripts/install_opengost_type_a.py" > scripts/install_opengost_type_a.py
+          git show "$CATALOG:src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json" > src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json
+          for f in orthogonal_route_planner.py multiterminal_router.py; do
+            git show "$ROUTER:src/gost_schematic/engines/$f" > "src/gost_schematic/engines/$f"
+          done
+          git show "$ROUTER:src/gost_schematic/validation/route_drc.py" > src/gost_schematic/validation/route_drc.py
+          git show "$ROUTER:examples/review_tl494_compact_cycle9.py" > examples/review_tl494_compact_cycle9.py
+          echo "HEAD=$(git rev-parse HEAD) real 97=$IC paint=$PAINT ygo=$CATALOG net=$ROUTER"
+      - name: Install pinned engine dev and true GOST A Type font
+        run: |
+          set -euxo pipefail
+          python -m pip install -e ".[dev,mcp]"
+          python scripts/install_opengost_type_a.py --directory "$HOME/.local/share/fonts"
+          fc-cache -f
+          FONT="$(find "$HOME/.local/share/fonts" -name '*TypeA*.ttf' | head -1)"
+          test -n "$FONT"
+          echo "TL494_TYPE_A_FONT=$FONT" >> "$GITHUB_ENV"
+      - name: Full v5 Ruff, positive/negative and real 15-Net source tests
+        run: |
+          set -euxo pipefail
+          ruff check examples/tl494_v5/
+          PYTHONPATH=src pytest -q \
+            examples/tl494_v5/test_native_circuit.py \
+            examples/tl494_v5/test_compact_layout.py \
+            examples/tl494_v5/test_route_candidate_driver.py \
+            examples/tl494_v5/test_routed_graph_contract.py \
+            examples/tl494_v5/test_cycle11_ti_bridge.py \
+            examples/tl494_v5/test_cycle11_b_continuation.py \
+            examples/tl494_v5/test_cycle13_placement_matrix.py \
+            examples/tl494_v5/test_cycle14_pin_corridor_probe.py \
+            examples/tl494_v5/test_cycle15_delivery.py
+      - name: Produce C11 signed TI plus true b marker source proof independently of routing
+        run: |
+          set -euxo pipefail
+          mkdir -p output/tl494-v5-current
+          PYTHONPATH=src python -m examples.tl494_v5.cycle11_binding_preflight \
+            --font-file "$TL494_TYPE_A_FONT" \
+            --output-file output/tl494-v5-current/C11_SIGNED_REAL_SOURCE_B_PROOF.json
+          PYTHONPATH=src python - <<'PY'
+          import json
+          from pathlib import Path
+          m = json.loads(Path(
+              "output/tl494-v5-current/C11_SIGNED_REAL_SOURCE_B_PROOF.json"
+          ).read_text(encoding="utf-8"))
+          assert m["frozen_source_components"] == 23
+          assert m["frozen_source_Net_count"] == 15
+          assert m["frozen_source_physical_memberships"] == 62
+          assert m["signed_source_Circuit_Nets_identical"]
+          from examples.tl494_v5.route_candidate_driver import OWNER_SHAS
+          assert m["owner_exact_HEADs"] == OWNER_SHAS
+          assert m["manufacturer_DA1_physical_pin_count"] == 16
+          assert len(m["source_b_marker_um"]) == 2
+          assert set(m["source_b_marker_um"]) == {"b-X2", "b-R5"}
+          assert all(
+              len(point) == 2 and 10000 <= point[0] <= 410000
+              and 10000 <= point[1] <= 287000
+              for point in m["source_b_marker_um"].values()
+          )
+          assert m["source_b_nonphysical_Net"] == "b_NEGATIVE_OUTPUT"
+          assert set(m["source_b_physical_members"]) == {
+              "FU1.2", "X2.1", "R5.2"
+          }
+          assert not m["full_clean_SVG_or_300DPI_PNG_released"]
+          assert m["full_A3_print_and_photo_1_to_1"] == "BLOCKED"
+          PY
+          sha256sum output/tl494-v5-current/C11_SIGNED_REAL_SOURCE_B_PROOF.json > output/tl494-v5-current/SHA256SUMS.txt
+          PYTHONPATH=src python -m examples.tl494_v5.cycle14_pin_corridor_probe \
+            --font-file "$TL494_TYPE_A_FONT" \
+            --output output/tl494-v5-current/C14_SIGNED_PHYSICAL_62_PIN_A3.json \
+            --page-format A3
+          PYTHONPATH=src python -m examples.tl494_v5.cycle14_pin_corridor_probe \
+            --font-file "$TL494_TYPE_A_FONT" \
+            --output output/tl494-v5-current/C14_SIGNED_PHYSICAL_62_PIN_A2.json \
+            --page-format A2
+          PYTHONPATH=src python -m examples.tl494_v5.cycle14_pin_corridor_probe \
+            --font-file "$TL494_TYPE_A_FONT" \
+            --output output/tl494-v5-current/C14_SIGNED_C1_2P5_LEGAL_A3.json \
+            --page-format A3 --move C1:0:2.5
+          PYTHONPATH=src python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("output/tl494-v5-current")
+          a3=json.loads((root/"C14_SIGNED_PHYSICAL_62_PIN_A3.json").read_text())
+          a2=json.loads((root/"C14_SIGNED_PHYSICAL_62_PIN_A2.json").read_text())
+          c1=json.loads((root/"C14_SIGNED_C1_2P5_LEGAL_A3.json").read_text())
+          for report in (a3,a2):
+              assert (report["components"],report["original_net_count"],report["physical_pinref_memberships"],report["manufacturer_signed_DA1_pins"]) == (23,15,62,16)
+              assert len(report["pin_escapes"]) == 62
+              assert report["true_nonphysical_b_labels_count"] == 2
+              assert set(report["true_b_source_stubs"]) == {"b-X2","b-R5"}
+              assert report["absolute_10mm_component_ink_fit"]
+              assert report["full_15_net_print_release"] == "BLOCKED_NOT_A_ROUTER"
+          assert a3["measured_text_10mm_frame_fit"] is False
+          assert a2["measured_text_10mm_frame_fit"] is False
+          assert a3["real_measured_text_guard_count"] == 73
+          v=a3["measured_text_frame_violations"]
+          assert len(v) == 1
+          assert (v[0]["owner"],v[0]["label"],v[0]["kind"]) == (
+              "C1","C1","AnnotationPlacement"
+          )
+          x0,y0,x1,y1=v[0]["bounds_um"]
+          assert 261250 <= x0 <= 261450
+          assert (y0,y1) == (9100,13600)
+          assert 265550 <= x1 <= 265750
+          assert 10000-y0 == 900
+          assert c1["source_position_only_moves_mm"] == [["C1","0","2.5"]]
+          assert c1["measured_text_10mm_frame_fit"]
+          assert c1["real_measured_text_guard_count"] == 73
+          assert c1["measured_text_frame_violations"] == []
+          assert c1["absolute_10mm_component_ink_fit"]
+          assert c1["source_UGO_bbox_um"] == [10850,17300,405150,243151]
+          assert c1["original_nets"] == a3["original_nets"]
+          assert c1["true_b_source_stubs"] == a3["true_b_source_stubs"]
+          assert c1["manufacturer_signed_DA1_pins"] == 16
+          assert c1["physical_pinref_memberships"] == 62
+          assert c1["full_15_net_print_release"] == "BLOCKED_NOT_A_ROUTER"
+          assert a3["pin_escapes"] == a2["pin_escapes"]
+          assert a3["source_UGO_bbox_um"] == [10850,14800,405150,243151]
+          assert all(
+              p["escape_samples_um"]["2500"]["native_symbol_ink_clear"]
+              for p in a3["pin_escapes"].values()
+          )
+          print("C14_62_REAL_PIN_NATIVE_INK_2500_CLEAR_A3_A2_NOT_ROUTED")
+          PY
+          sha256sum output/tl494-v5-current/C14_SIGNED_PHYSICAL_62_PIN_*.json >> output/tl494-v5-current/SHA256SUMS.txt
+          sha256sum output/tl494-v5-current/C14_SIGNED_C1_2P5_LEGAL_A3.json >> output/tl494-v5-current/SHA256SUMS.txt
+      - name: C15 one-command genuine source-locked NET+PAINT partial or completed delivery
+        run: |
+          set -euxo pipefail
+          PYTHONPATH=src python -m examples.tl494_v5.cycle15_delivery \
+            --font-file "$TL494_TYPE_A_FONT" \
+            --output output/tl494-v5-current/cycle15-delivery \
+            --page-format A3 --move C1:0:2.5 \
+            --node-cap 4000 --priority-trials 1 --priority-offset 3 \
+            --physical-veto-restarts 1 --physical-ripup-attempts 2
+          PYTHONPATH=src python - <<'PY'
+          from pathlib import Path
+          import json
+          import hashlib
+          import xml.etree.ElementTree as ET
+          from examples.tl494_v5.route_candidate_driver import (
+              REAL_SOURCE_NAMES, SOURCE_SHA, OWNER_SHAS,
+          )
+          root=Path("output/tl494-v5-current/cycle15-delivery")
+          path=root/"C15_REAL_TL494_DELIVERY.json"
+          m=json.loads(path.read_text(encoding="utf-8"))
+          assert m["source_sha"] == SOURCE_SHA
+          assert m["owner_exact_shas"] == OWNER_SHAS
+          assert m["source_23_components"] == 23
+          assert set(m["source_15_literal_names"]) == set(REAL_SOURCE_NAMES)
+          assert sum(map(len,m["source_62_physical_pinrefs"].values())) == 62
+          assert m["source_16_signed_DA1"] == 16
+          assert set(m["source_b_nonphysical"]) == {"b-X2","b-R5"}
+          assert all(not q["electrical"]
+                     for q in m["source_b_nonphysical"].values())
+          assert m["paper"]["measured_text_10mm_frame_fit"] is True
+          assert m["paper"]["absolute_10mm_component_ink_fit"] is True
+          assert set(m["original_named_net_route_progress"]) == set(REAL_SOURCE_NAMES)
+          complete=sum(x["complete"] for x in
+                       m["original_named_net_route_progress"].values())
+          assert m["completed_original_nets"] == complete
+          assert 0 <= complete <= 15
+          assert m["full_SVG_PNG300_release"] == (
+              "BLOCKED_UNTIL_15_15_GLOBAL_DRC_QA"
+          )
+          svg="{http://www.w3.org/2000/svg}"
+          for name,expected_markers in (("clean",0),("diagnostic",16)):
+              art=root/f"TL494-A3-{name}-source-b.svg"
+              assert art.exists()
+              assert m["artifacts"][art.name]["sha256"] == (
+                  hashlib.sha256(art.read_bytes()).hexdigest()
+              )
+              root_xml=ET.parse(art).getroot()
+              b=root_xml.findall(
+                  f".//{svg}line[@data-layer='nonphysical-continuation-stub']"
+              )
+              assert len(b) == 2
+              assert {x.get("data-nonphysical-net-continuation") for x in b} == (
+                  {"b-X2","b-R5"}
+              )
+              leads=root_xml.findall(
+                  f".//{svg}g[@data-layer='ic-physical-pin-leads']/{svg}line"
+              )
+              assert len(leads) == 16
+              groups=root_xml.findall(
+                  f".//{svg}g[@data-layer='editor-connection-targets']"
+              )
+              markers=list(groups[0]) if groups else []
+              assert len(markers) == expected_markers
+              if expected_markers:
+                  assert len(groups) == 1
+                  assert all(x.get("fill") == "#148645" for x in markers)
+              assert root_xml.get("data-release") == (
+                  "BLOCKED_PARTIAL" if complete != 15 else
+                  "ROUTE_COMPLETE_INDEPENDENT_QA_PENDING"
+              )
+          print("C15_CURRENT_OWNER_REAL_ENGINE",complete,"/15",
+                "physical-memberships=62 b-real-svg=2 print-gate=BLOCKED")
+          PY
+          sha256sum output/tl494-v5-current/cycle15-delivery/C15_REAL_TL494_DELIVERY.json >> output/tl494-v5-current/SHA256SUMS.txt
+          sha256sum output/tl494-v5-current/cycle15-delivery/TL494-A3-*-source-b.svg >> output/tl494-v5-current/SHA256SUMS.txt
+      - name: Compare original source 23/15/62 and run two order candidates
+        run: |
+          set -euxo pipefail
+          mkdir -p output/tl494-v5-current
+          PYTHONPATH=src python -m examples.tl494_v5.route_candidate_driver \
+            --font-file "$TL494_TYPE_A_FONT" \
+            --output-file output/tl494-v5-current/all15-candidate-report.json \
+            --variants source short-first common-first power-common --node-cap 3000
+          PYTHONPATH=src python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path("output/tl494-v5-current/all15-candidate-report.json")
+          m = json.loads(path.read_text(encoding="utf-8"))
+          assert m["bom_count"] == 23
+          assert m["net_count"] == 15
+          assert m["physical_net_membership_count"] == 62
+          assert len(m["candidates"]) == 4
+          assert m["qa_print_release"] == "BLOCKED_INDEPENDENT_QA_AND_ESKD"
+          assert {c["key"] for c in m["candidates"]} == {
+              "source", "short-first", "common-first", "power-common"
+          }
+          assert not m["actual_full_sheet_svg_or_png_emitted"]
+          for trial in m["candidates"]:
+              assert trial["routes_attempted"] == 15
+              assert trial["manufacturer_binding"]["source_part"] == "reference.tl494cn"
+              assert trial["manufacturer_binding"]["verified_part"] == "ti.tl494cn.pdip16"
+              assert trial["manufacturer_binding"]["verified_physical_pin_count"] == 16
+              assert trial["manufacturer_binding"]["source_original_15_Net_tuple_preserved"]
+              assert trial["manufacturer_binding"]["PAINT_trusted_all16_targets_verified"]
+              assert trial["b_continuation_rebound"]["status"] in (
+                  "VERIFIED_DRAFT_NONPHYSICAL_B_PAIR",
+                  "BLOCKED_HISTORICAL_B_NOT_REBOUND",
+              )
+              if trial["b_continuation_rebound"]["status"] != (
+                  "VERIFIED_DRAFT_NONPHYSICAL_B_PAIR"
+              ):
+                  assert trial["print_after_released"] is False
+                  assert not trial["technical_route_eligible"]
+              assert trial["source_unchanged"]
+              assert trial["Net_membership_SHA256"] == m["original_nets_SHA256"]
+              assert set(trial["named_net_status"]) == set(m["original_net_names"])
+              assert trial["a3"]["A3_capacity_fit"]
+              assert trial["print_after_released"] is False
+              assert sum(len(x["expected"]) for x in trial["named_net_status"].values()) == 62
+              for net in trial["named_net_status"].values():
+                  assert set(net["connected"]) <= set(net["expected"])
+              if trial["routed_net_count"] != 15:
+                  assert not trial["technical_route_eligible"]
+          print("TRUE_15_NETS_ATTEMPTED", [(c["key"], c["routed_net_count"]) for c in m["candidates"]])
+          print("NO_FAKE_RELEASE_TRUE 23/15/62", m["best_evidence_variant"])
+          PY
+          sha256sum output/tl494-v5-current/all15-candidate-report.json >> output/tl494-v5-current/SHA256SUMS.txt
+          PYTHONPATH=src python -m examples.tl494_v5.cycle13_placement_matrix \
+            --font-file "$TL494_TYPE_A_FONT" \
+            --output-file output/tl494-v5-current/C13_BOUND_A3_PLACEMENT_MATRIX.json \
+            --node-cap 1500
+          PYTHONPATH=src python - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path("output/tl494-v5-current/C13_BOUND_A3_PLACEMENT_MATRIX.json").read_text())
+          assert (data["components"], data["nets"], data["pinref_memberships"]) == (23,15,62)
+          assert data["manufacturer_DA1_pins"] == 16
+          assert len(data["trials"]) == 4
+          assert data["full_print_QA_ESKD"] == "BLOCKED_UNTIL_15_OF_15_AND_REAL_INK_DRC"
+          assert not data["actual_full_sheet_svg_or_png_emitted"]
+          assert data["trials"][0]["a3_bbox_within_margins"]
+          assert data["trials"][0]["a3_capacity_fit"]
+          assert all(not t["print_after_released"] for t in data["trials"])
+          assert all(t["routes_attempted"] in (0,15) for t in data["trials"])
+          print("C13_REAL_SOURCE_POSITION_EXPERIMENT", [(t["name"], t["completed_nets"], t["status"]) for t in data["trials"]])
+          PY
+          sha256sum output/tl494-v5-current/C13_BOUND_A3_PLACEMENT_MATRIX.json >> output/tl494-v5-current/SHA256SUMS.txt
+          git diff --exit-code -- examples/tl494_named_truth_output/ examples/tl494_v4/evidence_runs/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tl494-v5-current-owners-all15-${{ matrix.python-version }}
+          path: output/tl494-v5-current/
+          if-no-files-found: warn

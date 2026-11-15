@@ -1,0 +1,75 @@
+name: TL494 PR115 apply reviewed style-only 43 findings
+on:
+  push:
+    branches: [reference/tl494-audit-v4-20261114]
+    paths: [.github/workflows/tl494-v5-style-apply.yml]
+permissions:
+  contents: write
+jobs:
+  reviewed-style:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Review-locked 13-file Ruff correction with source invariants
+        run: |
+          set -euo pipefail
+          BEFORE=a77f24c25f7f8cd9998e0d37f37a34f6c4729063
+          git merge-base --is-ancestor "$BEFORE" HEAD
+          BASELINE=e695c415fdced164b0e0c39c5249d030795a0aa6
+          git merge-base --is-ancestor "$BASELINE" HEAD
+          python -m pip install -e ".[dev,mcp]"
+          FILES=(
+            examples/tl494_connected_native.py
+            examples/tl494_full_native_model.py
+            examples/tl494_full_photo_sheet.py
+            examples/tl494_ic_paint_reference.py
+            examples/tl494_named_photo_sheet.py
+            examples/tl494_native_rework.py
+            examples/tl494_v4/audit.py
+            examples/tl494_v4/engine_adapter.py
+            examples/tl494_v4/model_contract.py
+            examples/tl494_v4/paint_rotation_patch.py
+            examples/tl494_v4/wire_drc.py
+            tests/test_tl494_reference_native.py
+            tests/test_tl494_v4_contract.py
+          )
+          OLD_SVG=examples/tl494_named_truth_output/TL494_named_photo_clean.svg
+          OLD_MAN=examples/tl494_named_truth_output/TL494_named_photo_manifest.json
+          sha256sum "$OLD_SVG" "$OLD_MAN" > /tmp/tl494-frozen-before.sha256
+          PYTHONPATH=src python -m examples.tl494_v4.model_contract > /tmp/source-before.json
+          ruff --version
+          ruff check --fix --unsafe-fixes "${FILES[@]}"
+          ruff check .
+          git diff --check
+          git diff --name-only > /tmp/tl494-changed.txt
+          printf '%s\n' "${FILES[@]}" | sort > /tmp/allowed.txt
+          sort /tmp/tl494-changed.txt > /tmp/changed-sorted.txt
+          diff -u /tmp/allowed.txt /tmp/changed-sorted.txt
+          sha256sum "$OLD_SVG" "$OLD_MAN" > /tmp/tl494-frozen-after.sha256
+          diff -u /tmp/tl494-frozen-before.sha256 /tmp/tl494-frozen-after.sha256
+          PYTHONPATH=src python -m examples.tl494_v4.model_contract > /tmp/source-after.json
+          diff -u /tmp/source-before.json /tmp/source-after.json
+          PYTHONPATH=src python -m pytest -q tests/test_tl494_reference_native.py tests/test_tl494_v4_contract.py
+          echo '===== APPROVED SOURCE DIFF ====='
+          git diff -- "${FILES[@]}"
+          echo '===== SOURCE-LOCK AND OLD-BAD STATUS ====='
+          sha256sum "$OLD_SVG" "$OLD_MAN"
+          test -f examples/tl494_v4/evidence_runs/43608095630-1/full_stroke_and_text_drc.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("examples/tl494_v4/evidence_runs/43608095630-1/full_stroke_and_text_drc.json")
+          report=json.loads(p.read_text())
+          assert (report["error_count"],report["warning_count"],report["wire_count"],report["component_count"],report["net_count"],report["explicit_junctions"])==(9,32,91,23,15,37)
+          print("NEGATIVE_SOURCE_DRC_PINNED: 9 ERROR / 32 WARNING / 23 / 15 / 91 / 37")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- "${FILES[@]}"
+          git commit -m "style(tl494): review-locked Ruff 43/43 without changing source circuit or old artifacts"
+          git push origin HEAD:reference/tl494-audit-v4-20261114

@@ -11,17 +11,20 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 from dataclasses import replace
-from gost_schematic.core.geometry import Circle
+from pathlib import Path
 from xml.etree import ElementTree as ET
 
 from gost_schematic.agent_project.catalog import CatalogResolver
-from gost_schematic.core.geometry import Box, Line, Point, Rectangle, Side
+from gost_schematic.core.geometry import Box, Circle, Line, Point, Rectangle, Side
 from gost_schematic.core.transforms import Transform
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.model.annotations import (
-    Anchor, AnnotationRole, AnnotationSlot, HorizontalAlign, VerticalAlign,
+    Anchor,
+    AnnotationRole,
+    AnnotationSlot,
+    HorizontalAlign,
+    VerticalAlign,
 )
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
 from gost_schematic.model.part import PartDefinition
@@ -32,7 +35,9 @@ from gost_schematic.rendering.external_wire_sheet import render_external_wire_sh
 from gost_schematic.standards.type_a_font import inspect_type_a_font
 from gost_schematic.validation.circuit_checks import validate_circuit
 from gost_schematic.validation.external_wire_checks import (
-    ExternalWireGraph, WireSegment, validate_external_wires,
+    ExternalWireGraph,
+    WireSegment,
+    validate_external_wires,
 )
 from gost_schematic.validation.symbol_checks import validate_symbol
 
@@ -249,8 +254,8 @@ def generate(output: Path, font: Path) -> dict:
         "source": "GOST Schematic Engine native Parts/Symbols, Circuit and WireGraph",
         "reference_drawing_complete": False,
         "reasons_incomplete": (
-            "TL494 16-pin controller and feedback/timing circuitry are not "
-            "included in this 11-component power-stage sample",
+            ("TL494 16-pin controller and feedback/timing circuitry are not "
+            "included in this 11-component power-stage sample"),
         ),
         "component_count": len(circuit.components),
         "net_count": len(circuit.nets),

@@ -1,0 +1,2 @@
+{"baseline_components": 23, "baseline_nets": 15, "baseline_segments": 91, "baseline_crossings": 32, "baseline_parallel_failures": 5, "PWM_physical_anchors": 16, "model_gate": "PASSED", "print_gate": "BLOCKED"}
+TEST=0 RUFF=1 AUDIT=0

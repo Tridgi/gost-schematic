@@ -19,23 +19,25 @@ from dataclasses import replace
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-from examples.tl494_native_rework import build as build_power, source_graph, P
+from gost_schematic.rendering.ic_rectangular import render_resolved_ic
+
 from examples.tl494_ic_paint_reference import build as build_paint_ic
-from gost_schematic.core.geometry import Box, Line, Point, Rectangle
+from examples.tl494_native_rework import P, source_graph
+from examples.tl494_native_rework import build as build_power
+from gost_schematic.core.geometry import Line, Point, Rectangle
+from gost_schematic.core.transforms import Transform
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
 from gost_schematic.model.pins import GraphicPin
-from gost_schematic.model.symbol import SymbolDefinition, SymbolStatus
 from gost_schematic.model.quantities import Quantity, Unit
-from gost_schematic.core.transforms import Transform
-from gost_schematic.rendering.ic_rectangular import render_resolved_ic
+from gost_schematic.model.symbol import SymbolDefinition, SymbolStatus
 from gost_schematic.rendering.external_wire_sheet import render_external_wire_sheet
 from gost_schematic.validation.circuit_checks import validate_circuit
 from gost_schematic.validation.external_wire_checks import (
-    ExternalWireGraph, WireSegment, validate_external_wires,
+    ExternalWireGraph,
+    WireSegment,
+    validate_external_wires,
 )
 from gost_schematic.validation.symbol_checks import validate_symbol
-from gost_schematic.core.units import format_mm
-
 
 URI="http://www.w3.org/2000/svg"
 ET.register_namespace("",URI)
@@ -98,11 +100,11 @@ def S(net:str,a:Point,b:Point) -> WireSegment:
 
 
 def generate(output:Path,font_file:Path):
-    power,parts,symbols,power_pins=build_power()
+    power,parts,symbols,_power_pins=build_power()
     unit,targets,part,symbol,instance,style,measure,policy,font=attach_catalog_ic(font_file)
     parts[part.identifier]=part
     symbols[part.identifier]=symbol
-    part_r8=parts["resistor.fixed"]
+    parts["resistor.fixed"]
     r8=ComponentInstance(
         "R8","resistor.fixed",P(150,183),
         Transform(rotation=90),Quantity.from_unit("10",Unit.OHM),
@@ -142,7 +144,7 @@ def generate(output:Path,font_file:Path):
             raise AssertionError(comp.reference+" physical/graphic pin mapping drift")
         pose[comp.reference]=comp.pin_positions(sym)
     def pt(ref,number):return pose[ref][number]
-    refground=pt("DA1","7")
+    pt("DA1","7")
     # DA1 left-side pin1, pin16 and GND share ground in the source picture.
     common_x=P(42,0).x
     common_y=P(0,220).y
@@ -270,7 +272,7 @@ def generate(output:Path,font_file:Path):
         "component_count":len(circuit.components),
         "TL494_connected_pin_numbers":["1","7","8","9","10","11","12","16"],
         "TL494_unconnected_physical_pins":sorted(
-            set(str(i) for i in range(1,17)) - {"1","7","8","9","10","11","12","16"},key=int,
+            {str(i) for i in range(1,17)} - {"1","7","8","9","10","11","12","16"},key=int,
         ),
         "segment_count":len(graph.segments),
         "font_sha256":style.font_sha256,

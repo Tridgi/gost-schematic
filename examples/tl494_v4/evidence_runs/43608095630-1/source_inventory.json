@@ -1,0 +1,291 @@
+{
+  "DA1_pin_count": 16,
+  "baseline_sha": "e695c415fdced164b0e0c39c5249d030795a0aa6",
+  "common_role": "0V circuit reference; never infer PE/chassis",
+  "component_count": 23,
+  "net_count": 15,
+  "physical_pin_memberships": 62,
+  "pin_display_aliases": {
+    "1": "1IN+",
+    "10": "E2",
+    "11": "C2",
+    "12": "VCC",
+    "13": "OC",
+    "14": "REF",
+    "15": "2IN-",
+    "16": "2IN+",
+    "2": "1IN-",
+    "3": "FB",
+    "4": "DTC",
+    "5": "CT",
+    "6": "RT",
+    "7": "GND",
+    "8": "C1",
+    "9": "E1"
+  },
+  "pin_electrical_types": {
+    "1": "input",
+    "10": "output",
+    "11": "open_collector",
+    "12": "power_input",
+    "13": "input",
+    "14": "power_output",
+    "15": "input",
+    "16": "input",
+    "2": "input",
+    "3": "input",
+    "4": "input",
+    "5": "unspecified",
+    "6": "unspecified",
+    "7": "power_input",
+    "8": "open_collector",
+    "9": "output"
+  },
+  "pin_manufacturer_functions": {
+    "1": "1IN+",
+    "10": "E2",
+    "11": "C2",
+    "12": "VCC",
+    "13": "OUTPUT CTRL",
+    "14": "REF",
+    "15": "2IN-",
+    "16": "2IN+",
+    "2": "1IN-",
+    "3": "FEEDBACK",
+    "4": "DTC",
+    "5": "CT",
+    "6": "RT",
+    "7": "GND",
+    "8": "C1",
+    "9": "E1"
+  },
+  "remarks": [
+    "Source circuit frequency remark ~100 kHz conflicts with RT=680 kΩ and CT=1 nF",
+    "VD1 electrical A/K direction is traced from photo, not proven functional",
+    "Pin labels FB and OC are EDITORIAL display aliases, not renamed PhysicalPin"
+  ],
+  "source_components": {
+    "C1": {
+      "description": "100 В",
+      "symbol_id": "capacitor.polarized",
+      "value": "220 мкФ"
+    },
+    "C2": {
+      "description": "63 В",
+      "symbol_id": "capacitor.polarized",
+      "value": "220 мкФ"
+    },
+    "C3": {
+      "description": "",
+      "symbol_id": "capacitor.polarized",
+      "value": "47 мкФ"
+    },
+    "C4": {
+      "description": "103",
+      "symbol_id": "capacitor.fixed",
+      "value": "10 нФ"
+    },
+    "C5": {
+      "description": "25 В",
+      "symbol_id": "capacitor.polarized",
+      "value": "1000 мкФ"
+    },
+    "C6": {
+      "description": "25 В",
+      "symbol_id": "capacitor.polarized",
+      "value": "1000 мкФ"
+    },
+    "C7": {
+      "description": "102",
+      "symbol_id": "capacitor.fixed",
+      "value": "1 нФ"
+    },
+    "DA1": {
+      "description": "16 physical pins",
+      "symbol_id": "reference.tl494cn",
+      "value": "TL494CN"
+    },
+    "FU1": {
+      "description": "",
+      "symbol_id": "fuse.general",
+      "value": "2 A"
+    },
+    "L1": {
+      "description": "магнитопровод",
+      "symbol_id": "inductor.ferromagnetic",
+      "value": "100 мкГн"
+    },
+    "L2": {
+      "description": "магнитопровод",
+      "symbol_id": "inductor.ferromagnetic",
+      "value": "100 мкГн"
+    },
+    "R1": {
+      "description": "МЛТ",
+      "symbol_id": "resistor.fixed",
+      "value": "1 Ом"
+    },
+    "R2": {
+      "description": "МЛТ",
+      "symbol_id": "resistor.fixed",
+      "value": "620 Ом"
+    },
+    "R3": {
+      "description": "МЛТ",
+      "symbol_id": "resistor.fixed",
+      "value": "10 кОм"
+    },
+    "R4": {
+      "description": "МЛТ",
+      "symbol_id": "resistor.fixed",
+      "value": "6,8 кОм"
+    },
+    "R5": {
+      "description": "МЛТ, подвижный контакт",
+      "symbol_id": "resistor.variable",
+      "value": "1 кОм"
+    },
+    "R6": {
+      "description": "МЛТ",
+      "symbol_id": "resistor.fixed",
+      "value": "1 Ом"
+    },
+    "R7": {
+      "description": "МЛТ",
+      "symbol_id": "resistor.fixed",
+      "value": "680 кОм"
+    },
+    "R8": {
+      "description": "МЛТ",
+      "symbol_id": "resistor.fixed",
+      "value": "10 Ом"
+    },
+    "VD1": {
+      "description": "A/K",
+      "symbol_id": "diode.schottky",
+      "value": "1N5822"
+    },
+    "VT1": {
+      "description": "N-channel MOSFET G/D/S",
+      "symbol_id": "transistor.mosfet_n_enh",
+      "value": "IRFZ44N"
+    },
+    "X1": {
+      "description": "2 контакта",
+      "symbol_id": "reference.connector.x1",
+      "value": "вход"
+    },
+    "X2": {
+      "description": "2 контакта",
+      "symbol_id": "reference.connector.x2",
+      "value": "выход −12 В"
+    }
+  },
+  "source_nets": {
+    "ADJUSTED_DIVIDER": [
+      "R4.2",
+      "R5.1",
+      "R5.3"
+    ],
+    "COMMON": [
+      "X1.2",
+      "X2.2",
+      "VT1.3",
+      "VD1.2",
+      "C5.1",
+      "C6.1",
+      "DA1.7",
+      "DA1.1",
+      "DA1.16",
+      "DA1.13",
+      "R6.2",
+      "R7.2",
+      "R8.2",
+      "C7.2"
+    ],
+    "CONTROL_REFERENCE": [
+      "DA1.14",
+      "DA1.15",
+      "R1.1",
+      "R2.1",
+      "C3.1"
+    ],
+    "ERROR_INPUT": [
+      "DA1.2",
+      "R2.2",
+      "R4.1",
+      "C4.1"
+    ],
+    "FEEDBACK": [
+      "R3.2",
+      "DA1.3"
+    ],
+    "GATE_DRIVE": [
+      "DA1.9",
+      "DA1.10",
+      "R8.1",
+      "VT1.1"
+    ],
+    "OSCILLATOR_CT": [
+      "C7.1",
+      "DA1.5"
+    ],
+    "OSCILLATOR_RT": [
+      "R7.1",
+      "DA1.6"
+    ],
+    "OUT_BEFORE_FUSE": [
+      "L2.2",
+      "FU1.1",
+      "C5.2",
+      "C6.2"
+    ],
+    "RC_CORRECTION": [
+      "C4.2",
+      "R3.1"
+    ],
+    "SOFT_START": [
+      "DA1.4",
+      "R1.2",
+      "C3.2",
+      "R6.1"
+    ],
+    "SWITCH": [
+      "L1.2",
+      "VT1.2",
+      "C1.1",
+      "C2.1"
+    ],
+    "TRANSFER": [
+      "C1.2",
+      "C2.2",
+      "VD1.1",
+      "L2.1"
+    ],
+    "a_INPUT_PLUS": [
+      "X1.1",
+      "L1.1",
+      "DA1.12",
+      "DA1.8",
+      "DA1.11"
+    ],
+    "b_NEGATIVE_OUTPUT": [
+      "FU1.2",
+      "X2.1",
+      "R5.2"
+    ]
+  },
+  "source_photo_checksums": {
+    "bom": {
+      "height_px": 702,
+      "sha256": "d54469d016eb80fe2a7b3e5aa2526da2494c20d3c18b7a1bcc8af624157fecb0",
+      "width_px": 640
+    },
+    "circuit": {
+      "height_px": 290,
+      "sha256": "e06e845fa3d269bf71880a8cb1ad2e59c8aa844a0486351228e9da936ac4100c",
+      "width_px": 640
+    }
+  },
+  "symbol_status": "DRAFT; normative signoff pending"
+}

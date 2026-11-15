@@ -13,16 +13,22 @@ from dataclasses import replace
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-from gost_schematic.core.geometry import Box, Point, Side, SIDE_VECTORS
+from gost_schematic.rendering.ic_hotspots import IcConnectionTarget
+from gost_schematic.rendering.ic_rectangular import (
+    IcFieldContent,
+    IcRenderingPolicy,
+    IcResolvedUnit,
+    IcTypographyProfile,
+    ResolvedIcPin,
+    propose_ic_dimensions,
+    render_resolved_ic,
+)
+
+from gost_schematic.core.geometry import SIDE_VECTORS, Box, Point, Side
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.model.circuit import Circuit, ComponentInstance, PinRef
 from gost_schematic.model.part import PartDefinition
-from gost_schematic.model.pins import PhysicalPin, ElectricalType
-from gost_schematic.rendering.ic_rectangular import (
-    IcFieldContent, IcRenderingPolicy, IcResolvedUnit, IcTypographyProfile,
-    ResolvedIcPin, propose_ic_dimensions, render_resolved_ic,
-)
-from gost_schematic.rendering.ic_hotspots import IcConnectionTarget
+from gost_schematic.model.pins import ElectricalType, PhysicalPin
 from gost_schematic.standards.type_a_font import inspect_type_a_font
 
 PINS = {
@@ -49,7 +55,7 @@ SOURCE_PHOTO_RIGHT=("12","15","14","13","8","11","9","10")
 
 def build(font_file: Path):
     inspection=inspect_type_a_font(
-        font_file,h_um=3500,family="OpenGost Type A TT",require_family_match=True,
+        font_file,h_um=3500,family="OpenGOST type A",require_family_match=True,
     )
     style=inspection.style
     measurer=PillowTextMeasurer()

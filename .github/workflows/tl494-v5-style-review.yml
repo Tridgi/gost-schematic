@@ -1,0 +1,53 @@
+name: TL494 PR115 controlled style repair preview
+on:
+  push:
+    branches: [reference/tl494-audit-v4-20261114]
+    paths:
+      - .github/workflows/tl494-v5-style-review.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pinned repo Ruff
+        run: python -m pip install "ruff>=0.9,<1"
+      - name: Exact 13-file style-only proposal (no commit)
+        run: |
+          set -euo pipefail
+          FILES=(
+            examples/tl494_connected_native.py
+            examples/tl494_full_native_model.py
+            examples/tl494_full_photo_sheet.py
+            examples/tl494_ic_paint_reference.py
+            examples/tl494_named_photo_sheet.py
+            examples/tl494_native_rework.py
+            examples/tl494_v4/audit.py
+            examples/tl494_v4/engine_adapter.py
+            examples/tl494_v4/model_contract.py
+            examples/tl494_v4/paint_rotation_patch.py
+            examples/tl494_v4/wire_drc.py
+            tests/test_tl494_reference_native.py
+            tests/test_tl494_v4_contract.py
+          )
+          git rev-parse HEAD
+          ruff check --fix --unsafe-fixes "${FILES[@]}"
+          ruff check .
+          git diff --check
+          git diff --name-only | tee /tmp/tl494-style-files.txt
+          test "$(wc -l </tmp/tl494-style-files.txt)" -eq 13
+          git diff -- "${FILES[@]}" > tl494-pr115-style-proposal.patch
+          echo '===== REVIEW EXACT PROPOSED DIFF (NO COMMIT) ====='
+          cat tl494-pr115-style-proposal.patch
+          echo '===== SHA256 OF FROZEN ARTIFACTS ====='
+          sha256sum examples/tl494_named_truth_output/TL494_named_photo_manifest.json examples/tl494_named_truth_output/TL494_named_photo_clean.svg
+          echo '===== PREVIEW ONLY ====='
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tl494-pr115-reviewed-style-proposal
+          path: tl494-pr115-style-proposal.patch
