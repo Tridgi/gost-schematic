@@ -10,8 +10,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-from pathlib import Path
 from importlib import import_module
+from pathlib import Path
 
 from examples.tl494_named_photo_sheet import compose_circuit
 from examples.tl494_v5.compact_layout import compact_source_assembly
@@ -29,7 +29,8 @@ from examples.tl494_v5.route_candidate_driver import (
 from gost_schematic.core.geometry import Point
 from gost_schematic.validation.external_wire_checks import WireSegment
 
-# reference checkout. Resolve them dynamically to keep Ruff/isort invariant.
+# Owner NET modules are absent in the base reference checkout but staged
+# into the dedicated job. Resolve dynamically for deterministic imports.
 _net = import_module("gost_schematic.engines.multiterminal_router")
 _source_ink_collision = _net._source_ink_collision
 _source_ink_obstacles = _net._source_ink_obstacles
