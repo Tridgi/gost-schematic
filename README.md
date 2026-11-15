@@ -38,6 +38,27 @@ automatic component placement and wire routing, comprehensive ERC, formally cert
 ГОСТ font outlines, PDF export, an approved ГОСТ symbol catalog, BOM and document
 composition. These are planned stages, not current features.
 
+## ⚙️ TL494CN — Cycle 13 one-command read-only AI quickstart
+
+A real, reproducible end-user workflow (not a finished circuit):
+
+```bash
+python -m pip install -e ".[dev,mcp]"
+mkdir -p output
+python -m examples.agent_tl494_cycle13_quickstart --out output/tl494-cycle13-user
+```
+
+Use a **new output folder**. The executable verifies the frozen
+23-component, 15-Net, 62-member physical TL494 source and original
+nominals; calls an actual native stdio MCP client; exports 7
+source-locked catalog UGO SVG+PNG pairs; runs 11 real rejected unsafe
+and incorrect JSON inputs; emits a SHA256 manifest and strict
+read-only `BLOCKED_PARTIAL` engineering report. Glyphs are not
+a fully routed/printed diagram, and a clean exit is NOT a print PASS.
+The Codex CLI integration requires a separately authorized model
+session. [Copyable command details, artifacts, safety boundaries and
+future full-route gates](docs/ai-integration/cycle13-end-user-quickstart.md).
+
 ## AI / MCP read-only TL494 engineering workflow (Cycle 12, DRAFT)
 
 The user-source target is the **actual immutable TL494CN E3**:
