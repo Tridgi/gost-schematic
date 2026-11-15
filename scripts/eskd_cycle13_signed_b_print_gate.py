@@ -70,6 +70,8 @@ def audit_source_b_printed_lines(
         f".//{SVG}line[@data-layer='nonphysical-continuation-stub']"
     )
     insist(len(actual_lines) == 2, "SOURCE_B_TWO_ACTUAL_PHYSICAL_LOCAL_INK_LINES_MISSING")
+    insist(len(region[0].findall(f".//{SVG}line")) == 2,
+           "SOURCE_B_UNMARKED_FOREIGN_GRAPHICAL_LINE")
     by_endpoint = {
         line.get("data-nonphysical-net-continuation"): line
         for line in actual_lines
@@ -80,6 +82,20 @@ def audit_source_b_printed_lines(
     insist(not any(line.get("data-nonphysical-net-continuation")
                    in EXPECTED for line in real_wires),
            "SOURCE_B_STUB_INSERTED_IN_ELECTRICAL_WIRE_GRAPH")
+    # Also catch a copied physical wire whose author deliberately stripped
+    # all b metadata. Geometric line overlap must never create a phantom Net.
+    for conductor in real_wires:
+        try:
+            coords = tuple(_um(conductor.get(axis))
+                           for axis in ("x1", "y1", "x2", "y2"))
+        except SignedBPrintError:
+            raise SignedBPrintError(
+                "SOURCE_B_PRINT_ELECTRICAL_WIRE_COORDINATES_UNVERIFIED"
+            ) from None
+        for stub in stubs:
+            seg = (stub.start.x, stub.start.y, stub.end.x, stub.end.y)
+            insist(coords != seg and coords != seg[2:] + seg[:2],
+                   "SOURCE_B_EXACT_STUB_COPIED_INTO_ELECTRICAL_GRAPH")
     for endpoint_id, expected_pin in EXPECTED.items():
         line = by_endpoint[endpoint_id]
         source = signed[endpoint_id]
@@ -104,6 +120,12 @@ def audit_source_b_printed_lines(
            and all(e.get("data-electrical-junction") == "false"
                    for e in markers),
            "SOURCE_B_PRINT_MARKER_CIRCLES_NOT_TWO_NONPHYSICAL")
+    by_marker = {m.get("data-nonphysical-net-continuation"): m for m in markers}
+    for marker_id, stub in signed.items():
+        marker = by_marker[marker_id]
+        insist((_um(marker.get("cx")), _um(marker.get("cy"))) ==
+               (stub.end.x, stub.end.y),
+               "SOURCE_B_PRINT_MARKER_CIRCLE_NOT_AT_SIGNED_ENDPOINT")
     texts = region[0].findall(f".//{SVG}text")
     insist(len(texts) == 2 and all(
         "".join(t.itertext()).strip() == "b"
@@ -112,6 +134,9 @@ def audit_source_b_printed_lines(
         and t.get("data-nonphysical") == "true"
         for t in texts),
         "SOURCE_B_PRINT_LABELS_NOT_AUTHENTIC_TYPE_A")
+    insist({(_um(t.get("x")), _um(t.get("y"))) for t in texts} ==
+           {(s.end.x, s.end.y - 4000) for s in signed.values()},
+           "SOURCE_B_PRINT_LABEL_NOT_AT_SIGNED_SOURCE_MARKER")
     insist(root.get("data-release") != "PRINT_PASS",
            "SOURCE_B_GRAPHIC_NOT_INDEPENDENT_FULL_PRINT_APPROVAL")
     return {
