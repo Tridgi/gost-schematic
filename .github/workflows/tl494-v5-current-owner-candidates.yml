@@ -40,9 +40,9 @@ jobs:
       - name: Pin all four unmerged current-owner source HEADs (never merge)
         run: |
           set -euxo pipefail
-          IC=bc03a31c5d15c9e962f9b26a209aab373e39bee6
-          PAINT=d74300580dfd28cc3400a512828dac6b49d529f0
-          CATALOG=3e47cdf32ccf211ded97e3be1ad874035653e090
+          IC=d7e70a8bfaed5f4e4f7fb340fdc7dbe4fc466e7b
+          PAINT=6ebd97d5d51facf15b733a1f909c4530262f5bc8
+          CATALOG=a805f0d7685187a05064cb801bcff4c893edf811
           ROUTER=027cee506a8dc9b3926b44b1abba66e1ae25b183
           SOURCE=e695c415fdced164b0e0c39c5249d030795a0aa6
           for sha in "$IC" "$PAINT" "$CATALOG" "$ROUTER" "$SOURCE"; do
