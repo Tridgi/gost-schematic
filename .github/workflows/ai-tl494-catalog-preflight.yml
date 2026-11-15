@@ -29,6 +29,8 @@ on:
       - "examples/agent_tl494_cycle13_quickstart.py"
       - "tests/agent_project/test_agent_tl494_cycle13_quickstart.py"
       - "tests/agent_project/test_retry_contract_cycle14.py"
+      - "tests/agent_project/test_generation_handoff_cycle14.py"
+      - "src/gost_schematic/agent_project/generation_handoff.py"
       - "src/gost_schematic/agent_project/retry_contract.py"
       - "docs/ai-integration/cycle14-readonly-retry-and-future-generator-contract.md"
       - "docs/ai-integration/cycle13-end-user-quickstart.md"
@@ -68,6 +70,7 @@ jobs:
             tests/agent_project/test_owner_api_locks_cycle12.py \
             tests/agent_project/test_agent_tl494_cycle13_quickstart.py \
             tests/agent_project/test_retry_contract_cycle14.py \
+            tests/agent_project/test_generation_handoff_cycle14.py \
             tests/agent_project/test_mcp_saved_stdio.py
       - name: Real native MCP sample gallery and six-part print preflight
         shell: bash
@@ -435,6 +438,13 @@ jobs:
           assert report["mcp_write_tool_enabled"] is False
           assert report["source_netlist_user_approval"] == "USER_REVIEW_REQUIRED"
           assert len(report["blocked_stage_diagnostics"]) == 5
+          handoff = json.loads((output / "source-generation-handoff.json").read_text())
+          assert handoff["status"] == "BLOCKED_GENERATOR_NOT_INTEGRATED"
+          assert (handoff["source_component_count"], handoff["source_net_count"],
+                  handoff["source_pinref_memberships"], handoff["source_da1_pin_count"]
+                  ) == (23, 15, 62, 16)
+          assert len(handoff["stages"]) == 7
+          assert not handoff["print_ready"] and not handoff["mcp_write_tools_enabled"]
           assert all(not d["mcp_write_allowed"] and not d["retryable_read_only"]
                      for d in report["blocked_stage_diagnostics"])
           refusals = json.loads((output / "refusal-tests.json").read_text())
