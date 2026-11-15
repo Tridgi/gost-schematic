@@ -224,6 +224,9 @@ printed sheet. `source_netlist_user_approval=USER_REVIEW_REQUIRED`:
 the agent cannot invent user approval. There is no active Codex
 model session, full-DPI print, 15/15 route, E3 commit or arbitrary
 MCP write. Source proof and a clean process exit are NOT print approval.
+Cycle14 [typed fail-closed recovery contract](docs/ai-integration/cycle14-readonly-retry-and-future-generator-contract.md)
+allows only one authorized fresh read after a stale P1.1 revision; no retries
+may modify source 23/15/62 or enable an MCP writer.
 
 ## Exact owner API lock, installed wheel, and Codex CLI boundaries (Cycle12)
 
