@@ -124,7 +124,7 @@ jobs:
             PAINT_SHA="252fed9077351493378348f4c0a0138c5e04c8b5"
             git fetch --no-tags --depth=1 origin "$PAINT_SHA"
             mkdir -p "$RUNNER_TEMP/ygo-owner/src/gost_schematic/rendering"
-            for file in ic_rectangular.py ic_hotspots.py ic_orientation.py ic_power_profiles.py ic_tl494_profile.py ic_electrical_binding.py ic_sheet_composition.py external_wire_sheet.py native_sheet_ink_audit.py routed_native_sheet.py; do
+            for file in ic_rectangular.py ic_hotspots.py ic_orientation.py ic_power_profiles.py ic_tl494_profile.py ic_electrical_binding.py ic_sheet_composition.py external_wire_sheet.py native_sheet_ink_audit.py routed_native_sheet.py sheet_svg.py; do
               git show "$PAINT_SHA:src/gost_schematic/rendering/$file" > "$RUNNER_TEMP/ygo-owner/src/gost_schematic/rendering/$file"
             done
             echo "PINNED_REAL_IC_OWNER=$IC_SHA; PINNED_REAL_PAINT_OWNER=$PAINT_SHA; RECON_OWNER=$OWNER_SHA"
