@@ -42,7 +42,7 @@ from gost_schematic.electrical.tl494cn import TI_DEVICE_ID
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.model.circuit import PinRef
 from gost_schematic.standards.type_a_font import inspect_type_a_font
-from gost_schematic.validation.external_wire_checks import ExternalWireGraph
+from gost_schematic.validation.external_wire_checks import ExternalWireGraph, WireSegment
 
 _NS = "{http://www.w3.org/2000/svg}"
 _FONT_SHA256 = "f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a"
@@ -373,6 +373,67 @@ def test_real_115_latest_paint_routed_native_requires_genuine_15_net_graph():
     # A completed 15-Net global route is NOT invented for this smoke test.
     assert signed.circuit.nets is native.circuit.nets
 
+
+
+@pytest.mark.parametrize(
+    ("attack", "error_code"),
+    (
+        ("foreign_net_segment", "ROUTED_SHEET_FORGED_FOREIGN_NET"),
+        ("wrong_total_members", "ROUTED_SHEET_SOURCE_NET_PINREFS_DRIFT"),
+        ("partial_diagnostic", "ROUTED_SHEET_CLEAN_DEBUG_PINREF_NET_DRIFT"),
+        ("one_um_diagnostic_anchor", "ROUTED_SHEET_CLEAN_DEBUG_PINREF_NET_DRIFT"),
+    ),
+)
+def test_real_115_paint_routed_native_adversarial_source_gate(attack, error_code):
+    """Cross-owner PAINT rejects forged graph, count and 16-tip UI mutations."""
+    renderer = import_module(
+        "gost_schematic.rendering.routed_native_sheet"
+    ).render_routed_native_sheet
+    font = Path(os.environ["IC_TYPE_A_FONT_PATH"])
+    native, signed, paint, verified, style, measure = live_paint(font)
+    clean = verified.render(
+        signed, paint, style, measure, diagnostics=False,
+    )[0]
+    diagnostic = verified.render(
+        signed, paint, style, measure, diagnostics=True,
+    )[0]
+    parts = {**native.parts, signed.part.identifier: signed.part}
+    symbols = {
+        part_id: native.symbols[part.symbol_id]
+        for part_id, part in native.parts.items()
+        if part.symbol_id in native.symbols
+    }
+    assert signed.symbol_surrogate is not None
+    symbols[signed.part.identifier] = signed.symbol_surrogate
+    graph = ExternalWireGraph(())
+    required_members = 62
+    if attack == "foreign_net_segment":
+        graph = ExternalWireGraph((
+            WireSegment(Point(1000, 1000), Point(2000, 1000), "FORGED_NET"),
+        ))
+    elif attack == "wrong_total_members":
+        required_members = 61
+    elif attack == "partial_diagnostic":
+        diagnostic = replace(diagnostic, connection_targets=())
+    else:
+        anchors = list(diagnostic.pin_anchors)
+        pin_id, p = anchors[0]
+        anchors[0] = (pin_id, Point(p.x + 1, p.y))
+        diagnostic = replace(diagnostic, pin_anchors=tuple(anchors))
+    with pytest.raises(ValueError, match=error_code):
+        renderer(
+            signed.circuit, graph, parts, symbols, style, measure,
+            physical_ic_renderings_clean={"DA1": clean},
+            physical_ic_renderings_diagnostic={"DA1": diagnostic},
+            source_continuation_project=None,
+            expected_component_count=23,
+            expected_net_count=15,
+            expected_net_pinrefs=required_members,
+            physical_page_box=Box(0, 0, 420000, 297000),
+        )
+    assert len(signed.circuit.nets) == 15
+    assert sum(len(net.members) for net in signed.circuit.nets) == 62
+    assert signed.circuit.nets is native.circuit.nets
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
