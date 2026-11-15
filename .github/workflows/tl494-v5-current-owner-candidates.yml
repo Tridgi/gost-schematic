@@ -19,6 +19,7 @@ on:
       - examples/tl494_v5/test_cycle13_placement_matrix.py
       - examples/tl494_v5/cycle14_pin_corridor_probe.py
       - examples/tl494_v5/cycle15_delivery.py
+      - examples/tl494_v5/test_cycle15_delivery.py
       - examples/tl494_v5/test_cycle14_pin_corridor_probe.py
       - examples/tl494_v5/CYCLE13_SELECTIVE_INTEGRATION_MANIFEST.md
       - examples/tl494_v5/route_preflight.py
@@ -95,7 +96,8 @@ jobs:
             examples/tl494_v5/test_cycle11_ti_bridge.py \
             examples/tl494_v5/test_cycle11_b_continuation.py \
             examples/tl494_v5/test_cycle13_placement_matrix.py \
-            examples/tl494_v5/test_cycle14_pin_corridor_probe.py
+            examples/tl494_v5/test_cycle14_pin_corridor_probe.py \
+            examples/tl494_v5/test_cycle15_delivery.py
       - name: Produce C11 signed TI plus true b marker source proof independently of routing
         run: |
           set -euxo pipefail
