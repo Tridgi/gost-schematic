@@ -1,12 +1,10 @@
 """Cycle13 deterministic source-only relocation and fail-closed evidence tests."""
+import os
 from pathlib import Path
 
 import pytest
 
-from examples.tl494_v5.compact_layout import (
-    actual_component_occupied_mm,
-    compact_source_assembly,
-)
+from examples.tl494_v5.compact_layout import compact_source_assembly
 from examples.tl494_v5.cycle11_ti_bridge import bind_verified_compact_ti
 from examples.tl494_v5.cycle13_placement_matrix import (
     PLACEMENT_TRIALS,
@@ -19,6 +17,7 @@ from examples.tl494_v5.route_candidate_driver import (
     position_only_move,
     restore_original_named_nets,
     run_candidate,
+    source_signed_ink_footprint,
 )
 
 
@@ -49,7 +48,9 @@ def test_legal_c13_source_preserving_editorial_candidates(name, moves):
         assert original.part_id == moved.part_id
         assert original.transform == moved.transform
         assert original.nominal == moved.nominal
-    footprint = actual_component_occupied_mm(changed, changed.symbols)
+    _symbols, footprint = source_signed_ink_footprint(
+        changed, Path(os.environ["TL494_TYPE_A_FONT"]),
+    )
     assert len(footprint["bbox_um"]) == 4
     assert footprint["nominal_symbols_scaled"] is False
     assert footprint["printable"] is False
@@ -57,7 +58,9 @@ def test_legal_c13_source_preserving_editorial_candidates(name, moves):
 
 def test_corrected_x1_stroke_is_physically_inside_a3_margin():
     base = compact_source_assembly()
-    actual = actual_component_occupied_mm(base, base.symbols)
+    _symbols, actual = source_signed_ink_footprint(
+        base, Path(os.environ["TL494_TYPE_A_FONT"]),
+    )
     assert actual["A3_bbox_within_margins"] is True
     assert actual["A3_capacity_fit"] is True
     assert actual["bbox_um"][0] >= 10000
