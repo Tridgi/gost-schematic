@@ -18,8 +18,8 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from mcp.types import ImageContent, TextContent
 
-from gost_schematic.agent_project.owner_api_locks import verify_pinned_owner_api_files
 from gost_schematic.agent_project.catalog import CatalogResolver
+from gost_schematic.agent_project.owner_api_locks import verify_pinned_owner_api_files
 from gost_schematic.agent_project.design_assistant import (
     TL494_FROZEN_SOURCE_SHA,
     TL494_REQUIRED_PARTS,
