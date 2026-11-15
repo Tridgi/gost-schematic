@@ -26,10 +26,10 @@ jobs:
         python-version: ["3.12", "3.13"]
     env:
       SOURCE_SHA: e695c415fdced164b0e0c39c5249d030795a0aa6
-      IC_SHA: 892640cfff9780bb4f13c1a6753dbba5f7754a96
+      IC_SHA: bc03a31c5d15c9e962f9b26a209aab373e39bee6
       YGO_SHA: 3e47cdf32ccf211ded97e3be1ad874035653e090
-      NET_SHA: ef48b2a1a6a77ed8d2e18528aeeeb1f0e0e41d2d
-      RECON_SHA: d9286dc2719157109c110db86581951cd58192ab
+      NET_SHA: 027cee506a8dc9b3926b44b1abba66e1ae25b183
+      RECON_SHA: e4eb565820e54889456f64d36598b608597ca2c2
       NETREF_SHA: 2d9668966bc5dbe023608d42340dcfb46e31234d
       PAINT_PINNED_NATIVE_REQUIRED: "1"
     steps:
@@ -48,8 +48,7 @@ jobs:
             examples/tl494_named_photo_sheet.py \
             examples/tl494_connected_native.py \
             examples/tl494_native_rework.py \
-            examples/tl494_full_native_model.py \
-            examples/tl494_ic_paint_reference.py; do
+            examples/tl494_full_native_model.py; do
             git show "$SOURCE_SHA:$p" > "$p"
           done
           for p in $(git ls-tree -r --name-only "$IC_SHA" src/gost_schematic/electrical); do
@@ -83,6 +82,10 @@ jobs:
             mkdir -p "$(dirname "$p")"
             git show "$NET_SHA:$p" > "$p"
           done
+          # Keep the REAL updated RECON115 Type-A source builder. The
+          # immutable E695 model is fetched above, not this corrected IC face.
+          git show "$RECON_SHA:examples/tl494_ic_paint_reference.py" \
+            > examples/tl494_ic_paint_reference.py
           for p in $(git ls-tree -r --name-only "$RECON_SHA" examples/tl494_v4 examples/tl494_v5 | grep -E "\\.py$"); do
             mkdir -p "$(dirname "$p")"
             git show "$RECON_SHA:$p" > "$p"
@@ -94,6 +97,8 @@ jobs:
           test -f examples/tl494_cycle9_circuit_integration.py
           test -f src/gost_schematic/electrical/netrefs.py
           test -f examples/tl494_v5/cycle11_ti_bridge.py
+          test -f examples/tl494_ic_paint_reference.py
+          grep -Fq 'family="OpenGOST type A"' examples/tl494_ic_paint_reference.py
           test -f examples/tl494_v5/cycle11_b_continuation.py
           test -f examples/tl494_v5/route_candidate_driver.py
           test -f src/gost_schematic/catalog/source_digest.py
