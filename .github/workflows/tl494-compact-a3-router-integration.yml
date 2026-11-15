@@ -117,10 +117,13 @@ jobs:
           test -f "$FONT"
           TRIALS=2
           OFFSET=0
-          # Earlier exact A2 and A3 are both independently verified 10/15.
-          # Probe source-safe *congested Nets first* on A2, not fake resizing:
-          # preserve all 23 positions/15 Nets/62 physical PinRefs.
-          if [ "$PAPER" = "A2" ]; then OFFSET=3; fi
+          BACKTRACK=2
+          # Real source A3 functional-order 10/15 is independently
+          # confirmed; A2 congestion-first 7/15 is a separate comparison.
+          # Probe two bounded actual WIRE_VETO-driven whole-graph orders
+          # ONLY on A3 (never mix incomplete route graphs or bypass DRC).
+          # The A2 study retains its two fixed congestion-first variants.
+          if [ "$PAPER" = "A2" ]; then OFFSET=3; BACKTRACK=0; fi
           python -m examples.review_tl494_compact_cycle9 \
             --font-file "$FONT" \
             --owner-sha "$GITHUB_SHA" \
@@ -129,6 +132,7 @@ jobs:
             --page-format "$PAPER" \
             --priority-trials "$TRIALS" \
             --priority-offset "$OFFSET" \
+            --physical-veto-restarts "$BACKTRACK" \
             --output "$OUT" \
             2>&1 | tee "$OUT/owner-route-trace.log"
       - name: Check actual 23/15/16/62 and blocked-safe native SVG
@@ -151,13 +155,24 @@ jobs:
           assert data["measured_annotation_guards"] >= 39
           assert data["route_priority_trials"] == 2
           assert data["route_priority_offset"] == (3 if paper == "A2" else 0)
+          assert data["route_physical_veto_restarts"] == (
+              0 if paper == "A2" else 2
+          )
           expected_strategies = (
               ("CONGESTED_PIN_FANOUT_FIRST", "CONGESTED_REVERSE_ROOTS")
               if paper == "A2" else ("SOURCE_FUNCTIONAL", "COMMON_FIRST")
           )
-          assert tuple(
+          recorded_strategies = tuple(
               item["strategy"] for item in data["routing"]["route_order_trials"]
-          ) == expected_strategies
+          )
+          assert recorded_strategies[:2] == expected_strategies
+          assert all(
+              name.startswith("VETO_REORDER_")
+              for name in recorded_strategies[2:]
+          )
+          assert len(recorded_strategies) <= (
+              2 if paper == "A2" else 4
+          )
           assert data["real_source_UGO_draft_count"] == 13
           assert "VT1" in data["actual_source_UGO_authority"]
           assert all(
