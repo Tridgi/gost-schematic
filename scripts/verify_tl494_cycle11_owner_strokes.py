@@ -299,9 +299,163 @@ def compare_native_ic_typed_source() -> dict:
     }
 
 
+def compare_native_recon_compact_source() -> dict:
+    """Real RECON #115 compact assembly; no synthetic routing or print.
+
+    This uses actual reference-based RECON owner code with original physical
+    catalog graphics/IC metadata temporarily staged from their exact SHAs.
+    Everything remains in detached worktrees; no owner file is committed.
+    """
+    from examples.tl494_v5.compact_layout import (
+        A3_LANDSCAPE_UM,
+        COMPACT_A3_MM,
+        PRINT_MARGIN_UM,
+        actual_component_occupied_mm,
+        compact_source_assembly,
+    )
+
+    assembly = compact_source_assembly()
+    assembly.verify()
+    circuit = assembly.circuit
+    if (len(circuit.components) != 23 or len(circuit.nets) != 15
+        or sum(len(net.members) for net in circuit.nets) != 62
+        or len(assembly.source_UGO_bindings) != 13):
+        raise AssertionError("RECON_C13_FROZEN_23_15_62_OR_13_UGO_CHANGED")
+    if COMPACT_A3_MM["X1"] != (17, 35) or (
+        next(c for c in circuit.components if c.reference == "X1").origin
+        != Point(17000, 35000)
+    ):
+        raise AssertionError("RECON_C13_X1_17MM_MARGIN_FIX_MISSING")
+    assembly_nets = circuit.nets
+    if {p.number for n in circuit.nets for p in n.members
+        if p.reference == "DA1"} != {str(i) for i in range(1, 17)}:
+        raise AssertionError("RECON_C13_16_ACTUAL_DA1_CONTACTS_MISSING")
+    b = next((n for n in circuit.nets if n.name == "OUTPUT_NEG"), None)
+    if b is None or {(p.reference, p.number) for p in b.members} != {
+        ("FU1", "2"), ("X2", "1"), ("R5", "2"),
+    } or len(b.members) != 3:
+        raise AssertionError("RECON_C13_REAL_B_PHYSICAL_TIPS_CHANGED")
+    bounds = actual_component_occupied_mm(assembly, assembly.symbols)
+    if not bounds["A3_bbox_within_margins"]:
+        raise AssertionError(
+            "RECON_C13_ACTUAL_COMPACT_A3_BOUNDS_OUTSIDE_PRINT_MARGINS: "
+            + str(bounds)
+        )
+    min_margin = PRINT_MARGIN_UM
+    max_x, max_y = A3_LANDSCAPE_UM
+    measured = {}
+    all_poses = 0
+    physical_tip_checks = 0
+    source_ink_count = 0
+    for binding in assembly.source_UGO_bindings:
+        original = next(c for c in circuit.components
+                        if c.reference == binding.reference)
+        if binding.instance is not original:
+            raise AssertionError(
+                "RECON_C13_UGO_WAS_NOT_BOUND_TO_REAL_COMPONENT_INSTANCE: "
+                + binding.reference
+            )
+        current = source_footprint(binding)
+        record = footprint_record(current)
+        raw = record["rendered_ink_bounds_um"]
+        if not (min_margin <= raw[0] <= raw[2] <= max_x - min_margin
+                and min_margin <= raw[1] <= raw[3] <= max_y - min_margin):
+            raise AssertionError(
+                "RECON_C13_PRINTED_SOURCE_UGO_EXCEEDS_A3_MARGINS: "
+                + binding.reference + ":" + str(raw)
+            )
+        if record["origin_um"] != [original.origin.x, original.origin.y]:
+            raise AssertionError("RECON_C13_SOURCE_UGO_ORIGIN_REASSIGNED")
+        if record["symbol_revision"] != binding.symbol.revision:
+            raise AssertionError("RECON_C13_GLYPH_REVISION_CHANGED")
+        measured[binding.reference] = {
+            "symbol_id": record["symbol_id"],
+            "origin_um": record["origin_um"],
+            "rendered_ink_bounds_um": raw,
+            "true_leads": record["real_leads"],
+            "footprint_sha256": record["footprint_sha256"],
+            "status": record["status"],
+        }
+        for mirror in (False, True):
+            for angle in (0, 90, 180, 270):
+                component = replace(
+                    original, transform=Transform(angle, mirror)
+                )
+                points = component.pin_positions(binding.symbol)
+                moved = replace(
+                    binding,
+                    instance=component,
+                    pin_positions=tuple(
+                        points[pin.number] for pin in binding.part.pins
+                    ),
+                )
+                fp = source_footprint(moved)
+                if len(fp.lead_obstacles) != len(binding.part.pins):
+                    raise AssertionError("RECON_C13_D4_TRUE_LEAD_LOSS")
+                if tuple(lead.pin_ref for lead in fp.lead_obstacles) != (
+                    binding.pin_refs
+                ):
+                    raise AssertionError("RECON_C13_D4_PINREF_REORDERED")
+                if tuple(lead.pin_ref.number for lead in fp.lead_obstacles) != (
+                    tuple(pin.number for pin in binding.part.pins)
+                ):
+                    raise AssertionError("RECON_C13_D4_PHYSICAL_NUMBER_REMAP")
+                if any(
+                    lead.pin_ref.reference != original.reference
+                    or points[lead.pin_ref.number] not in (
+                        lead.segment.start, lead.segment.end
+                    )
+                    for lead in fp.lead_obstacles
+                ):
+                    raise AssertionError("RECON_C13_D4_LEAD_TIP_DISCONNECTED")
+                physical_tip_checks += len(fp.lead_obstacles)
+                source_ink_count += len(fp.ink_obstacles)
+                all_poses += 1
+    if (len(measured) != 13 or all_poses != 104
+        or physical_tip_checks != 224
+        or circuit.nets is not assembly_nets):
+        raise AssertionError("RECON_C13_REAL_UGO_OR_NET_IDENTITY_DRIFT")
+
+    # Negative control: reproduce the historical compact X1=16mm candidate
+    # *only in memory*; it must NOT pass the current physical margin proof.
+    old_x1 = tuple(
+        replace(c, origin=Point(16000, c.origin.y))
+        if c.reference == "X1" else c
+        for c in circuit.components
+    )
+    old_fit = actual_component_occupied_mm(
+        replace(assembly, circuit=Circuit(old_x1, assembly_nets)),
+        assembly.symbols,
+    )
+    if old_fit["A3_bbox_within_margins"]:
+        raise AssertionError(
+            "RECON_C13_NEGATIVE_X1_16MM_UNEXPECTEDLY_WITHIN_MARGIN"
+        )
+    if old_fit["bbox_um"][0] != bounds["bbox_um"][0] - 1000:
+        raise AssertionError("RECON_C13_X1_GEOMETRY_NOT_EXACT_1MM_TRANSLATION")
+
+    return {
+        "consumer": "RECON_PR115_ACTUAL_COMPACT_A3_PHYSICAL_UGO",
+        "source_profiles": 13,
+        "real_components": 23,
+        "real_nets": 15,
+        "real_net_PinRef_memberships": 62,
+        "DA1_numbered_real_pins": 16,
+        "D4_true_owner_comparisons": all_poses,
+        "D4_true_physical_lead_tip_checks": physical_tip_checks,
+        "D4_actual_ink_primitives_audited": source_ink_count,
+        "X1_new_true_origin_um": [17000, 35000],
+        "X1_old_16mm_negative": "REJECTED_OUTSIDE_A3_PRINT_MARGIN",
+        "A3_component_ink_bounds": bounds,
+        "source_13_real_compact_footprints": measured,
+        "graphical_b_stub_strokes_printed": False,
+        "status": "PASS_RECON_COMPACT_SOURCE_UGO_NOT_COMPLETE_PRINT",
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--owner", choices=("net", "paint", "ic"), required=True)
+    parser.add_argument("--owner", choices=("net", "paint", "ic", "recon"), required=True)
     parser.add_argument("--owner-sha", required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
@@ -318,8 +472,10 @@ def main():
         report = compare_native_net_strokes()
     elif args.owner == "paint":
         report = compare_native_paint_symbols()
-    else:
+    elif args.owner == "ic":
         report = compare_native_ic_typed_source()
+    else:
+        report = compare_native_recon_compact_source()
     report.update({
         "owner_sha": actual_sha,
         "source_sha": PINNED_REFERENCE_SHA,

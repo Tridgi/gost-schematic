@@ -1,4 +1,4 @@
-name: YGO physical source UGO cross-owner exact HEAD (NET PAINT IC)
+name: YGO Cycle13 physical UGO ink actual NET PAINT IC RECON SHA
 
 on:
   push:
@@ -34,22 +34,28 @@ jobs:
         include:
           - owner: net
             python-version: "3.12"
-            owner_sha: "ffbfc5fdc4653e1a2b08ac5e6d38d96ad669dbec"
+            owner_sha: "a370d637fe67ec44870899d503f53c0a6f8ee3af"
           - owner: net
             python-version: "3.13"
-            owner_sha: "ffbfc5fdc4653e1a2b08ac5e6d38d96ad669dbec"
+            owner_sha: "a370d637fe67ec44870899d503f53c0a6f8ee3af"
           - owner: paint
             python-version: "3.12"
-            owner_sha: "f71f9c47f1e6313361dfa04242c559b0d74c831c"
+            owner_sha: "f872ce50ac699ad089391b0bbd58e2cb92f2b7f6"
           - owner: paint
             python-version: "3.13"
-            owner_sha: "f71f9c47f1e6313361dfa04242c559b0d74c831c"
+            owner_sha: "f872ce50ac699ad089391b0bbd58e2cb92f2b7f6"
           - owner: ic
             python-version: "3.12"
-            owner_sha: "90dab83566ba9ed8b344ab24396da084f02b5c23"
+            owner_sha: "7c30c209ea5e97a245844b24a3bbc4d3d30118ea"
           - owner: ic
             python-version: "3.13"
-            owner_sha: "90dab83566ba9ed8b344ab24396da084f02b5c23"
+            owner_sha: "7c30c209ea5e97a245844b24a3bbc4d3d30118ea"
+          - owner: recon
+            python-version: "3.12"
+            owner_sha: "73025965efeb94585e8723ba3f0b636229e8a5de"
+          - owner: recon
+            python-version: "3.13"
+            owner_sha: "73025965efeb94585e8723ba3f0b636229e8a5de"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -102,6 +108,17 @@ jobs:
             cmp -s "$original" "$target" || { echo "::error::SOURCE_FERROMAGNETIC_PROFILE_DRIFT"; exit 1; }
           else
             cp "$original" "$target"
+          fi
+          # RECON PR115 is reference-based: use ONLY real IC #97 code
+          # pinned by SHA, staged temporarily just as RECON owner does in
+          # its genuine current-owner integration CI. No fake signatures.
+          if test "$OWNER" = recon; then
+            IC_SHA="7c30c209ea5e97a245844b24a3bbc4d3d30118ea"
+            git fetch --no-tags --depth=1 origin "$IC_SHA"
+            for file in ic.py tl494cn.py ic_pin_alias.py ic_serde.py ic_paint_bridge.py ic_graphic_revision.py ic_circuit_adapter.py ic_editor_targets.py; do
+              git show "$IC_SHA:src/gost_schematic/electrical/$file" > "$RUNNER_TEMP/ygo-owner/src/gost_schematic/electrical/$file"
+            done
+            echo "PINNED_REAL_IC_OWNER=$IC_SHA; RECON_OWNER=$OWNER_SHA"
           fi
           mkdir -p output/cycle11-owners
           cd "$RUNNER_TEMP/ygo-owner"
