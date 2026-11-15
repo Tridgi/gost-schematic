@@ -13,6 +13,7 @@ from gost_schematic.agent_project.retry_contract import (
     readonly_error_diagnostic,
 )
 
+
 def test_retry_codes_fail_closed_and_only_stale_saved_snapshot_may_be_refetched():
     allowed = readonly_error_diagnostic("REQUEST_STALE_REVISION")
     assert allowed["retryable_read_only"] is True
