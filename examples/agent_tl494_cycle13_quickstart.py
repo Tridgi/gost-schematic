@@ -9,7 +9,6 @@ import asyncio
 import copy
 import hashlib
 import json
-import os
 import sys
 from importlib.resources import files
 from pathlib import Path
