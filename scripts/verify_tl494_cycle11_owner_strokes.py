@@ -1,4 +1,4 @@
-"""Cycle11 read-only consumer compatibility against REAL NET/PAINT owner worktrees.
+"""Cycle13 read-only physical UGO compatibility against exact NET/PAINT/IC/RECON HEADs.
 
 Run inside an isolated checked-out owner commit with the YGO source-profile
 modules overlaid only in a TEMPORARY GitHub Actions worktree. This intentionally
@@ -7,10 +7,10 @@ does NOT modify the source commit, any owner branch, or the frozen original.
 import argparse
 import importlib
 import json
-from math import isqrt
 import subprocess
 from dataclasses import replace
 from decimal import Decimal, InvalidOperation
+from math import isqrt
 from pathlib import Path
 
 from gost_schematic.catalog.source_footprints import (
