@@ -73,6 +73,7 @@ jobs:
           from scripts.eskd_cycle15_real_paint_a3_release_gate import (
               NativeReleaseError, ROOT, audit,
           )
+          from scripts.eskd_cycle13_signed_b_print_gate import SignedBPrintError
 
           source = Path("evidence/real-PAINT-C10/tl494-C10-compact-A3-new-graph")
           sha = "252fed9077351493378348f4c0a0138c5e04c8b5"
@@ -121,7 +122,7 @@ jobs:
                   try:
                       audit(target, artifact_run=43720996792,
                             paint_sha=sha, expected_clean_sha=current_sha)
-                  except NativeReleaseError as exc:
+                  except (NativeReleaseError, SignedBPrintError) as exc:
                       assert expected_code in str(exc), (mutation, str(exc))
                   else:
                       raise AssertionError(f"FORGED_OWNER_ARTIFACT_ACCEPTED:{mutation}")
