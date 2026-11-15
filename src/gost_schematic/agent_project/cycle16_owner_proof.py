@@ -109,6 +109,7 @@ def _canonical_source(source_request: dict[str, Any]) -> dict[str, list[str]]:
 
 def _svg_checks(
     raw: bytes, *, diagnostic: bool, b_stubs_expected: dict[str, Any],
+    source_net_names: frozenset[str], expected_wire_count: int,
 ) -> dict[str, Any]:
     if b"<!DOCTYPE" in raw.upper() or b"<!ENTITY" in raw.upper():
         _reject("C16_EXTERNAL_XML_ENTITIES_FORBIDDEN")
@@ -158,6 +159,35 @@ def _svg_checks(
                 ) from error
             if not parsed.is_finite() or parsed != value:
                 _reject("C16_NATIVE_B_COORDINATE_1UM_DRIFT")
+    # The *actual* native route lines must be the same on clean and debug.
+    # Strict source Net identity and explicit wire indices prevent a visual
+    # extra electrical wire from being disguised as an accepted owner route.
+    wires = root.findall(f".//{_SVG}line[@data-layer='wires']")
+    if len(wires) != expected_wire_count:
+        _reject("C16_SVG_ROUTE_WIRE_COUNT_DRIFT")
+    wire_signature = []
+    for index, wire in enumerate(wires):
+        if (
+            wire.get("data-net") not in source_net_names
+            or wire.get("data-wire-index") != str(index)
+        ):
+            _reject("C16_SVG_ROUTE_WIRE_NET_OR_ID_DRIFT")
+        coords = []
+        for field in ("x1", "y1", "x2", "y2"):
+            try:
+                coord = Decimal(wire.get(field, "")) * 1000
+            except InvalidOperation as error:
+                raise ProjectError(
+                    "C16_SVG_ROUTE_COORDINATE_INVALID", "Malformed wire geometry",
+                ) from error
+            if not coord.is_finite() or coord != coord.to_integral_value():
+                _reject("C16_SVG_ROUTE_1UM_COORDINATE_DRIFT")
+            coords.append(int(coord))
+        if coords[:2] == coords[2:] or (
+            coords[0] != coords[2] and coords[1] != coords[3]
+        ):
+            _reject("C16_SVG_ROUTE_NONORTHOGONAL")
+        wire_signature.append([wire.get("data-net"), *coords])
     targets = root.findall(f".//{_SVG}g[@data-layer='editor-connection-targets']")
     if diagnostic:
         if len(targets) != 1:
@@ -179,6 +209,7 @@ def _svg_checks(
         "native_da1_leads": 16,
         "non_electrical_b_strokes": 2,
         "editor_markers": 16 if diagnostic else 0,
+        "wire_signature": wire_signature,
         "xml_parsed": True,
     }
 
@@ -379,7 +410,13 @@ def review_c15_owner_proof(
             accepted_artifacts[filename].update(_svg_checks(
                 raw_bytes, diagnostic=("diagnostic" in filename),
                 b_stubs_expected=proof["source_b_nonphysical"],
+                source_net_names=frozenset(source_nets),
+                expected_wire_count=proof["routed_native_segments"],
             ))
+    clean = accepted_artifacts[expected_files[0]]["wire_signature"]
+    debug = accepted_artifacts[expected_files[1]]["wire_signature"]
+    if clean != debug:
+        _reject("C16_SVG_CLEAN_DIAGNOSTIC_COPPER_DRIFT")
     raw_route = _json(_bytes(
         folder / "native" / expected_files[-1], _MAX_JSON,
     ))
