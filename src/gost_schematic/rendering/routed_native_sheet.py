@@ -85,6 +85,9 @@ def render_routed_native_sheet(
     *,
     physical_ic_renderings_clean: Mapping[str, IcRendered],
     physical_ic_renderings_diagnostic: Mapping[str, IcRendered],
+    verified_ic_source: object | None = None,
+    verified_ic_paint_binding: object | None = None,
+    verified_ic_snapshot: object | None = None,
     source_continuation_project: object | None = None,
     route_preview: object | None = None,
     expected_component_count: int | None = None,
@@ -120,6 +123,64 @@ def render_routed_native_sheet(
             clean_ic.connection_targets != debug_ic.connection_targets
         ):
             raise ValueError("ROUTED_SHEET_CLEAN_DEBUG_PINREF_NET_DRIFT")
+    # Source-specific signed manufacturer trust is independent of a pair of
+    # plausible raw IcRendered objects. Recompute every graphic from the
+    # verified IC97 snapshot, not from 16 freely supplied green squares.
+    trust_items = (
+        verified_ic_source, verified_ic_paint_binding, verified_ic_snapshot,
+    )
+    if any(item is not None for item in trust_items) and (
+        not all(item is not None for item in trust_items)
+    ):
+        raise TypeError("ROUTED_SHEET_SIGNED_IC_TRIPLE_REQUIRED")
+    signed_source_verified = False
+    if all(item is not None for item in trust_items):
+        from gost_schematic.electrical.ic_circuit_adapter import (
+            IcCircuitBinding,
+            IcVerifiedPaintSnapshot,
+        )
+        from gost_schematic.electrical.ic_paint_bridge import IcPaintBinding
+
+        if (
+            not isinstance(verified_ic_source, IcCircuitBinding)
+            or not isinstance(verified_ic_snapshot, IcVerifiedPaintSnapshot)
+            or not isinstance(verified_ic_paint_binding, IcPaintBinding)
+        ):
+            raise TypeError("ROUTED_SHEET_SIGNED_MANUFACTURER_TYPES_REQUIRED")
+        verified_ic_source.validate()
+        if verified_ic_source.circuit is not circuit:
+            raise ValueError("ROUTED_SHEET_SIGNED_IC_CIRCUIT_IDENTITY_DRIFT")
+        verified_ic_snapshot.verify_against(
+            verified_ic_source, verified_ic_paint_binding,
+        )
+        reference = verified_ic_snapshot.component_ref
+        if (
+            set(physical_ic_renderings_clean) != {reference}
+            or len(verified_ic_snapshot.per_unit_targets) != 1
+            or len(verified_ic_snapshot.per_unit_targets[0]) != 16
+        ):
+            raise ValueError("ROUTED_SHEET_SIGNED_IC_16_PIN_INVENTORY_MISMATCH")
+        # Serialized lead inventory must match the authenticated manufacturer
+        # contact map, not a caller-manufactured synthetic physical cursor.
+        for provided in (
+            physical_ic_renderings_clean[reference],
+            physical_ic_renderings_diagnostic[reference],
+        ):
+            expected = dict(
+                (f"{reference}.P{contact.physical_number}", contact.anchor)
+                for contact in verified_ic_snapshot.manifest.contacts
+            ) if hasattr(verified_ic_snapshot.manifest, "contacts") else {
+                f"{reference}.P{contact.physical_number}": contact.anchor
+                for contact in verified_ic_snapshot.manifest.for_unit(
+                    verified_ic_paint_binding.unit_ids[0]
+                )
+            }
+            if dict(provided.pin_anchors) != expected or (
+                provided.connection_targets
+                != verified_ic_snapshot.per_unit_targets[0]
+            ):
+                raise ValueError("ROUTED_SHEET_SIGNED_IC_INK_OR_TARGET_DRIFT")
+        signed_source_verified = True
     if type(stroke_um) is not int or stroke_um <= 0:
         raise ValueError("ROUTED_SHEET_INVALID_STROKE")
     if physical_page_box is not None and not isinstance(physical_page_box, Box):
@@ -190,6 +251,10 @@ def render_routed_native_sheet(
         source_continuation_project=source_continuation_project,
         physical_page_box=physical_page_box,
     ))
+    if (len(circuit.components), len(circuit.nets),
+            sum(len(net.members) for net in circuit.nets)) == (23, 15, 62):
+        if not signed_source_verified:
+            blockers.append("TL494_SIGNED_MANUFACTURER_PHYSICAL_BINDING_MISSING")
     if electric_error_codes:
         blockers.extend(f"ELECTRICAL:{code}" for code in electric_error_codes)
     if route_preview is not None and not route_preview.complete:
@@ -328,6 +393,7 @@ def render_routed_native_sheet(
         raise AssertionError("ROUTED_SHEET_INPUT_MUTATED_WHILE_RENDERING")
     manifest = {
         "schema": "paint.routed-native.v1",
+        "signed_manufacturer_ic_16_verified": signed_source_verified,
         "status": "TECHNICAL_GATE_PASS_QA_REQUIRED" if full else "BLOCKED",
         "source_components": physical_count,
         "source_nets": len(circuit.nets),
