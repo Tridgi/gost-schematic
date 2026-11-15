@@ -3,10 +3,19 @@ import json
 from pathlib import Path
 
 import pytest
+from contract import (
+    SCHEMA,
+    ContractError,
+    History,
+    atomic_save,
+    digest,
+    migrate,
+    pin_world,
+    serialize,
+    strict_loads,
+    validate,
+)
 from jsonschema import Draft202012Validator
-
-from contract import (SCHEMA, ContractError, History, atomic_save, digest,
-                      migrate, pin_world, serialize, strict_loads, validate)
 
 ROOT = Path(__file__).resolve().parents[4]
 FIX = ROOT / 'fixtures'
@@ -35,7 +44,7 @@ def test_source_locked_identity_and_b_graphics_not_wires():
     assert len(next(x for x in p['part_definitions'] if x['id']=='reference.tl494cn')['physical_pins'])==16
     assert sum(len(x['wires']) for x in p['sheets']) == 0
     assert sum(g['kind']=='source_b_continuation' for s in p['sheets'] for g in s['graphics'])==2
-    assert set(n['name'] for n in p['nets']) >= {'a_INPUT_PLUS','b_NEGATIVE_OUTPUT','COMMON'}
+    assert {n['name'] for n in p['nets']} >= {'a_INPUT_PLUS','b_NEGATIVE_OUTPUT','COMMON'}
 
 
 @pytest.mark.parametrize('name,code',[
@@ -232,7 +241,7 @@ def test_explicit_junction_good_at_T_on_same_net():
 
 
 def test_autosave_recovery_and_revision_conflict(tmp_path):
-    from contract import write_autosave,recover_autosave
+    from contract import recover_autosave, write_autosave
     base=read('toy-v2.gscad.json')
     changed=copy.deepcopy(base)
     changed['project']['components'][0]['value']='10k'

@@ -55,7 +55,7 @@ S.mkdir(exist_ok=True)
 (S/'project-v2.schema.json').write_text(json.dumps(schema,ensure_ascii=False,indent=2)+'\n')
 
 def stable(kind,name): return str(uuid.uuid5(uuid.NAMESPACE_URL,'gscad-chat6:'+kind+':'+name))
-L=[dict(id='layer-electric',name='Electrical',kind='electrical',visible=True,printable=True,locked=False),dict(id='layer-draw',name='Drawing',kind='drawing',visible=True,printable=True,locked=False),dict(id='layer-debug',name='Diagnostics',kind='diagnostics',visible=False,printable=False,locked=True)]
+L=[{'id':'layer-electric','name':'Electrical','kind':'electrical','visible':True,'printable':True,'locked':False},{'id':'layer-draw','name':'Drawing','kind':'drawing','visible':True,'printable':True,'locked':False},{'id':'layer-debug','name':'Diagnostics','kind':'diagnostics','visible':False,'printable':False,'locked':True}]
 def sheet(name='Sheet 1'):
     return {'id':'sheet-1','name':name,'index':1,'frame':{'size_um':[420000,297000],'margin_um':10000,'paper':'A3 landscape'},'title_block':{'designation':'GSCAD-CHAT6','title':name,'organization':'R&D','revision':'DRAFT','sheet_number':1},'layers':copy.deepcopy(L),'instances':[],'wires':[],'junctions':[],'splices':[],'texts':[],'labels':[],'graphics':[]}
 def physical(n,electrical='passive'):
