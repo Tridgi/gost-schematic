@@ -1109,8 +1109,14 @@ def _physical_wire_veto_priority_trials(
         raise ValueError("ROUTE_INVALID_PHYSICAL_VETO_TRIAL_LIMIT")
     if len(set(priority)) != len(priority):
         raise ValueError("ROUTE_PHYSICAL_VETO_DUPLICATE_NET_PRIORITY")
+    if limit == 0:
+        return ()
     positions = {name: i for i, name in enumerate(priority)}
-    outcomes: list[tuple[str, tuple[str, ...]]] = []
+    # Sort proposals by the number of existing source-Nets displaced.
+    # Relocating OSCILLATOR_RT before OSCILLATOR_CT is a bounded local
+    # repair, unlike moving GATE_DRIVE across half the source power graph.
+    # This is scheduling only, not a physical geometry or DRC waiver.
+    outcomes: list[tuple[int, int, str, tuple[str, ...]]] = []
     seen: set[tuple[str, ...]] = {priority}
     for tree in trees:
         blocked = tree.net_name
@@ -1141,12 +1147,15 @@ def _physical_wire_veto_priority_trials(
                     continue
                 seen.add(reordered)
                 outcomes.append((
+                    positions[blocked] - positions[foreign],
+                    len(outcomes),
                     f"VETO_REORDER_{blocked}_BEFORE_{foreign}",
                     reordered,
                 ))
-                if len(outcomes) == limit:
-                    return tuple(outcomes)
-    return tuple(outcomes)
+    outcomes.sort(key=lambda item: (item[0], item[1]))
+    return tuple(
+        (name, reordered) for _, _, name, reordered in outcomes[:limit]
+    )
 
 
 def route_circuit_with_order_fallback(
