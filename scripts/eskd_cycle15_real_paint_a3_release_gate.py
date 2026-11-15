@@ -26,8 +26,8 @@ from scripts.eskd_cycle12_routed_source_gate import (
     source_ugo_parallel_1mm_scope,
 )
 from scripts.eskd_cycle13_signed_b_print_gate import (
-    FROZEN_SOURCE_NETS,
     FONT_SHA,
+    FROZEN_SOURCE_NETS,
     audit_source_b_printed_lines,
 )
 
@@ -116,10 +116,10 @@ def _wire_lines(root: ET.Element) -> list[dict]:
     result = []
     for line in root.findall(f".//{NS}line[@data-layer='wires']"):
         try:
-            coords = tuple(round(float(line[k]) * 1000)
+            coords = tuple(round(float(line.get(k, "")) * 1000)
                            for k in ("x1", "y1", "x2", "y2"))
-            stroke = round(float(line["stroke-width"]) * 1000)
-            index = int(line["data-wire-index"])
+            stroke = round(float(line.get("stroke-width", "")) * 1000)
+            index = int(line.get("data-wire-index", ""))
         except (ValueError, KeyError, TypeError) as exc:
             raise NativeReleaseError("UNMEASURED_WIRE_NATIVE_SVG") from exc
         check(stroke == 300 and
@@ -127,7 +127,7 @@ def _wire_lines(root: ET.Element) -> list[dict]:
               "ALL_PRINTED_WIRES_MUST_BE_ORTHOGONAL_0P3MM")
         result.append({
             "coords": coords, "stroke": stroke,
-            "index": index, "net": line["data-net"],
+            "index": index, "net": line.get("data-net"),
         })
     check(len({x["index"] for x in result}) == len(result),
           "DUPLICATE_PRINT_WIRE_INDEX")
