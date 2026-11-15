@@ -61,11 +61,18 @@ _REQUIREMENTS = "standards/requirements_2026_ru.json"
 _AI_FROZEN = "agent_project/data/tl494_ic97_frozen_source.json"
 _AI_OWNER_LOCK = "agent_project/data/tl494_cycle12_owner_locks.json"
 _AI_FROZEN_BLOB = "a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65"
+_INSTALLED_AI_CLI = {
+    "examples/agent_tl494_cycle11_pipeline.py",
+    "examples/agent_tl494_cycle13_quickstart.py",
+}
 
 
 def verify_wheel(wheel: Path) -> dict[str, int]:
     """Fail closed if any normative or UGO data is absent or mislabelled."""
     with ZipFile(wheel) as archive:
+        missing_cli = _INSTALLED_AI_CLI - set(archive.namelist())
+        if missing_cli:
+            raise ValueError(f"Wheel missing runnable AI CLI: {sorted(missing_cli)}")
         payload = {
             path.removeprefix(_PREFIX)
             for path in archive.namelist() if path.startswith(_PREFIX)
@@ -112,6 +119,7 @@ def verify_wheel(wheel: Path) -> dict[str, int]:
         "physical_part_files": len(_PARTS),
         "winding_profiles": len(inductors),
         "normative_profiles": 1,
+        "installed_readonly_ai_cli_modules": len(_INSTALLED_AI_CLI),
     }
 
 
