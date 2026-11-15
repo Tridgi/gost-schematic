@@ -106,9 +106,19 @@ def actual_component_occupied_mm(
     highy = max(x.max_y for x in footprints)
     width = highx - lowx
     height = highy - lowy
+    # Capacity alone is insufficient: translating every real component
+    # outside the paper preserves bbox width/height. Test absolute paper
+    # margins as well, before declaring any candidate A3-eligible.
+    within_margins = (
+        PRINT_MARGIN_UM <= lowx <= highx
+        <= A3_LANDSCAPE_UM[0] - PRINT_MARGIN_UM
+        and PRINT_MARGIN_UM <= lowy <= highy
+        <= A3_LANDSCAPE_UM[1] - PRINT_MARGIN_UM
+    )
     a3_fit = (
         width + 2 * PRINT_MARGIN_UM <= A3_LANDSCAPE_UM[0]
         and height + 2 * PRINT_MARGIN_UM <= A3_LANDSCAPE_UM[1]
+        and within_margins
     )
     return {
         "owner": "V5_SOURCE_TYPED_A3_PLACEMENT_DRAFT",
@@ -121,6 +131,7 @@ def actual_component_occupied_mm(
         "nominal_symbols_scaled": False,
         "component_count": len(assembly.circuit.components),
         "A3_capacity_fit": a3_fit,
+        "A3_bbox_within_margins": within_margins,
         "DRC_pass": False,
         "printable": False,
     }
