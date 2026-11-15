@@ -25,7 +25,6 @@ from examples.tl494_v5.route_candidate_driver import (
     run_candidate,
 )
 from examples.tl494_v5.routed_graph_contract import rehydrate_verified_route_graph
-from gost_schematic.model.circuit import PinRef
 
 # Actual reported paper/ink bottlenecks were DA1.3/6/13/15, VT1.1/R8.1
 # and R1.1. These are editorial proposals, NOT electrical amendments.
