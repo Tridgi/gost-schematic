@@ -64,6 +64,7 @@ _AI_FROZEN_BLOB = "a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65"
 _INSTALLED_AI_CLI = {
     "examples/agent_tl494_cycle11_pipeline.py",
     "examples/agent_tl494_cycle13_quickstart.py",
+    "examples/agent_tl494_cycle16_owner_proof.py",
 }
 
 
@@ -77,7 +78,8 @@ def verify_wheel(wheel: Path) -> dict[str, int]:
             path.removeprefix(_PREFIX)
             for path in archive.namelist() if path.startswith(_PREFIX)
         }
-        missing = (_SYMBOLS | _PARTS | {_REQUIREMENTS, _AI_FROZEN, _AI_OWNER_LOCK}) - payload
+        missing = (_SYMBOLS | _PARTS | {_REQUIREMENTS, _AI_FROZEN, _AI_OWNER_LOCK,
+                                        "agent_project/cycle16_owner_proof.py"}) - payload
         if missing:
             raise ValueError(f"Wheel missing required data: {sorted(missing)}")
         inductors = {
