@@ -60,7 +60,7 @@ function NumericAxis({selected,axis,revision,send}:{
       setError({EMPTY:'Укажите координату',INVALID_FORMAT:'Неверное десятичное число',PRECISION:'Точность 0,001 мм',OUT_OF_RANGE:'Координата вне диапазона'}[value.code]);
       return;
     }
-    setError(null);setDraft(formatMillimetres(value.um));
+    setError(null);setDraft(formatMillimetres(current));
     if(value.um!==current) send({kind:'propose-origin-axis',instanceId:selected.id,axis,um:value.um,baseRevision:revision});
   }
   return <TextInput size="xs" label={axis.toUpperCase()+', мм'} value={draft} error={error}
@@ -78,6 +78,7 @@ function Inspector({selected,revision,send}:{
   const refdesCommit=()=>{
     const v=refdes.trim();
     if(v&&v!==selected.refdes)send({kind:'propose-refdes',instanceId:selected.id,refdes:v,baseRevision:revision});
+    setRefdes(selected.refdes);
   };
   return <Stack p="sm" gap="xs" data-testid="gscad-inspector">
     <Text size="xs" c="dimmed">ID: {selected.id}</Text>
