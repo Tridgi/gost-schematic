@@ -1,0 +1,96 @@
+{
+  "device": {
+    "identifier": "TEST_IC_ANALOG_2",
+    "kind": "analog",
+    "package": {
+      "datasheet_url": null,
+      "family": "SYNTHETIC-NOT-FOOTPRINT",
+      "manufacturer": null,
+      "origin": "synthetic",
+      "package_id": "TEST_PACKAGE_2",
+      "pin_count": 2,
+      "revision": null
+    },
+    "pins": [
+      {
+        "electrical_type": "input",
+        "function": "Synthetic pin role 1",
+        "name": "СИНТЕТИЧЕСКАЯ_ФУНКЦИЯ_ВЫВОДА_1",
+        "number": "1"
+      },
+      {
+        "electrical_type": "output",
+        "function": "Synthetic pin role 2",
+        "name": "ТЕСТ_2",
+        "number": "2"
+      }
+    ],
+    "units": [
+      {
+        "function": "Synthetic functional unit 1",
+        "id": "U1",
+        "pin_numbers": [
+          "1",
+          "2"
+        ]
+      }
+    ]
+  },
+  "placements": [
+    {
+      "component_ref": "DA1",
+      "device_id": "TEST_IC_ANALOG_2",
+      "mirror_x": false,
+      "origin_um": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "unit_id": "U1"
+    }
+  ],
+  "record_type": "DRAFT_E3_IC",
+  "schema_version": 1,
+  "specs": [
+    {
+      "aux_left": "IN",
+      "aux_right": "OUT",
+      "body_um": [
+        0,
+        0,
+        60000,
+        16000
+      ],
+      "device_id": "TEST_IC_ANALOG_2",
+      "main_field": "ANALOG TEST FUNCTION",
+      "revision": 1,
+      "rows": [
+        {
+          "anchor_um": [
+            -4000,
+            5000
+          ],
+          "field": "main",
+          "label": "VIEW_1",
+          "number": "1",
+          "row_key": "functional-row-0",
+          "side": "left",
+          "visual_row": 1
+        },
+        {
+          "anchor_um": [
+            64000,
+            9000
+          ],
+          "field": "main",
+          "label": "VIEW_2",
+          "number": "2",
+          "row_key": "functional-row-0",
+          "side": "right",
+          "visual_row": 2
+        }
+      ],
+      "unit_id": "U1"
+    }
+  ]
+}

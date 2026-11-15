@@ -1,0 +1,197 @@
+name: ELEKTRIK IC exact RECON115 A3 + PAINT93 live owner contract
+
+on:
+  push:
+    branches: [parallel/electrical-ic-contract-cycle7]
+    paths:
+      - 'src/gost_schematic/electrical/**'
+      - 'examples/tl494_cycle9_circuit_integration.py'
+      - 'scripts/verify_ic_recon115_live_bridge.py'
+      - 'tests/test_ic_circuit_adapter_cycle9.py'
+      - 'tests/test_ic_router_ports_cycle16.py'
+      - 'docs/rfc/cycle16-ic-router-ports.md'
+      - 'docs/rfc/cycle11-recon115-ic97-trusted-source-bridge.md'
+      - 'docs/rfc/cycle14-ic97-canonical-source-witness.md'
+      - 'tests/fixtures/tl494_photo_23_frozen_cycle9.json'
+      - '.github/workflows/ic-recon115-live-cycle11.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-recon115-ic97-paint93:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.12', '3.13']
+    steps:
+      - name: Checkout isolated ELEKTRIK IC PR97 owner HEAD
+        uses: actions/checkout@v4
+      - name: Checkout pinned actual RECON PR115 compact A3 (no merges)
+        uses: actions/checkout@v4
+        with:
+          repository: Tridgi/gost-schematic
+          ref: 77c588a81529de574ddcdc012bb6b616b8195a1d
+          path: _recon115_exact
+          persist-credentials: false
+      - name: Checkout current YGO2 PR113 source-native physical catalog
+        uses: actions/checkout@v4
+        with:
+          repository: Tridgi/gost-schematic
+          ref: 70846705f8a83766c2cdb5abdaf308f747a2cf8b
+          path: _catalog113_exact
+          persist-credentials: false
+      - name: Checkout latest PAINT PR93 owner
+        uses: actions/checkout@v4
+        with:
+          repository: Tridgi/gost-schematic
+          ref: 3b3671455cc49ff05efde762b0aa4df3fd576cc0
+          path: _paint93_exact
+          persist-credentials: false
+      - name: Assemble only ephemeral cross-owner test checkout and prove SHAs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C _recon115_exact rev-parse HEAD)" = '77c588a81529de574ddcdc012bb6b616b8195a1d'
+          test "$(git -C _catalog113_exact rev-parse HEAD)" = '70846705f8a83766c2cdb5abdaf308f747a2cf8b'
+          test "$(git -C _paint93_exact rev-parse HEAD)" = '3b3671455cc49ff05efde762b0aa4df3fd576cc0'
+          test -f _recon115_exact/examples/tl494_v5/compact_layout.py
+          test -f src/gost_schematic/electrical/ic_circuit_adapter.py
+          mkdir -p _recon115_exact/src/gost_schematic/electrical
+          cp src/gost_schematic/electrical/*.py _recon115_exact/src/gost_schematic/electrical/
+          cp examples/tl494_cycle9_circuit_integration.py _recon115_exact/examples/
+          mkdir -p _recon115_exact/tests/fixtures
+          cp tests/fixtures/tl494_photo_23_frozen_cycle9.json _recon115_exact/tests/fixtures/
+          cp scripts/verify_ic_recon115_live_bridge.py _recon115_exact/scripts/
+          cp scripts/stamp_ic_joint_300dpi_metadata.py _recon115_exact/scripts/
+          mkdir -p _recon115_exact/src/gost_schematic/catalog/source_profiles
+          cp _catalog113_exact/src/gost_schematic/catalog/source_profiles.py _recon115_exact/src/gost_schematic/catalog/
+          cp _catalog113_exact/src/gost_schematic/catalog/source_profiles/tl494_source_20261114.json _recon115_exact/src/gost_schematic/catalog/source_profiles/
+          for part in ic_rectangular ic_hotspots ic_orientation ic_sheet_composition ic_power_profiles ic_tl494_profile ic_electrical_binding routed_native_sheet external_wire_sheet native_sheet_ink_audit sheet_svg; do
+            cp "_paint93_exact/src/gost_schematic/rendering/$part.py" "_recon115_exact/src/gost_schematic/rendering/$part.py"
+          done
+          test -f _paint93_exact/src/gost_schematic/rendering/routed_native_sheet.py
+          test -f _paint93_exact/examples/render_tl494_full_native_cycle9.py
+          test -f _paint93_exact/examples/render_tl494_compact_new_router_cycle10.py
+          cp _paint93_exact/examples/render_tl494_full_native_cycle9.py _recon115_exact/examples/
+          cp _paint93_exact/examples/render_tl494_compact_new_router_cycle10.py _recon115_exact/examples/
+          echo "IC_OWNER_RECON_SHA=$(git -C _recon115_exact rev-parse HEAD)" >> "$GITHUB_ENV"
+          echo "IC_OWNER_YGO_SHA=$(git -C _catalog113_exact rev-parse HEAD)" >> "$GITHUB_ENV"
+          echo "IC_OWNER_PAINT_SHA=$(git -C _paint93_exact rev-parse HEAD)" >> "$GITHUB_ENV"
+          echo "REAL_OWNER_SOURCES RECON115=77c588a8 IC97=$GITHUB_SHA YGO113=70846705 PAINT93=3b367145"
+          echo "NO_PRODUCTION_SOURCE_BRANCH_MERGE"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install real test dependencies and OpenGost Type A (hash checked)
+        working-directory: _recon115_exact
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python -m pip install -e '.[dev,mcp]'
+          python scripts/install_opengost_type_a.py --directory "$HOME/.local/share/fonts" --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a
+          FONT_PATH="$(find "$HOME/.local/share/fonts" -type f \( -iname '*TypeA*.ttf' -o -iname '*TypeA*.otf' \) | head -1)"
+          test -f "$FONT_PATH"
+          echo "IC_TYPE_A_FONT_PATH=$FONT_PATH" >> "$GITHUB_ENV"
+      - name: Exact Ruff / true RECON115 positive, adversarial and D4 tests
+        working-directory: _recon115_exact
+        shell: bash
+        run: |
+          set -euo pipefail
+          ruff check scripts/verify_ic_recon115_live_bridge.py examples/tl494_cycle9_circuit_integration.py src/gost_schematic/electrical/
+          pytest -q -ra scripts/verify_ic_recon115_live_bridge.py
+      - name: Produce original-vs-reversible TI physical manifest and real PAINT SVG
+        working-directory: _recon115_exact
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m scripts.verify_ic_recon115_live_bridge --font-file "$IC_TYPE_A_FONT_PATH" --output-dir output/ic-recon115-cycle11
+          test "$(find output/ic-recon115-cycle11 -maxdepth 1 -name '*.svg' | wc -l)" -eq 2
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          witness = json.loads(
+              Path("output/ic-recon115-cycle11/source-physical-witness.json")
+              .read_text(encoding="utf-8")
+          )
+          for owner, env in (
+              ("ic97", "GITHUB_SHA"),
+              ("recon115", "IC_OWNER_RECON_SHA"),
+              ("paint93", "IC_OWNER_PAINT_SHA"),
+              ("ygo113", "IC_OWNER_YGO_SHA"),
+          ):
+              assert witness["owner_sha"][owner] == os.environ[env]
+          assert witness["source_component_count"] == 23
+          assert witness["source_net_count"] == 15
+          assert witness["source_physical_pinref_count"] == 62
+          assert len(witness["tl494_factory_pins"]) == 16
+          assert len(witness["source_b_nonphysical_stubs"]) == 2
+          physical_ports = witness["source_verified_router_ports"]
+          separate = json.loads(
+              Path("output/ic-recon115-cycle11/DA1-tl494-router-ports.json")
+              .read_text(encoding="utf-8")
+          )
+          assert physical_ports == separate
+          assert physical_ports["source_sha"] == (
+              "e695c415fdced164b0e0c39c5249d030795a0aa6"
+          )
+          assert physical_ports["source_original_net_count"] == 15
+          assert physical_ports["source_pinref_memberships"] == 62
+          assert physical_ports["physical_manufacturer_pins"] == 16
+          assert len(physical_ports["ports"]) == 16
+          assert len(physical_ports["source_original_nets"]) == 15
+          assert sum(len(n["members"]) for n in physical_ports["source_original_nets"]) == 62
+          assert not physical_ports["printable_candidate"]
+          assert not physical_ports["full_15_net_route_verified"]
+          assert physical_ports["nonphysical_b_stubs"] == ["b-X2", "b-R5"]
+          for key, env in (
+              ("IC97", "GITHUB_SHA"),
+              ("RECON115", "IC_OWNER_RECON_SHA"),
+              ("PAINT93", "IC_OWNER_PAINT_SHA"),
+              ("YGO113", "IC_OWNER_YGO_SHA"),
+          ):
+              assert physical_ports["producer_shas"][key] == os.environ[env]
+          da = {p["pin_ref"]: p for p in physical_ports["ports"]}
+          assert set(da) == {f"DA1.{i}" for i in range(1, 17)}
+          assert da["DA1.3"]["ti_name"] == "FEEDBACK"
+          assert da["DA1.3"]["electrical_type"] == "input"
+          assert da["DA1.13"]["ti_name"] == "OUTPUT CTRL"
+          assert da["DA1.13"]["electrical_type"] == "input"
+          assert da["DA1.14"]["ti_name"] == "REF"
+          assert da["DA1.14"]["electrical_type"] == "power_output"
+          assert all(
+              p["escape_rule"] == "PIN_REF_ONLY_NO_FOREIGN_NET_CLEARANCE"
+              for p in da.values()
+          )
+          assert witness["clean_green_contacts"] == 0
+          assert witness["diagnostic_green_contacts"] == 16
+          assert not witness["printable_candidate"]
+          assert not witness["new_route_15_of_15_complete"]
+          print("CANONICAL_SIGNED_16_ROUTER_PORTS_AND_SOURCE_B_PASS_DRAFT_ONLY")
+          PY
+      - name: Genuine SVG to 300DPI PNG, stamps and immutable evidence hashes
+        if: matrix.python-version == '3.12'
+        shell: bash
+        working-directory: _recon115_exact
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+          for src in output/ic-recon115-cycle11/*.svg; do
+            rsvg-convert --dpi-x 300 --dpi-y 300 "$src" -o "${src%.svg}.png"
+          done
+          python scripts/stamp_ic_joint_300dpi_metadata.py --output-dir output/ic-recon115-cycle11 --expected-count 2
+          ( cd output/ic-recon115-cycle11 && sha256sum *.svg *.png *.json > SHA256SUMS.txt && sha256sum -c SHA256SUMS.txt && cat SHA256SUMS.txt )
+      - name: Publish true-source ID bridge proof (not ESKD approval)
+        if: always() && matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-cycle11-recon115-ic97-paint93-reversible-id-300dpi
+          path: _recon115_exact/output/ic-recon115-cycle11/
+          if-no-files-found: warn

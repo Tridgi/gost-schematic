@@ -1,0 +1,851 @@
+{
+  "device": {
+    "identifier": "TEST_IC_DIGITAL_40",
+    "kind": "digital",
+    "package": {
+      "datasheet_url": null,
+      "family": "SYNTHETIC-NOT-FOOTPRINT",
+      "manufacturer": null,
+      "origin": "synthetic",
+      "package_id": "TEST_PACKAGE_40",
+      "pin_count": 40,
+      "revision": null
+    },
+    "pins": [
+      {
+        "electrical_type": "input",
+        "function": "Synthetic pin role 1",
+        "name": "СИНТЕТИЧЕСКАЯ_ФУНКЦИЯ_ВЫВОДА_1",
+        "number": "1"
+      },
+      {
+        "electrical_type": "output",
+        "function": "Synthetic pin role 2",
+        "name": "ТЕСТ_2",
+        "number": "2"
+      },
+      {
+        "electrical_type": "input",
+        "function": "Synthetic pin role 3",
+        "name": "ТЕСТ_3",
+        "number": "3"
+      },
+      {
+        "electrical_type": "output",
+        "function": "Synthetic pin role 4",
+        "name": "ТЕСТ_4",
+        "number": "4"
+      },
+      {
+        "electrical_type": "input",
+        "function": "Synthetic pin role 5",
+        "name": "ТЕСТ_5",
+        "number": "5"
+      },
+      {
+        "electrical_type": "output",
+        "function": "Synthetic pin role 6",
+        "name": "ТЕСТ_6",
+        "number": "6"
+      },
+      {
+        "electrical_type": "input",
+        "function": "Synthetic pin role 7",
+        "name": "ТЕСТ_7",
+        "number": "7"
+      },
+      {
+        "electrical_type": "output",
+        "function": "Synthetic pin role 8",
+        "name": "ТЕСТ_8",
+        "number": "8"
+      },
+      {
+        "electrical_type": "input",
+        "function": "Synthetic pin role 9",
+        "name": "ТЕСТ_9",
+        "number": "9"
+      },
+      {
+        "electrical_type": "output",
+        "function": "Synthetic pin role 10",
+        "name": "СИНТЕТИЧЕСКАЯ_ФУНКЦИЯ_ВЫВОДА_10",
+        "number": "10"
+      },
+      {
+        "electrical_type": "input",
+        "function": "Synthetic pin role 11",
+        "name": "ТЕСТ_11",
+        "number": "11"
+      },
+      {
+        "electrical_type": "output",
+        "function": "Synthetic pin role 12",
+        "name": "ТЕСТ_12",
+        "number": "12"
+      },
+      {
+        "electrical_type": "input",
+        "function": "Synthetic pin role 13",
+        "name": "ТЕСТ_13",
+        "number": "13"
+      },
+      {
+        "electrical_type": "output",
+        "function": "Synthetic pin role 14",
+        "name": "ТЕСТ_14",
+        "number": "14"
+      },
+      {
+        "electrical_type": "input",
+        "function": "Synthetic pin role 15",
+        "name": "ТЕСТ_15",
+        "number": "15"
+      },
+      {
+        "electrical_type": "output",
+        "function": "Synthetic pin role 16",
+        "name": "ТЕСТ_16",
+        "number": "16"
+      },
+      {
+        "electrical_type": "input",
+        "function": "Synthetic pin role 17",
+        "name": "ТЕСТ_17",
+        "number": "17"
+      },
+      {
+        "electrical_type": "output",
+        "function": "Synthetic pin role 18",
+        "name": "ТЕСТ_18",
+        "number": "18"
+      },
+      {
+        "electrical_type": "input",
+        "function": "Synthetic pin role 19",
+        "name": "ТЕСТ_19",
+        "number": "19"
+      },
+      {
+        "electrical_type": "output",
+        "function": "Synthetic pin role 20",
+        "name": "ТЕСТ_20",
+        "number": "20"
+      },
+      {
+        "electrical_type": "input",
+        "function": "Synthetic pin role 21",
+        "name": "ТЕСТ_21",
+        "number": "21"
+      },
+      {
+        "electrical_type": "output",
+        "function": "Synthetic pin role 22",
+        "name": "ТЕСТ_22",
+        "number": "22"
+      },
+      {
+        "electrical_type": "input",
+        "function": "Synthetic pin role 23",
+        "name": "ТЕСТ_23",
+        "number": "23"
+      },
+      {
+        "electrical_type": "output",
+        "function": "Synthetic pin role 24",
+        "name": "ТЕСТ_24",
+        "number": "24"
+      },
+      {
+        "electrical_type": "input",
+        "function": "Synthetic pin role 25",
+        "name": "ТЕСТ_25",
+        "number": "25"
+      },
+      {
+        "electrical_type": "output",
+        "function": "Synthetic pin role 26",
+        "name": "ТЕСТ_26",
+        "number": "26"
+      },
+      {
+        "electrical_type": "input",
+        "function": "Synthetic pin role 27",
+        "name": "ТЕСТ_27",
+        "number": "27"
+      },
+      {
+        "electrical_type": "output",
+        "function": "Synthetic pin role 28",
+        "name": "ТЕСТ_28",
+        "number": "28"
+      },
+      {
+        "electrical_type": "input",
+        "function": "Synthetic pin role 29",
+        "name": "ТЕСТ_29",
+        "number": "29"
+      },
+      {
+        "electrical_type": "output",
+        "function": "Synthetic pin role 30",
+        "name": "ТЕСТ_30",
+        "number": "30"
+      },
+      {
+        "electrical_type": "input",
+        "function": "Synthetic pin role 31",
+        "name": "ТЕСТ_31",
+        "number": "31"
+      },
+      {
+        "electrical_type": "output",
+        "function": "Synthetic pin role 32",
+        "name": "ТЕСТ_32",
+        "number": "32"
+      },
+      {
+        "electrical_type": "input",
+        "function": "Synthetic pin role 33",
+        "name": "ТЕСТ_33",
+        "number": "33"
+      },
+      {
+        "electrical_type": "output",
+        "function": "Synthetic pin role 34",
+        "name": "ТЕСТ_34",
+        "number": "34"
+      },
+      {
+        "electrical_type": "input",
+        "function": "Synthetic pin role 35",
+        "name": "ТЕСТ_35",
+        "number": "35"
+      },
+      {
+        "electrical_type": "output",
+        "function": "Synthetic pin role 36",
+        "name": "ТЕСТ_36",
+        "number": "36"
+      },
+      {
+        "electrical_type": "input",
+        "function": "Synthetic pin role 37",
+        "name": "ТЕСТ_37",
+        "number": "37"
+      },
+      {
+        "electrical_type": "open_collector",
+        "function": "Synthetic pin role 38",
+        "name": "ТЕСТ_38",
+        "number": "38"
+      },
+      {
+        "electrical_type": "power_input",
+        "function": "Synthetic pin role 39",
+        "name": "ТЕСТ_39",
+        "number": "39"
+      },
+      {
+        "electrical_type": "nc",
+        "function": "Synthetic pin role 40",
+        "name": "СИНТЕТИЧЕСКАЯ_ФУНКЦИЯ_ВЫВОДА_40",
+        "number": "40"
+      }
+    ],
+    "units": [
+      {
+        "function": "Synthetic functional unit 1",
+        "id": "U1",
+        "pin_numbers": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "18",
+          "19",
+          "20"
+        ]
+      },
+      {
+        "function": "Synthetic functional unit 2",
+        "id": "U2",
+        "pin_numbers": [
+          "21",
+          "22",
+          "23",
+          "24",
+          "25",
+          "26",
+          "27",
+          "28",
+          "29",
+          "30",
+          "31",
+          "32",
+          "33",
+          "34",
+          "35",
+          "36",
+          "37",
+          "38",
+          "39",
+          "40"
+        ]
+      }
+    ]
+  },
+  "placements": [
+    {
+      "component_ref": "DD1",
+      "device_id": "TEST_IC_DIGITAL_40",
+      "mirror_x": false,
+      "origin_um": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "unit_id": "U1"
+    },
+    {
+      "component_ref": "DD1",
+      "device_id": "TEST_IC_DIGITAL_40",
+      "mirror_x": false,
+      "origin_um": [
+        500000,
+        0
+      ],
+      "rotation": 0,
+      "unit_id": "U2"
+    }
+  ],
+  "record_type": "DRAFT_E3_IC",
+  "schema_version": 1,
+  "specs": [
+    {
+      "aux_left": "IN",
+      "aux_right": "OUT",
+      "body_um": [
+        0,
+        0,
+        60000,
+        88000
+      ],
+      "device_id": "TEST_IC_DIGITAL_40",
+      "main_field": "DIGITAL TEST FUNCTION",
+      "revision": 1,
+      "rows": [
+        {
+          "anchor_um": [
+            -4000,
+            5000
+          ],
+          "field": "main",
+          "label": "VIEW_1",
+          "number": "1",
+          "row_key": "functional-row-0",
+          "side": "left",
+          "visual_row": 1
+        },
+        {
+          "anchor_um": [
+            64000,
+            9000
+          ],
+          "field": "main",
+          "label": "VIEW_2",
+          "number": "2",
+          "row_key": "functional-row-0",
+          "side": "right",
+          "visual_row": 2
+        },
+        {
+          "anchor_um": [
+            -4000,
+            13000
+          ],
+          "field": "main",
+          "label": "VIEW_3",
+          "number": "3",
+          "row_key": "functional-row-1",
+          "side": "left",
+          "visual_row": 3
+        },
+        {
+          "anchor_um": [
+            64000,
+            17000
+          ],
+          "field": "main",
+          "label": "VIEW_4",
+          "number": "4",
+          "row_key": "functional-row-1",
+          "side": "right",
+          "visual_row": 4
+        },
+        {
+          "anchor_um": [
+            -4000,
+            21000
+          ],
+          "field": "main",
+          "label": "VIEW_5",
+          "number": "5",
+          "row_key": "functional-row-2",
+          "side": "left",
+          "visual_row": 5
+        },
+        {
+          "anchor_um": [
+            64000,
+            25000
+          ],
+          "field": "main",
+          "label": "VIEW_6",
+          "number": "6",
+          "row_key": "functional-row-2",
+          "side": "right",
+          "visual_row": 6
+        },
+        {
+          "anchor_um": [
+            -4000,
+            29000
+          ],
+          "field": "main",
+          "label": "VIEW_7",
+          "number": "7",
+          "row_key": "functional-row-3",
+          "side": "left",
+          "visual_row": 7
+        },
+        {
+          "anchor_um": [
+            64000,
+            33000
+          ],
+          "field": "main",
+          "label": "VIEW_8",
+          "number": "8",
+          "row_key": "functional-row-3",
+          "side": "right",
+          "visual_row": 8
+        },
+        {
+          "anchor_um": [
+            -4000,
+            37000
+          ],
+          "field": "main",
+          "label": "VIEW_9",
+          "number": "9",
+          "row_key": "functional-row-4",
+          "side": "left",
+          "visual_row": 9
+        },
+        {
+          "anchor_um": [
+            64000,
+            41000
+          ],
+          "field": "main",
+          "label": "VIEW_10",
+          "number": "10",
+          "row_key": "functional-row-4",
+          "side": "right",
+          "visual_row": 10
+        },
+        {
+          "anchor_um": [
+            -4000,
+            45000
+          ],
+          "field": "main",
+          "label": "VIEW_11",
+          "number": "11",
+          "row_key": "functional-row-5",
+          "side": "left",
+          "visual_row": 11
+        },
+        {
+          "anchor_um": [
+            64000,
+            49000
+          ],
+          "field": "main",
+          "label": "VIEW_12",
+          "number": "12",
+          "row_key": "functional-row-5",
+          "side": "right",
+          "visual_row": 12
+        },
+        {
+          "anchor_um": [
+            -4000,
+            53000
+          ],
+          "field": "main",
+          "label": "VIEW_13",
+          "number": "13",
+          "row_key": "functional-row-6",
+          "side": "left",
+          "visual_row": 13
+        },
+        {
+          "anchor_um": [
+            64000,
+            57000
+          ],
+          "field": "main",
+          "label": "VIEW_14",
+          "number": "14",
+          "row_key": "functional-row-6",
+          "side": "right",
+          "visual_row": 14
+        },
+        {
+          "anchor_um": [
+            -4000,
+            61000
+          ],
+          "field": "main",
+          "label": "VIEW_15",
+          "number": "15",
+          "row_key": "functional-row-7",
+          "side": "left",
+          "visual_row": 15
+        },
+        {
+          "anchor_um": [
+            64000,
+            65000
+          ],
+          "field": "main",
+          "label": "VIEW_16",
+          "number": "16",
+          "row_key": "functional-row-7",
+          "side": "right",
+          "visual_row": 16
+        },
+        {
+          "anchor_um": [
+            -4000,
+            69000
+          ],
+          "field": "main",
+          "label": "VIEW_17",
+          "number": "17",
+          "row_key": "functional-row-8",
+          "side": "left",
+          "visual_row": 17
+        },
+        {
+          "anchor_um": [
+            64000,
+            73000
+          ],
+          "field": "main",
+          "label": "VIEW_18",
+          "number": "18",
+          "row_key": "functional-row-8",
+          "side": "right",
+          "visual_row": 18
+        },
+        {
+          "anchor_um": [
+            -4000,
+            77000
+          ],
+          "field": "main",
+          "label": "VIEW_19",
+          "number": "19",
+          "row_key": "functional-row-9",
+          "side": "left",
+          "visual_row": 19
+        },
+        {
+          "anchor_um": [
+            64000,
+            81000
+          ],
+          "field": "main",
+          "label": "VIEW_20",
+          "number": "20",
+          "row_key": "functional-row-9",
+          "side": "right",
+          "visual_row": 20
+        }
+      ],
+      "unit_id": "U1"
+    },
+    {
+      "aux_left": "IN",
+      "aux_right": "OUT",
+      "body_um": [
+        0,
+        0,
+        60000,
+        88000
+      ],
+      "device_id": "TEST_IC_DIGITAL_40",
+      "main_field": "DIGITAL TEST FUNCTION",
+      "revision": 1,
+      "rows": [
+        {
+          "anchor_um": [
+            -4000,
+            5000
+          ],
+          "field": "main",
+          "label": "VIEW_21",
+          "number": "21",
+          "row_key": "functional-row-0",
+          "side": "left",
+          "visual_row": 1
+        },
+        {
+          "anchor_um": [
+            64000,
+            9000
+          ],
+          "field": "main",
+          "label": "VIEW_22",
+          "number": "22",
+          "row_key": "functional-row-0",
+          "side": "right",
+          "visual_row": 2
+        },
+        {
+          "anchor_um": [
+            -4000,
+            13000
+          ],
+          "field": "main",
+          "label": "VIEW_23",
+          "number": "23",
+          "row_key": "functional-row-1",
+          "side": "left",
+          "visual_row": 3
+        },
+        {
+          "anchor_um": [
+            64000,
+            17000
+          ],
+          "field": "main",
+          "label": "VIEW_24",
+          "number": "24",
+          "row_key": "functional-row-1",
+          "side": "right",
+          "visual_row": 4
+        },
+        {
+          "anchor_um": [
+            -4000,
+            21000
+          ],
+          "field": "main",
+          "label": "VIEW_25",
+          "number": "25",
+          "row_key": "functional-row-2",
+          "side": "left",
+          "visual_row": 5
+        },
+        {
+          "anchor_um": [
+            64000,
+            25000
+          ],
+          "field": "main",
+          "label": "VIEW_26",
+          "number": "26",
+          "row_key": "functional-row-2",
+          "side": "right",
+          "visual_row": 6
+        },
+        {
+          "anchor_um": [
+            -4000,
+            29000
+          ],
+          "field": "main",
+          "label": "VIEW_27",
+          "number": "27",
+          "row_key": "functional-row-3",
+          "side": "left",
+          "visual_row": 7
+        },
+        {
+          "anchor_um": [
+            64000,
+            33000
+          ],
+          "field": "main",
+          "label": "VIEW_28",
+          "number": "28",
+          "row_key": "functional-row-3",
+          "side": "right",
+          "visual_row": 8
+        },
+        {
+          "anchor_um": [
+            -4000,
+            37000
+          ],
+          "field": "main",
+          "label": "VIEW_29",
+          "number": "29",
+          "row_key": "functional-row-4",
+          "side": "left",
+          "visual_row": 9
+        },
+        {
+          "anchor_um": [
+            64000,
+            41000
+          ],
+          "field": "main",
+          "label": "VIEW_30",
+          "number": "30",
+          "row_key": "functional-row-4",
+          "side": "right",
+          "visual_row": 10
+        },
+        {
+          "anchor_um": [
+            -4000,
+            45000
+          ],
+          "field": "main",
+          "label": "VIEW_31",
+          "number": "31",
+          "row_key": "functional-row-5",
+          "side": "left",
+          "visual_row": 11
+        },
+        {
+          "anchor_um": [
+            64000,
+            49000
+          ],
+          "field": "main",
+          "label": "VIEW_32",
+          "number": "32",
+          "row_key": "functional-row-5",
+          "side": "right",
+          "visual_row": 12
+        },
+        {
+          "anchor_um": [
+            -4000,
+            53000
+          ],
+          "field": "main",
+          "label": "VIEW_33",
+          "number": "33",
+          "row_key": "functional-row-6",
+          "side": "left",
+          "visual_row": 13
+        },
+        {
+          "anchor_um": [
+            64000,
+            57000
+          ],
+          "field": "main",
+          "label": "VIEW_34",
+          "number": "34",
+          "row_key": "functional-row-6",
+          "side": "right",
+          "visual_row": 14
+        },
+        {
+          "anchor_um": [
+            -4000,
+            61000
+          ],
+          "field": "main",
+          "label": "VIEW_35",
+          "number": "35",
+          "row_key": "functional-row-7",
+          "side": "left",
+          "visual_row": 15
+        },
+        {
+          "anchor_um": [
+            64000,
+            65000
+          ],
+          "field": "main",
+          "label": "VIEW_36",
+          "number": "36",
+          "row_key": "functional-row-7",
+          "side": "right",
+          "visual_row": 16
+        },
+        {
+          "anchor_um": [
+            -4000,
+            69000
+          ],
+          "field": "main",
+          "label": "VIEW_37",
+          "number": "37",
+          "row_key": "functional-row-8",
+          "side": "left",
+          "visual_row": 17
+        },
+        {
+          "anchor_um": [
+            64000,
+            73000
+          ],
+          "field": "main",
+          "label": "VIEW_38",
+          "number": "38",
+          "row_key": "functional-row-8",
+          "side": "right",
+          "visual_row": 18
+        },
+        {
+          "anchor_um": [
+            -4000,
+            77000
+          ],
+          "field": "main",
+          "label": "VIEW_39",
+          "number": "39",
+          "row_key": "functional-row-9",
+          "side": "left",
+          "visual_row": 19
+        },
+        {
+          "anchor_um": [
+            64000,
+            81000
+          ],
+          "field": "main",
+          "label": "VIEW_40",
+          "number": "40",
+          "row_key": "functional-row-9",
+          "side": "right",
+          "visual_row": 20
+        }
+      ],
+      "unit_id": "U2"
+    }
+  ]
+}
