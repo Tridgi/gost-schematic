@@ -1,4 +1,4 @@
-name: YGO Cycle13 physical UGO ink actual NET PAINT IC RECON SHA
+name: YGO Cycle15 real 23 TL494 source ink + actual NET PAINT IC RECON
 
 on:
   push:
@@ -11,6 +11,7 @@ on:
       - "examples/review_tl494_ugo_source_cycle9.py"
       - "scripts/verify_tl494_cycle11_owner_strokes.py"
       - "scripts/export_tl494_23_ink_contract.py"
+      - "reports/tl494-cycle15-true-23-ink.*"
       - ".github/workflows/tl494-cycle11-owner-contract.yml"
   pull_request:
     branches: [integration/stage0-12]
@@ -21,6 +22,7 @@ on:
       - "examples/review_tl494_ugo_source_cycle9.py"
       - "scripts/verify_tl494_cycle11_owner_strokes.py"
       - "scripts/export_tl494_23_ink_contract.py"
+      - "reports/tl494-cycle15-true-23-ink.*"
       - ".github/workflows/tl494-cycle11-owner-contract.yml"
   workflow_dispatch:
 
@@ -67,10 +69,16 @@ jobs:
         run: python -m pip install -e ".[dev]"
       - name: Ruff current independent YGO/owner contract source
         run: ruff check scripts/verify_tl494_cycle11_owner_strokes.py scripts/export_tl494_23_ink_contract.py
+      - name: Restore pinned OpenGOST Type A cache (source-only, never uploaded)
+        uses: actions/cache@v4
+        with:
+          path: .font-cycle15
+          key: open-gost-v07-typea-${{ runner.os }}-f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a
       - name: Fetch exact owner HEAD and overlay ONLY read-only YGO modules in temporary worktree
         env:
           OWNER_SHA: ${{ matrix.owner_sha }}
           OWNER: ${{ matrix.owner }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           git fetch --no-tags --depth=1 origin "$OWNER_SHA"
           git worktree add --detach "$RUNNER_TEMP/ygo-owner" "$OWNER_SHA"
@@ -153,6 +161,14 @@ jobs:
             sha256sum "$GITHUB_WORKSPACE/output/cycle11-owners/tl494-23-real-instance-ink.json" \
               > "$GITHUB_WORKSPACE/output/cycle11-owners/tl494-23-real-instance-ink.sha256"
             cat "$GITHUB_WORKSPACE/output/cycle11-owners/tl494-23-real-instance-ink.sha256"
+            # Frozen measured source artifact is part of this Draft PR:
+            # never silently regenerate a different 23/15/62 ink contract.
+            (cd "$GITHUB_WORKSPACE" && sha256sum -c reports/tl494-cycle15-true-23-ink.sha256)
+            cmp "$GITHUB_WORKSPACE/reports/tl494-cycle15-true-23-ink.json" \
+              "$GITHUB_WORKSPACE/output/cycle11-owners/tl494-23-real-instance-ink.json" || {
+              echo "::error::UGO_C15_ACTUAL_OWNER_MEASURED_23_INK_DRIFT"
+              exit 1
+            }
           fi
       - name: Publish real exact HEAD read-only cross-owner geometry report
         uses: actions/upload-artifact@v4
