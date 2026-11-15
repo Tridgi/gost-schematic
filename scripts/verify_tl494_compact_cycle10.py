@@ -25,6 +25,10 @@ def verify(folder: Path) -> dict:
     assert proof["IC97_owner_sha"] == "892640cfff9780bb4f13c1a6753dbba5f7754a96"
     assert proof["canonical_ti_part_id_verified"] == "ti.tl494cn.pdip16"
     assert proof["trusted_97_part_rebinding"]
+    assert proof["source_signed_16_pin_overlay"] is True
+    assert proof["signed_manufacturer_ic_16_verified"] is True
+    assert proof["source_b_two_physical_vectors_verified"] is True
+    assert len(proof["source_signed_overlay_sha256"]) == 64
     assert proof["legacy_part_id_preserved_only_in_frozen_fixture"]
     source_names = {
         "a_INPUT_PLUS", "SWITCH", "TRANSFER", "OUT_BEFORE_FUSE",
@@ -72,6 +76,12 @@ def verify(folder: Path) -> dict:
             f".//{SVG}g[@data-layer='editor-connection-targets']/{SVG}rect"
         )
         assert len(markers) == (0 if mode == "clean" else 16)
+        if mode == "diagnostic":
+            assert {marker.get("data-pin-ref") for marker in markers} == {
+                f"DA1.{number}" for number in range(1, 17)
+            }
+            assert all(marker.get("data-connectable") == "true"
+                       for marker in markers)
         if proof["physical_page_fits_1_to_1"]:
             assert root.get("width") == "420mm"
             assert root.get("height") == "297mm"
