@@ -135,6 +135,7 @@ export function validateDocument(doc: WiringSnapshot): void {
   const nets=new Map<string,Net>();
   for(const net of doc.nets) {
     id(net.id,'Net ID'); id(net.literal_source_name,'Original Net name');
+    if(!Array.isArray(net.members) || net.members.length===0) fail('INVALID_NET','Declared source Net needs at least one physical PinRef');
     if(nets.has(net.id)) fail('DUPLICATE_ID','Duplicate Net'); nets.set(net.id,net);
     for(const pin of net.members) {
       const key=pinKey(pin); if(!pinIds.has(key)) fail('UNKNOWN_PIN','Declared Net includes missing pin');
@@ -391,8 +392,17 @@ export class ManualWireEngine {
     for(const p of net.members) {const k=find(`p:${pinKey(p)}`);groups.set(k,[...(groups.get(k)??[]),copy(p)]);}
     const touched=new Set(wires.flatMap(w=>[terminal(w.vertices[0]),terminal(w.vertices.at(-1)!)]
       .filter((a):a is Extract<TerminalAnchor,{kind:'pin'}>=>a.kind==='pin').map(pinKey)));
-    const allPinsTouched=net.members.length>0&&net.members.every(p=>touched.has(pinKey(p)));
-    return {status:wires.length===0?'unrouted':groups.size===1&&allPinsTouched?'verified':'partial',pin_groups:[...groups.values()]};
+    const allPinsTouched=net.members.every(p=>touched.has(pinKey(p)));
+    const noDanglingOrUnreviewed=wires.every(w=>!w.needs_routing_review&&
+      [terminal(w.vertices[0]),terminal(w.vertices.at(-1)!)].every(a=>a.kind!=='free'));
+    return {status:wires.length===0?'unrouted':groups.size===1&&allPinsTouched&&noDanglingOrUnreviewed?'verified':'partial',
+      pin_groups:[...groups.values()]};
+  }
+  danglingEndpoints(netId?:string):string[] {
+    if(netId!==undefined&&!this.doc.nets.some(n=>n.id===netId))fail('UNKNOWN_NET','Unknown Net');
+    return this.doc.wires.filter(w=>netId===undefined||w.net_id===netId).flatMap(w=>
+      ([{v:w.vertices[0],side:'start'},{v:w.vertices.at(-1)!,side:'end'}] as const)
+        .filter(x=>x.v.anchor.kind==='free').map(x=>`${w.id}:${x.side}`)).sort();
   }
   highlightNet(netId:string):{wire_ids:string[];junction_ids:string[];splice_ids:string[];pin_groups:PinRef[][]} {
     const {pin_groups}=this.validateNet(netId);
