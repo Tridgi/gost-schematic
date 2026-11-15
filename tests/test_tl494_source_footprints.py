@@ -22,13 +22,14 @@ from gost_schematic.catalog.source_profiles import (
     read_source_manifest,
     select_tl494_symbol,
 )
-from gost_schematic.core.geometry import Line, Point
+from gost_schematic.core.geometry import Box, Line, Point
 from gost_schematic.core.transforms import Transform
 from gost_schematic.engines.routing.clearance import validate_wire_clearance
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
 from gost_schematic.model.obstacles import WireObstacle
 from gost_schematic.model.pins import ElectricalType, PhysicalPin
 from scripts.verify_tl494_cycle11_owner_strokes import (
+    source_pair_conservative_ink_gap_um,
     parse_real_pin_coordinates,
     verify_real_pin_markers,
 )
@@ -441,3 +442,36 @@ def test_catalog_digest_matches_old_project_exact_format(which):
 def test_ugo_digest_refuses_unknown_noncanonical_inputs(invalid):
     with pytest.raises(ValueError, match="UGO_DIGEST_UNSUPPORTED"):
         source_value_digest(invalid)
+
+
+
+@pytest.mark.parametrize("gap_um", (0, 1999, 2000, 2001, 3500))
+def test_conservative_source_ugo_ink_pair_integer_threshold(gap_um):
+    """Typed source ink obstacles; no float-rounding at 2mm boundary."""
+    original = _scene()
+    diode = source_footprint(next(x for x in original if x.reference == "VD1"))
+    mosfet = source_footprint(next(x for x in original if x.reference == "VT1"))
+    first = replace(
+        diode,
+        ink_obstacles=(replace(diode.ink_obstacles[0],
+                               box=Box(0, 0, 1000, 1000)),),
+    )
+    second = replace(
+        mosfet,
+        ink_obstacles=(replace(mosfet.ink_obstacles[0],
+                               box=Box(1000 + gap_um, 0,
+                                       2000 + gap_um, 1000)),),
+    )
+    measured = source_pair_conservative_ink_gap_um(first, second)
+    assert measured == gap_um
+    assert (measured >= 2000) == (gap_um >= 2000)
+
+
+def test_conservative_source_ugo_empty_ink_never_counts_as_clear():
+    original = _scene()
+    diode = source_footprint(next(x for x in original if x.reference == "VD1"))
+    mosfet = source_footprint(next(x for x in original if x.reference == "VT1"))
+    with pytest.raises(AssertionError, match="UGO_INK_EMPTY_OBSTACLES"):
+        source_pair_conservative_ink_gap_um(
+            replace(diode, ink_obstacles=()), mosfet,
+        )

@@ -7,6 +7,7 @@ does NOT modify the source commit, any owner branch, or the frozen original.
 import argparse
 import importlib
 import json
+from math import isqrt
 import subprocess
 from dataclasses import replace
 from decimal import Decimal, InvalidOperation
@@ -298,6 +299,29 @@ def compare_native_ic_typed_source() -> dict:
         "status": "PASS_PHYSICAL_TYPE_BINDING_NOT_FULL_ROUTE_OR_PRINT",
     }
 
+def source_pair_conservative_ink_gap_um(left, right) -> int:
+    """Integer floor of conservative AABB ink separation; fail if shapes touch.
+
+    This is ONLY a source-UGO pair preflight, not a formal 2/3/1mm whole-sheet
+    DRC and not evidence of a complete all-15-Net graph.
+    """
+    if not left.ink_obstacles or not right.ink_obstacles:
+        raise AssertionError("UGO_INK_EMPTY_OBSTACLES_ARE_NEVER_CLEAR")
+    nearest_sq = None
+    for a in left.ink_obstacles:
+        for b in right.ink_obstacles:
+            box_a, box_b = a.box, b.box
+            dx = max(0, box_a.min_x - box_b.max_x,
+                     box_b.min_x - box_a.max_x)
+            dy = max(0, box_a.min_y - box_b.max_y,
+                     box_b.min_y - box_a.max_y)
+            value = dx * dx + dy * dy
+            if nearest_sq is None or value < nearest_sq:
+                nearest_sq = value
+    return isqrt(nearest_sq)
+
+
+
 
 def compare_native_recon_compact_source() -> dict:
     """Real RECON #115 compact assembly; no synthetic routing or print.
@@ -344,6 +368,7 @@ def compare_native_recon_compact_source() -> dict:
     min_margin = PRINT_MARGIN_UM
     max_x, max_y = A3_LANDSCAPE_UM
     measured = {}
+    compact_footprints = []
     all_poses = 0
     physical_tip_checks = 0
     source_ink_count = 0
@@ -356,6 +381,7 @@ def compare_native_recon_compact_source() -> dict:
                 + binding.reference
             )
         current = source_footprint(binding)
+        compact_footprints.append(current)
         record = footprint_record(current)
         raw = record["rendered_ink_bounds_um"]
         if not (min_margin <= raw[0] <= raw[2] <= max_x - min_margin
@@ -411,6 +437,24 @@ def compare_native_recon_compact_source() -> dict:
                 physical_tip_checks += len(fp.lead_obstacles)
                 source_ink_count += len(fp.ink_obstacles)
                 all_poses += 1
+    pair_gaps = {
+        (left.reference, right.reference):
+        source_pair_conservative_ink_gap_um(left, right)
+        for i, left in enumerate(compact_footprints)
+        for right in compact_footprints[i + 1:]
+    }
+    if len(pair_gaps) != 78:
+        raise AssertionError("RECON_C13_DISTINCT_SOURCE_UGO_PAIR_LOSS")
+    closest_pair, minimum_ink_gap_um = min(
+        pair_gaps.items(), key=lambda item: (item[1], item[0])
+    )
+    # Conservative 2mm source-glyph engineering preflight. Full ESKD still
+    # owns all 253 printed 23-part pairs, 1mm text and 3mm wire-edge checks.
+    if minimum_ink_gap_um < 2000:
+        raise AssertionError(
+            "RECON_C13_TRUE_UGO_PRINTED_INK_AABB_GAP_LT_2MM: "
+            + str((closest_pair, minimum_ink_gap_um))
+        )
     if (len(measured) != 13 or all_poses != 104
         or physical_tip_checks != 224
         or circuit.nets is not assembly_nets):
@@ -444,6 +488,10 @@ def compare_native_recon_compact_source() -> dict:
         "D4_true_owner_comparisons": all_poses,
         "D4_true_physical_lead_tip_checks": physical_tip_checks,
         "D4_actual_ink_primitives_audited": source_ink_count,
+        "source_13_distinct_printed_ink_pairs": len(pair_gaps),
+        "conservative_min_source_pair_ink_gap_um": minimum_ink_gap_um,
+        "conservative_min_source_pair_names": list(closest_pair),
+        "source_ink_2mm_scope": "PRECHECK_ONLY_NOT_23_PART_ESKD_DRC",
         "X1_new_true_origin_um": [17000, 35000],
         "X1_old_16mm_negative": "REJECTED_OUTSIDE_A3_PRINT_MARGIN",
         "A3_component_ink_bounds": bounds,

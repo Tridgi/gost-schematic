@@ -56,3 +56,23 @@ fail without weakening this catalog source-identity contract.
 
 If any owner publishes a later SHA, the immutable pinned matrix evidence
 does not extend to that later SHA: repin and rerun before reporting it.
+
+## Distinct physical source-glyph stroke clearance — conservative only
+
+The RECON detached worktree now measures all **78 unordered distinct pairs**
+among the 13 original-source physical UGO, using the true
+`SourceFootprint.ink_obstacles` stroke-expanded per-primitive boxes.
+Every pair's minimum is the integer floor of the **Euclidean separation**
+of those already-conservative source graphic AABB obstacles, in micrometres.
+A source pair with <2000 µm measured conservative separation is rejected.
+The **closest pair IDs, minimum separation, 78 pair count** and complete
+**original-pose 13 footprint records/physical leads** are emitted into the
+signed owner JSON report, along with the 104 D4 positions and 224 true tips.
+
+Additional positive/negative/threshold tests on *typed original
+`SourceFootprint` and `BoxObstacle` records* measure exact 0, 1999, 2000,
+2001, 3500 µm gaps; empty graphic inventory fails closed, never passes as
+"unoccupied." This is an engineering **source UGO subset preflight**, not an
+ESKD APPROVED declaration or a replacement for ESKD's 253 printed pairs
+including all 23 components and separate DA1, or 1mm printed text and
+3mm parallel-wire edge DRC. Full-sheet print still BLOCKED.
