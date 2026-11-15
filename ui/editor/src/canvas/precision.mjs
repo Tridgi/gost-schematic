@@ -27,9 +27,11 @@ function pinWorld(symbol,physical_pin_number){
 function segmentDistance(p,a,b){const dx=b.x-a.x,dy=b.y-a.y,m=dx*dx+dy*dy;const t=m?Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.y-a.y)*dy)/m)):0;return Math.hypot(p.x-(a.x+dx*t),p.y-(a.y+dy*t))}
 
 function hitTest(scene,c,p,tolerance=8){
+ if(!Number.isFinite(tolerance)||tolerance<=0)throw Error('INVALID_HIT_TOLERANCE');
+ const pinBandPx=Math.min(tolerance,7),wireBandPx=Math.min(tolerance,5);
  const pins=[];for(const s of scene.symbols)for(const pin of s.pins){
   const q=pinWorld(s,pin.physical_pin_number);const d=Math.hypot(p.x-screen(q.at_um,c).x,p.y-screen(q.at_um,c).y);
-  if(d<=tolerance)pins.push({...q,distance_px:d});
+  if(d<=pinBandPx)pins.push({...q,distance_px:d});
  }
  pins.sort((a,b)=>a.distance_px-b.distance_px);
  if(pins.length){const choices=pins.filter(x=>x.distance_px-pins[0].distance_px<=.75);return choices.length>1?{kind:"ambiguous-pin",candidates:choices.map(x=>x.pin)}:{kind:"pin",...pins[0]}}
@@ -39,7 +41,7 @@ function hitTest(scene,c,p,tolerance=8){
   if(!a||!b)throw Error("MISSING_VERTEX");
   point(a.at_um);point(b.at_um);if(a.at_um[0]!==b.at_um[0]&&a.at_um[1]!==b.at_um[1])throw Error("NON_ORTHOGONAL");
   const d=segmentDistance(p,screen(a.at_um,c),screen(b.at_um,c));
-  if(d<=tolerance)hits.push({kind:"segment",wire_id:w.id,segment_id:segment.id,distance_px:d,movable:i>0&&i<w.segments.length-1,axis:a.at_um[0]===b.at_um[0]?"v":"h"});
+  if(d<=wireBandPx)hits.push({kind:"segment",wire_id:w.id,segment_id:segment.id,distance_px:d,movable:i>0&&i<w.segments.length-1,axis:a.at_um[0]===b.at_um[0]?"v":"h"});
  }
  hits.sort((a,b)=>a.distance_px-b.distance_px);if(hits.length){const near=hits.filter(x=>x.distance_px-hits[0].distance_px<=.75);return near.length>1?{kind:"ambiguous-segment",candidates:near.map(x=>({wire_id:x.wire_id,segment_id:x.segment_id}))}:near[0]}
  return null;
