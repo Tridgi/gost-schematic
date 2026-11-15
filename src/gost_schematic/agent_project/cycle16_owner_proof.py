@@ -36,6 +36,12 @@ def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _typed_digest(value: Any) -> str:
+    return _sha256(json.dumps(
+        value, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    ).encode("utf-8"))
+
+
 def _safe_path(path: Path) -> Path:
     """No symlink/junction on the input chain; never resolve external file links."""
     if not path.is_absolute():
@@ -228,6 +234,11 @@ def review_c15_owner_proof(
         "components": 23, "original_nets": 15,
         "physical_pinrefs": 62, "da1_physical_pins": 16,
         "original_named_memberships": source_nets,
+        "source_request_sha256": _typed_digest(source_request),
+        "physical_membership_sha256": _typed_digest(sorted(
+            (name, pin.rsplit(".", 1)[0], pin.rsplit(".", 1)[1])
+            for name, pins in source_nets.items() for pin in pins
+        )),
         "non_electrical_b_count": 2,
     }
     common = {
