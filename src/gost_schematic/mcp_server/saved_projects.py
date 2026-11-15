@@ -76,6 +76,22 @@ def register_saved_project_tools(
         return _safe_read(work)
 
     @mcp.tool(annotations=read_only)
+    def schematic_get_connection_targets(
+        project_id: str, revision: str, source_target_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Read true saved E3 pins and authored wire endpoints; never connect Nets."""
+        def work() -> dict[str, Any]:
+            scope = ReadOnlyProjectAccess.from_environment()
+            scope.require(project_id)
+            result = scope.service.get_connection_targets(
+                project_id, revision, source_target_id=source_target_id,
+            )
+            if len(json.dumps(result, ensure_ascii=False).encode("utf-8")) > 700_000:
+                raise ProjectError("TARGET_RESPONSE_TOO_LARGE", "Editor targets exceed MCP budget")
+            return result
+        return _safe_read(work)
+
+    @mcp.tool(annotations=read_only)
     def schematic_render_project(
         project_id: str, revision: str, mode: str = "clean",
         reference: str | None = None, target_dpi: int = 300,
