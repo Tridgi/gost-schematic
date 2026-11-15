@@ -24,6 +24,7 @@ from examples.tl494_v5.route_candidate_driver import (
     load_original_owner_fixture,
     restore_original_named_nets,
 )
+
 from gost_schematic.standards.type_a_font import inspect_type_a_font
 
 RECON_SHA = "65b68cdd89ac0c2ae0b137228da61a17ac78d339"
