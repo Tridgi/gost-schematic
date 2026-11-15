@@ -8,10 +8,6 @@ from xml.etree import ElementTree as ET
 import pytest
 
 from examples.review_tl494_ugo_source_cycle9 import generate
-from scripts.verify_tl494_cycle11_owner_strokes import (
-    parse_real_pin_coordinates,
-    verify_real_pin_markers,
-)
 from gost_schematic.agent_project.catalog import value_digest
 from gost_schematic.catalog.source_digest import value_digest as source_value_digest
 from gost_schematic.catalog.source_footprints import (
@@ -32,6 +28,10 @@ from gost_schematic.engines.routing.clearance import validate_wire_clearance
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
 from gost_schematic.model.obstacles import WireObstacle
 from gost_schematic.model.pins import ElectricalType, PhysicalPin
+from scripts.verify_tl494_cycle11_owner_strokes import (
+    parse_real_pin_coordinates,
+    verify_real_pin_markers,
+)
 
 
 def _scene():
