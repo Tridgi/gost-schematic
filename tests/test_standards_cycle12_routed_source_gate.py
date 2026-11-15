@@ -197,3 +197,47 @@ def test_fake_replaced_owner_svg_or_png_never_passes_sha256(
         (tmp_path / name).write_bytes(bad_bytes)
     with pytest.raises(gate.EvidenceError, match="ARTIFACT_SHA256_MISMATCH"):
         gate._verify_pinned_owner_bytes(tmp_path)
+
+
+def fixture_ygo_current():
+    return {
+        "reference_sha": gate.FROZEN,
+        "status": "DRAFT",
+        "profiles": [
+            {"reference": ref, "symbol_id": symbol,
+             "normative_verdict": "BLOCKED_NO_CALIBRATED_SOURCE_1TO1"}
+            for ref, symbol in gate.SOURCE_UGO.items()
+        ],
+    }
+
+
+def test_real_ygo_source_is_13_draft_with_zero_formal_approved():
+    proof = gate._source_ygo_current_review(
+        fixture_ygo_current(), "a" * 40
+    )
+    assert proof["sources_13"] == 13
+    assert proof["formal_approved"] == 0
+    assert proof["actual_ygo_head_sha"] == "a" * 40
+
+
+@pytest.mark.parametrize(("change", "reason"), [
+    ("approve_one", "YGO_CURRENT_FIGURE_SIGNOFF_NOT_EVIDENCED"),
+    ("wrong_schottky", "YGO_CURRENT_SCHOTTKY_MOS_CAP_FERRO_ID_DRIFT"),
+    ("drop_one", "YGO_CURRENT_NOT_13_SOURCE_UGO"),
+    ("reference_drift", "YGO_CURRENT_SOURCE_REFERENCE_SHA_MISMATCH"),
+    ("declare_approved", "YGO_CURRENT_UNPROVEN_APPROVAL"),
+])
+def test_ygo_source_profile_negative_ugo_cases(change, reason):
+    owner = fixture_ygo_current()
+    if change == "approve_one":
+        owner["profiles"][0]["normative_verdict"] = "APPROVED"
+    elif change == "wrong_schottky":
+        owner["profiles"][0]["symbol_id"] = "diode.general"
+    elif change == "drop_one":
+        owner["profiles"].pop()
+    elif change == "reference_drift":
+        owner["reference_sha"] = "0" * 40
+    elif change == "declare_approved":
+        owner["status"] = "APPROVED"
+    with pytest.raises(gate.EvidenceError, match=reason):
+        gate._source_ygo_current_review(owner, "a" * 40)
