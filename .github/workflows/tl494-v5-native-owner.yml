@@ -4,6 +4,9 @@ on:
     branches: [reference/tl494-audit-v4-20261114]
     paths:
       - examples/tl494_v5/**
+      - examples/tl494_ic_paint_reference.py
+      - examples/tl494_connected_native.py
+      - examples/tl494_named_photo_sheet.py
       - .github/workflows/tl494-v5-native-owner.yml
   workflow_dispatch:
 permissions:

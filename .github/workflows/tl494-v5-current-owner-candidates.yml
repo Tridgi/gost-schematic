@@ -15,6 +15,9 @@ on:
       - examples/tl494_v5/native_circuit.py
       - examples/tl494_v5/compact_layout.py
       - examples/tl494_v5/route_preflight.py
+      - examples/tl494_ic_paint_reference.py
+      - examples/tl494_connected_native.py
+      - examples/tl494_named_photo_sheet.py
       - .github/workflows/tl494-v5-current-owner-candidates.yml
   workflow_dispatch:
 permissions:
@@ -34,10 +37,10 @@ jobs:
       - name: Pin all four unmerged current-owner source HEADs (never merge)
         run: |
           set -euxo pipefail
-          IC=c8991bf232428645cad6e8b402d70abccf12a546
-          PAINT=df49c16fb082ee98213299358f374894fe1da220
+          IC=ad574fd2e87e7e1636861e40d245abca7acc906a
+          PAINT=573afec0beb11df96811aa50d7ebb9eacff264e8
           CATALOG=2dae5306c0690f2fc2d402bb4b65266dabd778b8
-          ROUTER=e604ab355f1f704aa11f5545d048a0087c97e39a
+          ROUTER=e77d86f958d572a2158a55d0628d9b54a87ef873
           SOURCE=e695c415fdced164b0e0c39c5249d030795a0aa6
           for sha in "$IC" "$PAINT" "$CATALOG" "$ROUTER" "$SOURCE"; do
             git fetch origin "$sha"
