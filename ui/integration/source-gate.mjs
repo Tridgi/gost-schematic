@@ -30,7 +30,7 @@ export function auditCandidateV2(file,{pinWorld,requireFrozen=false}={}){
   if(junctions.size!==sh.junctions.length||splices.size!==(sh.splices||[]).length||[...junctions.keys()].some(k=>splices.has(k)))deny("DUPLICATE_JUNCTION");
   const usage=new Map(),wireIds=new Set();
   for(const w of sh.wires){
-   if(!w?.id||wireIds.has(w.id)||!netIds.has(w.net_id)||!Array.isArray(w.vertices)||w.vertices.length<2||!Array.isArray(w.segments)||w.segments.length!==w.vertices.length-1)deny("INVALID_WIRE");
+   if(!w?.id||wireIds.has(w.id)||!netIds.has(w.net_id)||w.mode!=="orthogonal"||typeof w.layer_id!=="string"||!w.layer_id||!Array.isArray(w.vertices)||w.vertices.length<2||!Array.isArray(w.segments)||w.segments.length!==w.vertices.length-1)deny("INVALID_WIRE");
    wireIds.add(w.id);
    const vertices=new Set(),segments=new Set();
    for(let i=0;i<w.vertices.length;i++){
