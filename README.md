@@ -58,6 +58,8 @@ a fully routed/printed diagram, and a clean exit is NOT a print PASS.
 The Codex CLI integration requires a separately authorized model
 session. [Copyable command details, artifacts, safety boundaries and
 future full-route gates](docs/ai-integration/cycle13-end-user-quickstart.md).
+The [Cycle14 typed diagnostics and future generator contract](docs/ai-integration/cycle14-readonly-retry-and-future-generator-contract.md)
+defines the exact seven stages and read-only retry policy; writer remains BLOCKED.
 
 ## AI / MCP read-only TL494 engineering workflow (Cycle 12, DRAFT)
 
