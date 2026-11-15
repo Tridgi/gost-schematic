@@ -58,6 +58,12 @@ jobs:
           done
           git show "$IC_SHA:examples/tl494_cycle9_circuit_integration.py" \
             > examples/tl494_cycle9_circuit_integration.py
+          # Byte-locked authoritative 23/15/62 source fixture (not the old SVG).
+          mkdir -p tests/fixtures
+          git show "$IC_SHA:tests/fixtures/tl494_photo_23_frozen_cycle9.json" \
+            > tests/fixtures/tl494_photo_23_frozen_cycle9.json
+          test "$(git hash-object tests/fixtures/tl494_photo_23_frozen_cycle9.json)" = \
+            "a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65"
           # Frozen original source uses the real typed b NetContinuationProject
           # from the independent NETREF owner; it does not exist in base PAINT.
           git show "$NETREF_SHA:src/gost_schematic/electrical/netrefs.py" \
