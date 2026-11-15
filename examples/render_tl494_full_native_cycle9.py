@@ -469,9 +469,17 @@ def generate(output: Path, font_file: Path, *, d4: bool = False):
         "actual_ti_pin13_electrical": record.device.pin_map["13"].electrical_type.value,
         "manufacturer_role_is_separate_from_frozen_graphic_port_side": True,
         "font_sha256": style.font_sha256,
+        "font_family_source_declared": _declared_type_a_family(
+            __import__(
+                "examples.tl494_ic_paint_reference", fromlist=["build"]
+            ).build
+        ),
         "font_family_source_legacy_alias": (
             "OpenGost Type A TT -> verified OpenGOST type A; "
             "source Python remains immutable"
+            if _declared_type_a_family(__import__(
+                "examples.tl494_ic_paint_reference", fromlist=["build"]
+            ).build) == "OpenGost Type A TT" else None
         ),
         "calibrated_type_a_h_mm": 3.5,
         "paint_authoritative_points": {
