@@ -115,6 +115,14 @@ def verify(folder: Path) -> dict:
     assert set(b) == {"b-X2", "b-R5"}
     assert all(item["net"] == "b_NEGATIVE_OUTPUT" for item in b.values())
     assert all(item["printed_label"] == "b" for item in b.values())
+    stubs = proof["source_b_stubs_um"]
+    assert set(stubs) == {"b-X2", "b-R5"}
+    assert {name: data["source_pin_ref"] for name, data in stubs.items()} == {
+        "b-X2": "X2.1", "b-R5": "R5.2",
+    }
+    assert all(data["nonphysical"] is True for data in stubs.values())
+    assert all(data["end"] == [b[key]["x_um"], b[key]["y_um"]]
+               for key, data in stubs.items())
     assert "A3_SOURCE_CONTINUATION_BINDING_UNRESOLVED" not in proof["blockers"]
     assert proof["native_post_render_route_drc"] is not None
     assert proof["real_GOST_Type_A_h_mm"] == 3.5
@@ -135,6 +143,31 @@ def verify(folder: Path) -> dict:
         assert {x.get("data-nonphysical-net-continuation") for x in b_circles} == {
             "b-X2", "b-R5",
         }
+        b_lines = root.findall(
+            f".//{SVG}g[@data-layer='typed-nonphysical-continuations']/"
+            f"{SVG}line[@data-layer='nonphysical-continuation-stub']"
+        )
+        assert len(b_lines) == 2
+        assert {line.get("data-nonphysical-net-continuation")
+                for line in b_lines} == set(stubs)
+        for line in b_lines:
+            evidence = stubs[line.get("data-nonphysical-net-continuation")]
+            assert line.get("data-source-pin-ref") == evidence["source_pin_ref"]
+            assert line.get("data-source-stub-id") == evidence["source_stub_id"]
+            assert line.get("data-nonphysical") == "true"
+            assert line.get("data-electrical-junction") == "false"
+            assert line.get("data-connectable") == "false"
+            assert [
+                round(float(line.get("x1")) * 1000),
+                round(float(line.get("y1")) * 1000),
+            ] == evidence["start"]
+            assert [
+                round(float(line.get("x2")) * 1000),
+                round(float(line.get("y2")) * 1000),
+            ] == evidence["end"]
+        assert len(root.findall(f".//{SVG}line[@data-layer='wires']")) == (
+            proof["route_segments"]
+        )
         for circle in b_circles:
             expected_b = b[circle.get("data-nonphysical-net-continuation")]
             assert abs(float(circle.get("cx")) * 1000 - expected_b["x_um"]) < 0.01
