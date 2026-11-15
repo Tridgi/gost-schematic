@@ -61,6 +61,8 @@ codex exec --help
 MCP в `codex mcp list` **не означает**, что был вызван LLM или
 создана физическая схема.
 
+Готовое ограниченное поручение для агента: [Cycle13 Codex read-only prompt](cycle13-codex-readonly-prompt.md).
+
 Задача для агента: изучить [AGENTS.md](../../AGENTS.md) и
 [Skill](../../skills/gost-schematic/SKILL.md), запросить только
 существующие вызовы `schematic_tl494_selection_profile`,
