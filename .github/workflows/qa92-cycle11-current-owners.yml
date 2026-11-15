@@ -20,11 +20,11 @@ jobs:
         python-version: ["3.12", "3.13"]
     env:
       SOURCE_SHA: e695c415fdced164b0e0c39c5249d030795a0aa6
-      RECON_SHA: c58e224700b318892ee92197f8bfd391807a7325
-      IC_SHA: 1e4baf7ea713f649e0dabb4d6119e97281901f03
-      PAINT_SHA: f69d891e2f17797878627447eb7f05a66f311ca0
-      NET_SHA: b5436ecc800bf7c4a99e1d71cce0cb5dc854ed52
-      YGO_SHA: eb16121e07efec71de77dfc7b8123bc09f66ddd6
+      RECON_SHA: 021dc1a240f2d2aea21c60057f28159bf7e4ecba
+      IC_SHA: 90dab83566ba9ed8b344ab24396da084f02b5c23
+      PAINT_SHA: f71f9c47f1e6313361dfa04242c559b0d74c831c
+      NET_SHA: ffbfc5fdc4653e1a2b08ac5e6d38d96ad669dbec
+      YGO_SHA: 92347d936c71e6038c836f37992bbbee65d56196
     steps:
       - name: Existing Draft QA branch, never modifying original owner trees
         uses: actions/checkout@v4
@@ -39,31 +39,31 @@ jobs:
       - name: Current RECON owner code, all 23 components and routed graph export
         uses: actions/checkout@v4
         with:
-          ref: c58e224700b318892ee92197f8bfd391807a7325
+          ref: 021dc1a240f2d2aea21c60057f28159bf7e4ecba
           path: _qa_sources/recon
           persist-credentials: false
       - name: Current true manufacturer TI #97 model and typed adapter
         uses: actions/checkout@v4
         with:
-          ref: 1e4baf7ea713f649e0dabb4d6119e97281901f03
+          ref: 90dab83566ba9ed8b344ab24396da084f02b5c23
           path: _qa_sources/ic
           persist-credentials: false
       - name: Current PAINT physical IC and routed new full sheet
         uses: actions/checkout@v4
         with:
-          ref: f69d891e2f17797878627447eb7f05a66f311ca0
+          ref: f71f9c47f1e6313361dfa04242c559b0d74c831c
           path: _qa_sources/paint
           persist-credentials: false
       - name: Current NET 15-Net route and strict print DRC
         uses: actions/checkout@v4
         with:
-          ref: b5436ecc800bf7c4a99e1d71cce0cb5dc854ed52
+          ref: ffbfc5fdc4653e1a2b08ac5e6d38d96ad669dbec
           path: _qa_sources/net
           persist-credentials: false
       - name: Current source-figure 36 DRAFT catalog
         uses: actions/checkout@v4
         with:
-          ref: eb16121e07efec71de77dfc7b8123bc09f66ddd6
+          ref: 92347d936c71e6038c836f37992bbbee65d56196
           path: _qa_sources/catalog
           persist-credentials: false
       - uses: actions/setup-python@v5
@@ -120,7 +120,8 @@ jobs:
           stage("paint", "tests/test_routed_native_sheet_cycle10.py")
           stage("catalog", "tests/test_tl494_source_footprints.py")
           stage("catalog", "examples/review_tl494_ugo_source_cycle9.py")
-          for name in ("source_profiles.py", "source_footprints.py"):
+          for name in ("source_profiles.py", "source_footprints.py",
+                       "source_digest.py"):
               stage("catalog", "src/gost_schematic/catalog/" + name)
           for name in (
               "tl494_source_20261114.json",
@@ -228,6 +229,18 @@ jobs:
           PYTHONPATH=src:. python ../../scripts/qa_tl494_cycle11_part_bridge.py \
             --font-file "$QA_C11_GOST_FONT" \
             --output "../../output/qa92-cycle11-${{ matrix.python-version }}/manufacturer-PartID-source-bridge.json"
+      - name: Independent source-signed actual b-X2 b-R5 manufacturer witness
+        id: b_witness
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "$TL494_TYPE_A_FONT"
+          mkdir -p output/qa92-cycle11-${{ matrix.python-version }}
+          cd _qa_sources/recon
+          PYTHONPATH=src:. python -m examples.tl494_v5.cycle11_binding_preflight \
+            --font-file "$TL494_TYPE_A_FONT" \
+            --output-file "../../output/qa92-cycle11-${{ matrix.python-version }}/real-owner-two-b-markers.json"
       - name: Genuine PAINT current HEAD 23-part new compact A3 routed native SVG, not old 91-wire redraw
         shell: bash
         if: always()
@@ -240,12 +253,13 @@ jobs:
             --node-cap 5000
       - name: Independent QA source-faithful clean/debug SVG plus actual 300 DPI PNG
         shell: bash
-        if: always()
+        if: ${{ always() && steps.b_witness.outcome == 'success' }}
         run: |
           set -euo pipefail
           ruff check scripts/qa_tl494_cycle11_native_300dpi.py
           python scripts/qa_tl494_cycle11_native_300dpi.py \
             --source-dir "output/qa92-cycle11-${{ matrix.python-version }}/paint-new-native" \
+            --source-b-witness "output/qa92-cycle11-${{ matrix.python-version }}/real-owner-two-b-markers.json" \
             --output-dir "output/qa92-cycle11-${{ matrix.python-version }}/native-300dpi"
       - name: Exact-HEAD evidence including full run blockers, no fake PRINT PASS
         uses: actions/upload-artifact@v4
