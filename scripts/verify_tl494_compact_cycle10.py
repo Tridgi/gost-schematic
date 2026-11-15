@@ -20,9 +20,9 @@ def verify(folder: Path) -> dict:
     assert (proof["source_components"], proof["source_nets"],
             proof["source_net_pinrefs"]) == (23, 15, 62)
     assert proof["model_source"] == "e695c415fdced164b0e0c39c5249d030795a0aa6"
-    assert proof["NET114_owner_sha"] == "8499d2311681b60f3c510ad65bd4ee5cbc61882a"
-    assert proof["RECON115_owner_sha"] == "8f8b3645beacdc3b7c4382ec97b12268624fdd76"
-    assert proof["IC97_owner_sha"] == "a640f2c5e78bd37506d438d5f533382ec75f4666"
+    assert proof["NET114_owner_sha"] == "e604ab355f1f704aa11f5545d048a0087c97e39a"
+    assert proof["RECON115_owner_sha"] == "68d52e243c966e0fd25c5a7e2eaad34914392fba"
+    assert proof["IC97_owner_sha"] == "c8991bf232428645cad6e8b402d70abccf12a546"
     assert proof["canonical_ti_part_id_verified"] == "ti.tl494cn.pdip16"
     assert proof["trusted_97_part_rebinding"]
     assert proof["legacy_part_id_preserved_only_in_frozen_fixture"]
@@ -38,7 +38,12 @@ def verify(folder: Path) -> dict:
     assert proof["A3_true_catalog_bounds"]["A3_capacity_fit"]
     assert proof["status"] == "BLOCKED" and not proof["real_print_release"]
     assert not proof["printable_candidate"]
-    assert "A3_SOURCE_CONTINUATION_BINDING_UNRESOLVED" in proof["blockers"]
+    assert proof["nonphysical_b_marker_status"] == "VERIFIED_SOURCE_B_REBOUND"
+    b = proof["two_source_b_markers"]
+    assert set(b) == {"b-X2", "b-R5"}
+    assert all(item["net"] == "b_NEGATIVE_OUTPUT" for item in b.values())
+    assert all(item["printed_label"] == "b" for item in b.values())
+    assert "A3_SOURCE_CONTINUATION_BINDING_UNRESOLVED" not in proof["blockers"]
     assert proof["native_post_render_route_drc"] is not None
     assert proof["real_GOST_Type_A_h_mm"] == 3.5
     checked_pixels = 0
@@ -50,6 +55,19 @@ def verify(folder: Path) -> dict:
         assert len(root.findall(f".//{SVG}line[@data-layer='wires']")) == (
             proof["route_segments"]
         )
+        b_circles = root.findall(
+            f".//{SVG}g[@data-layer='typed-nonphysical-continuations']/"
+            f"{SVG}circle"
+        )
+        assert len(b_circles) == 2
+        assert {x.get("data-nonphysical-net-continuation") for x in b_circles} == {
+            "b-X2", "b-R5",
+        }
+        for circle in b_circles:
+            expected_b = b[circle.get("data-nonphysical-net-continuation")]
+            assert abs(float(circle.get("cx")) * 1000 - expected_b["x_um"]) < 0.01
+            assert abs(float(circle.get("cy")) * 1000 - expected_b["y_um"]) < 0.01
+            assert circle.get("data-electrical-junction") == "false"
         markers = root.findall(
             f".//{SVG}g[@data-layer='editor-connection-targets']/{SVG}rect"
         )
