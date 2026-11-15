@@ -1,0 +1,456 @@
+{
+  "format": "gscad-project",
+  "format_version": 2,
+  "project": {
+    "id": "d80613e2-7e0a-5751-a144-7cfe880b6df6",
+    "title": "Toy two nets crossing",
+    "part_definitions": [
+      {
+        "id": "resistor.fixed",
+        "reference_prefix": "RESISTOR",
+        "symbol_ids": [
+          "symbol/resistor.fixed"
+        ],
+        "physical_pins": [
+          {
+            "number": "1",
+            "name": "1",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "2",
+            "name": "2",
+            "electrical_type": "passive"
+          }
+        ]
+      },
+      {
+        "id": "capacitor.fixed",
+        "reference_prefix": "CAPACITOR",
+        "symbol_ids": [
+          "symbol/capacitor.fixed"
+        ],
+        "physical_pins": [
+          {
+            "number": "1",
+            "name": "1",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "2",
+            "name": "2",
+            "electrical_type": "passive"
+          }
+        ]
+      }
+    ],
+    "symbol_definitions": [
+      {
+        "id": "symbol/resistor.fixed",
+        "part_id": "resistor.fixed",
+        "revision": 1,
+        "status": "draft",
+        "pins": [
+          {
+            "physical_pin_number": "1",
+            "at_um": [
+              -10000,
+              0
+            ],
+            "side": "left"
+          },
+          {
+            "physical_pin_number": "2",
+            "at_um": [
+              10000,
+              0
+            ],
+            "side": "right"
+          }
+        ],
+        "graphics": [
+          {
+            "kind": "rect",
+            "points_um": [
+              [
+                -4000,
+                -2000
+              ],
+              [
+                4000,
+                2000
+              ]
+            ],
+            "stroke_um": 300
+          }
+        ],
+        "standard_refs": [
+          "DRAFT: source-inspired CAD data shape, not approved ESKD UGO"
+        ]
+      },
+      {
+        "id": "symbol/capacitor.fixed",
+        "part_id": "capacitor.fixed",
+        "revision": 1,
+        "status": "draft",
+        "pins": [
+          {
+            "physical_pin_number": "1",
+            "at_um": [
+              -10000,
+              0
+            ],
+            "side": "left"
+          },
+          {
+            "physical_pin_number": "2",
+            "at_um": [
+              10000,
+              0
+            ],
+            "side": "right"
+          }
+        ],
+        "graphics": [
+          {
+            "kind": "rect",
+            "points_um": [
+              [
+                -4000,
+                -2000
+              ],
+              [
+                4000,
+                2000
+              ]
+            ],
+            "stroke_um": 300
+          }
+        ],
+        "standard_refs": [
+          "DRAFT: source-inspired CAD data shape, not approved ESKD UGO"
+        ]
+      }
+    ],
+    "components": [
+      {
+        "id": "2b8d46bd-ef83-536f-bf91-8afacb7fb01a",
+        "refdes": "R1",
+        "source_refdes": "R1",
+        "part_id": "resistor.fixed",
+        "value": ""
+      },
+      {
+        "id": "ea0f4960-042f-5301-8f6f-d9ab92fd2572",
+        "refdes": "C1",
+        "source_refdes": "C1",
+        "part_id": "capacitor.fixed",
+        "value": ""
+      },
+      {
+        "id": "14b38ca4-48b5-5bee-9746-ac0b41615f24",
+        "refdes": "R2",
+        "source_refdes": "R2",
+        "part_id": "resistor.fixed",
+        "value": ""
+      },
+      {
+        "id": "a3346d14-c399-52ed-96d8-c2a28311399a",
+        "refdes": "C2",
+        "source_refdes": "C2",
+        "part_id": "capacitor.fixed",
+        "value": ""
+      }
+    ],
+    "nets": [
+      {
+        "id": "416002cb-3ddc-50f1-8210-f853ac056283",
+        "name": "N_HORIZONTAL",
+        "members": [
+          {
+            "component_id": "2b8d46bd-ef83-536f-bf91-8afacb7fb01a",
+            "physical_pin_number": "2"
+          },
+          {
+            "component_id": "ea0f4960-042f-5301-8f6f-d9ab92fd2572",
+            "physical_pin_number": "1"
+          }
+        ],
+        "route_status": "verified"
+      },
+      {
+        "id": "eef5bfa3-0ada-54d6-8188-81b77b848933",
+        "name": "N_VERTICAL",
+        "members": [
+          {
+            "component_id": "14b38ca4-48b5-5bee-9746-ac0b41615f24",
+            "physical_pin_number": "2"
+          },
+          {
+            "component_id": "a3346d14-c399-52ed-96d8-c2a28311399a",
+            "physical_pin_number": "1"
+          }
+        ],
+        "route_status": "verified"
+      }
+    ],
+    "sheets": [
+      {
+        "id": "sheet-1",
+        "name": "Toy two nets crossing",
+        "index": 1,
+        "frame": {
+          "size_um": [
+            420000,
+            297000
+          ],
+          "margin_um": 10000,
+          "paper": "A3 landscape"
+        },
+        "title_block": {
+          "designation": "GSCAD-CHAT6",
+          "title": "Toy two nets crossing",
+          "organization": "R&D",
+          "revision": "DRAFT",
+          "sheet_number": 1
+        },
+        "layers": [
+          {
+            "id": "layer-electric",
+            "name": "Electrical",
+            "kind": "electrical",
+            "visible": true,
+            "printable": true,
+            "locked": false
+          },
+          {
+            "id": "layer-draw",
+            "name": "Drawing",
+            "kind": "drawing",
+            "visible": true,
+            "printable": true,
+            "locked": false
+          },
+          {
+            "id": "layer-debug",
+            "name": "Diagnostics",
+            "kind": "diagnostics",
+            "visible": false,
+            "printable": false,
+            "locked": true
+          }
+        ],
+        "instances": [
+          {
+            "id": "1ee4ce0c-8f6c-5997-a4a0-5b244feb4280",
+            "component_id": "2b8d46bd-ef83-536f-bf91-8afacb7fb01a",
+            "symbol_id": "symbol/capacitor.fixed",
+            "origin_um": [
+              10000,
+              30000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          },
+          {
+            "id": "782680db-b832-5d0c-84b8-553594739f43",
+            "component_id": "ea0f4960-042f-5301-8f6f-d9ab92fd2572",
+            "symbol_id": "symbol/capacitor.fixed",
+            "origin_um": [
+              90000,
+              30000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          },
+          {
+            "id": "8e946b19-3846-5b75-a6c6-6ff3b4376d57",
+            "component_id": "14b38ca4-48b5-5bee-9746-ac0b41615f24",
+            "symbol_id": "symbol/resistor.fixed",
+            "origin_um": [
+              50000,
+              10000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          },
+          {
+            "id": "1e5a2db4-c21f-5b8b-a9aa-6c640d05842e",
+            "component_id": "a3346d14-c399-52ed-96d8-c2a28311399a",
+            "symbol_id": "symbol/capacitor.fixed",
+            "origin_um": [
+              50000,
+              90000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          }
+        ],
+        "wires": [
+          {
+            "id": "cc0dd8a7-1740-5248-80e8-af2a97894465",
+            "net_id": "416002cb-3ddc-50f1-8210-f853ac056283",
+            "layer_id": "layer-electric",
+            "vertices": [
+              {
+                "id": "b8401dc0-4c7f-5569-a328-b4f621b77c0d",
+                "at_um": [
+                  20000,
+                  30000
+                ],
+                "anchor": {
+                  "kind": "pin",
+                  "component_id": "2b8d46bd-ef83-536f-bf91-8afacb7fb01a",
+                  "physical_pin_number": "2"
+                }
+              },
+              {
+                "id": "53abcdaa-a612-5914-8d9b-a3c5a1e786ab",
+                "at_um": [
+                  80000,
+                  30000
+                ],
+                "anchor": {
+                  "kind": "pin",
+                  "component_id": "ea0f4960-042f-5301-8f6f-d9ab92fd2572",
+                  "physical_pin_number": "1"
+                }
+              }
+            ],
+            "segments": [
+              {
+                "id": "acd2d4d4-f21d-50c4-81ab-89d749440329",
+                "from_vertex_id": "b8401dc0-4c7f-5569-a328-b4f621b77c0d",
+                "to_vertex_id": "53abcdaa-a612-5914-8d9b-a3c5a1e786ab"
+              }
+            ],
+            "mode": "orthogonal"
+          },
+          {
+            "id": "c5f64b8c-148c-565c-8493-437ea2346845",
+            "net_id": "eef5bfa3-0ada-54d6-8188-81b77b848933",
+            "layer_id": "layer-electric",
+            "vertices": [
+              {
+                "id": "2002a947-1291-55f8-9421-3d092589ee2d",
+                "at_um": [
+                  60000,
+                  10000
+                ],
+                "anchor": {
+                  "kind": "pin",
+                  "component_id": "14b38ca4-48b5-5bee-9746-ac0b41615f24",
+                  "physical_pin_number": "2"
+                }
+              },
+              {
+                "id": "4f461a69-8f5f-5c7f-a70c-4a49824017ec",
+                "at_um": [
+                  50000,
+                  10000
+                ],
+                "anchor": {
+                  "kind": "bend"
+                }
+              },
+              {
+                "id": "188d4935-8f35-559a-9bba-90be5cbadd15",
+                "at_um": [
+                  50000,
+                  90000
+                ],
+                "anchor": {
+                  "kind": "bend"
+                }
+              },
+              {
+                "id": "40c6b634-5d41-5284-ba51-66a007ed74dc",
+                "at_um": [
+                  40000,
+                  90000
+                ],
+                "anchor": {
+                  "kind": "pin",
+                  "component_id": "a3346d14-c399-52ed-96d8-c2a28311399a",
+                  "physical_pin_number": "1"
+                }
+              }
+            ],
+            "segments": [
+              {
+                "id": "a4857952-09e0-561a-9300-7c98014b1d60",
+                "from_vertex_id": "2002a947-1291-55f8-9421-3d092589ee2d",
+                "to_vertex_id": "4f461a69-8f5f-5c7f-a70c-4a49824017ec"
+              },
+              {
+                "id": "0676b76b-d0ed-53bd-9314-ce1d1f569fa7",
+                "from_vertex_id": "4f461a69-8f5f-5c7f-a70c-4a49824017ec",
+                "to_vertex_id": "188d4935-8f35-559a-9bba-90be5cbadd15"
+              },
+              {
+                "id": "90f02e0e-2f77-544f-ad8e-a6374643190b",
+                "from_vertex_id": "188d4935-8f35-559a-9bba-90be5cbadd15",
+                "to_vertex_id": "40c6b634-5d41-5284-ba51-66a007ed74dc"
+              }
+            ],
+            "mode": "orthogonal"
+          }
+        ],
+        "junctions": [],
+        "splices": [],
+        "texts": [
+          {
+            "id": "text-title",
+            "layer_id": "layer-draw",
+            "text": "Two networks; X is not a junction",
+            "at_um": [
+              22000,
+              12000
+            ],
+            "rotation_deg": 0,
+            "height_um": 3500
+          }
+        ],
+        "labels": [],
+        "graphics": []
+      }
+    ],
+    "settings": {
+      "units": "um",
+      "grid_visible": true,
+      "snap_enabled": false,
+      "grid_step_um": 1000,
+      "orthogonal_wires": true
+    },
+    "provenance": {
+      "source_sha": "0000000000000000000000000000000000000000",
+      "source_path": "fixtures/synthetic",
+      "status": "synthetic",
+      "expected_counts": {
+        "components": 4,
+        "nets": 2,
+        "memberships": 4,
+        "da1_pins": 0,
+        "b_graphics": 0
+      }
+    }
+  },
+  "workspace": {
+    "active_sheet_id": "sheet-1",
+    "camera_center_um": [
+      0,
+      0
+    ],
+    "zoom_milli": 1000,
+    "selected_ids": [],
+    "panels_px": {
+      "left": 280,
+      "right": 320,
+      "bottom": 160
+    }
+  }
+}

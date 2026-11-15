@@ -1,0 +1,1836 @@
+{
+  "format": "gscad-project",
+  "format_version": 2,
+  "project": {
+    "id": "9f0b8a3f-cf1e-5c4c-9910-fac27d489273",
+    "title": "TL494 source E695 inventory, unrouted",
+    "part_definitions": [
+      {
+        "id": "capacitor.polarized",
+        "reference_prefix": "CAPACITOR",
+        "symbol_ids": [
+          "symbol/capacitor.polarized"
+        ],
+        "physical_pins": [
+          {
+            "number": "1",
+            "name": "1",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "2",
+            "name": "2",
+            "electrical_type": "passive"
+          }
+        ]
+      },
+      {
+        "id": "capacitor.fixed",
+        "reference_prefix": "CAPACITOR",
+        "symbol_ids": [
+          "symbol/capacitor.fixed"
+        ],
+        "physical_pins": [
+          {
+            "number": "1",
+            "name": "1",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "2",
+            "name": "2",
+            "electrical_type": "passive"
+          }
+        ]
+      },
+      {
+        "id": "resistor.fixed",
+        "reference_prefix": "RESISTOR",
+        "symbol_ids": [
+          "symbol/resistor.fixed"
+        ],
+        "physical_pins": [
+          {
+            "number": "1",
+            "name": "1",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "2",
+            "name": "2",
+            "electrical_type": "passive"
+          }
+        ]
+      },
+      {
+        "id": "resistor.variable",
+        "reference_prefix": "RESISTOR",
+        "symbol_ids": [
+          "symbol/resistor.variable"
+        ],
+        "physical_pins": [
+          {
+            "number": "1",
+            "name": "1",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "2",
+            "name": "2",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "3",
+            "name": "3",
+            "electrical_type": "passive"
+          }
+        ]
+      },
+      {
+        "id": "transistor.mosfet_n_enh",
+        "reference_prefix": "TRANSISTOR",
+        "symbol_ids": [
+          "symbol/transistor.mosfet_n_enh"
+        ],
+        "physical_pins": [
+          {
+            "number": "1",
+            "name": "1",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "2",
+            "name": "2",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "3",
+            "name": "3",
+            "electrical_type": "passive"
+          }
+        ]
+      },
+      {
+        "id": "diode.schottky",
+        "reference_prefix": "DIODE",
+        "symbol_ids": [
+          "symbol/diode.schottky"
+        ],
+        "physical_pins": [
+          {
+            "number": "1",
+            "name": "1",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "2",
+            "name": "2",
+            "electrical_type": "passive"
+          }
+        ]
+      },
+      {
+        "id": "inductor.ferromagnetic",
+        "reference_prefix": "INDUCTOR",
+        "symbol_ids": [
+          "symbol/inductor.ferromagnetic"
+        ],
+        "physical_pins": [
+          {
+            "number": "1",
+            "name": "1",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "2",
+            "name": "2",
+            "electrical_type": "passive"
+          }
+        ]
+      },
+      {
+        "id": "fuse.general",
+        "reference_prefix": "FUSE",
+        "symbol_ids": [
+          "symbol/fuse.general"
+        ],
+        "physical_pins": [
+          {
+            "number": "1",
+            "name": "1",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "2",
+            "name": "2",
+            "electrical_type": "passive"
+          }
+        ]
+      },
+      {
+        "id": "reference.connector.x1",
+        "reference_prefix": "REFERENCE",
+        "symbol_ids": [
+          "symbol/reference.connector.x1"
+        ],
+        "physical_pins": [
+          {
+            "number": "1",
+            "name": "1",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "2",
+            "name": "2",
+            "electrical_type": "passive"
+          }
+        ]
+      },
+      {
+        "id": "reference.connector.x2",
+        "reference_prefix": "REFERENCE",
+        "symbol_ids": [
+          "symbol/reference.connector.x2"
+        ],
+        "physical_pins": [
+          {
+            "number": "1",
+            "name": "1",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "2",
+            "name": "2",
+            "electrical_type": "passive"
+          }
+        ]
+      },
+      {
+        "id": "reference.tl494cn",
+        "reference_prefix": "REFERENCE",
+        "symbol_ids": [
+          "symbol/reference.tl494cn"
+        ],
+        "physical_pins": [
+          {
+            "number": "1",
+            "name": "1",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "2",
+            "name": "2",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "3",
+            "name": "FEEDBACK",
+            "electrical_type": "input"
+          },
+          {
+            "number": "4",
+            "name": "4",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "5",
+            "name": "5",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "6",
+            "name": "6",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "7",
+            "name": "7",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "8",
+            "name": "8",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "9",
+            "name": "9",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "10",
+            "name": "10",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "11",
+            "name": "11",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "12",
+            "name": "12",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "13",
+            "name": "OUTPUT CTRL",
+            "electrical_type": "input"
+          },
+          {
+            "number": "14",
+            "name": "14",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "15",
+            "name": "15",
+            "electrical_type": "passive"
+          },
+          {
+            "number": "16",
+            "name": "16",
+            "electrical_type": "passive"
+          }
+        ]
+      }
+    ],
+    "symbol_definitions": [
+      {
+        "id": "symbol/capacitor.polarized",
+        "part_id": "capacitor.polarized",
+        "revision": 1,
+        "status": "draft",
+        "pins": [
+          {
+            "physical_pin_number": "1",
+            "at_um": [
+              -10000,
+              0
+            ],
+            "side": "left"
+          },
+          {
+            "physical_pin_number": "2",
+            "at_um": [
+              10000,
+              0
+            ],
+            "side": "right"
+          }
+        ],
+        "graphics": [
+          {
+            "kind": "rect",
+            "points_um": [
+              [
+                -4000,
+                -2000
+              ],
+              [
+                4000,
+                2000
+              ]
+            ],
+            "stroke_um": 300
+          }
+        ],
+        "standard_refs": [
+          "DRAFT: source-inspired CAD data shape, not approved ESKD UGO"
+        ]
+      },
+      {
+        "id": "symbol/capacitor.fixed",
+        "part_id": "capacitor.fixed",
+        "revision": 1,
+        "status": "draft",
+        "pins": [
+          {
+            "physical_pin_number": "1",
+            "at_um": [
+              -10000,
+              0
+            ],
+            "side": "left"
+          },
+          {
+            "physical_pin_number": "2",
+            "at_um": [
+              10000,
+              0
+            ],
+            "side": "right"
+          }
+        ],
+        "graphics": [
+          {
+            "kind": "rect",
+            "points_um": [
+              [
+                -4000,
+                -2000
+              ],
+              [
+                4000,
+                2000
+              ]
+            ],
+            "stroke_um": 300
+          }
+        ],
+        "standard_refs": [
+          "DRAFT: source-inspired CAD data shape, not approved ESKD UGO"
+        ]
+      },
+      {
+        "id": "symbol/resistor.fixed",
+        "part_id": "resistor.fixed",
+        "revision": 1,
+        "status": "draft",
+        "pins": [
+          {
+            "physical_pin_number": "1",
+            "at_um": [
+              -10000,
+              0
+            ],
+            "side": "left"
+          },
+          {
+            "physical_pin_number": "2",
+            "at_um": [
+              10000,
+              0
+            ],
+            "side": "right"
+          }
+        ],
+        "graphics": [
+          {
+            "kind": "rect",
+            "points_um": [
+              [
+                -4000,
+                -2000
+              ],
+              [
+                4000,
+                2000
+              ]
+            ],
+            "stroke_um": 300
+          }
+        ],
+        "standard_refs": [
+          "DRAFT: source-inspired CAD data shape, not approved ESKD UGO"
+        ]
+      },
+      {
+        "id": "symbol/resistor.variable",
+        "part_id": "resistor.variable",
+        "revision": 1,
+        "status": "draft",
+        "pins": [
+          {
+            "physical_pin_number": "1",
+            "at_um": [
+              -10000,
+              0
+            ],
+            "side": "left"
+          },
+          {
+            "physical_pin_number": "2",
+            "at_um": [
+              10000,
+              0
+            ],
+            "side": "right"
+          },
+          {
+            "physical_pin_number": "3",
+            "at_um": [
+              0,
+              10000
+            ],
+            "side": "bottom"
+          }
+        ],
+        "graphics": [
+          {
+            "kind": "rect",
+            "points_um": [
+              [
+                -4000,
+                -2000
+              ],
+              [
+                4000,
+                2000
+              ]
+            ],
+            "stroke_um": 300
+          }
+        ],
+        "standard_refs": [
+          "DRAFT: source-inspired CAD data shape, not approved ESKD UGO"
+        ]
+      },
+      {
+        "id": "symbol/transistor.mosfet_n_enh",
+        "part_id": "transistor.mosfet_n_enh",
+        "revision": 1,
+        "status": "draft",
+        "pins": [
+          {
+            "physical_pin_number": "1",
+            "at_um": [
+              -10000,
+              0
+            ],
+            "side": "left"
+          },
+          {
+            "physical_pin_number": "2",
+            "at_um": [
+              10000,
+              0
+            ],
+            "side": "right"
+          },
+          {
+            "physical_pin_number": "3",
+            "at_um": [
+              0,
+              10000
+            ],
+            "side": "bottom"
+          }
+        ],
+        "graphics": [
+          {
+            "kind": "rect",
+            "points_um": [
+              [
+                -4000,
+                -2000
+              ],
+              [
+                4000,
+                2000
+              ]
+            ],
+            "stroke_um": 300
+          }
+        ],
+        "standard_refs": [
+          "DRAFT: source-inspired CAD data shape, not approved ESKD UGO"
+        ]
+      },
+      {
+        "id": "symbol/diode.schottky",
+        "part_id": "diode.schottky",
+        "revision": 1,
+        "status": "draft",
+        "pins": [
+          {
+            "physical_pin_number": "1",
+            "at_um": [
+              -10000,
+              0
+            ],
+            "side": "left"
+          },
+          {
+            "physical_pin_number": "2",
+            "at_um": [
+              10000,
+              0
+            ],
+            "side": "right"
+          }
+        ],
+        "graphics": [
+          {
+            "kind": "rect",
+            "points_um": [
+              [
+                -4000,
+                -2000
+              ],
+              [
+                4000,
+                2000
+              ]
+            ],
+            "stroke_um": 300
+          }
+        ],
+        "standard_refs": [
+          "DRAFT: source-inspired CAD data shape, not approved ESKD UGO"
+        ]
+      },
+      {
+        "id": "symbol/inductor.ferromagnetic",
+        "part_id": "inductor.ferromagnetic",
+        "revision": 1,
+        "status": "draft",
+        "pins": [
+          {
+            "physical_pin_number": "1",
+            "at_um": [
+              -10000,
+              0
+            ],
+            "side": "left"
+          },
+          {
+            "physical_pin_number": "2",
+            "at_um": [
+              10000,
+              0
+            ],
+            "side": "right"
+          }
+        ],
+        "graphics": [
+          {
+            "kind": "rect",
+            "points_um": [
+              [
+                -4000,
+                -2000
+              ],
+              [
+                4000,
+                2000
+              ]
+            ],
+            "stroke_um": 300
+          }
+        ],
+        "standard_refs": [
+          "DRAFT: source-inspired CAD data shape, not approved ESKD UGO"
+        ]
+      },
+      {
+        "id": "symbol/fuse.general",
+        "part_id": "fuse.general",
+        "revision": 1,
+        "status": "draft",
+        "pins": [
+          {
+            "physical_pin_number": "1",
+            "at_um": [
+              -10000,
+              0
+            ],
+            "side": "left"
+          },
+          {
+            "physical_pin_number": "2",
+            "at_um": [
+              10000,
+              0
+            ],
+            "side": "right"
+          }
+        ],
+        "graphics": [
+          {
+            "kind": "rect",
+            "points_um": [
+              [
+                -4000,
+                -2000
+              ],
+              [
+                4000,
+                2000
+              ]
+            ],
+            "stroke_um": 300
+          }
+        ],
+        "standard_refs": [
+          "DRAFT: source-inspired CAD data shape, not approved ESKD UGO"
+        ]
+      },
+      {
+        "id": "symbol/reference.connector.x1",
+        "part_id": "reference.connector.x1",
+        "revision": 1,
+        "status": "draft",
+        "pins": [
+          {
+            "physical_pin_number": "1",
+            "at_um": [
+              -10000,
+              0
+            ],
+            "side": "left"
+          },
+          {
+            "physical_pin_number": "2",
+            "at_um": [
+              10000,
+              0
+            ],
+            "side": "right"
+          }
+        ],
+        "graphics": [
+          {
+            "kind": "rect",
+            "points_um": [
+              [
+                -4000,
+                -2000
+              ],
+              [
+                4000,
+                2000
+              ]
+            ],
+            "stroke_um": 300
+          }
+        ],
+        "standard_refs": [
+          "DRAFT: source-inspired CAD data shape, not approved ESKD UGO"
+        ]
+      },
+      {
+        "id": "symbol/reference.connector.x2",
+        "part_id": "reference.connector.x2",
+        "revision": 1,
+        "status": "draft",
+        "pins": [
+          {
+            "physical_pin_number": "1",
+            "at_um": [
+              -10000,
+              0
+            ],
+            "side": "left"
+          },
+          {
+            "physical_pin_number": "2",
+            "at_um": [
+              10000,
+              0
+            ],
+            "side": "right"
+          }
+        ],
+        "graphics": [
+          {
+            "kind": "rect",
+            "points_um": [
+              [
+                -4000,
+                -2000
+              ],
+              [
+                4000,
+                2000
+              ]
+            ],
+            "stroke_um": 300
+          }
+        ],
+        "standard_refs": [
+          "DRAFT: source-inspired CAD data shape, not approved ESKD UGO"
+        ]
+      },
+      {
+        "id": "symbol/reference.tl494cn",
+        "part_id": "reference.tl494cn",
+        "revision": 1,
+        "status": "draft",
+        "pins": [
+          {
+            "physical_pin_number": "1",
+            "at_um": [
+              -8000,
+              10000
+            ],
+            "side": "left"
+          },
+          {
+            "physical_pin_number": "2",
+            "at_um": [
+              -8000,
+              20000
+            ],
+            "side": "left"
+          },
+          {
+            "physical_pin_number": "3",
+            "at_um": [
+              -8000,
+              30000
+            ],
+            "side": "left"
+          },
+          {
+            "physical_pin_number": "4",
+            "at_um": [
+              -8000,
+              40000
+            ],
+            "side": "left"
+          },
+          {
+            "physical_pin_number": "5",
+            "at_um": [
+              -8000,
+              50000
+            ],
+            "side": "left"
+          },
+          {
+            "physical_pin_number": "6",
+            "at_um": [
+              -8000,
+              60000
+            ],
+            "side": "left"
+          },
+          {
+            "physical_pin_number": "7",
+            "at_um": [
+              -8000,
+              70000
+            ],
+            "side": "left"
+          },
+          {
+            "physical_pin_number": "8",
+            "at_um": [
+              -8000,
+              80000
+            ],
+            "side": "left"
+          },
+          {
+            "physical_pin_number": "9",
+            "at_um": [
+              68000,
+              10000
+            ],
+            "side": "right"
+          },
+          {
+            "physical_pin_number": "10",
+            "at_um": [
+              68000,
+              20000
+            ],
+            "side": "right"
+          },
+          {
+            "physical_pin_number": "11",
+            "at_um": [
+              68000,
+              30000
+            ],
+            "side": "right"
+          },
+          {
+            "physical_pin_number": "12",
+            "at_um": [
+              68000,
+              40000
+            ],
+            "side": "right"
+          },
+          {
+            "physical_pin_number": "13",
+            "at_um": [
+              68000,
+              50000
+            ],
+            "side": "right"
+          },
+          {
+            "physical_pin_number": "14",
+            "at_um": [
+              68000,
+              60000
+            ],
+            "side": "right"
+          },
+          {
+            "physical_pin_number": "15",
+            "at_um": [
+              68000,
+              70000
+            ],
+            "side": "right"
+          },
+          {
+            "physical_pin_number": "16",
+            "at_um": [
+              68000,
+              80000
+            ],
+            "side": "right"
+          }
+        ],
+        "graphics": [
+          {
+            "kind": "rect",
+            "points_um": [
+              [
+                0,
+                0
+              ],
+              [
+                60000,
+                92000
+              ]
+            ],
+            "stroke_um": 300
+          }
+        ],
+        "standard_refs": [
+          "DRAFT: source-inspired CAD data shape, not approved ESKD UGO"
+        ]
+      }
+    ],
+    "components": [
+      {
+        "id": "ea0f4960-042f-5301-8f6f-d9ab92fd2572",
+        "refdes": "C1",
+        "source_refdes": "C1",
+        "part_id": "capacitor.polarized",
+        "value": ""
+      },
+      {
+        "id": "a3346d14-c399-52ed-96d8-c2a28311399a",
+        "refdes": "C2",
+        "source_refdes": "C2",
+        "part_id": "capacitor.polarized",
+        "value": ""
+      },
+      {
+        "id": "d12e7cfa-349d-5e20-a184-fcb6436cef40",
+        "refdes": "C3",
+        "source_refdes": "C3",
+        "part_id": "capacitor.polarized",
+        "value": ""
+      },
+      {
+        "id": "25a1c593-5b2f-5ed6-99a6-d7e1b68a1237",
+        "refdes": "C5",
+        "source_refdes": "C5",
+        "part_id": "capacitor.polarized",
+        "value": ""
+      },
+      {
+        "id": "4d5c3057-6bb9-5e76-9a9d-b893c7facc48",
+        "refdes": "C6",
+        "source_refdes": "C6",
+        "part_id": "capacitor.polarized",
+        "value": ""
+      },
+      {
+        "id": "14325459-4c1e-5463-87c4-b84e576cdf9f",
+        "refdes": "C4",
+        "source_refdes": "C4",
+        "part_id": "capacitor.fixed",
+        "value": ""
+      },
+      {
+        "id": "0c1bff95-b160-54f1-94d3-7dbf1cf720b6",
+        "refdes": "C7",
+        "source_refdes": "C7",
+        "part_id": "capacitor.fixed",
+        "value": ""
+      },
+      {
+        "id": "2b8d46bd-ef83-536f-bf91-8afacb7fb01a",
+        "refdes": "R1",
+        "source_refdes": "R1",
+        "part_id": "resistor.fixed",
+        "value": ""
+      },
+      {
+        "id": "14b38ca4-48b5-5bee-9746-ac0b41615f24",
+        "refdes": "R2",
+        "source_refdes": "R2",
+        "part_id": "resistor.fixed",
+        "value": ""
+      },
+      {
+        "id": "12b5cebe-a09a-5450-99a1-2420b429a534",
+        "refdes": "R3",
+        "source_refdes": "R3",
+        "part_id": "resistor.fixed",
+        "value": ""
+      },
+      {
+        "id": "fcf128bf-2899-594b-8c6d-753195325476",
+        "refdes": "R4",
+        "source_refdes": "R4",
+        "part_id": "resistor.fixed",
+        "value": ""
+      },
+      {
+        "id": "ae77622a-e2ee-51d1-b0ca-0d72437e24f8",
+        "refdes": "R6",
+        "source_refdes": "R6",
+        "part_id": "resistor.fixed",
+        "value": ""
+      },
+      {
+        "id": "350aa1b1-3842-53b2-ad2e-405e146843a6",
+        "refdes": "R7",
+        "source_refdes": "R7",
+        "part_id": "resistor.fixed",
+        "value": ""
+      },
+      {
+        "id": "f6d54237-6f9c-5f3e-af8a-ccafd1869231",
+        "refdes": "R8",
+        "source_refdes": "R8",
+        "part_id": "resistor.fixed",
+        "value": ""
+      },
+      {
+        "id": "f8ffe8b1-db8e-51e1-9ab8-5f041bb1941b",
+        "refdes": "R5",
+        "source_refdes": "R5",
+        "part_id": "resistor.variable",
+        "value": ""
+      },
+      {
+        "id": "e5a0fa4d-162c-549a-93c1-167b93dadbf1",
+        "refdes": "VT1",
+        "source_refdes": "VT1",
+        "part_id": "transistor.mosfet_n_enh",
+        "value": ""
+      },
+      {
+        "id": "4c1519f7-1926-505f-b6a8-0b9ae2baef5f",
+        "refdes": "VD1",
+        "source_refdes": "VD1",
+        "part_id": "diode.schottky",
+        "value": ""
+      },
+      {
+        "id": "001b4500-c355-524f-ba59-56643c1cf275",
+        "refdes": "L1",
+        "source_refdes": "L1",
+        "part_id": "inductor.ferromagnetic",
+        "value": ""
+      },
+      {
+        "id": "1994bd7a-cc8c-5001-b0e5-b440c1f70e44",
+        "refdes": "L2",
+        "source_refdes": "L2",
+        "part_id": "inductor.ferromagnetic",
+        "value": ""
+      },
+      {
+        "id": "0cdd74d4-c9e5-5d2b-a8af-c0a2e8ee2baf",
+        "refdes": "FU1",
+        "source_refdes": "FU1",
+        "part_id": "fuse.general",
+        "value": ""
+      },
+      {
+        "id": "36bb2653-8467-54f0-85ba-8b5ecc1d8377",
+        "refdes": "X1",
+        "source_refdes": "X1",
+        "part_id": "reference.connector.x1",
+        "value": ""
+      },
+      {
+        "id": "a78afe39-0559-5aed-8780-16e9ff94b690",
+        "refdes": "X2",
+        "source_refdes": "X2",
+        "part_id": "reference.connector.x2",
+        "value": ""
+      },
+      {
+        "id": "83e74318-67e2-5703-9a68-038e216be8cb",
+        "refdes": "DA1",
+        "source_refdes": "DA1",
+        "part_id": "reference.tl494cn",
+        "value": ""
+      }
+    ],
+    "nets": [
+      {
+        "id": "db2777ea-eb47-5474-b82e-f0fb370a1b93",
+        "name": "a_INPUT_PLUS",
+        "members": [
+          {
+            "component_id": "36bb2653-8467-54f0-85ba-8b5ecc1d8377",
+            "physical_pin_number": "1"
+          },
+          {
+            "component_id": "001b4500-c355-524f-ba59-56643c1cf275",
+            "physical_pin_number": "1"
+          },
+          {
+            "component_id": "83e74318-67e2-5703-9a68-038e216be8cb",
+            "physical_pin_number": "12"
+          },
+          {
+            "component_id": "83e74318-67e2-5703-9a68-038e216be8cb",
+            "physical_pin_number": "8"
+          },
+          {
+            "component_id": "83e74318-67e2-5703-9a68-038e216be8cb",
+            "physical_pin_number": "11"
+          },
+          {
+            "component_id": "83e74318-67e2-5703-9a68-038e216be8cb",
+            "physical_pin_number": "17"
+          }
+        ],
+        "route_status": "unrouted"
+      },
+      {
+        "id": "a82bc557-f192-54e9-af47-7a00476df29b",
+        "name": "COMMON",
+        "members": [
+          {
+            "component_id": "36bb2653-8467-54f0-85ba-8b5ecc1d8377",
+            "physical_pin_number": "2"
+          },
+          {
+            "component_id": "a78afe39-0559-5aed-8780-16e9ff94b690",
+            "physical_pin_number": "2"
+          },
+          {
+            "component_id": "e5a0fa4d-162c-549a-93c1-167b93dadbf1",
+            "physical_pin_number": "3"
+          },
+          {
+            "component_id": "4c1519f7-1926-505f-b6a8-0b9ae2baef5f",
+            "physical_pin_number": "2"
+          },
+          {
+            "component_id": "25a1c593-5b2f-5ed6-99a6-d7e1b68a1237",
+            "physical_pin_number": "1"
+          },
+          {
+            "component_id": "4d5c3057-6bb9-5e76-9a9d-b893c7facc48",
+            "physical_pin_number": "1"
+          },
+          {
+            "component_id": "83e74318-67e2-5703-9a68-038e216be8cb",
+            "physical_pin_number": "7"
+          },
+          {
+            "component_id": "83e74318-67e2-5703-9a68-038e216be8cb",
+            "physical_pin_number": "1"
+          },
+          {
+            "component_id": "83e74318-67e2-5703-9a68-038e216be8cb",
+            "physical_pin_number": "16"
+          },
+          {
+            "component_id": "83e74318-67e2-5703-9a68-038e216be8cb",
+            "physical_pin_number": "13"
+          },
+          {
+            "component_id": "ae77622a-e2ee-51d1-b0ca-0d72437e24f8",
+            "physical_pin_number": "2"
+          },
+          {
+            "component_id": "350aa1b1-3842-53b2-ad2e-405e146843a6",
+            "physical_pin_number": "2"
+          },
+          {
+            "component_id": "f6d54237-6f9c-5f3e-af8a-ccafd1869231",
+            "physical_pin_number": "2"
+          },
+          {
+            "component_id": "0c1bff95-b160-54f1-94d3-7dbf1cf720b6",
+            "physical_pin_number": "2"
+          }
+        ],
+        "route_status": "unrouted"
+      },
+      {
+        "id": "7ea4e0a6-2bea-5839-864a-a1d1b879df9e",
+        "name": "SWITCH",
+        "members": [
+          {
+            "component_id": "001b4500-c355-524f-ba59-56643c1cf275",
+            "physical_pin_number": "2"
+          },
+          {
+            "component_id": "e5a0fa4d-162c-549a-93c1-167b93dadbf1",
+            "physical_pin_number": "2"
+          },
+          {
+            "component_id": "ea0f4960-042f-5301-8f6f-d9ab92fd2572",
+            "physical_pin_number": "1"
+          },
+          {
+            "component_id": "a3346d14-c399-52ed-96d8-c2a28311399a",
+            "physical_pin_number": "1"
+          }
+        ],
+        "route_status": "unrouted"
+      },
+      {
+        "id": "fc5d92bc-6409-54e4-8ac5-38b31049e9e2",
+        "name": "TRANSFER",
+        "members": [
+          {
+            "component_id": "ea0f4960-042f-5301-8f6f-d9ab92fd2572",
+            "physical_pin_number": "2"
+          },
+          {
+            "component_id": "a3346d14-c399-52ed-96d8-c2a28311399a",
+            "physical_pin_number": "2"
+          },
+          {
+            "component_id": "4c1519f7-1926-505f-b6a8-0b9ae2baef5f",
+            "physical_pin_number": "1"
+          },
+          {
+            "component_id": "1994bd7a-cc8c-5001-b0e5-b440c1f70e44",
+            "physical_pin_number": "1"
+          }
+        ],
+        "route_status": "unrouted"
+      },
+      {
+        "id": "6d52f5be-e217-5c62-8322-c031fd265dcd",
+        "name": "OUT_BEFORE_FUSE",
+        "members": [
+          {
+            "component_id": "1994bd7a-cc8c-5001-b0e5-b440c1f70e44",
+            "physical_pin_number": "2"
+          },
+          {
+            "component_id": "0cdd74d4-c9e5-5d2b-a8af-c0a2e8ee2baf",
+            "physical_pin_number": "1"
+          },
+          {
+            "component_id": "25a1c593-5b2f-5ed6-99a6-d7e1b68a1237",
+            "physical_pin_number": "2"
+          },
+          {
+            "component_id": "4d5c3057-6bb9-5e76-9a9d-b893c7facc48",
+            "physical_pin_number": "2"
+          }
+        ],
+        "route_status": "unrouted"
+      },
+      {
+        "id": "0504408a-9761-523c-b6f7-5872f422c70f",
+        "name": "b_NEGATIVE_OUTPUT",
+        "members": [
+          {
+            "component_id": "0cdd74d4-c9e5-5d2b-a8af-c0a2e8ee2baf",
+            "physical_pin_number": "2"
+          },
+          {
+            "component_id": "a78afe39-0559-5aed-8780-16e9ff94b690",
+            "physical_pin_number": "1"
+          },
+          {
+            "component_id": "f8ffe8b1-db8e-51e1-9ab8-5f041bb1941b",
+            "physical_pin_number": "2"
+          }
+        ],
+        "route_status": "unrouted"
+      },
+      {
+        "id": "5bb56777-9844-57eb-82ab-0b5d1e6ecc79",
+        "name": "CONTROL_REFERENCE",
+        "members": [
+          {
+            "component_id": "83e74318-67e2-5703-9a68-038e216be8cb",
+            "physical_pin_number": "14"
+          },
+          {
+            "component_id": "83e74318-67e2-5703-9a68-038e216be8cb",
+            "physical_pin_number": "15"
+          },
+          {
+            "component_id": "2b8d46bd-ef83-536f-bf91-8afacb7fb01a",
+            "physical_pin_number": "1"
+          },
+          {
+            "component_id": "14b38ca4-48b5-5bee-9746-ac0b41615f24",
+            "physical_pin_number": "1"
+          },
+          {
+            "component_id": "d12e7cfa-349d-5e20-a184-fcb6436cef40",
+            "physical_pin_number": "1"
+          }
+        ],
+        "route_status": "unrouted"
+      },
+      {
+        "id": "c7753caf-caee-5d5a-9e00-5afce708493d",
+        "name": "SOFT_START",
+        "members": [
+          {
+            "component_id": "83e74318-67e2-5703-9a68-038e216be8cb",
+            "physical_pin_number": "4"
+          },
+          {
+            "component_id": "2b8d46bd-ef83-536f-bf91-8afacb7fb01a",
+            "physical_pin_number": "2"
+          },
+          {
+            "component_id": "d12e7cfa-349d-5e20-a184-fcb6436cef40",
+            "physical_pin_number": "2"
+          },
+          {
+            "component_id": "ae77622a-e2ee-51d1-b0ca-0d72437e24f8",
+            "physical_pin_number": "1"
+          }
+        ],
+        "route_status": "unrouted"
+      },
+      {
+        "id": "94ddbb6e-5677-5290-bbee-a510be94e43e",
+        "name": "ERROR_INPUT",
+        "members": [
+          {
+            "component_id": "83e74318-67e2-5703-9a68-038e216be8cb",
+            "physical_pin_number": "2"
+          },
+          {
+            "component_id": "14b38ca4-48b5-5bee-9746-ac0b41615f24",
+            "physical_pin_number": "2"
+          },
+          {
+            "component_id": "fcf128bf-2899-594b-8c6d-753195325476",
+            "physical_pin_number": "1"
+          },
+          {
+            "component_id": "14325459-4c1e-5463-87c4-b84e576cdf9f",
+            "physical_pin_number": "1"
+          }
+        ],
+        "route_status": "unrouted"
+      },
+      {
+        "id": "c5b7bd96-b448-553e-a949-ababb135908d",
+        "name": "RC_CORRECTION",
+        "members": [
+          {
+            "component_id": "14325459-4c1e-5463-87c4-b84e576cdf9f",
+            "physical_pin_number": "2"
+          },
+          {
+            "component_id": "12b5cebe-a09a-5450-99a1-2420b429a534",
+            "physical_pin_number": "1"
+          }
+        ],
+        "route_status": "unrouted"
+      },
+      {
+        "id": "305477bb-f4b7-55e8-a293-02d2671b054e",
+        "name": "FEEDBACK",
+        "members": [
+          {
+            "component_id": "12b5cebe-a09a-5450-99a1-2420b429a534",
+            "physical_pin_number": "2"
+          },
+          {
+            "component_id": "83e74318-67e2-5703-9a68-038e216be8cb",
+            "physical_pin_number": "3"
+          }
+        ],
+        "route_status": "unrouted"
+      },
+      {
+        "id": "f4eafa0e-e324-599d-a112-c9ec1e10837d",
+        "name": "ADJUSTED_DIVIDER",
+        "members": [
+          {
+            "component_id": "fcf128bf-2899-594b-8c6d-753195325476",
+            "physical_pin_number": "2"
+          },
+          {
+            "component_id": "f8ffe8b1-db8e-51e1-9ab8-5f041bb1941b",
+            "physical_pin_number": "1"
+          },
+          {
+            "component_id": "f8ffe8b1-db8e-51e1-9ab8-5f041bb1941b",
+            "physical_pin_number": "3"
+          }
+        ],
+        "route_status": "unrouted"
+      },
+      {
+        "id": "2657bb33-5a9f-5b00-b7b5-ab411c2dafa8",
+        "name": "OSCILLATOR_CT",
+        "members": [
+          {
+            "component_id": "0c1bff95-b160-54f1-94d3-7dbf1cf720b6",
+            "physical_pin_number": "1"
+          },
+          {
+            "component_id": "83e74318-67e2-5703-9a68-038e216be8cb",
+            "physical_pin_number": "5"
+          }
+        ],
+        "route_status": "unrouted"
+      },
+      {
+        "id": "9bfb7f59-66de-5eab-8249-7b856d4f2dec",
+        "name": "OSCILLATOR_RT",
+        "members": [
+          {
+            "component_id": "350aa1b1-3842-53b2-ad2e-405e146843a6",
+            "physical_pin_number": "1"
+          },
+          {
+            "component_id": "83e74318-67e2-5703-9a68-038e216be8cb",
+            "physical_pin_number": "6"
+          }
+        ],
+        "route_status": "unrouted"
+      },
+      {
+        "id": "320b7acc-5599-5628-b832-0f59aca71dd5",
+        "name": "GATE_DRIVE",
+        "members": [
+          {
+            "component_id": "83e74318-67e2-5703-9a68-038e216be8cb",
+            "physical_pin_number": "9"
+          },
+          {
+            "component_id": "83e74318-67e2-5703-9a68-038e216be8cb",
+            "physical_pin_number": "10"
+          },
+          {
+            "component_id": "f6d54237-6f9c-5f3e-af8a-ccafd1869231",
+            "physical_pin_number": "1"
+          },
+          {
+            "component_id": "e5a0fa4d-162c-549a-93c1-167b93dadbf1",
+            "physical_pin_number": "1"
+          }
+        ],
+        "route_status": "unrouted"
+      }
+    ],
+    "sheets": [
+      {
+        "id": "sheet-1",
+        "name": "TL494 source E695 inventory, unrouted",
+        "index": 1,
+        "frame": {
+          "size_um": [
+            420000,
+            297000
+          ],
+          "margin_um": 10000,
+          "paper": "A3 landscape"
+        },
+        "title_block": {
+          "designation": "GSCAD-CHAT6",
+          "title": "TL494 source E695 inventory, unrouted",
+          "organization": "R&D",
+          "revision": "DRAFT",
+          "sheet_number": 1
+        },
+        "layers": [
+          {
+            "id": "layer-electric",
+            "name": "Electrical",
+            "kind": "electrical",
+            "visible": true,
+            "printable": true,
+            "locked": false
+          },
+          {
+            "id": "layer-draw",
+            "name": "Drawing",
+            "kind": "drawing",
+            "visible": true,
+            "printable": true,
+            "locked": false
+          },
+          {
+            "id": "layer-debug",
+            "name": "Diagnostics",
+            "kind": "diagnostics",
+            "visible": false,
+            "printable": false,
+            "locked": true
+          }
+        ],
+        "instances": [
+          {
+            "id": "782680db-b832-5d0c-84b8-553594739f43",
+            "component_id": "ea0f4960-042f-5301-8f6f-d9ab92fd2572",
+            "symbol_id": "symbol/capacitor.polarized",
+            "origin_um": [
+              20000,
+              18000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          },
+          {
+            "id": "1e5a2db4-c21f-5b8b-a9aa-6c640d05842e",
+            "component_id": "a3346d14-c399-52ed-96d8-c2a28311399a",
+            "symbol_id": "symbol/capacitor.polarized",
+            "origin_um": [
+              88000,
+              18000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          },
+          {
+            "id": "0cb47a03-25e0-5b3e-bd43-9afe762b38e5",
+            "component_id": "d12e7cfa-349d-5e20-a184-fcb6436cef40",
+            "symbol_id": "symbol/capacitor.polarized",
+            "origin_um": [
+              156000,
+              18000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          },
+          {
+            "id": "a8cbf7e2-fd70-5eb0-b180-66c7a0781529",
+            "component_id": "25a1c593-5b2f-5ed6-99a6-d7e1b68a1237",
+            "symbol_id": "symbol/capacitor.polarized",
+            "origin_um": [
+              224000,
+              18000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          },
+          {
+            "id": "02cccfcb-9918-56aa-8f46-4358523024a1",
+            "component_id": "4d5c3057-6bb9-5e76-9a9d-b893c7facc48",
+            "symbol_id": "symbol/capacitor.polarized",
+            "origin_um": [
+              292000,
+              18000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          },
+          {
+            "id": "6420c6ad-7394-5f54-afad-13ec7d3b94ca",
+            "component_id": "14325459-4c1e-5463-87c4-b84e576cdf9f",
+            "symbol_id": "symbol/capacitor.fixed",
+            "origin_um": [
+              360000,
+              18000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          },
+          {
+            "id": "3eb61771-dc55-5b71-9f5a-517974f3496b",
+            "component_id": "0c1bff95-b160-54f1-94d3-7dbf1cf720b6",
+            "symbol_id": "symbol/capacitor.fixed",
+            "origin_um": [
+              20000,
+              74000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          },
+          {
+            "id": "1ee4ce0c-8f6c-5997-a4a0-5b244feb4280",
+            "component_id": "2b8d46bd-ef83-536f-bf91-8afacb7fb01a",
+            "symbol_id": "symbol/resistor.fixed",
+            "origin_um": [
+              88000,
+              74000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          },
+          {
+            "id": "8e946b19-3846-5b75-a6c6-6ff3b4376d57",
+            "component_id": "14b38ca4-48b5-5bee-9746-ac0b41615f24",
+            "symbol_id": "symbol/resistor.fixed",
+            "origin_um": [
+              156000,
+              74000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          },
+          {
+            "id": "b6dfb65e-4992-5bb5-977e-12ba74b9c765",
+            "component_id": "12b5cebe-a09a-5450-99a1-2420b429a534",
+            "symbol_id": "symbol/resistor.fixed",
+            "origin_um": [
+              224000,
+              74000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          },
+          {
+            "id": "c23581d1-f82b-5d00-ba6a-66676c4a73c2",
+            "component_id": "fcf128bf-2899-594b-8c6d-753195325476",
+            "symbol_id": "symbol/resistor.fixed",
+            "origin_um": [
+              292000,
+              74000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          },
+          {
+            "id": "c80b0657-62fb-5567-87f1-760532c32b2e",
+            "component_id": "ae77622a-e2ee-51d1-b0ca-0d72437e24f8",
+            "symbol_id": "symbol/resistor.fixed",
+            "origin_um": [
+              360000,
+              74000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          },
+          {
+            "id": "a91776d1-e8f5-5d38-ad0a-ca6d38448987",
+            "component_id": "350aa1b1-3842-53b2-ad2e-405e146843a6",
+            "symbol_id": "symbol/resistor.fixed",
+            "origin_um": [
+              20000,
+              130000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          },
+          {
+            "id": "c9244937-baf9-5dbc-8b53-c3706c6c6be5",
+            "component_id": "f6d54237-6f9c-5f3e-af8a-ccafd1869231",
+            "symbol_id": "symbol/resistor.fixed",
+            "origin_um": [
+              88000,
+              130000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          },
+          {
+            "id": "6b6a5559-ba97-59df-b2bf-7c7d9fbb626d",
+            "component_id": "f8ffe8b1-db8e-51e1-9ab8-5f041bb1941b",
+            "symbol_id": "symbol/resistor.variable",
+            "origin_um": [
+              156000,
+              130000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          },
+          {
+            "id": "f16bfc9a-fe22-5866-b28e-bf74680e4a58",
+            "component_id": "e5a0fa4d-162c-549a-93c1-167b93dadbf1",
+            "symbol_id": "symbol/transistor.mosfet_n_enh",
+            "origin_um": [
+              224000,
+              130000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          },
+          {
+            "id": "2ba56921-63a0-5c24-84ff-a2121238b2bd",
+            "component_id": "4c1519f7-1926-505f-b6a8-0b9ae2baef5f",
+            "symbol_id": "symbol/diode.schottky",
+            "origin_um": [
+              292000,
+              130000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          },
+          {
+            "id": "61ecb260-0fbe-5d89-b924-6a5ca449c650",
+            "component_id": "001b4500-c355-524f-ba59-56643c1cf275",
+            "symbol_id": "symbol/inductor.ferromagnetic",
+            "origin_um": [
+              360000,
+              130000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          },
+          {
+            "id": "0180642c-b9a8-5abd-aab0-c9abf837ed53",
+            "component_id": "1994bd7a-cc8c-5001-b0e5-b440c1f70e44",
+            "symbol_id": "symbol/inductor.ferromagnetic",
+            "origin_um": [
+              20000,
+              186000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          },
+          {
+            "id": "05197364-31b7-5c17-bf24-3e9dd3848aca",
+            "component_id": "0cdd74d4-c9e5-5d2b-a8af-c0a2e8ee2baf",
+            "symbol_id": "symbol/fuse.general",
+            "origin_um": [
+              88000,
+              186000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          },
+          {
+            "id": "f7373db9-6967-53ef-b61e-13e24caf0bf0",
+            "component_id": "36bb2653-8467-54f0-85ba-8b5ecc1d8377",
+            "symbol_id": "symbol/reference.connector.x1",
+            "origin_um": [
+              156000,
+              186000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          },
+          {
+            "id": "f7610d8c-3a7b-599e-ac1a-e72997050bf2",
+            "component_id": "a78afe39-0559-5aed-8780-16e9ff94b690",
+            "symbol_id": "symbol/reference.connector.x2",
+            "origin_um": [
+              224000,
+              186000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          },
+          {
+            "id": "7789b711-0cbd-5e8a-be35-7233fe3c7594",
+            "component_id": "83e74318-67e2-5703-9a68-038e216be8cb",
+            "symbol_id": "symbol/reference.tl494cn",
+            "origin_um": [
+              292000,
+              186000
+            ],
+            "rotation_deg": 0,
+            "mirror_x": false,
+            "layer_id": "layer-electric"
+          }
+        ],
+        "wires": [],
+        "junctions": [],
+        "splices": [],
+        "texts": [],
+        "labels": [
+          {
+            "id": "label-source-b",
+            "layer_id": "layer-draw",
+            "text": "b",
+            "at_um": [
+              10500,
+              280000
+            ],
+            "role": "visual",
+            "net_id": null
+          }
+        ],
+        "graphics": [
+          {
+            "id": "source-b-graphic-1",
+            "layer_id": "layer-draw",
+            "kind": "line",
+            "points_um": [
+              [
+                5000,
+                280000
+              ],
+              [
+                7000,
+                280000
+              ]
+            ],
+            "stroke_um": 300,
+            "source_role": "source_b_continuation"
+          },
+          {
+            "id": "source-b-graphic-2",
+            "layer_id": "layer-draw",
+            "kind": "line",
+            "points_um": [
+              [
+                8000,
+                280000
+              ],
+              [
+                10000,
+                280000
+              ]
+            ],
+            "stroke_um": 300,
+            "source_role": "source_b_continuation"
+          }
+        ]
+      }
+    ],
+    "settings": {
+      "units": "um",
+      "grid_visible": true,
+      "snap_enabled": false,
+      "grid_step_um": 1000,
+      "orthogonal_wires": true
+    },
+    "provenance": {
+      "source_sha": "e695c415fdced164b0e0c39c5249d030795a0aa6",
+      "source_path": "examples/tl494_full_native_model.py",
+      "status": "source_traced_unapproved",
+      "expected_counts": {
+        "components": 23,
+        "nets": 15,
+        "memberships": 62,
+        "da1_pins": 16,
+        "b_graphics": 2
+      }
+    }
+  },
+  "workspace": {
+    "active_sheet_id": "sheet-1",
+    "camera_center_um": [
+      0,
+      0
+    ],
+    "zoom_milli": 1000,
+    "selected_ids": [],
+    "panels_px": {
+      "left": 280,
+      "right": 320,
+      "bottom": 160
+    }
+  }
+}
