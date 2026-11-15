@@ -19,10 +19,11 @@ from examples.tl494_v5.cycle11_ti_bridge import bind_verified_compact_ti
 from examples.tl494_v5.route_candidate_driver import (
     OWNER_SHAS,
     SOURCE_SHA,
+    _build_obstacles,
     load_original_owner_fixture,
+    parse_candidate_moves,
     position_only_move,
     restore_original_named_nets,
-    source_signed_ink_footprint,
 )
 from gost_schematic.core.geometry import Point
 from gost_schematic.engines.multiterminal_router import (
@@ -68,8 +69,10 @@ def measure_pin_corridors(
         or len({num for ref, num in pins if ref == "DA1"}) != 16
     ):
         raise ValueError("C14_SOURCE_23_15_62_16_CHANGED")
-    symbols, occupied = source_signed_ink_footprint(assembly, font_file)
     manufacturer = bind_verified_compact_ti(assembly, original)
+    symbols, guards, layout, occupied, _style = _build_obstacles(
+        assembly, original, font_file, verified_ti=manufacturer,
+    )
     original_b = compose_circuit(font_file)[-1]
     true_b = rebind_true_source_b(
         original_b, manufacturer.signed.circuit, symbols,
@@ -87,6 +90,25 @@ def measure_pin_corridors(
         MARGIN_UM <= bbox[0] <= bbox[2] <= page_w - MARGIN_UM
         and MARGIN_UM <= bbox[1] <= bbox[3] <= page_h - MARGIN_UM
     )
+    # The real stroke bbox does NOT imply Type A measured labels fit.
+    # C1 was measured at y=9100um even while all 23 UGO fit A3/A2.
+    measured_text_overflow = []
+    for item in guards:
+        rect = item.collision_bounds
+        if (
+            rect.min_x < MARGIN_UM
+            or rect.max_x > page_w - MARGIN_UM
+            or rect.min_y < MARGIN_UM
+            or rect.max_y > page_h - MARGIN_UM
+        ):
+            measured_text_overflow.append({
+                "owner": getattr(item, "owner", None),
+                "label": getattr(item, "text", None),
+                "bounds_um": [
+                    rect.min_x, rect.min_y, rect.max_x, rect.max_y,
+                ],
+                "kind": type(item).__name__,
+            })
     physical = {}
     for net in original.nets:
         for pin in net.members:
@@ -146,6 +168,13 @@ def measure_pin_corridors(
         "page_format": page_format,
         "page_size_um": [page_w, page_h],
         "absolute_10mm_component_ink_fit": on_sheet,
+        "real_measured_text_guard_count": len(guards),
+        "real_measured_text_layout_valid": layout.valid,
+        "measured_text_10mm_frame_fit": not measured_text_overflow,
+        "measured_text_frame_violations": measured_text_overflow,
+        "source_position_only_moves_mm": [
+            [ref, str(dx), str(dy)] for ref, dx, dy in move_mm
+        ],
         "source_font_sha256": hashlib.sha256(font_file.read_bytes()).hexdigest(),
         "true_nonphysical_b_labels_count": len(true_b.endpoints),
         "true_b_source_stubs": {
@@ -174,9 +203,14 @@ def main() -> None:
     parser.add_argument("--font-file", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--page-format", choices=tuple(SHEET_UM), default="A3")
+    parser.add_argument(
+        "--move", action="append", default=[], metavar="REF:DX_MM:DY_MM",
+        help="Source-preserving 2.5mm signed component-only move",
+    )
     args = parser.parse_args()
     result = measure_pin_corridors(
         args.font_file, page_format=args.page_format,
+        move_mm=parse_candidate_moves(tuple(args.move)),
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
@@ -188,6 +222,7 @@ def main() -> None:
         "original_nets": result["original_net_count"],
         "pins": result["physical_pinref_memberships"],
         "paper": result["absolute_10mm_component_ink_fit"],
+        "measured_text_10mm_frame_fit": result["measured_text_10mm_frame_fit"],
         "blocked_escape_count_2500": sum(
             not p["escape_samples_um"]["2500"]["native_symbol_ink_clear"]
             for p in result["pin_escapes"].values()
