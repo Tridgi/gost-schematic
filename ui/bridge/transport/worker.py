@@ -134,9 +134,9 @@ def process(line: bytes) -> dict[str, Any]:
                                  parse_constant=_invalid_constant)
         except (ValueError, UnicodeDecodeError) as exc:
             raise ProtocolError("INVALID_JSON", "malformed JSON or UTF-8") from exc
-        if isinstance(request, dict) and isinstance(request.get("id"), str):
-            if ID_RE.fullmatch(request["id"]):
-                request_id = request["id"]
+        if (isinstance(request, dict) and isinstance(request.get("id"), str)
+                and ID_RE.fullmatch(request["id"])):
+            request_id = request["id"]
         result = dispatch(request)
         answer = {"v": VERSION, "id": request_id, "ok": True, "result": result}
         if len(json.dumps(answer, ensure_ascii=False).encode("utf-8")) > MAX_RESPONSE:
@@ -145,7 +145,7 @@ def process(line: bytes) -> dict[str, Any]:
     except ProtocolError as exc:
         return {"v": VERSION, "id": request_id, "ok": False,
                 "error": {"code": exc.code, "message": str(exc)}}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - keep protocol alive on unexpected engine failure
         print(f"transport fault: {type(exc).__name__}: {exc}", file=sys.stderr)
         return {"v": VERSION, "id": request_id, "ok": False,
                 "error": {"code": "INTERNAL", "message": "internal engine transport failure"}}
