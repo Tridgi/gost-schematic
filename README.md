@@ -63,6 +63,22 @@ future full-route gates](docs/ai-integration/cycle13-end-user-quickstart.md).
 The [Cycle14 typed diagnostics and future generator contract](docs/ai-integration/cycle14-readonly-retry-and-future-generator-contract.md)
 defines the exact seven stages and read-only retry policy; writer remains BLOCKED.
 
+**Cycle16 — consume real NET/RECON/PAINT C15 evidence (still read-only):**
+When an authorized owner has generated an actual
+`C15_REAL_TL494_DELIVERY.json` and its native SVG/DRC files, the same
+installed-wheel command supports
+`--owner-c15-dir /path/to/real/C15-output`. It independently checks the
+original named Net/physical PinRef membership, native route counts,
+SHA256-stamped SVG wire identities in both views, all 16 DA1 leads,
+0 vs 16 diagnostic green contact squares and the two exact
+**non-electrical** b lines, including 1µm coordinate drift.
+It writes `source-c16-owner-candidate-proof.json`, **never enables MCP
+writes** and always keeps final print blocked without independent QA.
+A separate non-editable-wheel CLI is
+`python -m examples.agent_tl494_cycle16_owner_proof --owner-c15-dir ... --out NEW_DIR`.
+[Production interface, commands, trust limits and real-owner CI]
+(docs/ai-integration/cycle16-real-c15-proof-consumer.md).
+
 ## AI / MCP read-only TL494 engineering workflow (Cycle 12, DRAFT)
 
 The user-source target is the **actual immutable TL494CN E3**:
