@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from gost_schematic.agent_project.catalog import CatalogResolver
+from gost_schematic.agent_project.cycle16_owner_proof import review_c15_owner_proof
 from gost_schematic.agent_project.generation_handoff import build_readonly_tl494_handoff
 from gost_schematic.agent_project.owner_api_locks import load_pinned_owner_lock_manifest
 from gost_schematic.agent_project.owner_source_contract import verify_frozen_owner_fixture
@@ -102,8 +103,9 @@ async def build_readonly_evidence(out: Path, source: dict[str, Any]) -> dict[str
     return await _native_mcp_catalog(out, source)
 
 
-def run(output: Path) -> dict[str, Any]:
-    root = _safe_new_output(output)
+def run(
+    output: Path, owner_c15_dir: Path | None = None,
+) -> dict[str, Any]:
     source = verify_frozen_owner_fixture(
         files("gost_schematic").joinpath(
             "agent_project", "data", "tl494_ic97_frozen_source.json"
@@ -115,6 +117,12 @@ def run(output: Path) -> dict[str, Any]:
     ):
         raise AssertionError("Packaged origin differs from current owner lock")
     request = _request(source)
+    # Validate any external owner evidence BEFORE creating the output folder.
+    owner_candidate = (
+        review_c15_owner_proof(request, owner_c15_dir)
+        if owner_c15_dir is not None else None
+    )
+    root = _safe_new_output(output)
     exit_code, report = _cli(request)
     if (
         exit_code != 2
@@ -139,6 +147,10 @@ def run(output: Path) -> dict[str, Any]:
     (root / "source-typed-request.json").write_bytes(_json_bytes(request))
     (root / "source-validation.json").write_bytes(_json_bytes(report))
     (root / "refusal-tests.json").write_bytes(_json_bytes(negatives))
+    if owner_candidate is not None:
+        (root / "source-c16-owner-candidate-proof.json").write_bytes(
+            _json_bytes(owner_candidate)
+        )
 
     artifacts = {}
     for path in sorted(root.iterdir()):
@@ -202,6 +214,10 @@ def run(output: Path) -> dict[str, Any]:
             "native SVG/300 DPI PNG and independent QA"
         ),
     }
+    if owner_candidate is not None:
+        result["external_c15_owner_proof_status"] = owner_candidate["status"]
+        result["external_c15_completed_original_nets"] = owner_candidate["routed_nets"]
+        result["external_c15_manifest_consumer_read_only"] = True
     (root / "source-quickstart-report.json").write_bytes(_json_bytes(result))
     return result
 
@@ -212,8 +228,12 @@ def main(argv: list[str] | None = None) -> int:
         "--out", required=True, type=Path,
         help="New empty, non-symlink output directory (trusted local user only)",
     )
+    parser.add_argument(
+        "--owner-c15-dir", type=Path,
+        help="Optional existing REAL RECON C15 output folder; read-only source proof",
+    )
     args = parser.parse_args(argv)
-    result = run(args.out)
+    result = run(args.out, args.owner_c15_dir)
     print(json.dumps(result, sort_keys=True, ensure_ascii=False))
     return 0
 
