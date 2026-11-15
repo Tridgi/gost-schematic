@@ -142,6 +142,8 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
   const [query,setQuery]=useState(''),[commandQuery,setCommandQuery]=useState('');
   const [format,setFormat]=useState<'svg'|'png300'>('svg');
   const [split,setSplit]=useState(()=>normalizeDockLayout(sizes).inspectorPercent??48);
+  // Mantine useLocalStorage reads existing preferences in an effect; restore after hydration.
+  useEffect(()=>{if(typeof sizes.inspectorPercent==='number')setSplit(Math.min(75,Math.max(25,sizes.inspectorPercent)));},[sizes.inspectorPercent]);
   const viewport=typeof window==='undefined'?1440:window.innerWidth;
   const persisted=normalizeDockLayout(sizes,viewport);
   const resize=useAppShellResize({
@@ -150,7 +152,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
     initialSizes:{navbar:persisted.navbar,aside:persisted.aside},
     onResizeEnd:changed=>setSizes(normalizeDockLayout({...sizes,...changed,inspectorPercent:split},window.innerWidth))
   });
-  function resetLayout(){resize.resetAll();setSizes({});setSplit(48);setLeft(true);setRight(true);}
+  function resetLayout(){resize.resetAll();setSizes({});setSplit(48);const wide=typeof window==='undefined'||window.innerWidth>=960;setLeft(wide);setRight(wide);}
   function changeSplit(p:number){setSplit(p);setSizes({...sizes,inspectorPercent:p});}
   const filtered=props.catalog.filter(x=>(x.name+' '+x.category).toLocaleLowerCase('ru-RU').includes(query.toLocaleLowerCase('ru-RU')));
   useEffect(()=>{
