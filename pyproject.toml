@@ -21,8 +21,15 @@ mcp = ["mcp>=1.17,<2", "resvg_py>=0.5,<1"]
 gost-schematic = "gost_schematic.cli:main"
 gost-schematic-mcp = "gost_schematic.mcp_server.server:main"
 
+[tool.setuptools]
+# Make the documented read-only Cycle13 CLI importable from a built wheel,
+# not only from a source checkout. Keep other example subpackages out.
+package-dir = {gost_schematic = "src/gost_schematic", examples = "examples"}
+
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["src", "."]
+include = ["gost_schematic*", "examples"]
+namespaces = true
 
 [tool.setuptools.package-data]
 gost_schematic = ["catalog/symbols/**/*.json", "catalog/parts/**/*.json", "catalog/inductors/*.json", "standards/*.json", "agent_project/data/*.json"]
