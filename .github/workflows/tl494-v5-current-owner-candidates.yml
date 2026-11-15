@@ -59,7 +59,7 @@ jobs:
           mkdir -p tests/fixtures
           git show "$IC:tests/fixtures/tl494_photo_23_frozen_cycle9.json" > tests/fixtures/tl494_photo_23_frozen_cycle9.json
           test "$(git hash-object tests/fixtures/tl494_photo_23_frozen_cycle9.json)" = a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65
-          for f in ic_rectangular.py ic_hotspots.py ic_orientation.py ic_power_profiles.py ic_tl494_profile.py ic_electrical_binding.py ic_sheet_composition.py external_wire_sheet.py native_sheet_ink_audit.py routed_native_sheet.py; do
+          for f in ic_rectangular.py ic_hotspots.py ic_orientation.py ic_power_profiles.py ic_tl494_profile.py ic_electrical_binding.py ic_sheet_composition.py external_wire_sheet.py sheet_svg.py native_sheet_ink_audit.py routed_native_sheet.py; do
             git show "$PAINT:src/gost_schematic/rendering/$f" > "src/gost_schematic/rendering/$f"
           done
           mkdir -p src/gost_schematic/catalog/source_profiles
