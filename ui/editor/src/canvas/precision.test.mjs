@@ -34,6 +34,17 @@ test('unsafe coordinates fail closed',()=>{
 test('hit returns signed PinRef not canvas Handle id',()=>{
  assert.deepEqual(hitTest(shape,camera,screen([12000,10000],camera)).pin,{component_id:'U',physical_pin_number:'1'});
 });
+test('physical pin hit band 6.99px hit, 7.01px miss (CHAT3 QA)',()=>{
+ const p=screen([12000,10000],camera),only={...shape,symbols:[symbol],wires:[]};
+ assert.equal(hitTest(only,camera,{x:p.x+6.99,y:p.y})?.kind,'pin');
+ assert.notEqual(hitTest(only,camera,{x:p.x+7.01,y:p.y})?.kind,'pin');
+});
+test('wire segment hit band 4.99px hit, 5.01px miss (CHAT3 QA)',()=>{
+ const only={symbols:[],junctions:[],wires:[{id:'w',net_id:'N',vertices:[{id:'v0',at_um:[0,0]},{id:'v1',at_um:[20000,0]}],segments:[{id:'s0',from_vertex_id:'v0',to_vertex_id:'v1'}]}]};
+ const p=screen([10000,0],camera);
+ assert.equal(hitTest(only,camera,{x:p.x,y:p.y+4.99})?.kind,'segment');
+ assert.notEqual(hitTest(only,camera,{x:p.x,y:p.y+5.01})?.kind,'segment');
+});
 test('overlapping physical pins are ambiguous; never connect arbitrary first',()=>{
  const s={...shape,symbols:[symbol,{...symbol,component_id:'V'}]};
  assert.equal(hitTest(s,camera,screen([12000,10000],camera)).kind,'ambiguous-pin');
