@@ -160,6 +160,9 @@ export function validateDocument(doc: WiringSnapshot): void {
   }
   for(const j of doc.junctions) {
     const key=`j:${j.id}`; if((degrees.get(key)??0)<2) fail('JUNCTION_DEGREE','Visible junction must join >=2 wire ends');
+    // A deliberately visible conducting dot must not sit on a foreign physical contact.
+    for(const net of doc.nets) if(net.id!==j.net_id) for(const pin of net.members)
+      if(same(physicalPin(doc,pin).at,j.at_um)) fail('NET_CONFLICT','Junction overlaps foreign-Net physical pin');
     for(const w of doc.wires) if(w.layer_id===j.layer_id && w.net_id!==j.net_id &&
       w.segments.some((_,i)=>onSegment(j.at_um,w.vertices[i].at_um,w.vertices[i+1].at_um)))
       fail('NET_CONFLICT','Junction touches foreign Net wire');
@@ -386,7 +389,10 @@ export class ManualWireEngine {
     for(const w of wires) union(anchorKey(terminal(w.vertices[0])),anchorKey(terminal(w.vertices.at(-1)!)));
     const groups=new Map<string,PinRef[]>();
     for(const p of net.members) {const k=find(`p:${pinKey(p)}`);groups.set(k,[...(groups.get(k)??[]),copy(p)]);}
-    return {status:wires.length===0?'unrouted':groups.size<=1?'verified':'partial',pin_groups:[...groups.values()]};
+    const touched=new Set(wires.flatMap(w=>[terminal(w.vertices[0]),terminal(w.vertices.at(-1)!)]
+      .filter((a):a is Extract<TerminalAnchor,{kind:'pin'}>=>a.kind==='pin').map(pinKey)));
+    const allPinsTouched=net.members.length>0&&net.members.every(p=>touched.has(pinKey(p)));
+    return {status:wires.length===0?'unrouted':groups.size===1&&allPinsTouched?'verified':'partial',pin_groups:[...groups.values()]};
   }
   highlightNet(netId:string):{wire_ids:string[];junction_ids:string[];splice_ids:string[];pin_groups:PinRef[][]} {
     const {pin_groups}=this.validateNet(netId);
