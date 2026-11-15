@@ -1,4 +1,6 @@
 """Agent instructions must reflect real shipped P1.1 and BLOCKED TL494 writes."""
+import subprocess
+import sys
 from pathlib import Path
 
 from gost_schematic.agent_project.agent_readiness import _OUTPUTS, _TL494_REFS
@@ -68,3 +70,48 @@ def test_guidance_tl494_matrix_matches_current_source_catalog():
     for ref, part in ref_ids.items():
         assert ref in (ROOT / "skills/gost-schematic/SKILL.md").read_text(encoding="utf-8")
         assert part in (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+
+
+
+def test_cycle13_quickstart_docs_use_installed_real_cli_and_safe_codex_commands():
+    quickstart = (ROOT / "docs/ai-integration/cycle13-end-user-quickstart.md").read_text(
+        encoding="utf-8"
+    )
+    codex = (ROOT / "docs/ai-integration/cycle13-codex-readonly-prompt.md").read_text(
+        encoding="utf-8"
+    )
+    future = (ROOT / "docs/ai-integration/cycle13-future-transactions-safety.md").read_text(
+        encoding="utf-8"
+    )
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    skill = (ROOT / "skills/gost-schematic/SKILL.md").read_text(
+        encoding="utf-8"
+    )
+    full_command = (
+        "python -m examples.agent_tl494_cycle13_quickstart "
+        "--out output/tl494-cycle13-user"
+    )
+    for doc in (quickstart, codex, readme, agents, skill):
+        assert full_command in doc
+        assert "BLOCKED" in doc
+        assert "23" in doc and "15" in doc and "62" in doc
+    assert "source_netlist_user_approval" in quickstart
+    assert "USER_REVIEW_REQUIRED" in quickstart
+    assert "refusal-tests.json" in quickstart
+    assert "source-quickstart-report.json" in quickstart
+    assert "codex mcp add gost-schematic-readonly -- python -m gost_schematic.mcp_server" in (
+        quickstart
+    )
+    assert "codex mcp list" in codex
+    assert "readOnlyHint=true" in future
+    assert "atomic" in future.lower()
+    assert "No" in future and "MCP" in future
+
+    cmd = subprocess.run(
+        [sys.executable, "-m", "examples.agent_tl494_cycle13_quickstart",
+         "--help"],
+        capture_output=True, text=True, check=True,
+    )
+    assert "--out" in cmd.stdout
+    assert "write" in cmd.stdout.lower() or "read-only" in cmd.stdout.lower()
