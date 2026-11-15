@@ -157,6 +157,35 @@ jobs:
           test "$code" -ne 0
           grep -q QA_C16_NO_GO_INCOMPLETE_ output/c16-strict-rejection-${{ matrix.python-version }}.log
           test ! -f output/qa-c16-must-not-release-${{ matrix.python-version }}.json
+      - name: Attack authentic source manifest with fabricated 15/15 header
+        run: |
+          set -euo pipefail
+          WIT=_c16_recon/output/qa-c16-source-witness/E695-C11-SIGNED.json
+          MANIFEST=_c16_recon/output/qa-c16-delivery/C15_REAL_TL494_DELIVERY.json
+          SOURCE_HASH="$(sha256sum "$WIT" | awk '{print $1}')"
+          FORGED=_c16_recon/output/qa-c16-delivery/C15_FORGED_15_HEADER.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('_c16_recon/output/qa-c16-delivery')
+          m = json.loads((root/'C15_REAL_TL494_DELIVERY.json').read_text())
+          assert m['completed_original_nets'] < 15
+          m['completed_original_nets'] = 15
+          (root/'C15_FORGED_15_HEADER.json').write_text(json.dumps(m))
+          PY
+          set +e
+          python scripts/qa_cycle16_source_release_gate.py \
+            --manifest "$FORGED" --source-witness "$WIT" \
+            --source-witness-sha256 "$SOURCE_HASH" \
+            --font-file "$QA_C16_TYPE_A" --expect-blocked \
+            --output output/qa-c16-fake-header-must-not-exist.json \
+            > output/c16-15header-spoof-${{ matrix.python-version }}.log 2>&1
+          status=$?
+          set -e
+          test "$status" -ne 0
+          grep -q QA_C16_INTEGRITY_FAIL:QA_C16_ROUTE_HEADER_15_FOR_PARTIAL_GRAPH \
+            output/c16-15header-spoof-${{ matrix.python-version }}.log
+          test ! -f output/qa-c16-fake-header-must-not-exist.json
       - name: Upload actual pinned artifacts and truthful FAIL-CLOSED report
         if: always()
         uses: actions/upload-artifact@v4
@@ -167,4 +196,5 @@ jobs:
             _c16_recon/output/qa-c16-delivery/
             output/qa-c16-source-release-negative-${{ matrix.python-version }}.json
             output/c16-strict-rejection-${{ matrix.python-version }}.log
+            output/c16-15header-spoof-${{ matrix.python-version }}.log
           if-no-files-found: warn
