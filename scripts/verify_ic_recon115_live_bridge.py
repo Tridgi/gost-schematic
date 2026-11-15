@@ -23,8 +23,8 @@ from examples.tl494_cycle9_circuit_integration import (
     load_frozen_source,
 )
 from gost_schematic.core.geometry import Box, Point
-from gost_schematic.core.units import format_mm
 from gost_schematic.core.transforms import Transform
+from gost_schematic.core.units import format_mm
 from gost_schematic.electrical.ic import (
     IcPinType,
     IcTextAngle,
