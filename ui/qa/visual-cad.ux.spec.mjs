@@ -195,12 +195,12 @@ test('CAD-UX-R3-06 — real save/reopen and SVG/PNG300 downloaded bytes', async 
     page.waitForEvent('download'),page.locator(sel('export-svg')).click()
   ]);
   const xml=await readFile(await svgDownload.path(),'utf8');
-  expect(xml).toMatch(/<svg\\b/);
-  expect(xml).toMatch(/\\bwidth="[0-9.]+mm"/);
-  expect(xml).toMatch(/\\bheight="[0-9.]+mm"/);
-  expect(xml).toMatch(/\\bviewBox="/);
-  expect(xml).toMatch(/<(path|line|polyline|rect)\\b/);
-  expect(xml).not.toMatch(/<image\\b/i);
+  expect(xml).toMatch(/<svg\b/);
+  expect(xml).toMatch(/\bwidth="[0-9.]+mm"/);
+  expect(xml).toMatch(/\bheight="[0-9.]+mm"/);
+  expect(xml).toMatch(/\bviewBox="/);
+  expect(xml).toMatch(/<(path|line|polyline|rect)\b/);
+  expect(xml).not.toMatch(/<image\b/i);
   expect(xml).not.toMatch(/data-layer="(geometry-review|selection|grid)"/);
 
   const [pngDownload] = await Promise.all([
@@ -210,10 +210,23 @@ test('CAD-UX-R3-06 — real save/reopen and SVG/PNG300 downloaded bytes', async 
   expect(png.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))).toBeTruthy();
   expect(png.readUInt32BE(16)).toBeGreaterThan(0);
   expect(png.readUInt32BE(20)).toBeGreaterThan(0);
-  const chunk=png.indexOf(Buffer.from('pHYs'));
-  expect(chunk).toBeGreaterThan(0);
+  // Walk actual PNG chunk headers; don't mistake compressed IDAT bytes for pHYs.
+  let offset=8,phys=null;
+  while(offset+12<=png.length) {
+    const length=png.readUInt32BE(offset);
+    if(offset+length+12>png.length) throw Error('Malformed PNG chunk bounds');
+    const type=png.toString('ascii',offset+4,offset+8);
+    if(type==='pHYs') {
+      expect(length).toBe(9);
+      phys={x:png.readUInt32BE(offset+8),y:png.readUInt32BE(offset+12),
+            unit:png[offset+16]};
+      break;
+    }
+    offset+=12+length;
+  }
+  expect(phys).not.toBeNull();
   // PNG pHYs stores integer pixels per meter. 300dpi ~= 11811 px/m.
-  const ppmX=png.readUInt32BE(chunk+4),ppmY=png.readUInt32BE(chunk+8),unit=png[chunk+12];
+  const {x:ppmX,y:ppmY,unit}=phys;
   expect(unit).toBe(1);
   expect(Math.abs(ppmX*0.0254-300)).toBeLessThan(0.1);
   expect(Math.abs(ppmY*0.0254-300)).toBeLessThan(0.1);
