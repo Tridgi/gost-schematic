@@ -15,7 +15,9 @@ from decimal import Decimal
 from pathlib import Path
 
 from examples.tl494_v5.compact_layout import compact_source_assembly
+from examples.tl494_v5.cycle11_ti_bridge import bind_verified_compact_ti
 from examples.tl494_v5.route_candidate_driver import (
+    _build_obstacles,
     load_original_owner_fixture,
     position_only_move,
     restore_original_named_nets,
@@ -57,6 +59,15 @@ def build_snapshot(assembly, font: Path) -> dict:
     frozen, _binding = load_original_owner_fixture()
     canonical = restore_original_named_nets(assembly, frozen)
     symbols, measured_full = source_signed_ink_footprint(assembly, font)
+    # Use actual owner PAINT/Type A measured text and IC pin-label ink,
+    # never an invented text buffer or guessed font. This is the geometry
+    # that the genuine NET candidate _build_obstacles already consumes.
+    verified_ti = bind_verified_compact_ti(assembly, canonical)
+    _owner_symbols, guards, _sheet, _footprint, _style = _build_obstacles(
+        assembly, canonical, font, verified_ti=verified_ti,
+    )
+    if len(guards) != 73:
+        raise AssertionError("UGO_DELIVERY_ACTUAL_TYPE_A_73_GUARDS_MISSING")
     if len(canonical.components) != 23 or len(canonical.nets) != 15:
         raise AssertionError("UGO_DELIVERY_ORIGINAL_23_15_REQUIRED")
 
@@ -189,6 +200,28 @@ def build_snapshot(assembly, font: Path) -> dict:
         for key in netlist
     ):
         raise AssertionError("UGO_DELIVERY_CANONICAL_SOURCE_NET_CHANGED")
+    text_guards = [
+        {
+            "owner": guard.owner,
+            "kind": type(guard).__name__,
+            "collision_box_um": box_record(guard.collision_bounds),
+            "actual_ink_box_um": (
+                box_record(guard.ink_bounds)
+                if getattr(guard, "ink_bounds", None) is not None else None
+            ),
+            "printed_text": getattr(guard, "text", None),
+        }
+        for guard in guards
+    ]
+    paper_bounds = (420000, 297000)
+    inset = 10000  # project editorial inset, NOT a ГОСТ-wide norm
+    within = all(
+        inset <= row["collision_box_um"][0]
+        <= row["collision_box_um"][2] <= paper_bounds[0] - inset
+        and inset <= row["collision_box_um"][1]
+        <= row["collision_box_um"][3] <= paper_bounds[1] - inset
+        for row in text_guards
+    )
     return {
         "source_original_sha": FROZEN_ORIGINAL_SHA,
         "status": "DRAFT_CONSERVATIVE_OBSTACLES_NOT_FULL_PRINT_DRC",
@@ -203,6 +236,12 @@ def build_snapshot(assembly, font: Path) -> dict:
             "A3_bbox_within_margins"
         ],
         "terminal_stroke_width_um": 300,
+        "actual_PAINT_TypeA_label_guard_count": len(text_guards),
+        "actual_PAINT_TypeA_text_guards": text_guards,
+        "project_10mm_text_collision_frame_fit": within,
+        "minimum_text_collision_y_um": min(
+            row["collision_box_um"][1] for row in text_guards
+        ),
         "original_named_nets": netlist,
         "parts": records,
     }
@@ -246,7 +285,15 @@ def main() -> None:
         for ref in before["parts"]
         if before["parts"][ref]["origin_um"] != after["parts"][ref]["origin_um"]
     }
-    if set(diffs) != {"R2", "C1"} or any(
+    if (
+        set(diffs) != {"R2", "C1"}
+        or before["project_10mm_text_collision_frame_fit"] is not False
+        or after["project_10mm_text_collision_frame_fit"] is not True
+        or before["minimum_text_collision_y_um"] != 9100
+        or after["minimum_text_collision_y_um"] != 11600
+    ):
+        raise AssertionError("UGO_DELIVERY_C1_TYPE_A_FRAME_NOT_REPAIRED")
+    if any(
         after["parts"][ref]["real_physical_contacts"][i]["canonical_source_net"]
         != before["parts"][ref]["real_physical_contacts"][i][
             "canonical_source_net"
@@ -284,6 +331,11 @@ def main() -> None:
         "DA1_contacts": after["DA1_physical_contact_count"],
         "movements": sorted(diffs),
         "A3_all_glyphs_fit": after["all_component_stroke_boxes_within_A3_margins"],
+        "TypeA_73_label_ink_guards": after["actual_PAINT_TypeA_label_guard_count"],
+        "C1_label_frame_before": before["project_10mm_text_collision_frame_fit"],
+        "C1_label_frame_after": after["project_10mm_text_collision_frame_fit"],
+        "top_text_guard_y_before_um": before["minimum_text_collision_y_um"],
+        "top_text_guard_y_after_um": after["minimum_text_collision_y_um"],
         "print_release": False,
     }, sort_keys=True))
 
