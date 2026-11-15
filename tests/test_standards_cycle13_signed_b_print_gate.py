@@ -129,6 +129,9 @@ def test_true_typed_b_has_two_printed_lines_and_never_physical_edge():
     ("label_shift", "SOURCE_B_PRINT_LABEL_NOT_AT_SIGNED_SOURCE_MARKER"),
     ("extra_unmarked_line", "SOURCE_B_UNMARKED_FOREIGN_GRAPHICAL_LINE"),
     ("copied_electrical_wire", "SOURCE_B_EXACT_STUB_COPIED_INTO_ELECTRICAL_GRAPH"),
+    ("wrong_common_pin_preserve_62", "SOURCE_B_OTHER_14_ORIGINAL_NET_PINREF_MEMBERSHIPS_DRIFT"),
+    ("swap_2_non_b_pins", "SOURCE_B_OTHER_14_ORIGINAL_NET_PINREF_MEMBERSHIPS_DRIFT"),
+    ("duplicate_part_reference", "SOURCE_B_23_UNIQUE_PARTS_62_PINREFS_16_DA1_IDENTITY_FAILED"),
 ])
 def test_printed_b_adversarial_physical_and_graphic_invariants(mutation, reason):
     source = native_source()
@@ -185,5 +188,26 @@ def test_printed_b_adversarial_physical_and_graphic_invariants(mutation, reason)
             "data-layer": "wires",
             "x1": "35", "y1": "50", "x2": "45", "y2": "50",
         })
+    elif mutation == "wrong_common_pin_preserve_62":
+        corrupted = list(source.nets)
+        k = next(i for i, net in enumerate(corrupted) if net.name == "COMMON")
+        old_net = corrupted[k]
+        corrupted[k] = Net(old_net.name, (
+            PinRef("VT1", "2"), *old_net.members[1:]
+        ))
+        source = replace(source, nets=tuple(corrupted))
+    elif mutation == "swap_2_non_b_pins":
+        corrupted = list(source.nets)
+        a = next(i for i, net in enumerate(corrupted) if net.name == "FEEDBACK")
+        b = next(i for i, net in enumerate(corrupted) if net.name == "GATE_DRIVE")
+        left = corrupted[a].members
+        right = corrupted[b].members
+        corrupted[a] = Net("FEEDBACK", (right[0], *left[1:]))
+        corrupted[b] = Net("GATE_DRIVE", (left[0], *right[1:]))
+        source = replace(source, nets=tuple(corrupted))
+    elif mutation == "duplicate_part_reference":
+        wrong_parts = list(source.components)
+        wrong_parts[-1] = replace(wrong_parts[-1], reference=wrong_parts[0].reference)
+        source = replace(source, components=tuple(wrong_parts))
     with pytest.raises(gate.SignedBPrintError, match=reason):
         gate.audit_source_b_printed_lines(root, source, stubs)
