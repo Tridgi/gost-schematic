@@ -633,6 +633,26 @@ def test_real_115_latest_paint_routed_native_requires_genuine_15_net_graph():
     assert ET.fromstring(result.clean_svg).get("data-release") == (
         "BLOCKED_INCOMPLETE_OR_PRINT_DRC"
     )
+    # Two superficially plausible 16-tip IcRendered objects never certify
+    # the manufacturer's factory identities without the exact signed triple.
+    unsigned = render_routed_native_sheet(
+        signed.circuit, ExternalWireGraph(()), parts, symbols,
+        style, measure,
+        physical_ic_renderings_clean={"DA1": clean},
+        physical_ic_renderings_diagnostic={"DA1": diagnostic},
+        source_continuation_project=None,
+        expected_component_count=23,
+        expected_net_count=15,
+        expected_net_pinrefs=62,
+        physical_page_box=Box(0, 0, 420000, 297000),
+    )
+    assert unsigned.manifest["signed_manufacturer_ic_16_verified"] is False
+    assert "TL494_SIGNED_MANUFACTURER_PHYSICAL_BINDING_MISSING" in (
+        unsigned.manifest["blockers"]
+    )
+    assert unsigned.printable_candidate is False
+    assert _expected_marker_count(unsigned.clean_svg) == 0
+    assert _expected_marker_count(unsigned.diagnostic_svg) == 16
     # A completed 15-Net global route is NOT invented for this smoke test.
     assert signed.circuit.nets is native.circuit.nets
 
