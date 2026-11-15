@@ -62,8 +62,22 @@ async def _native_mcp_catalog(output: Path, source: dict) -> dict:
                 for name in names
             ):
                 raise AssertionError("Native MCP catalog is not exactly read-only")
-            if any("commit" in name or "connect_pins" in name
-                   for name in tools):
+            if any(
+                item.annotations is None
+                or item.annotations.readOnlyHint is not True
+                or item.annotations.destructiveHint is not False
+                or item.annotations.openWorldHint is not False
+                for item in tools.values()
+            ):
+                raise AssertionError("Unsafe MCP tool exposed in read-only agent server")
+            if any(
+                token in name.lower()
+                for name in tools
+                for token in (
+                    "commit", "connect_pins", "delete", "edit",
+                    "write", "transaction", "execute",
+                )
+            ):
                 raise AssertionError("Agent write tool unexpectedly registered")
             profile = _decoded(await client.call_tool(
                 "schematic_tl494_selection_profile", {"api_version": 1},
