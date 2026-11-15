@@ -179,3 +179,21 @@ def test_source_ugo_figure_contract_retains_draft():
         "C1", "C2", "C3", "C5", "C6"
     )} == {"capacitor.polarized"}
     assert gate.SOURCE_UGO["R5"] == "resistor.variable"
+
+
+def test_pinned_real_owner_artifact_set_is_exact_and_complete(tmp_path):
+    assert len(gate.PINNED_OWNER_BLOBS) == 5
+    assert gate.PINNED_ROUTER_SHA == "5c6feb90580ed846aa297c71d3c91afacfc3f0bc"
+    assert gate.PINNED_RECON_SHA == "e56397300875ac155a316a9bfebe2601358a4147"
+    with pytest.raises(gate.EvidenceError, match="REAL_ARTIFACT_MISSING"):
+        gate._verify_pinned_owner_bytes(tmp_path)
+
+
+@pytest.mark.parametrize("bad_bytes", [b"", b"<svg/>", b"PNG", b"\x00\x01"])
+def test_fake_replaced_owner_svg_or_png_never_passes_sha256(
+    tmp_path, bad_bytes
+):
+    for name in gate.PINNED_OWNER_BLOBS:
+        (tmp_path / name).write_bytes(bad_bytes)
+    with pytest.raises(gate.EvidenceError, match="ARTIFACT_SHA256_MISMATCH"):
+        gate._verify_pinned_owner_bytes(tmp_path)
