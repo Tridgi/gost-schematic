@@ -70,10 +70,10 @@ def verify_pinned_owner_headers(
 ) -> dict[str, Any]:
     """Exact names and reversible presentation renames, no lossy rebind."""
     manufacturer = _read_literal_assignment(ti_contract_py, "TI_DEVICE_ID")
-    original_commit = _read_literal_assignment(recon_contract_py, "SOURCE_SHA")
-    renames = _read_literal_assignment(recon_contract_py, "NET_RENAMES")
     if manufacturer != IC_MANUFACTURER_DEVICE_ID:
         _source_error("OWNER_TI_PART_ID_DRIFT")
+    original_commit = _read_literal_assignment(recon_contract_py, "SOURCE_SHA")
+    renames = _read_literal_assignment(recon_contract_py, "NET_RENAMES")
     if original_commit != TL494_FROZEN_SOURCE_SHA:
         _source_error("OWNER_FROZEN_SOURCE_DRIFT")
     if renames != RECON_DISPLAY_RENAMES:
@@ -135,16 +135,21 @@ def verify_frozen_owner_fixture(
         value = p["nominal_si"]
         if value is not None and (type(value) is not str or len(value) > 60):
             _source_error("SOURCE_NOMINAL_INVALID")
-        if ref in TL494_REQUIRED_PARTS and part != TL494_REQUIRED_PARTS[ref]:
-            _source_error("SOURCE_UGO_VARIANT_MISMATCH")
+        if ref in TL494_REQUIRED_PARTS:
+            expected_part = TL494_REQUIRED_PARTS[ref]
+            mismatch_code = "SOURCE_UGO_VARIANT_MISMATCH"
         elif ref in ("X1", "X2", "DA1"):
-            if part != {
-                "DA1": SOURCE_DEVICE_ALIAS, "X1": "reference.connector.x1",
+            expected_part = {
+                "DA1": SOURCE_DEVICE_ALIAS,
+                "X1": "reference.connector.x1",
                 "X2": "reference.connector.x2",
-            }[ref]:
-                _source_error("SOURCE_EXTERNAL_PART_ID_DRIFT")
-        elif part != "resistor.fixed":
-            _source_error("SOURCE_SOURCE_RESISTOR_ID_DRIFT")
+            }[ref]
+            mismatch_code = "SOURCE_EXTERNAL_PART_ID_DRIFT"
+        else:
+            expected_part = "resistor.fixed"
+            mismatch_code = "SOURCE_SOURCE_RESISTOR_ID_DRIFT"
+        if part != expected_part:
+            _source_error(mismatch_code)
         inventory[ref] = p
     if set(inventory) != _REF_SET:
         _source_error("SOURCE_COMPONENT_INVENTORY_INCOMPLETE")
