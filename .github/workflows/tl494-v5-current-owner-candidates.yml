@@ -18,6 +18,7 @@ on:
       - examples/tl494_v5/cycle13_placement_matrix.py
       - examples/tl494_v5/test_cycle13_placement_matrix.py
       - examples/tl494_v5/cycle14_pin_corridor_probe.py
+      - examples/tl494_v5/cycle15_delivery.py
       - examples/tl494_v5/test_cycle14_pin_corridor_probe.py
       - examples/tl494_v5/CYCLE13_SELECTIVE_INTEGRATION_MANIFEST.md
       - examples/tl494_v5/route_preflight.py
@@ -190,6 +191,81 @@ jobs:
           PY
           sha256sum output/tl494-v5-current/C14_SIGNED_PHYSICAL_62_PIN_*.json >> output/tl494-v5-current/SHA256SUMS.txt
           sha256sum output/tl494-v5-current/C14_SIGNED_C1_2P5_LEGAL_A3.json >> output/tl494-v5-current/SHA256SUMS.txt
+      - name: C15 one-command genuine source-locked NET+PAINT partial or completed delivery
+        run: |
+          set -euxo pipefail
+          PYTHONPATH=src python -m examples.tl494_v5.cycle15_delivery \
+            --font-file "$TL494_TYPE_A_FONT" \
+            --output output/tl494-v5-current/cycle15-delivery \
+            --page-format A3 --move C1:0:2.5 \
+            --node-cap 1500 --priority-trials 1 --priority-offset 3 \
+            --physical-veto-restarts 1 --physical-ripup-attempts 2
+          PYTHONPATH=src python - <<'PY'
+          from pathlib import Path
+          import json
+          import hashlib
+          import xml.etree.ElementTree as ET
+          from examples.tl494_v5.route_candidate_driver import (
+              REAL_SOURCE_NAMES, SOURCE_SHA, OWNER_SHAS,
+          )
+          root=Path("output/tl494-v5-current/cycle15-delivery")
+          path=root/"C15_REAL_TL494_DELIVERY.json"
+          m=json.loads(path.read_text(encoding="utf-8"))
+          assert m["source_sha"] == SOURCE_SHA
+          assert m["owner_exact_shas"] == OWNER_SHAS
+          assert m["source_23_components"] == 23
+          assert set(m["source_15_literal_names"]) == set(REAL_SOURCE_NAMES)
+          assert sum(map(len,m["source_62_physical_pinrefs"].values())) == 62
+          assert m["source_16_signed_DA1"] == 16
+          assert set(m["source_b_nonphysical"]) == {"b-X2","b-R5"}
+          assert all(not q["electrical"]
+                     for q in m["source_b_nonphysical"].values())
+          assert m["paper"]["measured_text_10mm_frame_fit"] is True
+          assert m["paper"]["absolute_10mm_component_ink_fit"] is True
+          assert set(m["original_named_net_route_progress"]) == set(REAL_SOURCE_NAMES)
+          complete=sum(x["complete"] for x in
+                       m["original_named_net_route_progress"].values())
+          assert m["completed_original_nets"] == complete
+          assert 0 <= complete <= 15
+          assert m["full_SVG_PNG300_release"] == (
+              "BLOCKED_UNTIL_15_15_GLOBAL_DRC_QA"
+          )
+          svg="{http://www.w3.org/2000/svg}"
+          for name,expected_markers in (("clean",0),("diagnostic",16)):
+              art=root/f"TL494-A3-{name}-source-b.svg"
+              assert art.exists()
+              assert m["artifacts"][art.name]["sha256"] == (
+                  hashlib.sha256(art.read_bytes()).hexdigest()
+              )
+              root_xml=ET.parse(art).getroot()
+              b=root_xml.findall(
+                  f".//{svg}line[@data-layer='nonphysical-continuation-stub']"
+              )
+              assert len(b) == 2
+              assert {x.get("data-nonphysical-net-continuation") for x in b} == (
+                  {"b-X2","b-R5"}
+              )
+              leads=root_xml.findall(
+                  f".//{svg}g[@data-layer='ic-physical-pin-leads']/{svg}line"
+              )
+              assert len(leads) == 16
+              groups=root_xml.findall(
+                  f".//{svg}g[@data-layer='editor-connection-targets']"
+              )
+              markers=list(groups[0]) if groups else []
+              assert len(markers) == expected_markers
+              if expected_markers:
+                  assert len(groups) == 1
+                  assert all(x.get("fill") == "#148645" for x in markers)
+              assert root_xml.get("data-release") == (
+                  "BLOCKED_PARTIAL" if complete != 15 else
+                  "ROUTE_COMPLETE_INDEPENDENT_QA_PENDING"
+              )
+          print("C15_CURRENT_OWNER_REAL_ENGINE",complete,"/15",
+                "physical-memberships=62 b-real-svg=2 print-gate=BLOCKED")
+          PY
+          sha256sum output/tl494-v5-current/cycle15-delivery/C15_REAL_TL494_DELIVERY.json >> output/tl494-v5-current/SHA256SUMS.txt
+          sha256sum output/tl494-v5-current/cycle15-delivery/TL494-A3-*-source-b.svg >> output/tl494-v5-current/SHA256SUMS.txt
       - name: Compare original source 23/15/62 and run two order candidates
         run: |
           set -euxo pipefail
