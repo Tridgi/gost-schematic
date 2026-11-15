@@ -268,6 +268,22 @@ def candidate_priority(frozen: dict, key: str) -> tuple[str, ...]:
                    "CONTROL_REFERENCE", "GATE_DRIVE")
         priority = (*control, *(name for name in REAL_SOURCE_NAMES
                                 if name not in control))
+    elif key == "common-first":
+        # NET #114's proved high-fanout ordering: attempt COMMON before
+        # all other immutable source Nets; no PinRef or Net rewrite.
+        priority = ("COMMON", *(
+            name for name in REAL_SOURCE_NAMES if name != "COMMON"
+        ))
+    elif key == "power-common":
+        # NET #114's other measured route-order experiment: retain
+        # user-source power rail order, then route COMMON before control.
+        power = (
+            "a_INPUT_PLUS", "SWITCH", "TRANSFER", "OUT_BEFORE_FUSE",
+            "b_NEGATIVE_OUTPUT", "COMMON",
+        )
+        priority = (*power, *(
+            name for name in REAL_SOURCE_NAMES if name not in power
+        ))
     else:
         raise ValueError("V5_CANDIDATE_UNRECOGNIZED_ROUTE_PRIORITY")
     if set(priority) != set(raw) or len(priority) != 15:
@@ -563,7 +579,7 @@ def drive_candidates(
     move_mm: tuple[tuple[str, int | Decimal, int | Decimal], ...] = (),
 ) -> dict:
     """Current owner trial/snapshot + best partial evidence, no success fiction."""
-    if not variants or len(variants) > 3 or len(set(variants)) != len(variants):
+    if not variants or len(variants) > 4 or len(set(variants)) != len(variants):
         raise ValueError("V5_CANDIDATE_INVALID_VARIANT_SET")
     frozen, owner_binding = load_original_owner_fixture()
     original = assemble_native_v5()
@@ -661,7 +677,10 @@ def main() -> None:
              " never rewrites Net/PinRef or scales UGO",
     )
     parser.add_argument(
-        "--variants", nargs="+", choices=("source", "short-first", "control-first"),
+        "--variants", nargs="+", choices=(
+            "source", "short-first", "control-first",
+            "common-first", "power-common",
+        ),
         default=("source",),
     )
     args = parser.parse_args()

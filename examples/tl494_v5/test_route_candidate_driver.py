@@ -142,11 +142,20 @@ def test_cli_position_only_mm_grid_parsing_and_negative_tampering():
 
 def test_deterministic_15_net_priority_variants_reject_unknown():
     fixture, _ = load_original_owner_fixture()
-    for mode in ("source", "short-first", "control-first"):
+    for mode in (
+        "source", "short-first", "control-first",
+        "common-first", "power-common",
+    ):
         ranking = candidate_priority(fixture, mode)
         assert len(set(ranking)) == 15
         assert set(ranking) == set(REAL_SOURCE_NAMES)
     assert candidate_priority(fixture, "source")[0] == "a_INPUT_PLUS"
+    assert candidate_priority(fixture, "common-first")[0] == "COMMON"
+    power = candidate_priority(fixture, "power-common")
+    assert power[:6] == (
+        "a_INPUT_PLUS", "SWITCH", "TRANSFER", "OUT_BEFORE_FUSE",
+        "b_NEGATIVE_OUTPUT", "COMMON",
+    )
     with pytest.raises(ValueError, match="UNRECOGNIZED_ROUTE_PRIORITY"):
         candidate_priority(fixture, "auto-fake-priority")
 

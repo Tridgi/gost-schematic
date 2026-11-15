@@ -128,7 +128,7 @@ jobs:
           PYTHONPATH=src python -m examples.tl494_v5.route_candidate_driver \
             --font-file "$TL494_TYPE_A_FONT" \
             --output-file output/tl494-v5-current/all15-candidate-report.json \
-            --variants source short-first --node-cap 3000
+            --variants source short-first common-first power-common --node-cap 3000
           PYTHONPATH=src python - <<'PY'
           import json
           from pathlib import Path
@@ -137,8 +137,11 @@ jobs:
           assert m["bom_count"] == 23
           assert m["net_count"] == 15
           assert m["physical_net_membership_count"] == 62
-          assert len(m["candidates"]) == 2
+          assert len(m["candidates"]) == 4
           assert m["qa_print_release"] == "BLOCKED_INDEPENDENT_QA_AND_ESKD"
+          assert {c["key"] for c in m["candidates"]} == {
+              "source", "short-first", "common-first", "power-common"
+          }
           assert not m["actual_full_sheet_svg_or_png_emitted"]
           for trial in m["candidates"]:
               assert trial["routes_attempted"] == 15
