@@ -327,3 +327,15 @@ def test_true_source_ferro_inductor_arc_ink_envelope_is_conservative():
     assert gate._conservative_ugo_envelope(group) == (
         67850, 32850, 76150, 37150
     )
+
+
+@pytest.mark.parametrize("d", [
+    "M 70 35 A 2 3 0 0 1 74 35",
+    "M 70 35 A 2 2 30 0 1 74 35",
+])
+def test_non_pinned_rotated_or_elliptic_svg_arc_cannot_fake_2mm_pass(d):
+    group = ET.Element(f"{gate.SVG}g", {"stroke-width": "0.3"})
+    ET.SubElement(group, f"{gate.SVG}path", {"d": d})
+    with pytest.raises(gate.EvidenceError,
+                       match="UGO_ARC_NONCIRCULAR_NOT_CALIBRATED"):
+        gate._conservative_ugo_envelope(group)
