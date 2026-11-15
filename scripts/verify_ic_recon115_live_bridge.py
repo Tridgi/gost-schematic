@@ -138,6 +138,30 @@ def test_real_115_compact_trusted_identifier_mapping_is_exact_and_reversible():
     assert_frozen_photo_topology(signed, load_frozen_source())
 
 
+
+def test_real_115_owner_verified_compact_ti_consumes_exact_source_tuple():
+    """Exercise RECON's actual owner consumer, not only IC's direct adapter."""
+    owner = import_module("examples.tl494_v5.cycle11_ti_bridge")
+    native = compact_source_assembly()
+    actual = owner.bind_verified_compact_ti(native, native.circuit)
+    actual.verify()
+    assert actual.reverse_source() is native.circuit
+    assert actual.signed.circuit.nets is native.circuit.nets
+    assert actual.signed.circuit is not native.circuit
+    assert actual.signed.part.identifier == TI_DEVICE_ID
+    assert actual.part == actual.signed.part
+    _checks(actual.signed)
+
+    # A numerically equal clone is NOT the owner's exact same source tuple.
+    new_tuple = tuple(list(native.circuit.components))
+    assert new_tuple == native.circuit.components
+    assert new_tuple is not native.circuit.components
+    unauthorized = replace(native.circuit, components=new_tuple)
+    with pytest.raises(
+        ValueError, match="TL494_C11_SOURCE_COMPONENT_INVENTORY_NOT_IDENTICAL"
+    ):
+        owner.bind_verified_compact_ti(native, unauthorized)
+
 def test_legacy_id_is_not_implicitly_equivalent_to_ti_manufacturer():
     native = compact_source_assembly()
     with pytest.raises(ValueError, match="IC_ADAPTER_CATALOG_IC_PART_ID_MISMATCH"):
