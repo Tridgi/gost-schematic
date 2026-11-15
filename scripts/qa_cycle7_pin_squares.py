@@ -452,9 +452,8 @@ def normative_power():
 def merged_integration_regressions():
     """Execute published merged implementation, not unmerged owner mocks."""
     from examples.review_net_continuations_cycle7 import specimen_three_sheet
-    from gost_schematic.electrical.netrefs import validate_net_continuations
-
     from gost_schematic.catalog.loader import load_symbol
+    from gost_schematic.electrical.netrefs import validate_net_continuations
 
     symbols = sorted((ROOT / "src/gost_schematic/catalog/symbols").rglob("*.json"))
     winding = sorted((ROOT / "src/gost_schematic/catalog/inductors").glob("*.json"))
