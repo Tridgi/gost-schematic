@@ -572,10 +572,22 @@ def _visibility_path(
     # only if it exits the source pin outward, reaches a true original PinRef
     # from its exterior when applicable, and clears all actual native UGO,
     # measured Type A text and existing full-graph wires. Any crossing with
-    # warning is deferred to the normal Dijkstra search.
+    # warning is deferred to the normal Dijkstra search. The same
+    # bounded detour ratio that governs Dijkstra also governs this shortcut.
+    shortest_goal_distance = min(
+        abs(source.x - target.x) + abs(source.y - target.y)
+        for target in reachable_goals
+    )
     for goal in reachable_goals:
-        if goal == source or not (
-            source.x == goal.x or source.y == goal.y
+        candidate_distance = (
+            abs(source.x - goal.x) + abs(source.y - goal.y)
+        )
+        if (
+            goal == source
+            or shortest_goal_distance and candidate_distance > (
+                max_detour_ratio * shortest_goal_distance
+            )
+            or not (source.x == goal.x or source.y == goal.y)
         ):
             continue
         if (
