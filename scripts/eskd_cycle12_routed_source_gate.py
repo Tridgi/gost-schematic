@@ -172,6 +172,32 @@ def _source_model(manifest: dict, original: dict) -> dict:
     }
 
 
+def _source_ygo_current_review(profile: dict, owner_head: str) -> dict:
+    """Exact read-only current YGO owner source selection, NOT GOST approval."""
+    require(profile.get("reference_sha") == FROZEN,
+            "YGO_CURRENT_SOURCE_REFERENCE_SHA_MISMATCH")
+    require(profile.get("status") == "DRAFT", "YGO_CURRENT_UNPROVEN_APPROVAL")
+    rows = profile.get("profiles")
+    require(isinstance(rows, list) and len(rows) == 13,
+            "YGO_CURRENT_NOT_13_SOURCE_UGO")
+    indexed = {x.get("reference"): x for x in rows}
+    require(len(indexed) == 13 and set(indexed) == set(SOURCE_UGO),
+            "YGO_CURRENT_PROFILE_REF_INVENTORY_CHANGED")
+    require(all(indexed[ref].get("symbol_id") == symbol
+                for ref, symbol in SOURCE_UGO.items()),
+            "YGO_CURRENT_SCHOTTKY_MOS_CAP_FERRO_ID_DRIFT")
+    require(all(str(x.get("normative_verdict", "")).startswith("BLOCKED")
+                for x in indexed.values()),
+            "YGO_CURRENT_FIGURE_SIGNOFF_NOT_EVIDENCED")
+    return {
+        "actual_ygo_head_sha": owner_head,
+        "sources_13": 13,
+        "source_figure_verdict": "BLOCKED_NOT_CALIBRATED_1TO1",
+        "formal_approved": 0,
+        "exact_catalog_ids": dict(SOURCE_UGO),
+    }
+
+
 def _route(manifest: dict) -> dict:
     router = manifest.get("routing", {})
     trees = router.get("net_trees", [])
@@ -368,13 +394,15 @@ def _png(path: Path, view: tuple[float, float, float, float],
                     "PHYSICAL_PINREF_DEBUG_GREEN_OCCLUDED")
 
 
-def audit(folder: Path, original_netlist: Path) -> dict:
+def audit(folder: Path, original_netlist: Path,
+          ygo_profile: Path, ygo_head: str) -> dict:
     _verify_pinned_owner_bytes(folder)
     manifest = _read_json(folder / f"{BASENAME}-route-drc.json")
     require(manifest.get("owner_router_sha") == PINNED_ROUTER_SHA
             and manifest.get("reference_recon_sha") == PINNED_RECON_SHA,
             "CURRENT_EVIDENCE_OWNER_SHA_NOT_THIS_PINNED_RUN")
     source = _source_model(manifest, _read_json(original_netlist))
+    current_ygo = _source_ygo_current_review(_read_json(ygo_profile), ygo_head)
     route = _route(manifest)
     for key in FAILED_SOURCE_NETS:
         require(any(reason.startswith(f"{key}:") for reason in manifest["reason"]),
@@ -411,6 +439,7 @@ def audit(folder: Path, original_netlist: Path) -> dict:
         "owner_3p12_3p13_artifact_bytes_identical": True,
         "latest_owner_HEAD_acceptance": "BLOCKED_NEW_HEAD_SEPARATE_RUN_REQUIRED",
         "source_inventory": source, "routed_graph": route,
+        "current_owner_ygo_source_review": current_ygo,
         "printed_parallel_edge_3mm": gaps, "actual_real_svg_png": variants,
         "checks": {
             "new_partial_native_svg_300dpi": "PASS_DRAFT_PARTIAL_ONLY",
@@ -433,8 +462,11 @@ def main() -> None:
     parser.add_argument("--folder", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--original-netlist", type=Path, required=True)
+    parser.add_argument("--ygo-profile", type=Path, required=True)
+    parser.add_argument("--ygo-head", required=True)
     args = parser.parse_args()
-    result = audit(args.folder, args.original_netlist)
+    result = audit(args.folder, args.original_netlist,
+                   args.ygo_profile, args.ygo_head)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(result, indent=2, ensure_ascii=False,
                                     sort_keys=True) + "\n", encoding="utf-8")
