@@ -11,6 +11,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from importlib import import_module
 
 from examples.tl494_named_photo_sheet import compose_circuit
 from examples.tl494_v5.compact_layout import compact_source_assembly
@@ -26,12 +27,15 @@ from examples.tl494_v5.route_candidate_driver import (
     restore_original_named_nets,
 )
 from gost_schematic.core.geometry import Point
-from gost_schematic.engines.multiterminal_router import (
-    _source_ink_collision,
-    _source_ink_obstacles,
-)
-from gost_schematic.engines.orthogonal_route_planner import _resolve_real_pin
 from gost_schematic.validation.external_wire_checks import WireSegment
+
+# reference checkout. Resolve them dynamically to keep Ruff/isort invariant.
+_net = import_module("gost_schematic.engines.multiterminal_router")
+_source_ink_collision = _net._source_ink_collision
+_source_ink_obstacles = _net._source_ink_obstacles
+_resolve_real_pin = import_module(
+    "gost_schematic.engines.orthogonal_route_planner"
+)._resolve_real_pin
 
 SHEET_UM = {"A3": (420000, 297000), "A2": (594000, 420000)}
 MARGIN_UM = 10000
