@@ -23,7 +23,10 @@ from gost_schematic.validation.external_wire_checks import (
     WireSegment,
     validate_external_wires,
 )
-from gost_schematic.validation.route_drc import audit_route_drc
+from gost_schematic.validation.route_drc import (
+    audit_route_drc,
+    candidate_wire_clearance,
+)
 
 
 def native_three_terminal():
@@ -549,7 +552,20 @@ def test_no_path_reports_real_foreign_wire_3mm_and_exact_trial_coordinates():
     assert route == ()
     assert diagnostic is not None
     assert diagnostic.startswith("ROUTE_NO_CLEAR_ORTHOGONAL_TREE_PATH")
-    assert "WIRE_VETO=B:DRC_PARALLEL_STROKE_CLEARANCE" in diagnostic
+    # The shortest-path search samples *actual* edges, so its genuine first
+    # conflicting edges are endpoint contact/nonparallel guards rather than
+    # a guaranteed longitudinally parallel overlap. Assert observed vetoes,
+    # not a physically nonexistent candidate which Dijkstra never proposed.
+    assert "WIRE_VETO=B:DRC_FOREIGN_NET_ENDPOINT_CONTACT" in diagnostic
+    assert "B:DRC_NONPARALLEL_EDITORIAL_INK_GUARD" in diagnostic
+    # Check the 3mm parallel rule with two *real* collinear-axis conductor
+    # candidates independently instead of relying on a sampled search edge.
+    parallel = candidate_wire_clearance(
+        WireSegment(Point(16000, 10000), Point(30000, 10000), "A"),
+        occupied.segments[0],
+    )
+    assert not parallel.valid
+    assert "DRC_PARALLEL_STROKE_CLEARANCE" in parallel.errors
     assert "existing=15000,10200->35000,10200" in diagnostic
     assert "trial=" in diagnostic
     assert occupied.segments[0].net_name == "B"
