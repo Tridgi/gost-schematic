@@ -98,6 +98,50 @@ def test_route_priority_trial_count_rejects_invalid_or_unbounded_inputs(n):
         )
 
 
+def test_cycle12_real_native_lead_cap_creates_only_legal_route_search_lanes():
+    # Actual D4-compatible graphic and physical pin: a short printed
+    # vertical lead crosses the intended horizontal A Net. A 5mm uniform
+    # grid could only detour 5mm, but exact 300µm stroke envelopes expose
+    # a shorter valid corridor immediately outside the physical lead cap.
+    symbol = SymbolDefinition(
+        "native-obstruction", 1,
+        (Line(Point(0, -200), Point(0, 200)),),
+        (GraphicPin("1", Point(0, 200), Side.BOTTOM),),
+        Box(-200, -300, 200, 300), 300,
+    )
+    circuit = Circuit((
+        ComponentInstance(
+            "E1", "native-obstruction", Point(20000, 10000),
+        ),
+    ), ())
+    real = _source_ink_obstacles(
+        circuit, {"native-obstruction": symbol}, stroke_um=300,
+    )
+    assert len(real) == 1 and real[0].permitted_pin == PinRef("E1", "1")
+    lower = real[0].collision_bounds.min_y - 1
+    upper = real[0].collision_bounds.max_y + 1
+    start, goal = Point(1000, 10000), Point(39000, 10000)
+    path, failure = _visibility_path(
+        start, Point(1, 0), (goal,),
+        net_name="A", occupied=ExternalWireGraph(()), tree=(),
+        existing_dots=(), goal_pin_normals={},
+        ink_obstacles=real, authorized_pins=frozenset(),
+        boxes=(), page=Box(0, 0, 40000, 20000),
+        stroke_um=300, search_node_cap=10000,
+        grid_um=5000, max_detour_ratio=2.0,
+    )
+    assert failure is None, failure
+    assert path[0] == start and path[-1] == goal
+    assert {point.y for point in path} & {lower, upper}
+    for a, b in zip(path, path[1:]):
+        assert a.x == b.x or a.y == b.y
+        assert _source_ink_collision(
+            WireSegment(a, b, "A"), real,
+            authorized_pins=frozenset(),
+        ) is None
+    assert circuit.components[0].origin == Point(20000, 10000)
+
+
 def test_cycle12_real_tree_target_window_can_reach_25th_physical_T():
     # A compact source Net can have >24 exact authored branch positions.
     # The first 24 are genuinely INSIDE a prohibited component body; the
