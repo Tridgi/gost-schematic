@@ -7,7 +7,9 @@ import pytest
 from gost_schematic.core.geometry import Box, Line, Point, Rectangle, Side, StyledLine
 from gost_schematic.core.transforms import Transform
 from gost_schematic.engines.multiterminal_router import (
+    NetTreePreview,
     _nearest_net_order,
+    _physical_wire_veto_priority_trials,
     _source_ink_collision,
     _source_ink_obstacles,
     _source_priority_name_view,
@@ -97,6 +99,87 @@ def test_route_priority_trial_count_rejects_invalid_or_unbounded_inputs(n):
             circuit, parts, symbols,
             page_box=Box(0, 0, 90000, 60000),
             try_priorities=n,
+        )
+
+
+def test_cycle13_real_wire_veto_only_generates_source_legal_backtrack_priority():
+    """A successful foreign INPUT_POS wire traps GATE_DRIVE at actual DA1.10."""
+    pins = (PinRef("DA1", "10"), PinRef("R8", "1"))
+    complete = (PinRef("X1", "1"), PinRef("DA1", "12"))
+    source = (
+        "a_INPUT_PLUS", "ERROR_INPUT", "GATE_DRIVE", "FEEDBACK", "COMMON",
+    )
+    trees = (
+        NetTreePreview(
+            "a_INPUT_PLUS", complete, (), (), 0, 0, 0, (), complete,
+        ),
+        NetTreePreview(
+            "GATE_DRIVE", pins, (), (), 0, 0, 0,
+            (
+                "ROUTE_NO_CLEAR_ORTHOGONAL_TREE_PATH:"
+                "INK_VETO=DA1#12:DA1.10:205000,116250->203455,116250:"
+                "WIRE_VETO=a_INPUT_PLUS:DRC_FOREIGN_NET_ENDPOINT_CONTACT:"
+                "existing=205302,123750->205302,101250:"
+                "trial=205000,116250->205302,116250:DA1.10",
+            ),
+            (pins[0],),
+        ),
+        NetTreePreview(
+            "FEEDBACK", pins, (), (), 0, 0, 0,
+            (
+                "ROUTE_NO_CLEAR_ORTHOGONAL_TREE_PATH:"
+                "WIRE_VETO=ERROR_INPUT:DRC_PARALLEL_STROKE_CLEARANCE:"
+                "existing=10000,20000->20000,20000:"
+                "trial=10000,20300->20000,20300:DA1.3",
+            ),
+            (pins[0],),
+        ),
+    )
+    plans = _physical_wire_veto_priority_trials(
+        source, trees, limit=2,
+    )
+    assert plans == (
+        (
+            "VETO_REORDER_GATE_DRIVE_BEFORE_a_INPUT_PLUS",
+            ("GATE_DRIVE", "a_INPUT_PLUS", "ERROR_INPUT", "FEEDBACK", "COMMON"),
+        ),
+        (
+            "VETO_REORDER_FEEDBACK_BEFORE_ERROR_INPUT",
+            ("a_INPUT_PLUS", "FEEDBACK", "ERROR_INPUT", "GATE_DRIVE", "COMMON"),
+        ),
+    )
+    assert all(set(order) == set(source) and len(order) == len(source)
+               for _, order in plans)
+    assert source[0] == "a_INPUT_PLUS"
+    # No prior verified blocker, no authority to invent an order; same-Net
+    # veto must NOT be treated as an independent copper crossing.
+    assert _physical_wire_veto_priority_trials(
+        ("A", "B"), (
+            NetTreePreview(
+                "A", pins, (), (), 0, 0, 0,
+                ("X:WIRE_VETO=A:DRC_SAME_NET_T_NO_DOT:trial=0,0->1,0",),
+                (pins[0],),
+            ),
+        ), limit=2,
+    ) == ()
+
+
+@pytest.mark.parametrize("count", (-1, 5, 1.0, True))
+def test_cycle13_negative_physical_wire_veto_trial_count(count):
+    with pytest.raises(ValueError, match="ROUTE_INVALID_PHYSICAL_VETO_TRIAL_LIMIT"):
+        _physical_wire_veto_priority_trials(
+            ("A", "B"), (), limit=count,
+        )
+
+
+@pytest.mark.parametrize("count", (-1, 5, 2.5, True))
+def test_cycle13_global_adaptive_unbounded_restart_fails_closed(count):
+    circuit, parts, symbols = native_three_terminal()
+    with pytest.raises(ValueError, match="ROUTE_INVALID_PHYSICAL_VETO_TRIAL_LIMIT"):
+        route_circuit_with_order_fallback(
+            circuit, parts, symbols,
+            page_box=Box(0, 0, 90000, 60000),
+            physical_veto_restarts=count,
         )
 
 
