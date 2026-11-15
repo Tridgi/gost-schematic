@@ -18,9 +18,9 @@ from gost_schematic.rendering.routed_native_sheet import render_routed_native_sh
 from gost_schematic.standards.type_a_font import inspect_type_a_font
 
 SOURCE = "e695c415fdced164b0e0c39c5249d030795a0aa6"
-IC = "bc03a31c5d15c9e962f9b26a209aab373e39bee6"
+IC = "f711a75437297faa02e664631ae27626f4c31636"
 NET = "027cee506a8dc9b3926b44b1abba66e1ae25b183"
-RECON = "e4eb565820e54889456f64d36598b608597ca2c2"
+RECON = "8453ea5e2438844ad468b8a9042806ec12e1f125"
 
 
 
