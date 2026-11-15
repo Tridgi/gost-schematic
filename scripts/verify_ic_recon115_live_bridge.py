@@ -24,7 +24,11 @@ from examples.tl494_cycle9_circuit_integration import (
 )
 from gost_schematic.core.geometry import Box, Point
 from gost_schematic.core.transforms import Transform
-from gost_schematic.electrical.ic import IcTextAngle, resolve_ic_pin_positions
+from gost_schematic.electrical.ic import (
+    IcPinType,
+    IcTextAngle,
+    resolve_ic_pin_positions,
+)
 from gost_schematic.electrical.ic_circuit_adapter import (
     IcCircuitBinding,
     bind_ic_circuit_from_catalog,
@@ -38,7 +42,11 @@ from gost_schematic.electrical.ic_paint_bridge import (
     bind_ic_paint_text_only,
     propose_ic_paint_binding,
 )
-from gost_schematic.electrical.tl494cn import TI_DEVICE_ID
+from gost_schematic.electrical.tl494cn import (
+    TI_DEVICE_ID,
+    tl494cn_device,
+    verify_tl494cn_ti_pinout,
+)
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.model.circuit import PinRef
 from gost_schematic.standards.type_a_font import inspect_type_a_font
@@ -194,6 +202,84 @@ def test_real_115_source_b_electrical_net_is_not_continuation_ink():
             aliases=native.owner_aliases,
         )
     assert signed.circuit.nets is native.circuit.nets
+
+
+@pytest.mark.parametrize("pin_number", ("3", "13", "14"))
+def test_real_115_ti_factory_nc_counterfeit_rejected(pin_number):
+    """TI TL494 has no NC contact: neither FB, OC nor REF can become NC."""
+    authentic = tl494cn_device()
+    assert len(authentic.pins) == 16
+    assert not any(pin.electrical_type is IcPinType.NC for pin in authentic.pins)
+    verify_tl494cn_ti_pinout(authentic)
+    counterfeit = replace(authentic, pins=tuple(
+        replace(pin, electrical_type=IcPinType.NC)
+        if pin.number == pin_number else pin
+        for pin in authentic.pins
+    ))
+    with pytest.raises(
+        ValueError, match="TL494_TI_PIN_FUNCTION_OR_ELECTRICAL_TYPE_MISMATCH"
+    ):
+        verify_tl494cn_ti_pinout(counterfeit)
+
+
+@pytest.mark.parametrize(
+    ("attack", "expected"),
+    (
+        ("no_consent", "IC_GEOMETRY_REAUTHORIZATION_REQUIRED"),
+        ("stale_consent", "IC_GEOMETRY_CONSENT_SOURCE_STALE"),
+        ("not_connected_consent", "IC_CONNECTED_REROUTE_CONSENT_MISMATCH"),
+        ("foreign_pinref_consent", "IC_GEOMETRY_CONSENT_PINREF_MISMATCH"),
+    ),
+)
+def test_real_115_one_um_connected_pin_requires_exact_reroute_consent(
+    attack, expected,
+):
+    """A 1um physical pin movement needs source-bound exact consent."""
+    native, source = live_reconstruction()
+    record = source.record
+    spec = record.specs[0]
+    row = spec.rows[0]
+    physical = PinRef("DA1", row.number)
+    assert any(physical in net.members for net in source.circuit.nets)
+    moved_row = replace(
+        row, anchor=Point(row.anchor.x + 1, row.anchor.y),
+    )
+    moved_spec = replace(
+        spec, revision=spec.revision + 1,
+        rows=(moved_row, *spec.rows[1:]),
+    )
+    candidate = replace(record, specs=(moved_spec,))
+    before = resolve_ic_pin_positions(
+        record.device, record.specs, record.placements,
+    )
+    after = resolve_ic_pin_positions(
+        candidate.device, candidate.specs, candidate.placements,
+    )
+    assert after[physical] != before[physical]
+    assert len(before) == len(after) == 16
+    assert {p for p in before if before[p] != after[p]} == {physical}
+    consent = None
+    if attack == "stale_consent":
+        consent = IcGeometryConsent("0" * 64, (physical,), (physical,))
+    elif attack == "not_connected_consent":
+        consent = IcGeometryConsent(
+            ic_record_fingerprint(record), (physical,), (),
+        )
+    elif attack == "foreign_pinref_consent":
+        consent = IcGeometryConsent(
+            ic_record_fingerprint(record), (PinRef("DA1", "99"),), (),
+        )
+    with pytest.raises(ValueError, match=expected):
+        source.revise(candidate, consent=consent)
+    permitted = IcGeometryConsent(
+        ic_record_fingerprint(record), (physical,), (physical,),
+    )
+    updated, delta = source.revise(candidate, consent=permitted)
+    assert delta.moved == delta.connected_moved == (physical,)
+    assert updated.circuit is source.circuit
+    assert updated.circuit.nets is native.circuit.nets
+    assert len(updated.contacts) == 16
+    assert updated.contact(physical).world_anchor == after[physical]
 
 def test_legacy_id_is_not_implicitly_equivalent_to_ti_manufacturer():
     native = compact_source_assembly()
