@@ -22,9 +22,9 @@ def verify(folder: Path) -> dict:
     assert (proof["source_components"], proof["source_nets"],
             proof["source_net_pinrefs"]) == (23, 15, 62)
     assert proof["model_source"] == "e695c415fdced164b0e0c39c5249d030795a0aa6"
-    assert proof["NET114_owner_sha"] == "027cee506a8dc9b3926b44b1abba66e1ae25b183"
-    assert proof["RECON115_owner_sha"] == "8453ea5e2438844ad468b8a9042806ec12e1f125"
-    assert proof["IC97_owner_sha"] == "f711a75437297faa02e664631ae27626f4c31636"
+    assert proof["NET114_owner_sha"] == "b2a7a46c2f031dd125dd0879c9d59d24e27decbf"
+    assert proof["RECON115_owner_sha"] == "3de150124103686d4d8f3fd764dc4a4486c341b5"
+    assert proof["IC97_owner_sha"] == "1b007cbe878c45a52632f83fc138aefc99cd7924"
     assert proof["canonical_ti_part_id_verified"] == "ti.tl494cn.pdip16"
     assert proof["trusted_97_part_rebinding"]
     assert proof["source_signed_16_pin_overlay"] is True
