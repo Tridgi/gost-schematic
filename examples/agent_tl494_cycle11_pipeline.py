@@ -83,8 +83,8 @@ def _assert_readonly_tool_registry(tools: dict) -> None:
         for token in _FORBIDDEN_WRITE_VERBS
     ):
         raise AssertionError("Agent write tool unexpectedly registered")
-    if set(tools) - _APPROVED_READONLY_TOOLS:
-        raise AssertionError("Agent write tool unexpectedly registered: unknown tool")
+    if set(tools) != _APPROVED_READONLY_TOOLS:
+        raise AssertionError("Agent write tool unexpectedly registered: unreviewed registry")
 
 
 def _decoded(reply):
