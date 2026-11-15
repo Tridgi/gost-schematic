@@ -17,6 +17,8 @@ on:
       - examples/tl494_v5/test_compact_layout.py
       - examples/tl494_v5/cycle13_placement_matrix.py
       - examples/tl494_v5/test_cycle13_placement_matrix.py
+      - examples/tl494_v5/cycle14_pin_corridor_probe.py
+      - examples/tl494_v5/test_cycle14_pin_corridor_probe.py
       - examples/tl494_v5/CYCLE13_SELECTIVE_INTEGRATION_MANIFEST.md
       - examples/tl494_v5/route_preflight.py
       - examples/tl494_ic_paint_reference.py
@@ -90,7 +92,8 @@ jobs:
             examples/tl494_v5/test_routed_graph_contract.py \
             examples/tl494_v5/test_cycle11_ti_bridge.py \
             examples/tl494_v5/test_cycle11_b_continuation.py \
-            examples/tl494_v5/test_cycle13_placement_matrix.py
+            examples/tl494_v5/test_cycle13_placement_matrix.py \
+            examples/tl494_v5/test_cycle14_pin_corridor_probe.py
       - name: Produce C11 signed TI plus true b marker source proof independently of routing
         run: |
           set -euxo pipefail
@@ -126,6 +129,36 @@ jobs:
           assert m["full_A3_print_and_photo_1_to_1"] == "BLOCKED"
           PY
           sha256sum output/tl494-v5-current/C11_SIGNED_REAL_SOURCE_B_PROOF.json > output/tl494-v5-current/SHA256SUMS.txt
+          PYTHONPATH=src python -m examples.tl494_v5.cycle14_pin_corridor_probe \
+            --font-file "$TL494_TYPE_A_FONT" \
+            --output output/tl494-v5-current/C14_SIGNED_PHYSICAL_62_PIN_A3.json \
+            --page-format A3
+          PYTHONPATH=src python -m examples.tl494_v5.cycle14_pin_corridor_probe \
+            --font-file "$TL494_TYPE_A_FONT" \
+            --output output/tl494-v5-current/C14_SIGNED_PHYSICAL_62_PIN_A2.json \
+            --page-format A2
+          PYTHONPATH=src python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("output/tl494-v5-current")
+          a3=json.loads((root/"C14_SIGNED_PHYSICAL_62_PIN_A3.json").read_text())
+          a2=json.loads((root/"C14_SIGNED_PHYSICAL_62_PIN_A2.json").read_text())
+          for report in (a3,a2):
+              assert (report["components"],report["original_net_count"],report["physical_pinref_memberships"],report["manufacturer_signed_DA1_pins"]) == (23,15,62,16)
+              assert len(report["pin_escapes"]) == 62
+              assert report["true_nonphysical_b_labels_count"] == 2
+              assert set(report["true_b_source_stubs"]) == {"b-X2","b-R5"}
+              assert report["absolute_10mm_component_ink_fit"]
+              assert report["full_15_net_print_release"] == "BLOCKED_NOT_A_ROUTER"
+          assert a3["pin_escapes"] == a2["pin_escapes"]
+          assert a3["source_UGO_bbox_um"] == [10850,14800,405150,243151]
+          assert all(
+              p["escape_samples_um"]["2500"]["native_symbol_ink_clear"]
+              for p in a3["pin_escapes"].values()
+          )
+          print("C14_62_REAL_PIN_NATIVE_INK_2500_CLEAR_A3_A2_NOT_ROUTED")
+          PY
+          sha256sum output/tl494-v5-current/C14_SIGNED_PHYSICAL_62_PIN_*.json >> output/tl494-v5-current/SHA256SUMS.txt
       - name: Compare original source 23/15/62 and run two order candidates
         run: |
           set -euxo pipefail
