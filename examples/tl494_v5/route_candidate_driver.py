@@ -364,6 +364,27 @@ def _build_obstacles(assembly, net_circuit, font_file, verified_ti=None):
     return symbols, guards, sheet, footprint, style
 
 
+def source_signed_ink_footprint(
+    assembly, font_file: Path,
+) -> tuple[dict, dict]:
+    """Measure *all 23* compact source UGO using true signed IC/PAINT ink.
+
+    NativeV5Assembly.symbols intentionally lacks reference.tl494cn: a
+    guessed rectangle is not valid physical Type A / manufacturer geometry.
+    This reusable no-route preflight binds frozen source names, real 16
+    manufacturer contacts, rendered PAINT geometry and verified Type A.
+    """
+    frozen, _ = load_original_owner_fixture()
+    original_nets = restore_original_named_nets(assembly, frozen)
+    verified_ti = bind_verified_compact_ti(assembly, original_nets)
+    symbols, _guards, _layout, footprint, _style = _build_obstacles(
+        assembly, original_nets, font_file, verified_ti=verified_ti,
+    )
+    if set(symbols) < {c.part_id for c in assembly.circuit.components}:
+        raise ValueError("V5_SIGNED_INK_NOT_ALL_23_SOURCE_PARTS")
+    return symbols, footprint
+
+
 def score_route(report: dict) -> tuple[int, int, int, int, int]:
     """Deterministic ranking of partial evidence; never a release decision."""
     trees = report.get("net_trees", ())
