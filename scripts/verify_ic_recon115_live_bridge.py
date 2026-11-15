@@ -316,12 +316,12 @@ def _true_source_b_rendering(font: Path):
     assert {s.pin for s in project.stubs} == {
         PinRef("X2", "1"), PinRef("R5", "2"),
     }
-    return physical, style, project
+    return physical, style, project, symbols
 
 
 def test_real_current_paint_renders_b_source_stubs_not_electrical_junctions():
     """Real SOURCE verified X2.1/R5.2 -> 2 b labels: 2 exact SVG lines."""
-    physical, style, project = _true_source_b_rendering(
+    physical, style, project, symbols = _true_source_b_rendering(
         Path(os.environ["IC_TYPE_A_FONT_PATH"])
     )
     owner = import_module("gost_schematic.rendering.ic_sheet_composition")
@@ -329,7 +329,7 @@ def test_real_current_paint_renders_b_source_stubs_not_electrical_junctions():
         root = ET.Element(_NS + "svg")
         owner.append_verified_sheet_continuations(
             root, physical.circuit, project, style,
-            diagnostic=diagnostic,
+            diagnostic=diagnostic, symbols_by_part=symbols,
         )
         group = next(n for n in root if n.get("data-layer") == (
             "typed-nonphysical-continuations"
@@ -375,7 +375,7 @@ def test_real_current_paint_renders_b_source_stubs_not_electrical_junctions():
 )
 def test_real_current_paint_rejects_forged_b_local_stubs(attack):
     """The two b markers are not free-form decorative wires or fake pins."""
-    physical, style, project = _true_source_b_rendering(
+    physical, style, project, symbols = _true_source_b_rendering(
         Path(os.environ["IC_TYPE_A_FONT_PATH"])
     )
     expected = "SHEET_CONTINUATION_SOURCE_B_STUB_INVENTORY_DRIFT"
@@ -402,6 +402,7 @@ def test_real_current_paint_rejects_forged_b_local_stubs(attack):
             "gost_schematic.rendering.ic_sheet_composition"
         ).append_verified_sheet_continuations(
             root, physical.circuit, forged, style, diagnostic=False,
+            symbols_by_part=symbols,
         )
     assert not list(root)
     assert project.circuit.nets is physical.circuit.nets
