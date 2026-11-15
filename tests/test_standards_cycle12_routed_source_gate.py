@@ -8,7 +8,6 @@ import pytest
 
 from scripts import eskd_cycle12_routed_source_gate as gate
 
-
 TRACED_NETS = {
     "ADJUSTED_DIVIDER": ["R4.2", "R5.1", "R5.3"],
     "COMMON": [
