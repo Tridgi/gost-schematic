@@ -237,6 +237,18 @@ def generate_compact_attempt(out: Path, font_file: Path, *, node_cap: int = 2500
             }
             for ep in source_b.endpoints
         },
+        "source_b_stubs_um": {
+            stub.endpoint_id: {
+                "source_pin_ref": (
+                    f"{stub.pin.reference}.{stub.pin.number}"
+                ),
+                "start": [stub.start.x, stub.start.y],
+                "end": [stub.end.x, stub.end.y],
+                "source_stub_id": stub.id,
+                "nonphysical": True,
+            }
+            for stub in source_b.stubs
+        },
     }
     # Source-backed BOM and Netlist are valid even when NET114 routes only
     # some trees. Their source is the same signed, 23/15/62 immutable Circuit,
