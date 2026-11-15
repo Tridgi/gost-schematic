@@ -20,9 +20,10 @@ from examples.tl494_v5.route_candidate_driver import (
     load_original_owner_fixture,
     restore_original_named_nets,
 )
-from gost_schematic.core.geometry import Point
 from gost_schematic.electrical.ic_paint_bridge import propose_ic_paint_binding
 from gost_schematic.electrical.tl494cn import TI_DEVICE_ID
+
+from gost_schematic.core.geometry import Point
 from gost_schematic.engines.annotation.metrics import PillowTextMeasurer
 from gost_schematic.model.circuit import Circuit, Net, PinRef
 from gost_schematic.standards.type_a_font import inspect_type_a_font
