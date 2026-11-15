@@ -377,9 +377,15 @@ def _conservative_ugo_envelope(group: ET.Element) -> tuple[int, int, int, int]:
                     )]
                     require(len(nums) == 9,
                             "UGO_ARC_NUMERIC_FORM_NOT_PINNED")
-                    x, y, rx, ry, _, _, _, xx, yy = nums
+                    x, y, rx, ry, rotation, _, _, xx, yy = nums
                     require(rx > 0 and ry > 0,
                             "UGO_ARC_NONPOSITIVE_RADIUS")
+                    # This proof models only the eight exact original L1/L2
+                    # circular R2 no-rotation arcs. A rotated ellipse can
+                    # exceed the rectangular rx/ry endpoint envelope;
+                    # rejecting it is mandatory before claiming 2mm PASS.
+                    require(rotation == 0 and rx == ry,
+                            "UGO_ARC_NONCIRCULAR_NOT_CALIBRATED")
                     bound = (
                         min(x, xx)-rx-half, min(y, yy)-ry-half,
                         max(x, xx)+rx+half, max(y, yy)+ry+half,
