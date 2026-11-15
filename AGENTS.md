@@ -214,6 +214,10 @@ including wrong R5 or unknown UGO, invented R1 part ID, changed
 nominal, renamed historical b-Net, foreign/duplicate PinRef, stale
 revision, arbitrary transaction request, unknown output and unbounded
 retry. Every artifact receives a SHA256 and has no edit privileges.
+The `source-generation-handoff.json` artifact now records the exact
+13 UGO choices and 23/15/62/16 source-request digests as a future
+7-stage typed input/output interface, with every downstream stage
+unverified, zero route/print authorization and no model-generated E3.
 
 **`BLOCKED_PARTIAL` means the checks successfully refuse to claim
 a finished electrical sheet.** The command never calls the owner
