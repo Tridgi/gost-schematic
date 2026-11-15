@@ -138,8 +138,17 @@ def main():
     ap.add_argument("--font-file", type=Path, required=True)
     ap.add_argument("--output", type=Path, required=True)
     ap.add_argument("--cycle11", action="store_true")
+    ap.add_argument("--expected-owner-sha",
+                    help="Exact independently pinned Git owner SHA for Cycle11")
     args = ap.parse_args()
-    active = IC_CYCLE11_LIVE_SHA if args.cycle11 else IC_CURRENT_SHA
+    active = (
+        args.expected_owner_sha or IC_CYCLE11_LIVE_SHA
+        if args.cycle11 else IC_CURRENT_SHA
+    )
+    require(not args.expected_owner_sha or (
+        args.cycle11 and len(args.expected_owner_sha) == 40
+        and all(c in "0123456789abcdef" for c in args.expected_owner_sha)
+    ), "QA_IC_EDITOR_OWNER_SHA_ARGUMENT_NOT_EXACT")
     head = subprocess.check_output(
         ["git", "rev-parse", "HEAD"], text=True,
     ).strip()
