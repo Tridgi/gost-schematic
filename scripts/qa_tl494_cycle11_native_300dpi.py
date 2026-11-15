@@ -164,6 +164,46 @@ def inspect_native(
                all(type(n) is int for n in v)
                for v in b_anchor.values()),
            "QA_C13_B_WITNESS_NOT_TWO_PHYSICAL_SOURCE_VECTORS")
+    signed_raw_nets = b_witness.get("true_original_nets")
+    demand(isinstance(signed_raw_nets, dict) and
+           len(signed_raw_nets) == 15 and
+           all(isinstance(members, list) for members
+               in signed_raw_nets.values()) and
+           sum(len(v) for v in signed_raw_nets.values()) == 62 and
+           len({p for members in signed_raw_nets.values()
+                for p in members}) == 62,
+           "QA_C13_B_SIGNED_SOURCE_NETS_NOT_15_UNIQUE_62")
+    # Alias inversion is explicit and fully reversible. The PAINT model is
+    # V5 canonical; RECON witness is original photographed naming.
+    aliases = {
+        "a_INPUT_PLUS": "INPUT_POS",
+        "TRANSFER": "ENERGY_TRANSFER",
+        "b_NEGATIVE_OUTPUT": "OUTPUT_NEG",
+    }
+    demanded_net_names = {
+        aliases.get(name, name): set(members)
+        for name, members in signed_raw_nets.items()
+    }
+    demand(len(demanded_net_names) == 15 and
+           set(aliases) <= set(signed_raw_nets),
+           "QA_C13_B_SOURCE_NET_ALIAS_FORGED")
+    contacts = b_witness.get("signed_DA1_pin_contacts")
+    real_owner_pin_nets = {
+        member: net for net, members in signed_raw_nets.items()
+        for member in members
+    }
+    demand(isinstance(contacts, list) and len(contacts) == 16 and
+           {c.get("number") for c in contacts} ==
+           {str(i) for i in range(1, 17)} and
+           all(c.get("owner_Net") ==
+               real_owner_pin_nets.get("DA1." + c["number"])
+               for c in contacts),
+           "QA_C13_B_MANUFACTURER_16_PINREF_NET_NOT_SOURCE")
+    manufacturer = {c["number"]: c for c in contacts}
+    demand(all(manufacturer[n].get("manufacturer_name") == label and
+               manufacturer[n].get("electrical_type") == "input"
+               for n, label in (("3", "FEEDBACK"), ("13", "OUTPUT CTRL"))),
+           "QA_C13_B_REAL_MANUFACTURER_FB_OUTPUT_CTRL_NOT_INPUT")
     manifest = json.loads(
         (source_dir / "TL494_COMPACT_A3_NEW_ROUTER_DRC_MANIFEST.json")
         .read_text(encoding="utf-8")
@@ -185,6 +225,13 @@ def inspect_native(
            len(source.get("nets", {})) == 15 and
            sum(len(refs) for refs in source["nets"].values()) == 62,
            "QA_C11_NATIVE_ORIGINAL_BOM_AND_PHYSICAL_NETS_MISSING")
+    actual_v5_nets = source["nets"]
+    demand(set(actual_v5_nets) == set(demanded_net_names) and
+           all(isinstance(members, list) and
+               set(members) == demanded_net_names.get(name) and
+               len(members) == len(demanded_net_names[name])
+               for name, members in actual_v5_nets.items()),
+           "QA_C13_PAINT_V5_NET_MEMBER_DRIFT_FROM_SIGNED_SOURCE")
     real_net_by_pin = {}
     for net_name, pins in source["nets"].items():
         for pin in pins:
