@@ -27,7 +27,7 @@ from examples.tl494_v5.route_candidate_driver import (
 
 from gost_schematic.standards.type_a_font import inspect_type_a_font
 
-RECON_SHA = "73025965efeb94585e8723ba3f0b636229e8a5de"
+RECON_SHA = "e4eb565820e54889456f64d36598b608597ca2c2"
 ORIGINAL_SHA = "e695c415fdced164b0e0c39c5249d030795a0aa6"
 PHYSICAL_B = {"FU1.2", "X2.1", "R5.2"}
 B_STUBS = {"b-X2": "X2.1", "b-R5": "R5.2"}
