@@ -43,10 +43,10 @@ jobs:
       - name: Pin all four unmerged current-owner source HEADs (never merge)
         run: |
           set -euxo pipefail
-          IC=d7e70a8bfaed5f4e4f7fb340fdc7dbe4fc466e7b
-          PAINT=6ebd97d5d51facf15b733a1f909c4530262f5bc8
-          CATALOG=a805f0d7685187a05064cb801bcff4c893edf811
-          ROUTER=027cee506a8dc9b3926b44b1abba66e1ae25b183
+          IC=632d5cf4222f188a65d0ec4a6ed22d8dcf1c8617
+          PAINT=252fed9077351493378348f4c0a0138c5e04c8b5
+          CATALOG=d6f8a3a6c54ceaca42111e6534dbc99e72b09a65
+          ROUTER=b2a7a46c2f031dd125dd0879c9d59d24e27decbf
           SOURCE=e695c415fdced164b0e0c39c5249d030795a0aa6
           for sha in "$IC" "$PAINT" "$CATALOG" "$ROUTER" "$SOURCE"; do
             git fetch origin "$sha"
@@ -71,6 +71,7 @@ jobs:
             git show "$ROUTER:src/gost_schematic/engines/$f" > "src/gost_schematic/engines/$f"
           done
           git show "$ROUTER:src/gost_schematic/validation/route_drc.py" > src/gost_schematic/validation/route_drc.py
+          git show "$ROUTER:examples/review_tl494_compact_cycle9.py" > examples/review_tl494_compact_cycle9.py
           echo "HEAD=$(git rev-parse HEAD) real 97=$IC paint=$PAINT ygo=$CATALOG net=$ROUTER"
       - name: Install pinned engine dev and true GOST A Type font
         run: |
