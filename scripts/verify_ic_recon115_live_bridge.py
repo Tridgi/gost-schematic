@@ -911,6 +911,45 @@ def _canonical_source_witness(font: Path):
                 format_mm(stub.start.x), format_mm(stub.start.y),
                 format_mm(stub.end.x), format_mm(stub.end.y),
             )
+    # QA C11 vendor-row mutant: the record is the vendor authority;
+    # missing a redundant catalog entry must not invent/lose signed pins.
+    # A PRESENT but contradictory vendor definition MUST fail closed.
+    assembly = compact_source_assembly()
+    trusted_parts = dict(assembly.parts)
+    assert TI_DEVICE_ID not in trusted_parts
+    without_vendor = bind_positioned_photo_circuit_from_catalog(
+        source, assembly.owner_ic_record, trusted_parts,
+        aliases=assembly.owner_aliases,
+    )
+    with_vendor = bind_positioned_photo_circuit_from_catalog(
+        source, assembly.owner_ic_record,
+        {**trusted_parts, TI_DEVICE_ID: signed.part},
+        aliases=assembly.owner_aliases,
+    )
+    assert with_vendor == without_vendor
+    assert with_vendor.circuit.nets is source.nets
+    forged_pins = tuple(
+        replace(p, name="FORGED_FEEDBACK") if p.number == "3" else p
+        for p in signed.part.pins
+    )
+    counterfeit = replace(signed.part, pins=forged_pins)
+    try:
+        bind_positioned_photo_circuit_from_catalog(
+            source, assembly.owner_ic_record,
+            {**trusted_parts, TI_DEVICE_ID: counterfeit},
+            aliases=assembly.owner_aliases,
+        )
+    except ValueError as exc:
+        assert str(exc) == "IC_ADAPTER_CATALOG_MANUFACTURER_PINOUT_CONFLICT"
+    else:
+        raise AssertionError("IC_C15_FORGED_VENDOR_PART_UNSAFE_ACCEPTED")
+    manufacturer_pinlist = [
+        (p.number, p.name, p.electrical_type.value)
+        for p in signed.part.pins
+    ]
+    manufacturer_bytes = json.dumps(
+        manufacturer_pinlist, separators=(",", ":"), ensure_ascii=False,
+    ).encode("utf-8")
     netlist = [
         {
             "name": net.name,
@@ -939,6 +978,15 @@ def _canonical_source_witness(font: Path):
         },
         "legacy_part_id": "reference.tl494cn",
         "verified_manufacturer_part_id": TI_DEVICE_ID,
+        "manufacturer_partdefinition_pinlist_sha256": hashlib.sha256(
+            manufacturer_bytes
+        ).hexdigest(),
+        "manufacturer_catalog_absent_uses_source_signed_record": True,
+        "manufacturer_catalog_explicit_matching_entry_accepted": True,
+        "manufacturer_catalog_spoofed_pin3_rejected": True,
+        "manufacturer_catalog_spoof_error": (
+            "IC_ADAPTER_CATALOG_MANUFACTURER_PINOUT_CONFLICT"
+        ),
         "part_id_translation_only_da1": True,
         "original_net_names_preserved": True,
         "source_circuit_net_tuple_identity_preserved": (
@@ -994,6 +1042,12 @@ def test_real_cycle14_canonical_signed_source_and_b_print_witness():
     assert len(witness["tl494_factory_pins"]) == 16
     assert len(witness["source_b_nonphysical_stubs"]) == 2
     assert witness["original_net_names_preserved"] is True
+    assert witness["manufacturer_catalog_absent_uses_source_signed_record"]
+    assert witness["manufacturer_catalog_explicit_matching_entry_accepted"]
+    assert witness["manufacturer_catalog_spoofed_pin3_rejected"]
+    assert witness["manufacturer_catalog_spoof_error"] == (
+        "IC_ADAPTER_CATALOG_MANUFACTURER_PINOUT_CONFLICT"
+    )
     assert witness["source_circuit_net_tuple_identity_preserved"] is True
     assert witness["clean_green_contacts"] == 0
     assert witness["diagnostic_green_contacts"] == 16
