@@ -136,6 +136,23 @@ def _source_model(manifest: dict, original: dict) -> dict:
             "ORIGINAL_FROZEN_TYPED_MODEL_INVALID")
     source_parts = {row["ref"] for row in original["elements"]}
     require(len(source_parts) == 23, "ORIGINAL_PART_REFERENCES_NOT_23")
+    # Validate the physical PinRef inventory BEFORE comparing its owner Net
+    # assignment. A missing/duplicated tip must fail with its specific
+    # physical-inventory reason; a 62/62 preserving cross-Net swap still fails
+    # the independent frozen per-Net comparison below.
+    require(all(isinstance(pins, list) and all(isinstance(p, str)
+                and p.count(".") == 1 and all(p.split("."))
+                for p in pins) for pins in rows.values()),
+            "SOURCE_PHYSICAL_PINREF_PAYLOAD_INVALID")
+    refs = [p for pins in rows.values() for p in pins]
+    require(len(refs) == len(set(refs)) == 62, "SOURCE_62_PINREFS_NOT_UNIQUE")
+    refs_da = {p.split(".", 1)[1] for p in refs if p.startswith("DA1.")}
+    require(refs_da == {str(i) for i in range(1, 17)},
+            "REAL_DA1_ALL_16_PHYSICAL_PINS_REQUIRED")
+    require(all(pin.split(".", 1)[0] in source_parts for pin in refs),
+            "ORIGINAL_UNKNOWN_COMPONENT_PINREF")
+    require("COMMON" in names and not names.intersection({"PE", "CHASSIS", "EARTH"}),
+            "COMMON_0V_FAKED_AS_PROTECTIVE_EARTH")
     expected_nets = {
         name: sorted(pins) for name, pins in original["nets"].items()
     }
@@ -145,16 +162,6 @@ def _source_model(manifest: dict, original: dict) -> dict:
     }
     require(actual_nets == expected_nets,
             "ORIGINAL_15_NET_PINREF_MEMBERSHIPS_DRIFT")
-    require(all(pin.split(".", 1)[0] in source_parts
-                for pins in rows.values() for pin in pins),
-            "ORIGINAL_UNKNOWN_COMPONENT_PINREF")
-    require("COMMON" in names and not names.intersection({"PE", "CHASSIS", "EARTH"}),
-            "COMMON_0V_FAKED_AS_PROTECTIVE_EARTH")
-    refs = [p for pins in rows.values() for p in pins]
-    require(len(refs) == len(set(refs)) == 62, "SOURCE_62_PINREFS_NOT_UNIQUE")
-    refs_da = {p.split(".", 1)[1] for p in refs if p.startswith("DA1.")}
-    require(refs_da == {str(i) for i in range(1, 17)},
-            "REAL_DA1_ALL_16_PHYSICAL_PINS_REQUIRED")
     require(manifest.get("source_net_diff") ==
             {"added": [], "removed": [], "physical_members_changed": []},
             "OWNER_ROUTER_SOURCE_NET_DIFF_NOT_ZERO")
