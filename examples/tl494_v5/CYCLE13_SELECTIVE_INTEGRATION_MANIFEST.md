@@ -71,6 +71,55 @@ current source contracts is SHA256
 `f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a`;
 never bypass face verification or substitute a look-alike font.
 
+## Cycle 14 additional source-signed paper and native ink gate
+
+The original source is unchanged. RECON's x17 compact placement has
+**23 real UGO native symbol strokes within 10mm A3/A2 paper**; that does
+**not** automatically prove the actual measured 3.5mm Type A refdes is in
+the paper margin.
+
+Independent real-PAINT measured ink found the one offending 73-text-guard
+source label: **C1**, bbox `[261362,9100,265638,13600]` µm, i.e. top
+y=9.1mm, *900µm outside* the project's 10mm editorial frame.
+This affects A3 and A2 equally because the position is unchanged.
+
+The minimal strictly **position-only** candidate
+`(("C1", 0, Decimal("2.5")),)` measures **zero off-page text guards** on
+both A3/A2, 73 checked, true source UGO bbox
+`[10850,17300,405150,243151]` µm, original 15 named Nets/62 PinRefs,
+all 16 genuine DA1 contacts and two b continuation source vectors intact.
+This is an explicit optional compact editorial draft, **not yet the default
+layout** and never permission to edit immutable E695 or certified full print.
+
+New `cycle14_pin_corridor_probe.py` and its adversarial tests derive all
+62 original source PinRef physical tips from real signed TI + PAINT Type A
+and check outbound 2.5mm/5mm native UGO ink using NET #114's real
+`_source_ink_collision` predicate. At 2.5mm all 62 native graphic
+escapes are clear; at 5mm only FU1.2 vs X2 and X2.1 vs FU1 are blocked.
+**This excludes other routed Net wire graphs and global label/wire DRC.**
+Every JSON, including the C1 proposal, is `BLOCKED_NOT_A_ROUTER`.
+
+Controlled compact A3 four candidate `CONGESTED_PIN_FANOUT_FIRST`
+with exact 1500-node cap/one 3rd owner priority trial/one veto restart
+produced 7/15 each (28 accepted segments) with partial DRC 0 only.
+The same NET #114 owner review driver, original x17 source, *identical
+1500-node parameters* on A3 vs A2 gave 7/15, 28 accepted sections and
+764.157mm wire each, with precisely one C1 text-frame error in either
+format. C1 repair needs rerouting and full post-route validation; A2
+alone did not solve the current real-conductor bottleneck.
+
+**Independent local provenance (isolated Windows worktree; not GH CI):**
+`cycle13_equal_1500.json` SHA256
+`a19770fa5dbcef865f4d93277fb4872b9b19f788299613c794d51dffa80e8ae9`.
+Native owner A3 DRC JSON
+`22e015671679f480534232fd86678b088096e62a71d3b3664d64182ca801095f`,
+A2 DRC JSON
+`5369cf6418fd7a4828ea517cd4fb37a64c1d75e9787b7e45dba794769ae848d3`.
+These are *local* diagnostic-only artifacts, not source-authorized final
+print or GitHub Actions PASS. The new current-owner GitHub workflow
+intentionally emits its own dual-Python 3.12/3.13 physical A3/A2 and C1
+frame proof artifacts for independent verification.
+
 ## Required independent acceptance, still NOT satisfied
 
 1. Exact-head Ruff and full + specialist pytest PASS separately on 3.12/3.13.
