@@ -11,9 +11,9 @@ import ast
 import hashlib
 import inspect
 import json
-from textwrap import dedent
 from dataclasses import asdict, replace
 from pathlib import Path
+from textwrap import dedent
 from xml.etree import ElementTree as ET
 
 from gost_schematic.core.transforms import Transform
