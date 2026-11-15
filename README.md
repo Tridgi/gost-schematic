@@ -52,7 +52,9 @@ Use a **new output folder**. The executable verifies the frozen
 23-component, 15-Net, 62-member physical TL494 source and original
 nominals; calls an actual native stdio MCP client; exports 7
 source-locked catalog UGO SVG+PNG pairs; runs 11 real rejected unsafe
-and incorrect JSON inputs; emits a SHA256 manifest and strict
+and incorrect JSON inputs; emits a source-verified seven-stage
+`source-generation-handoff.json` for future owner integration (explicitly
+BLOCKED), a SHA256 manifest and strict
 read-only `BLOCKED_PARTIAL` engineering report. Glyphs are not
 a fully routed/printed diagram, and a clean exit is NOT a print PASS.
 The Codex CLI integration requires a separately authorized model
