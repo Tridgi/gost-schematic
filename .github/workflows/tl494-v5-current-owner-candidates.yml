@@ -199,7 +199,7 @@ jobs:
           PYTHONPATH=src python -m examples.tl494_v5.cycle15_delivery \
             --font-file "$TL494_TYPE_A_FONT" \
             --output output/tl494-v5-current/cycle15-delivery \
-            --page-format A3 --move C1:0:2.5 --move R2:0:2.5 \
+            --page-format A3 --move C1:0:2.5 \
             --node-cap 4000 --priority-trials 1 --priority-offset 3 \
             --physical-veto-restarts 1 --physical-ripup-attempts 2
           PYTHONPATH=src python - <<'PY'
