@@ -10,6 +10,7 @@ import argparse
 import hashlib
 import json
 from copy import deepcopy
+from decimal import Decimal
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -196,6 +197,123 @@ def validate_report(report: dict, source: dict, *, exact_net_sha: str,
     }
 
 
+def check_real_ic_contact_ink(root: ET.Element, report: dict, mode: str) -> None:
+    """Cross-validate all 16 physical DA1 leads and editor markers in µm."""
+    physical = root.find(
+        f".//{S}g[@data-ink-source='real-native-PAINT-original-16leads']"
+    )
+    require(physical is not None, "QA_C12_NOT_PRODUCTION_PAINT_DA1")
+    leads = physical.findall(
+        f".//{S}g[@data-layer='ic-physical-pin-leads']/{S}line"
+    )
+    require(len(leads) == 16, "QA_C12_MISSING_REAL_PHYSICAL_DA1_INK")
+    actual_leads = {}
+    for lead in leads:
+        pin = lead.get("data-pin-number")
+        require(pin is not None and pin not in actual_leads and
+                lead.get("data-pin-id") == "DA1.P" + pin and
+                lead.get("data-real-anchor") == "true",
+                "QA_C12_REPEATED_OR_FAKE_MANUFACTURER_LEAD")
+        actual_leads[pin] = (
+            Decimal(lead.get("x2")) * 1000,
+            Decimal(lead.get("y2")) * 1000,
+        )
+    require(set(actual_leads) == {str(i) for i in range(1, 17)},
+            "QA_C12_MANUFACTURER_DA1_PIN_NUMBER_NOT_ALL_16")
+    real_net = {
+        pin: net for net, pins in report["net_members"].items()
+        for pin in pins if pin.startswith("DA1.")
+    }
+    require(len(real_net) == 16, "QA_C12_DA1_REAL_NET_SOURCE_NOT_16")
+    overlay = root.find(f".//{S}g[@data-layer='editor-connection-targets']")
+    require((overlay is None) == (mode == "clean"),
+            "QA_C12_CLEAN_DIAGNOSTIC_EDITOR_POLICY_WRONG")
+    if mode == "clean":
+        return
+    require(overlay.get("data-physical-print") == "false",
+            "QA_C12_EDITOR_OVERLAY_MADE_PHYSICAL_PRINT")
+    markers = overlay.findall(S + "rect")
+    require(len(markers) == 16, "QA_C12_EDITOR_COPPER_PINS_NOT_16_GREEN_TIPS")
+    marked = set()
+    for marker in markers:
+        number = marker.get("data-pin-number")
+        pinref = marker.get("data-pin-ref")
+        require(number in actual_leads and number not in marked and
+                pinref == "DA1." + number and
+                marker.get("data-pin-id") == "DA1.P" + number and
+                marker.get("data-net-id") == real_net.get(pinref) and
+                marker.get("data-connectable") == "true" and
+                marker.get("fill") == "#148645",
+                "QA_C12_EDITOR_FOREIGN_PINREF_NET_OR_BAD_ROLE")
+        marked.add(number)
+        ax, ay = actual_leads[number]
+        require((
+            marker.get("data-external-anchor-x-um"),
+            marker.get("data-external-anchor-y-um"),
+        ) == (str(ax.to_integral_exact()), str(ay.to_integral_exact())),
+            "QA_C12_EDITOR_NOT_REAL_MANUFACTURER_TIP")
+        x = Decimal(marker.get("x")) * 1000
+        y = Decimal(marker.get("y")) * 1000
+        width = Decimal(marker.get("width")) * 1000
+        height = Decimal(marker.get("height")) * 1000
+        require(width == height == 700 and
+                2 * x + width == 2 * ax and
+                2 * y + height == 2 * ay,
+                "QA_C12_EDITOR_700UM_PHYSICAL_PIN_SQUARE_DRIFT")
+    require(marked == set(actual_leads),
+            "QA_C12_EDITOR_MISSING_PIN_WHILE_16_MARKERS")
+
+
+def adversarial_svg_targets(directory: Path, report: dict, paper: str) -> dict:
+    """Mutate only IN-MEMORY XML; never edit actual native owner SVG."""
+    original = (directory / f"TL494-compact-{paper}-diagnostic.svg").read_bytes()
+    test_cases = {
+        "foreign_DA1_PinRef": lambda root, box: box.set(
+            "data-pin-ref", "DA1.999"
+        ),
+        "wrong_real_source_Net": lambda root, box: box.set(
+            "data-net-id", "PE"
+        ),
+        "one_micrometre_tip_drift": lambda root, box: box.set(
+            "data-external-anchor-x-um",
+            str(int(box.get("data-external-anchor-x-um")) + 1),
+        ),
+        "one_micrometre_square_shift": lambda root, box: box.set(
+            "x", str(Decimal(box.get("x")) + Decimal("0.001")),
+        ),
+        "nonphysical_1mm_green_square": lambda root, box: box.set(
+            "width", "1.0"
+        ),
+        "disabled_active_pin": lambda root, box: box.set(
+            "data-connectable", "false"
+        ),
+        "duplicated_same_pin_number": lambda root, box: box.set(
+            "data-pin-number", "2"
+        ),
+        "altered_manufacturer_identifier": lambda root, box: box.set(
+            "data-pin-id", "DA1.P999"
+        ),
+    }
+    outcome = {}
+    for title, change in test_cases.items():
+        root = ET.fromstring(original)
+        layer = root.find(f".//{S}g[@data-layer='editor-connection-targets']")
+        require(layer is not None and len(layer.findall(S + "rect")) == 16,
+                "QA_C12_NEGATIVE_TEST_NOT_TRUE_EDITOR_ART")
+        marker = layer.findall(S + "rect")[0]
+        change(root, marker)
+        try:
+            check_real_ic_contact_ink(root, report, "diagnostic")
+        except SourceContractViolation:
+            outcome[title] = "REJECTED_REAL_SVG_PHYSICAL_CONTRACT"
+        else:
+            raise SourceContractViolation(
+                "QA_C12_EDITOR_TAMPERING_BYPASS:" + title
+            )
+    require(len(outcome) == 8, "QA_C12_NOT_ALL_REAL_SVG_NEGATIVES_RUN")
+    return outcome
+
+
 def check_svg_png(directory: Path, report: dict, paper: str) -> dict:
     """Native SHEET artwork and stamped 300 DPI; no raster fabrication."""
     summary = {}
@@ -217,24 +335,7 @@ def check_svg_png(directory: Path, report: dict, paper: str) -> dict:
                 all(x.get("data-net") in report["net_members"]
                     for x in lines),
                 "QA_C12_SVG_NOT_REAL_ROUTED_NET_LINES")
-        source_ic = root.find(
-            f".//{S}g[@data-ink-source='real-native-PAINT-original-16leads']"
-        )
-        require(source_ic is not None and
-                len(source_ic.findall(
-                    f".//{S}g[@data-layer='ic-physical-pin-leads']/{S}line"
-                )) == 16, "QA_C12_MISSING_REAL_PHYSICAL_DA1_INK")
-        layer = root.find(f".//{S}g[@data-layer='editor-connection-targets']")
-        require((layer is None) == (mode == "clean"),
-                "QA_C12_CLEAN_DIAGNOSTIC_EDITOR_POLICY_WRONG")
-        if mode == "diagnostic":
-            markers = layer.findall(S + "rect")
-            require(len(markers) == 16 and
-                    {r.get("data-pin-ref") for r in markers} ==
-                    {f"DA1.{n}" for n in range(1, 17)} and
-                    all(r.get("fill") == "#148645" for r in markers)
-                    and layer.get("data-physical-print") == "false",
-                    "QA_C12_EDITOR_COPPER_PINS_NOT_16_GREEN_TIPS")
+        check_real_ic_contact_ink(root, report, mode)
         width, height = root.get("width"), root.get("height")
         require(width.endswith("mm") and height.endswith("mm"),
                 "QA_C12_SVG_NOT_PHYSICAL_MM")
@@ -362,6 +463,9 @@ def main() -> None:
     )
     validation["sixteen_adversarial_mutations"] = adversarial_source_claims(
         actual, source, net_sha=args.net_sha, recon_sha=args.recon_sha,
+    )
+    validation["eight_actual_SVG_editor_negatives"] = adversarial_svg_targets(
+        args.output_dir, actual, args.paper,
     )
     args.qa_report.parent.mkdir(parents=True, exist_ok=True)
     args.qa_report.write_text(
