@@ -42,10 +42,10 @@ from gost_schematic.standards.type_a_font import inspect_type_a_font
 
 SOURCE_SHA = "e695c415fdced164b0e0c39c5249d030795a0aa6"
 OWNER_SHAS = {
-    "ELEKTRIK_IC_PR97": "d7e70a8bfaed5f4e4f7fb340fdc7dbe4fc466e7b",
-    "PAINT_PR93": "6ebd97d5d51facf15b733a1f909c4530262f5bc8",
-    "YGO2_PR113": "a805f0d7685187a05064cb801bcff4c893edf811",
-    "ELEKTRIK_NET_PR114": "027cee506a8dc9b3926b44b1abba66e1ae25b183",
+    "ELEKTRIK_IC_PR97": "632d5cf4222f188a65d0ec4a6ed22d8dcf1c8617",
+    "PAINT_PR93": "252fed9077351493378348f4c0a0138c5e04c8b5",
+    "YGO2_PR113": "d6f8a3a6c54ceaca42111e6534dbc99e72b09a65",
+    "ELEKTRIK_NET_PR114": "b2a7a46c2f031dd125dd0879c9d59d24e27decbf",
 }
 EXPECTED_FIXTURE_GIT_SHA1 = "a5c116d8745fadbc14d8f6869e1e7b0f97ff6d65"
 ORIGINAL_BAD_DRC = {
