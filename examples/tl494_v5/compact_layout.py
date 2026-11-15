@@ -16,7 +16,7 @@ from gost_schematic.model.circuit import Circuit
 # Millimetres. Exact placements are an A3 EDITORIAL DRAFT proposal, not
 # manufacturer footprint dimensions, a normative symbol or a routed E3.
 COMPACT_A3_MM = {
-    "X1": (16, 35), "L1": (78, 35),
+    "X1": (17, 35), "L1": (78, 35),
     "DA1": (135, 90), "VT1": (225, 141),
     "C1": (265, 20), "C2": (265, 62),
     "VD1": (300, 120), "L2": (320, 35),
