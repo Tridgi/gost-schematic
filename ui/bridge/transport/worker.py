@@ -312,6 +312,35 @@ def _wire_operation(op: str, args: dict[str, Any]) -> dict[str, Any]:
         raise ProtocolError(code, "wire candidate rejected; no state was changed") from exc
 
 
+def _parse_document_blob(args: dict[str, Any]) -> dict[str, Any]:
+    """Fixed canonical ProjectV2 parser for native-dialog-selected UTF-8 bytes.
+
+    The Rust host owns file-path capabilities. This operation never sees a
+    pathname or writes a file; an untrusted JSON text is validated using the
+    exact Python model before the native host can persist it.
+    """
+    if set(args) != {"blob"} or type(args.get("blob")) is not str:
+        raise ProtocolError("INVALID_REQUEST", "one UTF-8 JSON document string required")
+    model = _project_contract()
+    try:
+        document = model.strict_loads(args["blob"])
+        _reject_ambiguous_wire_vertices(document)
+        model.validate(document)
+        project = document["project"]
+        return {
+            "document": document,
+            "project_id": project["id"],
+            "project_sha256": model.digest(document),
+            "source_topology_sha256": model.source_inventory_hash(project),
+            "source_sha": project["provenance"]["source_sha"],
+            "provenance_status": project["provenance"]["status"],
+            "source_path": project["provenance"]["source_path"],
+            "project_write": False,
+        }
+    except model.ContractError as exc:
+        raise ProtocolError(exc.code, "native project document rejected by strict canonical v2 parser") from exc
+
+
 def _project_operation(op: str, args: dict[str, Any]) -> dict[str, Any]:
     """Validated read-only ProjectFileV2 bridge; NEVER mutates editor state."""
     expected_keys = {"document", "net_id"} if op == "verify_net" else {"document"}
@@ -393,6 +422,8 @@ def dispatch(request: Any) -> dict[str, Any]:
                 "y_um": decimal_um(args.get("y_um"))}
     if op == "check_symbol" or op == "render_symbol":
         return _symbol_operation(args.get("symbol"), check=op == "check_symbol")
+    if op == "parse_document_blob":
+        return _parse_document_blob(args)
     if op in {"validate_document", "source_snapshot", "verify_net"}:
         return _project_operation(op, args)
     if op in {"wire_snapshot", "validate_wire_candidate"}:
