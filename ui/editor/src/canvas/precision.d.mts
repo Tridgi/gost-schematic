@@ -1,6 +1,6 @@
 /** Typed view coordinate interface. Integer µm are authoritative; pixels only for selection. */
 import type { PinRef } from '../model/contract';
-import type { CanvasScene, CanvasSymbol } from './scene-projection.mjs';
+import type { CanvasScene } from './scene-projection.mjs';
 export type PointUm = [number,number];
 export type Camera = {s:number;x:number;y:number};
 export type ScreenPoint = {x:number;y:number};
@@ -17,5 +17,11 @@ export declare function screen(p:readonly number[],c:Camera):ScreenPoint;
 export declare function world(p:ScreenPoint,c:Camera):PointUm;
 export declare function zoom(c:Camera,p:ScreenPoint,factor:number):Camera;
 export declare function snap(p:PointUm,grid:number,enabled:boolean):PointUm;
-export declare function pinWorld(symbol:CanvasSymbol,number:string):{at_um:PointUm;normal:string;pin:PinRef};
+/** Accept both typed canonical scene symbols and MASTER's narrower UI scene projection.
+ * Runtime enforces 0/90/180/270, physical terminal identity and coordinate bounds. */
+export type PinViewSymbol={
+ component_id:string; origin_um:readonly number[]; rotation_deg:number; mirror_x:boolean;
+ pins:readonly {physical_pin_number:string;at_um:readonly number[];normal?:string;side?:string}[];
+};
+export declare function pinWorld(symbol:PinViewSymbol,number:string):{at_um:PointUm;normal:string;pin:PinRef};
 export declare function hitTest(scene:CanvasScene,c:Camera,p:ScreenPoint,tolerance?:number):VisualHit|null;
