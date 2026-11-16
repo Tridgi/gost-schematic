@@ -1,0 +1,47 @@
+name: CHAT 7 independent manual wire and ProjectV2 compatibility
+on:
+  push:
+    branches: [ui/chat7-manual-wires-v2]
+    paths:
+      - 'ui/editor/src/wires/**'
+      - '.github/workflows/chat7-wire-v2.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  typed-wiring:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Tridgi/gost-schematic
+          ref: 44dc17d9ea756eadb1656c83cd369ef2b2a3b828
+          path: _locked_project_v2
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Use source-locked #122 fixtures (no modifications to baseline branch)
+        run: |
+          mkdir -p ui/fixtures
+          cp -a _locked_project_v2/ui/fixtures/. ui/fixtures/
+      - name: Install exact TypeScript toolchain
+        working-directory: ui/editor/src/wires
+        run: npm install --no-audit --no-fund --ignore-scripts --no-save typescript@5.8.3
+      - name: Strict typecheck
+        working-directory: ui/editor/src/wires
+        run: npm run typecheck
+      - name: Build real standalone ManualWireEngine plus canonical ProjectV2 adapter
+        working-directory: ui/editor/src/wires
+        run: npm run build
+      - name: Wire graph and E695 model adapter unit/negative tests
+        working-directory: ui/editor/src/wires
+        run: npm test
+      - name: Commit provenance
+        run: |
+          echo "Wire SHA: $GITHUB_SHA"
+          echo "Project/fixture dependency SHA: 44dc17d9ea756eadb1656c83cd369ef2b2a3b828"
