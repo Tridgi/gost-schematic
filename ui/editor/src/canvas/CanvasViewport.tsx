@@ -14,6 +14,7 @@ export type CanvasViewportProps = {
   snapEnabled: boolean;
   /** No electrical mutation is allowed inside the canvas; the host validates this command. */
   onIntent: (intent: CanvasIntent) => void;
+  onZoomPercent?: (percent: number) => void;
 };
 
 const DEFAULT_CAMERA:Camera={s:.004,x:24,y:24};
@@ -26,7 +27,7 @@ function localStroke(symbol:CanvasSymbol,p:PointUm,camera:Camera):ScreenPoint {
   return screen([symbol.origin_um[0]+xy[0],symbol.origin_um[1]+xy[1]],camera);
 }
 /** Read-only SVG viewport. The canonical physical print/export belongs to #124. */
-export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapEnabled,onIntent}:CanvasViewportProps){
+export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapEnabled,onIntent,onZoomPercent}:CanvasViewportProps){
   const svgRef=useRef<SVGSVGElement|null>(null);
   const [size,setSize]=useState({width:960,height:640});
   const [revision,setRevision]=useState(0);
@@ -83,6 +84,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
   const wheel=(e:ReactWheelEvent<SVGSVGElement>)=>{
     e.preventDefault();
     controller.setContext({camera:zoom(controller.getState().camera,local(e),e.deltaY<0?1.15:.85)});
+    onZoomPercent?.(Math.round(controller.getState().camera.s/DEFAULT_CAMERA.s*100));
     invalidate();
   };
   const vertices=(snapshotWire:WiringSnapshot['wires'][number])=>new Map(snapshotWire.vertices.map(v=>[v.id,v.at_um]));
@@ -116,7 +118,8 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
       </g>)}
     </g>
     <g className="symbol-ugo" fill="none" stroke="#24384b" strokeWidth={1.5} pointerEvents="none">
-      {visibleScene.symbols.map(s=><g key={s.instance_id} data-component-id={s.component_id}>
+      {visibleScene.symbols.map(s=><g key={s.instance_id} data-component-id={s.component_id}
+        data-testid={'symbol-'+(document.project.components.find(c=>c.id===s.component_id)?.refdes??s.component_id)}>
         {s.strokes.map((stroke,i)=>{
           const a=localStroke(s,stroke.from_um,camera),b=localStroke(s,stroke.to_um,camera);
           return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y}/>;
@@ -143,7 +146,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
         return <circle key={j.id} data-junction-id={j.id} cx={p.x} cy={p.y} r={3.1}/>;
       })}
     </g>
-    <g className="physical-pin-markers" fill="#fff" stroke="#237f69" strokeWidth={1.35} pointerEvents="none">
+    <g className="physical-pin-markers" fill="#fff" stroke="#237f69" strokeWidth={1.35} pointerEvents="all">
       {visibleScene.symbols.flatMap(s=>s.pins.map(pin=>{
         const p=screen(pinWorld(s,pin.physical_pin_number).at_um,camera);
         return <circle key={s.instance_id+':'+pin.physical_pin_number}
