@@ -4,6 +4,7 @@ Run explicitly: python -m pytest -q ui/bridge/export/tests
 """
 import copy
 import hashlib
+import importlib
 import io
 import json
 import struct
@@ -12,10 +13,11 @@ from xml.etree import ElementTree as ET
 
 import pytest
 from PIL import Image
-from ui.editor.src.model.contract import ContractError, digest, validate
-
 from ui.bridge.export.canonical import ExportError, ExportRequest, compose_clean_svg
 from ui.bridge.export.project_v2 import export_v2, render_v2_source
+
+_model = importlib.import_module("ui.editor.src.model.contract")
+ContractError, digest, validate = _model.ContractError, _model.digest, _model.validate
 
 ROOT = Path(__file__).resolve().parents[4]
 FIX = ROOT / "ui" / "fixtures"
