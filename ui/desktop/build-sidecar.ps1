@@ -19,6 +19,22 @@ if ($LASTEXITCODE -ne 0) { throw 'Install of Python engine failed' }
 # Import the ONE authoritative #122 v2 model, rather than shipping a second schema.
 & $py -m pip install 'pyinstaller>=6,<7' 'jsonschema==4.26.0' 'CairoSVG==2.8.2' 'Pillow>=10,<13'
 if ($LASTEXITCODE -ne 0) { throw 'Install of PyInstaller/jsonschema failed' }
+# CairoSVG is a Python wrapper around a NATIVE Cairo DLL, which plain pip
+# wheels do not install on Windows. Bundle the reviewed MINGW64 Cairo binary
+# and its transitive dependencies, instead of relying on the target PC's PATH.
+# Only fixed local build-runtime prefixes are searched; never from frontend IPC.
+$cairoCandidates = @(
+  'C:\msys64\mingw64\bin',
+  'D:\MSYS2\mingw64\bin'
+)
+$cairoDir = $cairoCandidates | Where-Object {
+  Test-Path (Join-Path $_ 'libcairo-2.dll')
+} | Select-Object -First 1
+if (-not $cairoDir) { throw 'CAIRO_DLL_NOT_INSTALLED_FOR_WINDOWS_PNG_EXPORT' }
+$env:PATH = $cairoDir + ';' + $env:PATH
+$env:CAIROCFFI_DLL_DIRECTORIES = $cairoDir
+& $py -c 'import cairocffi; print("CAIRO_NATIVE_VERSION=" + cairocffi.cairo_version_string())'
+if ($LASTEXITCODE -ne 0) { throw 'CAIRO_NATIVE_LOAD_FAILED' }
 $schemaPath = Join-Path $root 'ui/contracts/project-v2.schema.json'
 $modelPath = Join-Path $root 'ui/editor/src/model/contract.py'
 $wireAdapterPath = Join-Path $root 'ui/integration/project_wire_bridge.py'
@@ -30,6 +46,7 @@ $pyiArgs = @(
   '--clean', '--noconfirm', '--onefile',
   '--collect-all', 'gost_schematic', '--collect-all', 'jsonschema',
   '--collect-all', 'cairosvg', '--collect-all', 'PIL',
+  '--add-binary', "$(Join-Path $cairoDir 'libcairo-2.dll');.",
   '--paths', $root,
   '--hidden-import', 'ui.bridge.export.project_v2',
   '--hidden-import', 'ui.bridge.export.canonical',
