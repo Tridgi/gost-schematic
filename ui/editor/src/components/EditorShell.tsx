@@ -48,7 +48,7 @@ export type EditorShellProps = {
   onPlaceSymbol:(symbolId:string)=>void;onSelectTreeItem:(id:string)=>void;
   onSelectSheet:(id:string)=>void;onInspectorProposal:(edit:InspectorProposal)=>void;
   onUndo:()=>void;onRedo:()=>void;onSave:()=>void;
-  onOpen?:()=>void;onNew?:()=>void;onAddSheet?:()=>void;onExport?:(format:'svg'|'png300')=>void;
+  onOpen?:()=>void;onNew?:()=>void;onAddSheet?:()=>void;onSaveAs?:()=>void;onExport?:(format:'svg'|'png300')=>void;
 };
 
 function NumericAxis({selected,axis,revision,send}:{
@@ -210,6 +210,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
                 <Menu.Item data-testid="new-sheet" onClick={props.onAddSheet} disabled={!props.onAddSheet}>Добавить лист A3</Menu.Item>
                 <Menu.Item onClick={props.onOpen} disabled={!props.onOpen}>Открыть…</Menu.Item>
                 <Menu.Item onClick={props.onSave} disabled={!props.canSave}>Сохранить</Menu.Item>
+                <Menu.Item data-testid="save-project-as" onClick={props.onSaveAs} disabled={!props.onSaveAs}>Сохранить как…</Menu.Item>
                 <Menu.Item onClick={()=>setExportDialog(true)}>Экспорт…</Menu.Item>
               </Menu.Dropdown>
             </Menu>
