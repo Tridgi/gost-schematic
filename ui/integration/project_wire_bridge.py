@@ -1,5 +1,6 @@
 """R1 ProjectFileV2 <-> typed WireEngine adapter. Single sheet, no native GUI writer."""
 from __future__ import annotations
+
 import argparse
 import copy
 import json
@@ -7,7 +8,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "editor" / "src" / "model"))
-import contract as model  # noqa: E402
+import contract as model
 
 SIDES = {"left": "left", "right": "right", "top": "up", "bottom": "down"}
 KEYS = {"schema_version", "project_id", "revision", "source_topology_hash",

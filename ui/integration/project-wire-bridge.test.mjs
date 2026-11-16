@@ -40,7 +40,7 @@ test('typed engine commits one physical route; Python validates saved ProjectV2 
       for(let j=i+1;j<net.members.length&&!saved;j++) {
         try {
           const a=net.members[i],b=net.members[j];
-          const path=engine.previewRoute(a,b);
+          const path=engine.previewRoute({kind:'pin',...a},{kind:'pin',...b});
           engine.commitWire(engine.newTransaction('master-e695-connect'),
             constructWire('master-e695-wire',net.id,'layer-electric',path,
               {kind:'pin',...a},{kind:'pin',...b}));

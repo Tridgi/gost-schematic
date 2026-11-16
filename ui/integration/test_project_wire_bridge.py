@@ -1,4 +1,3 @@
-import copy
 import json
 import sys
 import unittest
@@ -6,7 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "ui" / "integration"))
-from project_wire_bridge import BridgeError, apply_snapshot, to_snapshot, model
+from project_wire_bridge import BridgeError, apply_snapshot, model, to_snapshot
 
 
 def fixture(name):
