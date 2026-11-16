@@ -50,6 +50,25 @@ def _draw_validated(document: dict, sheet_id: str) -> bytes:
         "data-source-net-count": str(len(nets)),
         "data-authored-wire-count": str(len(sheet["wires"])),
     })
+    # Nonprinting canonical declaration: an unrouted Net still exists and
+    # retains the exact signed source PinRefs. A blank copper layer MUST NOT
+    # make a source Net disappear from an SVG consumer's semantic inventory.
+    net_metadata = [
+        {
+            "id": n["id"], "name": n["name"],
+            "members": [
+                [m["component_id"], m["physical_pin_number"]]
+                for m in n["members"]
+            ],
+            "route_status": n["route_status"],
+        }
+        for n in project["nets"]
+    ]
+    ET.SubElement(root, _S + "metadata", {
+        "data-kind": "source-netlist",
+        "data-electrical": "declared-not-geometry-inferred",
+    }).text = json.dumps(net_metadata, ensure_ascii=False,
+                         sort_keys=True, separators=(",", ":"))
     extents: list[tuple[int, int, int, int]] = []
 
     def bounds(points: list[tuple[int, int]], stroke_um: int) -> None:

@@ -44,6 +44,15 @@ class PreviewExportTests(unittest.TestCase):
             self.assertIn(b"gscad-project-v2", svg)
             self.assertEqual(svg.count(b'data-kind="source_b_continuation"'), 2)
             self.assertIn(b'data-source-net-count="15"', svg)
+            from xml.etree import ElementTree as ET
+            root = ET.fromstring(svg)
+            meta = root.find(".//{http://www.w3.org/2000/svg}metadata"
+                             "[@data-kind='source-netlist']")
+            self.assertIsNotNone(meta)
+            inventory = json.loads(meta.text)
+            self.assertEqual(len(inventory), 15)
+            self.assertEqual(sum(len(net["members"]) for net in inventory), 62)
+            self.assertTrue(all(net["route_status"] == "unrouted" for net in inventory))
             with Image.open(io.BytesIO((output / manifest["png_file"]).read_bytes())) as image:
                 self.assertEqual(image.size, (4961, 3508))
                 self.assertAlmostEqual(image.info["dpi"][0], 300, delta=0.02)

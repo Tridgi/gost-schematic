@@ -343,6 +343,15 @@ def compose_clean_svg(engine_svg: bytes, request: ExportRequest) -> tuple[bytes,
                                   "data-approval-status": "DRAFT"})
     if request.source_project_sha256 is not None:
         root.set("data-source-project-sha256", request.source_project_sha256)
+    # Preserve explicitly allowlisted semantic source metadata. The schema
+    # owner, not the rendered page or its apparent crossings, owns Net count.
+    if engine.get("data-source-model") == "gscad-project-v2":
+        root.set("data-source-model", "gscad-project-v2")
+        for field in ("data-source-net-count", "data-authored-wire-count"):
+            value = engine.get(field)
+            if value is None or not value.isascii() or not value.isdecimal() or len(value) > 8:
+                raise ExportError("INVALID_SOURCE_PROVENANCE_METADATA")
+            root.set(field, value)
     ET.SubElement(root, S + "title").text = "GOST Schematic — unapproved clean export"
     ET.SubElement(root, S + "desc").text = (
         "1:1 mm engineering source. No electrical connectivity inferred from image."
