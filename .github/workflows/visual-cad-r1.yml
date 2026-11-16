@@ -67,6 +67,29 @@ jobs:
         run: npm run build
       - name: Manual wire graph positive/negative suite
         run: npm test
+  project-wire-adapter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install model validator and compile typed wire engine
+        run: |
+          python -m pip install -r ui/editor/src/model/requirements-dev.txt
+          cd ui/editor/src/wires
+          npm install --no-audit --no-fund --ignore-scripts --no-save typescript@5.8.3
+          npm run typecheck
+          npm run build
+      - name: Python source model adapter positive and negative tests
+        run: python -m unittest discover -s ui/integration -p 'test_project_wire_bridge.py' -v
+      - name: Full E695 ProjectV2 through real TypeScript WireEngine and back
+        run: node --test ui/integration/project-wire-bridge.test.mjs
+
   canvas-and-qa:
     runs-on: ubuntu-latest
     timeout-minutes: 10
