@@ -13,7 +13,10 @@ export function createCanvasController(initial){
  const getState=()=>({camera:{...context.camera},draft:draft?{...draft,bends_um:draft.bends_um.map(p=>[...p])}:null,drag:active?{kind:active.kind,pointerId:active.pointerId}:null,hover});
  return {
   getState,
-  setContext(next){context={...context,...next}},
+  setContext(next){
+    if(next.tool!==undefined&&next.tool!==context.tool&&next.tool!=='wire')draft=null;
+    context={...context,...next};
+  },
   down(p){
    if(!owner(p)||active)return false;
    const hit=hitTest(context.scene,context.camera,p);
