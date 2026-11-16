@@ -185,6 +185,8 @@ def _engine_projection(args: dict[str, Any]) -> dict[str, Any]:
     if spec is None or spec.loader is None:
         raise ProtocolError("ENGINE_ADAPTER_UNAVAILABLE", "v2 engine projection cannot be loaded")
     module = importlib.util.module_from_spec(spec)
+    if str(canonical.parent) not in sys.path:
+        sys.path.insert(0, str(canonical.parent))
     try:
         spec.loader.exec_module(module)
     except (ImportError, OSError) as exc:
