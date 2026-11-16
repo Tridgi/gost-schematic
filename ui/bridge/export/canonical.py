@@ -200,7 +200,7 @@ def _check_source_ink_bounds(root: ET.Element, viewport: tuple[int, int, int, in
                 raise ExportError("Source circle has non-positive radius")
             xs, ys = [x - r, x + r], [y - r, y + r]
         elif kind == "polyline":
-            chunks = re.split(r"[\\s,]+", item.get("points", "").strip())
+            chunks = re.split(r"[\s,]+", item.get("points", "").strip())
             if len(chunks) < 4 or len(chunks) % 2:
                 raise ExportError("Invalid SVG polyline coordinates")
             coords = [_from_mm(v) for v in chunks]
