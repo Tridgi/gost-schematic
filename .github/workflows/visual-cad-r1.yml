@@ -131,6 +131,26 @@ jobs:
             ui/editor/playwright-report/
           if-no-files-found: ignore
 
+  canonical-v2-export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install real Python engine and exact SVG/PNG raster requirements
+        run: |
+          python -m pip install -e '.[dev]' 'jsonschema==4.26.0' 'CairoSVG==2.9.1' 'Pillow>=12.3,<13'
+      - name: Lint canonical exporter
+        run: python -m ruff check ui/bridge/export
+      - name: Verify complete v2 source -> canonical SVG -> 300 DPI PNG, negative T-X and provenance
+        run: python -m pytest -q ui/bridge/export/tests
+
   canvas-and-qa:
     runs-on: ubuntu-latest
     timeout-minutes: 10
