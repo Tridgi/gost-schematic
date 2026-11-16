@@ -304,3 +304,73 @@ test('out of range, fractional, empty ID and unknown component placements fail a
  err(()=>e.moveComponent(tx(e,'unknown'),'???',[5000,1000]),'UNKNOWN_COMPONENT');
  assert.equal(e.serialize(),before);
 });
+
+test('explicit same-Net X connects only by stable segment handles under CAS, dot has four branches',()=>{
+ const d=toy();
+ d.wires=[
+  constructWire('X-H','N1','default',[[2000,0],[16000,0]],free('X-H','start'),free('X-H','end')),
+  constructWire('X-V','N1','default',[[8000,-6000],[8000,6000]],free('X-V','start'),free('X-V','end'))
+ ];
+ const e=make(d),before=JSON.stringify(e.snapshot.nets);
+ assert.equal(e.snapshot.junctions.length,0);
+ const selected=d.wires.map(w=>({wire_id:w.id,segment_id:w.segments[0].id}));
+ e.connectCrossingSegmentsById(e.newTransaction('explicit-x'),selected,'J-X');
+ assert.deepEqual(e.snapshot.junctions.map(j=>j.at_um),[[8000,0]]);
+ assert.equal(e.snapshot.wires.length,4);
+ assert.equal(e.snapshot.wires.flatMap(w=>[w.vertices[0],w.vertices.at(-1)])
+   .filter(v=>v.anchor.kind==='junction'&&v.anchor.junction_id==='J-X').length,4);
+ assert.equal(JSON.stringify(e.snapshot.nets),before);
+ assert.equal(e.undo(),true);
+ assert.equal(e.snapshot.junctions.length,0);
+ assert.equal(e.snapshot.wires.length,2);
+ assert.equal(e.redo(),true);
+ assert.equal(e.snapshot.junctions.length,1);
+});
+test('explicit T with free branch attaches to middle of same-Net backbone',()=>{
+ const d=toy();
+ d.wires=[
+  constructWire('T-H','N1','default',[[2000,0],[16000,0]],free('T-H','start'),free('T-H','end')),
+  constructWire('T-V','N1','default',[[8000,0],[8000,-6000]],free('T-V','start'),free('T-V','end'))
+ ];
+ const e=make(d);
+ e.connectCrossingSegmentsById(e.newTransaction('explicit-t'),
+   d.wires.map(w=>({wire_id:w.id,segment_id:w.segments[0].id})),'J-T');
+ assert.equal(e.snapshot.junctions.length,1);
+ assert.deepEqual(e.snapshot.junctions[0].at_um,[8000,0]);
+ assert.equal(e.snapshot.wires.length,3);
+});
+test('explicit foreign-Net cross refuses dot and preserves all conductors',()=>{
+ const d=toy();
+ d.wires=[
+  constructWire('NA','N1','default',[[2000,0],[16000,0]],free('NA','start'),free('NA','end')),
+  constructWire('NB','N2','default',[[8000,-6000],[8000,6000]],free('NB','start'),free('NB','end'))
+ ];
+ const e=make(d),before=e.serialize(),pick=d.wires.map(w=>({wire_id:w.id,segment_id:w.segments[0].id}));
+ err(()=>e.connectCrossingSegmentsById(e.newTransaction('cross-net'),pick,'J-X'),'NET_CONFLICT');
+ assert.equal(e.serialize(),before);
+});
+test('stale, forged ID, parallel overlap and disjoint crossing reject without mutation',()=>{
+ const d=toy();
+ d.wires=[
+  constructWire('H','N1','default',[[2000,0],[16000,0]],free('H','start'),free('H','end')),
+  constructWire('V','N1','default',[[8000,-6000],[8000,6000]],free('V','start'),free('V','end'))
+ ];
+ const e=make(d),pick=d.wires.map(w=>({wire_id:w.id,segment_id:w.segments[0].id}));
+ const old=e.newTransaction('old');
+ e.moveComponent(e.newTransaction('move-unconnected'),'D1',[1000,14000]);
+ const before=e.serialize();
+ err(()=>e.connectCrossingSegmentsById(old,pick,'J-X'),'STALE_REVISION');
+ err(()=>e.connectCrossingSegmentsById(e.newTransaction('forged'),
+   [{...pick[0],segment_id:'unknown'},pick[1]],'J-X'),'UNKNOWN_SEGMENT');
+ assert.equal(e.serialize(),before);
+ const other=toy();
+ other.wires=[
+  constructWire('H1','N1','default',[[0,1000],[10000,1000]],free('H1','start'),free('H1','end')),
+  constructWire('H2','N1','default',[[3000,1000],[14000,1000]],free('H2','start'),free('H2','end'))
+ ];
+ const parallel=make(other),past=parallel.serialize();
+ err(()=>parallel.connectCrossingSegmentsById(parallel.newTransaction('overlap'),
+   other.wires.map(w=>({wire_id:w.id,segment_id:w.segments[0].id})),'J'),
+   'AMBIGUOUS_JUNCTION');
+ assert.equal(parallel.serialize(),past);
+});
