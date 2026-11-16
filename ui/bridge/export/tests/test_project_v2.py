@@ -129,3 +129,15 @@ def test_full_e695_is_unrouted_23_15_62_16_two_b():
     assert root.attrib["data-source-net-count"] == "15"
     assert root.attrib["data-authored-wire-count"] == "0"
     assert len(root.findall(".//" + S + "g[@data-kind='source_b_continuation']")) == 2
+
+
+def test_v2_sheet_rejects_mismatched_export_paper():
+    """An A3 project cannot be silently scaled into A4 or rotated paper."""
+    doc = load()
+    sha = digest(doc)
+    for page, orientation in (("A4", "portrait"), ("A2", "landscape"),
+                              ("A3", "portrait")):
+        req = ExportRequest(page=page, orientation=orientation,
+                            strict_font=False, include_frame=False)
+        with pytest.raises(ExportError, match="SHEET_PAGE_SIZE_MISMATCH"):
+            export_v2(doc, "sheet-1", req, expected_project_sha256=sha)
