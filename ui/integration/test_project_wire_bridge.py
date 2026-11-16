@@ -1,3 +1,4 @@
+import copy
 import json
 import sys
 import unittest
@@ -56,6 +57,39 @@ class ProjectWireBridgeTests(unittest.TestCase):
         snap["nets"][0]["literal_source_name"] = "FAKE_SOURCE_NET"
         with self.assertRaisesRegex(BridgeError, "SOURCE_TOPOLOGY_CHANGED"):
             apply_snapshot(doc, snap, expected_sha=model.digest(doc))
+
+    def test_delimited_id_collision_denied_without_source_mutation(self):
+        """Different (sheet, wire, vertex) triplets must never alias."""
+        doc = fixture("toy-v2.gscad.json")
+        wires = doc["project"]["sheets"][0]["wires"]
+        first, second = wires[0], wires[1]
+        first["id"] = "A:B"
+        first["vertices"][0]["id"] = "C"
+        first["segments"][0]["from_vertex_id"] = "C"
+        second["id"] = "A"
+        second["vertices"][0]["id"] = "B:C"
+        second["segments"][0]["from_vertex_id"] = "B:C"
+        # Both produce "sheet-1:A:B:C" if the graph incorrectly joins text.
+        self.assertNotEqual((first["id"], first["vertices"][0]["id"]),
+                            (second["id"], second["vertices"][0]["id"]))
+        with self.assertRaisesRegex(BridgeError, "AMBIGUOUS_VERTEX_ID"):
+            to_snapshot(doc)
+
+    def test_candidate_delimiter_collision_rolls_back(self):
+        doc = fixture("toy-v2.gscad.json")
+        snapshot = to_snapshot(doc)
+        prior = model.digest(doc)
+        candidate = copy.deepcopy(snapshot)
+        first, second = candidate["wires"]
+        first["id"] = "A:B"
+        first["vertices"][0]["id"] = "C"
+        first["segments"][0]["from_vertex_id"] = "C"
+        second["id"] = "A"
+        second["vertices"][0]["id"] = "B:C"
+        second["segments"][0]["from_vertex_id"] = "B:C"
+        with self.assertRaisesRegex(BridgeError, "AMBIGUOUS_VERTEX_ID"):
+            apply_snapshot(doc, candidate, expected_sha=prior)
+        self.assertEqual(model.digest(doc), prior)
 
     def test_unknown_sheet_denied(self):
         with self.assertRaisesRegex(BridgeError, "UNKNOWN_SHEET"):

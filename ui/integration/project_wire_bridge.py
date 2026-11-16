@@ -37,8 +37,27 @@ def free_id_gate(wires):
                 raise BridgeError("FREE_ID_RUNTIME_INCOMPATIBLE")
 
 
+def reject_ambiguous_vertices(project):
+    """Guard #122's colon-joined DSU key until tuple-key migration is reviewed.
+
+    Both wire IDs and vertex IDs may legally contain ':'. Two *different*
+    identities must never collapse to the same route graph node.
+    """
+    seen = {}
+    for sh in project["sheets"]:
+        for wire in sh["wires"]:
+            for vertex in wire["vertices"]:
+                identity = (sh["id"], wire["id"], vertex["id"])
+                joined = ":".join(identity)
+                other = seen.get(joined)
+                if other is not None and other != identity:
+                    raise BridgeError("AMBIGUOUS_VERTEX_ID")
+                seen[joined] = identity
+
+
 def to_snapshot(doc, *, sheet_id=None, revision=0):
     model.validate(doc)
+    reject_ambiguous_vertices(doc['project'])
     if type(revision) is not int or revision < 0:
         raise BridgeError("INVALID_REVISION")
     p, sh = doc["project"], sheet_for(doc, sheet_id)
@@ -102,6 +121,7 @@ def apply_snapshot(doc, candidate, *, expected_sha, sheet_id=None):
     sh = sheet_for(result, sheet_id)
     for field in ("wires", "junctions", "splices"):
         sh[field] = copy.deepcopy(candidate[field])
+    reject_ambiguous_vertices(result['project'])
     for net in result["project"]["nets"]:
         wires = [w for w in sh["wires"] if w["net_id"] == net["id"]]
         if not wires:
