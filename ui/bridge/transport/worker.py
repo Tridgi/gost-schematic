@@ -128,6 +128,43 @@ def _project_contract():
     return module
 
 
+
+def _reject_ambiguous_wire_vertices(document: dict[str, Any]) -> None:
+    """Temporary fail-closed guard for #122 colon-delimited DSU identifiers.
+
+    The canonical v2 schema permits ':' in IDs. Until #122 route_is_complete
+    switches to tuple keys, two distinct vertex triples may share a DSU key
+    and incorrectly join disconnected physical pins.
+    """
+    project = document.get("project") if isinstance(document, dict) else None
+    sheets = project.get("sheets") if isinstance(project, dict) else None
+    if not isinstance(sheets, list):
+        return  # canonical v2 validator will report malformed schema
+    seen: dict[str, tuple[str, str, str]] = {}
+    for sheet in sheets:
+        if not isinstance(sheet, dict) or not isinstance(sheet.get("wires"), list):
+            continue
+        sid = sheet.get("id")
+        for wire in sheet["wires"]:
+            if not isinstance(wire, dict) or not isinstance(wire.get("vertices"), list):
+                continue
+            wid = wire.get("id")
+            for vertex in wire["vertices"]:
+                if not isinstance(vertex, dict):
+                    continue
+                vid = vertex.get("id")
+                if not all(isinstance(item, str) for item in (sid, wid, vid)):
+                    continue
+                identity = (sid, wid, vid)
+                legacy_key = ":".join(identity)
+                previous = seen.get(legacy_key)
+                if previous is not None and previous != identity:
+                    raise ProtocolError(
+                        "AMBIGUOUS_VERTEX_ID", "source model wire vertex key collision"
+                    )
+                seen[legacy_key] = identity
+
+
 def _wire_bridge():
     """Load MASTER-owned single-sheet wire adapter only from fixed installed files."""
     import importlib.util
@@ -176,6 +213,7 @@ def _wire_operation(op: str, args: dict[str, Any]) -> dict[str, Any]:
         type(rev) is not int or not 0 <= rev <= 9_007_199_254_740_991
     ):
         raise ProtocolError("INVALID_REVISION", "revision must be an exact safe integer")
+    _reject_ambiguous_wire_vertices(args["document"])
     bridge = _wire_bridge()
     try:
         if op == "wire_snapshot":
@@ -192,6 +230,7 @@ def _wire_operation(op: str, args: dict[str, Any]) -> dict[str, Any]:
             expected_sha=args["expected_project_sha256"],
             sheet_id=args.get("sheet_id"),
         )
+        _reject_ambiguous_wire_vertices(candidate)
         return {
             "project_sha256": bridge.model.digest(candidate),
             "source_topology_sha256": bridge.model.source_inventory_hash(
@@ -212,6 +251,7 @@ def _project_operation(op: str, args: dict[str, Any]) -> dict[str, Any]:
     expected_keys = {"document", "net_id"} if op == "verify_net" else {"document"}
     if set(args) != expected_keys or type(args.get("document")) is not dict:
         raise ProtocolError("INVALID_REQUEST", "v2 document and exact operation keys required")
+    _reject_ambiguous_wire_vertices(args["document"])
     model = _project_contract()
     try:
         document = model.validate(args["document"])
