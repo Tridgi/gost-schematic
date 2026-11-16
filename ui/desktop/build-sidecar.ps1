@@ -27,6 +27,11 @@ $cairoCandidates = @(
   'C:\msys64\mingw64\bin',
   'D:\MSYS2\mingw64\bin'
 )
+# GitHub's msys2/setup-msys2 action installs under RUNNER_TEMP/msys64
+# rather than C:/msys64. This is still a fixed build-host directory.
+if ($env:RUNNER_TEMP) {
+  $cairoCandidates += (Join-Path $env:RUNNER_TEMP 'msys64\mingw64\bin')
+}
 $cairoDir = $cairoCandidates | Where-Object {
   Test-Path (Join-Path $_ 'libcairo-2.dll')
 } | Select-Object -First 1
