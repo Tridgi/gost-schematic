@@ -62,7 +62,8 @@ function expectedCounts(file:ProjectFileV2):void {
 function frameSheet(id:string,index:number,title:string):Sheet {
   return {id,name:title,index,frame:{size_um:[420000,297000],margin_um:10000,paper:'A3 landscape'},
     title_block:{designation:'GSCAD-USER',title,organization:'',revision:'DRAFT',sheet_number:index},
-    layers:[{id:'layer-electric',name:'Electrical',kind:'electrical',visible:true,printable:true,locked:false}],
+    layers:[{id:index===1?'layer-electric':'layer-electric-'+id,
+      name:'Electrical',kind:'electrical',visible:true,printable:true,locked:false}],
     instances:[],wires:[],junctions:[],splices:[],texts:[],labels:[],graphics:[]};
 }
 export function newBlankProject():ProjectFileV2 {
@@ -125,8 +126,13 @@ function validateAuthoring(file:ProjectFileV2):void {
       if(owned.has(key))reject('DUPLICATE_PIN_OWNERSHIP');owned.add(key);
     }
   }
-  const instances=new Set<string>(),placed=new Set<string>();
+  const instances=new Set<string>(),placed=new Set<string>(),layers=new Set<string>();
   for(const sh of p.sheets){
+    for(const layer of sh.layers){
+      checkId(layer.id,'INVALID_LAYER');
+      if(layers.has(layer.id))reject('DUPLICATE_LAYER');
+      layers.add(layer.id);
+    }
     if(!Array.isArray(sh.instances)||!Array.isArray(sh.wires)||!Array.isArray(sh.graphics))
       reject('INVALID_SHEET');
     unique(sh.instances,'DUPLICATE_INSTANCE');
@@ -248,10 +254,12 @@ export class AuthoringSession {
       const refdes=part.reference_prefix+n;
       const comp:Component={id:newId('comp'),source_refdes:refdes,refdes,
         part_id:part.id,value:part.reference_prefix==='R'?'1к':'100н'};
+      const sheet=draft.project.sheets[indexOfSheet(draft)];
+      const layer=sheet.layers.find(l=>l.kind==='electrical');
+      if(!layer)reject('MISSING_ELECTRICAL_LAYER');
       const instance:SymbolInstance={id:newId('inst'),component_id:comp.id,
         symbol_id:symbolId,origin_um:position,rotation_deg:0,mirror_x:false,
-        layer_id:'layer-electric'};
-      const sheet=draft.project.sheets[indexOfSheet(draft)];
+        layer_id:layer.id};
       draft.project.components.push(comp);sheet.instances.push(instance);
       expectedCounts(draft);added=instance.id;return draft;
     });
