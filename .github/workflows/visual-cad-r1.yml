@@ -112,6 +112,24 @@ jobs:
           npm run build
       - name: Verify actual compiled browser app exists
         run: test -s ui/editor/dist/index.html
+      - name: Compile signed wire engine for browser test oracle
+        working-directory: ui/editor
+        run: ./node_modules/.bin/tsc -p src/wires/tsconfig.json
+      - name: Install real Chromium and dependencies
+        working-directory: ui/editor
+        run: npx playwright install --with-deps chromium
+      - name: End-to-end real browser physical pin/wire and theme tests
+        working-directory: ui/editor
+        run: npm run test:e2e
+      - name: Upload browser failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-cad-r2-chromium
+          path: |
+            ui/editor/test-results/
+            ui/editor/playwright-report/
+          if-no-files-found: ignore
 
   canvas-and-qa:
     runs-on: ubuntu-latest
