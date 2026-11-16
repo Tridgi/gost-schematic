@@ -310,6 +310,59 @@ pub fn native_close_project(app: AppHandle, handle: String) -> Result<(), String
     map.remove(&handle);
     Ok(())
 }
+/// Explicit engineering PREVIEW export through the existing canonical Python
+/// source exporter. Returned bytes are verified and written only to an
+/// OS-picked destination. This never labels DRAFT font geometry as GOST print.
+#[tauri::command]
+pub async fn native_export_project(
+    app: AppHandle, document: Value, sheet_id: String, format: String
+) -> Result<String, String> {
+    if !matches!(format.as_str(), "svg" | "png300") ||
+        sheet_id.is_empty() || sheet_id.len()>256 {
+        return Err("INVALID_EXPORT_ARGS".into());
+    }
+    let request = EngineRequest {
+        v: 1, id: format!("native_{}", Uuid::new_v4().simple()),
+        op: "native_export_preview".into(),
+        args: json!({"document":document,"sheet_id":sheet_id,"format":format})
+    };
+    let response = internal_engine_request(app.clone(),app.state::<BridgeState>(),request).await?;
+    if response.get("ok").and_then(Value::as_bool)!=Some(true) {
+        return Err(response.get("error").and_then(|e|e.get("code"))
+            .and_then(Value::as_str).unwrap_or("PYTHON_EXPORT_REJECTED").into());
+    }
+    let output = response.get("result").ok_or("MALFORMED_PYTHON_EXPORT")?;
+    if get_string(output,"approval")? != "NOT_ESKD_CERTIFIED" ||
+       get_string(output,"format")? != format {
+        return Err("UNTRUSTED_EXPORT_METADATA".into());
+    }
+    use base64::{engine::general_purpose::STANDARD,Engine as _};
+    let bytes=STANDARD.decode(get_string(output,"payload")?)
+        .map_err(|_|"INVALID_EXPORT_BASE64")?;
+    if bytes.len()>2_600_000 || sha(&bytes)!=get_string(output,"payload_sha256")? {
+        return Err("CORRUPT_EXPORT_BYTES".into());
+    }
+    if format=="png300" && !bytes.starts_with(&[137,80,78,71,13,10,26,10]) {
+        return Err("NOT_PNG".into());
+    }
+    if format=="svg" && !bytes.starts_with(b"<?xml") && !bytes.starts_with(b"<svg") {
+        return Err("NOT_SVG".into());
+    }
+    let ext=if format=="svg" {"svg"} else {"png"};
+    let selected=app.dialog().file().add_filter("GSCAD engineering PREVIEW", &[ext])
+        .blocking_save_file().ok_or("CANCELLED")?;
+    let path=selected.into_path().map_err(|_|"UNSUPPORTED_NATIVE_PATH")?;
+    if path.extension().and_then(|e|e.to_str())!=Some(ext) {
+        return Err("INVALID_EXPORT_EXTENSION".into());
+    }
+    if path.exists() {return Err("EXPORT_TARGET_EXISTS".into());}
+    let temp=write_temp(&path,&bytes)?;
+    let result=fs::hard_link(&temp,&path).map_err(|_|"EXPORT_TARGET_EXISTS".into());
+    let _=fs::remove_file(&temp);
+    result?;
+    Ok(display_name(&path))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
