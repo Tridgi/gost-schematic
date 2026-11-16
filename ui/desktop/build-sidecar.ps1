@@ -13,7 +13,7 @@ $modelPath = Join-Path $root 'ui/editor/src/model/contract.py'
 if (-not (Test-Path $schemaPath) -or -not (Test-Path $modelPath)) {
   throw 'Install reviewed #122 ProjectFileV2 contract and schema before packaging'
 }
-& $py -m PyInstaller --clean --noconfirm --onefile --collect-all gost_schematic --collect-all jsonschema --paths $root --hidden-import ui.editor.src.model.contract --add-data "$schemaPath;ui/contracts" --name engine-bridge --distpath (Join-Path $PSScriptRoot 'dist') --workpath (Join-Path $PSScriptRoot '.pyi') (Join-Path $root 'ui/bridge/transport/worker.py')
+& $py -m PyInstaller --clean --noconfirm --onefile --collect-all gost_schematic --collect-all jsonschema --add-data "$modelPath;ui/editor/src/model" --add-data "$schemaPath;ui/contracts" --name engine-bridge --distpath (Join-Path $PSScriptRoot 'dist') --workpath (Join-Path $PSScriptRoot '.pyi') (Join-Path $root 'ui/bridge/transport/worker.py')
 if ($LASTEXITCODE -ne 0) { throw 'PyInstaller failed' }
 $hostTriple = (& rustc -vV | Select-String '^host: (.+)$').Matches.Groups[1].Value
 if (-not $hostTriple) { throw 'rustc host target unavailable' }
