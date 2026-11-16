@@ -9,7 +9,7 @@ import type { CanvasIntent } from './canvas/controller.mjs';
 import { commitSegmentDrag, captureSegmentDrag } from './canvas/wire-intents.mjs';
 import {AuthoringSession,newBlankProject} from './authoring/session';
 import {nativeDesktopAvailable,nativeOpenProject,nativeSaveProject,nativeSaveAsProject,nativeCloseProject,
-  type NativeDocumentHandle} from './native/desktop';
+  nativeExportProject,type NativeDocumentHandle} from './native/desktop';
 import {parseProjectJsonStrict} from './authoring/strict-json';
 import { loadProjectWires } from './wires/project-v2-adapter';
 import { projectToCanvasScene } from './canvas/scene-projection.mjs';
@@ -258,8 +258,14 @@ export default function App() {
   const handleExport=async(kind:'svg'|'png300')=>{
     try {
       const next=currentProject();
-      const sheet=next.project.sheets[0];
+      const sheet=next.project.sheets.find(s=>s.id===next.workspace.active_sheet_id);
       if(!sheet)throw Error('UNKNOWN_SHEET');
+      if(nativeDesktopAvailable()){
+        const filename=await nativeExportProject(next,sheet.id,kind);
+        setIssue('NATIVE_PYTHON_EXPORT_PREVIEW: '+filename+
+          '; физические единицы сохранены, шрифт НЕ сертифицирован по ГОСТ.');
+        return;
+      }
       const svg=renderProjectPreviewSVG(next,sheet.id);
       const file=kind==='svg'
         ?new Blob([svg],{type:'image/svg+xml;charset=utf-8'})
