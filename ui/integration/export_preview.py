@@ -17,9 +17,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from ui.bridge.export.canonical import ExportRequest  # noqa: E402
-from ui.bridge.export.project_v2 import export_v2  # noqa: E402
-from ui.editor.src.model.contract import digest, strict_loads  # noqa: E402
+from ui.bridge.export.canonical import ExportRequest
+from ui.bridge.export.project_v2 import export_v2
+from ui.editor.src.model.contract import digest, strict_loads
 
 
 def _replace(path: Path, data: bytes) -> None:
