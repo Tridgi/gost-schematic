@@ -440,6 +440,48 @@ export class ManualWireEngine {
       // A junction that lost a branch must be explicitly removed or rewired: no silent topology change.
     });
   }
+  /** User-consented movement of a physically connected component.
+   * Signed endpoint PinRefs, Net IDs and wire IDs are invariant. The route
+   * is regenerated only inside a validated CAS transaction. An unsatisfiable
+   * lead/obstacle arrangement aborts the entire edit with no state mutation.
+   * Rebuilt segments are marked for routing review, NEVER auto-verified.
+   */
+  moveComponentAndReanchor(tx:Transaction,componentId:string,originUm:PointUm,permitRebuild=false):WiringSnapshot {
+    id(componentId,'Component ID');point(originUm);
+    return this.transaction(tx,d=>{
+      const component=d.components.find(c=>c.id===componentId);
+      if(!component)fail('UNKNOWN_COMPONENT','Unknown connected component');
+      if(same(component.origin_um,originUm))fail('NO_CHANGE','Component position unchanged');
+      const attached=d.wires.filter(w=>[w.vertices[0],w.vertices.at(-1)!].some(
+        v=>v.anchor.kind==='pin'&&v.anchor.component_id===componentId));
+      if(attached.length&&!permitRebuild)
+        fail('REROUTE_REQUIRED','Moving wired component requires explicit user consent');
+      component.origin_um=copy(originUm);
+      for(const wire of attached){
+        const start=terminal(wire.vertices[0]),end=terminal(wire.vertices.at(-1)!);
+        const resolve=(anchor:TerminalAnchor,original:PointUm):{at:PointUm;normal?:PointUm}=>{
+          if(anchor.kind==='pin')return physicalPin(d,anchor);
+          if(anchor.kind==='junction'){
+            const node=d.junctions.find(j=>j.id===anchor.junction_id);
+            if(!node)fail('ANCHOR_MISMATCH','Missing signed Junction');
+            return {at:node.at_um};
+          }
+          if(anchor.kind==='splice'){
+            const node=d.splices.find(j=>j.id===anchor.splice_id);
+            if(!node)fail('ANCHOR_MISMATCH','Missing signed Splice');
+            return {at:node.at_um};
+          }
+          return {at:original};
+        };
+        const a=resolve(start,wire.vertices[0].at_um);
+        const b=resolve(end,wire.vertices.at(-1)!.at_um);
+        const points=routeManhattan(a.at,b.at,a.normal,b.normal);
+        const updated=wireFromPoints(wire.id,wire.net_id,wire.layer_id,points,start,end);
+        updated.needs_routing_review=true;
+        d.wires[d.wires.indexOf(wire)]=updated;
+      }
+    });
+  }
   rotateAndReanchor(tx:Transaction,componentId:string,rotation:0|90|180|270,permitRebuild=false):WiringSnapshot {
     return this.transaction(tx,d=>{
       const c=d.components.find(c=>c.id===componentId);if(!c) fail('UNKNOWN_COMPONENT','Unknown component');
