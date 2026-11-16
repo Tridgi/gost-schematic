@@ -206,3 +206,26 @@ test('explicit 50%, 100% and 200% browser zoom scales physical pin spacing witho
  await expect.poll(async()=>await distance()/fifty,{timeout:10000}).toBeCloseTo(4,1);
  await expect(page.locator('[data-net-id]')).toHaveCount(0);
 });
+
+test('rejected foreign-Net click preserves live source draft, then correct target commits exactly one wire',async({page})=>{
+ await page.goto('/');
+ await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+ const [a,b]=signedPair();
+ const sourceNet=wiring.nets.find(n=>n.members.some(p=>p.component_id===a.component_id&&p.physical_pin_number===a.physical_pin_number));
+ const foreign=wiring.nets.find(n=>n.id!==sourceNet.id&&n.members.length>0).members[0];
+ const pin=p=>page.getByTestId('signed-pin-'+p.component_id+'-'+p.physical_pin_number);
+ await page.getByRole('button',{name:'Провод W'}).click();
+ await pin(a).click();
+ await pin(foreign).click();
+ await expect(page.getByRole('alert').filter({hasText:'NET_CONFLICT'})).toBeVisible();
+ await expect(page.locator('[data-net-id]')).toHaveCount(0);
+ // Do NOT select source a again; controller must still have its original signed PinRef.
+ await pin(b).click();
+ await expect(page.locator('[data-net-id]')).toHaveCount(1);
+ const downloading=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const saved=JSON.parse(readFileSync(await (await downloading).path(),'utf8'));
+ expect(saved.project.sheets[0].wires).toHaveLength(1);
+ expect(saved.project.sheets[0].wires[0].net_id).toBe(sourceNet.id);
+ expect(saved.project.nets.map(n=>n.members)).toEqual(source.project.nets.map(n=>n.members));
+});
