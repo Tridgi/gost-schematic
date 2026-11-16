@@ -42,8 +42,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install pinned standalone model test requirements
-        run: python -m pip install -r ui/editor/src/model/requirements-dev.txt
+      - name: Install pinned model requirements and the real Python E3 engine for adapter tests
+        run: |
+          python -m pip install -r ui/editor/src/model/requirements-dev.txt
+          python -m pip install -e .
       - name: Source-locked model, schema and negative fixtures
         env:
           PYTHONPATH: ui/editor/src/model
