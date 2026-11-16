@@ -116,6 +116,6 @@ test('browser save and reopen retains frozen Nets and physical PinRefs after ver
     name:'corrupt.gscad.json',mimeType:'application/json',
     buffer:Buffer.from(JSON.stringify(altered),'utf8')
   });
-  await expect(page.getByText(/OPEN_FAILED:.*SOURCE_TOPOLOGY_MISMATCH/)).toBeVisible();
+  await expect(page.getByRole('alert').filter({hasText:/OPEN_FAILED:.*SOURCE_TOPOLOGY_MISMATCH/})).toBeVisible();
   await expect(page.locator('[data-net-id]')).toHaveCount(1);
 });
