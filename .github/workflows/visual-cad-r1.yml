@@ -150,6 +150,8 @@ jobs:
         run: python -m ruff check ui/bridge/export
       - name: Verify complete v2 source -> canonical SVG -> 300 DPI PNG, negative T-X and provenance
         run: python -m pytest -q ui/bridge/export/tests
+      - name: Export frozen 23/15/62/16 E695 sheet through developer CLI (strict/non-strict)
+        run: python -m unittest discover -s ui/integration -p 'test_export_preview.py' -v
 
   canvas-and-qa:
     runs-on: ubuntu-latest
