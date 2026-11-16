@@ -8,10 +8,11 @@ import { useLocalStorage } from '@mantine/hooks';
 import {
   AlertTriangle, Cable, FileDown, FolderTree, Grid3X3, Hand,
   Magnet, Menu as MenuIcon, MousePointer2, Save, Search, Settings2,
-  Undo2, Redo2
+  Undo2, Redo2, Type as TypeIcon, Moon, Sun
 } from 'lucide-react';
 import { normalizeDockLayout, DOCK_LAYOUT_KEY, type DockLayout } from '../theme/layout';
 import { formatMillimetres, parseMillimetres } from './inspector-units';
+import { resolveShellShortcut } from './shortcuts';
 import '../theme/design-tokens.css';
 
 export type ToolMode = 'select' | 'wire' | 'text' | 'pan';
@@ -28,7 +29,8 @@ export type SelectedInstance = {
 export type DiagnosticItem = {id:string; severity:'error'|'warning'|'info'; message:string};
 export type InspectorProposal =
   | {kind:'propose-origin-axis';instanceId:string;axis:'x'|'y';um:number;baseRevision:string}
-  | {kind:'propose-refdes';instanceId:string;refdes:string;baseRevision:string};
+  | {kind:'propose-refdes';instanceId:string;refdes:string;baseRevision:string}
+  | {kind:'propose-value';instanceId:string;value:string;baseRevision:string};
 
 /** The host owns all electrical topology, source PinRefs, command validation and actual persistence. */
 export type EditorShellProps = {
@@ -39,6 +41,8 @@ export type EditorShellProps = {
   canvas:ReactNode;tool:ToolMode;gridVisible:boolean;snapEnabled:boolean;
   cursorUm?:readonly [number,number];zoomPercent?:number;
   canUndo:boolean;canRedo:boolean;canSave:boolean;exportReady:boolean;
+  /** Authoritative CAS rejection/validation feedback from host model, not optimistically hidden. */
+  inspectorError?:string|null;
   onToolChange:(tool:ToolMode)=>void;
   onToggleGrid:(v:boolean)=>void;onToggleSnap:(v:boolean)=>void;
   onPlaceSymbol:(symbolId:string)=>void;onSelectTreeItem:(id:string)=>void;
@@ -65,28 +69,39 @@ function NumericAxis({selected,axis,revision,send}:{
   }
   return <TextInput size="xs" label={axis.toUpperCase()+', мм'} value={draft} error={error}
     onChange={e=>{setDraft(e.currentTarget.value);setError(null);}}
-    onBlur={commit} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}}
+    onBlur={commit} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur(); if(e.key==='Escape'){setDraft(formatMillimetres(current));setError(null);e.stopPropagation();}}}
+    data-testid={'inspector-axis-'+axis}
     aria-label={'Координата '+axis.toUpperCase()+' в миллиметрах'}/>;
 }
 
-function Inspector({selected,revision,send}:{
-  selected:SelectedInstance|null;revision:string;send:(edit:InspectorProposal)=>void
+function Inspector({selected,revision,send,hostError}:{
+  selected:SelectedInstance|null;revision:string;send:(edit:InspectorProposal)=>void;hostError?:string|null
 }){
   const [refdes,setRefdes]=useState(selected?.refdes??'');
+  const [valueDraft,setValueDraft]=useState(selected?.value??'');
   useEffect(()=>setRefdes(selected?.refdes??''),[selected?.id,selected?.refdes]);
+  useEffect(()=>setValueDraft(selected?.value??''),[selected?.id,selected?.value]);
   if(!selected)return <Text size="sm" c="dimmed" p="md">Выберите элемент для просмотра свойств.</Text>;
   const refdesCommit=()=>{
     const v=refdes.trim();
     if(v&&v!==selected.refdes)send({kind:'propose-refdes',instanceId:selected.id,refdes:v,baseRevision:revision});
     setRefdes(selected.refdes);
   };
-  return <Stack p="sm" gap="xs" data-testid="gscad-inspector">
+  const valueCommit=()=>{
+    const v=valueDraft.trim();
+    if(v!==selected.value && v.length<=128)send({kind:'propose-value',instanceId:selected.id,value:v,baseRevision:revision});
+    setValueDraft(selected.value); // Host must confirm/deny revision; never pretend a commit succeeded.
+  };
+  return <Stack p="sm" gap="xs" data-testid="inspector">
     <Text size="xs" c="dimmed">ID: {selected.id}</Text>
     <TextInput size="xs" label="Позиционное обозначение" value={refdes}
       onChange={e=>setRefdes(e.currentTarget.value)} onBlur={refdesCommit}
-      onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}}/>
-    <TextInput size="xs" label="Номинал" value={selected.value} readOnly
-      description="Ожидается команда изменения значения от доменной модели"/>
+      onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();if(e.key==='Escape'){setRefdes(selected.refdes);e.stopPropagation();}}}/>
+    <TextInput size="xs" label="Номинал" value={valueDraft} data-testid="inspector-nominal"
+      maxLength={128} description="Изменение требует подтверждения доменной модели"
+      onChange={e=>setValueDraft(e.currentTarget.value)} onBlur={valueCommit}
+      onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();if(e.key==='Escape'){setValueDraft(selected.value);e.stopPropagation();}}}/>
+    {hostError&&<Text size="xs" c="red" role="alert" data-testid="inspector-host-error">{hostError}</Text>}
     <Group grow wrap="nowrap" gap="xs">
       <NumericAxis selected={selected} axis="x" revision={revision} send={send}/>
       <NumericAxis selected={selected} axis="y" revision={revision} send={send}/>
@@ -157,15 +172,22 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
   const filtered=props.catalog.filter(x=>(x.name+' '+x.category).toLocaleLowerCase('ru-RU').includes(query.toLocaleLowerCase('ru-RU')));
   useEffect(()=>{
     const onKey=(e:globalThis.KeyboardEvent)=>{
-      if(e.isComposing||(e.target as HTMLElement)?.closest('input,textarea,select,[contenteditable="true"],[role="textbox"]'))return;
-      if(e.ctrlKey&&e.key.toLowerCase()==='k'){e.preventDefault();setCommandDialog(true);return;}
-      if(e.ctrlKey&&e.key.toLowerCase()==='e'){e.preventDefault();setExportDialog(true);return;}
-      if(settings||exportDialog||commandDialog||e.ctrlKey||e.altKey||e.metaKey)return;
-      const map:Record<string,ToolMode>={v:'select',w:'wire',h:'pan',t:'text'};
-      if(map[e.key.toLowerCase()])props.onToolChange(map[e.key.toLowerCase()]);
+      const editable=!!(e.target as HTMLElement)?.closest('input,textarea,select,[contenteditable="true"],[role="textbox"]');
+      // The browser Save-as dialog would incorrectly capture an uncommitted inspector draft.
+      if(editable&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();return;}
+      const action=resolveShellShortcut(e,{editable,dialogOpen:settings||exportDialog||commandDialog});
+      if(!action)return;
+      if(action==='save'&&!props.canSave || action==='undo'&&!props.canUndo || action==='redo'&&!props.canRedo)return;
+      e.preventDefault();
+      if(action==='palette')setCommandDialog(true);
+      else if(action==='export')setExportDialog(true);
+      else if(action==='save')props.onSave();
+      else if(action==='undo')props.onUndo();
+      else if(action==='redo')props.onRedo();
+      else props.onToolChange(action);
     };
     window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey);
-  },[props.onToolChange,settings,exportDialog,commandDialog]);
+  },[props.onToolChange,props.onSave,props.onUndo,props.onRedo,props.canSave,props.canUndo,props.canRedo,settings,exportDialog,commandDialog]);
   const commands=[
     {label:'Сохранить',ok:props.canSave,run:props.onSave},
     {label:'Экспорт',ok:true,run:()=>setExportDialog(true)},
@@ -177,7 +199,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
       navbar={{width:256,breakpoint:'md',collapsed:{mobile:!left,desktop:!left}}}
       aside={{width:318,breakpoint:'md',collapsed:{mobile:!right,desktop:!right}}}
       resize={resize} transitionDuration={0}>
-      <AppShell.Header className="gscad-header">
+      <AppShell.Header className="gscad-header" data-testid="project-toolbar">
         <Group justify="space-between" h="100%" px="sm" gap="xs" wrap="nowrap">
           <Group gap="xs" wrap="nowrap">
             <ActionIcon aria-label="Показать библиотеку УГО" variant="subtle" onClick={()=>setLeft(v=>!v)}><MenuIcon size={18}/></ActionIcon>
@@ -195,9 +217,10 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
           <Group gap={4} wrap="nowrap">
             <ActionIcon aria-label="Отменить" variant="subtle" disabled={!props.canUndo} onClick={props.onUndo}><Undo2 size={17}/></ActionIcon>
             <ActionIcon aria-label="Повторить" variant="subtle" disabled={!props.canRedo} onClick={props.onRedo}><Redo2 size={17}/></ActionIcon>
-            <ActionIcon aria-label="Сохранить" variant="subtle" disabled={!props.canSave} onClick={props.onSave}><Save size={17}/></ActionIcon>
+            <ActionIcon aria-label="Сохранить" data-testid="save-project" variant="subtle" disabled={!props.canSave} onClick={props.onSave}><Save size={17}/></ActionIcon>
             <ActionIcon aria-label="Команды Ctrl+K" variant="subtle" onClick={()=>setCommandDialog(true)}><Search size={17}/></ActionIcon>
             <ActionIcon aria-label="Настройки" variant="subtle" onClick={()=>setSettings(true)}><Settings2 size={17}/></ActionIcon>
+            <ActionIcon aria-label="Переключить тему" data-testid="toggle-theme" variant="subtle" onClick={()=>props.setScheme(props.scheme==='dark'?'light':'dark')}>{props.scheme==='dark'?<Sun size={17}/>:<Moon size={17}/>}</ActionIcon>
             <ActionIcon aria-label="Показать инспектор" variant="subtle" onClick={()=>setRight(v=>!v)}><FolderTree size={17}/></ActionIcon>
             <Button leftSection={<FileDown size={15}/>} size="compact-sm" onClick={()=>setExportDialog(true)}>Экспорт</Button>
           </Group>
@@ -207,9 +230,9 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
         <Stack gap="xs" p="sm" h="100%">
           <Text size="sm" fw={600}>Библиотека УГО</Text>
           <TextInput size="xs" aria-label="Поиск УГО" leftSection={<Search size={14}/>}
-            placeholder="Поиск по каталогу" value={query} onChange={e=>setQuery(e.currentTarget.value)} data-testid="gscad-catalog-search"/>
+            placeholder="Поиск по каталогу" value={query} onChange={e=>setQuery(e.currentTarget.value)} data-testid="catalog-search"/>
           <ScrollArea h="100%" type="hover"><Stack gap={4}>
-            {filtered.map(s=><Button key={s.id} size="compact-lg" variant="subtle" className="gscad-catalog-item"
+            {filtered.map(s=><Button key={s.id} size="compact-lg" variant="subtle" className="gscad-catalog-item" data-testid={'catalog-item-'+s.id}
               aria-label={'Выбрать УГО '+s.name+', '+s.approval} onClick={()=>props.onPlaceSymbol(s.id)}>
               <span className="gscad-symbol-preview" aria-hidden="true">{s.thumbnail??'Нет эскиза'}</span>
               <span className="gscad-symbol-info"><span>{s.name}</span><small>{s.category} · {s.approval}</small></span>
@@ -222,22 +245,22 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
         <Tabs value={props.activeSheetId} onChange={id=>{if(id)props.onSelectSheet(id);}} keepMounted={false} className="gscad-sheet-tabs">
           <Tabs.List>{props.sheets.map(s=><Tabs.Tab key={s.id} value={s.id}>{s.title}</Tabs.Tab>)}</Tabs.List>
         </Tabs>
-        <div className="gscad-canvas-slot" data-testid="gscad-canvas-slot" aria-label="Область схемы">
+        <div className="gscad-canvas-slot" data-testid="gscad-canvas-slot" role="region" aria-label="Область схемы">
           {props.canvas??<Text size="sm" c="dimmed">CAD-холст не подключён</Text>}
         </div>
         <Group className="gscad-toolbar" px="sm" gap={4} wrap="nowrap">
           {([
             ['select',MousePointer2,'Выбор V'],['wire',Cable,'Провод W'],
-            ['text',Search,'Текст T'],['pan',Hand,'Панорама H']
+            ['text',TypeIcon,'Текст T'],['pan',Hand,'Панорама H']
           ] as const).map(([mode,Icon,label])=>
             <Tooltip key={mode} label={label}><ActionIcon size="lg" variant={props.tool===mode?'filled':'subtle'}
-              aria-label={label} aria-pressed={props.tool===mode} onClick={()=>props.onToolChange(mode)}>
+              aria-label={label} data-testid={'tool-'+mode} aria-pressed={props.tool===mode} onClick={()=>props.onToolChange(mode)}>
               <Icon size={18}/></ActionIcon></Tooltip>)}
           <Divider orientation="vertical"/>
-          <Tooltip label="Показать сетку"><ActionIcon size="lg" aria-label="Показать сетку" aria-pressed={props.gridVisible}
+          <Tooltip label="Показать сетку"><ActionIcon size="lg" aria-label="Показать сетку" data-testid="toggle-grid-visible" aria-pressed={props.gridVisible}
             variant={props.gridVisible?'light':'subtle'} onClick={()=>props.onToggleGrid(!props.gridVisible)}>
             <Grid3X3 size={18}/></ActionIcon></Tooltip>
-          <Tooltip label="Привязка"><ActionIcon size="lg" aria-label="Привязка к сетке" aria-pressed={props.snapEnabled}
+          <Tooltip label="Привязка"><ActionIcon size="lg" aria-label="Привязка к сетке" data-testid="toggle-grid-snap" aria-pressed={props.snapEnabled}
             variant={props.snapEnabled?'light':'subtle'} onClick={()=>props.onToggleSnap(!props.snapEnabled)}>
             <Magnet size={18}/></ActionIcon></Tooltip>
           <div className="gscad-toolbar-spacer"/>
@@ -253,13 +276,13 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
         <RightSplit percent={split} onChange={changeSplit}
           top={<><Text size="sm" fw={600} p="sm">Структура проекта</Text>
             <ScrollArea h="calc(100% - 44px)">{props.tree.map(n=><NavLink key={n.id} label={n.label}
-              pl={12+(n.indent??0)*16} onClick={()=>props.onSelectTreeItem(n.id)}
+              pl={12+(n.indent??0)*16} active={n.kind==='instance'&&n.id==='instance:'+props.selected?.id} onClick={()=>props.onSelectTreeItem(n.id)}
               leftSection={<FolderTree size={14}/>} />)}</ScrollArea></>}
           bottom={<><Text fw={600} size="sm" p="sm">Свойства</Text>
             <ScrollArea h="calc(100% - 44px)"><Inspector selected={props.selected}
-              revision={props.baseRevision} send={props.onInspectorProposal}/></ScrollArea></>}/>
+              revision={props.baseRevision} send={props.onInspectorProposal} hostError={props.inspectorError}/></ScrollArea></>}/>
       </AppShell.Aside>
-      <AppShell.Footer className="gscad-status">
+      <AppShell.Footer className="gscad-status" data-testid="status-bar">
         <Group justify="space-between" h="100%" px="xs" gap="xs" wrap="nowrap">
           <Text size="xs">{props.cursorUm?'X '+formatMillimetres(props.cursorUm[0])+' / Y '+formatMillimetres(props.cursorUm[1])+' мм':'XY —'}</Text>
           <Group gap="xs" wrap="nowrap"><Text size="xs">{props.zoomPercent??100}%</Text>
@@ -287,7 +310,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
           onClick={()=>{props.onExport?.(format);setExportDialog(false);}}>Экспортировать</Button>
       </Stack>
     </Modal>
-    <Modal opened={commandDialog} onClose={()=>setCommandDialog(false)} title="Команды" centered>
+    <Modal opened={commandDialog} onClose={()=>setCommandDialog(false)} title="Команды" centered data-testid="command-palette">
       <TextInput value={commandQuery} onChange={e=>setCommandQuery(e.currentTarget.value)}
         placeholder="Поиск команды" aria-label="Поиск команды" autoFocus/>
       <Stack gap={4} mt="sm">{commands.map(a=><Button key={a.label} variant="subtle" justify="flex-start"
@@ -300,7 +323,7 @@ export function EditorShell(props:EditorShellProps){
   const [stored,setStored]=useLocalStorage<'dark'|'light'>({key:'gscad:ui:theme:v1',defaultValue:'dark'});
   const scheme=stored==='light'?'light':'dark';
   return <MantineProvider forceColorScheme={scheme}>
-    <div className="gscad-app" data-testid="gscad-shell">
+    <div className="gscad-app" data-testid="editor-root">
       <ShellView {...props} scheme={scheme} setScheme={setStored}/>
     </div>
   </MantineProvider>;
