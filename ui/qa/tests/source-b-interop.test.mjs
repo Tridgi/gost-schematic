@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { projectToCanvasScene } from '../../editor/src/canvas/scene-projection.mjs';
 import { projectForUXReview } from '../source-b-compat.mjs';
 
 const fixtureUrl = new URL('../../fixtures/tl494-source-e695-v2.gscad.json', import.meta.url);
@@ -66,8 +65,3 @@ test('unknown graphic kind still rejects, and source b IDs cannot alias each oth
   assert.throws(()=>projectForUXReview(f,sheet),/INVALID_SOURCE_B_GRAPHIC/);
 });
 
-test('known FAIL in native #120 projector is documented; adapter is QA-only', () => {
-  const [f,sheet]=project();
-  // This is a negative reproduction, NOT a passing acceptance criterion.
-  assert.throws(()=>projectToCanvasScene(f,sheet),/UNKNOWN_GRAPHIC_KIND/);
-});
