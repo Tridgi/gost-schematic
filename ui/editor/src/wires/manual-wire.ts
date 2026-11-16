@@ -179,7 +179,7 @@ export function validateDocument(doc: WiringSnapshot): void {
  * Splitting a wire can retain an old Free ID on a newly renamed wire part, so
  * `wireId:start/end` is a suggestion, not an identity guarantee.
  */
-function freshFreeId(doc:WiringSnapshot, wireId:string, side:'start'|'end'):string {
+function freshFreeId(doc:WiringSnapshot, wireId:string, side:string):string {
   const used=new Set<string>();
   for(const w of doc.wires)
     for(const v of [w.vertices[0],w.vertices.at(-1)!])
