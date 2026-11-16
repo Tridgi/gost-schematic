@@ -372,6 +372,71 @@ mod tests {
         assert!(trusted_file(Path::new("test.exe")).is_err());
         assert!(trusted_file(Path::new("")).is_err());
     }
+
+    #[test]
+    fn windows_atomic_disk_save_as_cas_and_external_change_are_fail_closed() {
+        // Isolated disposable path, never a user's document.
+        let dir = std::env::temp_dir().join(format!("gscad-native-test-{}", Uuid::new_v4()));
+        fs::create_dir(&dir).unwrap();
+        let file = dir.join("engineering-test.gscad.json");
+        let first = b"{\"project\":1}\n";
+        let second = b"{\"project\":2}\n";
+        let first_sha = atomic_save(&file, first, None).unwrap();
+        assert_eq!(first_sha, sha(first));
+        assert_eq!(fs::read(&file).unwrap(), first);
+        // Save As never overwrites even a valid pre-existing JSON file.
+        assert_eq!(atomic_save(&file, second, None).unwrap_err(), "SAVE_AS_TARGET_EXISTS");
+        assert_eq!(fs::read(&file).unwrap(), first);
+        // External modification or stale disk hash must abort without changing bytes.
+        assert_eq!(
+            atomic_save(&file, second, Some(&"f".repeat(64))).unwrap_err(),
+            "EXTERNAL_FILE_CHANGED"
+        );
+        assert_eq!(fs::read(&file).unwrap(), first);
+        let second_sha = atomic_save(&file, second, Some(&first_sha)).unwrap();
+        assert_eq!(second_sha, sha(second));
+        assert_eq!(fs::read(&file).unwrap(), second);
+        assert_eq!(
+            atomic_save(&file, first, Some(&first_sha)).unwrap_err(),
+            "EXTERNAL_FILE_CHANGED"
+        );
+        assert_eq!(fs::read(&file).unwrap(), second);
+        fs::remove_file(file).unwrap();
+        fs::remove_dir(dir).unwrap();
+    }
+
+    #[test]
+    fn source_guard_allows_user_authored_nets_but_refuses_different_project_or_frozen_source() {
+        let base = NativeDocument {
+            path: PathBuf::from("user.json"), project_id: "project-1".into(),
+            source_sha: "0".repeat(40), source_status: "synthetic".into(),
+            source_path: "user-created/project-1".into(), topology_sha256: "a".repeat(64),
+            project_sha256: "b".repeat(64), disk_sha256: "c".repeat(64),
+            generation: 1, busy: false,
+        };
+        let mut changed = Canonical {
+            document: json!({}), project_id: "project-1".into(),
+            project_sha256: "d".repeat(64), topology_sha256: "f".repeat(64),
+            source_sha: "0".repeat(40), source_status: "synthetic".into(),
+            source_path: "user-created/project-1".into(),
+        };
+        assert!(source_safe(&base, &changed).is_ok());
+        changed.project_id = "project-2".into();
+        assert_eq!(source_safe(&base, &changed).unwrap_err(), "SOURCE_OR_PROJECT_MISMATCH");
+        changed.project_id = "project-1".into();
+        changed.source_sha = FROZEN_E695.into();
+        assert_eq!(source_safe(&base, &changed).unwrap_err(), "SOURCE_OR_PROJECT_MISMATCH");
+        let source = NativeDocument {
+            source_sha: FROZEN_E695.into(),
+            source_status: "source_traced_unapproved".into(),
+            source_path: "frozen-e695.json".into(),
+            ..base
+        };
+        changed.source_sha = FROZEN_E695.into();
+        changed.source_status = "source_traced_unapproved".into();
+        changed.source_path = "frozen-e695.json".into();
+        assert_eq!(source_safe(&source, &changed).unwrap_err(), "SOURCE_TOPOLOGY_CHANGED");
+    }
     #[test]
     fn strict_source_identity_refuses_e695_downgrade() {
         let old = NativeDocument {
