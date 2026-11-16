@@ -167,6 +167,35 @@ fn commit_replace(temp: &Path, target: &Path) -> Result<(), String> {
     fs::rename(temp, target).map_err(|_| "ATOMIC_REPLACE_DENIED")?;
     Ok(())
 }
+// Publish a NEW file without ever replacing a destination created meanwhile.
+// On Windows MoveFileExW works on NTFS and on FAT/exFAT volumes that do not
+// support hard links. The temp and destination are siblings on one volume.
+// The lack of MOVEFILE_REPLACE_EXISTING is intentional and security-critical.
+fn commit_new_no_replace(
+    temp: &Path,
+    target: &Path,
+    already_exists: &'static str,
+) -> Result<(), String> {
+    #[cfg(windows)] {
+        use std::os::windows::ffi::OsStrExt;
+        use windows_sys::Win32::Storage::FileSystem::{MoveFileExW, MOVEFILE_WRITE_THROUGH};
+        let src: Vec<u16> = temp.as_os_str().encode_wide().chain(Some(0)).collect();
+        let dst: Vec<u16> = target.as_os_str().encode_wide().chain(Some(0)).collect();
+        let ok = unsafe { MoveFileExW(src.as_ptr(), dst.as_ptr(), MOVEFILE_WRITE_THROUGH) };
+        if ok == 0 {
+            return Err(if target.exists() { already_exists } else { "ATOMIC_CREATE_DENIED" }.into());
+        }
+    }
+    #[cfg(not(windows))] {
+        // POSIX rename replaces an existing file; hard_link retains no-replace
+        // semantics here. This feature fixes the Windows-only exFAT failure.
+        fs::hard_link(temp, target).map_err(|_| {
+            if target.exists() { already_exists } else { "ATOMIC_CREATE_DENIED" }.to_owned()
+        })?;
+    }
+    Ok(())
+}
+
 fn atomic_save(path: &Path, bytes: &[u8], expected_disk_sha256: Option<&str>) -> Result<String, String> {
     trusted_file(path)?;
     if let Some(expected) = expected_disk_sha256 {
@@ -185,14 +214,17 @@ fn atomic_save(path: &Path, bytes: &[u8], expected_disk_sha256: Option<&str>) ->
             _ => Err("EXTERNAL_FILE_CHANGED".into()),
         }
     } else {
-        // A hard link makes a new destination visible atomically and refuses
-        // even a concurrent target creation. Both paths share one parent/volume.
-        fs::hard_link(&temp, path).map_err(|_| "SAVE_AS_TARGET_EXISTS".into())
+        commit_new_no_replace(&temp, path, "SAVE_AS_TARGET_EXISTS")
     };
     let _ = fs::remove_file(&temp);
     result?;
     Ok(sha(bytes))
 }
+fn valid_export_extension(path: &Path, extension: &str) -> bool {
+    path.extension().and_then(|part| part.to_str())
+        .is_some_and(|part| part.eq_ignore_ascii_case(extension))
+}
+
 fn display_name(path: &Path) -> String {
     path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "project.json".into())
 }
@@ -352,13 +384,12 @@ pub async fn native_export_project(
     let selected=app.dialog().file().add_filter("GSCAD engineering PREVIEW", &[ext])
         .blocking_save_file().ok_or("CANCELLED")?;
     let path=selected.into_path().map_err(|_|"UNSUPPORTED_NATIVE_PATH")?;
-    if path.extension().and_then(|e|e.to_str())!=Some(ext) {
+    if !valid_export_extension(&path, ext) {
         return Err("INVALID_EXPORT_EXTENSION".into());
     }
     if path.exists() {return Err("EXPORT_TARGET_EXISTS".into());}
     let temp=write_temp(&path,&bytes)?;
-    let result: Result<(), String> = fs::hard_link(&temp,&path)
-        .map_err(|_| "EXPORT_TARGET_EXISTS".to_string());
+    let result = commit_new_no_replace(&temp, &path, "EXPORT_TARGET_EXISTS");
     let _=fs::remove_file(&temp);
     result?;
     Ok(display_name(&path))
@@ -372,6 +403,15 @@ mod tests {
         assert!(trusted_file(Path::new("test.gscad.json")).is_ok());
         assert!(trusted_file(Path::new("test.exe")).is_err());
         assert!(trusted_file(Path::new("")).is_err());
+    }
+
+    #[test]
+    fn export_extension_accepts_windows_case_insensitive_suffix_only() {
+        assert!(valid_export_extension(Path::new("Схема_日本.SVG"), "svg"));
+        assert!(valid_export_extension(Path::new("drawing.PnG"), "png"));
+        for bad in ["drawing.svg.exe", "drawing", "drawing.png.txt", "drawing.sv g"] {
+            assert!(!valid_export_extension(Path::new(bad), "svg"));
+        }
     }
 
     #[test]
@@ -403,6 +443,79 @@ mod tests {
         );
         assert_eq!(fs::read(&file).unwrap(), second);
         fs::remove_file(file).unwrap();
+        fs::remove_dir(dir).unwrap();
+    }
+
+    #[test]
+    fn publish_new_rejects_concurrent_target_without_overwriting_it() {
+        let dir = std::env::temp_dir().join(format!("gscad-publish-race-{}", Uuid::new_v4()));
+        fs::create_dir(&dir).unwrap();
+        let target = dir.join("race.gscad.json");
+        let staged = write_temp(&target, b"new project\\n").unwrap();
+        // The target appears after the initial Save As existence check.
+        fs::write(&target, b"other author's data\\n").unwrap();
+        assert_eq!(
+            commit_new_no_replace(&staged, &target, "SAVE_AS_TARGET_EXISTS").unwrap_err(),
+            "SAVE_AS_TARGET_EXISTS"
+        );
+        assert_eq!(fs::read(&target).unwrap(), b"other author's data\\n");
+        assert_eq!(fs::read(&staged).unwrap(), b"new project\\n");
+        fs::remove_file(staged).unwrap();
+        fs::remove_file(target).unwrap();
+        fs::remove_dir(dir).unwrap();
+    }
+
+    #[test]
+    fn replacing_project_does_not_mutate_existing_hardlink_alias() {
+        let dir = std::env::temp_dir().join(format!("gscad-alias-{}", Uuid::new_v4()));
+        fs::create_dir(&dir).unwrap();
+        let target = dir.join("editable.gscad.json");
+        let alias = dir.join("old-snapshot.gscad.json");
+        let original = b"original revision";
+        let updated = b"edited revision";
+        fs::write(&target, original).unwrap();
+        // The test temp drive is expected to be NTFS on Windows CI. Platforms
+        // unable to create hard links cannot execute this particular case.
+        if fs::hard_link(&target, &alias).is_err() {
+            fs::remove_file(target).unwrap();
+            fs::remove_dir(dir).unwrap();
+            return;
+        }
+        assert_eq!(atomic_save(&target, updated, Some(&sha(original))).unwrap(), sha(updated));
+        assert_eq!(fs::read(&target).unwrap(), updated);
+        assert_eq!(fs::read(&alias).unwrap(), original);
+        fs::remove_file(alias).unwrap();
+        fs::remove_file(target).unwrap();
+        fs::remove_dir(dir).unwrap();
+    }
+
+    #[test]
+    fn save_as_accepts_unicode_name_and_preserves_existing_file() {
+        let dir = std::env::temp_dir().join(format!("gscad-unicode-{}", Uuid::new_v4()));
+        fs::create_dir(&dir).unwrap();
+        let path = dir.join("Схема_ТЛ494_日本.gscad.json");
+        let first = br#"{"value":1}"#;
+        let second = br#"{"value":2}"#;
+        assert_eq!(atomic_save(&path, first, None).unwrap(), sha(first));
+        assert_eq!(fs::read(&path).unwrap(), first);
+        assert_eq!(atomic_save(&path, second, None).unwrap_err(), "SAVE_AS_TARGET_EXISTS");
+        assert_eq!(fs::read(&path).unwrap(), first);
+        fs::remove_file(path).unwrap();
+        fs::remove_dir(dir).unwrap();
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_publish_new_uses_rename_not_hard_link() {
+        let dir = std::env::temp_dir().join(format!("gscad-rename-{}", Uuid::new_v4()));
+        fs::create_dir(&dir).unwrap();
+        let target = dir.join("new-project.gscad.json");
+        let staged = write_temp(&target, b"payload").unwrap();
+        commit_new_no_replace(&staged, &target, "SAVE_AS_TARGET_EXISTS").unwrap();
+        // MoveFileExW moves the existing name instead of creating a hard link.
+        assert!(!staged.exists());
+        assert_eq!(fs::read(&target).unwrap(), b"payload");
+        fs::remove_file(target).unwrap();
         fs::remove_dir(dir).unwrap();
     }
 

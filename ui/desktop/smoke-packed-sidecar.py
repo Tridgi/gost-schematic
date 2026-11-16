@@ -8,8 +8,11 @@ import base64
 import hashlib
 import io
 import json
+import os
+import shutil
 import subprocess
 import sys
+import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -21,11 +24,28 @@ def require(condition: bool, message: str) -> None:
         raise AssertionError(message)
 
 
+def isolated_runtime_env() -> dict[str, str]:
+    """Require the one-file sidecar to carry Cairo without relying on MSYS2.
+
+    In R4 CI MSYS2 is installed to BUILD Cairo; running the resulting Windows
+    EXE with that environment is not evidence it will work on a clean PC.
+    """
+    env = dict(os.environ)
+    for variable in ("CAIROCFFI_DLL_DIRECTORIES", "PYTHONHOME", "PYTHONPATH",
+                     "GI_TYPELIB_PATH"):
+        env.pop(variable, None)
+    if sys.platform == "win32":
+        windows = env.get("SystemRoot") or env.get("WINDIR")
+        require(bool(windows), "WINDOWS_SYSTEM_ROOT_MISSING")
+        env["PATH"] = os.pathsep.join([str(Path(windows) / "System32"), windows])
+    return env
+
+
 def request(exe: Path, op: str, args: dict, rid: str) -> dict:
     payload = json.dumps({"v": 1, "id": rid, "op": op, "args": args}, separators=(",", ":")) + "\n"
     proc = subprocess.run(
         [str(exe)], input=payload, text=True, capture_output=True, timeout=90,
-        check=False, encoding="utf-8",
+        check=False, encoding="utf-8", env=isolated_runtime_env(),
     )
     require(proc.returncode == 0, f"{op}: sidecar exited {proc.returncode}: {proc.stderr[-600:]}")
     rows = [row for row in proc.stdout.splitlines() if row.strip()]
@@ -36,7 +56,7 @@ def request(exe: Path, op: str, args: dict, rid: str) -> dict:
     return result["result"]
 
 
-def smoke(root: Path, executable: Path) -> None:
+def _smoke_payload(root: Path, executable: Path) -> None:
     require(executable.is_file(), "MISSING_PACKAGED_SIDECAR")
     fixture = root / "ui" / "fixtures" / "tl494-source-e695-v2.gscad.json"
     project = json.loads(fixture.read_text(encoding="utf-8"))
@@ -68,6 +88,17 @@ def smoke(root: Path, executable: Path) -> None:
                         f"PNG_DPI_MISSING:{x}:{y}")
         print(f"PACKAGED_{format_.upper()}_PASS bytes={len(blob)} source_nets=15"
               " font=NOT_ESKD_CERTIFIED")
+
+
+def smoke(root: Path, executable: Path) -> None:
+    require(executable.is_file(), "MISSING_PACKAGED_SIDECAR")
+    # Relocate to a fresh Unicode folder outside the checkout / MSYS2 tree.
+    # PyInstaller --onefile must bring all dependencies with this one EXE.
+    with tempfile.TemporaryDirectory(prefix="gscad_R5_Схема_日本_") as scratch:
+        relocated = Path(scratch) / executable.name
+        shutil.copy2(executable, relocated)
+        _smoke_payload(root, relocated)
+    print("PACKAGED_CLEAN_PATH_AND_RUNTIME_PASS")
 
 
 if __name__ == "__main__":

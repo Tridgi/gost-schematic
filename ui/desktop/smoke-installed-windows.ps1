@@ -11,11 +11,20 @@ $launched = [System.Collections.Generic.List[System.Diagnostics.Process]]::new()
 $uninstaller = $null
 $installed = $false
 function Run-Bounded([string]$File,[string[]]$Args,[int]$TimeoutMs) {
-    $p = Start-Process -FilePath $File -ArgumentList $Args -PassThru -WindowStyle Hidden
+    # Native NSIS stays visible to CI's interactive user; /S itself silences the UI.
+    $p = Start-Process -FilePath $File -ArgumentList $Args -PassThru
     try {
-        if (!$p.WaitForExit($TimeoutMs)) {
-            Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
-            throw ('TIMEOUT: ' + [IO.Path]::GetFileName($File))
+        $elapsed = 0
+        while (!$p.WaitForExit(10000)) {
+            $elapsed += 10000
+            $children = @(Get-CimInstance Win32_Process -Filter ('ParentProcessId = ' + $p.Id))
+            $names = ($children | ForEach-Object { $_.Name + ':' + $_.ProcessId }) -join ','
+            Write-Host ('INSTALLER_WAIT_MS=' + $elapsed + ' parent=' + $p.Id +
+                ' children=' + $names + ' targetExists=' + (Test-Path -LiteralPath $installedDir))
+            if ($elapsed -ge $TimeoutMs) {
+                Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+                throw ('TIMEOUT: ' + [IO.Path]::GetFileName($File))
+            }
         }
         if ($p.ExitCode -ne 0) { throw ('EXIT_' + $p.ExitCode + ': ' + [IO.Path]::GetFileName($File)) }
     } finally { $p.Dispose() }
@@ -24,7 +33,7 @@ try {
     New-Item -ItemType Directory -Path $root -Force | Out-Null
     Write-Host ('NSIS_UNICODE_INSTALL_DIR: ' + $installedDir)
     # NSIS /D must be last, and Unicode/space paths exercise wide-character Win32 APIs.
-    Run-Bounded -File $setup -Args @('/S',('/D=' + $installedDir)) -TimeoutMs 120000
+    Run-Bounded -File $setup -Args @('/S',('/D=' + $installedDir)) -TimeoutMs 300000
     $appExe = Join-Path $installedDir 'gost-cad-desktop.exe'
     if (!(Test-Path -LiteralPath $appExe -PathType Leaf)) { throw 'INSTALLED_APP_MISSING' }
     # Tauri may strip the platform triple from the copied sidecar filename.

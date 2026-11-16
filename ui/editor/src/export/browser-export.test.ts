@@ -38,7 +38,7 @@ test('unknown version and malformed graphic fail closed',()=>{
 });
 test('PNG pHYs is physically 300 DPI and preserves original PNG bytes/chunk order',()=>{
  const raw=new Uint8Array(Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WlSmKkAAAAASUVORK5CYII=','base64'));
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9RYVFHYAAAAASUVORK5CYII=','base64'));
  const out=setPng300Dpi(raw);
  assert.deepEqual([...out.slice(0,8)],[137,80,78,71,13,10,26,10]);
  assert.equal(Buffer.from(out.slice(12,16)).toString(),'IHDR');
@@ -49,4 +49,17 @@ test('PNG pHYs is physically 300 DPI and preserves original PNG bytes/chunk orde
  assert.match(Buffer.from(out).toString('latin1'),/IEND/);
  assert.deepEqual(setPng300Dpi(out),out);
  assert.throws(()=>setPng300Dpi(new Uint8Array([1,2,3])),/NOT_PNG/);
+});
+
+
+test('PNG300 encoder rejects invalid chunk CRC, missing IDAT and trailing garbage',()=>{
+ const valid=new Uint8Array(Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9RYVFHYAAAAASUVORK5CYII=','base64'));
+ const badIdat=valid.slice();
+ badIdat[43]^=1; // corrupt IDAT compressed data without correcting CRC
+ assert.throws(()=>setPng300Dpi(badIdat),/INVALID_PNG_CRC/);
+ const noIdat=Uint8Array.from([...valid.slice(0,33),...valid.slice(-12)]);
+ assert.throws(()=>setPng300Dpi(noIdat),/INVALID_PNG_STRUCTURE/);
+ const trailing=Uint8Array.from([...valid,0x61]);
+ assert.throws(()=>setPng300Dpi(trailing),/INVALID_PNG_STRUCTURE/);
 });
