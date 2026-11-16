@@ -3,7 +3,7 @@ import type {ProjectFileV2} from '../model/contract';
 import assert from 'node:assert/strict';
 import {
  nativeDesktopAvailable,nativeOpenProject,nativeSaveProject,
- nativeSaveAsProject,nativeCloseProject
+ nativeSaveAsProject,nativeCloseProject,nativeExportProject
 } from './desktop.ts';
 
 test('R4 JS invokes only allowlisted opaque native document handles, never file paths/shell',async()=>{
@@ -23,8 +23,10 @@ test('R4 JS invokes only allowlisted opaque native document handles, never file 
   await nativeSaveProject(known,fake);
   await nativeSaveAsProject(fake,known);
   await nativeCloseProject(known.handle);
+  await nativeExportProject(fake,'sheet-1','svg');
   assert.deepEqual(calls.map(c=>c.command),[
-   'native_open_project','native_save_project','native_save_as_project','native_close_project'
+   'native_open_project','native_save_project','native_save_as_project','native_close_project',
+   'native_export_project'
   ]);
   assert.deepEqual(calls[1].args,{
    handle:known.handle,expectedGeneration:8,expectedProjectSha256:'a'.repeat(64),
@@ -35,6 +37,7 @@ test('R4 JS invokes only allowlisted opaque native document handles, never file 
    expectedGeneration:8,expectedProjectSha256:'a'.repeat(64)
   });
   assert.deepEqual(calls[3].args,{handle:known.handle});
+  assert.deepEqual(calls[4].args,{document:fake,sheetId:'sheet-1',format:'svg'});
   for(const item of calls){
    assert.equal(JSON.stringify(item.args??{}).includes('path'),false);
    assert.equal(JSON.stringify(item.args??{}).includes('commandLine'),false);
