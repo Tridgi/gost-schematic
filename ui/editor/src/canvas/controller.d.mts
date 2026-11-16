@@ -15,7 +15,7 @@ export type CanvasIntent =
 export type CanvasContext={
  scene:CanvasScene;wireSnapshot:WiringSnapshot;camera:Camera;
  tool:'select'|'wire'|'pan'|'text';gridUm:number;snapEnabled:boolean;
- onIntent:(intent:CanvasIntent)=>void;
+ onIntent:(intent:CanvasIntent)=>void|boolean;
 };
 export type PointerPoint=ScreenPoint & {pointerId:number;button:number};
 export type CanvasControllerState={
