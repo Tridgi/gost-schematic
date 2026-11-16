@@ -15,7 +15,7 @@ import pytest
 from PIL import Image
 
 from ui.bridge.export.canonical import ExportError, ExportRequest, compose_clean_svg
-from ui.bridge.export.project_v2 import export_v2, render_v2_source
+from ui.bridge.export.project_v2 import export_v2, export_v2_svg, render_v2_source
 
 _model = importlib.import_module("ui.editor.src.model.contract")
 ContractError, digest, validate = _model.ContractError, _model.digest, _model.validate
@@ -243,13 +243,12 @@ def test_second_blank_sheet_does_not_leak_first_sheet_symbols_or_wires():
         layer["id"] = "qa-blank-" + layer["id"]
     document["project"]["sheets"].append(second)
     validate(document)
-    svg, warnings = __import__("ui.bridge.export.project_v2", fromlist=[
-        "export_v2_svg"]).export_v2_svg(
-            document, second["id"], ExportRequest(
-                page="A3", orientation="landscape", include_frame=False,
-                strict_font=False
-            ), expected_project_sha256=digest(document)
-        )
+    svg, warnings = export_v2_svg(
+        document, second["id"], ExportRequest(
+            page="A3", orientation="landscape", include_frame=False,
+            strict_font=False,
+        ), expected_project_sha256=digest(document),
+    )
     root = ET.fromstring(svg)
     assert root.attrib["width"] == "420mm"
     assert root.attrib["height"] == "297mm"
