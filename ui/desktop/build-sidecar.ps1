@@ -12,10 +12,26 @@ $schemaPath = Join-Path $root 'ui/contracts/project-v2.schema.json'
 $modelPath = Join-Path $root 'ui/editor/src/model/contract.py'
 $wireAdapterPath = Join-Path $root 'ui/integration/project_wire_bridge.py'
 $engineAdapterPath = Join-Path $root 'ui/editor/src/model/engine_adapter.py'
-if (-not (Test-Path $schemaPath) -or -not (Test-Path $modelPath) -or -not (Test-Path $wireAdapterPath) -or -not (Test-Path $engineAdapterPath)) {
+if (-not (Test-Path $schemaPath) -or -not (Test-Path $modelPath) -or -not (Test-Path $wireAdapterPath)) {
   throw 'Install reviewed #122 model and MASTER #125 wire adapter before packaging'
 }
-& $py -m PyInstaller --clean --noconfirm --onefile --collect-all gost_schematic --collect-all jsonschema --add-data "$modelPath;ui/editor/src/model" --add-data "$schemaPath;ui/contracts" --add-data "$wireAdapterPath;ui/integration" --add-data "$engineAdapterPath;ui/editor/src/model" --name engine-bridge --distpath (Join-Path $PSScriptRoot 'dist') --workpath (Join-Path $PSScriptRoot '.pyi') (Join-Path $root 'ui/bridge/transport/worker.py')
+$pyiArgs = @(
+  '--clean', '--noconfirm', '--onefile',
+  '--collect-all', 'gost_schematic', '--collect-all', 'jsonschema',
+  '--add-data', "$modelPath;ui/editor/src/model",
+  '--add-data', "$schemaPath;ui/contracts",
+  '--add-data', "$wireAdapterPath;ui/integration",
+  '--name', 'engine-bridge',
+  '--distpath', (Join-Path $PSScriptRoot 'dist'),
+  '--workpath', (Join-Path $PSScriptRoot '.pyi')
+)
+if (Test-Path $engineAdapterPath) {
+  $pyiArgs += @('--add-data', "$engineAdapterPath;ui/editor/src/model")
+} else {
+  Write-Warning 'PR #134 E3 adapter not integrated: engine_projection returns ENGINE_ADAPTER_UNAVAILABLE'
+}
+$pyiArgs += (Join-Path $root 'ui/bridge/transport/worker.py')
+& $py -m PyInstaller @pyiArgs
 if ($LASTEXITCODE -ne 0) { throw 'PyInstaller failed' }
 $hostTriple = (& rustc -vV | Select-String '^host: (.+)$').Matches.Groups[1].Value
 if (-not $hostTriple) { throw 'rustc host target unavailable' }
