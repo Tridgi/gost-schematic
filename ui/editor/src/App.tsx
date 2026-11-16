@@ -469,7 +469,7 @@ export default function App() {
       '. Отсутствие ошибок ERC не доказано.'}
   ];
   return <EditorShell
-    projectName={document.project.title+(authoringRef.current?' · R3 AUTHORING':' · R2 E695')} dirty={dirty}
+    projectName={document.project.title+(authoringRef.current?' · R3 AUTHORING':' · R2 PREVIEW')} dirty={dirty}
     baseRevision={String(snapshot.revision)} sheets={document.project.sheets.map(s=>({id:s.id,title:s.name}))}
     activeSheetId={activeSheet.id} catalog={catalog} tree={tree}
     selected={selected} diagnostics={diagnostics}
