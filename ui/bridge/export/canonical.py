@@ -243,6 +243,15 @@ def _check_xml(
 ) -> tuple[ET.Element, tuple[int, int, int, int], bool]:
     if type(data) is not bytes or len(data) > _MAX_XML_BYTES:
         raise ExportError("Input must be bounded UTF-8 SVG bytes")
+    # ElementTree auto-detects UTF-16, where ASCII-byte DTD scans are bypassed
+    # and internal XML entities can be expanded. Reject before XML parsing.
+    try:
+        decoded = data.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ExportError("Input must be UTF-8 SVG bytes") from exc
+    if "\x00" in decoded:
+        # UTF-16LE without a BOM is valid UTF-8 as *bytes* containing NULs.
+        raise ExportError("Input must be UTF-8 SVG bytes without NULs")
     lower = data.lower()
     if b"<!doctype" in lower or b"<!entity" in lower or b"<?xml-stylesheet" in lower:
         raise ExportError("DTD, entities and stylesheets are forbidden")
