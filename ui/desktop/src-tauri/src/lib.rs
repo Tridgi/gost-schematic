@@ -137,6 +137,15 @@ mod tests {
         }
     }
     #[test]
+    fn v2_read_only_bridge_operations_are_allowed() {
+        for op in [
+            "validate_document", "source_snapshot", "verify_net",
+            "wire_snapshot", "validate_wire_candidate", "engine_projection",
+        ] {
+            assert!(allowlisted(op));
+        }
+    }
+    #[test]
     fn app_never_allows_js_arbitrary_process() {
         for bad in ["shell", "exec", "position_edit", "export_png", "render_svg"] {
             assert!(!allowlisted(bad));
