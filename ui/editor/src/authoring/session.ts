@@ -226,9 +226,9 @@ export class AuthoringSession {
       source_guard:sourceGuard(this.current)};
   }
   private edit(tx:Tx,change:(draft:ProjectFileV2)=>ProjectFileV2):void {
+    if(tx.revision!==this.clock)reject('STALE_REVISION');
     if(tx.project_id!==this.current.project.id||tx.source_guard!==sourceGuard(this.current))
       reject('SOURCE_MISMATCH');
-    if(tx.revision!==this.clock)reject('STALE_REVISION');
     const next=change(clone(this.current));
     validateAuthoring(next);
     const engine=localSession(next,this.clock+1).session.engine;
