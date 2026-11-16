@@ -281,3 +281,78 @@ test('physical mouse drag selects and moves C1, R key rotates, Undo/Redo preserv
  expect(redone.project.sheets[0].instances.find(i=>i.id===original.id)).toEqual(
    rotated.project.sheets[0].instances.find(i=>i.id===original.id));
 });
+
+test('real pointer move of stable interior segment uses CAS and Undo/Redo with unchanged Nets',async({page})=>{
+ await page.goto('/');
+ await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+ const [a,b]=signedPair(),pin=p=>page.getByTestId('signed-pin-'+p.component_id+'-'+p.physical_pin_number);
+ await page.getByRole('button',{name:'Провод W'}).click();
+ await pin(a).click();await pin(b).click();
+ await expect(page.locator('[data-net-id]')).toHaveCount(1);
+ const firstDownload=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const before=JSON.parse(readFileSync(await (await firstDownload).path(),'utf8'));
+ const wire=before.project.sheets[0].wires[0];
+ const state=structuredClone(wiring);
+ state.wires=[wire];state.revision=0;
+ const geometry=await page.locator('.electric-wires line').evaluateAll(lines=>{
+   const svg=lines[0]?.ownerSVGElement;
+   const ctm=svg?.getScreenCTM();
+   if(!ctm)return [];
+   const projected=(x,y)=>({x:ctm.a*x+ctm.c*y+ctm.e,y:ctm.b*x+ctm.d*y+ctm.f});
+   const pins=[...svg.querySelectorAll('.physical-pin-markers circle')].map(p=>
+     projected(Number(p.getAttribute('cx')),Number(p.getAttribute('cy'))));
+   return lines.map((l,index)=>{
+     const a=projected(Number(l.getAttribute('x1')),Number(l.getAttribute('y1')));
+     const b=projected(Number(l.getAttribute('x2')),Number(l.getAttribute('y2')));
+     const x=(a.x+b.x)/2,y=(a.y+b.y)/2;
+     return {index,id:l.getAttribute('data-segment-id'),x,y,
+       length:Math.hypot(a.x-b.x,a.y-b.y),
+       vertical:Math.abs(a.x-b.x)<Math.abs(a.y-b.y),
+       closestPin:Math.min(...pins.map(p=>Math.hypot(p.x-x,p.y-y)))};
+   });
+ });
+ const viable=[];
+ for(const g of geometry.filter(g=>g.index>0&&g.index<wire.segments.length-1
+   &&g.length>14&&g.closestPin>9)){
+   const v=wire.vertices[g.index].at_um,w=wire.vertices[g.index+1].at_um;
+   const physicalDistance=Math.abs(v[0]-w[0])+Math.abs(v[1]-w[1]);
+   for(const offset of [3000,-3000,2000,-2000,5000,-5000]){
+     try{
+       const engine=new ManualWireEngine(state);
+       engine.moveSegmentById(engine.newTransaction('e2e-probe'),wire.id,g.id,offset);
+       viable.push({...g,offset,pixelOffset:g.length/physicalDistance*offset});
+       break;
+     }catch{}
+   }
+ }
+ expect(viable.length,'Must expose a draggable interior segment with real visible hit clearance').toBeGreaterThan(0);
+ const chosen=viable[0];
+ await page.getByRole('button',{name:'Выбор V'}).click();
+ await page.mouse.move(chosen.x,chosen.y);
+ await page.mouse.down();
+ await page.mouse.move(chosen.x+(chosen.vertical?chosen.pixelOffset:0),
+   chosen.y+(chosen.vertical?0:chosen.pixelOffset),{steps:8});
+ await page.mouse.up();
+ const secondDownload=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const after=JSON.parse(readFileSync(await (await secondDownload).path(),'utf8'));
+ const moved=after.project.sheets[0].wires[0];
+ expect(moved.segments.map(s=>s.id)).toEqual(wire.segments.map(s=>s.id));
+ const coord=chosen.vertical?0:1;
+ expect(Math.abs(moved.vertices[chosen.index].at_um[coord]-
+   wire.vertices[chosen.index].at_um[coord]-chosen.offset)).toBeLessThanOrEqual(2);
+ expect(Math.abs(moved.vertices[chosen.index+1].at_um[coord]-
+   wire.vertices[chosen.index+1].at_um[coord]-chosen.offset)).toBeLessThanOrEqual(2);
+ expect(after.project.nets.map(n=>n.members)).toEqual(before.project.nets.map(n=>n.members));
+ await page.getByRole('button',{name:'Отменить'}).click();
+ const thirdDownload=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const undone=JSON.parse(readFileSync(await (await thirdDownload).path(),'utf8'));
+ expect(undone.project.sheets[0].wires).toEqual(before.project.sheets[0].wires);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ const fourthDownload=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const redone=JSON.parse(readFileSync(await (await fourthDownload).path(),'utf8'));
+ expect(redone.project.sheets[0].wires).toEqual([moved]);
+});
