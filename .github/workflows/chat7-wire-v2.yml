@@ -29,6 +29,8 @@ jobs:
         run: |
           mkdir -p ui/fixtures
           cp -a _locked_project_v2/ui/fixtures/. ui/fixtures/
+          mkdir -p ui/editor/src/canvas
+          cp _locked_project_v2/ui/editor/src/canvas/precision.mjs ui/editor/src/canvas/precision.mjs
       - name: Install exact TypeScript toolchain
         working-directory: ui/editor/src/wires
         run: npm install --no-audit --no-fund --ignore-scripts --no-save typescript@5.8.3
