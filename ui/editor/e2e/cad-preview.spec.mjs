@@ -57,7 +57,7 @@ test('signed pin-to-pin route, undo/redo and wrong-Net rollback in real browser'
   await pin(a).click();
   await pin(different.members[0]).click();
   await expect(page.locator('[data-net-id]')).toHaveCount(1);
-  await expect(page.getByRole('alert')).toContainText('NET_CONFLICT');
+  await expect(page.getByRole('alert').filter({hasText:'NET_CONFLICT'})).toContainText('NET_CONFLICT');
 });
 
 test('independent grid/snap toggles and light/dark theme',async({page})=>{
