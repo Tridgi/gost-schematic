@@ -98,3 +98,30 @@ test('ambiguous overlapping symbol ink fails closed and never begins component d
  c.up(loc([25000,30000]));
  assert.equal(log.some(i=>i.kind==='moveInstance'),false);
 });
+
+test('host boolean rejection retains signed draft and permits corrected target without a new source click',()=>{
+ log=[];let attempts=0;
+ const c=make('wire',intent=>{
+  log.push(intent);
+  if(intent.kind==='commitWire'&&++attempts===1)return false;
+ });
+ assert.equal(c.down(loc([10000,10000])),true);
+ assert.equal(c.down(loc([40000,10000])),false);
+ assert.deepEqual(c.getState().draft.source,{component_id:'R1',physical_pin_number:'2'});
+ assert.equal(c.down(loc([40000,10000])),true);
+ assert.equal(c.getState().draft,null);
+ assert.equal(log.filter(i=>i.kind==='beginWire').length,1);
+ assert.equal(log.filter(i=>i.kind==='commitWire').length,2);
+});
+test('host rejects initial pin or free-end and no phantom connection/draft completion occurs',()=>{
+ const blocked=make('wire',i=>i.kind==='beginWire'?false:true);
+ assert.equal(blocked.down(loc([10000,10000])),false);
+ assert.equal(blocked.getState().draft,null);
+ const one=make('wire',i=>i.kind==='commitWire'?false:true);
+ one.down(loc([10000,10000]));
+ one.move(loc([24000,17000]));
+ assert.equal(one.key('Enter'),false);
+ assert.equal(one.getState().draft.source.component_id,'R1');
+ assert.equal(one.key('Escape'),true);
+ assert.equal(one.getState().draft,null);
+});
