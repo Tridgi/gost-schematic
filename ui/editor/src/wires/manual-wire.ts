@@ -111,7 +111,7 @@ function checkedWire(doc: WiringSnapshot, w: WirePolyline, net:Net): void {
       if(!obj || obj.net_id!==w.net_id || obj.layer_id!==w.layer_id || !same(obj.at_um,v.at_um))
         fail('ANCHOR_MISMATCH','Junction/splice must match explicit Net/layer/contact');
     } else {
-      if(a.free_id !== `${w.id}:${side}`) fail('FREE_ALIAS','Free endpoint must have its unique wire-side ID');
+      id(a.free_id,'Free endpoint ID');
     }
   }
 }
@@ -150,12 +150,16 @@ export function validateDocument(doc: WiringSnapshot): void {
       allAnchors.add(`${kind}:${node.id}`);
     }
   }
-  const wireIds=new Set<string>(), degrees=new Map<string,number>();
+  const wireIds=new Set<string>(), degrees=new Map<string,number>(), freeIds=new Set<string>();
   for(const w of doc.wires) {
     if(wireIds.has(w.id)) fail('DUPLICATE_ID','Duplicate wire'); wireIds.add(w.id);
     const net=nets.get(w.net_id); if(!net) fail('UNKNOWN_NET','Wire uses unknown Net');
     checkedWire(doc,w,net);
     for(const end of [terminal(w.vertices[0]),terminal(w.vertices.at(-1)!)]) {
+      if(end.kind==='free') {
+        if(freeIds.has(end.free_id)) fail('FREE_ALIAS','Free endpoint IDs must be unique across the sheet');
+        freeIds.add(end.free_id);
+      }
       const key=anchorKey(end); degrees.set(key,(degrees.get(key)??0)+1);
     }
   }
@@ -170,6 +174,20 @@ export function validateDocument(doc: WiringSnapshot): void {
   }
   for(const s of doc.splices) if((degrees.get(`s:${s.id}`)??0)!==2)
     fail('SPLICE_DEGREE','Invisible splice must join exactly two wire ends');
+}
+/** Allocate a distinct dangling endpoint identity without renaming surviving source Free IDs.
+ * Splitting a wire can retain an old Free ID on a newly renamed wire part, so
+ * `wireId:start/end` is a suggestion, not an identity guarantee.
+ */
+function freshFreeId(doc:WiringSnapshot, wireId:string, side:string):string {
+  const used=new Set<string>();
+  for(const w of doc.wires)
+    for(const v of [w.vertices[0],w.vertices.at(-1)!])
+      if(v.anchor.kind==='free') used.add(v.anchor.free_id);
+  const base=`${wireId}:${side}`;
+  let candidate=base, i=1;
+  while(used.has(candidate)) candidate=`${base}#${i++}`;
+  return candidate;
 }
 function serialId(prefix:string, doc:WiringSnapshot): string {
   const all=new Set([...doc.wires,...doc.junctions,...doc.splices].map(v=>v.id));
@@ -255,12 +273,24 @@ export class ManualWireEngine {
       if(a[0]===b[0]) {a[0]+=offsetUm;b[0]+=offsetUm;} else {a[1]+=offsetUm;b[1]+=offsetUm;}
     });
   }
+  /** Canvas hit-testing returns a persistent segment ID, not an array offset.
+   * Resolve that ID on the same monotonic CAS revision before editing.
+   * A stale/removed handle must not silently drag a different segment.
+   */
+  moveSegmentById(tx:Transaction,wireId:string,segmentId:string,offsetUm:number):WiringSnapshot {
+    id(segmentId,'Segment ID');
+    const w=this.doc.wires.find(w=>w.id===wireId);
+    if(!w) fail('UNKNOWN_WIRE','Unknown wire');
+    const idx=w.segments.findIndex(seg=>seg.id===segmentId);
+    if(idx<0) fail('UNKNOWN_SEGMENT','Selected segment ID no longer belongs to this wire');
+    return this.moveSegment(tx,wireId,idx,offsetUm);
+  }
   private cutWire(d:WiringSnapshot,w:WirePolyline,at:PointUm,newAnchor:TerminalAnchor):[string,string] {
     const [left,right]=splitPoints(w,at);
     const newId=serialId(`${w.id}:part`,d);
     const a=wireFromPoints(w.id,w.net_id,w.layer_id,left,terminal(w.vertices[0]),newAnchor);
     const oldEnd=terminal(w.vertices.at(-1)!);
-    const secondEnd:TerminalAnchor=oldEnd.kind==='free'?{kind:'free',free_id:`${newId}:end`}:oldEnd;
+    const secondEnd:TerminalAnchor=oldEnd; // Preserve canonical free endpoint identity on split.
     const b=wireFromPoints(newId,w.net_id,w.layer_id,right,newAnchor,secondEnd);
     d.wires.splice(d.wires.indexOf(w),1,a,b);
     return [a.id,b.id];
@@ -311,9 +341,7 @@ export class ManualWireEngine {
       };
       const a=oriented(wA,true),b=oriented(wB,false);
       const pts=[...a.pts,...b.pts.slice(1)];
-      const remap=(anchor:TerminalAnchor,side:'start'|'end'):TerminalAnchor=>
-        anchor.kind==='free'?{kind:'free',free_id:`${wA.id}:${side}`}:anchor;
-      const merged=wireFromPoints(wA.id,wA.net_id,wA.layer_id,pts,remap(a.start,'start'),remap(b.end,'end'));
+      const merged=wireFromPoints(wA.id,wA.net_id,wA.layer_id,pts,a.start,b.end); // Keep stable external free IDs.
       merged.needs_routing_review=!!(wA.needs_routing_review||wB.needs_routing_review);
       d.wires=d.wires.filter(w=>w!==wA&&w!==wB);d.wires.push(merged);
       d.splices=d.splices.filter(s=>s.id!==spliceId);
@@ -338,7 +366,7 @@ export class ManualWireEngine {
     return this.transaction(tx,d=>{
       if(!d.junctions.some(n=>n.id===junctionId)) fail('UNKNOWN_NODE','Unknown junction');
       for(const w of d.wires) for(const [i,side] of [[0,'start'],[w.vertices.length-1,'end']] as const) {
-        const v=w.vertices[i]; if(v.anchor.kind==='junction'&&v.anchor.junction_id===junctionId) v.anchor={kind:'free',free_id:`${w.id}:${side}`};
+        const v=w.vertices[i]; if(v.anchor.kind==='junction'&&v.anchor.junction_id===junctionId) v.anchor={kind:'free',free_id:freshFreeId(d,w.id,side)};
       }
       d.junctions=d.junctions.filter(j=>j.id!==junctionId);
     });
@@ -351,7 +379,7 @@ export class ManualWireEngine {
         const refs=d.wires.flatMap(w=>[w.vertices[0],w.vertices.at(-1)!].map((v,i)=>({w,v,side:i===0?'start':'end'})))
           .filter(x=>x.v.anchor.kind==='splice'&&x.v.anchor.splice_id===node.id);
         if(refs.length<2) {
-          for(const ref of refs) ref.v.anchor={kind:'free',free_id:`${ref.w.id}:${ref.side}`};
+          for(const ref of refs) ref.v.anchor={kind:'free',free_id:freshFreeId(d,ref.w.id,ref.side)};
           d.splices=d.splices.filter(s=>s.id!==node.id);
         }
       }

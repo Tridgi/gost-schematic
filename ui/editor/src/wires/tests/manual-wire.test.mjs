@@ -230,3 +230,46 @@ test('dangling endpoint diagnostic is explicit and scoped to declared Net',()=>{
  assert.deepEqual(e.danglingEndpoints('N1'),['OPEN:end','OPEN:start']);
  assert.deepEqual(e.danglingEndpoints('N2'),[]);
 });
+
+test('ProjectV2 arbitrary globally unique free IDs remain stable across split/merge',()=>{
+ const e=make(), start={kind:'free',free_id:'external-free-α'}, end={kind:'free',free_id:'external-free-β'};
+ commit(e,constructWire('CUSTOM','N1','default',[[30000,30000],[40000,30000]],start,end));
+ assert.deepEqual([e.snapshot.wires[0].vertices[0].anchor,e.snapshot.wires[0].vertices.at(-1).anchor],[start,end]);
+ e.splitWire(tx(e,'split-custom'),'CUSTOM',[35000,30000],'S-custom');
+ assert.deepEqual(
+  e.snapshot.wires.flatMap(w=>[w.vertices[0].anchor,w.vertices.at(-1).anchor]).filter(a=>a.kind==='free').map(a=>a.free_id).sort(),
+  ['external-free-α','external-free-β']);
+ e.mergeSplice(tx(e,'merge-custom'),'S-custom');
+ assert.deepEqual([e.snapshot.wires[0].vertices[0].anchor,e.snapshot.wires[0].vertices.at(-1).anchor],[start,end]);
+});
+
+test('ProjectV2 duplicate free IDs across wire endpoints fail atomically',()=>{
+ const e=make(), anchor={kind:'free',free_id:'external-UUID'};
+ commit(e,constructWire('A','N1','default',[[25000,40000],[30000,40000]],anchor,{kind:'free',free_id:'other-UUID'}));
+ const before=e.serialize();
+ err(()=>commit(e,constructWire('B','N1','default',[[50000,40000],[60000,40000]],anchor,{kind:'free',free_id:'third-UUID'})),'FREE_ALIAS');
+ assert.equal(e.serialize(),before);
+});
+
+test('ProjectV2 empty arbitrary free ID fails closed without history mutation',()=>{
+ const e=make(),before=e.serialize();
+ err(()=>commit(e,constructWire('E','N1','default',[[35000,40000],[36000,40000]],{kind:'free',free_id:''},{kind:'free',free_id:'ok'})),'INVALID_ID');
+ assert.equal(e.serialize(),before);
+});
+
+test('SVG canvas segment_id moves exactly the selected interior vertical segment by 3000µm',()=>{
+ const e=make();commit(e,w1());
+ const wire=e.snapshot.wires.find(w=>w.id==='W1');
+ assert.equal(wire.segments[1].id,'W1:s1');
+ e.moveSegmentById(tx(e,'canvas-handle'),'W1',wire.segments[1].id,3000);
+ assert.deepEqual(e.snapshot.wires.find(w=>w.id==='W1').vertices.map(v=>v.at_um),
+                  [[0,0],[7000,0],[7000,8000],[14000,8000]]);
+});
+
+test('SVG canvas stale or unknown segment_id refuses movement and preserves history',()=>{
+ const e=make();commit(e,w1());const prior=e.serialize(),txn=tx(e,'wrong-handle');
+ err(()=>e.moveSegmentById(txn,'W1','unrelated:s1',3000),'UNKNOWN_SEGMENT');
+ assert.equal(e.serialize(),prior);
+ e.moveSegmentById(txn,'W1','W1:s1',3000);
+ err(()=>e.moveSegmentById(txn,'W1','W1:s1',3000),'STALE_REVISION');
+});
