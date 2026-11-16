@@ -134,20 +134,30 @@ export function setPng300Dpi(src:Uint8Array):Uint8Array{
   phys.set([112,72,89,115],4);writeU32(phys,8,11811);writeU32(phys,12,11811);
   phys[16]=1;writeU32(phys,17,crc32(phys.slice(4,17)));
   const chunks:Uint8Array[]=[src.slice(0,8)];
-  let offset=8,hasIHDR=false,hasIEND=false;
+  let offset=8,hasIHDR=false,hasIDAT=false,hasIEND=false;
   while(offset<src.length){
     if(offset+12>src.length)throw Error('TRUNCATED_PNG');
     const length=readU32(src,offset),end=offset+12+length;
     if(end>src.length||length>src.length)throw Error('TRUNCATED_PNG');
     const name=String.fromCharCode(...src.slice(offset+4,offset+8));
+    // Reject damaged chunks before tagging any raster as a physical 300-DPI PNG.
+    if(crc32(src.slice(offset+4,end-4))!==readU32(src,end-4))
+      throw Error('INVALID_PNG_CRC');
+    if(!hasIHDR && (name!=='IHDR'||offset!==8))throw Error('INVALID_PNG_STRUCTURE');
     if(name==='IHDR'){
-      if(hasIHDR)throw Error('DUPLICATE_PNG_IHDR');
+      if(hasIHDR||length!==13||readU32(src,offset+8)===0||readU32(src,offset+12)===0)
+        throw Error('INVALID_PNG_STRUCTURE');
       hasIHDR=true;chunks.push(src.slice(offset,end),phys);
+    }else if(name==='IDAT'){
+      hasIDAT=true;chunks.push(src.slice(offset,end));
+    }else if(name==='IEND'){
+      if(length!==0||!hasIDAT||end!==src.length)throw Error('INVALID_PNG_STRUCTURE');
+      hasIEND=true;chunks.push(src.slice(offset,end));
+      break;
     }else if(name!=='pHYs')chunks.push(src.slice(offset,end));
     offset=end;
-    if(name==='IEND'){hasIEND=true;break;}
   }
-  if(!hasIHDR||!hasIEND)throw Error('INVALID_PNG_STRUCTURE');
+  if(!hasIHDR||!hasIDAT||!hasIEND)throw Error('INVALID_PNG_STRUCTURE');
   const n=chunks.reduce((a,c)=>a+c.length,0),out=new Uint8Array(n);
   let cursor=0;for(const chunk of chunks){out.set(chunk,cursor);cursor+=chunk.length;}
   return out;
