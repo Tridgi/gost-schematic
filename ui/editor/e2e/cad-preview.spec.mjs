@@ -411,6 +411,10 @@ test('explicit junction tool refuses coincident crossing of two different source
  const {crossing}=await openTwoWireCrossing(page,{foreignNet:true});
  await page.getByTestId('tool-junction').click();
  await page.mouse.click(crossing.x,crossing.y);
+ // Inspect the authoritative diagnostic, not an assumed thrown browser event.
+ await page.getByRole('button',{name:/ERC\\/DRC/}).click();
+ const diagnostic=await page.locator('.gscad-diagnostics').innerText();
+ expect(diagnostic,'Actual rejection must identify a foreign signed Net').toContain('NET_CONFLICT');
  await expect(page.getByRole('alert').filter({hasText:'NET_CONFLICT'})).toBeVisible();
  await expect(page.locator('[data-junction-id]')).toHaveCount(0);
  await expect(page.locator('[data-wire-id]')).toHaveCount(2);
