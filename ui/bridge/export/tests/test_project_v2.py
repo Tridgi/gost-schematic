@@ -13,9 +13,10 @@ from xml.etree import ElementTree as ET
 import pytest
 from PIL import Image
 
+from ui.editor.src.model.contract import ContractError, digest, validate
+
 from ui.bridge.export.canonical import ExportError, ExportRequest, compose_clean_svg
 from ui.bridge.export.project_v2 import export_v2, render_v2_source
-from ui.editor.src.model.contract import ContractError, digest, validate
 
 ROOT = Path(__file__).resolve().parents[4]
 FIX = ROOT / "ui" / "fixtures"
