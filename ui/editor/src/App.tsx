@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { EditorShell, type CatalogSymbol, type DiagnosticItem, type SelectedInstance,
   type ToolMode, type TreeItem, type InspectorProposal } from './components/EditorShell';
 import type { ProjectFileV2, SymbolDefinition } from './model/contract';
-import { ManualWireEngine, constructWire, type PinRef, type PointUm,
+import { ManualWireEngine, WireError, constructWire, type PinRef, type PointUm,
   type WiringSnapshot } from './wires/manual-wire';
 import { CanvasViewport } from './canvas/CanvasViewport';
 import type { CanvasIntent } from './canvas/controller.mjs';
@@ -308,7 +308,7 @@ export default function App() {
         setPending(null);mutation();
       }
     }catch(e){
-      setIssue(String(e));
+      setIssue(e instanceof WireError ? e.code+': '+e.message : String(e));
       // A rejected wire transaction must retain the controller's pending source PinRef,
       // allowing correction rather than falsely completing a gesture.
       if(intent.kind!=='commitWire')setPending(null);
