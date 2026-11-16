@@ -15,7 +15,7 @@
 cd ui/qa
 npm test                       # 10 Node domain/contract checks; no npm install
 npm run check:e2e             # syntax only
-npm run test:interop:strict   # known FAIL until #120 fixes canonical E695 source_b
+npm run test:interop:strict   # PASS on #120 canvas blob 6a19a0e... (recheck after changes)
 npm run test:browser-r0       # real Chromium regression; requires Playwright Python + Pillow
 
 # Only after MASTER adds Playwright dependency and starts a Vite editor:
@@ -59,13 +59,19 @@ npx playwright test visual-cad.ux.spec.mjs --reporter=list
 
 ## Cross-review findings / exact fixture requirement
 
-- Actual source E695 23 components/15 Nets/62 memberships/DA1 16 physical pins/2 non-electric b marks is checked in `source-b-interop.test.mjs`. Native #120 `projectToCanvasScene` at `44dc17d9ea756eadb1656c83cd369ef2b2a3b828` **throws `UNKNOWN_GRAPHIC_KIND`** on `Graphic.kind='source_b_continuation'`. QA-only `projectForUXReview()` produces 23 symbols, 2 non-electric b strokes, 0 wires and leaves input byte-identical. Production owner #120 must add native support and negative tests, then remove the QA workaround or keep it as an oracle; no silent net addition.
+- Actual source E695 23 components/15 Nets/62 memberships/DA1 16 physical pins/2 non-electric b marks is checked in `source-b-interop.test.mjs`. Native #120 `projectToCanvasScene` at historical `44dc17d9ea756eadb1656c83cd369ef2b2a3b828` **threw `UNKNOWN_GRAPHIC_KIND`** (fixed by #120 later; see source tests) on `Graphic.kind='source_b_continuation'`. QA-only `projectForUXReview()` produces 23 symbols, 2 non-electric b strokes, 0 wires and leaves input byte-identical. Production owner #120 must add native support and negative tests, then remove the QA workaround or keep it as an oracle; no silent net addition.
 - The fixture `qa-two-nets` must use **real ProjectFileV2** `Component.id` values `R1/C1/R2`, a **valid source Net** shared by `R1:1,C1:1`, another Net containing `R2:1`, and one draggable bent wire. Do not import `gscad-spike` v1 into ProjectFileV2.
 - The `qa-e695-tl494` fixture must load the **actual** `ui/fixtures/tl494-source-e695-v2.gscad.json`, not synthetic 16-pin IC. Never mark unrouted source Nets verified.
 
 ## Test status / source assertions
 
 - Exact source blobs fetched and the **10 authored Node test bodies** executed in a restricted V8 harness with Node import/file-read shims: **10/10 PASS** against shared `44dc17d9ea756eadb1656c83cd369ef2b2a3b828`; this proves logic but is **not** native `node --test` or CI.
-- `ui/qa/tests/source-b-native-gate.test.mjs` is **RED** on #120 `scene-projection.mjs` Git blob `38c00d8e39c70709dd7546913704a3da6ccc0033`: expected 23/2/0 but receives `UNKNOWN_GRAPHIC_KIND`. See `npm run test:interop:strict`.
+- `ui/qa/tests/source-b-native-gate.test.mjs`: **RED on historical #120 blob `38c00d8...`**, but **PASS in V8 execution on new integration Canvas blob `6a19a0e0521381cdadebba39c725921b95e4a47c` at `180b5c244fe33d6c2b96fc50be4bb88018fe9d55`**. Observed 23 components, exactly 2 non-electric b graphics, 0 wires. The new renderer expresses non-electrical by graphic kind/absence from WirePolyline, so explicit `electrical:false` field is not required.
 - `tests/r0-browser-focus.py`: real Chromium script covering Ctrl+Z inside the nominal Inspector; **not executed** as Windows/browser source is not available in this reviewer sandbox, and its current target `ui/experiments/r0/app.mjs` handles Ctrl+Z before checking `editing` (static review). Fix belongs to #125 R0 owner; do not call browser PASS.
 - Genuine Windows + Browser React R2/R3/Source-E695 E2E remains `BLOCKED WAITING_FOR #125` Vite root with dev-only QA fixture loader and typed transaction adapter. The R0 experiment uses incompatible `gscad-spike` v1 and cannot substitute for the v2 scene acceptance.
+
+### R2 app root status / strict gate
+
+- `npm run test:r2-entry:strict`: checks the actual `src/App.tsx`, `src/app.css`, and `package-lock.json` corresponding to the Vite imports and pinned dependencies. At integration `9e0bf031879eede55389966e81be4562832fcef9`, `App.tsx` and CSS are present, **lockfile missing**; strict gate remains RED, even aside from TS compile failures in [Visual CAD R1 CI 43894454717](https://github.com/Tridgi/gost-schematic/actions/runs/43894454717).
+- TS compile logs from that SHA: `App.tsx:47` TS2352 unsafe unknown-length coordinate array→Scene tuple; `project-view.test.ts:46` readonly tuple cast; `node:test/node:assert` TS2307 due missing Node types in Vite dev dependency setup. Fix is owned by #125/#121; never hide via `as unknown as Scene`.
+- No official browser gesture/Windows E2E or native Tauri packaging passed yet. The source-b projection PASS is specifically a **domain scene-adapter check**, not product release.
