@@ -313,16 +313,32 @@ export default function App() {
           const inst=instances.find(i=>i.id===intent.instance_id&&
             i.component_id===intent.component_id);
           if(!inst)throw Error('UNKNOWN_INSTANCE');
-          const tx=authored.newTransaction('pointer-transform');
-          if(intent.kind==='moveInstance'){
-            const old=authored.snapshot.components.find(c=>c.id===intent.component_id);
-            if(!old)throw Error('UNKNOWN_COMPONENT');
-            authored.move(tx,intent.component_id,[
-              old.origin_um[0]+intent.delta_um[0],
-              old.origin_um[1]+intent.delta_um[1]
-            ]);
-          }else authored.rotate(tx,intent.component_id);
-          adoptAuthored();setIssue('Положение УГО изменено валидированной транзакцией.');
+          const old=authored.snapshot.components.find(c=>c.id===intent.component_id);
+          if(!old)throw Error('UNKNOWN_COMPONENT');
+          const attached=authored.snapshot.wires.some(w=>
+            [w.vertices[0],w.vertices[w.vertices.length-1]].some(v=>
+              v.anchor.kind==='pin'&&v.anchor.component_id===intent.component_id));
+          const apply=(consent:boolean)=>{
+            const tx=authored.newTransaction('pointer-transform');
+            if(intent.kind==='moveInstance'){
+              authored.move(tx,intent.component_id,[
+                old.origin_um[0]+intent.delta_um[0],
+                old.origin_um[1]+intent.delta_um[1]
+              ],consent);
+            }else authored.rotate(tx,intent.component_id,consent);
+          };
+          if(attached){
+            const approved=window.confirm(
+              'К элементу подключены проводники. Перестроить маршруты с сохранением физических PinRef и Nets? '+
+              'Все изменённые проводники будут помечены как требующие проверки трассировки.'
+            );
+            if(!approved){setIssue('REROUTE_CANCELLED: изменение отменено, электрическая модель не изменена.');return false;}
+            apply(true);
+          }else apply(false);
+          adoptAuthored();
+          setIssue(attached
+            ?'REROUTE_REVIEW_REQUIRED: физические PinRef и Nets сохранены, проверьте новые маршруты.'
+            :'Положение УГО изменено валидированной транзакцией.');
           return true;
         }
         if(intent.kind==='commitWire'){
@@ -538,7 +554,17 @@ export default function App() {
             if(!old)throw Error('UNKNOWN_COMPONENT');
             const at:[number,number]=[...old.origin_um];
             at[edit.axis==='x'?0:1]=edit.um;
-            author.move(tx,inst.component_id,at);
+            const attached=author.snapshot.wires.some(w=>
+              [w.vertices[0],w.vertices[w.vertices.length-1]].some(v=>
+                v.anchor.kind==='pin'&&v.anchor.component_id===inst.component_id));
+            if(attached&&!window.confirm(
+              'Этот элемент подключён. Перестроить проводники с сохранением Nets и PinRef? '+
+              'Маршруты потребуют повторной проверки.'
+            )){
+              setIssue('REROUTE_CANCELLED: координаты и Nets не изменены.');
+              return;
+            }
+            author.move(tx,inst.component_id,at,attached);
           }else if(edit.kind==='propose-refdes')
             author.updateProperty(tx,edit.instanceId,'refdes',edit.refdes);
           else author.updateProperty(tx,edit.instanceId,'value',edit.value);
