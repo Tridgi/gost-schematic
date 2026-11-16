@@ -6,7 +6,7 @@ if (-not (Test-Path $py)) { throw 'Run py -3.12 -m venv .venv from repository ro
 & $py -m pip install -e "$($root)[dev]"
 if ($LASTEXITCODE -ne 0) { throw 'Install of Python engine failed' }
 # Import the ONE authoritative #122 v2 model, rather than shipping a second schema.
-& $py -m pip install 'pyinstaller>=6,<7' 'jsonschema==4.26.0'
+& $py -m pip install 'pyinstaller>=6,<7' 'jsonschema==4.26.0' 'CairoSVG==2.8.2' 'Pillow>=10,<13'
 if ($LASTEXITCODE -ne 0) { throw 'Install of PyInstaller/jsonschema failed' }
 $schemaPath = Join-Path $root 'ui/contracts/project-v2.schema.json'
 $modelPath = Join-Path $root 'ui/editor/src/model/contract.py'
@@ -18,6 +18,11 @@ if (-not (Test-Path $schemaPath) -or -not (Test-Path $modelPath) -or -not (Test-
 $pyiArgs = @(
   '--clean', '--noconfirm', '--onefile',
   '--collect-all', 'gost_schematic', '--collect-all', 'jsonschema',
+  '--collect-all', 'cairosvg', '--collect-all', 'PIL',
+  '--paths', $root,
+  '--hidden-import', 'ui.bridge.export.project_v2',
+  '--hidden-import', 'ui.bridge.export.canonical',
+  '--add-data', "$(Join-Path $root 'ui/bridge/export');ui/bridge/export",
   '--add-data', "$modelPath;ui/editor/src/model",
   '--add-data', "$schemaPath;ui/contracts",
   '--add-data', "$wireAdapterPath;ui/integration",
