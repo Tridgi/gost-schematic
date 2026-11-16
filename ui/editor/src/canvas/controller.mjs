@@ -93,6 +93,7 @@ export function createCanvasController(initial){
     active={kind:'pan',pointerId:p.pointerId,point:{x:p.x,y:p.y}};return true;
    }
    if(context.tool==='select'&&p.button===0&&hit?.kind==='segment'&&hit.movable){
+    selected=hit;
     const token=captureSegmentDrag(context.wireSnapshot,hit.wire_id,hit.segment_id);
     active={kind:'segment',pointerId:p.pointerId,point:{x:p.x,y:p.y},token};
     emit({kind:'select',target:hit});return true;
@@ -143,6 +144,17 @@ export function createCanvasController(initial){
    active=null;return true;
   },
   key(k){
+   if(k==='Delete'||k==='Backspace'){
+    if(selected?.kind==='symbol'){
+      return emit({kind:'deleteSymbol',component_id:selected.component_id,
+        instance_id:selected.instance_id,base_revision:context.wireSnapshot.revision})!==false;
+    }
+    if(selected?.kind==='segment'){
+      return emit({kind:'deleteWire',wire_id:selected.wire_id,
+        base_revision:context.wireSnapshot.revision})!==false;
+    }
+    return false;
+   }
    if((k==='r'||k==='R')&&selected?.kind==='symbol'){
     emit({kind:'rotateInstance',component_id:selected.component_id,
       instance_id:selected.instance_id,base_revision:context.wireSnapshot.revision});
