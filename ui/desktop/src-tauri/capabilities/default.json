@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main",
+  "description": "Desktop preview only invokes registered Rust commands; no JS shell/fs capabilities",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}
