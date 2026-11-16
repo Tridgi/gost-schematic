@@ -9,6 +9,8 @@ export type CanvasIntent =
  | {kind:'commitWire';source:PinRef;target:{kind:'pin';pin:PinRef}|{kind:'free';at_um:PointUm};bend_points_um:PointUm[]}
  | {kind:'cancelWire';source:PinRef}
  | {kind:'placeSymbol';at_um:PointUm;base_revision:number}
+ | {kind:'deleteSymbol';component_id:string;instance_id:string;base_revision:number}
+ | {kind:'deleteWire';wire_id:string;base_revision:number}
  | {kind:'moveSegment';token:SegmentDragToken;delta_um:number}
  | {kind:'createJunction';selected_segments:readonly {wire_id:string;segment_id:string}[];base_revision:number}
  | {kind:'rejectJunction';reason:string}
