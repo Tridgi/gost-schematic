@@ -254,10 +254,14 @@ export default function App() {
     baseRevision={snapshot.source_topology_hash} sheets={document.project.sheets.map(s=>({id:s.id,title:s.name}))}
     activeSheetId={activeSheet.id} catalog={catalog} tree={tree}
     selected={selected} diagnostics={diagnostics}
-    canvas={<SchematicCanvas document={document} snapshot={snapshot} sheetId={activeSheet.id}
-      tool={tool} grid={grid} snap={snap} zoom={zoom} pending={pending}
-      selectedId={selectedId} onPickPin={handlePin} onMoveSegment={handleSegment}
-      onSelectInstance={setSelectedId} onZoom={setZoom}/>}
+    canvas={<div className="gscad-canvas-wrapper">
+      <SchematicCanvas document={document} snapshot={snapshot} sheetId={activeSheet.id}
+        tool={tool} grid={grid} snap={snap} zoom={zoom} pending={pending}
+        selectedId={selectedId} onPickPin={handlePin} onMoveSegment={handleSegment}
+        onSelectInstance={setSelectedId} onZoom={setZoom}/>
+      {/(?:NET_CONFLICT|SOURCE_LOCKED|UNKNOWN_|REROUTE_REQUIRED|MISMATCH|NOT_READY|ERROR)/.test(issue)
+        && <div className="gscad-error-banner" role="alert">{issue}</div>}
+    </div>}
     tool={tool} gridVisible={grid} snapEnabled={snap} zoomPercent={Math.round(zoom*100)}
     canUndo={history.undo>0} canRedo={history.redo>0} canSave={false} exportReady={false}
     inspectorError="Инспектор в R2 доступен только для чтения: требуется CAS ProjectFileV2."
