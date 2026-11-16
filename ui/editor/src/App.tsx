@@ -9,6 +9,7 @@ import type { CanvasIntent } from './canvas/controller.mjs';
 import { commitSegmentDrag } from './canvas/wire-intents.mjs';
 import { loadProjectWires } from './wires/project-v2-adapter';
 import { projectToCanvasScene } from './canvas/scene-projection.mjs';
+import { renderProjectPreviewSVG, renderPreviewPng300 } from './export/browser-export';
 
 const umToMm = (value:number):number => value/1000;
 const asPoint = (point:readonly number[]):string => String(umToMm(point[0]))+' '+String(umToMm(point[1]));
@@ -185,6 +186,23 @@ export default function App() {
       setIssue('Проект v2 выгружен как редактируемый JSON; строгий Python IPC для внешних файлов ещё не подключён.');
     }catch(e){setIssue('SAVE_FAILED: '+String(e));}
   };
+  const handleExport=async(kind:'svg'|'png300')=>{
+    try {
+      const next=currentProject();
+      const sheet=next.project.sheets[0];
+      if(!sheet)throw Error('UNKNOWN_SHEET');
+      const svg=renderProjectPreviewSVG(next,sheet.id);
+      const file=kind==='svg'
+        ?new Blob([svg],{type:'image/svg+xml;charset=utf-8'})
+        :await renderPreviewPng300(svg,sheet.frame.size_um);
+      const url=URL.createObjectURL(file);
+      const anchor=window.document.createElement('a');
+      anchor.href=url;anchor.download=kind==='svg'?'gost-schematic-preview.svg':'gost-schematic-preview-300dpi.png';
+      window.document.body.appendChild(anchor);anchor.click();anchor.remove();
+      window.setTimeout(()=>URL.revokeObjectURL(url),1000);
+      setIssue('Экспорт '+kind.toUpperCase()+' готов: геометрия в мм, Nets/PinRef исходные. PREVIEW: шрифт не верифицирован по ГОСТ.');
+    }catch(e){setIssue('EXPORT_FAILED: '+String(e));}
+  };
   const handleOpen=async(file:File|null)=>{
     if(!file)return;
     try {
@@ -304,8 +322,8 @@ export default function App() {
         && <div className="gscad-error-banner" role="alert">{issue}</div>}
     </div>}
     tool={tool} gridVisible={grid} snapEnabled={snap} zoomPercent={Math.round(zoom*100)}
-    canUndo={history.undo>0} canRedo={history.redo>0} canSave={true} exportReady={false}
-    inspectorError="Инспектор в R2 доступен только для чтения: требуется CAS ProjectFileV2."
+    canUndo={history.undo>0} canRedo={history.redo>0} canSave={true} exportReady={true}
+    inspectorError={null}
     onToolChange={mode=>{setTool(mode);setPending(null);}}
     onToggleGrid={setGrid} onToggleSnap={setSnap}
     onPlaceSymbol={()=>setIssue('SOURCE_LOCKED: добавление PartDefinition требует валидированную транзакцию #122.')}
@@ -331,5 +349,6 @@ export default function App() {
     }}
     onUndo={handleUndo} onRedo={handleRedo}
     onOpen={()=>fileInputRef.current?.click()} onSave={handleSave}
+    onExport={format=>{void handleExport(format)}}
   />;
 }
