@@ -171,6 +171,41 @@ jobs:
           path: ci-artifacts/e695/
           if-no-files-found: error
 
+  desktop-ipc-python:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Python engine and signed project validator
+        run: |
+          python -m pip install -e '.[dev]'
+          python -m pip install -r ui/editor/src/model/requirements-dev.txt
+      - name: Lint transport and syntax check Rust host JSON
+        run: |
+          python -m ruff check ui/bridge/transport
+          python -m compileall -q ui/bridge/transport
+          python -m json.tool ui/desktop/src-tauri/tauri.conf.json > /dev/null
+          node --check ui/bridge/transport/smoke.mjs
+      - name: Real E695, source-Net, wire-snapshot and strict negative IPC
+        env:
+          GSCAD_REQUIRE_V2: '1'
+        run: python -m unittest discover -s ui/bridge/transport/tests -v
+      - name: Node to Python worker: signed source and no arbitrary shell
+        env:
+          GSCAD_REQUIRE_V2: '1'
+          GSCAD_REQUIRE_ENGINE: '1'
+        run: node ui/bridge/transport/smoke.mjs
+
   canvas-and-qa:
     runs-on: ubuntu-latest
     timeout-minutes: 10
