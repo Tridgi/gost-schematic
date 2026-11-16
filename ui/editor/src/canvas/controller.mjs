@@ -65,7 +65,10 @@ export function createCanvasController(initial){
      if(hit.pin.component_id===draft.source.component_id&&hit.pin.physical_pin_number===draft.source.physical_pin_number)return false;
      // If source/target are different declared Nets, the service must throw;
      // draft is deliberately retained when a transaction fails.
-     emit({kind:'commitWire',source:draft.source,target:{kind:'pin',pin:hit.pin},bend_points_um:draft.bends_um});
+     // Host false is a rejected CAS/Net/route transaction. Keep the signed
+     // source and authored bends: the user can choose another target or Escape.
+     if(emit({kind:'commitWire',source:draft.source,target:{kind:'pin',pin:hit.pin},bend_points_um:draft.bends_um})===false)
+      return false;
      draft=null;return true;
     }
     if(hit?.kind==='ambiguous-pin'||hit?.kind==='ambiguous-segment')return false;
@@ -136,7 +139,8 @@ export function createCanvasController(initial){
    if(k==='Enter'&&draft){
     const prev=draft.bends_um.at(-1)||draft.from_um;
     if(same(prev,draft.cursor_um))return false;
-    emit({kind:'commitWire',source:draft.source,target:{kind:'free',at_um:draft.cursor_um},bend_points_um:draft.bends_um});
+    if(emit({kind:'commitWire',source:draft.source,target:{kind:'free',at_um:draft.cursor_um},bend_points_um:draft.bends_um})===false)
+      return false;
     draft=null;return true;
    }
    return false;
