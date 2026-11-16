@@ -689,3 +689,81 @@ test('R3 two independently authored Nets refuse a foreign-Net short with zero pa
  await page.getByRole('button',{name:'Повторить'}).click();
  await expect(page.locator('[data-net-id]')).toHaveCount(2);
 });
+
+test('R4 Chromium connected R1: reject without consent, consent reroute, Undo/Redo and rotate without false Nets',async({page})=>{
+ await page.goto('/');
+ await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');
+ const bb=await canvas.boundingBox();
+ for(const [symbol,x] of [['resistor.fixed',.30],['capacitor.fixed',.68]]){
+   await page.getByTestId('catalog-item-symbol/'+symbol).click();
+   await page.mouse.click(bb.x+bb.width*x,bb.y+bb.height*.48);
+ }
+ const d0=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const initial=JSON.parse(readFileSync(await (await d0).path(),'utf8'));
+ const r=initial.project.components.find(c=>c.refdes==='R1');
+ const c=initial.project.components.find(c=>c.refdes==='C1');
+ await page.getByRole('button',{name:'Провод W'}).click();
+ await page.getByTestId('signed-pin-'+r.id+'-2').click();
+ await page.getByTestId('signed-pin-'+c.id+'-1').click();
+ await expect(page.locator('[data-net-id]')).toHaveCount(1);
+ const d1=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const connected=JSON.parse(readFileSync(await (await d1).path(),'utf8'));
+ await page.getByRole('button',{name:'Выбор V'}).click();
+ const locate=()=>page.getByTestId('symbol-R1').locator('line').first().evaluate(el=>{
+   const pt=el.ownerSVGElement.createSVGPoint();
+   pt.x=(Number(el.getAttribute('x1'))+Number(el.getAttribute('x2')))/2;
+   pt.y=(Number(el.getAttribute('y1'))+Number(el.getAttribute('y2')))/2;
+   const point=pt.matrixTransform(el.ownerSVGElement.getScreenCTM());
+   return{x:point.x,y:point.y};
+ });
+ const drag=async(dx,dy)=>{
+   const p=await locate();
+   await page.mouse.move(p.x,p.y);await page.mouse.down();
+   await page.mouse.move(p.x+dx,p.y+dy,{steps:8});await page.mouse.up();
+ };
+ page.once('dialog',async dialog=>{expect(dialog.type()).toBe('confirm');await dialog.dismiss();});
+ await drag(35,22);
+ await expect(page.getByRole('alert').filter({hasText:'REROUTE_CANCELLED'})).toBeVisible();
+ const d2=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const cancelled=JSON.parse(readFileSync(await (await d2).path(),'utf8'));
+ expect(cancelled.project.sheets[0].instances).toEqual(connected.project.sheets[0].instances);
+ expect(cancelled.project.sheets[0].wires).toEqual(connected.project.sheets[0].wires);
+ page.once('dialog',async dialog=>{expect(dialog.type()).toBe('confirm');await dialog.accept();});
+ await drag(35,22);
+ await expect(page.getByRole('alert').filter({hasText:'REROUTE_REVIEW_REQUIRED'})).toBeVisible();
+ const d3=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const moved=JSON.parse(readFileSync(await (await d3).path(),'utf8'));
+ expect(moved.project.sheets[0].instances.find(i=>i.component_id===r.id).origin_um)
+   .not.toEqual(connected.project.sheets[0].instances.find(i=>i.component_id===r.id).origin_um);
+ expect(moved.project.sheets[0].wires[0].needs_routing_review).toBe(true);
+ expect(moved.project.nets.map(n=>n.members)).toEqual(connected.project.nets.map(n=>n.members));
+ expect(moved.project.sheets[0].wires[0].net_id).toBe(connected.project.sheets[0].wires[0].net_id);
+ expect(moved.project.sheets[0].junctions).toHaveLength(0);
+ await page.getByRole('button',{name:'Отменить'}).click();
+ const d4=page.waitForEvent('download');await page.getByTestId('save-project').click();
+ const undone=JSON.parse(readFileSync(await (await d4).path(),'utf8'));
+ expect(undone.project.sheets[0].wires).toEqual(connected.project.sheets[0].wires);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ const d5=page.waitForEvent('download');await page.getByTestId('save-project').click();
+ const redone=JSON.parse(readFileSync(await (await d5).path(),'utf8'));
+ expect(redone.project.sheets[0].wires).toEqual(moved.project.sheets[0].wires);
+ page.once('dialog',async dialog=>{expect(dialog.type()).toBe('confirm');await dialog.accept();});
+ await canvas.focus();await canvas.press('r');
+ const d6=page.waitForEvent('download');await page.getByTestId('save-project').click();
+ const rotated=JSON.parse(readFileSync(await (await d6).path(),'utf8'));
+ expect(rotated.project.sheets[0].instances.find(i=>i.component_id===r.id).rotation_deg).toBe(90);
+ expect(rotated.project.sheets[0].wires[0].needs_routing_review).toBe(true);
+ expect(rotated.project.nets.map(n=>n.members)).toEqual(connected.project.nets.map(n=>n.members));
+ expect(rotated.project.sheets[0].junctions).toHaveLength(0);
+ const py=spawnSync('python',['-c',
+    'import sys,json;sys.path.insert(0,"src/model");from contract import validate;validate(json.load(sys.stdin))'],
+    {input:JSON.stringify(rotated),encoding:'utf8',timeout:20000});
+ expect(py.status,py.stderr).toBe(0);
+});
