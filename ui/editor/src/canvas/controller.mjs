@@ -52,6 +52,15 @@ export function createCanvasController(initial){
    const exact=hitTest(context.scene,context.camera,p);
    const hit=context.tool==='select'&&!exact?symbolHit(context.scene,context.camera,p):exact;
    hover=hit;
+   if(context.tool==='junction'&&p.button===0){
+    if(hit?.kind!=='ambiguous-segment'||hit.candidates.length<2){
+      emit({kind:'rejectJunction',reason:'JUNCTION_SELECTION_REQUIRED'});
+      return true;
+    }
+    return emit({kind:'createJunction',
+      selected_segments:hit.candidates.map(c=>({wire_id:c.wire_id,segment_id:c.segment_id})),
+      base_revision:context.wireSnapshot.revision})!==false;
+   }
    if(context.tool==='wire'&&p.button===0){
     if(!draft){
      if(hit?.pin?.component_id&&hit.pin.physical_pin_number!==undefined){
