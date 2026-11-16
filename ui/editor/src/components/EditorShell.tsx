@@ -8,7 +8,7 @@ import { useLocalStorage } from '@mantine/hooks';
 import {
   AlertTriangle, Cable, FileDown, FolderTree, Grid3X3, Hand,
   Magnet, Menu as MenuIcon, MousePointer2, Save, Search, Settings2,
-  Undo2, Redo2, Type as TypeIcon, Moon, Sun
+  Undo2, Redo2, Type as TypeIcon, Moon, Sun, Box, GitBranch, Shapes
 } from 'lucide-react';
 import { normalizeDockLayout, DOCK_LAYOUT_KEY, type DockLayout } from '../theme/layout';
 import { formatMillimetres, parseMillimetres } from './inspector-units';
@@ -233,7 +233,8 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
             placeholder="Поиск по каталогу" value={query} onChange={e=>setQuery(e.currentTarget.value)} data-testid="catalog-search"/>
           <ScrollArea h="100%" type="hover"><Stack gap={4}>
             {filtered.map(s=><Button key={s.id} size="compact-lg" variant="subtle" className="gscad-catalog-item" data-testid={'catalog-item-'+s.id}
-              aria-label={'Выбрать УГО '+s.name+', '+s.approval} onClick={()=>props.onPlaceSymbol(s.id)}>
+              aria-label={'Выбрать УГО '+s.name+', '+s.approval} disabled={s.approval==='blocked'}
+              onClick={()=>{if(s.approval!=='blocked')props.onPlaceSymbol(s.id);}}>
               <span className="gscad-symbol-preview" aria-hidden="true">{s.thumbnail??'Нет эскиза'}</span>
               <span className="gscad-symbol-info"><span>{s.name}</span><small>{s.category} · {s.approval}</small></span>
             </Button>)}
@@ -269,7 +270,9 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
         </Group>
         {diagnostics&&<ScrollArea h={120} className="gscad-diagnostics" aria-label="Журнал диагностики">
           {props.diagnostics.length===0?<Text size="sm" p="sm">Сообщений нет. Это не доказывает корректность схемы.</Text>:
-            props.diagnostics.map(d=><Text key={d.id} size="xs" p="xs">[{d.severity}] {d.message}</Text>)}
+            props.diagnostics.map(d=><Text key={d.id} size="xs" p="xs" data-testid={'diagnostic-'+d.id}
+              c={d.severity==='error'?'red':d.severity==='warning'?'yellow':'dimmed'}
+              role={d.severity==='error'?'alert':undefined}>[{d.severity}] {d.message}</Text>)}
         </ScrollArea>}
       </div></AppShell.Main>
       <AppShell.Aside className="gscad-dock">
@@ -277,7 +280,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
           top={<><Text size="sm" fw={600} p="sm">Структура проекта</Text>
             <ScrollArea h="calc(100% - 44px)">{props.tree.map(n=><NavLink key={n.id} label={n.label}
               pl={12+(n.indent??0)*16} active={n.kind==='instance'&&n.id==='instance:'+props.selected?.id} onClick={()=>props.onSelectTreeItem(n.id)}
-              leftSection={<FolderTree size={14}/>} />)}</ScrollArea></>}
+              leftSection={n.kind==='net'?<Cable size={14}/>:n.kind==='wire'?<GitBranch size={14}/>:n.kind==='instance'?<Box size={14}/>:n.kind==='graphic'?<Shapes size={14}/>:<FolderTree size={14}/>} />)}</ScrollArea></>}
           bottom={<><Text fw={600} size="sm" p="sm">Свойства</Text>
             <ScrollArea h="calc(100% - 44px)"><Inspector selected={props.selected}
               revision={props.baseRevision} send={props.onInspectorProposal} hostError={props.inspectorError}/></ScrollArea></>}/>
