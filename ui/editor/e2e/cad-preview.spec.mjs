@@ -356,3 +356,62 @@ test('real pointer move of stable interior segment uses CAS and Undo/Redo with u
  const redone=JSON.parse(readFileSync(await (await fourthDownload).path(),'utf8'));
  expect(redone.project.sheets[0].wires).toEqual([moved]);
 });
+
+async function openTwoWireCrossing(page,{foreignNet=false}={}){
+ const doc=structuredClone(source);
+ const [netA,netB]=wiring.nets;
+ const free=(name,side)=>({kind:'free',free_id:name+':'+side});
+ doc.project.sheets[0].wires=[
+  constructWire('QA-H',netA.id,'layer-electric',[[40000,40000],[105000,40000]],
+    free('QA-H','a'),free('QA-H','b')),
+  constructWire('QA-V',foreignNet?netB.id:netA.id,'layer-electric',[[62000,18000],[62000,65000]],
+    free('QA-V','a'),free('QA-V','b'))
+ ];
+ await page.goto('/');
+ await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+ await page.getByTestId('project-file-input').setInputFiles({
+   name:'manual-crossing.gscad.json',mimeType:'application/json',
+   buffer:Buffer.from(JSON.stringify(doc),'utf8')
+ });
+ await expect(page.locator('[data-wire-id]')).toHaveCount(2);
+ await expect(page.locator('[data-junction-id]')).toHaveCount(0);
+ const crossing=await page.locator('[data-wire-id="QA-H"] line').evaluate(horizontal=>{
+   const svg=horizontal.ownerSVGElement;
+   const vertical=svg.querySelector('[data-wire-id="QA-V"] line');
+   const pt=svg.createSVGPoint();
+   pt.x=Number(vertical.getAttribute('x1'));
+   pt.y=Number(horizontal.getAttribute('y1'));
+   const xy=pt.matrixTransform(svg.getScreenCTM());
+   return {x:xy.x,y:xy.y};
+ });
+ return {crossing,doc};
+}
+
+test('manual explicit X junction tool creates visible dot at exact signed intersection with Undo/Redo',async({page})=>{
+ const {crossing,doc}=await openTwoWireCrossing(page);
+ await page.getByTestId('tool-junction').click();
+ await page.mouse.click(crossing.x,crossing.y);
+ await expect(page.locator('[data-junction-id]')).toHaveCount(1);
+ await expect(page.locator('[data-wire-id]')).toHaveCount(4);
+ await page.getByRole('button',{name:'Отменить'}).click();
+ await expect(page.locator('[data-junction-id]')).toHaveCount(0);
+ await expect(page.locator('[data-wire-id]')).toHaveCount(2);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ await expect(page.locator('[data-junction-id]')).toHaveCount(1);
+ const downloading=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const saved=JSON.parse(readFileSync(await (await downloading).path(),'utf8'));
+ expect(saved.project.sheets[0].junctions).toHaveLength(1);
+ expect(saved.project.sheets[0].junctions[0].at_um).toEqual([62000,40000]);
+ expect(saved.project.sheets[0].wires).toHaveLength(4);
+ expect(saved.project.nets.map(n=>n.members)).toEqual(doc.project.nets.map(n=>n.members));
+ expect(saved.project.sheets[0].graphics.filter(g=>g.kind==='source_b_continuation')).toHaveLength(2);
+});
+test('explicit junction tool refuses coincident crossing of two different source Nets atomically',async({page})=>{
+ const {crossing}=await openTwoWireCrossing(page,{foreignNet:true});
+ await page.getByTestId('tool-junction').click();
+ await page.mouse.click(crossing.x,crossing.y);
+ await expect(page.getByRole('alert').filter({hasText:'NET_CONFLICT'})).toBeVisible();
+ await expect(page.locator('[data-junction-id]')).toHaveCount(0);
+ await expect(page.locator('[data-wire-id]')).toHaveCount(2);
+});
