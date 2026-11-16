@@ -1,17 +1,13 @@
 name: Visual CAD CHAT2 transport / canonical v2 IPC
 on:
-  push:
-    branches: [feature/visual-cad-desktop-ipc-chat2]
-    paths:
-      - "ui/bridge/transport/**"
-      - "ui/desktop/**"
-      - ".github/workflows/visual-cad-chat2-transport.yml"
+  # The standalone owner branch intentionally does not contain MASTER's v2
+  # schema/fixture yet. Test the actual PR merge candidate, never the isolated
+  # owner branch as a false missing-dependency failure.
   pull_request:
     paths:
       - "ui/bridge/transport/**"
       - "ui/desktop/**"
       - ".github/workflows/visual-cad-chat2-transport.yml"
-  workflow_dispatch:
 permissions:
   contents: read
 jobs:
