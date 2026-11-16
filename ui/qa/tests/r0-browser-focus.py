@@ -16,7 +16,7 @@ from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "ui" / "experiments" / "r0" / "tests"))
-import browser_smoke as r0  # noqa: E402
+import browser_smoke as r0
 
 
 def main() -> None:
