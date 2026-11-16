@@ -133,7 +133,20 @@ export default function App() {
         kind:'wire' as const,indent:1}))
     ];
   },[document,snapshot,activeSheet,instances,compsById]);
-  const refresh=()=>{const eng=engineRef.current;if(eng)setSnapshot(eng.snapshot);};
+  const refresh=()=>{
+    const eng=engineRef.current;if(!eng)return;
+    const state=eng.snapshot;
+    setSnapshot(state);
+    setDocument(file=>{
+      if(!file)return file;
+      const next=structuredClone(file);
+      for(const sheet of next.project.sheets)for(const inst of sheet.instances){
+        const c=state.components.find(c=>c.id===inst.component_id);
+        if(c){inst.origin_um=[...c.origin_um];inst.rotation_deg=c.rotation;inst.mirror_x=c.mirror_x;}
+      }
+      return next;
+    });
+  };
   const mutation=()=>{
     refresh();setDirty(true);setHistory(h=>({undo:h.undo+1,redo:0}));
     setIssue('Проводник изменён через проверенную транзакцию WireEngine; исходные Nets неизменны.');
@@ -210,12 +223,30 @@ export default function App() {
       }
       if(intent.kind==='cancelWire'){setPending(null);return;}
       if(intent.kind==='select'){
+        if(intent.target?.kind==='symbol')setSelectedId(intent.target.instance_id);
         if(intent.target?.kind==='pin'){
           const targetPin=intent.target.pin;
           const chosen=instances.find(i=>i.component_id===targetPin.component_id);
           if(chosen)setSelectedId(chosen.id);
         }
         return;
+      }
+      if(intent.kind==='moveInstance'||intent.kind==='rotateInstance'){
+        const now=eng.snapshot;
+        if(intent.base_revision!==now.revision)throw Error('STALE_REVISION: physical component changed');
+        const inst=instances.find(i=>i.id===intent.instance_id&&i.component_id===intent.component_id);
+        const c=now.components.find(c=>c.id===intent.component_id);
+        if(!inst||!c)throw Error('UNKNOWN_COMPONENT_OR_INSTANCE');
+        if(intent.kind==='moveInstance'){
+          const next:[number,number]=[c.origin_um[0]+intent.delta_um[0],
+            c.origin_um[1]+intent.delta_um[1]];
+          eng.moveComponent(eng.newTransaction('move-instance-'+intent.instance_id),c.id,next);
+        }else{
+          const rotation=((c.rotation+90)%360) as 0|90|180|270;
+          eng.rotateAndReanchor(eng.newTransaction('rotate-instance-'+intent.instance_id),
+            c.id,rotation,false);
+        }
+        mutation();return;
       }
       if(intent.kind==='moveSegment'){
         commitSegmentDrag(eng,intent.token,intent.delta_um,
@@ -257,7 +288,7 @@ export default function App() {
   ];
   return <EditorShell
     projectName={document.project.title+' · R2 PREVIEW'} dirty={dirty}
-    baseRevision={snapshot.source_topology_hash} sheets={document.project.sheets.map(s=>({id:s.id,title:s.name}))}
+    baseRevision={String(snapshot.revision)} sheets={document.project.sheets.map(s=>({id:s.id,title:s.name}))}
     activeSheetId={activeSheet.id} catalog={catalog} tree={tree}
     selected={selected} diagnostics={diagnostics}
     canvas={<div className="gscad-canvas-wrapper">
@@ -281,7 +312,23 @@ export default function App() {
     onSelectTreeItem={id=>{const i=instances.find(v=>v.id===id);
       if(i)setSelectedId(i.id);else setIssue('Структура: '+id);}}
     onSelectSheet={()=>{}}
-    onInspectorProposal={(_edit:InspectorProposal)=>setIssue('POSE_TRANSACTION_NOT_READY: запрещено обходить валидацию #122/#123.')}
+    onInspectorProposal={(edit:InspectorProposal)=>{
+      const eng=engineRef.current;
+      try{
+        if(!eng)throw Error('PROJECT_NOT_READY');
+        if(String(eng.snapshot.revision)!==edit.baseRevision)throw Error('STALE_REVISION');
+        if(edit.kind!=='propose-origin-axis')
+          throw Error('INSPECTOR_ATTRIBUTE_NOT_READY: изменение обозначений пока заблокировано');
+        const instance=instances.find(i=>i.id===edit.instanceId);
+        if(!instance)throw Error('UNKNOWN_INSTANCE');
+        const component=eng.snapshot.components.find(c=>c.id===instance.component_id);
+        if(!component)throw Error('UNKNOWN_COMPONENT');
+        const next:[number,number]=[...component.origin_um];
+        next[edit.axis==='x'?0:1]=edit.um;
+        eng.moveComponent(eng.newTransaction('inspector-origin-'+edit.instanceId),component.id,next);
+        mutation();
+      }catch(e){setIssue('INSPECTOR_REJECTED: '+String(e));}
+    }
     onUndo={handleUndo} onRedo={handleRedo}
     onOpen={()=>fileInputRef.current?.click()} onSave={handleSave}
   />;
