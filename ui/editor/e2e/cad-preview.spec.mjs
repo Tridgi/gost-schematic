@@ -644,3 +644,48 @@ test('R3 malformed project and source spoofing are rejected without replacing th
  expect(same.project.nets).toEqual(saved.project.nets);
  expect(same.project.sheets[0].instances).toEqual(saved.project.sheets[0].instances);
 });
+
+test('R3 two independently authored Nets refuse a foreign-Net short with zero partial edits',async({page})=>{
+ await page.goto('/');
+ await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const bbox=await page.getByTestId('gscad-signed-svg-canvas').boundingBox();
+ for(const [symbol,x,y] of [
+   ['resistor.fixed',.28,.37],['capacitor.fixed',.67,.37],
+   ['resistor.fixed',.28,.67],['capacitor.fixed',.67,.67]
+ ]){
+   await page.getByTestId('catalog-item-symbol/'+symbol).click();
+   await page.mouse.click(bbox.x+bbox.width*x,bbox.y+bbox.height*y);
+ }
+ await expect(page.locator('[data-testid^="symbol-"]')).toHaveCount(4);
+ const downloading=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const before=JSON.parse(readFileSync(await (await downloading).path(),'utf8'));
+ const components=Object.fromEntries(before.project.components.map(c=>[c.refdes,c.id]));
+ const pin=(refdes,num)=>page.getByTestId('signed-pin-'+components[refdes]+'-'+num);
+ await page.getByRole('button',{name:'Провод W'}).click();
+ await pin('R1','2').click();await pin('C1','1').click();
+ await pin('R2','2').click();await pin('C2','1').click();
+ await expect(page.locator('[data-net-id]')).toHaveCount(2);
+ const downloading2=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const baseline=JSON.parse(readFileSync(await (await downloading2).path(),'utf8'));
+ expect(baseline.project.nets).toHaveLength(2);
+ expect(baseline.project.sheets[0].junctions).toHaveLength(0);
+ await pin('R1','2').click();await pin('C2','1').click();
+ await expect(page.getByRole('alert').filter({hasText:'NET_CONFLICT'})).toBeVisible();
+ await expect(page.locator('[data-net-id]')).toHaveCount(2);
+ await page.getByTestId('gscad-signed-svg-canvas').focus();
+ await page.keyboard.press('Escape');
+ const downloading3=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const rejected=JSON.parse(readFileSync(await (await downloading3).path(),'utf8'));
+ expect(rejected.project.nets).toEqual(baseline.project.nets);
+ expect(rejected.project.sheets[0].wires).toEqual(baseline.project.sheets[0].wires);
+ expect(rejected.project.sheets[0].junctions).toHaveLength(0);
+ await page.getByRole('button',{name:'Отменить'}).click();
+ await expect(page.locator('[data-net-id]')).toHaveCount(1);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ await expect(page.locator('[data-net-id]')).toHaveCount(2);
+});
