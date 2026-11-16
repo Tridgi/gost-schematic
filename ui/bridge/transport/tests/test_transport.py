@@ -69,7 +69,7 @@ class TransportTests(unittest.TestCase):
         for op in ["position_edit", "render_svg", "export_png"]:
             with self.subTest(op=op):
                 self.assertEqual(worker.process(json.dumps(request(op=op)).encode())["error"]["code"], "NOT_WIRED")
-        for op in ["validate_document", "source_snapshot", "verify_net"]:
+        for op in ["validate_document", "source_snapshot", "verify_net", "engine_projection"]:
             self.assertEqual(
                 worker.process(json.dumps(request(op=op)).encode())["error"]["code"],
                 "INVALID_REQUEST",
@@ -255,6 +255,26 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(rejected["error"]["code"], "AMBIGUOUS_VERTEX_ID")
         doc["project"]["sheets"][0]["wires"][1]["vertices"][0]["id"] = "safe"
         worker._reject_ambiguous_wire_vertices(doc)
+
+
+
+    def test_project_v2_to_existing_python_engine_projection_is_read_only(self):
+        doc = self._fixture()
+        response = worker.process(json.dumps(
+            request("e3projection", "engine_projection", {"document": doc})
+        ).encode())
+        self.assertTrue(response["ok"], response)
+        projected = response["result"]
+        self.assertEqual(projected["model"], "gscad-project")
+        self.assertEqual(projected["component_count"], 23)
+        self.assertEqual(projected["net_count"], 15)
+        self.assertEqual(projected["authored_segment_count"], 0)
+        self.assertEqual(projected["source_b_graphic_count"], 2)
+        self.assertEqual(projected["incomplete_net_counts"], [15])
+        self.assertTrue(projected["geometry_complete"])
+        self.assertFalse(projected["rendering_catalog_verified"])
+        self.assertFalse(projected["render_allowed"])
+        self.assertFalse(projected["project_write"])
 
 
 
