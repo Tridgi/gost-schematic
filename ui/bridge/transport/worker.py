@@ -187,10 +187,26 @@ def _engine_projection(args: dict[str, Any]) -> dict[str, Any]:
     module = importlib.util.module_from_spec(spec)
     if str(canonical.parent) not in sys.path:
         sys.path.insert(0, str(canonical.parent))
+    # @dataclass with postponed annotations resolves cls.__module__ in sys.modules.
+    # This registration is ONLY for the fixed, app-owned adapter path above;
+    # a user request never supplies a module path or executable.
+    previous = sys.modules.get(spec.name)
+    sys.modules[spec.name] = module
     try:
         spec.loader.exec_module(module)
     except (ImportError, OSError) as exc:
+        if previous is None:
+            sys.modules.pop(spec.name, None)
+        else:
+            sys.modules[spec.name] = previous
         raise ProtocolError("ENGINE_ADAPTER_UNAVAILABLE", "v2 engine projection dependencies missing") from exc
+    except BaseException:
+        # Do not leak a half-initialized module on unexpected loader errors.
+        if previous is None:
+            sys.modules.pop(spec.name, None)
+        else:
+            sys.modules[spec.name] = previous
+        raise
     if Path(module.validate.__code__.co_filename).resolve() != canonical.resolve():
         raise ProtocolError("ENGINE_ADAPTER_UNAVAILABLE", "untrusted model validation import")
     try:
