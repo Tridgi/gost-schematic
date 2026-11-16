@@ -107,6 +107,8 @@ class ExportRequest:
     source_project_sha256: str | None = None
     # Explicit position translates existing source viewport without scaling.
     offset_um: tuple[int, int] | None = None
+    # True v2 sheet coordinates; do NOT recenter imported CAD positions.
+    page_coords: bool = False
 
     def __post_init__(self) -> None:
         page_w, page_h = _page_size(self.page, self.orientation)
@@ -114,7 +116,7 @@ class ExportRequest:
         pixels(page_h, self.dpi)
         if self.background not in {"white", "transparent"}:
             raise ExportError("Invalid background")
-        for flag in (self.include_frame, self.include_title, self.strict_font):
+        for flag in (self.include_frame, self.include_title, self.strict_font, self.page_coords):
             if type(flag) is not bool:
                 raise ExportError("Export flags must be boolean")
         if self.source_project_sha256 is not None and not _SHA256.fullmatch(
@@ -126,6 +128,8 @@ class ExportRequest:
                 raise ExportError("Offset is (x_um,y_um)")
             for n in self.offset_um:
                 mm(n)
+        if self.page_coords and self.offset_um not in (None, (0, 0)):
+            raise ExportError("Page coordinates cannot have an additional content offset")
         if self.region_um is not None:
             if len(self.region_um) != 4:
                 raise ExportError("Region must be (x,y,w,h) integer µm")
@@ -195,6 +199,37 @@ def _check_source_ink_bounds(root: ET.Element, viewport: tuple[int, int, int, in
             if r <= 0:
                 raise ExportError("Source circle has non-positive radius")
             xs, ys = [x - r, x + r], [y - r, y + r]
+        elif kind == "polyline":
+            chunks = re.split(r"[\\s,]+", item.get("points", "").strip())
+            if len(chunks) < 4 or len(chunks) % 2:
+                raise ExportError("Invalid SVG polyline coordinates")
+            coords = [_from_mm(v) for v in chunks]
+            xs, ys = coords[::2], coords[1::2]
+        elif kind == "path":
+            # The Python UGO engine currently emits only true semicircular
+            # 'M x y A r r 0 0 sweep x y' arcs. No arbitrary Beziers allowed
+            # until exact stroked-ink bounds exist for them.
+            chunks = item.get("d", "").replace(",", " ").split()
+            if len(chunks) != 11 or chunks[0] != "M" or chunks[3] != "A":
+                raise ExportError("UNVERIFIABLE_SVG_PATH")
+            try:
+                ax, ay, rx, ry = [_from_mm(v) for v in (
+                    chunks[1], chunks[2], chunks[4], chunks[5])]
+                ex, ey = _from_mm(chunks[9]), _from_mm(chunks[10])
+            except (ValueError, KeyError) as exc:
+                raise ExportError("UNVERIFIABLE_SVG_PATH") from exc
+            if (chunks[6:8] != ["0", "0"] or chunks[8] not in {"0", "1"}
+                    or rx != ry or rx <= 0):
+                raise ExportError("UNVERIFIABLE_SVG_PATH")
+            sweep = chunks[8]
+            if ay == ey and ex - ax == 2 * rx:
+                xs = [ax, ex]
+                ys = [ay - rx, ay] if sweep == "1" else [ay, ay + rx]
+            elif ax == ex and ey - ay == 2 * ry:
+                xs = [ax, ax + rx] if sweep == "1" else [ax - rx, ax]
+                ys = [ay, ey]
+            else:
+                raise ExportError("UNVERIFIABLE_SVG_PATH")
         else:
             continue
         pad = stroke_padding(item)
@@ -285,7 +320,13 @@ def compose_clean_svg(engine_svg: bytes, request: ExportRequest) -> tuple[bytes,
     x_min, y_min = 22_000, 7_000
     x_max = pw - 7_000
     y_max = ph - (62_000 if request.include_title else 7_000)
-    if request.offset_um is None:
+    if request.page_coords:
+        # Absolute sheet geometry is already in physical mm from page (0,0).
+        # In particular source b continuations near paper edges must NOT
+        # disappear merely because they are outside the framed content zone.
+        dx, dy = 0, 0
+        x_min, y_min, x_max, y_max = 0, 0, pw, ph
+    elif request.offset_um is None:
         dx = x_min + (x_max - x_min - sw) // 2 - sx
         dy = y_min + (y_max - y_min - sh) // 2 - sy
     else:
