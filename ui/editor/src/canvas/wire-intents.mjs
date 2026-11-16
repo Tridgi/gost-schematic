@@ -30,10 +30,9 @@ export function commitSegmentDrag(engine,token,deltaUm,commandId){
  if(snapshot.project_id!==token.project_id||snapshot.source_topology_hash!==token.source_topology_hash)throw Error('SOURCE_MISMATCH');
  const current=captureSegmentDrag(snapshot,token.wire_id,token.segment_id);
  if(current.axis!==token.axis)throw Error("SEGMENT_CHANGED");
- const wire=snapshot.wires.find(w=>w.id===token.wire_id);
- const index=wire.segments.findIndex(s=>s.id===token.segment_id);
  const tx=engine.newTransaction(commandId);
  if(tx.base_revision!==token.base_revision)throw Error('STALE_REVISION');
  if(tx.project_id!==snapshot.project_id||tx.source_topology_hash!==snapshot.source_topology_hash)throw Error('FOREIGN_TRANSACTION');
- return engine.moveSegment(tx,token.wire_id,index,deltaUm);
+ // Domain resolves stable ID under its authoritative CAS transaction.
+ return engine.moveSegmentById(tx,token.wire_id,token.segment_id,deltaUm);
 }
