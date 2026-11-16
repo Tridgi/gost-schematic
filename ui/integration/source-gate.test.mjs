@@ -5,7 +5,7 @@ const ref=(component_id,physical_pin_number)=>({component_id,physical_pin_number
 function toy(){return {format:"gscad-project",format_version:2,project:{
  components:[{id:"a",source_refdes:"R1"},{id:"b",source_refdes:"C1"}],
  nets:[{id:"N",members:[ref("a","1"),ref("b","2")],route_status:"partial"}],
- sheets:[{id:"S",instances:[],junctions:[],splices:[],graphics:[],wires:[{id:"W",net_id:"N",
+ sheets:[{id:"S",instances:[],junctions:[],splices:[],graphics:[],wires:[{id:"W",net_id:"N",layer_id:"electrical",mode:"orthogonal",
  vertices:[{id:"v1",at_um:[1000,2000],anchor:{kind:"pin",...ref("a","1")}},
  {id:"v2",at_um:[5000,2000],anchor:{kind:"bend"}},
  {id:"v3",at_um:[5000,9000],anchor:{kind:"bend"}},
@@ -31,3 +31,6 @@ test("toy cannot masquerade as frozen source",()=>assert.throws(()=>auditCandida
 test("empty sheets rejected",()=>assert.throws(()=>auditCandidateV2(modify(p=>p.sheets=[])),/EMPTY_PROJECT/));
 test("duplicate sheets rejected",()=>assert.throws(()=>auditCandidateV2(modify(p=>p.sheets.push(structuredClone(p.sheets[0])))),/DUPLICATE_SHEET/));
 test("source lock SHA is fixed",()=>assert.equal(SOURCE_SHA,"e695c415fdced164b0e0c39c5249d030795a0aa6"));
+test("wire orthogonal mode is required",()=>assert.throws(()=>auditCandidateV2(modify(p=>delete p.sheets[0].wires[0].mode)),/INVALID_WIRE/));
+test("wire layer id is required",()=>assert.throws(()=>auditCandidateV2(modify(p=>p.sheets[0].wires[0].layer_id="")) ,/INVALID_WIRE/));
+test("physical PinRef tuple encoding is injective for colon-containing IDs",()=>{const t=toy();t.project.components=[{id:"DA:1"},{id:"DA"}];t.project.nets=[{id:"left",members:[ref("DA:1","2")]},{id:"right",members:[ref("DA","1:2")]}];t.project.sheets[0].wires=[];assert.equal(auditCandidateV2(t).counts.memberships,2);});
