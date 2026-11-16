@@ -64,3 +64,37 @@ test('pan does not mutate source signed coordinates',()=>{
  assert.deepEqual(c.getState().camera,{s:.01,x:50,y:30});
  assert.equal(log.length,0);
 });
+
+test('visual symbol drag emits signed revision-locked placement intent, not a Net edit',()=>{
+ log=[];
+ const shape={symbols:[{
+   instance_id:'S-R1',component_id:'R1',origin_um:[10000,10000],rotation_deg:0,
+   mirror_x:false,pins:[],strokes:[{from_um:[-2000,-1000],to_um:[2000,-1000]}]
+ }],wires:[],junctions:[]};
+ const current={project_id:'toy',source_topology_hash:'locked',revision:42,wires:[]};
+ const c=make('select',i=>log.push(i),shape,current);
+ assert.equal(c.down(loc([10000,9000])),true);
+ assert.equal(log[0].kind,'select');
+ assert.equal(log[0].target.instance_id,'S-R1');
+ assert.equal(c.up(loc([13000,13000])),true);
+ assert.deepEqual(log.at(-1),{kind:'moveInstance',component_id:'R1',instance_id:'S-R1',
+   delta_um:[3000,4000],base_revision:42});
+ assert.equal(c.getState().selected.instance_id,'S-R1');
+ assert.equal(c.key('r'),true);
+ assert.deepEqual(log.at(-1),{kind:'rotateInstance',component_id:'R1',
+   instance_id:'S-R1',base_revision:42});
+});
+test('ambiguous overlapping symbol ink fails closed and never begins component drag',()=>{
+ log=[];
+ const symbol={
+   instance_id:'S-1',component_id:'C1',origin_um:[20000,30000],rotation_deg:0,
+   mirror_x:false,pins:[],strokes:[{from_um:[-1000,0],to_um:[1000,0]}]
+ };
+ const scene={symbols:[symbol,{...symbol,instance_id:'S-2',component_id:'C2'}],wires:[],junctions:[]};
+ const c=make('select',i=>log.push(i),scene,{project_id:'toy',source_topology_hash:'locked',revision:1,wires:[]});
+ c.down(loc([20000,30000]));
+ assert.equal(log[0].kind,'select');
+ assert.equal(log[0].target.kind,'ambiguous-symbol');
+ c.up(loc([25000,30000]));
+ assert.equal(log.some(i=>i.kind==='moveInstance'),false);
+});
