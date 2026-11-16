@@ -452,6 +452,30 @@ mod tests {
     }
 
     #[test]
+    fn replacing_project_does_not_mutate_existing_hardlink_alias() {
+        let dir = std::env::temp_dir().join(format!("gscad-alias-{}", Uuid::new_v4()));
+        fs::create_dir(&dir).unwrap();
+        let target = dir.join("editable.gscad.json");
+        let alias = dir.join("old-snapshot.gscad.json");
+        let original = b"original revision";
+        let updated = b"edited revision";
+        fs::write(&target, original).unwrap();
+        // The test temp drive is expected to be NTFS on Windows CI. Platforms
+        // unable to create hard links cannot execute this particular case.
+        if fs::hard_link(&target, &alias).is_err() {
+            fs::remove_file(target).unwrap();
+            fs::remove_dir(dir).unwrap();
+            return;
+        }
+        assert_eq!(atomic_save(&target, updated, Some(&sha(original))).unwrap(), sha(updated));
+        assert_eq!(fs::read(&target).unwrap(), updated);
+        assert_eq!(fs::read(&alias).unwrap(), original);
+        fs::remove_file(alias).unwrap();
+        fs::remove_file(target).unwrap();
+        fs::remove_dir(dir).unwrap();
+    }
+
+    #[test]
     fn save_as_accepts_unicode_name_and_preserves_existing_file() {
         let dir = std::env::temp_dir().join(format!("gscad-unicode-{}", Uuid::new_v4()));
         fs::create_dir(&dir).unwrap();
