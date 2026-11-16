@@ -201,3 +201,25 @@ def test_netlist_only_missing_placement_not_export_ready():
     assert obj.source_refdes_by_component_id[component["id"]] == "RT99"
     assert not obj.geometry_complete
     assert not obj.rendering_catalog_verified
+
+def test_unconnected_symbol_pin_under_wire_cannot_become_implicit_contact():
+    """Existing Python graph infers pin contact from ink; v2 does not."""
+    doc = fixture()
+    _, inst = add_unconnected(doc)
+    # Extra R shares two physical pin points with an unrelated existing wire
+    # but has NO source Net membership. This must not silently connect.
+    inst["origin_um"] = [50000, 30000]
+    with pytest.raises(ContractError, match="ENGINE_UNAUTHORED_PIN_CONTACT"):
+        project_to_engine(doc)
+
+
+def test_free_terminal_exactly_at_physical_pin_cannot_bind_implicitly():
+    """Free is isolated even when precisely over the real circuit pin."""
+    doc = fixture()
+    wire = doc["project"]["sheets"][0]["wires"][0]
+    last = wire["vertices"][-1]
+    assert last["anchor"]["kind"] == "pin"
+    last["anchor"] = {"kind": "free", "free_id": "unbound-on-real-pin"}
+    doc["project"]["nets"][0]["route_status"] = "partial"
+    with pytest.raises(ContractError, match="ENGINE_UNAUTHORED_PIN_CONTACT"):
+        project_to_engine(doc)
