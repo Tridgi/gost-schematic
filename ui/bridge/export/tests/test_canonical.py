@@ -264,3 +264,15 @@ def test_non_utf8_svg_and_encoded_doctype_rejected_before_xml_parser(xml):
     assert b"<!doctype" not in payload.lower()  # reproduces the bypass
     with pytest.raises(ExportError, match="UTF-8"):
         compose_clean_svg(payload, ExportRequest(include_frame=False))
+
+
+def test_utf16le_without_bom_is_not_misclassified_as_utf8():
+    """UTF-16LE ASCII code units contain NULs and can decode as UTF-8."""
+    xml = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="80mm" height="40mm" '
+        'viewBox="10 5 80 40"><metadata>plain</metadata></svg>'
+    )
+    payload = xml.encode("utf-16le")
+    assert payload.decode("utf-8")  # superficial decode alone is insufficient
+    with pytest.raises(ExportError, match="UTF-8"):
+        compose_clean_svg(payload, ExportRequest(include_frame=False))
