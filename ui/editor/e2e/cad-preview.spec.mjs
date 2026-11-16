@@ -229,3 +229,53 @@ test('rejected foreign-Net click preserves live source draft, then correct targe
  expect(saved.project.sheets[0].wires[0].net_id).toBe(sourceNet.id);
  expect(saved.project.nets.map(n=>n.members)).toEqual(source.project.nets.map(n=>n.members));
 });
+
+test('physical mouse drag selects and moves C1, R key rotates, Undo/Redo preserve PinRefs',async({page})=>{
+ await page.goto('/');
+ await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+ const symbol=page.getByTestId('symbol-C1');
+ const line=symbol.locator('line').first();
+ await expect(line).toBeVisible();
+ const midpoint=await line.evaluate(el=>{
+   const svg=el.ownerSVGElement;
+   const p=svg.createSVGPoint();
+   p.x=(Number(el.getAttribute('x1'))+Number(el.getAttribute('x2')))/2;
+   p.y=(Number(el.getAttribute('y1'))+Number(el.getAttribute('y2')))/2;
+   const result=p.matrixTransform(svg.getScreenCTM());
+   return {x:result.x,y:result.y};
+ });
+ await page.mouse.move(midpoint.x,midpoint.y);
+ await page.mouse.down();
+ await page.mouse.move(midpoint.x+35,midpoint.y+24,{steps:8});
+ await page.mouse.up();
+ await expect(symbol).toHaveAttribute('data-selected','true');
+ const original=source.project.sheets[0].instances.find(i=>
+   source.project.components.find(c=>c.id===i.component_id)?.refdes==='C1');
+ const downloading=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const moved=JSON.parse(readFileSync(await (await downloading).path(),'utf8'));
+ const after=moved.project.sheets[0].instances.find(i=>i.id===original.id);
+ expect(after.origin_um).not.toEqual(original.origin_um);
+ expect(after.rotation_deg).toBe(original.rotation_deg);
+ expect(moved.project.nets.map(n=>n.members)).toEqual(source.project.nets.map(n=>n.members));
+ await page.getByTestId('gscad-signed-svg-canvas').focus();
+ await page.keyboard.press('r');
+ const downloading2=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const rotated=JSON.parse(readFileSync(await (await downloading2).path(),'utf8'));
+ expect(rotated.project.sheets[0].instances.find(i=>i.id===original.id).rotation_deg).toBe(90);
+ await page.getByRole('button',{name:'Отменить'}).click();
+ await page.getByRole('button',{name:'Отменить'}).click();
+ const downloading3=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const restored=JSON.parse(readFileSync(await (await downloading3).path(),'utf8'));
+ expect(restored.project.sheets[0].instances.find(i=>i.id===original.id).origin_um).toEqual(original.origin_um);
+ expect(restored.project.sheets[0].instances.find(i=>i.id===original.id).rotation_deg).toBe(original.rotation_deg);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ await page.getByRole('button',{name:'Повторить'}).click();
+ const downloading4=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const redone=JSON.parse(readFileSync(await (await downloading4).path(),'utf8'));
+ expect(redone.project.sheets[0].instances.find(i=>i.id===original.id)).toEqual(
+   rotated.project.sheets[0].instances.find(i=>i.id===original.id));
+});
