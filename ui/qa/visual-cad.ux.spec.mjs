@@ -21,8 +21,9 @@ async function openFixture(page, fixture) {
   }).toBe('function');
 }
 function invariantSource(a,b) {
-  expect(b.project.source_topology_hash).toBe(a.project.source_topology_hash);
-  expect(b.project.source_nets).toEqual(a.project.source_nets);
+  // ProjectFileV2 is authoritative: original Nets and provenance are immutable.
+  expect(b.project.provenance).toEqual(a.project.provenance);
+  expect(b.project.nets).toEqual(a.project.nets);
 }
 function assertOrtho(vertices) {
   expect(vertices.length).toBeGreaterThanOrEqual(3);
@@ -51,10 +52,15 @@ test('CAD-UX-R2-02 — place/rotate/undo real resistor pins', async ({page}) => 
   const after=await snapshot(page);
   const added=after.project.components.filter(c => !before.project.components.some(p=>p.id===c.id));
   expect(added).toHaveLength(1);
-  expect(added[0].rotation).toBe(90);
-  expect(added[0].physical_pin_numbers).toEqual(['1','2']);
+  const instance=after.project.sheets.flatMap(sh=>sh.instances)
+    .find(i=>i.component_id===added[0].id);
+  expect(instance.rotation_deg).toBe(90);
+  const part=after.project.part_definitions.find(p=>p.id===added[0].part_id);
+  expect(part.physical_pins.map(p=>p.number)).toEqual(['1','2']);
   await page.keyboard.press('Control+z');
-  expect((await snapshot(page)).project.components.find(c=>c.id===added[0].id)?.rotation).toBe(0);
+  const undone=await snapshot(page);
+  expect(undone.project.sheets.flatMap(sh=>sh.instances)
+    .find(i=>i.component_id===added[0].id)?.rotation_deg).toBe(0);
   invariantSource(before,after);
 });
 
@@ -62,8 +68,8 @@ test('CAD-UX-R2-03 — grid display and snapping independent', async ({page}) =>
   await openFixture(page,'basic');
   await page.locator(sel('toggle-grid-visible')).click();
   let s=await snapshot(page);
-  expect(s.workspace.grid_visible).toBe(false);
-  expect(s.workspace.snap_enabled).toBe(true);
+  expect(s.project.settings.grid_visible).toBe(false);
+  expect(s.project.settings.snap_enabled).toBe(true);
   await page.locator(sel('toggle-grid-visible')).click();
   await page.locator(sel('toggle-grid-snap')).click();
   s=await snapshot(page);
@@ -101,7 +107,8 @@ test('CAD-UX-R3-01 — click physical pin, click bend, finish pin', async ({page
   await page.locator(sel('cad-canvas')).click({position:{x:310,y:210}});
   await page.locator(pin('C1','1')).click();
   const b=await snapshot(page);
-  const fresh=b.project.wires.filter(w=>!a.project.wires.some(x=>x.id===w.id));
+  const fresh=b.project.sheets[0].wires.filter(w=>
+    !a.project.sheets[0].wires.some(x=>x.id===w.id));
   expect(fresh).toHaveLength(1);
   expect(fresh[0].vertices[0].anchor).toEqual({kind:'pin',component_id:'R1',physical_pin_number:'1'});
   expect(fresh[0].vertices.at(-1).anchor).toEqual({kind:'pin',component_id:'C1',physical_pin_number:'1'});
@@ -119,12 +126,14 @@ test('CAD-UX-R3-02 — move interior segment, Undo/Redo exact model', async ({pa
   await page.mouse.move(x,y); await page.mouse.down();
   await page.mouse.move(x+70,y,{steps:8}); await page.mouse.up();
   const edited=await snapshot(page);
-  expect(edited.project.wires).not.toEqual(before.project.wires);
+  expect(edited.project.sheets[0].wires).not.toEqual(before.project.sheets[0].wires);
   invariantSource(before,edited);
   await page.keyboard.press('Control+z');
-  expect((await snapshot(page)).project.wires).toEqual(before.project.wires);
+  expect((await snapshot(page)).project.sheets[0].wires)
+    .toEqual(before.project.sheets[0].wires);
   await page.keyboard.press('Control+y');
-  expect((await snapshot(page)).project.wires).toEqual(edited.project.wires);
+  expect((await snapshot(page)).project.sheets[0].wires)
+    .toEqual(edited.project.sheets[0].wires);
 });
 
 test('CAD-UX-R3-03 — unmarked X never joins same/different Net', async ({page}) => {
@@ -140,8 +149,9 @@ test('CAD-UX-R3-04 — explicit junction dot, invisible splice', async ({page}) 
   await page.locator(sel('tool-junction')).click();
   await page.locator(sel('junction-target')).click();
   const s=await snapshot(page);
-  expect(s.project.junctions.length).toBeGreaterThan(0);
-  expect(s.topology.visible_junction_dot_count).toBe(s.project.junctions.length);
+  expect(s.project.sheets[0].junctions.length).toBeGreaterThan(0);
+  expect(s.topology.visible_junction_dot_count)
+    .toBe(s.project.sheets[0].junctions.length);
   expect(s.topology.visible_splice_dot_count).toBe(0);
 });
 
@@ -235,11 +245,18 @@ test('CAD-UX-R3-06 — real save/reopen and SVG/PNG300 downloaded bytes', async 
 test('CAD-UX-R4-01 — genuine frozen TL494 source and incomplete nets', async ({page}) => {
   await openFixture(page,'tl494');
   const s=await snapshot(page);
-  expect(s.project.source_sha).toBe(source.sha);
-  expect(s.project.components).toHaveLength(source.components);
-  expect(s.project.source_nets).toHaveLength(source.nets);
-  expect(s.project.source_nets.flatMap(n=>n.members)).toHaveLength(source.pinMemberships);
-  expect(s.project.da1_physical_pins).toHaveLength(source.da1PhysicalPins);
-  expect(s.project.non_electrical_b_graphics).toHaveLength(source.nonElectricalBContinuations);
-  expect(s.project.source_nets.some(n=>n.route_status!=='verified')).toBeTruthy();
+  const project=s.project;
+  expect(project.provenance.source_sha).toBe(source.sha);
+  expect(project.components).toHaveLength(source.components);
+  expect(project.nets).toHaveLength(source.nets);
+  expect(project.nets.flatMap(n=>n.members)).toHaveLength(source.pinMemberships);
+  const da=project.components.find(c=>c.source_refdes==='DA1');
+  expect(da).toBeTruthy();
+  const part=project.part_definitions.find(p=>p.id===da.part_id);
+  expect(part.physical_pins).toHaveLength(source.da1PhysicalPins);
+  const b=project.sheets.flatMap(sh=>sh.graphics)
+    .filter(g=>g.kind==='source_b_continuation');
+  expect(b).toHaveLength(source.nonElectricalBContinuations);
+  expect(project.sheets.flatMap(sh=>sh.wires)).toHaveLength(0);
+  expect(project.nets.every(n=>n.route_status==='unrouted')).toBeTruthy();
 });
