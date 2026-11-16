@@ -75,6 +75,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'NODE_TEST_FAIL' }
           npm run build --prefix ui/editor
           if ($LASTEXITCODE -ne 0) { throw 'VITE_BUILD_FAIL' }
+      - name: Install native Windows Cairo build dependency for SVG rasterization
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: mingw-w64-x86_64-cairo
       - name: Build fixed Python sidecar from reviewed engine and contracts
         shell: pwsh
         run: |
@@ -93,6 +99,13 @@ jobs:
           if ($response.ok -ne $true -or $response.id -ne 'win_sidecar_hello') {
             throw 'SIDECAR_PROTOCOL_INVALID'
           }
+      - name: Verify packaged Python canonical E695 SVG and PNG300 on clean Windows runner
+        shell: pwsh
+        run: |
+          $checkout = (Get-Location).Path
+          $exe = (Resolve-Path 'ui/desktop/src-tauri/binaries/engine-bridge-x86_64-pc-windows-msvc.exe').Path
+          & .\.venv\Scripts\python.exe ui/desktop/smoke-packed-sidecar.py $checkout $exe
+          if ($LASTEXITCODE -ne 0) { throw 'PACKAGED_PYTHON_SVG_PNG_SMOKE_FAILED' }
       - name: Rust native command and CAS tests
         shell: pwsh
         run: |
