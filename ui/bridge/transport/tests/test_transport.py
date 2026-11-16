@@ -2,6 +2,7 @@
 import importlib.util
 import json
 import pathlib
+import os
 import subprocess
 import sys
 import unittest
@@ -109,6 +110,8 @@ class TransportTests(unittest.TestCase):
         """Only true #122 imported source is acceptable as an integration fixture."""
         filename = ROOT.parents[2] / "ui" / "fixtures" / "tl494-source-e695-v2.gscad.json"
         if not filename.is_file():
+            if os.environ.get("GSCAD_REQUIRE_V2") == "1":
+                self.fail("required ProjectFileV2 source fixture missing")
             self.skipTest("shared #122 model and source fixture not yet imported into this checkout")
         return json.loads(filename.read_text(encoding="utf-8"))
 
@@ -260,6 +263,11 @@ class TransportTests(unittest.TestCase):
 
     def test_project_v2_to_existing_python_engine_projection_is_read_only(self):
         doc = self._fixture()
+        engine_adapter = ROOT.parents[2] / "ui" / "editor" / "src" / "model" / "engine_adapter.py"
+        if not engine_adapter.is_file():
+            if os.environ.get("GSCAD_REQUIRE_E3") == "1":
+                self.fail("required canonical E3 engine adapter missing")
+            self.skipTest("PR #134 E3 projection adapter not imported by MASTER")
         response = worker.process(json.dumps(
             request("e3projection", "engine_projection", {"document": doc})
         ).encode())
