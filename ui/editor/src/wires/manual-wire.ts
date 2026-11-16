@@ -285,6 +285,21 @@ export class ManualWireEngine {
     if(idx<0) fail('UNKNOWN_SEGMENT','Selected segment ID no longer belongs to this wire');
     return this.moveSegment(tx,wireId,idx,offsetUm);
   }
+  /** Physical component placement is a CAS-guarded model edit.
+   * Existing attached conductors cannot be silently detached or stretched.
+   * A follow-up explicit reanchor workflow must handle that separately.
+   */
+  moveComponent(tx:Transaction,componentId:string,originUm:PointUm):WiringSnapshot {
+    id(componentId,'Component ID');point(originUm);
+    return this.transaction(tx,d=>{
+      const component=d.components.find(c=>c.id===componentId);
+      if(!component)fail('UNKNOWN_COMPONENT','No physical component for placement');
+      if(same(component.origin_um,originUm))fail('NO_CHANGE','Component position unchanged');
+      if(d.wires.some(w=>w.vertices.some(v=>v.anchor.kind==='pin'&&v.anchor.component_id===componentId)))
+        fail('REROUTE_REQUIRED','Cannot move symbol with physically anchored conductors');
+      component.origin_um=copy(originUm);
+    });
+  }
   private cutWire(d:WiringSnapshot,w:WirePolyline,at:PointUm,newAnchor:TerminalAnchor):[string,string] {
     const [left,right]=splitPoints(w,at);
     const newId=serialId(`${w.id}:part`,d);
