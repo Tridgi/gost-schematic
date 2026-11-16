@@ -8,14 +8,14 @@ import { useLocalStorage } from '@mantine/hooks';
 import {
   AlertTriangle, Cable, FileDown, FolderTree, Grid3X3, Hand,
   Magnet, Menu as MenuIcon, MousePointer2, Save, Search, Settings2,
-  Undo2, Redo2, Type as TypeIcon, Moon, Sun
+  Undo2, Redo2, Type as TypeIcon, Moon, Sun, CircleDot
 } from 'lucide-react';
 import { normalizeDockLayout, DOCK_LAYOUT_KEY, type DockLayout } from '../theme/layout';
 import { formatMillimetres, parseMillimetres } from './inspector-units';
 import { resolveShellShortcut } from './shortcuts';
 import '../theme/design-tokens.css';
 
-export type ToolMode = 'select' | 'wire' | 'text' | 'pan';
+export type ToolMode = 'select' | 'wire' | 'text' | 'pan' | 'junction';
 export type CatalogSymbol = {
   id: string; name: string; category: string; approval: 'draft' | 'approved' | 'blocked';
   /** Trusted SVG ReactNode from canonical catalogue renderer; no icon-based UGO substitution. */
@@ -251,7 +251,8 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
         <Group className="gscad-toolbar" px="sm" gap={4} wrap="nowrap">
           {([
             ['select',MousePointer2,'Выбор V'],['wire',Cable,'Провод W'],
-            ['text',TypeIcon,'Текст T'],['pan',Hand,'Панорама H']
+            ['text',TypeIcon,'Текст T'],['pan',Hand,'Панорама H'],
+            ['junction',CircleDot,'Явный узел J']
           ] as const).map(([mode,Icon,label])=>
             <Tooltip key={mode} label={label}><ActionIcon size="lg" variant={props.tool===mode?'filled':'subtle'}
               aria-label={label} data-testid={'tool-'+mode} aria-pressed={props.tool===mode} onClick={()=>props.onToolChange(mode)}>
