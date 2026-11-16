@@ -246,13 +246,17 @@ def test_semicircle_ink_bounds_and_unverifiable_bezier_rejected():
 
 
 @pytest.mark.parametrize("xml", [
-    '<?xml version="1.0" encoding="UTF-16"?>'
-    '<svg xmlns="http://www.w3.org/2000/svg" width="80mm" height="40mm" '
-    'viewBox="10 5 80 40"><metadata>plain</metadata></svg>',
-    '<?xml version="1.0" encoding="UTF-16"?>'
-    '<!DOCTYPE svg [<!ENTITY payload "entity-expanded">]>'
-    '<svg xmlns="http://www.w3.org/2000/svg" width="80mm" height="40mm" '
-    'viewBox="10 5 80 40"><metadata>&payload;</metadata></svg>',
+    (
+        '<?xml version="1.0" encoding="UTF-16"?>'
+        '<svg xmlns="http://www.w3.org/2000/svg" width="80mm" height="40mm" '
+        'viewBox="10 5 80 40"><metadata>plain</metadata></svg>'
+    ),
+    (
+        '<?xml version="1.0" encoding="UTF-16"?>'
+        '<!DOCTYPE svg [<!ENTITY payload "entity-expanded">]>'
+        '<svg xmlns="http://www.w3.org/2000/svg" width="80mm" height="40mm" '
+        'viewBox="10 5 80 40"><metadata>&payload;</metadata></svg>'
+    ),
 ])
 def test_non_utf8_svg_and_encoded_doctype_rejected_before_xml_parser(xml):
     """UTF-16 evades byte-level DOCTYPE scanning and ET expands entities."""
