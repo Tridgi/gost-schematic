@@ -772,3 +772,73 @@ test('R4 Chromium connected R1: reject without consent, consent reroute, Undo/Re
     {input:JSON.stringify(rotated),encoding:'utf8',timeout:20000});
  expect(py.status,py.stderr).toBe(0);
 });
+
+test('R4 connected R1 with two independent Nets: both physical routes reanchor atomically without a false Junction',async({page})=>{
+ await page.goto('/');
+ await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');
+ const bbox=await canvas.boundingBox();
+ for(const [symbol,x] of [['resistor.fixed',.50],['capacitor.fixed',.22],['capacitor.fixed',.78]]){
+  await page.getByTestId('catalog-item-symbol/'+symbol).click();
+  await page.mouse.click(bbox.x+bbox.width*x,bbox.y+bbox.height*.46);
+ }
+ const first=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const initial=JSON.parse(readFileSync(await (await first).path(),'utf8'));
+ const refs=Object.fromEntries(initial.project.components.map(c=>[c.refdes,c.id]));
+ const pin=(ref,n)=>page.getByTestId('signed-pin-'+refs[ref]+'-'+n);
+ await page.getByRole('button',{name:'Провод W'}).click();
+ await pin('R1','1').click();await pin('C1','2').click();
+ await pin('R1','2').click();await pin('C2','1').click();
+ await expect(page.locator('[data-net-id]')).toHaveCount(2);
+ const beforeDownload=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const before=JSON.parse(readFileSync(await (await beforeDownload).path(),'utf8'));
+ expect(before.project.nets).toHaveLength(2);
+ expect(before.project.sheets[0].wires).toHaveLength(2);
+ expect(before.project.sheets[0].junctions).toHaveLength(0);
+ expect(before.project.sheets[0].splices).toHaveLength(0);
+ const originalPins=before.project.nets.map(n=>[n.id,n.members]);
+ const originalIds=before.project.sheets[0].wires.map(w=>w.id);
+ await page.getByRole('button',{name:'Выбор V'}).click();
+ const center=await page.getByTestId('symbol-R1').evaluate(group=>{
+  const lines=[...group.querySelectorAll('line')];
+  const xx=lines.flatMap(l=>[Number(l.getAttribute('x1')),Number(l.getAttribute('x2'))]);
+  const yy=lines.flatMap(l=>[Number(l.getAttribute('y1')),Number(l.getAttribute('y2'))]);
+  const pt=group.ownerSVGElement.createSVGPoint();
+  pt.x=(Math.min(...xx)+Math.max(...xx))/2;
+  pt.y=(Math.min(...yy)+Math.max(...yy))/2;
+  const v=pt.matrixTransform(group.ownerSVGElement.getScreenCTM());
+  return {x:v.x,y:v.y};
+ });
+ page.once('dialog',async dlg=>{expect(dlg.type()).toBe('confirm');await dlg.accept();});
+ await page.mouse.move(center.x,center.y);await page.mouse.down();
+ await page.mouse.move(center.x,center.y+45,{steps:9});await page.mouse.up();
+ await expect(page.getByRole('alert').filter({hasText:'REROUTE_REVIEW_REQUIRED'})).toBeVisible();
+ const afterDownload=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const after=JSON.parse(readFileSync(await (await afterDownload).path(),'utf8'));
+ expect(after.project.sheets[0].instances.find(i=>i.component_id===refs.R1).origin_um)
+  .not.toEqual(before.project.sheets[0].instances.find(i=>i.component_id===refs.R1).origin_um);
+ expect(after.project.nets.map(n=>[n.id,n.members])).toEqual(originalPins);
+ expect(after.project.sheets[0].wires.map(w=>w.id)).toEqual(originalIds);
+ expect(after.project.sheets[0].wires.every(w=>w.needs_routing_review===true)).toBe(true);
+ expect(after.project.sheets[0].junctions).toHaveLength(0);
+ expect(after.project.sheets[0].splices).toHaveLength(0);
+ await page.getByRole('button',{name:'Отменить'}).click();
+ const undoDownload=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const undo=JSON.parse(readFileSync(await (await undoDownload).path(),'utf8'));
+ expect(undo.project.sheets[0].wires).toEqual(before.project.sheets[0].wires);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ const redoDownload=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const redo=JSON.parse(readFileSync(await (await redoDownload).path(),'utf8'));
+ expect(redo.project.sheets[0].wires).toEqual(after.project.sheets[0].wires);
+ const py=spawnSync('python',['-c',
+  'import sys,json;sys.path.insert(0,"src/model");from contract import validate;validate(json.load(sys.stdin))'
+ ],{input:JSON.stringify(redo),encoding:'utf8',timeout:20000});
+ expect(py.status,py.stderr).toBe(0);
+});
