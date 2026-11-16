@@ -6,11 +6,12 @@ claim GOST approval, full routing, or a validated manufacturer catalog.
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Mapping
 
 from contract import ContractError, digest, source_inventory_hash, validate
+
 from gost_schematic.core.geometry import Point
 from gost_schematic.core.transforms import Transform
 from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
