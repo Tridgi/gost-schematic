@@ -209,30 +209,30 @@ def test_absolute_v2_page_coordinates_are_not_recentred():
 
 def test_absolute_sheet_off_page_fails_without_implicit_fit():
     source = (
-        '<svg xmlns="http://www.w3.org/2000/svg" width="10mm" height="10mm" '
-        'viewBox="415 5 10 10">'
-        '<circle cx="420" cy="10" r="1" stroke="none" fill="#000000"/></svg>'
-    ).encode()
+        b'<svg xmlns="http://www.w3.org/2000/svg" width="10mm" height="10mm" '
+        b'viewBox="415 5 10 10">'
+        b'<circle cx="420" cy="10" r="1" stroke="none" fill="#000000"/></svg>'
+    )
     with pytest.raises(ExportError, match="OVERFLOW"):
         compose_clean_svg(source, ExportRequest(page_coords=True, include_frame=False))
 
 
 def test_polyline_stroked_ink_outside_viewbox_fails():
     source = (
-        '<svg xmlns="http://www.w3.org/2000/svg" width="10mm" height="10mm" '
-        'viewBox="0 0 10 10"><polyline points="2,2 9.95,2" stroke="#000000" '
+        b'<svg xmlns="http://www.w3.org/2000/svg" width="10mm" height="10mm" '
+        b'viewBox="0 0 10 10"><polyline points="2,2 9.95,2" stroke="#000000" '
         'stroke-width="0.3" fill="none"/></svg>'
-    ).encode()
+    )
     with pytest.raises(ExportError, match="SOURCE_VIEWBOX_CLIPS_INK"):
         compose_clean_svg(source, ExportRequest(include_frame=False))
 
 
 def test_semicircle_ink_bounds_and_unverifiable_bezier_rejected():
     arc = (
-        '<svg xmlns="http://www.w3.org/2000/svg" width="10mm" height="10mm" '
-        'viewBox="0 0 10 10"><path d="M 2 5 A 3 3 0 0 1 8 5" '
-        'stroke="#000000" stroke-width="0.3" fill="none"/></svg>'
-    ).encode()
+        b'<svg xmlns="http://www.w3.org/2000/svg" width="10mm" height="10mm" '
+        b'viewBox="0 0 10 10"><path d="M 2 5 A 3 3 0 0 1 8 5" '
+        b'stroke="#000000" stroke-width="0.3" fill="none"/></svg>'
+    )
     root = ET.fromstring(compose_clean_svg(
         arc, ExportRequest(include_frame=False))[0])
     assert root.find(f".//{SVG}path") is not None
