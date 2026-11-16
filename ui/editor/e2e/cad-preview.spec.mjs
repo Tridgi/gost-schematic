@@ -108,6 +108,7 @@ test('browser save and reopen retains frozen Nets and physical PinRefs after ver
     buffer:Buffer.from(JSON.stringify(saved),'utf8')
   });
   await expect(page.locator('[data-net-id]')).toHaveCount(1);
+  await page.getByRole('button',{name:/ERC\/DRC/}).click();
   await expect(page.getByText(/Проверенный ProjectV2 повторно открыт/)).toBeVisible();
   const altered=structuredClone(saved);
   altered.project.nets[0].members[0].physical_pin_number='UNDECLARED';
