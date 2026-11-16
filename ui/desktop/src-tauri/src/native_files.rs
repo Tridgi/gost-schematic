@@ -357,7 +357,8 @@ pub async fn native_export_project(
     }
     if path.exists() {return Err("EXPORT_TARGET_EXISTS".into());}
     let temp=write_temp(&path,&bytes)?;
-    let result=fs::hard_link(&temp,&path).map_err(|_|"EXPORT_TARGET_EXISTS".into());
+    let result: Result<(), String> = fs::hard_link(&temp,&path)
+        .map_err(|_| "EXPORT_TARGET_EXISTS".to_string());
     let _=fs::remove_file(&temp);
     result?;
     Ok(display_name(&path))
