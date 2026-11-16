@@ -239,5 +239,24 @@ class TransportTests(unittest.TestCase):
 
 
 
+    def test_ambiguous_model_dsu_vertex_ids_rejected_before_model_import(self):
+        # Both triples are distinct, but the old #122 colon-joined DSU key is
+        # 's:a:b:c' for BOTH. This negative test does not need jsonschema.
+        doc = {"project": {"sheets": [
+            {"id": "s", "wires": [
+                {"id": "a:b", "vertices": [{"id": "c"}]},
+                {"id": "a", "vertices": [{"id": "b:c"}]},
+            ]},
+        ]}}
+        rejected = worker.process(json.dumps(request(
+            "collision1", "verify_net", {"document": doc, "net_id": "N"}
+        )).encode())
+        self.assertEqual(rejected["id"], "collision1")
+        self.assertEqual(rejected["error"]["code"], "AMBIGUOUS_VERTEX_ID")
+        doc["project"]["sheets"][0]["wires"][1]["vertices"][0]["id"] = "safe"
+        worker._reject_ambiguous_wire_vertices(doc)
+
+
+
 if __name__ == "__main__":
     unittest.main()
