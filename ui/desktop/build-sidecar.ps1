@@ -10,10 +10,11 @@ if ($LASTEXITCODE -ne 0) { throw 'Install of Python engine failed' }
 if ($LASTEXITCODE -ne 0) { throw 'Install of PyInstaller/jsonschema failed' }
 $schemaPath = Join-Path $root 'ui/contracts/project-v2.schema.json'
 $modelPath = Join-Path $root 'ui/editor/src/model/contract.py'
-if (-not (Test-Path $schemaPath) -or -not (Test-Path $modelPath)) {
-  throw 'Install reviewed #122 ProjectFileV2 contract and schema before packaging'
+$wireAdapterPath = Join-Path $root 'ui/integration/project_wire_bridge.py'
+if (-not (Test-Path $schemaPath) -or -not (Test-Path $modelPath) -or -not (Test-Path $wireAdapterPath)) {
+  throw 'Install reviewed #122 model and MASTER #125 wire adapter before packaging'
 }
-& $py -m PyInstaller --clean --noconfirm --onefile --collect-all gost_schematic --collect-all jsonschema --add-data "$modelPath;ui/editor/src/model" --add-data "$schemaPath;ui/contracts" --name engine-bridge --distpath (Join-Path $PSScriptRoot 'dist') --workpath (Join-Path $PSScriptRoot '.pyi') (Join-Path $root 'ui/bridge/transport/worker.py')
+& $py -m PyInstaller --clean --noconfirm --onefile --collect-all gost_schematic --collect-all jsonschema --add-data "$modelPath;ui/editor/src/model" --add-data "$schemaPath;ui/contracts" --add-data "$wireAdapterPath;ui/integration" --name engine-bridge --distpath (Join-Path $PSScriptRoot 'dist') --workpath (Join-Path $PSScriptRoot '.pyi') (Join-Path $root 'ui/bridge/transport/worker.py')
 if ($LASTEXITCODE -ne 0) { throw 'PyInstaller failed' }
 $hostTriple = (& rustc -vV | Select-String '^host: (.+)$').Matches.Groups[1].Value
 if (-not $hostTriple) { throw 'rustc host target unavailable' }
