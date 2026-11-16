@@ -17,7 +17,7 @@ test('frozen E695 physical A3 SVG preserves 23 component instances, source Nets,
  assert.equal((svg.match(/data-kind="source_b_continuation"/g)||[]).length,2);
  assert.equal((svg.match(/data-layer="wires"/g)||[]).length,0);
  assert.equal((svg.match(/data-layer="explicit-junctions"/g)||[]).length,0);
- const pinrefs=source.project.nets.flatMap(n=>n.members);
+ const pinrefs=source.project.nets.flatMap((n:{members:unknown[]})=>n.members);
  assert.equal(pinrefs.length,62);
  assert.ok(svg.includes('data-electrical="declared-not-geometry-inferred"'));
 });
