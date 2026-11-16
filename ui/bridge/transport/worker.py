@@ -127,6 +127,86 @@ def _project_contract():
         raise ProtocolError("MODEL_UNAVAILABLE", "canonical v2 model load failed") from exc
     return module
 
+
+def _wire_bridge():
+    """Load MASTER-owned single-sheet wire adapter only from fixed installed files."""
+    import importlib.util
+
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        repository = Path(sys._MEIPASS)
+    else:
+        repository = Path(__file__).resolve().parents[3]
+    path = repository / "ui" / "integration" / "project_wire_bridge.py"
+    canonical = repository / "ui" / "editor" / "src" / "model" / "contract.py"
+    schema = repository / "ui" / "contracts" / "project-v2.schema.json"
+    if not all(p.is_file() for p in (path, canonical, schema)):
+        raise ProtocolError("BRIDGE_UNAVAILABLE", "canonical v2 wire adapter not packaged")
+    spec = importlib.util.spec_from_file_location("_gscad_project_wire_adapter", path)
+    if spec is None or spec.loader is None:
+        raise ProtocolError("BRIDGE_UNAVAILABLE", "v2 wire adapter cannot be loaded")
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except (ImportError, ValueError, OSError) as exc:
+        raise ProtocolError("BRIDGE_UNAVAILABLE", "v2 wire adapter cannot be loaded") from exc
+    if Path(module.model.__file__).resolve() != canonical.resolve():
+        raise ProtocolError("BRIDGE_UNAVAILABLE", "wrong Python model loaded by wire adapter")
+    return module
+
+
+def _wire_operation(op: str, args: dict[str, Any]) -> dict[str, Any]:
+    """Stateless, source-CAS checked bridge; no real edit is persisted."""
+    fields = {"document", "sheet_id", "revision"} if op == "wire_snapshot" else {
+        "document", "candidate", "sheet_id", "expected_project_sha256"
+    }
+    if not set(args) <= fields or "document" not in args or type(args["document"]) is not dict:
+        raise ProtocolError("INVALID_REQUEST", "unexpected wire bridge arguments")
+    if op == "validate_wire_candidate":
+        if "candidate" not in args or type(args["candidate"]) is not dict:
+            raise ProtocolError("INVALID_REQUEST", "typed candidate snapshot required")
+        expected_sha = args.get("expected_project_sha256")
+        if not isinstance(expected_sha, str) or not re.fullmatch(r"[0-9a-f]{64}", expected_sha):
+            raise ProtocolError("INVALID_SHA", "expected project SHA-256 required")
+    if args.get("sheet_id") is not None and (
+        not isinstance(args["sheet_id"], str) or not args["sheet_id"]
+    ):
+        raise ProtocolError("INVALID_REQUEST", "invalid sheet ID")
+    rev = args.get("revision", 0)
+    if op == "wire_snapshot" and (
+        type(rev) is not int or not 0 <= rev <= 9_007_199_254_740_991
+    ):
+        raise ProtocolError("INVALID_REVISION", "revision must be an exact safe integer")
+    bridge = _wire_bridge()
+    try:
+        if op == "wire_snapshot":
+            snapshot = bridge.to_snapshot(args["document"], sheet_id=args.get("sheet_id"),
+                                          revision=rev)
+            return {
+                "model": "gscad-project", "format_version": 2,
+                "project_sha256": bridge.model.digest(args["document"]),
+                "source_topology_sha256": snapshot["source_topology_hash"],
+                "wiring_snapshot": snapshot, "committed": False,
+            }
+        candidate = bridge.apply_snapshot(
+            args["document"], args["candidate"],
+            expected_sha=args["expected_project_sha256"],
+            sheet_id=args.get("sheet_id"),
+        )
+        return {
+            "project_sha256": bridge.model.digest(candidate),
+            "source_topology_sha256": bridge.model.source_inventory_hash(
+                candidate["project"]
+            ),
+            "validated_document": candidate,
+            "committed": False,
+        }
+    except (bridge.BridgeError, bridge.model.ContractError) as exc:
+        code = str(exc).split(":", 1)[0]
+        if not re.fullmatch(r"[A-Z][A-Z0-9_]{2,63}", code):
+            code = "BRIDGE_REJECTED"
+        raise ProtocolError(code, "wire candidate rejected; no state was changed") from exc
+
+
 def _project_operation(op: str, args: dict[str, Any]) -> dict[str, Any]:
     """Validated read-only ProjectFileV2 bridge; NEVER mutates editor state."""
     expected_keys = {"document", "net_id"} if op == "verify_net" else {"document"}
@@ -198,7 +278,8 @@ def dispatch(request: Any) -> dict[str, Any]:
     if op == "hello":
         return {"protocol": VERSION, "engine": "gost-schematic",
                 "capabilities": ["hello", "unit_roundtrip", "check_symbol", "render_symbol",
-                                 "validate_document", "source_snapshot", "verify_net"],
+                                 "validate_document", "source_snapshot", "verify_net",
+                                 "wire_snapshot", "validate_wire_candidate"],
                 "project_write": False, "process": "ephemeral-or-supervised"}
     if op == "unit_roundtrip":
         return {"x_um": decimal_um(args.get("x_um")),
@@ -207,6 +288,8 @@ def dispatch(request: Any) -> dict[str, Any]:
         return _symbol_operation(args.get("symbol"), check=op == "check_symbol")
     if op in {"validate_document", "source_snapshot", "verify_net"}:
         return _project_operation(op, args)
+    if op in {"wire_snapshot", "validate_wire_candidate"}:
+        return _wire_operation(op, args)
     if op in {"position_edit", "render_svg", "export_png"}:
         raise ProtocolError("NOT_WIRED", "awaiting approved transactional/export adapter")
     raise ProtocolError("UNKNOWN_OPERATION", "operation not allowlisted")
