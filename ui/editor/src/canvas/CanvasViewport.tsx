@@ -131,7 +131,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     onPointerDown={down} onPointerMove={move} onPointerUp={up}
     onPointerCancel={e=>{controller.key('Escape');if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);invalidate()}}
     onWheel={wheel}
-    onKeyDown={e=>{if(e.key==='Escape'||e.key==='Enter'){if(controller.key(e.key)){e.preventDefault();invalidate()}}}}
+    onKeyDown={e=>{if(['Escape','Enter','r','R'].includes(e.key)){if(controller.key(e.key)){e.preventDefault();invalidate()}}}}
     style={{touchAction:'none',outlineOffset:2}}>
     <defs>
       {grid&&<pattern id="cad-grid-um" width={step} height={step}
@@ -152,7 +152,9 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     </g>
     <g className="symbol-ugo" fill="none" stroke="#24384b" strokeWidth={1.5} pointerEvents="none">
       {visibleScene.symbols.map(s=><g key={s.instance_id} data-component-id={s.component_id}
-        data-testid={'symbol-'+(document.project.components.find(c=>c.id===s.component_id)?.refdes??s.component_id)}>
+        data-selected={String(controller.getState().selected?.kind==='symbol'&&controller.getState().selected?.instance_id===s.instance_id)}
+        data-testid={'symbol-'+(document.project.components.find(c=>c.id===s.component_id)?.refdes??s.component_id)}
+        stroke={controller.getState().selected?.kind==='symbol'&&controller.getState().selected?.instance_id===s.instance_id?'#e29225':undefined}>
         {s.strokes.map((stroke,i)=>{
           const a=localStroke(s,stroke.from_um,camera),b=localStroke(s,stroke.to_um,camera);
           return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y}/>;
