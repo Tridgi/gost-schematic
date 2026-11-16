@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import {projectToCanvasScene} from './scene-projection.mjs';
 
@@ -43,4 +44,15 @@ test('projection edits never mutate authoritative wires, do not downcast version
  assert.equal(f.project.sheets[0].wires[0].net_id,'literal-net');
  assert.throws(()=>projectToCanvasScene({...file(),format_version:3},'sheet'),/UNSUPPORTED_PROJECT_V2/);
  assert.throws(()=>projectToCanvasScene(file(),'missing'),/UNKNOWN_SHEET/);
+});
+
+test('actual frozen E695 source-b graphics are nonconductive and remain visible',()=>{
+ const source=JSON.parse(readFileSync(new URL('../../../fixtures/tl494-source-e695-v2.gscad.json',import.meta.url),'utf8'));
+ const scene=projectToCanvasScene(source,'sheet-1');
+ assert.equal(scene.symbols.length,23);
+ assert.equal(scene.wires.length,0);
+ assert.equal(scene.graphics.filter(g=>g.source_role==='source_b_continuation').length,2);
+ assert.ok(scene.graphics.every(g=>g.strokes.length===1));
+ const da=source.project.components.find(c=>c.source_refdes==='DA1');
+ assert.equal(scene.symbols.find(s=>s.component_id===da.id).pins.length,16);
 });

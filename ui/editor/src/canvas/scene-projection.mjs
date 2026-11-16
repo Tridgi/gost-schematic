@@ -20,7 +20,7 @@ function projectToCanvasScene(file,sheetId){
   if(!Array.isArray(g.points_um))deny("INVALID_GRAPHIC_POINTS");
   const pts=g.points_um.map(point);
   if(g.kind==="line"){if(pts.length!==2)deny("INVALID_LINE");return [line(pts[0],pts[1])]}
-  if(g.kind==="polyline"){if(pts.length<2)deny("INVALID_POLYLINE");return pts.slice(1).map((t,i)=>line(pts[i],t))}
+  if(g.kind==="polyline"||g.kind==="source_b_continuation"){if(pts.length<2)deny("INVALID_POLYLINE");return pts.slice(1).map((t,i)=>line(pts[i],t))}
   if(g.kind==="rect"){
    if(pts.length!==2)deny("INVALID_RECT");
    const [a,b]=pts;if(a[0]===b[0]||a[1]===b[1])deny("ZERO_AREA_RECT");
@@ -47,7 +47,7 @@ function projectToCanvasScene(file,sheetId){
   const strokes=(s.graphics||[]).flatMap(graphicsToStrokes);
   sourceSymbols.push({instance_id:i.id,component_id:c.id,origin_um:point(i.origin_um),rotation_deg:i.rotation_deg,mirror_x:i.mirror_x,pins,strokes,status:s.status,layer_id:i.layer_id});
  }
- const visualGraphics=sheet.graphics.map(g=>({id:g.id,layer_id:g.layer_id,source_role:g.source_role,strokes:graphicsToStrokes(g)}));
+ const visualGraphics=sheet.graphics.map(g=>({id:g.id,layer_id:g.layer_id,source_role:g.kind==="source_b_continuation"?"source_b_continuation":g.source_role,strokes:graphicsToStrokes(g)}));
  const clone=v=>JSON.parse(JSON.stringify(v));
  return {symbols:sourceSymbols,wires:clone(sheet.wires),junctions:clone(sheet.junctions),splices:clone(sheet.splices),graphics:visualGraphics};
 }
