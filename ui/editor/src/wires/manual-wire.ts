@@ -175,6 +175,20 @@ export function validateDocument(doc: WiringSnapshot): void {
   for(const s of doc.splices) if((degrees.get(`s:${s.id}`)??0)!==2)
     fail('SPLICE_DEGREE','Invisible splice must join exactly two wire ends');
 }
+/** Allocate a distinct dangling endpoint identity without renaming surviving source Free IDs.
+ * Splitting a wire can retain an old Free ID on a newly renamed wire part, so
+ * `wireId:start/end` is a suggestion, not an identity guarantee.
+ */
+function freshFreeId(doc:WiringSnapshot, wireId:string, side:'start'|'end'):string {
+  const used=new Set<string>();
+  for(const w of doc.wires)
+    for(const v of [w.vertices[0],w.vertices.at(-1)!])
+      if(v.anchor.kind==='free') used.add(v.anchor.free_id);
+  const base=`${wireId}:${side}`;
+  let candidate=base, i=1;
+  while(used.has(candidate)) candidate=`${base}#${i++}`;
+  return candidate;
+}
 function serialId(prefix:string, doc:WiringSnapshot): string {
   const all=new Set([...doc.wires,...doc.junctions,...doc.splices].map(v=>v.id));
   let i=1; while(all.has(`${prefix}${i}`)) i++; return `${prefix}${i}`;
@@ -340,7 +354,7 @@ export class ManualWireEngine {
     return this.transaction(tx,d=>{
       if(!d.junctions.some(n=>n.id===junctionId)) fail('UNKNOWN_NODE','Unknown junction');
       for(const w of d.wires) for(const [i,side] of [[0,'start'],[w.vertices.length-1,'end']] as const) {
-        const v=w.vertices[i]; if(v.anchor.kind==='junction'&&v.anchor.junction_id===junctionId) v.anchor={kind:'free',free_id:`${w.id}:${side}`};
+        const v=w.vertices[i]; if(v.anchor.kind==='junction'&&v.anchor.junction_id===junctionId) v.anchor={kind:'free',free_id:freshFreeId(d,w.id,side)};
       }
       d.junctions=d.junctions.filter(j=>j.id!==junctionId);
     });
@@ -353,7 +367,7 @@ export class ManualWireEngine {
         const refs=d.wires.flatMap(w=>[w.vertices[0],w.vertices.at(-1)!].map((v,i)=>({w,v,side:i===0?'start':'end'})))
           .filter(x=>x.v.anchor.kind==='splice'&&x.v.anchor.splice_id===node.id);
         if(refs.length<2) {
-          for(const ref of refs) ref.v.anchor={kind:'free',free_id:`${ref.w.id}:${ref.side}`};
+          for(const ref of refs) ref.v.anchor={kind:'free',free_id:freshFreeId(d,ref.w.id,ref.side)};
           d.splices=d.splices.filter(s=>s.id!==node.id);
         }
       }
