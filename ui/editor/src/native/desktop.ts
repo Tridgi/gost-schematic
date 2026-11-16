@@ -1,0 +1,52 @@
+/** Tauri-only allowlisted commands; the host never accepts JavaScript file paths.
+ * withGlobalTauri is configured in ui/desktop/src-tauri/tauri.conf.json.
+ * Browser build has no dependency on Tauri APIs and retains JSON downloads.
+ */
+import type {ProjectFileV2} from '../model/contract';
+
+export type NativeDocumentHandle = {
+  handle:string;
+  generation:number;
+  project_sha256:string;
+  filename:string;
+};
+export type NativeDocumentReply = NativeDocumentHandle & {document:ProjectFileV2};
+
+type Invoke = <T>(command:string,args?:Record<string,unknown>)=>Promise<T>;
+function host():Invoke|null {
+  const target=window as typeof window & {
+    __TAURI__?:{core?:{invoke?:Invoke}}
+  };
+  return target.__TAURI__?.core?.invoke??null;
+}
+export function nativeDesktopAvailable():boolean {
+  return host()!==null;
+}
+export function nativeOpenProject():Promise<NativeDocumentReply>{
+  const invoke=host();if(!invoke)throw Error('NATIVE_HOST_UNAVAILABLE');
+  return invoke('native_open_project');
+}
+export function nativeSaveProject(
+  previous:NativeDocumentHandle,
+  document:ProjectFileV2
+):Promise<NativeDocumentReply>{
+  const invoke=host();if(!invoke)throw Error('NATIVE_HOST_UNAVAILABLE');
+  return invoke('native_save_project',{
+    handle:previous.handle,expectedGeneration:previous.generation,
+    expectedProjectSha256:previous.project_sha256,document
+  });
+}
+export function nativeSaveAsProject(
+  document:ProjectFileV2,previous:NativeDocumentHandle|null
+):Promise<NativeDocumentReply>{
+  const invoke=host();if(!invoke)throw Error('NATIVE_HOST_UNAVAILABLE');
+  return invoke('native_save_as_project',{
+    document,previousHandle:previous?.handle??null,
+    expectedGeneration:previous?.generation??null,
+    expectedProjectSha256:previous?.project_sha256??null
+  });
+}
+export async function nativeCloseProject(handle:string):Promise<void>{
+  const invoke=host();if(!invoke)return;
+  await invoke('native_close_project',{handle});
+}
