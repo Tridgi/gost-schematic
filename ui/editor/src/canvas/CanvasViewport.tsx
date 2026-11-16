@@ -13,7 +13,7 @@ export type CanvasViewportProps = {
   gridVisible: boolean;
   snapEnabled: boolean;
   /** No electrical mutation is allowed inside the canvas; the host validates this command. */
-  onIntent: (intent: CanvasIntent) => void;
+  onIntent: (intent: CanvasIntent) => void|boolean;
   onZoomPercent?: (percent: number) => void;
   zoomRequest?: {percent:50|100|200;token:number};
 };
