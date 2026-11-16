@@ -119,3 +119,25 @@ test('browser save and reopen retains frozen Nets and physical PinRefs after ver
   await expect(page.getByRole('alert').filter({hasText:/OPEN_FAILED:.*SOURCE_TOPOLOGY_MISMATCH/})).toBeVisible();
   await expect(page.locator('[data-net-id]')).toHaveCount(1);
 });
+
+test('inspector position edits are authoritative and Undo/Redo preserve source Pins and Nets',async({page})=>{
+  await page.goto('/');
+  await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+  const first=source.project.sheets[0].instances[0];
+  const originalMm=first.origin_um[0]/1000;
+  const x=page.getByTestId('inspector-axis-x');
+  await expect.poll(async()=>Number((await x.inputValue()).replace(',','.'))).toBe(originalMm);
+  const newMm=(first.origin_um[0]+5000)/1000;
+  await x.fill(String(newMm));
+  await x.press('Tab');
+  await expect.poll(async()=>Number((await x.inputValue()).replace(',','.'))).toBe(newMm);
+  const downloading=page.waitForEvent('download');
+  await page.getByTestId('save-project').click();
+  const saved=JSON.parse(readFileSync(await (await downloading).path(),'utf8'));
+  expect(saved.project.sheets[0].instances[0].origin_um[0]).toBe(first.origin_um[0]+5000);
+  expect(saved.project.nets.map(n=>n.members)).toEqual(source.project.nets.map(n=>n.members));
+  await page.getByRole('button',{name:'Отменить'}).click();
+  await expect.poll(async()=>Number((await x.inputValue()).replace(',','.'))).toBe(originalMm);
+  await page.getByRole('button',{name:'Повторить'}).click();
+  await expect.poll(async()=>Number((await x.inputValue()).replace(',','.'))).toBe(newMm);
+});
