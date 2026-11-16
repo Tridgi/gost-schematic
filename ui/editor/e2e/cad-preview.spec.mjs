@@ -235,7 +235,9 @@ test('physical mouse drag selects and moves C1, R key rotates, Undo/Redo preserv
  await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
  const symbol=page.getByTestId('symbol-C1');
  const line=symbol.locator('line').first();
- await expect(line).toBeVisible();
+ // Horizontal SVG strokes have a zero-height DOM bounding box; their midpoint
+ // remains a valid real mouse target, but Playwright toBeVisible() rejects it.
+ await expect(line).toHaveCount(1);
  const midpoint=await line.evaluate(el=>{
    const svg=el.ownerSVGElement;
    const p=svg.createSVGPoint();
