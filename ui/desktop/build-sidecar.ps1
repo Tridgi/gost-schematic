@@ -1,7 +1,18 @@
 # Windows-only packaging: requires Python 3.12 venv and rustc MSVC.
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
+# A developer may select a different Python *inside this checked-out repository*.
+# This variable is a BUILD-ONLY option, never a frontend/IPC process path.
 $py = Join-Path $root '.venv/Scripts/python.exe'
+if ($env:GSCAD_SIDECAR_PYTHON) {
+  $candidate = (Resolve-Path $env:GSCAD_SIDECAR_PYTHON -ErrorAction Stop).Path
+  $relative = [IO.Path]::GetRelativePath($root, $candidate)
+  if ($relative.StartsWith('..') -or [IO.Path]::IsPathRooted($relative) -or
+      [IO.Path]::GetFileName($candidate) -ne 'python.exe') {
+    throw 'Build-only Python interpreter must be a repository-local venv python.exe'
+  }
+  $py = $candidate
+}
 if (-not (Test-Path $py)) { throw 'Run py -3.12 -m venv .venv from repository root first' }
 & $py -m pip install -e "$($root)[dev]"
 if ($LASTEXITCODE -ne 0) { throw 'Install of Python engine failed' }
