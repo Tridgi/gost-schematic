@@ -102,8 +102,36 @@ function validateAuthoring(file:ProjectFileV2):void {
   unique(p.symbol_definitions,'DUPLICATE_SYMBOL');
   unique(p.nets,'DUPLICATE_NET');
   unique(p.sheets,'DUPLICATE_SHEET');
+  // Validate every catalogue part, including definitions not yet placed.
+  // Otherwise a malicious imported ProjectV2 can hide duplicate PinRefs
+  // until that part is inserted into a real electrical sheet.
+  for(const part of p.part_definitions){
+    if(!Array.isArray(part.physical_pins))reject('INVALID_PHYSICAL_PINS');
+    const numbers=new Set<string>();
+    for(const pin of part.physical_pins){
+      checkId(pin?.number,'INVALID_PHYSICAL_PIN');
+      if(numbers.has(pin.number))reject('DUPLICATE_PHYSICAL_PIN');
+      numbers.add(pin.number);
+    }
+  }
   const parts=new Map(p.part_definitions.map(v=>[v.id,v]));
   const symbols=new Map(p.symbol_definitions.map(v=>[v.id,v]));
+  // An unused symbol definition is still persisted and can later become
+  // placeable; enforce exact physical pin identities at import time.
+  for(const symbol of p.symbol_definitions){
+    const part=parts.get(symbol.part_id);
+    if(!part)reject('UNKNOWN_PART');
+    if(!Array.isArray(symbol.pins))reject('INVALID_SYMBOL_PINS');
+    const numbers=new Set<string>();
+    for(const pin of symbol.pins){
+      checkId(pin?.physical_pin_number,'INVALID_PINREF');
+      if(numbers.has(pin.physical_pin_number))reject('DUPLICATE_SYMBOL_PIN');
+      numbers.add(pin.physical_pin_number);
+      if(!part.physical_pins.some(p=>p.number===pin.physical_pin_number))
+        reject('UNKNOWN_PIN');
+      xy(pin.at_um);
+    }
+  }
   const comps=new Map(p.components.map(v=>[v.id,v]));
   const refdes=new Set<string>();
   for(const comp of p.components){
@@ -112,9 +140,11 @@ function validateAuthoring(file:ProjectFileV2):void {
     if(refdes.has(comp.refdes))reject('DUPLICATE_REFDES');refdes.add(comp.refdes);
     if(!parts.has(comp.part_id))reject('UNKNOWN_PART');
   }
-  const owned=new Set<string>();
+  const owned=new Set<string>(),netNames=new Set<string>();
   for(const net of p.nets) {
     checkId(net.name,'INVALID_NET_NAME');
+    if(netNames.has(net.name))reject('DUPLICATE_NET_NAME');
+    netNames.add(net.name);
     if(!net.members.length)reject('INVALID_NET');
     for(const member of net.members){
       checkId(member.component_id,'INVALID_PINREF');
@@ -338,7 +368,11 @@ export class AuthoringSession {
       const netId=a.net_id||b.net_id||newId('net');
       let net=draft.project.nets.find(n=>n.id===netId);
       if(!net){
-        const id=1+draft.project.nets.length;
+        // Net IDs are stable UUIDs; display names must also stay unique
+        // when an earlier Net is removed and later names survive.
+        const used=new Set(draft.project.nets.map(n=>n.name));
+        let id=1;
+        while(used.has('N'+id))id++;
         net={id:netId,name:'N'+id,members:[],route_status:'unrouted'};
         draft.project.nets.push(net);
       }
