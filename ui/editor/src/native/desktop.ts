@@ -51,3 +51,13 @@ export async function nativeCloseProject(handle:string):Promise<void>{
   const invoke=host();if(!invoke)return;
   await invoke('native_close_project',{handle});
 }
+
+/** Python canonical v2 exporter -> verified bytes -> OS native save dialog.
+ * No path leaves Rust. This is an explicitly UNVERIFIED-FONT engineering preview.
+ */
+export async function nativeExportProject(
+  document:ProjectFileV2,sheetId:string,format:'svg'|'png300'
+):Promise<string>{
+  const invoke=host();if(!invoke)throw Error('NATIVE_HOST_UNAVAILABLE');
+  return invoke('native_export_project',{document,sheetId,format});
+}
