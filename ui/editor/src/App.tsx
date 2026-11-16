@@ -223,9 +223,28 @@ export default function App() {
     });
     return session.materialize(next);
   };
-  const handleSave=()=>{
+  const activeProjectIdRef=useRef('');
+  activeProjectIdRef.current=document?.project.id??'';
+  const handleSave=(saveAs=false)=>{
     try {
       const next=currentProject();
+      if(nativeDesktopAvailable()){
+        const expectedRevision=authoringRef.current?.revision??engineRef.current?.snapshot.revision??0;
+        const projectId=next.project.id;
+        const action=saveAs||!nativeHandle
+          ?nativeSaveAsProject(next,nativeHandle)
+          :nativeSaveProject(nativeHandle,next);
+        void action.then(result=>{
+          if(activeProjectIdRef.current!==projectId)return;
+          setNativeHandle(result);
+          const actualRevision=authoringRef.current?.revision??engineRef.current?.snapshot.revision??0;
+          if(actualRevision===expectedRevision){
+            setDirty(false);
+            setIssue('NATIVE_SAVED: '+result.filename+'; Python ProjectV2 PASS, ревизия '+result.generation+'.');
+          }else setIssue('SAVE_COMPLETED_BUT_DOCUMENT_CHANGED: сохраните последующие изменения отдельно.');
+        }).catch(e=>setIssue('NATIVE_SAVE_FAILED: '+String(e)));
+        return;
+      }
       const payload=JSON.stringify(next,null,2)+'\n';
       const url=URL.createObjectURL(new Blob([payload],{type:'application/json'}));
       const link=window.document.createElement('a');
