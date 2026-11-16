@@ -1,0 +1,44 @@
+/* CHAT 5 semantic chrome. Source of truth: Mantine's documentElement color scheme.
+ * Portal-based Modal/Menu inherit because tokens live on :root, not AppShell child.
+ */
+:root[data-mantine-color-scheme='dark'] {
+  --gscad-root:#0d131c;--gscad-surface:#111a25;--gscad-pane:#151f2b;
+  --gscad-raised:#1b2736;--gscad-canvas:#101927;--gscad-ink:#eaf0f8;
+  --gscad-muted:#a5b4c6;--gscad-line:#2b3a4d;--gscad-accent:#69b8ff;
+  --gscad-selected:#173c58;--gscad-warn:#f6b65e;--gscad-error:#ff8b94;
+  --gscad-focus:#79c9ff;
+}
+:root[data-mantine-color-scheme='light'] {
+  --gscad-root:#eff3f7;--gscad-surface:#ffffff;--gscad-pane:#f8fafc;
+  --gscad-raised:#e9eff5;--gscad-canvas:#f8fbfe;--gscad-ink:#172635;
+  --gscad-muted:#526276;--gscad-line:#cbd5e0;--gscad-accent:#145da8;
+  --gscad-selected:#d9ecfb;--gscad-warn:#91530d;--gscad-error:#b51d3e;
+  --gscad-focus:#005ea8;
+}
+.gscad-app{color:var(--gscad-ink);background:var(--gscad-root);font-family:'Segoe UI',system-ui,sans-serif}
+.gscad-app :where(button,[role='separator'],input,a):focus-visible{outline:2px solid var(--gscad-focus);outline-offset:2px}
+.gscad-app .mantine-AppShell-root,.gscad-app .mantine-AppShell-main{background:var(--gscad-root)}
+.gscad-header{background:var(--gscad-surface);border-bottom:1px solid var(--gscad-line)}
+.gscad-project-label{max-width:min(25vw,380px);min-width:0}
+.gscad-dock{background:var(--gscad-pane);border-color:var(--gscad-line)}
+.gscad-center{min-width:0;overflow:hidden}
+.gscad-center-inner{height:calc(100dvh - 86px);min-height:0;display:flex;flex-direction:column}
+.gscad-sheet-tabs{flex:0 0 auto;background:var(--gscad-surface)}
+.gscad-canvas-slot{flex:1 1 auto;min-height:0;background:var(--gscad-canvas);overflow:hidden;position:relative}
+.gscad-toolbar{flex:0 0 48px;background:var(--gscad-surface);border-top:1px solid var(--gscad-line)}
+.gscad-toolbar-spacer{flex:1}
+.gscad-diagnostics{flex:0 0 120px;border-top:1px solid var(--gscad-line);background:var(--gscad-pane)}
+.gscad-status{background:var(--gscad-surface);border-top:1px solid var(--gscad-line);font-variant-numeric:tabular-nums}
+.gscad-catalog-item{height:auto!important;min-height:48px;width:100%;padding:6px!important;display:flex!important;justify-content:flex-start!important;text-align:left}
+.gscad-catalog-item .mantine-Button-inner{justify-content:flex-start}
+.gscad-catalog-item .mantine-Button-label{display:flex;width:100%;min-width:0;align-items:center;gap:8px}
+.gscad-symbol-preview{flex:0 0 54px;min-height:32px;display:grid;place-items:center;border:1px solid var(--gscad-line);border-radius:5px}
+.gscad-symbol-preview svg{width:48px;height:30px}
+.gscad-symbol-info{display:grid;min-width:0;color:var(--gscad-ink)}
+.gscad-symbol-info small{color:var(--gscad-muted);font-size:11px}
+.gscad-right-dock{display:grid;height:100%;min-height:0;overflow:hidden}
+.gscad-dock-section{overflow:hidden;min-height:0}
+.gscad-vsplit{cursor:row-resize;touch-action:none;background:var(--gscad-line);position:relative}
+.gscad-vsplit:hover,.gscad-vsplit:focus-visible{background:var(--gscad-accent)}
+@media(max-width:960px){.gscad-project-label{max-width:30vw}.gscad-toolbar{overflow-x:auto}}
+@media(prefers-reduced-motion:reduce){.gscad-app *, .gscad-app *::before,.gscad-app *::after{transition-duration:0s!important;animation-duration:0s!important}}
