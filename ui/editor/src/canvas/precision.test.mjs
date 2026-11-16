@@ -66,3 +66,20 @@ test('invalid diagonal authored segment rejected',()=>{
  const invalid={...cross,wires:[{...cross.wires[0],vertices:[{id:'a',at_um:[0,10000]},{id:'b',at_um:[20000,20000]}]}]};
  assert.throws(()=>hitTest(invalid,camera,screen([10000,10000],camera)),/NON_ORTHOGONAL/);
 });
+
+test('CHAT3 regression: invalid camera scale and offsets are rejected before zoom',()=>{
+ for(const c of [{s:0,x:0,y:0},{s:-1,x:0,y:0},{s:NaN,x:0,y:0},{s:.008,x:Infinity,y:0},{s:.008,x:0,y:NaN}])
+  assert.throws(()=>zoom(c,{x:100,y:100},2),/INVALID_ZOOM/);
+ assert.throws(()=>zoom(camera,{x:Infinity,y:100},2),/INVALID_POINTER/);
+});
+test('CHAT3 regression: zero-length segment is never selectable',()=>{
+ const invalid={symbols:[],junctions:[],wires:[{id:'w0',net_id:'N',vertices:[{id:'p',at_um:[10000,20000]},{id:'q',at_um:[10000,20000]}],
+ segments:[{id:'s0',from_vertex_id:'p',to_vertex_id:'q'}]}]};
+ assert.throws(()=>hitTest(invalid,camera,screen([10000,20000],camera)),/ZERO_LENGTH_SEGMENT/);
+});
+test('CHAT3 regression: canonical v2 SymbolPin.side maps physical terminal normals',()=>{
+ const canonical={...symbol,pins:[{physical_pin_number:'1',at_um:[2000,0],side:'right'}]};
+ assert.deepEqual(hitTest({symbols:[canonical],wires:[],junctions:[]},camera,screen([12000,10000],camera)).pin,{component_id:'U',physical_pin_number:'1'});
+ const north={...canonical,pins:[{physical_pin_number:'1',at_um:[0,-2000],side:'top'}]};
+ assert.equal(hitTest({symbols:[north],wires:[],junctions:[]},camera,screen([10000,8000],camera)).normal,'up');
+});
