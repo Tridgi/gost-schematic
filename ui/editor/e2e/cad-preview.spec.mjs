@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { ManualWireEngine, constructWire } from '../src/wires/dist/manual-wire.js';
 
 const source = JSON.parse(readFileSync(
@@ -488,4 +489,28 @@ test('R3 new A3 project: place real DRAFT R/C, edit, wire new Net, Undo/Redo, sa
     routed.project.nets.map(n=>[n.id,n.name,n.members]));
   expect(reopened.project.sheets[0].wires).toEqual(routed.project.sheets[0].wires);
   expect(reopened.project.sheets[0].instances).toEqual(routed.project.sheets[0].instances);
+  const py=spawnSync('python',['-c',
+    'import sys,json; sys.path.insert(0,"src/model"); from contract import validate; validate(json.load(sys.stdin)); print("PYTHON_V2_ACCEPTED")'
+  ],{input:JSON.stringify(reopened),encoding:'utf8',timeout:20000});
+  expect(py.status,py.stderr).toBe(0);
+  expect(py.stdout).toContain('PYTHON_V2_ACCEPTED');
+  await page.getByRole('button',{name:'Экспорт',exact:true}).click();
+  const downloadingSVG=page.waitForEvent('download');
+  await page.getByRole('button',{name:'Экспортировать'}).click();
+  const svg=readFileSync(await (await downloadingSVG).path(),'utf8');
+  expect(svg).toContain('width="420mm" height="297mm"');
+  expect(svg).toContain('data-source-net-count="1"');
+  expect(svg).toContain('data-font-status="unverified-preview"');
+  await page.getByRole('button',{name:'Экспорт',exact:true}).click();
+  await page.getByText('PNG 300 DPI',{exact:true}).click();
+  const downloadingPNG=page.waitForEvent('download');
+  await page.getByRole('button',{name:'Экспортировать'}).click();
+  const png=readFileSync(await (await downloadingPNG).path());
+  expect([...png.subarray(0,8)]).toEqual([137,80,78,71,13,10,26,10]);
+  expect(png.readUInt32BE(16)).toBe(Math.round(420/25.4*300));
+  expect(png.readUInt32BE(20)).toBe(Math.round(297/25.4*300));
+  const phys=png.indexOf(Buffer.from('pHYs'));
+  expect(phys).toBeGreaterThan(0);
+  expect(png.readUInt32BE(phys+4)).toBe(11811);
+  expect(png.readUInt32BE(phys+8)).toBe(11811);
 });
