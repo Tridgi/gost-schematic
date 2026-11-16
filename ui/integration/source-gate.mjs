@@ -3,20 +3,26 @@ export const SOURCE_SHA="e695c415fdced164b0e0c39c5249d030795a0aa6";
 function deny(code){throw Error(code)}
 const point=p=>Array.isArray(p)&&p.length===2&&p.every(n=>Number.isSafeInteger(n)&&Math.abs(n)<=1e9);
 const same=(a,b)=>a[0]===b[0]&&a[1]===b[1];
+// Only a geometrical containment predicate: it never creates Net membership.
+const onSegment=(p,a,b)=>a[0]===b[0]
+ ? p[0]===a[0]&&p[1]>=Math.min(a[1],b[1])&&p[1]<=Math.max(a[1],b[1])
+ : a[1]===b[1]&&p[1]===a[1]&&p[0]>=Math.min(a[0],b[0])&&p[0]<=Math.max(a[0],b[0]);
 const key=p=>JSON.stringify([p.component_id,p.physical_pin_number]);
 export function auditCandidateV2(file,{pinWorld,requireFrozen=false}={}){
  if(file?.format!=="gscad-project"||file.format_version!==2||!file.project)deny("UNSUPPORTED_SCHEMA");
  const p=file.project;
  if(!["components","nets","sheets"].every(k=>Array.isArray(p[k])))deny("MISSING_COLLECTION");
  if(!p.sheets.length)deny("EMPTY_PROJECT");
- const components=new Set(p.components.map(x=>x.id));
- if(components.has(undefined)||components.size!==p.components.length)deny("DUPLICATE_COMPONENT");
+ const components=new Set(p.components.map(x=>x?.id));
+ if([...components].some(id=>typeof id!=="string"||!id.trim())||components.size!==p.components.length)
+   deny("DUPLICATE_COMPONENT");
  const ownership=new Map(),netIds=new Set();
  for(const net of p.nets){
   if(!net?.id||netIds.has(net.id)||!Array.isArray(net.members)||!net.members.length)deny("INVALID_NET");
   netIds.add(net.id);
   for(const pin of net.members){
-   if(!components.has(pin?.component_id)||typeof pin.physical_pin_number!=="string")deny("INVALID_PINREF");
+   if(!components.has(pin?.component_id)||typeof pin.physical_pin_number!=="string"||!pin.physical_pin_number.trim())
+     deny("INVALID_PINREF");
    if(ownership.has(key(pin)))deny("DUPLICATE_PIN_OWNERSHIP");
    ownership.set(key(pin),net.id);
   }
@@ -56,9 +62,25 @@ export function auditCandidateV2(file,{pinWorld,requireFrozen=false}={}){
     segments.add(e.id);
    }
   }
-  for(const j of sh.junctions)if(!point(j.at_um)||!netIds.has(j.net_id)||(usage.get("junction:"+j.id)||0)<2)deny("ORPHAN_JUNCTION");
+  for(const j of sh.junctions){
+   if(!point(j.at_um)||!netIds.has(j.net_id)||(usage.get("junction:"+j.id)||0)<2)
+     deny("ORPHAN_JUNCTION");
+   // Explicit visible junction dots cannot conceal a foreign-Net conductor
+   // on the same electrical layer. Bare X crossings remain nonconductive.
+   for(const w of sh.wires){
+    if(w.net_id===j.net_id||w.layer_id!==j.layer_id)continue;
+    for(let i=1;i<w.vertices.length;i++)
+     if(onSegment(j.at_um,w.vertices[i-1].at_um,w.vertices[i].at_um))
+       deny("JUNCTION_CROSSES_FOREIGN_NET");
+   }
+  }
   for(const j of sh.splices||[])if(!point(j.at_um)||!netIds.has(j.net_id)||(usage.get("splice:"+j.id)||0)!==2)deny("INVALID_SPLICE");
-  if(sh.graphics.some(g=>g.kind==="source_b_continuation"&&g.electrical===true))deny("NON_ELECTRICAL_GRAPHIC");
+  // Source-b belongs exclusively to the graphical drawing layer. Reject any
+  // injected net/anchor/electrical metadata, not only electrical:true.
+  const graphicKeys=new Set(["id","layer_id","kind","points_um","stroke_um"]);
+  if(sh.graphics.some(g=>g?.kind==="source_b_continuation"&&
+    Object.keys(g).some(k=>!graphicKeys.has(k))))
+    deny("NON_ELECTRICAL_GRAPHIC");
   wireCount+=sh.wires.length;graphicCount+=sh.graphics.length;
  }
  const counts={components:components.size,nets:netIds.size,memberships:ownership.size,wires:wireCount,graphics:graphicCount};
