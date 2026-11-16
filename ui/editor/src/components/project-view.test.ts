@@ -43,7 +43,7 @@ test('reject wrong part pin on selected instance',()=>{
 });
 test('reject invalid selection, points, and unsupported schema',()=>{
  const p=fixture();assert.throws(()=>projectToShellView(p,'missing'),/UNKNOWN_SELECTED_INSTANCE/);
- const p2=fixture();(p2.project.sheets[0].instances[0].origin_um as number[])[0]=1.5;
+ const p2=fixture();(p2.project.sheets[0].instances[0].origin_um as unknown as number[])[0]=1.5;
  assert.throws(()=>projectToShellView(p2,'i1'),/INVALID_UM_POINT/);
  const p3=fixture();(p3 as {format_version:number}).format_version=1;
  assert.throws(()=>projectToShellView(p3),/UNSUPPORTED_PROJECT_V2/);

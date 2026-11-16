@@ -44,7 +44,7 @@ function SchematicCanvas(props:CanvasProps) {
   const drag=useRef<{wire:string;index:number;start:[number,number];axis:'x'|'y'}|null>(null);
   const sheet=props.document.project.sheets.find(s=>s.id===props.sheetId);
   if(!sheet)throw Error('UNKNOWN_SHEET');
-  const scene=projectToCanvasScene(props.document,props.sheetId) as Scene;
+  const scene=projectToCanvasScene(props.document,props.sheetId) as unknown as Scene;
   const comps=new Map(props.document.project.components.map(c=>[c.id,c]));
   const viewWidth=420/props.zoom,viewHeight=297/props.zoom;
   const viewBox=[(420-viewWidth)/2,(297-viewHeight)/2,viewWidth,viewHeight].join(' ');
