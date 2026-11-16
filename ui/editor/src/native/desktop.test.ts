@@ -1,4 +1,5 @@
 import test from 'node:test';
+import type {ProjectFileV2} from '../model/contract';
 import assert from 'node:assert/strict';
 import {
  nativeDesktopAvailable,nativeOpenProject,nativeSaveProject,
@@ -7,11 +8,11 @@ import {
 
 test('R4 JS invokes only allowlisted opaque native document handles, never file paths/shell',async()=>{
  assert.equal(nativeDesktopAvailable(),false);
- const fake={format:'gscad-project',format_version:2,project:{id:'p'},workspace:{}};
+ const fake={format:'gscad-project',format_version:2,project:{id:'p'},workspace:{}} as unknown as ProjectFileV2;
  const known={handle:'opaque-session-uuid',generation:8,project_sha256:'a'.repeat(64),filename:'safe.gscad.json'};
- const calls=[];
+ const calls:Array<{command:string;args?:Record<string,unknown>}>=[];
  Object.defineProperty(globalThis,'window',{configurable:true,value:{
-  __TAURI__:{core:{invoke:async(command,args)=>{
+  __TAURI__:{core:{invoke:async(command:string,args?:Record<string,unknown>)=>{
    calls.push({command,args});
    return {...known,document:fake};
   }}}
@@ -39,6 +40,6 @@ test('R4 JS invokes only allowlisted opaque native document handles, never file 
    assert.equal(JSON.stringify(item.args??{}).includes('commandLine'),false);
   }
  }finally{
-  delete globalThis.window;
+  Reflect.deleteProperty(globalThis,'window');
  }
 });
