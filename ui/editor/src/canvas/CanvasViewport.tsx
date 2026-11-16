@@ -51,6 +51,39 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     gridUm:document.project.settings.grid_step_um,onIntent:intent=>callbackRef.current(intent)
   });
   const invalidate=useCallback(()=>{setRevision(n=>n+1)},[]);
+  const fittedRef=useRef<string|null>(null);
+  /** Initial camera fits the actual signed E695 scene, not a hardcoded sheet corner.
+   * A pin outside the visible viewport is not an actionable CAD endpoint.
+   */
+  useEffect(()=>{
+    const identity=document.project.id+':'+sheetId;
+    if(fittedRef.current===identity)return;
+    const bounds=svgRef.current?.getBoundingClientRect();
+    if(!bounds||bounds.width<100||bounds.height<100)return;
+    const all:PointUm[]=[];
+    for(const symbol of scene.symbols){
+      all.push(symbol.origin_um);
+      for(const pin of symbol.pins)all.push(pinWorld(symbol,pin.physical_pin_number).at_um);
+    }
+    for(const g of scene.graphics)for(const stroke of g.strokes){
+      all.push(stroke.from_um,stroke.to_um);
+    }
+    if(!all.length)return;
+    const minX=Math.min(...all.map(p=>p[0])),maxX=Math.max(...all.map(p=>p[0]));
+    const minY=Math.min(...all.map(p=>p[1])),maxY=Math.max(...all.map(p=>p[1]));
+    // 32 CSS pixels minimum around all physical contacts, including the source b ink.
+    const scale=Math.max(.0002,Math.min(.02,
+      (bounds.width-64)/Math.max(1000,maxX-minX),
+      (bounds.height-64)/Math.max(1000,maxY-minY)));
+    const fitted:Camera={
+      s:scale,x:bounds.width/2-((minX+maxX)/2)*scale,
+      y:bounds.height/2-((minY+maxY)/2)*scale
+    };
+    controller.setContext({camera:fitted});
+    fittedRef.current=identity;
+    onZoomPercent?.(Math.round(fitted.s/DEFAULT_CAMERA.s*100));
+    invalidate();
+  },[scene,controller,document.project.id,sheetId,size.width,size.height,invalidate,onZoomPercent]);
   useEffect(()=>{
     const root=svgRef.current;
     if(!root||typeof ResizeObserver==='undefined')return;
