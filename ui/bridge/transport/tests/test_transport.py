@@ -66,9 +66,14 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(x["error"]["code"], "UNKNOWN_OPERATION")
 
     def test_not_falsely_wired(self):
-        for op in ["source_snapshot", "position_edit", "verify_net", "render_svg", "export_png"]:
+        for op in ["position_edit", "render_svg", "export_png"]:
             with self.subTest(op=op):
                 self.assertEqual(worker.process(json.dumps(request(op=op)).encode())["error"]["code"], "NOT_WIRED")
+        for op in ["validate_document", "source_snapshot", "verify_net"]:
+            self.assertEqual(
+                worker.process(json.dumps(request(op=op)).encode())["error"]["code"],
+                "INVALID_REQUEST",
+            )
         self.assertFalse(worker.process(json.dumps(request()).encode())["result"]["project_write"])
 
     def test_edit_cas_and_source_lock(self):
@@ -98,6 +103,81 @@ class TransportTests(unittest.TestCase):
     def test_real_engine_gate(self):
         got = worker.process(json.dumps(request(op="check_symbol", args={"symbol": "resistors/fixed.json"})).encode())
         self.assertTrue(got["ok"] or got["error"]["code"] in {"ENGINE_UNAVAILABLE", "UNKNOWN_SYMBOL", "ENGINE_FAILURE"})
+
+
+    def _fixture(self):
+        """Only true #122 imported source is acceptable as an integration fixture."""
+        filename = ROOT.parents[2] / "ui" / "fixtures" / "tl494-source-e695-v2.gscad.json"
+        if not filename.is_file():
+            self.skipTest("shared #122 model and source fixture not yet imported into this checkout")
+        return json.loads(filename.read_text(encoding="utf-8"))
+
+    def test_real_v2_source_snapshot_and_no_false_routed_claim(self):
+        doc = self._fixture()
+        payload = json.dumps(request("src1", "source_snapshot", {"document": doc})).encode()
+        self.assertLess(len(payload), worker.MAX_REQUEST)
+        result = worker.process(payload)
+        self.assertTrue(result["ok"], result)
+        data = result["result"]
+        self.assertEqual(data["model"], "gscad-project")
+        self.assertEqual(data["format_version"], 2)
+        self.assertEqual(data["inventory"]["components"], 23)
+        self.assertEqual(data["inventory"]["nets"], 15)
+        self.assertEqual(data["inventory"]["memberships"], 62)
+        self.assertEqual(data["inventory"]["wires"], 0)
+        self.assertEqual(data["inventory"]["non_electrical_b"], 2)
+        self.assertEqual(data["declared_routes"]["unrouted"], 15)
+        self.assertFalse(data["electrical_approval"])
+        self.assertFalse(data["project_write"])
+        self.assertEqual(data["source_sha"], "e695c415fdced164b0e0c39c5249d030795a0aa6")
+
+    def test_real_v2_net_reachability_and_workspace_hash(self):
+        doc = self._fixture()
+        snapshot = worker.process(json.dumps(
+            request("src2", "validate_document", {"document": doc})
+        ).encode())
+        self.assertTrue(snapshot["ok"], snapshot)
+        net = next(net for net in doc["project"]["nets"] if len(net["members"]) >= 2)
+        verified = worker.process(json.dumps(request(
+            "net1", "verify_net", {"document": doc, "net_id": net["id"]}
+        )).encode())
+        self.assertTrue(verified["ok"], verified)
+        self.assertFalse(verified["result"]["reachability_complete"])
+        self.assertFalse(verified["result"]["export_approved"])
+        self.assertEqual(verified["result"]["declared_route_status"], "unrouted")
+        doc["workspace"]["selected_ids"] = []
+        doc["workspace"]["zoom_milli"] = 1750
+        after = worker.process(json.dumps(
+            request("src3", "source_snapshot", {"document": doc})
+        ).encode())
+        self.assertTrue(after["ok"], after)
+        self.assertEqual(
+            snapshot["result"]["project_sha256"], after["result"]["project_sha256"]
+        )
+        self.assertEqual(
+            snapshot["result"]["source_topology_sha256"],
+            after["result"]["source_topology_sha256"],
+        )
+
+    def test_real_v2_invalid_source_and_anchor_rejected(self):
+        doc = self._fixture()
+        doc["project"]["nets"][0]["members"][0]["physical_pin_number"] = "99999"
+        bad = worker.process(json.dumps(request(
+            "negative1", "source_snapshot", {"document": doc}
+        )).encode())
+        self.assertFalse(bad["ok"])
+        self.assertIn(
+            bad["error"]["code"],
+            {"INVALID_PINREF", "SOURCE_TOPOLOGY_DRIFT", "SCHEMA_INVALID"},
+        )
+        self.assertNotIn("99999", bad["error"]["message"])
+        self.assertEqual(bad["id"], "negative1")
+        doc = self._fixture()
+        first = next(iter(doc["project"]["nets"]))
+        result = worker.process(json.dumps(request(
+            "negative2", "verify_net", {"document": doc, "net_id": first["id"] + "_unknown"}
+        )).encode())
+        self.assertEqual(result["error"]["code"], "UNKNOWN_NET")
 
 
 if __name__ == "__main__":
