@@ -71,7 +71,23 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     for(const g of scene.graphics)for(const stroke of g.strokes){
       all.push(stroke.from_um,stroke.to_um);
     }
-    if(!all.length)return;
+    if(!all.length){
+      // A new empty A3 sheet must have a stable paper camera BEFORE first
+      // placement. Never auto-fit only R1 after its first click: that would
+      // unexpectedly relocate the viewport while placing C1.
+      const sheet=document.project.sheets.find(s=>s.id===sheetId);
+      if(!sheet)return;
+      const [paperWidth,paperHeight]=sheet.frame.size_um;
+      const scale=Math.min(.02,(bounds.width-64)/paperWidth,(bounds.height-64)/paperHeight);
+      const fitted:Camera={s:scale,x:bounds.width/2-paperWidth*scale/2,
+        y:bounds.height/2-paperHeight*scale/2};
+      controller.setContext({camera:fitted});
+      fittedRef.current=identity;
+      appliedZoomRef.current=Math.round(scale/DEFAULT_CAMERA.s*100);
+      onZoomPercent?.(appliedZoomRef.current);
+      invalidate();
+      return;
+    }
     const minX=Math.min(...all.map(p=>p[0])),maxX=Math.max(...all.map(p=>p[0]));
     const minY=Math.min(...all.map(p=>p[1])),maxY=Math.max(...all.map(p=>p[1]));
     // 32 CSS pixels minimum around all physical contacts, including the source b ink.
