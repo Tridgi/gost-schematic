@@ -39,7 +39,7 @@ export type EditorShellProps = {
   catalog:readonly CatalogSymbol[];tree:readonly TreeItem[];
   selected:SelectedInstance|null;diagnostics:readonly DiagnosticItem[];
   canvas:ReactNode;tool:ToolMode;gridVisible:boolean;snapEnabled:boolean;
-  cursorUm?:readonly [number,number];zoomPercent?:number;
+  cursorUm?:readonly [number,number];zoomPercent?:number;onZoomPercent?:(percent:50|100|200)=>void;
   canUndo:boolean;canRedo:boolean;canSave:boolean;exportReady:boolean;
   /** Authoritative CAS rejection/validation feedback from host model, not optimistically hidden. */
   inspectorError?:string|null;
@@ -285,7 +285,14 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
       <AppShell.Footer className="gscad-status" data-testid="status-bar">
         <Group justify="space-between" h="100%" px="xs" gap="xs" wrap="nowrap">
           <Text size="xs">{props.cursorUm?'X '+formatMillimetres(props.cursorUm[0])+' / Y '+formatMillimetres(props.cursorUm[1])+' мм':'XY —'}</Text>
-          <Group gap="xs" wrap="nowrap"><Text size="xs">{props.zoomPercent??100}%</Text>
+          <Group gap="xs" wrap="nowrap">
+            <Menu position="top-end" withinPortal>
+              <Menu.Target><Button size="compact-xs" variant="subtle" aria-label="Масштаб">{props.zoomPercent??100}%</Button></Menu.Target>
+              <Menu.Dropdown>
+                {([50,100,200] as const).map(pct=><Menu.Item key={pct}
+                  onClick={()=>props.onZoomPercent?.(pct)}>{pct}%</Menu.Item>)}
+              </Menu.Dropdown>
+            </Menu>
             <Text size="xs">Сетка {props.gridVisible?'ON':'OFF'}</Text><Text size="xs">Snap {props.snapEnabled?'ON':'OFF'}</Text>
             <Text size="xs">{props.dirty?'Не сохранено':'Сохранено'}</Text>
           </Group>
