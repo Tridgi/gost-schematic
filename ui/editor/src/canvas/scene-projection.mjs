@@ -47,7 +47,17 @@ function projectToCanvasScene(file,sheetId){
   const strokes=(s.graphics||[]).flatMap(graphicsToStrokes);
   sourceSymbols.push({instance_id:i.id,component_id:c.id,origin_um:point(i.origin_um),rotation_deg:i.rotation_deg,mirror_x:i.mirror_x,pins,strokes,status:s.status,layer_id:i.layer_id});
  }
- const visualGraphics=sheet.graphics.map(g=>({id:g.id,layer_id:g.layer_id,source_role:g.source_role,strokes:graphicsToStrokes(g)}));
+ const visualGraphics=sheet.graphics.map(g=>{
+  const isB=g.kind==="source_b_continuation";
+  // Frozen E695 continuation b is pure source ink; it cannot bind electrical Nets,
+  // terminals, junctions or the wire domain. Reject malformed legacy attachments.
+  if(isB&&(["net_id","pinrefs","wire_id","electrical","anchor","members","junction_id","splice_id"].some(k=>Object.prototype.hasOwnProperty.call(g,k))))deny("NON_ELECTRICAL_GRAPHIC");
+  if(isB&&(!Array.isArray(g.points_um)||g.points_um.length!==2))deny("INVALID_B_GRAPHIC");
+  if(!isB&&!["line","polyline"].includes(g.kind))deny("UNKNOWN_SHEET_GRAPHIC");
+  return {id:g.id,layer_id:g.layer_id,kind:g.kind,
+   source_role:isB?"source_b_continuation":g.source_role??"none",
+   electrical:false,strokes:graphicsToStrokes(isB?{...g,kind:"line"}:g)};
+ });
  const clone=v=>JSON.parse(JSON.stringify(v));
  return {symbols:sourceSymbols,wires:clone(sheet.wires),junctions:clone(sheet.junctions),splices:clone(sheet.splices),graphics:visualGraphics};
 }
