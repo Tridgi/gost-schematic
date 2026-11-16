@@ -8,7 +8,7 @@ const symbols=[
  {component_id:'C1',origin_um:[40000,10000],rotation_deg:0,mirror_x:false,pins:[{physical_pin_number:'1',at_um:[0,0],side:'left'}]}
 ];
 const loc=(p,button=0,pointerId=1)=>({...screen(p,camera),button,pointerId});
-const make=(tool='wire',onIntent=i=>log.push(i),scene={symbols,wires:[],junctions:[]},wireSnapshot={revision:2,wires:[]})=>{
+const make=(tool='wire',onIntent=i=>log.push(i),scene={symbols,wires:[],junctions:[]},wireSnapshot={project_id:'toy',source_topology_hash:'locked',revision:2,wires:[]})=>{
  return createCanvasController({tool,scene,wireSnapshot,camera,gridUm:1000,snapEnabled:true,onIntent});
 };
 let log=[];
@@ -48,7 +48,7 @@ test('interior drag emits revision-locked segment token, other pointer cannot st
  log=[];
  const vertices=[{id:'v0',at_um:[0,0]},{id:'v1',at_um:[7000,0]},{id:'v2',at_um:[7000,5000]},{id:'v3',at_um:[14000,5000]}];
  const wire={id:'W',net_id:'N',vertices,segments:[{id:'s0',from_vertex_id:'v0',to_vertex_id:'v1'},{id:'s1',from_vertex_id:'v1',to_vertex_id:'v2'},{id:'s2',from_vertex_id:'v2',to_vertex_id:'v3'}]};
- const scene={symbols:[],wires:[wire],junctions:[]};const snap={revision:27,wires:[wire]};
+ const scene={symbols:[],wires:[wire],junctions:[]};const snap={project_id:'toy',source_topology_hash:'locked',revision:27,wires:[wire]};
  const c=make('select',i=>log.push(i),scene,snap);
  assert.equal(c.down(loc([7000,2500])),true);
  assert.equal(c.move(loc([9000,2500],0,2)),false);
