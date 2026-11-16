@@ -14,6 +14,7 @@ export type NativeDocumentReply = NativeDocumentHandle & {document:ProjectFileV2
 
 type Invoke = <T>(command:string,args?:Record<string,unknown>)=>Promise<T>;
 function host():Invoke|null {
+  if(typeof window==='undefined')return null;
   const target=window as typeof window & {
     __TAURI__?:{core?:{invoke?:Invoke}}
   };
