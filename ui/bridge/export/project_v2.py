@@ -15,6 +15,7 @@ from ui.bridge.export.canonical import (
     ExportError,
     ExportRequest,
     ExportResult,
+    compose_clean_svg,
     export,
     mm,
 )
@@ -200,11 +201,12 @@ def render_v2_source(document: dict, sheet_id: str, *, expected_project_sha256: 
     return _draw_validated(document,sheet_id)
 
 
-def export_v2(document: dict, sheet_id: str, request: ExportRequest,
-              *, expected_project_sha256: str) -> ExportResult:
-    """Preserve exact physical sheet X/Y; render PNG from the canonical SVG."""
-    # Reject page mismatches instead of silently scaling or cropping an A3
-    # snapshot through an unrelated A4/A2 print profile.
+def _prepared_v2_source(document: dict, sheet_id: str, request: ExportRequest,
+                        *, expected_project_sha256: str) -> tuple[bytes, ExportRequest]:
+    """One validated source/page preparation for BOTH vector and raster paths.
+
+    Never change paper size on export; a PNG backend is not required for SVG.
+    """
     sheet = next((s for s in document["project"]["sheets"] if s["id"] == sheet_id), None)
     if sheet is None:
         raise ExportError("UNKNOWN_SHEET: " + sheet_id)
@@ -217,5 +219,22 @@ def export_v2(document: dict, sheet_id: str, request: ExportRequest,
                               expected_project_sha256=expected_project_sha256)
     if request.source_project_sha256 not in (None,expected_project_sha256):
         raise ExportError("REQUEST_SOURCE_SHA_CONFLICT")
-    return export(source,replace(request,source_project_sha256=expected_project_sha256,
-                                 page_coords=True))
+    normalized = replace(request,source_project_sha256=expected_project_sha256,
+                         page_coords=True)
+    return source, normalized
+
+
+def export_v2_svg(document: dict, sheet_id: str, request: ExportRequest,
+                  *, expected_project_sha256: str) -> tuple[bytes, tuple[str, ...]]:
+    """True physical SVG-only path; NO CairoSVG, Pillow or PNG allocation."""
+    source, normalized = _prepared_v2_source(
+        document, sheet_id, request, expected_project_sha256=expected_project_sha256)
+    return compose_clean_svg(source, normalized)
+
+
+def export_v2(document: dict, sheet_id: str, request: ExportRequest,
+              *, expected_project_sha256: str) -> ExportResult:
+    """Both canonical vector and PNG bytes from one validated v2 snapshot."""
+    source, normalized = _prepared_v2_source(
+        document, sheet_id, request, expected_project_sha256=expected_project_sha256)
+    return export(source, normalized)
