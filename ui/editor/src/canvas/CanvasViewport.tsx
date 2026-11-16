@@ -15,6 +15,7 @@ export type CanvasViewportProps = {
   /** No electrical mutation is allowed inside the canvas; the host validates this command. */
   onIntent: (intent: CanvasIntent) => void;
   onZoomPercent?: (percent: number) => void;
+  requestedZoomPercent?: number;
 };
 
 const DEFAULT_CAMERA:Camera={s:.004,x:24,y:24};
@@ -27,7 +28,7 @@ function localStroke(symbol:CanvasSymbol,p:PointUm,camera:Camera):ScreenPoint {
   return screen([symbol.origin_um[0]+xy[0],symbol.origin_um[1]+xy[1]],camera);
 }
 /** Read-only SVG viewport. The canonical physical print/export belongs to #124. */
-export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapEnabled,onIntent,onZoomPercent}:CanvasViewportProps){
+export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapEnabled,onIntent,onZoomPercent,requestedZoomPercent}:CanvasViewportProps){
   const svgRef=useRef<SVGSVGElement|null>(null);
   const [size,setSize]=useState({width:960,height:640});
   const [revision,setRevision]=useState(0);
@@ -52,6 +53,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
   });
   const invalidate=useCallback(()=>{setRevision(n=>n+1)},[]);
   const fittedRef=useRef<string|null>(null);
+  const appliedZoomRef=useRef<number|null>(null);
   /** Initial camera fits the actual signed E695 scene, not a hardcoded sheet corner.
    * A pin outside the visible viewport is not an actionable CAD endpoint.
    */
@@ -81,7 +83,9 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     };
     controller.setContext({camera:fitted});
     fittedRef.current=identity;
-    onZoomPercent?.(Math.round(fitted.s/DEFAULT_CAMERA.s*100));
+    const fittedPercent=Math.round(fitted.s/DEFAULT_CAMERA.s*100);
+    appliedZoomRef.current=fittedPercent;
+    onZoomPercent?.(fittedPercent);
     invalidate();
   },[scene,controller,document.project.id,sheetId,size.width,size.height,invalidate,onZoomPercent]);
   useEffect(()=>{
@@ -94,6 +98,17 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     observer.observe(root);
     return ()=>observer.disconnect();
   },[]);
+  useEffect(()=>{
+    if(fittedRef.current===null||requestedZoomPercent===undefined||
+      requestedZoomPercent===appliedZoomRef.current)return;
+    if(![50,100,200].includes(requestedZoomPercent))return;
+    const current=controller.getState().camera;
+    const factor=(DEFAULT_CAMERA.s*requestedZoomPercent/100)/current.s;
+    const center={x:size.width/2,y:size.height/2};
+    controller.setContext({camera:zoom(current,center,factor)});
+    appliedZoomRef.current=requestedZoomPercent;
+    invalidate();
+  },[requestedZoomPercent,controller,size.width,size.height,invalidate]);
   const camera=controller.getState().camera;
   cameraRef.current=camera;
   const local=useCallback((e:{clientX:number;clientY:number}):ScreenPoint=>{
@@ -117,7 +132,8 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
   const wheel=(e:ReactWheelEvent<SVGSVGElement>)=>{
     e.preventDefault();
     controller.setContext({camera:zoom(controller.getState().camera,local(e),e.deltaY<0?1.15:.85)});
-    onZoomPercent?.(Math.round(controller.getState().camera.s/DEFAULT_CAMERA.s*100));
+    const p=Math.round(controller.getState().camera.s/DEFAULT_CAMERA.s*100);
+    appliedZoomRef.current=p;onZoomPercent?.(p);
     invalidate();
   };
   const selectedSymbol=controller.getState().selected;
