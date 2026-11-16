@@ -273,3 +273,34 @@ test('SVG canvas stale or unknown segment_id refuses movement and preserves hist
  e.moveSegmentById(txn,'W1','W1:s1',3000);
  err(()=>e.moveSegmentById(txn,'W1','W1:s1',3000),'STALE_REVISION');
 });
+
+test('CAS-guarded component placement changes only disconnected physical component coordinates and survives undo/redo',()=>{
+ const e=make(),source=JSON.stringify(e.snapshot.nets),before=e.snapshot.components[0].origin_um;
+ const stale=tx(e,'stale-placement');
+ e.moveComponent(tx(e,'place-R1'),'R1',[6000,9000]);
+ assert.deepEqual(e.snapshot.components[0].origin_um,[6000,9000]);
+ assert.equal(JSON.stringify(e.snapshot.nets),source);
+ const prior=e.serialize();
+ err(()=>e.moveComponent(stale,'R1',[7000,9000]),'STALE_REVISION');
+ assert.equal(e.serialize(),prior);
+ assert.equal(e.undo(),true);
+ assert.deepEqual(e.snapshot.components[0].origin_um,before);
+ assert.equal(e.redo(),true);
+ assert.deepEqual(e.snapshot.components[0].origin_um,[6000,9000]);
+});
+test('moving connected physical component refuses to drift authored conductors',()=>{
+ const e=make();commit(e,w1());const prior=e.serialize();
+ err(()=>e.moveComponent(tx(e,'bad-connected-move'),'R1',[5000,0]),'REROUTE_REQUIRED');
+ assert.equal(e.serialize(),prior);
+ assert.equal(e.snapshot.wires[0].vertices[0].anchor.component_id,'R1');
+});
+test('out of range, fractional, empty ID and unknown component placements fail atomically',()=>{
+ const e=make(),before=e.serialize();
+ for(const p of [[1.5,0],[1000000001,0],[Infinity,0]]){
+  err(()=>e.moveComponent(tx(e,'bad-coordinate'),'R1',p),'COORDINATE_RANGE');
+  assert.equal(e.serialize(),before);
+ }
+ err(()=>e.moveComponent(tx(e,'empty'),'',[5000,1000]),'INVALID_ID');
+ err(()=>e.moveComponent(tx(e,'unknown'),'???',[5000,1000]),'UNKNOWN_COMPONENT');
+ assert.equal(e.serialize(),before);
+});
