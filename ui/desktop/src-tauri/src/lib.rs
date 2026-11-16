@@ -56,7 +56,7 @@ pub(crate) async fn internal_engine_request(
     request: EngineRequest,
 ) -> Result<Value, String> {
     if request.v != 1 || !safe_id(&request.id) ||
-        !(allowlisted(&request.op) || request.op == "parse_document_blob") ||
+        !(allowlisted(&request.op) || matches!(request.op.as_str(), "parse_document_blob" | "native_export_preview")) ||
         !request.args.is_object() {
         return Err("UNSUPPORTED_OR_UNSAFE_REQUEST".into());
     }
@@ -141,7 +141,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             engine_request, cancel_engine_request,
             native_files::native_open_project, native_files::native_save_project,
-            native_files::native_save_as_project, native_files::native_close_project
+            native_files::native_save_as_project, native_files::native_close_project,
+            native_files::native_export_project
         ])
         .run(tauri::generate_context!())
         .expect("cannot start GOST CAD desktop IPC shell");
