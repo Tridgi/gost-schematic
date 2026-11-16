@@ -8,6 +8,8 @@ import { CanvasViewport } from './canvas/CanvasViewport';
 import type { CanvasIntent } from './canvas/controller.mjs';
 import { commitSegmentDrag, captureSegmentDrag } from './canvas/wire-intents.mjs';
 import {AuthoringSession,newBlankProject} from './authoring/session';
+import {nativeDesktopAvailable,nativeOpenProject,nativeSaveProject,nativeSaveAsProject,nativeCloseProject,
+  type NativeDocumentHandle} from './native/desktop';
 import {parseProjectJsonStrict} from './authoring/strict-json';
 import { loadProjectWires } from './wires/project-v2-adapter';
 import { projectToCanvasScene } from './canvas/scene-projection.mjs';
@@ -72,6 +74,7 @@ export default function App() {
   const frozenRef=useRef<ProjectFileV2|null>(null);
   const topologyHashRef=useRef<string|null>(null);
   const fileInputRef=useRef<HTMLInputElement|null>(null);
+  const [nativeHandle,setNativeHandle]=useState<NativeDocumentHandle|null>(null);
   const [dirty,setDirty]=useState(false);
   const [document,setDocument]=useState<ProjectFileV2|null>(null);
   const [snapshot,setSnapshot]=useState<WiringSnapshot|null>(null);
@@ -84,6 +87,15 @@ export default function App() {
   const [zoomRequest,setZoomRequest]=useState<{percent:50|100|200;token:number}|null>(null);
   const [history,setHistory]=useState({undo:0,redo:0});
   const [issue,setIssue]=useState('R2 preview: источник E695 неразведён. Экспорт не подключён.');
+  useEffect(()=>{
+    if(!dirty)return;
+    const guard=(event:BeforeUnloadEvent)=>{
+      event.preventDefault();
+      event.returnValue='';
+    };
+    window.addEventListener('beforeunload',guard);
+    return()=>window.removeEventListener('beforeunload',guard);
+  },[dirty]);
   useEffect(()=>{
     let alive=true;
     Promise.all([
@@ -151,8 +163,11 @@ export default function App() {
     setDirty(true);
   };
   const handleNew=()=>{
+    if(dirty&&!window.confirm('Есть несохранённые изменения. Создать новый проект и потерять их?'))return;
     try{
       const session=new AuthoringSession(newBlankProject());
+      if(nativeHandle)void nativeCloseProject(nativeHandle.handle).catch(()=>{});
+      setNativeHandle(null);
       authoringRef.current=session;engineRef.current=session.engine;
       setDocument(session.file);setSnapshot(session.snapshot);
       setSelectedId(null);setPending(null);setPlacementSymbol(null);
