@@ -33,7 +33,7 @@ fn safe_id(id: &str) -> bool {
 }
 
 fn allowlisted(op: &str) -> bool {
-    matches!(op, "hello" | "unit_roundtrip" | "check_symbol" | "render_symbol" | "validate_document" | "source_snapshot" | "verify_net")
+    matches!(op, "hello" | "unit_roundtrip" | "check_symbol" | "render_symbol" | "validate_document" | "source_snapshot" | "verify_net" | "wire_snapshot" | "validate_wire_candidate")
 }
 
 #[tauri::command]
