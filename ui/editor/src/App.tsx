@@ -272,6 +272,41 @@ export default function App() {
       setIssue('Экспорт '+kind.toUpperCase()+' готов: геометрия в мм, Nets/PinRef исходные. PREVIEW: шрифт не верифицирован по ГОСТ.');
     }catch(e){setIssue('EXPORT_FAILED: '+String(e));}
   };
+  /** Import path shared by browser file picker and Rust-native selected file.
+   * Synthetic projects are mutable only via AuthoringSession; frozen E695 is
+   * loaded under the original source lock and cannot acquire foreign Nets.
+   */
+  const installValidatedProject=(next:ProjectFileV2)=>{
+    if(next.format==='gscad-project'&&next.format_version===2&&
+       next.project?.provenance?.status==='synthetic'){
+      const author=new AuthoringSession(next);
+      authoringRef.current=author;engineRef.current=author.engine;
+      setDocument(author.file);setSnapshot(author.snapshot);
+      setSelectedId(next.project.sheets.find(s=>s.id===next.workspace.active_sheet_id)?.instances[0]?.id??null);
+      setGrid(next.project.settings.grid_visible);setSnap(next.project.settings.snap_enabled);
+      setTool('select');setPlacementSymbol(null);setPending(null);
+      setDirty(false);setHistory({undo:0,redo:0});
+      setIssue('Пользовательский ProjectV2 открыт: Nets и физические PinRef прошли проверку.');
+      return;
+    }
+    if(next.format!=='gscad-project'||next.format_version!==2||
+       !frozenRef.current||sourceIdentity(next)!==sourceIdentity(frozenRef.current))
+      throw Error('SOURCE_TOPOLOGY_MISMATCH: допускается только исходный проект E695');
+    const sheet=next.project.sheets[0];
+    if(!sheet||next.project.sheets.length!==1)throw Error('MULTISHEET_UNSUPPORTED');
+    projectToCanvasScene(next,sheet.id);
+    const engine=loadProjectWires(next,{
+      sheet_id:sheet.id,revision:0,
+      source_topology_hash:topologyHashRef.current??''
+    }).engine;
+    authoringRef.current=null;engineRef.current=engine;
+    setDocument(next);setSnapshot(engine.snapshot);
+    setSelectedId(sheet.instances[0]?.id??null);
+    setGrid(next.project.settings.grid_visible);setSnap(next.project.settings.snap_enabled);
+    setTool('select');setPlacementSymbol(null);setPending(null);
+    setDirty(false);setHistory({undo:0,redo:0});
+    setIssue('Проверенный ProjectV2 повторно открыт; PinRef и исходные Nets сохранены.');
+  };
   const handleOpen=async(file:File|null)=>{
     if(!file)return;
     try {
@@ -279,37 +314,22 @@ export default function App() {
       const parsed:unknown=parseProjectJsonStrict(await file.text());
       if(!parsed||typeof parsed!=='object')throw Error('INVALID_PROJECT_JSON');
       const next=parsed as ProjectFileV2;
-      if(next.format==='gscad-project'&&next.format_version===2&&
-         next.project?.provenance?.status==='synthetic'){
-        const author=new AuthoringSession(next);
-        authoringRef.current=author;engineRef.current=author.engine;
-        setDocument(author.file);setSnapshot(author.snapshot);
-        setSelectedId(next.project.sheets.find(s=>s.id===next.workspace.active_sheet_id)?.instances[0]?.id??null);
-        setGrid(next.project.settings.grid_visible);setSnap(next.project.settings.snap_enabled);
-        setTool('select');setPlacementSymbol(null);setPending(null);
-        setDirty(false);setHistory({undo:0,redo:0});
-        setIssue('Пользовательский ProjectV2 открыт: Nets и физические PinRef прошли проверку.');
-        return;
-      }
-      if(next.format!=='gscad-project'||next.format_version!==2||
-         !frozenRef.current||sourceIdentity(next)!==sourceIdentity(frozenRef.current))
-        throw Error('SOURCE_TOPOLOGY_MISMATCH: допускается только исходный проект E695');
-      const sheet=next.project.sheets[0];
-      if(!sheet||next.project.sheets.length!==1)throw Error('MULTISHEET_UNSUPPORTED');
-      projectToCanvasScene(next,sheet.id);
-      const engine=loadProjectWires(next,{
-        sheet_id:sheet.id,revision:0,
-        source_topology_hash:topologyHashRef.current??''
-      }).engine;
-      authoringRef.current=null;
-      engineRef.current=engine;
-      setDocument(next);setSnapshot(engine.snapshot);
-      setSelectedId(sheet.instances[0]?.id??null);
-      setGrid(next.project.settings.grid_visible);
-      setSnap(next.project.settings.snap_enabled);
-      setDirty(false);setHistory({undo:0,redo:0});
-      setIssue('Проверенный ProjectV2 повторно открыт; PinRef и исходные Nets сохранены.');
+      installValidatedProject(next);
+      if(nativeHandle)void nativeCloseProject(nativeHandle.handle).catch(()=>{});
+      setNativeHandle(null);
     }catch(e){setIssue('OPEN_FAILED: '+String(e));}
+  };
+  const handleOpenRequest=()=>{
+    if(dirty&&!window.confirm('Изменения не сохранены. Открыть другой файл и потерять правки?'))return;
+    if(!nativeDesktopAvailable()){fileInputRef.current?.click();return;}
+    void nativeOpenProject().then(result=>{
+      installValidatedProject(result.document);
+      if(nativeHandle)void nativeCloseProject(nativeHandle.handle).catch(()=>{});
+      setNativeHandle(result);
+      setIssue('NATIVE_OPENED: '+result.filename+'; Python ProjectV2 PASS.');
+    }).catch(e=>{
+      if(String(e)!=='CANCELLED')setIssue('NATIVE_OPEN_FAILED: '+String(e));
+    });
   };
   /** SVG emits typed intentions; no geometrical intersection changes electrical Nets. */
   const onCanvasIntent=(intent:CanvasIntent)=>{
