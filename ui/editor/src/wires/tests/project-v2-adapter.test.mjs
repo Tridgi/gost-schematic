@@ -116,3 +116,23 @@ test('mirror/rotation writes back exact symbol coordinates without changing phys
  assert.equal(after.rotation_deg,90);
  assert.equal(s.engine.snapshot.components[0].pins[0].physical_pin_number,ref.physical_pin_number);
 });
+
+test('tampered frozen E695 provenance between load and commit fails local CAS',()=>{
+ const p=source(),session=loadProjectWires(p,options),altered=structuredClone(p);
+ altered.project.provenance.source_sha='0000000000000000000000000000000000000000';
+ expectCode(()=>session.materialize(altered),'STALE_PROJECT');
+ assert.equal(p.project.provenance.source_sha,'e695c415fdced164b0e0c39c5249d030795a0aa6');
+});
+
+test('changing non-electrical b graphic during wire command rejects stale candidate',()=>{
+ const p=source(),session=loadProjectWires(p,options),altered=structuredClone(p);
+ altered.project.sheets[0].graphics[0].kind='line';
+ expectCode(()=>session.materialize(altered),'STALE_PROJECT');
+ assert.equal(p.project.sheets[0].graphics[0].kind,'source_b_continuation');
+});
+
+test('changing electrical layer or its lock state during wire command requires new transaction',()=>{
+ const p=source(),session=loadProjectWires(p,options),altered=structuredClone(p);
+ altered.project.sheets[0].layers[0].locked=true;
+ expectCode(()=>session.materialize(altered),'STALE_PROJECT');
+});
