@@ -8,10 +8,10 @@ import base64
 import hashlib
 import io
 import json
-from pathlib import Path
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 from PIL import Image
 
