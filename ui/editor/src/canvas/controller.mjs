@@ -55,7 +55,8 @@ export function createCanvasController(initial){
    if(context.tool==='wire'&&p.button===0){
     if(!draft){
      if(hit?.pin?.component_id&&hit.pin.physical_pin_number!==undefined){
-      emit({kind:'beginWire',pin:hit.pin});draft={source:hit.pin,from_um:hit.at_um,bends_um:[],cursor_um:hit.at_um};
+      if(emit({kind:'beginWire',pin:hit.pin})===false)return false;
+      draft={source:hit.pin,from_um:hit.at_um,bends_um:[],cursor_um:hit.at_um};
       return true;
      }
      return false;
