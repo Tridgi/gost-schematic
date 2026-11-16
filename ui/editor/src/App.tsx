@@ -468,7 +468,7 @@ export default function App() {
       '. Отсутствие ошибок ERC не доказано.'}
   ];
   return <EditorShell
-    projectName={document.project.title+' · R2 PREVIEW'} dirty={dirty}
+    projectName={document.project.title+(authoringRef.current?' · R3 AUTHORING':' · R2 E695')} dirty={dirty}
     baseRevision={String(snapshot.revision)} sheets={document.project.sheets.map(s=>({id:s.id,title:s.name}))}
     activeSheetId={activeSheet.id} catalog={catalog} tree={tree}
     selected={selected} diagnostics={diagnostics}
@@ -492,13 +492,40 @@ export default function App() {
     inspectorError={null}
     onToolChange={mode=>{setTool(mode);setPending(null);}}
     onToggleGrid={setGrid} onToggleSnap={setSnap}
-    onPlaceSymbol={()=>setIssue('SOURCE_LOCKED: добавление PartDefinition требует валидированную транзакцию #122.')}
+    onPlaceSymbol={id=>{
+      if(!authoringRef.current){setIssue('SOURCE_LOCKED: E695 нельзя дополнять новыми исходными PinRef.');return;}
+      setPlacementSymbol(id);setTool('place');setIssue('Кликните на листе для размещения '+id+' (DRAFT).');
+    }}
     onSelectTreeItem={id=>{const i=instances.find(v=>v.id===id);
       if(i)setSelectedId(i.id);else setIssue('Структура: '+id);}}
-    onSelectSheet={()=>{}}
+    onSelectSheet={id=>{
+      const author=authoringRef.current;
+      if(!author)return;
+      try{author.selectSheet(author.newTransaction('switch-sheet'),id);
+        adoptAuthored();setSelectedId(null);setTool('select');
+      }catch(e){setIssue('SHEET_REJECTED: '+String(e));}
+    }}
     onInspectorProposal={(edit:InspectorProposal)=>{
       const eng=engineRef.current;
       try{
+        const author=authoringRef.current;
+        if(author){
+          if(String(author.revision)!==edit.baseRevision)throw Error('STALE_REVISION');
+          const inst=instances.find(i=>i.id===edit.instanceId);
+          if(!inst)throw Error('UNKNOWN_INSTANCE');
+          const tx=author.newTransaction('inspector-'+edit.kind);
+          if(edit.kind==='propose-origin-axis'){
+            const old=author.snapshot.components.find(c=>c.id===inst.component_id);
+            if(!old)throw Error('UNKNOWN_COMPONENT');
+            const at:[number,number]=[...old.origin_um];
+            at[edit.axis==='x'?0:1]=edit.um;
+            author.move(tx,inst.component_id,at);
+          }else if(edit.kind==='propose-refdes')
+            author.updateProperty(tx,edit.instanceId,'refdes',edit.refdes);
+          else author.updateProperty(tx,edit.instanceId,'value',edit.value);
+          adoptAuthored();setIssue('Инспектор: изменения сохранены через CAS ProjectV2.');
+          return;
+        }
         if(!eng)throw Error('PROJECT_NOT_READY');
         if(String(eng.snapshot.revision)!==edit.baseRevision)throw Error('STALE_REVISION');
         if(edit.kind!=='propose-origin-axis')
@@ -514,6 +541,12 @@ export default function App() {
       }catch(e){setIssue('INSPECTOR_REJECTED: '+String(e));}
     }}
     onUndo={handleUndo} onRedo={handleRedo}
+    onNew={handleNew}
+    onAddSheet={authoringRef.current?()=>{
+      try{const a=authoringRef.current!;a.addSheet(a.newTransaction('add-sheet'));
+        adoptAuthored();setIssue('Добавлен новый лист A3.');}
+      catch(e){setIssue('ADD_SHEET_FAILED: '+String(e));}
+    }:undefined}
     onOpen={()=>fileInputRef.current?.click()} onSave={handleSave}
     onExport={format=>{void handleExport(format)}}
   />;
