@@ -46,3 +46,36 @@ jobs:
           GSCAD_REQUIRE_V2: "1"
           GSCAD_REQUIRE_ENGINE: "1"
         run: node ui/bridge/transport/smoke.mjs
+
+  windows-tauri-compile:
+    name: Windows MSVC / packaged Python sidecar + native Rust compilation
+    runs-on: windows-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Show native Windows/Rust toolchain
+        shell: pwsh
+        run: |
+          [System.Environment]::OSVersion.VersionString
+          rustc --version
+          cargo --version
+      - name: Build packaged genuine Python 3.12 sidecar including v2 model/adapter
+        shell: pwsh
+        run: |
+          python -m venv .venv
+          ./ui/desktop/build-sidecar.ps1
+      - name: Build MASTER React/Vite frontend (no browser E2E implied)
+        working-directory: ui/editor
+        shell: pwsh
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+      - name: Compile and unit-test Tauri 2 Rust host
+        shell: pwsh
+        run: cargo test --manifest-path ui/desktop/src-tauri/Cargo.toml --lib --verbose
