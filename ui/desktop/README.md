@@ -36,7 +36,9 @@ Install Rust stable MSVC / Windows C++ Build Tools / WebView2 / Python 3.12. The
     cargo tauri dev
     cargo tauri build
 
-This produces a source-level smoke shell if toolchain and packaging are correct, **not** proof of a working CAD application. A real build must record native logs, lock Cargo dependencies, audit sidecar/font licences and test a fresh offline Windows 11 install. Separate MASTER R2 browser UI may replace the static dev-preview after integration.
+The Tauri 2 configuration now points to MASTER's actual `ui/editor` React/Mantine/Vite entrypoint (Vite at http://127.0.0.1:5173, production assets at `ui/editor/dist`); `beforeDevCommand` and `beforeBuildCommand` run from `ui/editor`. The old static `dev-preview` is retained only as isolated diagnostics and is no longer the normal Tauri WebView source. Check that `ui/editor` has a successful lockfile-backed production Vite build and that source fixture preparation succeeds before invoking native Rust build.
+
+The shell setup is **source-level** until a Windows x64 MSVC/Cargo and WebView2 smoke actually compiles, installs and runs. The checked MASTER React UI is still a preview: browser-native Save/export are not certified. Record native logs and measure cold/warm launch, kill+restart subprocess tree, file recovery, font licensing and offline NSIS install before promoting to R4.
 
 ## Required dependency contracts
 
@@ -62,3 +64,11 @@ The payload above is a **shape example only** and intentionally fails schema val
 **No arbitrary filesystem paths** are accepted through either IPC operation. Worker imports only fixed app-owned files ui/editor/src/model/contract.py, ui/contracts/project-v2.schema.json and ui/integration/project_wire_bridge.py. Windows packaging includes those data files; tauri-plugin-shell is pinned >=2.6.0 because kill_on_drop(true) and set_process_group(true) protect PyInstaller subprocess tree. Full version-locked Cargo build and Windows acceptance remain unverified.
 
 This bridge does not infer electrical topology from SVG/pixels. It does not certify partial TL494 routing as complete; use source counts 23/15/62/16+2 b / 0 legacy wires as the negative gate.
+
+## New read-only existing-Python E3 projection
+
+Once the single canonical #122 model and engine adapter are packaged, `engine_projection` accepts `{document:ProjectFileV2}`, validates the exact schema/source lock and projects the authoritative Net/PinRef inventory into existing `gost_schematic.model.circuit.Circuit` + `ExternalWireGraph`. It returns only counts, SHA/provenance and `rendering_catalog_verified=false`, `render_allowed=false`, `project_write=false`. E695's 23/15 and two nonconductive b continuations remain unchanged; the old erroneous 91 wires are never imported. It is **not** an SVG export or GOST certification. The renderer must not run until #124 verifies catalog symbols, font, frame, DRC and input composition.
+
+Temporary fail-closed transport guard `AMBIGUOUS_VERTEX_ID` addresses #122's currently unresolved delimiter-joined vertex graph keys (see review of PR #134). Remove guard only after canonical model changes DSU keys to tuples and an independent negative test proves no phantom connectivity.
+
+Native start from Windows after `ui/editor` dependencies and Python requirements are installed: `cd ui/desktop/src-tauri; cargo tauri dev` (Tauri CLI installed). For offline installer: `cargo tauri build`; installer size, correct bundled `icons/icon.ico`, signing and sidecar executable still need actual Windows validation. Do **not** infer build SUCCESS from JSON/schema checks.
