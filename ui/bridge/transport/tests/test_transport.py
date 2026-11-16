@@ -286,5 +286,38 @@ class TransportTests(unittest.TestCase):
 
 
 
+    def test_fixed_path_engine_module_registered_and_bad_source_fails_closed(self):
+        """Regression: dataclass module resolution requires sys.modules at exec."""
+        from dataclasses import is_dataclass
+
+        doc = self._fixture()
+        adapter = ROOT.parents[2] / "ui" / "editor" / "src" / "model" / "engine_adapter.py"
+        if not adapter.is_file():
+            if os.environ.get("GSCAD_REQUIRE_E3") == "1":
+                self.fail("required engine adapter absent")
+            self.skipTest("engine adapter not yet integrated")
+        response = worker.process(json.dumps(request(
+            "module-registered", "engine_projection", {"document": doc}
+        )).encode())
+        self.assertTrue(response["ok"], response)
+        module = sys.modules.get("_gscad_engine_projection")
+        self.assertIsNotNone(module, "fixed-path module must exist for dataclass")
+        self.assertEqual(pathlib.Path(module.__file__).resolve(), adapter.resolve())
+        self.assertTrue(is_dataclass(module.EngineProjectProjection))
+        self.assertFalse(response["result"]["render_allowed"])
+        self.assertFalse(response["result"]["project_write"])
+
+        bad = json.loads(json.dumps(doc))
+        bad["project"]["nets"][0]["members"][0]["physical_pin_number"] = "999"
+        denied = worker.process(json.dumps(request(
+            "source-forgery", "engine_projection", {"document": bad}
+        )).encode())
+        self.assertFalse(denied["ok"], denied)
+        self.assertIn(denied["error"]["code"],
+                      {"INVALID_PINREF", "SOURCE_TOPOLOGY_DRIFT", "SCHEMA_INVALID"})
+        self.assertNotEqual(denied["error"]["code"], "INTERNAL")
+        self.assertEqual(sys.modules["_gscad_engine_projection"].__file__, str(adapter))
+
+
 if __name__ == "__main__":
     unittest.main()
