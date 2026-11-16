@@ -173,3 +173,14 @@ test('R5: unplaced catalogue parts cannot declare duplicate physical pin numbers
  part.physical_pins.push(structuredClone(part.physical_pins[0]));
  assert.throws(()=>new AuthoringSession(forged),/DUPLICATE_PHYSICAL_PIN/);
 });
+
+
+test('R5: unplaced symbol catalogue rejects duplicate and unknown physical PinRefs',()=>{
+ const duplicate=newBlankProject();
+ const symbol=duplicate.project.symbol_definitions[0];
+ symbol.pins.push(structuredClone(symbol.pins[0]));
+ assert.throws(()=>new AuthoringSession(duplicate),/DUPLICATE_SYMBOL_PIN/);
+ const unknown=newBlankProject();
+ unknown.project.symbol_definitions[1].pins[0].physical_pin_number='999';
+ assert.throws(()=>new AuthoringSession(unknown),/UNKNOWN_PIN/);
+});
