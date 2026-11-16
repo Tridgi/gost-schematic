@@ -26,9 +26,11 @@ try {
     # NSIS /D must be last, and Unicode/space paths exercise wide-character Win32 APIs.
     Run-Bounded -File $setup -Args @('/S',('/D=' + $installedDir)) -TimeoutMs 120000
     $appExe = Join-Path $installedDir 'gost-cad-desktop.exe'
-    $sidecarExe = Join-Path $installedDir 'engine-bridge-x86_64-pc-windows-msvc.exe'
     if (!(Test-Path -LiteralPath $appExe -PathType Leaf)) { throw 'INSTALLED_APP_MISSING' }
-    if (!(Test-Path -LiteralPath $sidecarExe -PathType Leaf)) { throw 'INSTALLED_SIDECAR_MISSING' }
+    # Tauri may strip the platform triple from the copied sidecar filename.
+    $sidecar = @(Get-ChildItem -LiteralPath $installedDir -File -Recurse -Filter 'engine-bridge*.exe')
+    if ($sidecar.Count -ne 1) { throw ('INSTALLED_SIDECAR_COUNT_' + $sidecar.Count) }
+    $sidecarExe = $sidecar[0].FullName
     $installed = $true
     $line = '{"v":1,"id":"installed_hello","op":"hello","args":{}}'
     $output = @($line | & $sidecarExe)
@@ -54,8 +56,9 @@ try {
         Write-Host ("INSTALLED_APP_LAUNCH_CLOSE_PASS_$i")
     }
     Start-Sleep -Seconds 2
-    $orphans = @(Get-CimInstance Win32_Process -Filter "Name = 'engine-bridge-x86_64-pc-windows-msvc.exe'" |
-        Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith($installedDir,[StringComparison]::OrdinalIgnoreCase) })
+    $orphans = @(Get-CimInstance Win32_Process |
+        Where-Object { $_.Name -like 'engine-bridge*.exe' -and $_.ExecutablePath -and
+            $_.ExecutablePath.StartsWith($installedDir,[StringComparison]::OrdinalIgnoreCase) })
     if ($orphans.Count -ne 0) { throw 'ORPHAN_INSTALLED_SIDECAR' }
     Write-Host 'NO_INSTALLED_SIDECAR_ORPHANS_PASS'
     $uninstaller = Join-Path $installedDir 'uninstall.exe'
