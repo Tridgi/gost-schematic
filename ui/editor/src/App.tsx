@@ -8,6 +8,7 @@ import { CanvasViewport } from './canvas/CanvasViewport';
 import type { CanvasIntent } from './canvas/controller.mjs';
 import { commitSegmentDrag, captureSegmentDrag } from './canvas/wire-intents.mjs';
 import {AuthoringSession,newBlankProject} from './authoring/session';
+import {parseProjectJsonStrict} from './authoring/strict-json';
 import { loadProjectWires } from './wires/project-v2-adapter';
 import { projectToCanvasScene } from './canvas/scene-projection.mjs';
 import { renderProjectPreviewSVG, renderPreviewPng300 } from './export/browser-export';
@@ -241,7 +242,7 @@ export default function App() {
     if(!file)return;
     try {
       if(file.size>8*1024*1024)throw Error('PROJECT_FILE_TOO_LARGE');
-      const parsed:unknown=JSON.parse(await file.text());
+      const parsed:unknown=parseProjectJsonStrict(await file.text());
       if(!parsed||typeof parsed!=='object')throw Error('INVALID_PROJECT_JSON');
       const next=parsed as ProjectFileV2;
       if(next.format==='gscad-project'&&next.format_version===2&&
@@ -500,7 +501,7 @@ export default function App() {
         tool={tool} gridVisible={grid} snapEnabled={snap}
         zoomRequest={zoomRequest??undefined}
         onIntent={onCanvasIntent} onZoomPercent={percent=>setZoom(percent/100)}/>
-      {/(?:NET_CONFLICT|SOURCE_LOCKED|STALE_|UNKNOWN_|REROUTE_REQUIRED|MISMATCH|NOT_READY|ERROR)/.test(issue)
+      {/(?:NET_CONFLICT|SOURCE_LOCKED|STALE_|UNKNOWN_|REROUTE_REQUIRED|MISMATCH|NOT_READY|ERROR|FAILED|DUPLICATE_|INVALID_)/.test(issue)
         && <div className="gscad-error-banner" role="alert">{issue}</div>}
     </div>}
     tool={tool} gridVisible={grid} snapEnabled={snap} zoomPercent={Math.round(zoom*100)}
