@@ -1,0 +1,126 @@
+/** R3 model suite tests actual bundled domain modules, not a new parallel wire graph.
+ * esbuild is already a locked Vite dependency. This bundle is transient and
+ * exercises the same TypeScript code executed by the browser.
+ */
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {build} from 'esbuild';
+import {mkdtempSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {fileURLToPath,pathToFileURL} from 'node:url';
+
+const temp=mkdtempSync(join(tmpdir(),'gscad-r3-domain-'));
+process.on('exit',()=>rmSync(temp,{force:true,recursive:true}));
+const bundle=join(temp,'authoring.mjs');
+await build({
+ entryPoints:[fileURLToPath(new URL('./session.ts',import.meta.url))],
+ outfile:bundle,bundle:true,platform:'node',format:'esm',target:'node22',
+ logLevel:'silent'
+});
+const {AuthoringSession,newBlankProject}=await import(pathToFileURL(bundle).href);
+function newSession(){return new AuthoringSession(newBlankProject());}
+function placePair(session){
+ session.place(session.newTransaction('place-r'),'symbol/resistor.fixed',[100000,100000]);
+ session.place(session.newTransaction('place-c'),'symbol/capacitor.fixed',[155000,100000]);
+ const parts=Object.fromEntries(session.file.project.components.map(c=>[c.refdes,c.id]));
+ return {r:parts.R1,c:parts.C1};
+}
+const pin=(id,number)=>({component_id:id,physical_pin_number:number});
+
+test('empty project A3 uses DRAFT Python-source R/C library, no fabricated TL494 SHA',()=>{
+ const doc=newBlankProject(),s=new AuthoringSession(doc);
+ assert.equal(doc.format,'gscad-project');
+ assert.equal(doc.project.components.length,0);
+ assert.equal(doc.project.nets.length,0);
+ assert.equal(s.snapshot.wires.length,0);
+ assert.deepEqual(doc.project.sheets[0].frame.size_um,[420000,297000]);
+ assert.equal(doc.project.provenance.status,'synthetic');
+ assert.equal(doc.project.provenance.source_sha,'0'.repeat(40));
+ assert.deepEqual(doc.project.symbol_definitions.map(x=>x.status),['draft','draft']);
+ const resistor=doc.project.symbol_definitions.find(x=>x.id==='symbol/resistor.fixed');
+ const capacitor=doc.project.symbol_definitions.find(x=>x.id==='symbol/capacitor.fixed');
+ assert.deepEqual(resistor.pins.map(x=>x.at_um),[[-8000,0],[8000,0]]);
+ assert.deepEqual(capacitor.graphics.map(x=>x.kind),['line','line','line','line']);
+});
+
+test('stale command CAS and duplicate refdes are rejected atomically',()=>{
+ const s=newSession(),old=s.newTransaction('old');
+ const {r,c}=placePair(s);
+ const before=JSON.stringify(s.file);
+ assert.throws(()=>s.place(old,'symbol/resistor.fixed',[20_000,20_000]),/STALE_REVISION/);
+ const id=s.file.project.sheets[0].instances.find(x=>x.component_id===c).id;
+ assert.throws(()=>s.updateProperty(s.newTransaction('duplicate'),id,'refdes','R1'),/DUPLICATE_REFDES/);
+ assert.equal(JSON.stringify(s.file),before);
+ assert.equal(s.snapshot.components.length,2);
+ assert.notEqual(r,c);
+});
+
+test('real physical pin-to-pin Net is created once; Undo/Redo replaces full canonical model',()=>{
+ const s=newSession(),{r,c}=placePair(s);
+ const before=s.file;
+ s.connect(s.newTransaction('connect'),pin(r,'2'),pin(c,'1'));
+ const file=s.file;
+ assert.equal(file.project.nets.length,1);
+ assert.equal(file.project.sheets[0].wires.length,1);
+ assert.deepEqual(file.project.nets[0].members,[pin(r,'2'),pin(c,'1')]);
+ assert.equal(file.project.sheets[0].junctions.length,0);
+ assert.deepEqual(file.project.sheets[0].instances,before.project.sheets[0].instances);
+ assert.throws(()=>s.connect(s.newTransaction('bad'),pin(r,'2'),pin(c,'999')),/UNKNOWN_PIN/);
+ assert.deepEqual(s.file,file);
+ const stale=s.newTransaction('future');
+ assert.equal(s.undo(),true);
+ assert.deepEqual(s.file,before);
+ assert.throws(()=>s.connect(stale,pin(r,'2'),pin(c,'1')),/STALE_REVISION/);
+ assert.equal(s.redo(),true);
+ assert.deepEqual(s.file,file);
+});
+
+test('two different user Nets never short at visual crossing or malformed physical PinRef',()=>{
+ const s=newSession(),{r,c}=placePair(s);
+ s.place(s.newTransaction('r2'),'symbol/resistor.fixed',[100000,150000]);
+ s.place(s.newTransaction('c2'),'symbol/capacitor.fixed',[155000,150000]);
+ const ids=Object.fromEntries(s.file.project.components.map(x=>[x.refdes,x.id]));
+ s.connect(s.newTransaction('n1'),pin(r,'2'),pin(c,'1'));
+ s.connect(s.newTransaction('n2'),pin(ids.R2,'2'),pin(ids.C2,'1'));
+ const source=JSON.stringify(s.file);
+ assert.throws(()=>s.connect(s.newTransaction('short'),pin(r,'2'),pin(ids.C2,'1')),/NET_CONFLICT/);
+ assert.equal(JSON.stringify(s.file),source);
+ assert.equal(s.file.project.nets.length,2);
+ assert.equal(s.file.project.sheets[0].junctions.length,0);
+});
+
+test('deleting connected component requires route disposition; delete wire is separately Undoable',()=>{
+ const s=newSession(),{r,c}=placePair(s);
+ s.connect(s.newTransaction('route'),pin(r,'2'),pin(c,'1'));
+ const wire=s.file.project.sheets[0].wires[0].id,connected=s.file;
+ assert.throws(()=>s.deleteComponent(s.newTransaction('unsafe-remove'),r),/REROUTE_REQUIRED/);
+ assert.deepEqual(s.file,connected);
+ s.deleteWire(s.newTransaction('remove-route'),wire);
+ assert.equal(s.file.project.sheets[0].wires.length,0);
+ assert.equal(s.file.project.nets.length,1);
+ s.deleteComponent(s.newTransaction('remove-c'),c);
+ assert.equal(s.file.project.components.length,1);
+ assert.equal(s.file.project.nets[0].members.length,1);
+ assert.equal(s.undo(),true);
+ assert.equal(s.file.project.components.length,2);
+ assert.equal(s.undo(),true);
+ assert.deepEqual(s.file,connected);
+});
+
+test('serialized user project refuses spoofed source, duplicate IDs, duplicate layer and invalid µm',()=>{
+ const s=newSession();placePair(s);
+ const d=s.file;
+ const cases=[
+   f=>{f.project.provenance.source_sha='e695c415fdced164b0e0c39c5249d030795a0aa6';},
+   f=>{f.project.components[1].id=f.project.components[0].id;},
+   f=>{f.project.components[1].refdes='R1';},
+   f=>{f.project.sheets[0].instances[0].origin_um=[1.25,0];},
+   f=>{f.project.sheets[0].layers.push(structuredClone(f.project.sheets[0].layers[0]));}
+ ];
+ for(const mutate of cases){
+   const forged=structuredClone(d);mutate(forged);
+   assert.throws(()=>new AuthoringSession(forged));
+ }
+ assert.deepEqual(s.file,d);
+});
