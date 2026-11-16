@@ -8,6 +8,12 @@ import {
   type PointUm, type WirePolyline, type Junction, type Splice
 } from './manual-wire.js';
 
+/** ProjectV2 has read-only micrometre tuples; the private engine mutates validated copies. */
+type ImmutableWire = Omit<WirePolyline,'vertices'> & {
+  vertices:Array<Omit<WirePolyline['vertices'][number],'at_um'> & {at_um:readonly [number,number]}>;
+};
+type ImmutableJunction = Omit<Junction,'at_um'> & {at_um:readonly [number,number]};
+type ImmutableSplice = Omit<Splice,'at_um'> & {at_um:readonly [number,number]};
 type Rotation = 0|90|180|270;
 type SymbolPinV2 = { physical_pin_number: string; at_um: readonly [number,number]; side:'left'|'right'|'top'|'bottom' };
 type InstanceV2 = {id:string;component_id:string;symbol_id:string;origin_um:readonly [number,number];rotation_deg:Rotation;mirror_x:boolean;layer_id:string};
@@ -27,7 +33,7 @@ export type WireProjectV2 = {
     nets:NetV2[];
     sheets:Array<{
       id:string; layers:Array<{id:string;kind:string}>;
-      instances:InstanceV2[]; wires:WirePolyline[]; junctions:Junction[]; splices:Splice[];
+      instances:InstanceV2[]; wires:ImmutableWire[]; junctions:ImmutableJunction[]; splices:ImmutableSplice[];
       graphics:unknown[];
     }>;
   };
@@ -114,8 +120,11 @@ function resolveSnapshot(file:WireProjectV2, opt:WireImportOptions):WiringSnapsh
     schema_version:2,project_id:file.project.id,revision:opt.revision,
     source_topology_hash:opt.source_topology_hash,components:flattened,
     nets:file.project.nets.map(n=>({id:n.id,literal_source_name:n.name,members:structuredClone(n.members)})),
-    wires:structuredClone(sheet.wires),junctions:structuredClone(sheet.junctions),
-    splices:structuredClone(sheet.splices)
+    // Only cloned values cross into mutable engine memory. Its constructor validates
+    // all anchors, integer positions, explicit Nets and orthogonal geometry.
+    wires:structuredClone(sheet.wires) as WirePolyline[],
+    junctions:structuredClone(sheet.junctions) as Junction[],
+    splices:structuredClone(sheet.splices) as Splice[]
   };
 }
 
