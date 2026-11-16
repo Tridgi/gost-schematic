@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import replace
+from itertools import pairwise
 from xml.etree import ElementTree as ET
 
 from ui.bridge.export.canonical import ExportError, ExportRequest, ExportResult, export, mm
@@ -64,7 +65,7 @@ def _draw_validated(document: dict, sheet_id: str) -> bytes:
 
     def polyline(parent: ET.Element, points: list[tuple[int, int]],
                  width: int, **metadata: str) -> None:
-        for a, b in zip(points, points[1:]):
+        for a, b in pairwise(points):
             line(parent, a, b, width, **metadata)
 
     for inst in sheet["instances"]:
