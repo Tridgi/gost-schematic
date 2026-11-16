@@ -60,6 +60,10 @@ jobs:
           python -m venv .venv
           & .\.venv\Scripts\python.exe -m pip install -r ui/editor/src/model/requirements-dev.txt
           if ($LASTEXITCODE -ne 0) { throw 'PY_MODEL_DEPS_FAIL' }
+          # setup-python supplies a different interpreter; all subsequent Python
+          # model, Vite prebuild and sidecar steps MUST use the populated venv.
+          $venvScripts = (Resolve-Path '.\.venv\Scripts').Path
+          Add-Content -Path $env:GITHUB_PATH -Value $venvScripts
           npm ci --prefix ui/editor --no-audit --no-fund
           if ($LASTEXITCODE -ne 0) { throw 'NPM_CI_FAIL' }
       - name: Test canonical frontend and browser build
