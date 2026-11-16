@@ -2,7 +2,7 @@ name: Visual CAD R1 source gate
 on:
   push:
     branches: [ui/visual-cad-mvp]
-    paths: ['ui/integration/**', 'ui/experiments/r0/**', 'ui/contracts/**', 'ui/editor/src/model/**', 'ui/editor/src/wires/**', 'ui/editor/src/canvas/**', 'ui/fixtures/**', 'ui/qa/chat3-canvas/**', '.github/workflows/visual-cad-r1.yml']
+    paths: ['ui/editor/**', 'ui/integration/**', 'ui/experiments/r0/**', 'ui/contracts/**', 'ui/editor/src/model/**', 'ui/editor/src/wires/**', 'ui/editor/src/canvas/**', 'ui/fixtures/**', 'ui/qa/chat3-canvas/**', '.github/workflows/visual-cad-r1.yml']
   pull_request:
     paths: ['ui/integration/**', 'ui/experiments/r0/**', 'ui/contracts/**', 'ui/editor/src/model/**', 'ui/editor/src/wires/**', 'ui/editor/src/canvas/**', 'ui/fixtures/**', 'ui/qa/chat3-canvas/**', '.github/workflows/visual-cad-r1.yml']
   workflow_dispatch:
@@ -89,6 +89,67 @@ jobs:
         run: python -m unittest discover -s ui/integration -p 'test_project_wire_bridge.py' -v
       - name: Full E695 ProjectV2 through real TypeScript WireEngine and back
         run: node --test ui/integration/project-wire-bridge.test.mjs
+
+  react-mantine-preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install canonical fixture validator
+        run: python -m pip install -r ui/editor/src/model/requirements-dev.txt
+      - name: Install pinned React/Mantine packages and check full frontend
+        working-directory: ui/editor
+        run: |
+          npm install --no-audit --no-fund
+          npm run typecheck
+          npm test
+          npm run build
+      - name: Verify actual compiled browser app exists
+        run: test -s ui/editor/dist/index.html
+      - name: Compile signed wire engine for browser test oracle
+        working-directory: ui/editor
+        run: ./node_modules/.bin/tsc -p src/wires/tsconfig.json
+      - name: Install real Chromium and dependencies
+        working-directory: ui/editor
+        run: npx playwright install --with-deps chromium
+      - name: End-to-end real browser physical pin/wire and theme tests
+        working-directory: ui/editor
+        run: npm run test:e2e
+      - name: Upload browser failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-cad-r2-chromium
+          path: |
+            ui/editor/test-results/
+            ui/editor/playwright-report/
+          if-no-files-found: ignore
+
+  canonical-v2-export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install real Python engine and exact SVG/PNG raster requirements
+        run: |
+          python -m pip install -e '.[dev]' 'jsonschema==4.26.0' 'CairoSVG==2.9.1' 'Pillow>=12.3,<13'
+      - name: Lint canonical exporter
+        run: python -m ruff check ui/bridge/export
+      - name: Verify complete v2 source -> canonical SVG -> 300 DPI PNG, negative T-X and provenance
+        run: python -m pytest -q ui/bridge/export/tests
 
   canvas-and-qa:
     runs-on: ubuntu-latest
