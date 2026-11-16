@@ -13,6 +13,7 @@ from xml.etree import ElementTree as ET
 
 import pytest
 from PIL import Image
+
 from ui.bridge.export.canonical import ExportError, ExportRequest, compose_clean_svg
 from ui.bridge.export.project_v2 import export_v2, render_v2_source
 
