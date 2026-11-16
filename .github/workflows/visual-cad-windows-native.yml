@@ -1,0 +1,112 @@
+name: Visual CAD R4 native Windows build and smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ui/visual-cad-mvp]
+    paths:
+      - 'ui/desktop/**'
+      - 'ui/bridge/**'
+      - 'ui/editor/**'
+      - '.github/workflows/visual-cad-windows-native.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: visual-cad-native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-native:
+    name: Windows Tauri / Python bundled sidecar / NSIS
+    runs-on: windows-2022
+    timeout-minutes: 100
+    env:
+      RUST_BACKTRACE: "1"
+      CARGO_BUILD_JOBS: "2"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: ui/editor/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ui/desktop/src-tauri
+      - name: Verify MSVC Windows SDK and Rust target
+        shell: pwsh
+        run: |
+          rustc -vV
+          cargo -V
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (!(Test-Path $vswhere)) { throw 'MSVC_VSWHERE_MISSING' }
+          $installed = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (!$installed) { throw 'MSVC_CXX_TOOLS_MISSING' }
+          Write-Host "MSVC path: $installed"
+          $sdk = "${env:ProgramFiles(x86)}\Windows Kits\10\Lib"
+          if (!(Test-Path $sdk)) { throw 'WINDOWS_SDK_MISSING' }
+          Write-Host "SDK: $sdk"
+      - name: Install frontend and Python model dependencies
+        shell: pwsh
+        run: |
+          python -m venv .venv
+          & .\.venv\Scripts\python.exe -m pip install -r ui/editor/src/model/requirements-dev.txt
+          if ($LASTEXITCODE -ne 0) { throw 'PY_MODEL_DEPS_FAIL' }
+          npm ci --prefix ui/editor --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { throw 'NPM_CI_FAIL' }
+      - name: Test canonical frontend and browser build
+        shell: pwsh
+        run: |
+          npm run typecheck --prefix ui/editor
+          if ($LASTEXITCODE -ne 0) { throw 'TSC_FAIL' }
+          npm test --prefix ui/editor
+          if ($LASTEXITCODE -ne 0) { throw 'NODE_TEST_FAIL' }
+          npm run build --prefix ui/editor
+          if ($LASTEXITCODE -ne 0) { throw 'VITE_BUILD_FAIL' }
+      - name: Build fixed Python sidecar from reviewed engine and contracts
+        shell: pwsh
+        run: |
+          & .\ui\desktop\build-sidecar.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'PYINSTALLER_SIDECAR_FAIL' }
+          Get-Item .\ui\desktop\src-tauri\binaries\engine-bridge-x86_64-pc-windows-msvc.exe |
+            Select-Object Name,Length
+      - name: Verify packaged executable responds to fixed hello IPC
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path '.\ui\desktop\src-tauri\binaries\engine-bridge-x86_64-pc-windows-msvc.exe').Path
+          $inputLine = '{"v":1,"id":"win_sidecar_hello","op":"hello","args":{}}'
+          $output = $inputLine | & $exe
+          if ($LASTEXITCODE -ne 0) { throw 'SIDECAR_EXEC_FAIL' }
+          $response = ($output | Select-Object -First 1) | ConvertFrom-Json
+          if ($response.ok -ne $true -or $response.id -ne 'win_sidecar_hello') {
+            throw 'SIDECAR_PROTOCOL_INVALID'
+          }
+      - name: Rust native command and CAS tests
+        shell: pwsh
+        run: |
+          cargo test --manifest-path ui/desktop/src-tauri/Cargo.toml
+          if ($LASTEXITCODE -ne 0) { throw 'RUST_TEST_FAIL' }
+      - name: Build real Tauri NSIS Windows installer
+        shell: pwsh
+        run: |
+          npx --yes @tauri-apps/cli@2 build --bundles nsis --ci --config ui/desktop/src-tauri/tauri.conf.json --verbose
+          if ($LASTEXITCODE -ne 0) { throw 'TAURI_NSIS_BUILD_FAIL' }
+        working-directory: ui/desktop/src-tauri
+      - name: Upload native Windows output for manual GUI smoke
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gost-schematic-r4-windows-nsis
+          path: |
+            ui/desktop/src-tauri/target/release/bundle/nsis/*.exe
+            ui/desktop/src-tauri/target/release/gost-cad-desktop.exe
+          if-no-files-found: error
+          retention-days: 14
