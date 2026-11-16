@@ -97,7 +97,7 @@ jobs:
       - name: Build real Tauri NSIS Windows installer
         shell: pwsh
         run: |
-          npx --yes @tauri-apps/cli@2 build --bundles nsis --ci --config ui/desktop/src-tauri/tauri.conf.json --verbose
+          npx --yes @tauri-apps/cli@2 build --bundles nsis --ci --verbose
           if ($LASTEXITCODE -ne 0) { throw 'TAURI_NSIS_BUILD_FAIL' }
         working-directory: ui/desktop/src-tauri
       - name: Upload native Windows output for manual GUI smoke
