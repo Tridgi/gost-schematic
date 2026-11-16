@@ -10,6 +10,7 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from threading import Thread
+
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[4]
