@@ -77,6 +77,7 @@ export default function App() {
   const [,setPending]=useState<PinRef|null>(null);
   const [grid,setGrid]=useState(true),[snap,setSnap]=useState(true);
   const [zoom,setZoom]=useState(1);
+  const [zoomRequest,setZoomRequest]=useState<{percent:50|100|200;token:number}|null>(null);
   const [history,setHistory]=useState({undo:0,redo:0});
   const [issue,setIssue]=useState('R2 preview: источник E695 неразведён. Экспорт не подключён.');
   useEffect(()=>{
@@ -317,13 +318,14 @@ export default function App() {
         }}/>
       <CanvasViewport document={document} snapshot={snapshot} sheetId={activeSheet.id}
         tool={tool} gridVisible={grid} snapEnabled={snap}
-        requestedZoomPercent={Math.round(zoom*100)}
+        zoomRequest={zoomRequest??undefined}
         onIntent={onCanvasIntent} onZoomPercent={percent=>setZoom(percent/100)}/>
       {/(?:NET_CONFLICT|SOURCE_LOCKED|STALE_|UNKNOWN_|REROUTE_REQUIRED|MISMATCH|NOT_READY|ERROR)/.test(issue)
         && <div className="gscad-error-banner" role="alert">{issue}</div>}
     </div>}
     tool={tool} gridVisible={grid} snapEnabled={snap} zoomPercent={Math.round(zoom*100)}
-    onZoomPercent={percent=>setZoom(percent/100)}
+    onZoomPercent={percent=>{setZoom(percent/100);
+      setZoomRequest(old=>({percent,token:(old?.token??0)+1}));}}
     canUndo={history.undo>0} canRedo={history.redo>0} canSave={true} exportReady={true}
     inspectorError={null}
     onToolChange={mode=>{setTool(mode);setPending(null);}}
