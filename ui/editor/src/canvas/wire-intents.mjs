@@ -4,6 +4,7 @@
  */
 export function captureSegmentDrag(snapshot,wireId,segmentId){
  if(!Number.isSafeInteger(snapshot?.revision)||snapshot.revision<0)throw Error("INVALID_REVISION");
+ if(typeof snapshot.project_id!=='string'||!snapshot.project_id.trim()||typeof snapshot.source_topology_hash!=='string'||!snapshot.source_topology_hash.trim())throw Error('INVALID_SNAPSHOT_IDENTITY');
  if(typeof wireId!=='string'||!wireId.trim()||typeof segmentId!=='string'||!segmentId.trim())throw Error('INVALID_ID');
  const candidates=snapshot.wires?.filter(w=>w.id===wireId)||[];
  if(candidates.length!==1)throw Error('UNKNOWN_OR_DUPLICATE_WIRE');
