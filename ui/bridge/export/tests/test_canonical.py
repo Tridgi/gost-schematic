@@ -243,3 +243,20 @@ def test_semicircle_ink_bounds_and_unverifiable_bezier_rejected():
     cubic = arc.replace(b'M 2 5 A 3 3 0 0 1 8 5', b'M 2 5 C 3 4 5 6 8 5')
     with pytest.raises(ExportError, match="UNVERIFIABLE_SVG_PATH"):
         compose_clean_svg(cubic, ExportRequest(include_frame=False))
+
+
+@pytest.mark.parametrize("xml", [
+    '<?xml version="1.0" encoding="UTF-16"?>'
+    '<svg xmlns="http://www.w3.org/2000/svg" width="80mm" height="40mm" '
+    'viewBox="10 5 80 40"><metadata>plain</metadata></svg>',
+    '<?xml version="1.0" encoding="UTF-16"?>'
+    '<!DOCTYPE svg [<!ENTITY payload "entity-expanded">]>'
+    '<svg xmlns="http://www.w3.org/2000/svg" width="80mm" height="40mm" '
+    'viewBox="10 5 80 40"><metadata>&payload;</metadata></svg>',
+])
+def test_non_utf8_svg_and_encoded_doctype_rejected_before_xml_parser(xml):
+    """UTF-16 evades byte-level DOCTYPE scanning and ET expands entities."""
+    payload = xml.encode("utf-16")
+    assert b"<!doctype" not in payload.lower()  # reproduces the bypass
+    with pytest.raises(ExportError, match="UTF-8"):
+        compose_clean_svg(payload, ExportRequest(include_frame=False))
