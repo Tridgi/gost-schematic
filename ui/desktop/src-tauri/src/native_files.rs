@@ -220,6 +220,11 @@ fn atomic_save(path: &Path, bytes: &[u8], expected_disk_sha256: Option<&str>) ->
     result?;
     Ok(sha(bytes))
 }
+fn valid_export_extension(path: &Path, extension: &str) -> bool {
+    path.extension().and_then(|part| part.to_str())
+        .is_some_and(|part| part.eq_ignore_ascii_case(extension))
+}
+
 fn display_name(path: &Path) -> String {
     path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "project.json".into())
 }
@@ -379,7 +384,7 @@ pub async fn native_export_project(
     let selected=app.dialog().file().add_filter("GSCAD engineering PREVIEW", &[ext])
         .blocking_save_file().ok_or("CANCELLED")?;
     let path=selected.into_path().map_err(|_|"UNSUPPORTED_NATIVE_PATH")?;
-    if path.extension().and_then(|e|e.to_str())!=Some(ext) {
+    if !valid_export_extension(&path, ext) {
         return Err("INVALID_EXPORT_EXTENSION".into());
     }
     if path.exists() {return Err("EXPORT_TARGET_EXISTS".into());}
@@ -398,6 +403,15 @@ mod tests {
         assert!(trusted_file(Path::new("test.gscad.json")).is_ok());
         assert!(trusted_file(Path::new("test.exe")).is_err());
         assert!(trusted_file(Path::new("")).is_err());
+    }
+
+    #[test]
+    fn export_extension_accepts_windows_case_insensitive_suffix_only() {
+        assert!(valid_export_extension(Path::new("Схема_日本.SVG"), "svg"));
+        assert!(valid_export_extension(Path::new("drawing.PnG"), "png"));
+        for bad in ["drawing.svg.exe", "drawing", "drawing.png.txt", "drawing.sv g"] {
+            assert!(!valid_export_extension(Path::new(bad), "svg"));
+        }
     }
 
     #[test]
