@@ -299,16 +299,19 @@ export class AuthoringSession {
       return draft;
     });
   }
-  move(tx:Tx,componentId:string,position:readonly number[]):void{
+  move(tx:Tx,componentId:string,position:readonly number[],permitRebuild=false):void{
     const target=xy(position);
-    this.wireEdit(tx,eng=>{eng.moveComponent(eng.newTransaction('move-symbol'),componentId,target);});
+    this.wireEdit(tx,eng=>{
+      // Rebuild is an explicit user consent, never enabled for passive drag.
+      eng.moveComponentAndReanchor(eng.newTransaction('move-symbol'),componentId,target,permitRebuild);
+    });
   }
-  rotate(tx:Tx,componentId:string):void{
+  rotate(tx:Tx,componentId:string,permitRebuild=false):void{
     this.wireEdit(tx,eng=>{
       const comp=eng.snapshot.components.find(c=>c.id===componentId);
       if(!comp)reject('UNKNOWN_COMPONENT');
       eng.rotateAndReanchor(eng.newTransaction('rotate-symbol'),componentId,
-        ((comp.rotation+90)%360) as 0|90|180|270,false);
+        ((comp.rotation+90)%360) as 0|90|180|270,permitRebuild);
     });
   }
   beginWire(pin:PinRef):WorldPin{
