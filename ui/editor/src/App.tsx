@@ -289,7 +289,13 @@ export default function App() {
         eng.commitWire(eng.newTransaction('canvas-wire-'+index),route);
         setPending(null);mutation();
       }
-    }catch(e){setIssue(String(e));setPending(null);}
+    }catch(e){
+      setIssue(String(e));
+      // A rejected wire transaction must retain the controller's pending source PinRef,
+      // allowing correction rather than falsely completing a gesture.
+      if(intent.kind!=='commitWire')setPending(null);
+      return false;
+    }
   };
   const handleUndo=()=>{if(engineRef.current?.undo()){
     refresh();setDirty(true);setHistory(h=>({undo:Math.max(0,h.undo-1),redo:h.redo+1}));setIssue('Undo: отменена транзакция проводника.');}};
