@@ -8,6 +8,7 @@ export type CanvasIntent =
  | {kind:'beginWire';pin:PinRef}
  | {kind:'commitWire';source:PinRef;target:{kind:'pin';pin:PinRef}|{kind:'free';at_um:PointUm};bend_points_um:PointUm[]}
  | {kind:'cancelWire';source:PinRef}
+ | {kind:'placeSymbol';at_um:PointUm;base_revision:number}
  | {kind:'moveSegment';token:SegmentDragToken;delta_um:number}
  | {kind:'createJunction';selected_segments:readonly {wire_id:string;segment_id:string}[];base_revision:number}
  | {kind:'rejectJunction';reason:string}
@@ -16,7 +17,7 @@ export type CanvasIntent =
  | {kind:'select';target:VisualHit|{kind:'symbol';instance_id:string;component_id:string;distance_px:number}|{kind:'ambiguous-symbol';candidates:string[]}|null};
 export type CanvasContext={
  scene:CanvasScene;wireSnapshot:WiringSnapshot;camera:Camera;
- tool:'select'|'wire'|'pan'|'text'|'junction';gridUm:number;snapEnabled:boolean;
+ tool:'select'|'wire'|'pan'|'text'|'junction'|'place';gridUm:number;snapEnabled:boolean;
  onIntent:(intent:CanvasIntent)=>void|boolean;
 };
 export type PointerPoint=ScreenPoint & {pointerId:number;button:number};
