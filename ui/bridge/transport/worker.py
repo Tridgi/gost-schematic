@@ -165,6 +165,54 @@ def _reject_ambiguous_wire_vertices(document: dict[str, Any]) -> None:
                 seen[legacy_key] = identity
 
 
+
+def _engine_projection(args: dict[str, Any]) -> dict[str, Any]:
+    """Read-only exact v2→existing Python Circuit projection, not export approval."""
+    import importlib.util
+
+    if set(args) != {"document"} or type(args["document"]) is not dict:
+        raise ProtocolError("INVALID_REQUEST", "exact v2 document required")
+    _reject_ambiguous_wire_vertices(args["document"])
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        repository = Path(sys._MEIPASS)
+    else:
+        repository = Path(__file__).resolve().parents[3]
+    canonical = repository / "ui" / "editor" / "src" / "model" / "contract.py"
+    adapter = repository / "ui" / "editor" / "src" / "model" / "engine_adapter.py"
+    if not canonical.is_file() or not adapter.is_file():
+        raise ProtocolError("ENGINE_ADAPTER_UNAVAILABLE", "v2 engine projection adapter missing")
+    spec = importlib.util.spec_from_file_location("_gscad_engine_projection", adapter)
+    if spec is None or spec.loader is None:
+        raise ProtocolError("ENGINE_ADAPTER_UNAVAILABLE", "v2 engine projection cannot be loaded")
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except (ImportError, OSError) as exc:
+        raise ProtocolError("ENGINE_ADAPTER_UNAVAILABLE", "v2 engine projection dependencies missing") from exc
+    if Path(module.validate.__code__.co_filename).resolve() != canonical.resolve():
+        raise ProtocolError("ENGINE_ADAPTER_UNAVAILABLE", "untrusted model validation import")
+    try:
+        projection = module.project_to_engine(args["document"], require_placed=True)
+    except module.ContractError as exc:
+        raise ProtocolError(
+            exc.code, "v2 cannot safely project to existing Python engine"
+        ) from exc
+    return {
+        "model": "gscad-project", "format_version": 2,
+        "project_sha256": projection.project_sha256,
+        "source_topology_sha256": projection.source_topology_hash,
+        "component_count": len(projection.circuit.components),
+        "net_count": len(projection.circuit.nets),
+        "authored_segment_count": sum(len(sheet.graph.segments) for sheet in projection.sheets),
+        "source_b_graphic_count": sum(len(sheet.source_b_graphic_ids) for sheet in projection.sheets),
+        "incomplete_net_counts": [len(sheet.unfinished_net_ids) for sheet in projection.sheets],
+        "geometry_complete": projection.geometry_complete,
+        "rendering_catalog_verified": projection.rendering_catalog_verified,
+        "render_allowed": False,
+        "project_write": False,
+    }
+
+
 def _wire_bridge():
     """Load MASTER-owned single-sheet wire adapter only from fixed installed files."""
     import importlib.util
@@ -319,7 +367,8 @@ def dispatch(request: Any) -> dict[str, Any]:
         return {"protocol": VERSION, "engine": "gost-schematic",
                 "capabilities": ["hello", "unit_roundtrip", "check_symbol", "render_symbol",
                                  "validate_document", "source_snapshot", "verify_net",
-                                 "wire_snapshot", "validate_wire_candidate"],
+                                 "wire_snapshot", "validate_wire_candidate",
+                                 "engine_projection"],
                 "project_write": False, "process": "ephemeral-or-supervised"}
     if op == "unit_roundtrip":
         return {"x_um": decimal_um(args.get("x_um")),
@@ -330,6 +379,8 @@ def dispatch(request: Any) -> dict[str, Any]:
         return _project_operation(op, args)
     if op in {"wire_snapshot", "validate_wire_candidate"}:
         return _wire_operation(op, args)
+    if op == "engine_projection":
+        return _engine_projection(args)
     if op in {"position_edit", "render_svg", "export_png"}:
         raise ProtocolError("NOT_WIRED", "awaiting approved transactional/export adapter")
     raise ProtocolError("UNKNOWN_OPERATION", "operation not allowlisted")
