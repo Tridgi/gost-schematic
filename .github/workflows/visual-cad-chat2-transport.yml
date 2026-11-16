@@ -1,0 +1,52 @@
+name: Visual CAD CHAT2 transport / canonical v2 IPC
+on:
+  push:
+    branches: [feature/visual-cad-desktop-ipc-chat2]
+    paths:
+      - "ui/bridge/transport/**"
+      - "ui/desktop/**"
+      - ".github/workflows/visual-cad-chat2-transport.yml"
+  pull_request:
+    paths:
+      - "ui/bridge/transport/**"
+      - "ui/desktop/**"
+      - ".github/workflows/visual-cad-chat2-transport.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  canonical-v2-ipc:
+    name: Python ${{ matrix.python-version }} / Node22 IPC + E695
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install existing Python engine and canonical v2 model
+        run: |
+          python -m pip install -e ".[dev]"
+          python -m pip install -r ui/editor/src/model/requirements-dev.txt
+      - name: Lint transport and parse desktop config
+        run: |
+          ruff check ui/bridge/transport
+          python -m compileall -q ui/bridge/transport
+          python -m json.tool ui/desktop/src-tauri/tauri.conf.json > /dev/null
+          node --check ui/bridge/transport/smoke.mjs
+      - name: Real gscad-project v2 / E695 / wire candidate negative tests
+        env:
+          GSCAD_REQUIRE_V2: "1"
+        run: python -m unittest discover -s ui/bridge/transport/tests -v
+      - name: Node-to-Python NDJSON (real engine, E695 and Net reachability)
+        env:
+          GSCAD_REQUIRE_V2: "1"
+          GSCAD_REQUIRE_ENGINE: "1"
+        run: node ui/bridge/transport/smoke.mjs
