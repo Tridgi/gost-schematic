@@ -7,14 +7,16 @@
 - `acceptance-contract.mjs`: 12 case IDs with deterministic fixtures, action and invariant per case.
 - `tests/manifest.test.mjs`: self-contained Node unit tests for manifest/source coverage.
 - `visual-cad.ux.spec.mjs`: browser Playwright **mouse/keyboard assertions**, fails when fixture/QA adapter is missing. Snapshot is read-only, never used to mutate scene.
-- `source-b-compat.mjs` + `tests/source-b-interop.test.mjs`: isolated read-only bridge and five negative/positive checks against **actual** `tl494-source-e695-v2.gscad.json` and #120 Canvas projector. Does not repair production Canvas; proves two non-electrical b marks must not be lost or converted to Wires.
+- `source-b-compat.mjs` + `tests/source-b-interop.test.mjs`: isolated read-only bridge and five negative/positive checks against **actual** `tl494-source-e695-v2.gscad.json` and #120 Canvas projector. Does not repair production Canvas; proves two non-electrical b marks must not be lost or converted to Wires. **Strict native acceptance is a separate RED test** `tests/source-b-native-gate.test.mjs`; do not report it green because the QA-only adapter works.
 - `package.json`: dependency-free `npm test` runner for Node>=22; only browser E2E needs Playwright installed.
 
 ```powershell
 # Runnable now on Node >=20 in repository root:
 cd ui/qa
-npm test
-npm run check:e2e
+npm test                       # 10 Node domain/contract checks; no npm install
+npm run check:e2e             # syntax only
+npm run test:interop:strict   # known FAIL until #120 fixes canonical E695 source_b
+npm run test:browser-r0       # real Chromium regression; requires Playwright Python + Pillow
 
 # Only after MASTER adds Playwright dependency and starts a Vite editor:
 $env:PLAYWRIGHT_BASE_URL='http://127.0.0.1:5173'
@@ -22,7 +24,7 @@ cd ui/qa
 npx playwright test visual-cad.ux.spec.mjs --reporter=list
 ```
 
-**The first two commands validate only QA source, not GUI behavior.** Browser tests must not be skipped and must not be reported as PASS until the actual UI + data/wire engine are implemented and tested. Per-case proof must cite exact UI HEAD/lockfile SHA, browser version/OS, traces, and saved export bytes.
+**The first two commands validate only QA source, not GUI behavior.** Browser tests must not be skipped and must not be reported as PASS until the actual UI + data/wire engine are implemented and tested. The Python R0 focus test is **a negative regression for the experimental gscad-spike v1 editor only**, not a React/Vite application acceptance. Per-case proof must cite exact UI HEAD/lockfile SHA, browser version/OS, traces, and saved export bytes.
 
 ## Requested development-only test protocol (negotiation with #125/#120/#121/#122/#123)
 
@@ -60,3 +62,10 @@ npx playwright test visual-cad.ux.spec.mjs --reporter=list
 - Actual source E695 23 components/15 Nets/62 memberships/DA1 16 physical pins/2 non-electric b marks is checked in `source-b-interop.test.mjs`. Native #120 `projectToCanvasScene` at `44dc17d9ea756eadb1656c83cd369ef2b2a3b828` **throws `UNKNOWN_GRAPHIC_KIND`** on `Graphic.kind='source_b_continuation'`. QA-only `projectForUXReview()` produces 23 symbols, 2 non-electric b strokes, 0 wires and leaves input byte-identical. Production owner #120 must add native support and negative tests, then remove the QA workaround or keep it as an oracle; no silent net addition.
 - The fixture `qa-two-nets` must use **real ProjectFileV2** `Component.id` values `R1/C1/R2`, a **valid source Net** shared by `R1:1,C1:1`, another Net containing `R2:1`, and one draggable bent wire. Do not import `gscad-spike` v1 into ProjectFileV2.
 - The `qa-e695-tl494` fixture must load the **actual** `ui/fixtures/tl494-source-e695-v2.gscad.json`, not synthetic 16-pin IC. Never mark unrouted source Nets verified.
+
+## Test status / source assertions
+
+- Exact source blobs fetched and the **10 authored Node test bodies** executed in a restricted V8 harness with Node import/file-read shims: **10/10 PASS** against shared `44dc17d9ea756eadb1656c83cd369ef2b2a3b828`; this proves logic but is **not** native `node --test` or CI.
+- `ui/qa/tests/source-b-native-gate.test.mjs` is **RED** on #120 `scene-projection.mjs` Git blob `38c00d8e39c70709dd7546913704a3da6ccc0033`: expected 23/2/0 but receives `UNKNOWN_GRAPHIC_KIND`. See `npm run test:interop:strict`.
+- `tests/r0-browser-focus.py`: real Chromium script covering Ctrl+Z inside the nominal Inspector; **not executed** as Windows/browser source is not available in this reviewer sandbox, and its current target `ui/experiments/r0/app.mjs` handles Ctrl+Z before checking `editing` (static review). Fix belongs to #125 R0 owner; do not call browser PASS.
+- Genuine Windows + Browser React R2/R3/Source-E695 E2E remains `BLOCKED WAITING_FOR #125` Vite root with dev-only QA fixture loader and typed transaction adapter. The R0 experiment uses incompatible `gscad-spike` v1 and cannot substitute for the v2 scene acceptance.
