@@ -106,7 +106,7 @@ jobs:
       - name: Install pinned React/Mantine packages and check full frontend
         working-directory: ui/editor
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npm run typecheck
           npm test
           npm run build
