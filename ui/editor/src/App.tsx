@@ -279,6 +279,90 @@ export default function App() {
   /** SVG emits typed intentions; no geometrical intersection changes electrical Nets. */
   const onCanvasIntent=(intent:CanvasIntent)=>{
     const eng=engineRef.current;if(!eng)return;
+    const authored=authoringRef.current;
+    if(authored){
+      try{
+        if(intent.kind==='beginWire'){
+          authored.beginWire(intent.pin);
+          setPending(intent.pin);setIssue('Выбран первый физический вывод; укажите второй.');
+          return true;
+        }
+        if(intent.kind==='cancelWire'){setPending(null);return true;}
+        if(intent.kind==='select'){
+          if(intent.target?.kind==='symbol')setSelectedId(intent.target.instance_id);
+          if(intent.target?.kind==='pin'){
+            const inst=instances.find(i=>i.component_id===intent.target.pin.component_id);
+            if(inst)setSelectedId(inst.id);
+          }
+          return true;
+        }
+        if(intent.kind==='placeSymbol'){
+          if(intent.base_revision!==authored.revision)throw Error('STALE_REVISION');
+          if(!placementSymbol)throw Error('NO_SELECTED_CATALOG_SYMBOL');
+          const id=authored.place(authored.newTransaction('place-component'),
+            placementSymbol,intent.at_um);
+          adoptAuthored();setSelectedId(id);
+          setTool('select');setPlacementSymbol(null);
+          setIssue('УГО размещено из DRAFT-каталога. Физические выводы сохранены.');
+          return true;
+        }
+        if(intent.kind==='moveInstance'||intent.kind==='rotateInstance'){
+          if(intent.base_revision!==authored.revision)throw Error('STALE_REVISION');
+          const inst=instances.find(i=>i.id===intent.instance_id&&
+            i.component_id===intent.component_id);
+          if(!inst)throw Error('UNKNOWN_INSTANCE');
+          const tx=authored.newTransaction('pointer-transform');
+          if(intent.kind==='moveInstance'){
+            const old=authored.snapshot.components.find(c=>c.id===intent.component_id);
+            if(!old)throw Error('UNKNOWN_COMPONENT');
+            authored.move(tx,intent.component_id,[
+              old.origin_um[0]+intent.delta_um[0],
+              old.origin_um[1]+intent.delta_um[1]
+            ]);
+          }else authored.rotate(tx,intent.component_id);
+          adoptAuthored();setIssue('Положение УГО изменено валидированной транзакцией.');
+          return true;
+        }
+        if(intent.kind==='commitWire'){
+          if(intent.target.kind!=='pin')throw Error('UNBOUND_FREE_NOT_ALLOWED');
+          authored.connect(authored.newTransaction('connect-physical-pins'),
+            intent.source,intent.target.pin,intent.bend_points_um);
+          adoptAuthored();setPending(null);
+          setIssue('Выводы соединены: электрический Net назначен транзакционно.');
+          return true;
+        }
+        if(intent.kind==='moveSegment'){
+          const snapshot=authored.snapshot;
+          const token=intent.token;
+          if(token.base_revision!==snapshot.revision||
+            token.project_id!==snapshot.project_id||
+            token.source_topology_hash!==snapshot.source_topology_hash)
+            throw Error('STALE_REVISION');
+          const current=captureSegmentDrag(snapshot,token.wire_id,token.segment_id);
+          if(current.axis!==token.axis)throw Error('SEGMENT_CHANGED');
+          authored.moveSegment(authored.newTransaction('drag-segment'),
+            token.wire_id,token.segment_id,intent.delta_um);
+          adoptAuthored();setIssue('Проводник перемещён по стабильному ID.');
+          return true;
+        }
+        if(intent.kind==='rejectJunction'){
+          setIssue(intent.reason+': нужен явно выбранный физический узел одного Net.');
+          return true;
+        }
+        if(intent.kind==='createJunction'){
+          if(intent.base_revision!==authored.revision)throw Error('STALE_REVISION');
+          authored.createJunction(authored.newTransaction('explicit-junction'),
+            intent.selected_segments);
+          adoptAuthored();setIssue('Явный Junction построен на подтверждённом Net.');
+          return true;
+        }
+        return false;
+      }catch(e){
+        setIssue(e instanceof WireError?e.code+': '+e.message:String(e));
+        if(intent.kind!=='commitWire')setPending(null);
+        return false;
+      }
+    }
     try {
       if(intent.kind==='beginWire'){
         eng.beginWire(intent.pin);
@@ -361,10 +445,18 @@ export default function App() {
       return false;
     }
   };
-  const handleUndo=()=>{if(engineRef.current?.undo()){
-    refresh();setDirty(true);setHistory(h=>({undo:Math.max(0,h.undo-1),redo:h.redo+1}));setIssue('Undo: отменена транзакция проводника.');}};
-  const handleRedo=()=>{if(engineRef.current?.redo()){
-    refresh();setDirty(true);setHistory(h=>({undo:h.undo+1,redo:Math.max(0,h.redo-1)}));setIssue('Redo: маршрут восстановлен.');}};
+  const handleUndo=()=>{
+    const author=authoringRef.current;
+    if(author){if(author.undo()){adoptAuthored();setIssue('Undo: восстановлена целостная модель проекта.');}return;}
+    if(engineRef.current?.undo()){
+      refresh();setDirty(true);setHistory(h=>({undo:Math.max(0,h.undo-1),redo:h.redo+1}));setIssue('Undo: отменена транзакция проводника.');}
+  };
+  const handleRedo=()=>{
+    const author=authoringRef.current;
+    if(author){if(author.redo()){adoptAuthored();setIssue('Redo: восстановлена целостная модель проекта.');}return;}
+    if(engineRef.current?.redo()){
+      refresh();setDirty(true);setHistory(h=>({undo:h.undo+1,redo:Math.max(0,h.redo-1)}));setIssue('Redo: маршрут восстановлен.');}
+  };
   if(!document||!snapshot||!activeSheet)return <main className="gscad-boot">
     <h1>GOST Schematic Engine — R2 preview</h1><p>{issue}</p>
     <p>Выполните Python prepare_editor_fixtures.py и npm run dev.</p></main>;
