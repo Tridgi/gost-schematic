@@ -179,3 +179,30 @@ test('canonical browser export emits physical A3 SVG and raster 300 DPI with pHY
   expect(png.readUInt32BE(phys+8)).toBe(11811);
   expect(png[phys+12]).toBe(1);
 });
+
+test('explicit 50%, 100% and 200% browser zoom scales physical pin spacing without changing source Nets',async({page})=>{
+ await page.goto('/');
+ await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+ const zoomButton=page.getByRole('button',{name:'Масштаб'});
+ const pair=page.locator('.physical-pin-markers circle');
+ await expect(pair.first()).toBeVisible();
+ const distance=async()=>{
+   const a=pair.nth(0),b=pair.nth(1);
+   const [ax,ay,bx,by]=await Promise.all([
+    a.getAttribute('cx'),a.getAttribute('cy'),b.getAttribute('cx'),b.getAttribute('cy')]);
+   return Math.hypot(Number(ax)-Number(bx),Number(ay)-Number(by));
+ };
+ const choose=async percent=>{
+   await zoomButton.click();
+   await page.getByRole('menuitem',{name:percent+'%'}).click();
+   await expect(zoomButton).toHaveText(percent+'%');
+ };
+ await choose(50);
+ const fifty=await distance();
+ expect(fifty).toBeGreaterThan(0);
+ await choose(100);
+ await expect.poll(async()=>await distance()/fifty,{timeout:10000}).toBeCloseTo(2,1);
+ await choose(200);
+ await expect.poll(async()=>await distance()/fifty,{timeout:10000}).toBeCloseTo(4,1);
+ await expect(page.locator('[data-net-id]')).toHaveCount(0);
+});
