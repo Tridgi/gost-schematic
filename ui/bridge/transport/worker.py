@@ -8,6 +8,7 @@ from __future__ import annotations
 import contextlib
 import importlib.resources
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -338,6 +339,11 @@ def _native_export_preview(args: dict[str, Any]) -> dict[str, Any]:
         raise ProtocolError(exc.code, "canonical project rejected for export") from exc
     if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
         root = Path(sys._MEIPASS)
+        if sys.platform == "win32":
+            # PyInstaller extracts our pinned Cairo DLL next to this trusted
+            # fixed worker. Never honor frontend paths or load arbitrary DLLs.
+            os.environ["CAIROCFFI_DLL_DIRECTORIES"] = str(root)
+            os.environ["PATH"] = str(root) + os.pathsep + os.environ.get("PATH", "")
     else:
         root = Path(__file__).resolve().parents[3]
     exporter = root / "ui" / "bridge" / "export" / "project_v2.py"
