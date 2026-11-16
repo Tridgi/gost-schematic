@@ -15,7 +15,7 @@ import { formatMillimetres, parseMillimetres } from './inspector-units';
 import { resolveShellShortcut } from './shortcuts';
 import '../theme/design-tokens.css';
 
-export type ToolMode = 'select' | 'wire' | 'text' | 'pan' | 'junction';
+export type ToolMode = 'select' | 'wire' | 'text' | 'pan' | 'junction' | 'place';
 export type CatalogSymbol = {
   id: string; name: string; category: string; approval: 'draft' | 'approved' | 'blocked';
   /** Trusted SVG ReactNode from canonical catalogue renderer; no icon-based UGO substitution. */
@@ -48,7 +48,7 @@ export type EditorShellProps = {
   onPlaceSymbol:(symbolId:string)=>void;onSelectTreeItem:(id:string)=>void;
   onSelectSheet:(id:string)=>void;onInspectorProposal:(edit:InspectorProposal)=>void;
   onUndo:()=>void;onRedo:()=>void;onSave:()=>void;
-  onOpen?:()=>void;onExport?:(format:'svg'|'png300')=>void;
+  onOpen?:()=>void;onNew?:()=>void;onAddSheet?:()=>void;onExport?:(format:'svg'|'png300')=>void;
 };
 
 function NumericAxis({selected,axis,revision,send}:{
@@ -206,6 +206,8 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
             <Text size="sm" fw={700} visibleFrom="sm">GOST CAD</Text>
             <Menu position="bottom-start"><Menu.Target><Button variant="subtle" size="compact-sm">Файл</Button></Menu.Target>
               <Menu.Dropdown>
+                <Menu.Item data-testid="new-project" onClick={props.onNew} disabled={!props.onNew}>Новый проект A3</Menu.Item>
+                <Menu.Item data-testid="new-sheet" onClick={props.onAddSheet} disabled={!props.onAddSheet}>Добавить лист A3</Menu.Item>
                 <Menu.Item onClick={props.onOpen} disabled={!props.onOpen}>Открыть…</Menu.Item>
                 <Menu.Item onClick={props.onSave} disabled={!props.canSave}>Сохранить</Menu.Item>
                 <Menu.Item onClick={()=>setExportDialog(true)}>Экспорт…</Menu.Item>
