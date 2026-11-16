@@ -43,7 +43,21 @@ async fn engine_request(
     state: State<'_, BridgeState>,
     request: EngineRequest,
 ) -> Result<Value, String> {
-    if request.v != 1 || !safe_id(&request.id) || !allowlisted(&request.op) || !request.args.is_object() {
+    // Only the registered native file boundary may call raw JSON validation.
+    if !allowlisted(&request.op) {
+        return Err("UNSUPPORTED_OR_UNSAFE_REQUEST".into());
+    }
+    internal_engine_request(app, state, request).await
+}
+
+pub(crate) async fn internal_engine_request(
+    app: tauri::AppHandle,
+    state: State<'_, BridgeState>,
+    request: EngineRequest,
+) -> Result<Value, String> {
+    if request.v != 1 || !safe_id(&request.id) ||
+        !(allowlisted(&request.op) || request.op == "parse_document_blob") ||
+        !request.args.is_object() {
         return Err("UNSUPPORTED_OR_UNSAFE_REQUEST".into());
     }
     let mut data = serde_json::to_vec(&request).map_err(|_| "INVALID_JSON")?;
