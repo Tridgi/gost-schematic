@@ -138,7 +138,7 @@ mod tests {
     }
     #[test]
     fn app_never_allows_js_arbitrary_process() {
-        for bad in ["shell", "exec", "position_edit", "export_png", "source_snapshot"] {
+        for bad in ["shell", "exec", "position_edit", "export_png", "render_svg"] {
             assert!(!allowlisted(bad));
         }
     }
