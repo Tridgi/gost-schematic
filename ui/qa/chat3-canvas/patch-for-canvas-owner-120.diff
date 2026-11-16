@@ -1,0 +1,40 @@
+--- a/ui/editor/src/canvas/scene-projection.mjs
++++ b/ui/editor/src/canvas/scene-projection.mjs
+@@ -19,7 +19,7 @@
+  const graphicsToStrokes=g=>{
+   if(!Array.isArray(g.points_um))deny("INVALID_GRAPHIC_POINTS");
+   const pts=g.points_um.map(point);
+-  if(g.kind==="line"){if(pts.length!==2)deny("INVALID_LINE");return [line(pts[0],pts[1])]}
++  if(g.kind==="line"||g.kind==="source_b_continuation"){if(pts.length!==2)deny(g.kind==="source_b_continuation"?"INVALID_SOURCE_B":"INVALID_LINE");return [line(pts[0],pts[1])]}
+   if(g.kind==="polyline"){if(pts.length<2)deny("INVALID_POLYLINE");return pts.slice(1).map((t,i)=>line(pts[i],t))}
+   if(g.kind==="rect"){
+    if(pts.length!==2)deny("INVALID_RECT");
+@@ -47,7 +47,7 @@
+   const strokes=(s.graphics||[]).flatMap(graphicsToStrokes);
+   sourceSymbols.push({instance_id:i.id,component_id:c.id,origin_um:point(i.origin_um),rotation_deg:i.rotation_deg,mirror_x:i.mirror_x,pins,strokes,status:s.status,layer_id:i.layer_id});
+  }
+- const visualGraphics=sheet.graphics.map(g=>({id:g.id,layer_id:g.layer_id,source_role:g.source_role,strokes:graphicsToStrokes(g)}));
++ const visualGraphics=sheet.graphics.map(g=>({id:g.id,layer_id:g.layer_id,source_role:g.kind==="source_b_continuation"?"source_b_continuation":(g.source_role||"none"),strokes:graphicsToStrokes(g)}));
+  const clone=v=>JSON.parse(JSON.stringify(v));
+  return {symbols:sourceSymbols,wires:clone(sheet.wires),junctions:clone(sheet.junctions),splices:clone(sheet.splices),graphics:visualGraphics};
+ }
+--- a/ui/editor/src/canvas/precision.mjs
++++ b/ui/editor/src/canvas/precision.mjs
+@@ -10,7 +10,7 @@
+ 
+ function world(p,c){if(!(c.s>0&&Number.isFinite(c.s)))throw Error("INVALID_ZOOM");return point([Math.round((p.x-c.x)/c.s),Math.round((p.y-c.y)/c.s)])}
+ 
+-function zoom(c,p,factor){if(!(factor>0&&Number.isFinite(factor)))throw Error("INVALID_ZOOM_FACTOR");const s=Math.min(.2,Math.max(.002,c.s*factor));const u=(p.x-c.x)/c.s,v=(p.y-c.y)/c.s;return {s,x:p.x-u*s,y:p.y-v*s}}
++function zoom(c,p,factor){if(!(c.s>0&&Number.isFinite(c.s)&&Number.isFinite(c.x)&&Number.isFinite(c.y)&&Number.isFinite(p.x)&&Number.isFinite(p.y)))throw Error("INVALID_ZOOM");if(!(factor>0&&Number.isFinite(factor)))throw Error("INVALID_ZOOM_FACTOR");const s=Math.min(.2,Math.max(.002,c.s*factor));const u=(p.x-c.x)/c.s,v=(p.y-c.y)/c.s;return {s,x:p.x-u*s,y:p.y-v*s}}
+ 
+ function snap(p,grid,enabled){point(p);if(!Number.isSafeInteger(grid)||grid<=0)throw Error("INVALID_GRID");return enabled?point(p.map(v=>Math.round(v/grid)*grid)):p}
+ 
+@@ -39,7 +39,7 @@
+  const hits=[];for(const w of scene.wires)for(let i=0;i<w.segments.length;i++){
+   const segment=w.segments[i],a=w.vertices.find(v=>v.id===segment.from_vertex_id),b=w.vertices.find(v=>v.id===segment.to_vertex_id);
+   if(!a||!b)throw Error("MISSING_VERTEX");
+-  point(a.at_um);point(b.at_um);if(a.at_um[0]!==b.at_um[0]&&a.at_um[1]!==b.at_um[1])throw Error("NON_ORTHOGONAL");
++  point(a.at_um);point(b.at_um);if(a.at_um[0]===b.at_um[0]&&a.at_um[1]===b.at_um[1])throw Error("ZERO_LENGTH");if(a.at_um[0]!==b.at_um[0]&&a.at_um[1]!==b.at_um[1])throw Error("NON_ORTHOGONAL");
+   const d=segmentDistance(p,screen(a.at_um,c),screen(b.at_um,c));
+   if(d<=wireBandPx)hits.push({kind:"segment",wire_id:w.id,segment_id:segment.id,distance_px:d,movable:i>0&&i<w.segments.length-1,axis:a.at_um[0]===b.at_um[0]?"v":"h"});
+  }
