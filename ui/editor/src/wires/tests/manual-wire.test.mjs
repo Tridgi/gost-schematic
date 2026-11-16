@@ -256,3 +256,20 @@ test('ProjectV2 empty arbitrary free ID fails closed without history mutation',(
  err(()=>commit(e,constructWire('E','N1','default',[[35000,40000],[36000,40000]],{kind:'free',free_id:''},{kind:'free',free_id:'ok'})),'INVALID_ID');
  assert.equal(e.serialize(),before);
 });
+
+test('SVG canvas segment_id moves exactly the selected interior vertical segment by 3000µm',()=>{
+ const e=make();commit(e,w1());
+ const wire=e.snapshot.wires.find(w=>w.id==='W1');
+ assert.equal(wire.segments[1].id,'W1:s1');
+ e.moveSegmentById(tx(e,'canvas-handle'),'W1',wire.segments[1].id,3000);
+ assert.deepEqual(e.snapshot.wires.find(w=>w.id==='W1').vertices.map(v=>v.at_um),
+                  [[0,0],[7000,0],[7000,8000],[14000,8000]]);
+});
+
+test('SVG canvas stale or unknown segment_id refuses movement and preserves history',()=>{
+ const e=make();commit(e,w1());const prior=e.serialize(),txn=tx(e,'wrong-handle');
+ err(()=>e.moveSegmentById(txn,'W1','unrelated:s1',3000),'UNKNOWN_SEGMENT');
+ assert.equal(e.serialize(),prior);
+ e.moveSegmentById(txn,'W1','W1:s1',3000);
+ err(()=>e.moveSegmentById(txn,'W1','W1:s1',3000),'STALE_REVISION');
+});
