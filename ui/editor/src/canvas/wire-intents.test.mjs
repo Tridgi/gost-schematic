@@ -14,10 +14,10 @@ const engine=(doc=make())=>({
  state:doc,
  get snapshot(){return structuredClone(this.state)},
  newTransaction(id){return {schema_version:2,project_id:this.state.project_id,source_topology_hash:this.state.source_topology_hash,base_revision:this.state.revision,command_id:id}},
- moveSegment(tx,wireId,index,delta){
+ moveSegmentById(tx,wireId,segmentId,delta){
   if(tx.base_revision!==this.state.revision)throw Error('STALE_REVISION');
   const wire=this.state.wires.find(w=>w.id===wireId);
-  if(index!==1)throw Error('UNEXPECTED_INDEX');
+  if(segmentId!=='s1'||wire?.segments.findIndex(s=>s.id===segmentId)!==1)throw Error('UNEXPECTED_SEGMENT_ID');
   wire.vertices[1].at_um[0]+=delta;wire.vertices[2].at_um[0]+=delta;
   this.state.revision++;
   return this.snapshot;
