@@ -250,6 +250,24 @@ export default function App() {
         }
         return;
       }
+      if(intent.kind==='rejectJunction'){
+        setIssue(intent.reason+': выберите точное пересечение двух проводников на одном Net.');
+        return true;
+      }
+      if(intent.kind==='createJunction'){
+        const now=eng.snapshot;
+        if(intent.base_revision!==now.revision)throw Error('STALE_REVISION: junction selection is stale');
+        let n=now.junctions.length+1;
+        while(now.junctions.some(j=>j.id==='manual-junction-'+n)||
+              now.splices.some(j=>j.id==='manual-junction-'+n))n++;
+        eng.connectCrossingSegmentsById(
+          eng.newTransaction('create-junction-'+n),
+          intent.selected_segments,'manual-junction-'+n
+        );
+        mutation();
+        setIssue('Junction построен по подтверждённым физическим сегментам одного Net.');
+        return true;
+      }
       if(intent.kind==='moveInstance'||intent.kind==='rotateInstance'){
         const now=eng.snapshot;
         if(intent.base_revision!==now.revision)throw Error('STALE_REVISION: physical component changed');
