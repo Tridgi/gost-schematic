@@ -374,3 +374,74 @@ test('stale, forged ID, parallel overlap and disjoint crossing reject without mu
    'AMBIGUOUS_JUNCTION');
  assert.equal(parallel.serialize(),past);
 });
+
+
+test('R4 connected move requires consent and rebuilds one wire with physical PinRef, stable Net and review flag',()=>{
+ const e=make();commit(e,w1());
+ const original=e.snapshot;const txBefore=e.newTransaction('stale-before-move');
+ err(()=>e.moveComponentAndReanchor(e.newTransaction('reject'),'R1',[0,3000],false),'REROUTE_REQUIRED');
+ assert.deepEqual(e.snapshot,original);
+ e.moveComponentAndReanchor(e.newTransaction('consent'),'R1',[0,3000],true);
+ assert.deepEqual(e.snapshot.components.find(x=>x.id==='R1').origin_um,[0,3000]);
+ assert.equal(e.snapshot.wires.length,1);
+ const w=e.snapshot.wires[0];
+ assert.equal(w.id,'W1');assert.equal(w.net_id,'N1');assert.equal(w.needs_routing_review,true);
+ assert.deepEqual(w.vertices[0].anchor,pin('R1','1'));
+ assert.deepEqual(w.vertices.at(-1).anchor,pin('C1','1'));
+ assert.deepEqual(w.vertices[0].at_um,[0,3000]);
+ assert.equal(JSON.stringify(e.snapshot.nets),JSON.stringify(original.nets));
+ assert.equal(e.snapshot.junctions.length,0);
+ assert.equal(e.validateNet('N1').status,'partial');
+ err(()=>e.moveComponentAndReanchor(txBefore,'R1',[1000,3000],true),'STALE_REVISION');
+ assert.equal(e.undo(),true);assert.equal(JSON.stringify(e.snapshot.nets),JSON.stringify(original.nets));
+ assert.deepEqual(e.snapshot.wires,original.wires);
+ assert.equal(e.redo(),true);assert.deepEqual(e.snapshot.wires[0],w);
+});
+test('R4 connected component with multiple same- and different-Net wires reanchors every signed endpoint atomically',()=>{
+ const d=toy();
+ // The R1 pin is a member of exactly one Net, but multiple authored wires
+ // can branch from it. Another declared Net is independent.
+ d.wires=[
+  w1(),
+  constructWire('R1-branch','N1','default',[[0,0],[2000,0],[2000,10000]],
+    pin('R1','1'),free('R1-branch','end')),
+  w2()
+ ];
+ const e=make(d),source=e.snapshot,prev=JSON.stringify(e.snapshot.nets);
+ e.moveComponentAndReanchor(e.newTransaction('move-multi'),'R1',[0,3000],true);
+ const after=e.snapshot;
+ assert.equal(after.wires.length,3);
+ assert.equal(after.wires.find(w=>w.id==='W2').needs_routing_review,undefined);
+ assert.deepEqual(after.wires.find(w=>w.id==='W2'),source.wires.find(w=>w.id==='W2'));
+ for(const name of ['W1','R1-branch']){
+  const w=after.wires.find(x=>x.id===name);
+  assert.equal(w.net_id,'N1');
+  assert.equal(w.needs_routing_review,true);
+  assert.deepEqual(w.vertices[0].at_um,[0,3000]);
+  assert.deepEqual(w.vertices[0].anchor,pin('R1','1'));
+ }
+ assert.equal(JSON.stringify(after.nets),prev);
+ assert.equal(after.junctions.length,0);
+ assert.equal(e.validateNet('N2').status,'verified');
+ assert.equal(e.undo(),true);assert.deepEqual(e.snapshot.wires,source.wires);
+});
+test('R4 connected move impossible geometry must roll back component, wire and Net CAS together',()=>{
+ const e=make();commit(e,w1());const original=e.serialize();
+ err(()=>e.moveComponentAndReanchor(e.newTransaction('degenerate'),'R1',[14000,8000],true),'WIRE_GEOMETRY');
+ assert.equal(e.serialize(),original);
+});
+test('R4 explicit rotation of attached component regenerates physical endpoints but never auto-approves route',()=>{
+ const e=make();commit(e,w1());const source=e.snapshot;
+ err(()=>e.rotateAndReanchor(e.newTransaction('reject-rotate'),'R1',90,false),'REROUTE_REQUIRED');
+ assert.deepEqual(e.snapshot,source);
+ e.rotateAndReanchor(e.newTransaction('confirm-rotate'),'R1',90,true);
+ assert.equal(e.snapshot.components.find(x=>x.id==='R1').rotation,90);
+ assert.equal(e.snapshot.wires[0].needs_routing_review,true);
+ assert.deepEqual(e.snapshot.wires[0].vertices[0].anchor,pin('R1','1'));
+ assert.equal(JSON.stringify(e.snapshot.nets),JSON.stringify(source.nets));
+ assert.equal(e.snapshot.junctions.length,0);
+ assert.equal(e.undo(),true);
+ assert.deepEqual(e.snapshot.wires,source.wires);
+ assert.equal(e.redo(),true);
+ assert.equal(e.snapshot.components.find(x=>x.id==='R1').rotation,90);
+});
