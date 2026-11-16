@@ -125,3 +125,30 @@ test('host rejects initial pin or free-end and no phantom connection/draft compl
  assert.equal(one.key('Escape'),true);
  assert.equal(one.getState().draft,null);
 });
+
+test('explicit junction tool emits two signed segment IDs and CAS revision only on ambiguous X click',()=>{
+ log=[];
+ const horizontal={id:'H',net_id:'N',vertices:[{id:'h0',at_um:[0,5000]},{id:'h1',at_um:[10000,5000]}],
+  segments:[{id:'hs',from_vertex_id:'h0',to_vertex_id:'h1'}]};
+ const vertical={id:'V',net_id:'N',vertices:[{id:'v0',at_um:[5000,0]},{id:'v1',at_um:[5000,10000]}],
+  segments:[{id:'vs',from_vertex_id:'v0',to_vertex_id:'v1'}]};
+ const snap={project_id:'toy',source_topology_hash:'source',revision:71,wires:[horizontal,vertical]};
+ const c=make('junction',i=>{log.push(i);return true;},
+  {symbols:[],wires:[horizontal,vertical],junctions:[]},snap);
+ assert.equal(c.down(loc([5000,5000])),true);
+ assert.deepEqual(log[0],{kind:'createJunction',
+  selected_segments:[{wire_id:'H',segment_id:'hs'},{wire_id:'V',segment_id:'vs'}],
+  base_revision:71});
+ assert.equal(snap.wires.length,2);
+ assert.equal(snap.revision,71);
+});
+test('explicit junction tool on ordinary stroke refuses to invent a branch or Net',()=>{
+ log=[];
+ const wire={id:'H',net_id:'N',vertices:[{id:'v0',at_um:[0,5000]},{id:'v1',at_um:[10000,5000]}],
+  segments:[{id:'h0',from_vertex_id:'v0',to_vertex_id:'v1'}]};
+ const c=make('junction',i=>log.push(i),{symbols:[],wires:[wire],junctions:[]},
+  {project_id:'toy',source_topology_hash:'source',revision:1,wires:[wire]});
+ assert.equal(c.down(loc([5000,5000])),true);
+ assert.deepEqual(log,[{kind:'rejectJunction',reason:'JUNCTION_SELECTION_REQUIRED'}]);
+ assert.equal(c.getState().draft,null);
+});
