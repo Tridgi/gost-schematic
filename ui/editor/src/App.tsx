@@ -6,7 +6,8 @@ import { ManualWireEngine, WireError, constructWire, type PinRef, type PointUm,
   type WiringSnapshot } from './wires/manual-wire';
 import { CanvasViewport } from './canvas/CanvasViewport';
 import type { CanvasIntent } from './canvas/controller.mjs';
-import { commitSegmentDrag } from './canvas/wire-intents.mjs';
+import { commitSegmentDrag, captureSegmentDrag } from './canvas/wire-intents.mjs';
+import {AuthoringSession,newBlankProject} from './authoring/session';
 import { loadProjectWires } from './wires/project-v2-adapter';
 import { projectToCanvasScene } from './canvas/scene-projection.mjs';
 import { renderProjectPreviewSVG, renderPreviewPng300 } from './export/browser-export';
@@ -66,6 +67,7 @@ function sourceIdentity(file:ProjectFileV2):string {
 
 export default function App() {
   const engineRef=useRef<ManualWireEngine|null>(null);
+  const authoringRef=useRef<AuthoringSession|null>(null);
   const frozenRef=useRef<ProjectFileV2|null>(null);
   const topologyHashRef=useRef<string|null>(null);
   const fileInputRef=useRef<HTMLInputElement|null>(null);
@@ -73,6 +75,7 @@ export default function App() {
   const [document,setDocument]=useState<ProjectFileV2|null>(null);
   const [snapshot,setSnapshot]=useState<WiringSnapshot|null>(null);
   const [tool,setTool]=useState<ToolMode>('select');
+  const [placementSymbol,setPlacementSymbol]=useState<string|null>(null);
   const [selectedId,setSelectedId]=useState<string|null>(null);
   const [,setPending]=useState<PinRef|null>(null);
   const [grid,setGrid]=useState(true),[snap,setSnap]=useState(true);
@@ -99,7 +102,8 @@ export default function App() {
     }).catch(e=>{if(alive)setIssue('Ошибка загрузки канонической фикстуры: '+String(e));});
     return()=>{alive=false;engineRef.current=null;};
   },[]);
-  const activeSheet=document?.project.sheets[0];
+  const activeSheet=document?.project.sheets.find(s=>s.id===document.workspace.active_sheet_id)
+    ??document?.project.sheets[0];
   const instances=activeSheet?.instances??[];
   const comps=document?.project.components??[];
   const compsById=new Map(comps.map(c=>[c.id,c]));
@@ -135,6 +139,27 @@ export default function App() {
         kind:'wire' as const,indent:1}))
     ];
   },[document,snapshot,activeSheet,instances,compsById]);
+  /** Authoring commands replace the entire validated ProjectV2+WireEngine snapshot.
+   * The E695 source branch retains its independent immutable topology guard.
+   */
+  const adoptAuthored=()=>{
+    const session=authoringRef.current;if(!session)return;
+    engineRef.current=session.engine;
+    setDocument(session.file);setSnapshot(session.snapshot);
+    setHistory({undo:session.canUndo?1:0,redo:session.canRedo?1:0});
+    setDirty(true);
+  };
+  const handleNew=()=>{
+    try{
+      const session=new AuthoringSession(newBlankProject());
+      authoringRef.current=session;engineRef.current=session.engine;
+      setDocument(session.file);setSnapshot(session.snapshot);
+      setSelectedId(null);setPending(null);setPlacementSymbol(null);
+      setTool('select');setGrid(true);setSnap(true);setDirty(false);
+      setHistory({undo:0,redo:0});
+      setIssue('Создан пользовательский ProjectV2 A3. Выберите УГО слева и укажите место на листе.');
+    }catch(e){setIssue('NEW_PROJECT_FAILED: '+String(e));}
+  };
   const refresh=()=>{
     const eng=engineRef.current;if(!eng)return;
     const state=eng.snapshot;
@@ -154,6 +179,14 @@ export default function App() {
     setIssue('Проводник изменён через проверенную транзакцию WireEngine; исходные Nets неизменны.');
   };
   const currentProject=():ProjectFileV2=>{
+    if(authoringRef.current){
+      const next=authoringRef.current.file;
+      next.project.settings.grid_visible=grid;
+      next.project.settings.snap_enabled=snap;
+      // A full re-import checks exact physical anchors and project invariants.
+      new AuthoringSession(next);
+      return next;
+    }
     const eng=engineRef.current;
     if(!eng||!document||!activeSheet)throw Error('PROJECT_NOT_READY');
     const next=structuredClone(document),sheet=next.project.sheets.find(s=>s.id===activeSheet.id);
@@ -211,6 +244,18 @@ export default function App() {
       const parsed:unknown=JSON.parse(await file.text());
       if(!parsed||typeof parsed!=='object')throw Error('INVALID_PROJECT_JSON');
       const next=parsed as ProjectFileV2;
+      if(next.format==='gscad-project'&&next.format_version===2&&
+         next.project?.provenance?.status==='synthetic'){
+        const author=new AuthoringSession(next);
+        authoringRef.current=author;engineRef.current=author.engine;
+        setDocument(author.file);setSnapshot(author.snapshot);
+        setSelectedId(next.project.sheets.find(s=>s.id===next.workspace.active_sheet_id)?.instances[0]?.id??null);
+        setGrid(next.project.settings.grid_visible);setSnap(next.project.settings.snap_enabled);
+        setTool('select');setPlacementSymbol(null);setPending(null);
+        setDirty(false);setHistory({undo:0,redo:0});
+        setIssue('Пользовательский ProjectV2 открыт: Nets и физические PinRef прошли проверку.');
+        return;
+      }
       if(next.format!=='gscad-project'||next.format_version!==2||
          !frozenRef.current||sourceIdentity(next)!==sourceIdentity(frozenRef.current))
         throw Error('SOURCE_TOPOLOGY_MISMATCH: допускается только исходный проект E695');
@@ -221,6 +266,7 @@ export default function App() {
         sheet_id:sheet.id,revision:0,
         source_topology_hash:topologyHashRef.current??''
       }).engine;
+      authoringRef.current=null;
       engineRef.current=engine;
       setDocument(next);setSnapshot(engine.snapshot);
       setSelectedId(sheet.instances[0]?.id??null);
