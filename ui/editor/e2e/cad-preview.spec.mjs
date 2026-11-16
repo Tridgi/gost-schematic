@@ -419,3 +419,73 @@ test('explicit junction tool refuses coincident crossing of two different source
  await expect(page.locator('[data-junction-id]')).toHaveCount(0);
  await expect(page.locator('[data-wire-id]')).toHaveCount(2);
 });
+
+test('R3 new A3 project: place real DRAFT R/C, edit, wire new Net, Undo/Redo, save and reopen',async({page})=>{
+  await page.goto('/');
+  await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+  await page.getByRole('button',{name:'Файл'}).click();
+  await page.getByTestId('new-project').click();
+  await expect(page.getByText(/R3 AUTHORING/)).toBeVisible();
+  await expect(page.locator('[data-testid^="symbol-"]')).toHaveCount(0);
+  const canvas=page.getByTestId('gscad-signed-svg-canvas');
+  const bounds=await canvas.boundingBox();
+  expect(bounds).toBeTruthy();
+  const clickAt=async(x,y)=>page.mouse.click(bounds.x+bounds.width*x,bounds.y+bounds.height*y);
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await clickAt(.30,.44);
+  await expect(page.getByTestId('symbol-R1')).toBeVisible();
+  await page.getByTestId('catalog-item-symbol/capacitor.fixed').click();
+  await clickAt(.67,.44);
+  await expect(page.getByTestId('symbol-C1')).toBeVisible();
+  await expect(page.locator('[data-testid^="signed-pin-"]')).toHaveCount(4);
+  await page.getByLabel('Позиционное обозначение').fill('C9');
+  await page.getByLabel('Позиционное обозначение').press('Enter');
+  await expect(page.getByTestId('symbol-C9')).toBeVisible();
+  await page.getByTestId('inspector-nominal').fill('220н');
+  await page.getByTestId('inspector-nominal').press('Enter');
+  const initialDownload=page.waitForEvent('download');
+  await page.getByTestId('save-project').click();
+  const initial=JSON.parse(readFileSync(await (await initialDownload).path(),'utf8'));
+  expect(initial.project.provenance.status).toBe('synthetic');
+  expect(initial.project.provenance.source_sha).toBe('0000000000000000000000000000000000000000');
+  expect(initial.project.components.map(c=>c.refdes).sort()).toEqual(['C9','R1']);
+  expect(initial.project.components.find(c=>c.refdes==='C9').value).toBe('220н');
+  expect(initial.project.nets).toHaveLength(0);
+  expect(initial.project.sheets[0].frame.size_um).toEqual([420000,297000]);
+  const r=initial.project.components.find(c=>c.refdes==='R1');
+  const c=initial.project.components.find(c=>c.refdes==='C9');
+  await page.getByRole('button',{name:'Провод W'}).click();
+  await page.getByTestId('signed-pin-'+r.id+'-2').click();
+  await page.getByTestId('signed-pin-'+c.id+'-1').click();
+  await expect(page.locator('[data-net-id]')).toHaveCount(1);
+  const routeDownload=page.waitForEvent('download');
+  await page.getByTestId('save-project').click();
+  const routed=JSON.parse(readFileSync(await (await routeDownload).path(),'utf8'));
+  expect(routed.project.nets).toHaveLength(1);
+  expect(routed.project.nets[0].members).toEqual([
+    {component_id:r.id,physical_pin_number:'2'},
+    {component_id:c.id,physical_pin_number:'1'}
+  ]);
+  expect(routed.project.sheets[0].wires).toHaveLength(1);
+  expect(routed.project.sheets[0].junctions).toHaveLength(0);
+  await page.getByRole('button',{name:'Отменить'}).click();
+  await expect(page.locator('[data-net-id]')).toHaveCount(0);
+  await page.getByRole('button',{name:'Повторить'}).click();
+  await expect(page.locator('[data-net-id]')).toHaveCount(1);
+  await page.reload();
+  await expect(page.locator('[data-testid^="symbol-"]')).toHaveCount(23);
+  await page.getByTestId('project-file-input').setInputFiles({
+    name:'authored.gscad.json',mimeType:'application/json',
+    buffer:Buffer.from(JSON.stringify(routed),'utf8')
+  });
+  await expect(page.locator('[data-testid^="symbol-"]')).toHaveCount(2);
+  await expect(page.locator('[data-net-id]')).toHaveCount(1);
+  const reopenedDownload=page.waitForEvent('download');
+  await page.getByTestId('save-project').click();
+  const reopened=JSON.parse(readFileSync(await (await reopenedDownload).path(),'utf8'));
+  expect(reopened.project.components).toEqual(routed.project.components);
+  expect(reopened.project.nets.map(n=>[n.id,n.name,n.members])).toEqual(
+    routed.project.nets.map(n=>[n.id,n.name,n.members]));
+  expect(reopened.project.sheets[0].wires).toEqual(routed.project.sheets[0].wires);
+  expect(reopened.project.sheets[0].instances).toEqual(routed.project.sheets[0].instances);
+});
