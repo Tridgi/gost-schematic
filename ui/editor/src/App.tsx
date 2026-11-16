@@ -357,6 +357,23 @@ export default function App() {
           adoptAuthored();setIssue('Явный Junction построен на подтверждённом Net.');
           return true;
         }
+        if(intent.kind==='deleteSymbol'){
+          if(intent.base_revision!==authored.revision)throw Error('STALE_REVISION');
+          const inst=instances.find(i=>i.id===intent.instance_id&&
+            i.component_id===intent.component_id);
+          if(!inst)throw Error('UNKNOWN_INSTANCE');
+          authored.deleteComponent(authored.newTransaction('delete-component'),
+            intent.component_id);
+          adoptAuthored();setSelectedId(null);
+          setIssue('УГО удалено транзакционно; остальные Nets не изменены.');
+          return true;
+        }
+        if(intent.kind==='deleteWire'){
+          if(intent.base_revision!==authored.revision)throw Error('STALE_REVISION');
+          authored.deleteWire(authored.newTransaction('delete-wire'),intent.wire_id);
+          adoptAuthored();setIssue('Проводник удалён с проверкой топологии.');
+          return true;
+        }
         return false;
       }catch(e){
         setIssue(e instanceof WireError?e.code+': '+e.message:String(e));
