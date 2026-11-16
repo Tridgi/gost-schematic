@@ -24,7 +24,7 @@ import {AUTHORING_PARTS, AUTHORING_SYMBOLS} from './catalog';
 type Tx = {project_id:string;revision:number;source_guard:string;command_id:string};
 const SOURCE_ZERO='0000000000000000000000000000000000000000';
 const clone=<T>(v:T):T=>structuredClone(v);
-const reject=(code:string):never=>{throw new WireError(code,code)};
+function reject(code:string):never {throw new WireError(code,code);}
 function checkId(value:unknown,code='INVALID_ID'):asserts value is string {
   if(typeof value!=='string'||!value.trim()||value.length>256)reject(code);
 }
