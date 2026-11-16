@@ -7,7 +7,7 @@ const fixture=JSON.parse(readFileSync(
 test('grid and snap are persisted project changes, not silent disposable preferences',async({page})=>{
   await page.goto('/');
   await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
-  const dirty=page.getByText('Не сохранено',{exact:true});
+  const dirty=page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true});
   await expect(dirty).toHaveCount(0);
   await page.getByRole('button',{name:'Показать сетку'}).click();
   await expect(dirty).toBeVisible();
@@ -47,7 +47,7 @@ test('native Save As completion never clears edits made while OS save dialog is 
   await page.getByTestId('save-project').click();
   await page.waitForFunction(()=>!!window.__gscadMock.pendingSave);
   await page.getByRole('button',{name:'Показать сетку'}).click();
-  await expect(page.getByText('Не сохранено',{exact:true})).toBeVisible();
+  await expect(page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true})).toBeVisible();
   await page.evaluate(()=>{
     const pending=window.__gscadMock.pendingSave;
     pending.resolve({
@@ -56,7 +56,7 @@ test('native Save As completion never clears edits made while OS save dialog is 
       document:pending.args.document
     });
   });
-  await expect(page.getByText('Не сохранено',{exact:true})).toBeVisible();
+  await expect(page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true})).toBeVisible();
   await page.getByRole('button',{name:/ERC/}).click();
   await expect(page.getByText(/SAVE_COMPLETED_BUT_DOCUMENT_CHANGED/)).toBeVisible();
 });
@@ -84,7 +84,7 @@ test('native Open completion never discards edits created after picker invocatio
   await page.getByText('Открыть…',{exact:true}).click();
   await page.waitForFunction(()=>!!window.__gscadMock.pendingOpen);
   await page.getByRole('button',{name:'Показать сетку'}).click();
-  await expect(page.getByText('Не сохранено',{exact:true})).toBeVisible();
+  await expect(page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true})).toBeVisible();
   await page.evaluate(document=>{
     window.__gscadMock.pendingOpen.resolve({
       handle:'aborted-open',generation:0,project_sha256:'b'.repeat(64),
@@ -93,7 +93,7 @@ test('native Open completion never discards edits created after picker invocatio
   },loaded);
   await expect(page.getByRole('button',{name:'Показать сетку'}))
     .toHaveAttribute('aria-pressed','false');
-  await expect(page.getByText('Не сохранено',{exact:true})).toBeVisible();
+  await expect(page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true})).toBeVisible();
   await expect(page.locator('.gscad-project-label')).toContainText(originalTitle);
   await expect.poll(()=>page.evaluate(()=>
     window.__gscadMock.closedHandles.includes('aborted-open'))).toBe(true);
