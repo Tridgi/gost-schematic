@@ -598,3 +598,49 @@ test('R3 pointer drag, 90-degree rotation, Delete, Undo/Redo and second A3 sheet
  ],{input:JSON.stringify(saved),encoding:'utf8',timeout:20000});
  expect(py.status,py.stderr).toBe(0);
 });
+
+test('R3 malformed project and source spoofing are rejected without replacing the live document',async({page})=>{
+ await page.goto('/');
+ await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const bounds=await page.getByTestId('gscad-signed-svg-canvas').boundingBox();
+ for(const [symbol,x] of [['resistor.fixed',.33],['capacitor.fixed',.63]]){
+   await page.getByTestId('catalog-item-symbol/'+symbol).click();
+   await page.mouse.click(bounds.x+bounds.width*x,bounds.y+bounds.height*.47);
+ }
+ await expect(page.locator('[data-testid^="symbol-"]')).toHaveCount(2);
+ const downloading=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const saved=JSON.parse(readFileSync(await (await downloading).path(),'utf8'));
+ const corrupt=[];
+ const edit=(fn,name)=>{
+   const next=structuredClone(saved);fn(next);corrupt.push([name,JSON.stringify(next)]);
+ };
+ edit(d=>{d.project.components[1].id=d.project.components[0].id;},'DUPLICATE_COMPONENT');
+ edit(d=>{d.project.components[1].refdes=d.project.components[0].refdes;},'DUPLICATE_REFDES');
+ edit(d=>{d.project.provenance.source_sha='e695c415fdced164b0e0c39c5249d030795a0aa6';},'SOURCE_SHA_MISMATCH');
+ edit(d=>{d.project.sheets[0].instances[0].origin_um=[1.5,20000];},'COORDINATE_RANGE');
+ edit(d=>{d.project.nets.push({id:'bad-net',name:'N1',members:[
+     {component_id:d.project.components[0].id,physical_pin_number:'999'}
+   ],route_status:'unrouted'});
+   d.project.provenance.expected_counts.nets=1;
+   d.project.provenance.expected_counts.memberships=1;},'UNKNOWN_PIN');
+ edit(d=>{d.project.sheets[0].layers.push(structuredClone(d.project.sheets[0].layers[0]));},'DUPLICATE_LAYER');
+ corrupt.push(['DUPLICATE_JSON_KEY',JSON.stringify(saved).replace(
+   '"format":"gscad-project"','"format":"gscad-project","format":"gscad-project"')]);
+ corrupt.push(['INVALID_JSON','{"format":']);
+ for(const [label,contents] of corrupt){
+   await page.getByTestId('project-file-input').setInputFiles({
+     name:label+'.gscad.json',mimeType:'application/json',buffer:Buffer.from(contents)
+   });
+   await expect(page.getByRole('alert').filter({hasText:'OPEN_FAILED'})).toBeVisible();
+   await expect(page.locator('[data-testid^="symbol-"]')).toHaveCount(2);
+ }
+ const downloading2=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const same=JSON.parse(readFileSync(await (await downloading2).path(),'utf8'));
+ expect(same.project.components).toEqual(saved.project.components);
+ expect(same.project.nets).toEqual(saved.project.nets);
+ expect(same.project.sheets[0].instances).toEqual(saved.project.sheets[0].instances);
+});
