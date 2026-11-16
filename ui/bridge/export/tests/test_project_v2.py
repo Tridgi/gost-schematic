@@ -219,3 +219,50 @@ def test_real_cross_net_junction_is_fatal_not_a_printed_false_dot():
     })
     with pytest.raises(ContractError, match="JUNCTION_CROSSES_FOREIGN_NET"):
         render_v2_source(doc, "sheet-1", expected_project_sha256="0" * 64)
+
+
+def test_duplicate_component_id_cannot_enter_canonical_export():
+    document = load()
+    document["project"]["components"].append(copy.deepcopy(
+        document["project"]["components"][0]
+    ))
+    with pytest.raises(ContractError, match="DUPLICATE_ID"):
+        render_v2_source(document, "sheet-1", expected_project_sha256=digest(document))
+
+
+def test_second_blank_sheet_does_not_leak_first_sheet_symbols_or_wires():
+    """Sheet-local ink must not be replicated when source Nets span sheets."""
+    document = load()
+    original = document["project"]["sheets"][0]
+    second = copy.deepcopy(original)
+    second["id"] = "qa-blank-sheet"
+    second["index"] = original["index"] + 1
+    for name in ("instances", "wires", "junctions", "splices", "texts", "labels", "graphics"):
+        second[name] = []
+    for layer in second["layers"]:
+        layer["id"] = "qa-blank-" + layer["id"]
+    document["project"]["sheets"].append(second)
+    validate(document)
+    svg, warnings = __import__("ui.bridge.export.project_v2", fromlist=[
+        "export_v2_svg"]).export_v2_svg(
+            document, second["id"], ExportRequest(
+                page="A3", orientation="landscape", include_frame=False,
+                strict_font=False
+            ), expected_project_sha256=digest(document)
+        )
+    root = ET.fromstring(svg)
+    assert root.attrib["width"] == "420mm"
+    assert root.attrib["height"] == "297mm"
+    assert root.attrib["data-source-net-count"] == "3"
+    assert not root.findall(".//" + S + "g[@data-layer='symbols']")
+    assert not root.findall(".//" + S + "g[@data-layer='wires']")
+    assert warnings == ()
+
+
+def test_raster_pixel_budget_rejects_600dpi_a3_before_allocating_png():
+    document = load()
+    with pytest.raises(ExportError, match="PNG exceeds approved pixel budget"):
+        export_v2(document, "sheet-1", ExportRequest(
+            page="A3", orientation="landscape", dpi=600,
+            include_frame=False, strict_font=False,
+        ), expected_project_sha256=digest(document))
