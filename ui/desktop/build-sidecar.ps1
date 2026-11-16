@@ -6,8 +6,8 @@ $root = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $py = Join-Path $root '.venv/Scripts/python.exe'
 if ($env:GSCAD_SIDECAR_PYTHON) {
   $candidate = (Resolve-Path $env:GSCAD_SIDECAR_PYTHON -ErrorAction Stop).Path
-  $relative = [IO.Path]::GetRelativePath($root, $candidate)
-  if ($relative.StartsWith('..') -or [IO.Path]::IsPathRooted($relative) -or
+  $prefix = [IO.Path]::GetFullPath($root).TrimEnd('\\') + '\\'
+  if (-not $candidate.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase) -or
       [IO.Path]::GetFileName($candidate) -ne 'python.exe') {
     throw 'Build-only Python interpreter must be a repository-local venv python.exe'
   }
