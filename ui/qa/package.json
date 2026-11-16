@@ -1,0 +1,12 @@
+{
+  "name": "@gscad/chat1-ux-qa",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "test:source-b": "node --test tests/source-b-interop.test.mjs",
+    "check:e2e": "node --check visual-cad.ux.spec.mjs",
+    "test:e2e": "playwright test visual-cad.ux.spec.mjs --reporter=list"
+  },
+  "engines": { "node": ">=22" }
+}
