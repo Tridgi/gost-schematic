@@ -9,18 +9,20 @@ export type CanvasIntent =
  | {kind:'commitWire';source:PinRef;target:{kind:'pin';pin:PinRef}|{kind:'free';at_um:PointUm};bend_points_um:PointUm[]}
  | {kind:'cancelWire';source:PinRef}
  | {kind:'moveSegment';token:SegmentDragToken;delta_um:number}
+ | {kind:'createJunction';selected_segments:readonly {wire_id:string;segment_id:string}[];base_revision:number}
+ | {kind:'rejectJunction';reason:string}
  | {kind:'moveInstance';component_id:string;instance_id:string;delta_um:PointUm;base_revision:number}
  | {kind:'rotateInstance';component_id:string;instance_id:string;base_revision:number}
  | {kind:'select';target:VisualHit|{kind:'symbol';instance_id:string;component_id:string;distance_px:number}|{kind:'ambiguous-symbol';candidates:string[]}|null};
 export type CanvasContext={
  scene:CanvasScene;wireSnapshot:WiringSnapshot;camera:Camera;
- tool:'select'|'wire'|'pan'|'text';gridUm:number;snapEnabled:boolean;
+ tool:'select'|'wire'|'pan'|'text'|'junction';gridUm:number;snapEnabled:boolean;
  onIntent:(intent:CanvasIntent)=>void|boolean;
 };
 export type PointerPoint=ScreenPoint & {pointerId:number;button:number};
 export type CanvasControllerState={
  camera:Camera;draft:null|{source:PinRef;from_um:PointUm;bends_um:PointUm[];cursor_um:PointUm};
- drag:null|{kind:'pan'|'segment';pointerId:number};
+ drag:null|{kind:'pan'|'segment'|'symbol';pointerId:number};
  hover:VisualHit|null;
  selected:VisualHit|{kind:'symbol';instance_id:string;component_id:string;distance_px:number}|null;
 };
