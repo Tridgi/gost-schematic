@@ -273,6 +273,18 @@ export class ManualWireEngine {
       if(a[0]===b[0]) {a[0]+=offsetUm;b[0]+=offsetUm;} else {a[1]+=offsetUm;b[1]+=offsetUm;}
     });
   }
+  /** Canvas hit-testing returns a persistent segment ID, not an array offset.
+   * Resolve that ID on the same monotonic CAS revision before editing.
+   * A stale/removed handle must not silently drag a different segment.
+   */
+  moveSegmentById(tx:Transaction,wireId:string,segmentId:string,offsetUm:number):WiringSnapshot {
+    id(segmentId,'Segment ID');
+    const w=this.doc.wires.find(w=>w.id===wireId);
+    if(!w) fail('UNKNOWN_WIRE','Unknown wire');
+    const idx=w.segments.findIndex(seg=>seg.id===segmentId);
+    if(idx<0) fail('UNKNOWN_SEGMENT','Selected segment ID no longer belongs to this wire');
+    return this.moveSegment(tx,wireId,idx,offsetUm);
+  }
   private cutWire(d:WiringSnapshot,w:WirePolyline,at:PointUm,newAnchor:TerminalAnchor):[string,string] {
     const [left,right]=splitPoints(w,at);
     const newId=serialId(`${w.id}:part`,d);
