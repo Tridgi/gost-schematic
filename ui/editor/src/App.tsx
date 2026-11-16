@@ -291,7 +291,8 @@ export default function App() {
         if(intent.kind==='select'){
           if(intent.target?.kind==='symbol')setSelectedId(intent.target.instance_id);
           if(intent.target?.kind==='pin'){
-            const inst=instances.find(i=>i.component_id===intent.target.pin.component_id);
+            const selectedPin=intent.target.pin;
+            const inst=instances.find(i=>i.component_id===selectedPin.component_id);
             if(inst)setSelectedId(inst.id);
           }
           return true;
