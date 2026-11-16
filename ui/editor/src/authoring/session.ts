@@ -116,6 +116,22 @@ function validateAuthoring(file:ProjectFileV2):void {
   }
   const parts=new Map(p.part_definitions.map(v=>[v.id,v]));
   const symbols=new Map(p.symbol_definitions.map(v=>[v.id,v]));
+  // An unused symbol definition is still persisted and can later become
+  // placeable; enforce exact physical pin identities at import time.
+  for(const symbol of p.symbol_definitions){
+    const part=parts.get(symbol.part_id);
+    if(!part)reject('UNKNOWN_PART');
+    if(!Array.isArray(symbol.pins))reject('INVALID_SYMBOL_PINS');
+    const numbers=new Set<string>();
+    for(const pin of symbol.pins){
+      checkId(pin?.physical_pin_number,'INVALID_PINREF');
+      if(numbers.has(pin.physical_pin_number))reject('DUPLICATE_SYMBOL_PIN');
+      numbers.add(pin.physical_pin_number);
+      if(!part.physical_pins.some(p=>p.number===pin.physical_pin_number))
+        reject('UNKNOWN_PIN');
+      xy(pin.at_um);
+    }
+  }
   const comps=new Map(p.components.map(v=>[v.id,v]));
   const refdes=new Set<string>();
   for(const comp of p.components){
