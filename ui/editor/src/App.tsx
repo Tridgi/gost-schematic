@@ -328,7 +328,7 @@ export default function App() {
         eng.moveComponent(eng.newTransaction('inspector-origin-'+edit.instanceId),component.id,next);
         mutation();
       }catch(e){setIssue('INSPECTOR_REJECTED: '+String(e));}
-    }
+    }}
     onUndo={handleUndo} onRedo={handleRedo}
     onOpen={()=>fileInputRef.current?.click()} onSave={handleSave}
   />;
