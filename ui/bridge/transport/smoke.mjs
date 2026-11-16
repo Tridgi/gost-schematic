@@ -41,6 +41,9 @@ try {
   assert.equal(um.result.y_um, '-9223372036854775808');
   assert.equal(deny.error.code, 'UNKNOWN_OPERATION');
   assert.equal(symbol.ok || symbol.error.code === 'ENGINE_UNAVAILABLE', true);
+  if (process.env.GSCAD_REQUIRE_ENGINE === '1') {
+    assert.equal(symbol.ok, true, 'CI requires real installed Python engine');
+  }
   const sourceFile = join(root, '..', '..', 'fixtures', 'tl494-source-e695-v2.gscad.json');
   if (existsSync(sourceFile)) {
     const document = JSON.parse(readFileSync(sourceFile, 'utf8'));
@@ -60,6 +63,9 @@ try {
     assert.equal(check.result.export_approved, false);
     console.log('PASS canonical ProjectV2 E695 source and read-only Net reachability');
   } else {
+    if (process.env.GSCAD_REQUIRE_V2 === '1') {
+      throw new Error('CI requires canonical ProjectV2 fixture and model');
+    }
     console.log('SKIP canonical ProjectV2 fixture is not installed in this worktree');
   }
   assert.equal(errors, '');
