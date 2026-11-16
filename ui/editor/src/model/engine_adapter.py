@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from contract import ContractError, digest, source_inventory_hash, validate
+from contract import ContractError, digest, pin_world, source_inventory_hash, validate
 
 from gost_schematic.core.geometry import Point
 from gost_schematic.core.transforms import Transform
@@ -61,7 +61,9 @@ def _positive_overlap(first: tuple[Point, Point], second: tuple[Point, Point]) -
     return max(min(p.y, q.y), min(r.y, s.y)) < min(max(p.y, q.y), max(r.y, s.y))
 
 
-def _ensure_legacy_graph_compatible(sheet: dict) -> None:
+def _ensure_legacy_graph_compatible(
+    sheet: dict, placed_pins: tuple[tuple[str, str, Point], ...],
+) -> None:
     """Deny geometry whose projection would accidentally merge graph islands.
 
     Project v2 Free terminals remain isolated even if they coincide. Legacy
@@ -70,6 +72,13 @@ def _ensure_legacy_graph_compatible(sheet: dict) -> None:
     """
     endpoints: dict[tuple[int, int], list[tuple[str, str, str]]] = {}
     segments: list[tuple[str, tuple[Point, Point]]] = []
+    # The legacy engine detects physical pin contact from geometric ink.
+    # Native CAD v2 never turns a free/bend stroke through a physical pin
+    # into electricity: only an authored, matching terminal PinRef is permitted.
+    def touches(a: Point, b: Point, p: Point) -> bool:
+        return ((b.x - a.x) * (p.y - a.y) == (b.y - a.y) * (p.x - a.x)
+                and min(a.x, b.x) <= p.x <= max(a.x, b.x)
+                and min(a.y, b.y) <= p.y <= max(a.y, b.y))
     for wire in sheet["wires"]:
         for vertex in (wire["vertices"][0], wire["vertices"][-1]):
             xy = tuple(vertex["at_um"])
@@ -79,7 +88,18 @@ def _ensure_legacy_graph_compatible(sheet: dict) -> None:
         for edge in wire["segments"]:
             a = vertices[edge["from_vertex_id"]]
             b = vertices[edge["to_vertex_id"]]
-            segments.append((wire["id"], (_point(a["at_um"]), _point(b["at_um"]))))
+            p, q = _point(a["at_um"]), _point(b["at_um"])
+            authored = {
+                (end["anchor"]["component_id"], end["anchor"]["physical_pin_number"])
+                for end in (a, b) if end["anchor"]["kind"] == "pin"
+            }
+            for component_id, physical_number, contact in placed_pins:
+                if touches(p, q, contact) and (component_id, physical_number) not in authored:
+                    raise ContractError(
+                        "ENGINE_UNAUTHORED_PIN_CONTACT",
+                        f'{sheet["id"]}:{wire["id"]}:{component_id}.{physical_number}',
+                    )
+            segments.append((wire["id"], (p, q)))
     for xy, contacts in endpoints.items():
         if len({item[0] for item in contacts}) <= 1:
             continue
@@ -146,8 +166,15 @@ def project_to_engine(document: dict, *, require_placed: bool = True) -> EngineP
     )
 
     native_sheets = []
+    symbols = {item["id"]: item for item in project["symbol_definitions"]}
     for sheet in project["sheets"]:
-        _ensure_legacy_graph_compatible(sheet)
+        pins = tuple(
+            (instance["component_id"], pin["physical_pin_number"], Point(*pin_world(
+                instance, pin["at_um"])))
+            for instance in sheet["instances"]
+            for pin in symbols[instance["symbol_id"]]["pins"]
+        )
+        _ensure_legacy_graph_compatible(sheet, pins)
         segments: list[WireSegment] = []
         provenance: list[tuple[str, str]] = []
         for wire in sheet["wires"]:
