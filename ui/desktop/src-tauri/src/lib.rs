@@ -1,5 +1,6 @@
 //! Isolated Windows desktop bridge: allowlisted Rust commands, packaged Python sidecar.
 //! NOTE: not compiled in this sandbox; Windows/CI native smoke remains a release gate.
+mod native_files;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -120,8 +121,14 @@ fn cancel_engine_request(state: State<'_, BridgeState>, id: String) -> Result<bo
 pub fn run() {
     tauri::Builder::default()
         .manage(BridgeState::default())
+        .manage(native_files::NativeFileStore::default())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![engine_request, cancel_engine_request])
+        .plugin(tauri_plugin_dialog::init())
+        .invoke_handler(tauri::generate_handler![
+            engine_request, cancel_engine_request,
+            native_files::native_open_project, native_files::native_save_project,
+            native_files::native_save_as_project, native_files::native_close_project
+        ])
         .run(tauri::generate_context!())
         .expect("cannot start GOST CAD desktop IPC shell");
 }
