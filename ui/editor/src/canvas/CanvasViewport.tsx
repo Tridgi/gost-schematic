@@ -120,6 +120,8 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     onZoomPercent?.(Math.round(controller.getState().camera.s/DEFAULT_CAMERA.s*100));
     invalidate();
   };
+  const selectedSymbol=controller.getState().selected;
+  const selectedInstanceId=selectedSymbol?.kind==='symbol'?selectedSymbol.instance_id:null;
   const vertices=(snapshotWire:WiringSnapshot['wires'][number])=>new Map(snapshotWire.vertices.map(v=>[v.id,v.at_um]));
   const step=document.project.settings.grid_step_um*camera.s;
   const grid=gridVisible&&step>=6&&Number.isFinite(step);
@@ -152,9 +154,9 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     </g>
     <g className="symbol-ugo" fill="none" stroke="#24384b" strokeWidth={1.5} pointerEvents="none">
       {visibleScene.symbols.map(s=><g key={s.instance_id} data-component-id={s.component_id}
-        data-selected={String(controller.getState().selected?.kind==='symbol'&&controller.getState().selected?.instance_id===s.instance_id)}
+        data-selected={String(selectedInstanceId===s.instance_id)}
         data-testid={'symbol-'+(document.project.components.find(c=>c.id===s.component_id)?.refdes??s.component_id)}
-        stroke={controller.getState().selected?.kind==='symbol'&&controller.getState().selected?.instance_id===s.instance_id?'#e29225':undefined}>
+        stroke={selectedInstanceId===s.instance_id?'#e29225':undefined}>
         {s.strokes.map((stroke,i)=>{
           const a=localStroke(s,stroke.from_um,camera),b=localStroke(s,stroke.to_um,camera);
           return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y}/>;
