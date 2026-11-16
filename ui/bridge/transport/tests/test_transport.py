@@ -319,5 +319,38 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(sys.modules["_gscad_engine_projection"].__file__, str(adapter))
 
 
+    def test_native_blob_parser_uses_strict_real_v2_model_and_no_paths(self):
+        doc = self._fixture()
+        serialized = json.dumps(doc, ensure_ascii=False)
+        response = worker.process(json.dumps(request(
+            "native-open", "parse_document_blob", {"blob": serialized}
+        )).encode())
+        self.assertTrue(response["ok"], response)
+        self.assertEqual(response["result"]["document"], doc)
+        self.assertEqual(response["result"]["project_id"], doc["project"]["id"])
+        self.assertEqual(response["result"]["source_sha"],
+                         "e695c415fdced164b0e0c39c5249d030795a0aa6")
+        self.assertFalse(response["result"]["project_write"])
+        self.assertEqual(len(response["result"]["project_sha256"]), 64)
+        bad_samples = [
+            '{"format":"gscad-project","format":"sneaky"}',
+            '{"project":{"id":"one","\\u0069d":"two"}}',
+            serialized.replace('"format_version": 2', '"format_version": 2.0', 1),
+            serialized.replace('"format_version": 2', '"format_version": NaN', 1),
+        ]
+        for bad in bad_samples:
+            with self.subTest(payload=bad[:60]):
+                denied = worker.process(json.dumps(request(
+                    "native-denied", "parse_document_blob", {"blob": bad}
+                )).encode())
+                self.assertFalse(denied["ok"], denied)
+                self.assertNotEqual(denied["error"]["code"], "INTERNAL")
+        no_path = worker.process(json.dumps(request(
+            "path-injection", "parse_document_blob",
+            {"blob": serialized, "path": "C:\\\\Windows\\\\system.ini"}
+        )).encode())
+        self.assertEqual(no_path["error"]["code"], "INVALID_REQUEST")
+
+
 if __name__ == "__main__":
     unittest.main()
