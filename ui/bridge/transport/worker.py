@@ -101,23 +101,36 @@ def _symbol_operation(symbol: Any, *, check: bool) -> dict[str, Any]:
 
 
 def _project_contract():
-    """Load the one canonical #122 model; never substitute a transport-side schema."""
-    import importlib
+    """Load only the app-owned #122 source file; never import an ambient 'ui' package."""
+    import importlib.util
+    from functools import lru_cache
 
-    # In source checkout, this script may run from any working directory.
-    # In a frozen package, PyInstaller must bundle the canonical model module
-    # and ui/contracts/project-v2.schema.json at their original relative paths.
-    repository = Path(__file__).resolve().parents[3]
-    canonical_path = repository / "ui" / "editor" / "src" / "model" / "contract.py"
-    if canonical_path.is_file() and str(repository) not in sys.path:
-        sys.path.insert(0, str(repository))
-    try:
-        return importlib.import_module("ui.editor.src.model.contract")
-    except (ImportError, OSError, FileNotFoundError) as exc:
-        raise ProtocolError(
-            "MODEL_UNAVAILABLE", "canonical gscad-project v2 contract unavailable"
-        ) from exc
+    # The local checkout and the signed PyInstaller bundle carry the same
+    # ui/editor/src/model/contract.py + ui/contracts/project-v2.schema.json.
+    # Never allow request-controlled PYTHONPATH/module or remote URLs.
+    @lru_cache(maxsize=1)
+    def load():
+        if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+            repository = Path(sys._MEIPASS)
+        else:
+            repository = Path(__file__).resolve().parents[3]
+        canonical_path = repository / "ui" / "editor" / "src" / "model" / "contract.py"
+        schema_path = repository / "ui" / "contracts" / "project-v2.schema.json"
+        if not canonical_path.is_file() or not schema_path.is_file():
+            raise ProtocolError(
+                "MODEL_UNAVAILABLE", "canonical v2 model/schema missing from application"
+            )
+        spec = importlib.util.spec_from_file_location("_gscad_canonical_v2", canonical_path)
+        if spec is None or spec.loader is None:
+            raise ProtocolError("MODEL_UNAVAILABLE", "canonical v2 model cannot be loaded")
+        module = importlib.util.module_from_spec(spec)
+        try:
+            spec.loader.exec_module(module)
+        except (ImportError, OSError, ValueError) as exc:
+            raise ProtocolError("MODEL_UNAVAILABLE", "canonical v2 model load failed") from exc
+        return module
 
+    return load()
 
 def _project_operation(op: str, args: dict[str, Any]) -> dict[str, Any]:
     """Validated read-only ProjectFileV2 bridge; NEVER mutates editor state."""
