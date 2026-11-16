@@ -180,5 +180,64 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(result["error"]["code"], "UNKNOWN_NET")
 
 
+    def test_real_v2_wire_snapshot_and_cas_candidate_without_disk_write(self):
+        doc = self._fixture()
+        original = worker.process(json.dumps(
+            request("v2snapshot", "wire_snapshot", {"document": doc})
+        ).encode())
+        self.assertTrue(original["ok"], original)
+        snapshot = original["result"]["wiring_snapshot"]
+        self.assertEqual(len(snapshot["components"]), 23)
+        self.assertEqual(len(snapshot["nets"]), 15)
+        self.assertEqual(len(snapshot["wires"]), 0)
+        self.assertEqual(
+            snapshot["source_topology_hash"],
+            original["result"]["source_topology_sha256"],
+        )
+        self.assertFalse(original["result"]["committed"])
+        params = {
+            "document": doc, "candidate": snapshot,
+            "expected_project_sha256": original["result"]["project_sha256"],
+        }
+        proposal = worker.process(json.dumps(
+            request("v2candidate", "validate_wire_candidate", params)
+        ).encode())
+        self.assertTrue(proposal["ok"], proposal)
+        self.assertFalse(proposal["result"]["committed"])
+        self.assertEqual(
+            proposal["result"]["project_sha256"], original["result"]["project_sha256"]
+        )
+        self.assertEqual(
+            proposal["result"]["validated_document"]["project"]["provenance"],
+            doc["project"]["provenance"],
+        )
+
+    def test_real_v2_wire_candidate_rejects_stale_sha_and_net_spoof(self):
+        doc = self._fixture()
+        original = worker.process(json.dumps(
+            request("v2snapshot", "wire_snapshot", {"document": doc})
+        ).encode())
+        self.assertTrue(original["ok"], original)
+        snapshot = original["result"]["wiring_snapshot"]
+        params = {
+            "document": doc,
+            "candidate": snapshot,
+            "expected_project_sha256": "0" * 64,
+        }
+        stale = worker.process(json.dumps(
+            request("v2stale", "validate_wire_candidate", params)
+        ).encode())
+        self.assertEqual(stale["error"]["code"], "STALE_PROJECT_SHA")
+        snapshot["nets"][0]["literal_source_name"] = "FORGED_NET"
+        params["expected_project_sha256"] = original["result"]["project_sha256"]
+        forged = worker.process(json.dumps(
+            request("v2forged", "validate_wire_candidate", params)
+        ).encode())
+        self.assertEqual(forged["error"]["code"], "SOURCE_TOPOLOGY_CHANGED")
+        self.assertEqual(doc["project"]["provenance"]["source_sha"],
+                         "e695c415fdced164b0e0c39c5249d030795a0aa6")
+
+
+
 if __name__ == "__main__":
     unittest.main()
