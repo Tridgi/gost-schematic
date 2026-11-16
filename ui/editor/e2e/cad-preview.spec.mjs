@@ -29,7 +29,7 @@ function signedPair() {
 
 test('real frozen TL494 E695 loads 23 physical instances and non-electric b strokes',async({page})=>{
   await page.goto('/');
-  await expect(page.getByTestId('gscad-real-v2-canvas')).toBeVisible();
+  await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
   await expect(page.locator('[data-testid^="symbol-"]')).toHaveCount(23);
   await expect(page.locator('[data-source-role="source_b_continuation"]')).toHaveCount(2);
   await expect(page.locator('[data-net-id]')).toHaveCount(0);
@@ -39,10 +39,10 @@ test('real frozen TL494 E695 loads 23 physical instances and non-electric b stro
 
 test('signed pin-to-pin route, undo/redo and wrong-Net rollback in real browser',async({page})=>{
   await page.goto('/');
-  await expect(page.getByTestId('gscad-real-v2-canvas')).toBeVisible();
+  await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
   const [a,b]=signedPair();
   await page.getByRole('button',{name:'Провод W'}).click();
-  const pin=ref=>page.getByTestId('pin-'+ref.component_id+'-'+ref.physical_pin_number);
+  const pin=ref=>page.getByTestId('signed-pin-'+ref.component_id+'-'+ref.physical_pin_number);
   await expect(pin(a)).toBeVisible();
   await pin(a).click();
   await pin(b).click();
@@ -62,7 +62,7 @@ test('signed pin-to-pin route, undo/redo and wrong-Net rollback in real browser'
 
 test('independent grid/snap toggles and light/dark theme',async({page})=>{
   await page.goto('/');
-  await expect(page.getByTestId('gscad-real-v2-canvas')).toBeVisible();
+  await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
   const grid=page.getByRole('button',{name:'Показать сетку'});
   const snap=page.getByRole('button',{name:'Привязка к сетке'});
   await expect(grid).toHaveAttribute('aria-pressed','true');
