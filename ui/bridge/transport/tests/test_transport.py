@@ -352,5 +352,35 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(no_path["error"]["code"], "INVALID_REQUEST")
 
 
+    def test_native_python_svg_uses_canonical_v2_export_and_never_accepts_paths(self):
+        import base64
+        import hashlib
+        doc = self._fixture()
+        response = worker.process(json.dumps(request(
+            "native-svg", "native_export_preview",
+            {"document": doc, "sheet_id": "sheet-1", "format": "svg"}
+        )).encode())
+        self.assertTrue(response["ok"], response)
+        result = response["result"]
+        self.assertEqual(result["format"], "svg")
+        self.assertEqual(result["approval"], "NOT_ESKD_CERTIFIED")
+        self.assertEqual(result["sheet_size_um"], [420000, 297000])
+        svg = base64.b64decode(result["payload"], validate=True)
+        self.assertEqual(hashlib.sha256(svg).hexdigest(), result["payload_sha256"])
+        self.assertIn(b'width="420mm" height="297mm"', svg)
+        self.assertIn(b'data-source-net-count="15"', svg)
+        self.assertEqual(svg.count(b'data-kind="source_b_continuation"'), 2)
+        for bad_args in [
+            {"document": doc, "sheet_id": "sheet-1", "format": "svg",
+             "path": "C:\\\\Windows\\\\System32\\\\drivers\\\\etc\\\\hosts"},
+            {"document": doc, "sheet_id": "../outside", "format": "pdf"},
+            {"document": doc, "sheet_id": "sheet-1", "format": "shell"},
+        ]:
+            denied = worker.process(json.dumps(request(
+                "native-svg-reject", "native_export_preview", bad_args
+            )).encode())
+            self.assertEqual(denied["error"]["code"], "INVALID_REQUEST")
+
+
 if __name__ == "__main__":
     unittest.main()
