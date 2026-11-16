@@ -7,6 +7,8 @@ import { ManualWireEngine, constructWire, type PinRef, type PointUm,
 import { CanvasViewport } from './canvas/CanvasViewport';
 import type { CanvasIntent } from './canvas/controller.mjs';
 import { commitSegmentDrag } from './canvas/wire-intents.mjs';
+import { loadProjectWires } from './wires/project-v2-adapter';
+import { projectToCanvasScene } from './canvas/scene-projection.mjs';
 
 const umToMm = (value:number):number => value/1000;
 const asPoint = (point:readonly number[]):string => String(umToMm(point[0]))+' '+String(umToMm(point[1]));
@@ -51,8 +53,22 @@ function routeThroughBends(
   return points;
 }
 
+/** Frozen source identity excludes mutable route_status and editor presentation. */
+function sourceIdentity(file:ProjectFileV2):string {
+  const p=file.project;
+  return JSON.stringify({
+    id:p.id,provenance:p.provenance,parts:p.part_definitions,symbols:p.symbol_definitions,
+    components:p.components.map(c=>[c.id,c.source_refdes,c.part_id]),
+    nets:p.nets.map(n=>[n.id,n.name,n.members])
+  });
+}
+
 export default function App() {
   const engineRef=useRef<ManualWireEngine|null>(null);
+  const frozenRef=useRef<ProjectFileV2|null>(null);
+  const topologyHashRef=useRef<string|null>(null);
+  const fileInputRef=useRef<HTMLInputElement|null>(null);
+  const [dirty,setDirty]=useState(false);
   const [document,setDocument]=useState<ProjectFileV2|null>(null);
   const [snapshot,setSnapshot]=useState<WiringSnapshot|null>(null);
   const [tool,setTool]=useState<ToolMode>('select');
@@ -73,6 +89,8 @@ export default function App() {
       const engine=new ManualWireEngine(wired as WiringSnapshot);
       if(doc.project.id!==engine.snapshot.project_id)throw Error('PROJECT_ID_MISMATCH');
       if(!alive)return;
+      frozenRef.current=structuredClone(doc);
+      topologyHashRef.current=engine.snapshot.source_topology_hash;
       engineRef.current=engine;setDocument(doc);setSnapshot(engine.snapshot);
       setGrid(doc.project.settings.grid_visible);setSnap(doc.project.settings.snap_enabled);
       setSelectedId(doc.project.sheets[0]?.instances[0]?.id??null);
@@ -116,7 +134,70 @@ export default function App() {
     ];
   },[document,snapshot,activeSheet,instances,compsById]);
   const refresh=()=>{const eng=engineRef.current;if(eng)setSnapshot(eng.snapshot);};
-  const mutation=()=>{refresh();setHistory(h=>({undo:h.undo+1,redo:0}));setIssue('Выполнена проверяемая операция с WireEngine; сохранение ProjectV2 ожидает IPC.');};
+  const mutation=()=>{
+    refresh();setDirty(true);setHistory(h=>({undo:h.undo+1,redo:0}));
+    setIssue('Проводник изменён через проверенную транзакцию WireEngine; исходные Nets неизменны.');
+  };
+  const currentProject=():ProjectFileV2=>{
+    const eng=engineRef.current;
+    if(!eng||!document||!activeSheet)throw Error('PROJECT_NOT_READY');
+    const next=structuredClone(document),sheet=next.project.sheets.find(s=>s.id===activeSheet.id);
+    if(!sheet)throw Error('UNKNOWN_SHEET');
+    const state=eng.snapshot;
+    sheet.wires=structuredClone(state.wires);
+    sheet.junctions=structuredClone(state.junctions);
+    sheet.splices=structuredClone(state.splices);
+    next.project.settings.grid_visible=grid;
+    next.project.settings.snap_enabled=snap;
+    for(const net of next.project.nets)net.route_status=eng.validateNet(net.id).status;
+    if(!frozenRef.current||sourceIdentity(next)!==sourceIdentity(frozenRef.current))
+      throw Error('SOURCE_TOPOLOGY_MISMATCH: сохранение запрещено');
+    projectToCanvasScene(next,sheet.id);
+    const session=loadProjectWires(next,{
+      sheet_id:sheet.id,revision:state.revision,
+      source_topology_hash:state.source_topology_hash
+    });
+    return session.materialize(next);
+  };
+  const handleSave=()=>{
+    try {
+      const next=currentProject();
+      const payload=JSON.stringify(next,null,2)+'\n';
+      const url=URL.createObjectURL(new Blob([payload],{type:'application/json'}));
+      const link=window.document.createElement('a');
+      link.href=url;link.download='gost-schematic-project-v2.gscad.json';
+      window.document.body.appendChild(link);link.click();link.remove();
+      window.setTimeout(()=>URL.revokeObjectURL(url),1000);
+      setDirty(false);
+      setIssue('Проект v2 выгружен как редактируемый JSON; строгий Python IPC для внешних файлов ещё не подключён.');
+    }catch(e){setIssue('SAVE_FAILED: '+String(e));}
+  };
+  const handleOpen=async(file:File|null)=>{
+    if(!file)return;
+    try {
+      if(file.size>8*1024*1024)throw Error('PROJECT_FILE_TOO_LARGE');
+      const parsed:unknown=JSON.parse(await file.text());
+      if(!parsed||typeof parsed!=='object')throw Error('INVALID_PROJECT_JSON');
+      const next=parsed as ProjectFileV2;
+      if(next.format!=='gscad-project'||next.format_version!==2||
+         !frozenRef.current||sourceIdentity(next)!==sourceIdentity(frozenRef.current))
+        throw Error('SOURCE_TOPOLOGY_MISMATCH: допускается только исходный проект E695');
+      const sheet=next.project.sheets[0];
+      if(!sheet||next.project.sheets.length!==1)throw Error('MULTISHEET_UNSUPPORTED');
+      projectToCanvasScene(next,sheet.id);
+      const engine=loadProjectWires(next,{
+        sheet_id:sheet.id,revision:0,
+        source_topology_hash:topologyHashRef.current??''
+      }).engine;
+      engineRef.current=engine;
+      setDocument(next);setSnapshot(engine.snapshot);
+      setSelectedId(sheet.instances[0]?.id??null);
+      setGrid(next.project.settings.grid_visible);
+      setSnap(next.project.settings.snap_enabled);
+      setDirty(false);setHistory({undo:0,redo:0});
+      setIssue('Проверенный ProjectV2 повторно открыт; PinRef и исходные Nets сохранены.');
+    }catch(e){setIssue('OPEN_FAILED: '+String(e));}
+  };
   /** SVG emits typed intentions; no geometrical intersection changes electrical Nets. */
   const onCanvasIntent=(intent:CanvasIntent)=>{
     const eng=engineRef.current;if(!eng)return;
@@ -161,9 +242,9 @@ export default function App() {
     }catch(e){setIssue(String(e));setPending(null);}
   };
   const handleUndo=()=>{if(engineRef.current?.undo()){
-    refresh();setHistory(h=>({undo:Math.max(0,h.undo-1),redo:h.redo+1}));setIssue('Undo: изменён только визуальный маршрут.');}};
+    refresh();setDirty(true);setHistory(h=>({undo:Math.max(0,h.undo-1),redo:h.redo+1}));setIssue('Undo: отменена транзакция проводника.');}};
   const handleRedo=()=>{if(engineRef.current?.redo()){
-    refresh();setHistory(h=>({undo:h.undo+1,redo:Math.max(0,h.redo-1)}));setIssue('Redo: маршрут восстановлен.');}};
+    refresh();setDirty(true);setHistory(h=>({undo:h.undo+1,redo:Math.max(0,h.redo-1)}));setIssue('Redo: маршрут восстановлен.');}};
   if(!document||!snapshot||!activeSheet)return <main className="gscad-boot">
     <h1>GOST Schematic Engine — R2 preview</h1><p>{issue}</p>
     <p>Выполните Python prepare_editor_fixtures.py и npm run dev.</p></main>;
@@ -175,11 +256,16 @@ export default function App() {
       '. Отсутствие ошибок ERC не доказано.'}
   ];
   return <EditorShell
-    projectName={document.project.title+' · R2 PREVIEW'} dirty={history.undo>0}
+    projectName={document.project.title+' · R2 PREVIEW'} dirty={dirty}
     baseRevision={snapshot.source_topology_hash} sheets={document.project.sheets.map(s=>({id:s.id,title:s.name}))}
     activeSheetId={activeSheet.id} catalog={catalog} tree={tree}
     selected={selected} diagnostics={diagnostics}
     canvas={<div className="gscad-canvas-wrapper">
+      <input ref={fileInputRef} type="file" accept=".json,.gscad" data-testid="project-file-input"
+        style={{display:'none'}} onChange={e=>{
+          void handleOpen(e.currentTarget.files?.[0]??null);
+          e.currentTarget.value='';
+        }}/>
       <CanvasViewport document={document} snapshot={snapshot} sheetId={activeSheet.id}
         tool={tool} gridVisible={grid} snapEnabled={snap}
         onIntent={onCanvasIntent} onZoomPercent={percent=>setZoom(percent/100)}/>
@@ -187,7 +273,7 @@ export default function App() {
         && <div className="gscad-error-banner" role="alert">{issue}</div>}
     </div>}
     tool={tool} gridVisible={grid} snapEnabled={snap} zoomPercent={Math.round(zoom*100)}
-    canUndo={history.undo>0} canRedo={history.redo>0} canSave={false} exportReady={false}
+    canUndo={history.undo>0} canRedo={history.redo>0} canSave={true} exportReady={false}
     inspectorError="Инспектор в R2 доступен только для чтения: требуется CAS ProjectFileV2."
     onToolChange={mode=>{setTool(mode);setPending(null);}}
     onToggleGrid={setGrid} onToggleSnap={setSnap}
@@ -197,6 +283,6 @@ export default function App() {
     onSelectSheet={()=>{}}
     onInspectorProposal={(_edit:InspectorProposal)=>setIssue('POSE_TRANSACTION_NOT_READY: запрещено обходить валидацию #122/#123.')}
     onUndo={handleUndo} onRedo={handleRedo}
-    onSave={()=>setIssue('SAVE_BLOCKED: ожидается #118 Python IPC/атомарный журнал.')}
+    onOpen={()=>fileInputRef.current?.click()} onSave={handleSave}
   />;
 }
