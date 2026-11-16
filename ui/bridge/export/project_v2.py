@@ -10,7 +10,14 @@ from dataclasses import replace
 from itertools import pairwise
 from xml.etree import ElementTree as ET
 
-from ui.bridge.export.canonical import ExportError, ExportRequest, ExportResult, export, mm
+from ui.bridge.export.canonical import (
+    PAGE_UM,
+    ExportError,
+    ExportRequest,
+    ExportResult,
+    export,
+    mm,
+)
 
 _S = "{http://www.w3.org/2000/svg}"
 ET.register_namespace("", "http://www.w3.org/2000/svg")
@@ -196,6 +203,16 @@ def render_v2_source(document: dict, sheet_id: str, *, expected_project_sha256: 
 def export_v2(document: dict, sheet_id: str, request: ExportRequest,
               *, expected_project_sha256: str) -> ExportResult:
     """Preserve exact physical sheet X/Y; render PNG from the canonical SVG."""
+    # Reject page mismatches instead of silently scaling or cropping an A3
+    # snapshot through an unrelated A4/A2 print profile.
+    sheet = next((s for s in document["project"]["sheets"] if s["id"] == sheet_id), None)
+    if sheet is None:
+        raise ExportError("UNKNOWN_SHEET: " + sheet_id)
+    page_size = PAGE_UM[request.page]
+    if request.orientation == "landscape":
+        page_size = page_size[::-1]
+    if tuple(sheet["frame"]["size_um"]) != page_size:
+        raise ExportError("SHEET_PAGE_SIZE_MISMATCH: no implicit paper resize")
     source = render_v2_source(document,sheet_id,
                               expected_project_sha256=expected_project_sha256)
     if request.source_project_sha256 not in (None,expected_project_sha256):
