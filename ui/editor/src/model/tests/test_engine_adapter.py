@@ -13,10 +13,11 @@ import pytest
 ROOT = Path(__file__).resolve().parents[5]
 sys.path.insert(0, str(ROOT / "src"))
 
-from contract import ContractError, digest, source_inventory_hash, strict_loads  # noqa: E402
-from engine_adapter import project_to_engine  # noqa: E402
-from gost_schematic.model.circuit import Circuit, PinRef  # noqa: E402
-from gost_schematic.validation.external_wire_checks import ExternalWireGraph  # noqa: E402
+from contract import ContractError, digest, source_inventory_hash, strict_loads
+from engine_adapter import project_to_engine
+
+from gost_schematic.model.circuit import Circuit, PinRef
+from gost_schematic.validation.external_wire_checks import ExternalWireGraph
 
 FIX = ROOT / "ui" / "fixtures"
 
