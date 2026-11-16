@@ -11,7 +11,8 @@ if ($LASTEXITCODE -ne 0) { throw 'Install of PyInstaller/jsonschema failed' }
 $schemaPath = Join-Path $root 'ui/contracts/project-v2.schema.json'
 $modelPath = Join-Path $root 'ui/editor/src/model/contract.py'
 $wireAdapterPath = Join-Path $root 'ui/integration/project_wire_bridge.py'
-if (-not (Test-Path $schemaPath) -or -not (Test-Path $modelPath) -or -not (Test-Path $wireAdapterPath)) {
+$engineAdapterPath = Join-Path $root 'ui/editor/src/model/engine_adapter.py'
+if (-not (Test-Path $schemaPath) -or -not (Test-Path $modelPath) -or -not (Test-Path $wireAdapterPath) -or -not (Test-Path $engineAdapterPath)) {
   throw 'Install reviewed #122 model and MASTER #125 wire adapter before packaging'
 }
 & $py -m PyInstaller --clean --noconfirm --onefile --collect-all gost_schematic --collect-all jsonschema --add-data "$modelPath;ui/editor/src/model" --add-data "$schemaPath;ui/contracts" --add-data "$wireAdapterPath;ui/integration" --name engine-bridge --distpath (Join-Path $PSScriptRoot 'dist') --workpath (Join-Path $PSScriptRoot '.pyi') (Join-Path $root 'ui/bridge/transport/worker.py')
