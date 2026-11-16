@@ -1,5 +1,5 @@
 /** Safe shortcuts for a native CAD shell. Never interpret typing as a tool command. */
-export type ShortcutAction = 'palette'|'export'|'save'|'undo'|'redo'|'select'|'wire'|'pan'|'text';
+export type ShortcutAction = 'palette'|'export'|'save'|'undo'|'redo'|'select'|'wire'|'pan'|'text'|'junction';
 export type KeyLike = {
   key:string;ctrlKey?:boolean;metaKey?:boolean;altKey?:boolean;shiftKey?:boolean;
   repeat?:boolean;isComposing?:boolean;defaultPrevented?:boolean;
@@ -19,5 +19,5 @@ export function resolveShellShortcut(e:KeyLike,{editable=false,dialogOpen=false}
     return null;
   }
   if(editable||e.shiftKey)return null;
-  return ({v:'select',w:'wire',h:'pan',t:'text'} as Record<string,ShortcutAction>)[key]??null;
+  return ({v:'select',w:'wire',h:'pan',t:'text',j:'junction'} as Record<string,ShortcutAction>)[key]??null;
 }
