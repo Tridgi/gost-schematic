@@ -646,7 +646,8 @@ export default function App() {
         adoptAuthored();setIssue('Добавлен новый лист A3.');}
       catch(e){setIssue('ADD_SHEET_FAILED: '+String(e));}
     }:undefined}
-    onOpen={()=>fileInputRef.current?.click()} onSave={handleSave}
+    onOpen={handleOpenRequest} onSave={()=>handleSave(false)}
+    onSaveAs={()=>handleSave(true)}
     onExport={format=>{void handleExport(format)}}
   />;
 }
