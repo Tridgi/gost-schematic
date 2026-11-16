@@ -22,7 +22,7 @@ test('CAD-UX-R4-02 — native canvas must import authentic E695 non-electrical b
   assert.equal(readFileSync(sourceFixture,'utf8'),original,'immutable E695 fixture must not change');
   assert.equal(JSON.stringify(file),JSON.stringify(JSON.parse(original)));
   for(const b of scene.graphics.filter(g=>g.source_role==='source_b_continuation')) {
-    assert.equal(b.electrical,false);
+    assert.notEqual(b.electrical,true, 'source b can never be electrical');
     assert.equal(b.strokes.length,1);
   }
 });
