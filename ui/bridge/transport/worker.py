@@ -312,6 +312,79 @@ def _wire_operation(op: str, args: dict[str, Any]) -> dict[str, Any]:
         raise ProtocolError(code, "wire candidate rejected; no state was changed") from exc
 
 
+def _native_export_preview(args: dict[str, Any]) -> dict[str, Any]:
+    """Canonical Python v2->physical SVG/PNG300, with NO pathname or write.
+
+    Rust alone obtains an OS file capability and performs the atomic save.
+    All Net/PinRef topology stays in the validated ProjectV2 declaration.
+    The font remains visibly unverified and ESKD approval is NEVER asserted.
+    """
+    import base64
+    import hashlib
+
+    if set(args) != {"document", "sheet_id", "format"} or (
+        type(args.get("document")) is not dict or
+        type(args.get("sheet_id")) is not str or
+        args.get("format") not in ("svg", "png300")
+    ):
+        raise ProtocolError("INVALID_REQUEST", "canonical document/sheet/format required; paths forbidden")
+    document = args["document"]
+    _reject_ambiguous_wire_vertices(document)
+    model = _project_contract()
+    try:
+        model.validate(document)
+        current_sha = model.digest(document)
+    except model.ContractError as exc:
+        raise ProtocolError(exc.code, "canonical project rejected for export") from exc
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        root = Path(sys._MEIPASS)
+    else:
+        root = Path(__file__).resolve().parents[3]
+    exporter = root / "ui" / "bridge" / "export" / "project_v2.py"
+    if not exporter.is_file():
+        raise ProtocolError("EXPORT_UNAVAILABLE", "canonical Python v2 exporter is not packaged")
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
+    try:
+        import ui.bridge.export.project_v2 as bridge_export
+        from ui.bridge.export.canonical import ExportRequest, ExportError
+    except (ImportError, OSError) as exc:
+        raise ProtocolError("EXPORT_UNAVAILABLE", "canonical preview backend dependency missing") from exc
+    if Path(bridge_export.__file__).resolve() != exporter.resolve():
+        raise ProtocolError("EXPORT_UNAVAILABLE", "untrusted Python export module")
+    request = ExportRequest(page="A3", orientation="landscape", dpi=300,
+                            include_frame=False, include_title=False,
+                            strict_font=False)
+    try:
+        if args["format"] == "svg":
+            payload, warnings = bridge_export.export_v2_svg(
+                document, args["sheet_id"], request,
+                expected_project_sha256=current_sha)
+            pixels = [4961, 3508]
+        else:
+            exported = bridge_export.export_v2(
+                document, args["sheet_id"], request,
+                expected_project_sha256=current_sha)
+            payload, warnings, pixels = exported.png, exported.warnings, list(exported.pixels)
+    except (ExportError, ValueError, OSError) as exc:
+        raise ProtocolError("EXPORT_BLOCKED", "canonical Python preview export rejected") from exc
+    # Never silently substitute a raster screenshot or shrink physical units.
+    if len(payload) > 2_600_000:
+        raise ProtocolError("EXPORT_TOO_LARGE", "IPC output exceeds bounded native preview budget")
+    return {
+        "format": args["format"],
+        "encoding": "base64",
+        "payload": base64.b64encode(payload).decode("ascii"),
+        "payload_sha256": hashlib.sha256(payload).hexdigest(),
+        "project_sha256": current_sha,
+        "sheet_id": args["sheet_id"],
+        "sheet_size_um": [420000, 297000],
+        "pixel_dimensions": pixels,
+        "approval": "NOT_ESKD_CERTIFIED",
+        "warnings": list(warnings),
+    }
+
+
 def _parse_document_blob(args: dict[str, Any]) -> dict[str, Any]:
     """Fixed canonical ProjectV2 parser for native-dialog-selected UTF-8 bytes.
 
@@ -424,6 +497,8 @@ def dispatch(request: Any) -> dict[str, Any]:
         return _symbol_operation(args.get("symbol"), check=op == "check_symbol")
     if op == "parse_document_blob":
         return _parse_document_blob(args)
+    if op == "native_export_preview":
+        return _native_export_preview(args)
     if op in {"validate_document", "source_snapshot", "verify_net"}:
         return _project_operation(op, args)
     if op in {"wire_snapshot", "validate_wire_candidate"}:
