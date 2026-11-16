@@ -221,7 +221,7 @@ def test_polyline_stroked_ink_outside_viewbox_fails():
     source = (
         b'<svg xmlns="http://www.w3.org/2000/svg" width="10mm" height="10mm" '
         b'viewBox="0 0 10 10"><polyline points="2,2 9.95,2" stroke="#000000" '
-        'stroke-width="0.3" fill="none"/></svg>'
+        b'stroke-width="0.3" fill="none"/></svg>'
     )
     with pytest.raises(ExportError, match="SOURCE_VIEWBOX_CLIPS_INK"):
         compose_clean_svg(source, ExportRequest(include_frame=False))
