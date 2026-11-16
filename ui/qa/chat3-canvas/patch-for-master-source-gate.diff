@@ -1,0 +1,21 @@
+--- a/ui/integration/source-gate.mjs
++++ b/ui/integration/source-gate.mjs
+@@
+-  for(const j of sh.junctions)if(!point(j.at_um)||!netIds.has(j.net_id)||(usage.get("junction:"+j.id)||0)<2)deny("ORPHAN_JUNCTION");
++  for(const j of sh.junctions)if(!point(j.at_um)||!netIds.has(j.net_id)||(usage.get("junction:"+j.id)||0)<2)deny("ORPHAN_JUNCTION");
++  // Structural preflight must fail closed on an explicitly authored visible
++  // junction drawn over a different named Net; an ordinary X without a dot
++  // continues to be non-conducting. Geometry never assigns Net membership.
++  const onSegment=(p,a,b)=>a[0]===b[0]
++    ? p[0]===a[0]&&p[1]>=Math.min(a[1],b[1])&&p[1]<=Math.max(a[1],b[1])
++    : p[1]===a[1]&&p[0]>=Math.min(a[0],b[0])&&p[0]<=Math.max(a[0],b[0]);
++  for(const j of sh.junctions)for(const w of sh.wires){
++   if(w.net_id===j.net_id||w.layer_id!==j.layer_id)continue;
++   if(w.segments.some((_,i)=>onSegment(j.at_um,w.vertices[i].at_um,w.vertices[i+1].at_um)))
++    deny("JUNCTION_CROSSES_FOREIGN_NET");
++  }
+   for(const j of sh.splices||[])if(!point(j.at_um)||!netIds.has(j.net_id)||(usage.get("splice:"+j.id)||0)!==2)deny("INVALID_SPLICE");
+-  if(sh.graphics.some(g=>g.kind==="source_b_continuation"&&g.electrical===true))deny("NON_ELECTRICAL_GRAPHIC");
++  if(sh.graphics.some(g=>g.kind==="source_b_continuation"&&
++    ["electrical","net_id","pin_ref","anchor","junction_id"].some(k=>Object.hasOwn(g,k))))
++    deny("NON_ELECTRICAL_GRAPHIC");
