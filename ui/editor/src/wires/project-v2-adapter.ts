@@ -23,10 +23,12 @@ export type WireProjectV2 = {
     part_definitions:Array<{id:string;physical_pins:Array<{number:string}>}>;
     symbol_definitions:Array<{id:string;part_id:string;pins:SymbolPinV2[]}>;
     components:Array<{id:string;part_id:string}>;
+    provenance:unknown;
     nets:NetV2[];
     sheets:Array<{
       id:string; layers:Array<{id:string;kind:string}>;
       instances:InstanceV2[]; wires:WirePolyline[]; junctions:Junction[]; splices:Splice[];
+      graphics:unknown[];
     }>;
   };
 };
@@ -45,6 +47,7 @@ function freezeSource(project:WireProjectV2['project']) {
     parts:project.part_definitions,
     symbols:project.symbol_definitions,
     components:project.components,
+    provenance:project.provenance,
     nets:project.nets.map(n=>({id:n.id,name:n.name,members:n.members}))
   });
 }
@@ -55,6 +58,8 @@ function routeGuard(file:WireProjectV2, sheetId:string):string {
     source:freezeSource(file.project),
     nets:file.project.nets,
     instances:sheet.instances,
+    graphics:sheet.graphics,
+    layers:sheet.layers,
     wires:sheet.wires,junctions:sheet.junctions,splices:sheet.splices
   });
 }
