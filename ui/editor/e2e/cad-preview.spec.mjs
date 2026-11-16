@@ -714,11 +714,16 @@ test('R4 Chromium connected R1: reject without consent, consent reroute, Undo/Re
  await page.getByTestId('save-project').click();
  const connected=JSON.parse(readFileSync(await (await d1).path(),'utf8'));
  await page.getByRole('button',{name:'Выбор V'}).click();
- const locate=()=>page.getByTestId('symbol-R1').locator('line').first().evaluate(el=>{
-   const pt=el.ownerSVGElement.createSVGPoint();
-   pt.x=(Number(el.getAttribute('x1'))+Number(el.getAttribute('x2')))/2;
-   pt.y=(Number(el.getAttribute('y1'))+Number(el.getAttribute('y2')))/2;
-   const point=pt.matrixTransform(el.ownerSVGElement.getScreenCTM());
+ // Select the UGO BODY centre, not its graphical lead: at fit-to-A3 zoom
+ // a lead is within the physical-pin hit radius and is intentionally NOT draggable.
+ const locate=()=>page.getByTestId('symbol-R1').evaluate(group=>{
+   const strokes=[...group.querySelectorAll('line')];
+   const xs=strokes.flatMap(el=>[Number(el.getAttribute('x1')),Number(el.getAttribute('x2'))]);
+   const ys=strokes.flatMap(el=>[Number(el.getAttribute('y1')),Number(el.getAttribute('y2'))]);
+   const pt=group.ownerSVGElement.createSVGPoint();
+   pt.x=(Math.min(...xs)+Math.max(...xs))/2;
+   pt.y=(Math.min(...ys)+Math.max(...ys))/2;
+   const point=pt.matrixTransform(group.ownerSVGElement.getScreenCTM());
    return{x:point.x,y:point.y};
  });
  const drag=async(dx,dy)=>{
