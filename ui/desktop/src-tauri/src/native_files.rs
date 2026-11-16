@@ -456,8 +456,8 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("gscad-unicode-{}", Uuid::new_v4()));
         fs::create_dir(&dir).unwrap();
         let path = dir.join("Схема_ТЛ494_日本.gscad.json");
-        let first = b"{\\"value\\":1}\\n";
-        let second = b"{\\"value\\":2}\\n";
+        let first = br#"{"value":1}"#;
+        let second = br#"{"value":2}"#;
         assert_eq!(atomic_save(&path, first, None).unwrap(), sha(first));
         assert_eq!(fs::read(&path).unwrap(), first);
         assert_eq!(atomic_save(&path, second, None).unwrap_err(), "SAVE_AS_TARGET_EXISTS");
