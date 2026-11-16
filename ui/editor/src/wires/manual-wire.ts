@@ -339,6 +339,45 @@ export class ManualWireEngine {
       }
     });
   }
+  /** Explicit user action at a true H/V intersection, never SVG overlap inference.
+   * All segment handles are resolved by immutable IDs under a monotonic CAS revision.
+   */
+  connectCrossingSegmentsById(
+    tx:Transaction,
+    selections:ReadonlyArray<{wire_id:string;segment_id:string}>,
+    junctionId:string
+  ):WiringSnapshot {
+    id(junctionId,'Junction ID');
+    if(tx.base_revision!==this.doc.revision)fail('STALE_REVISION','Junction selection is stale');
+    if(selections.length<2)fail('JUNCTION_DEGREE','Choose at least two independent conductors');
+    const chosen=selections.map(selection=>{
+      id(selection.wire_id,'Wire ID');id(selection.segment_id,'Segment ID');
+      const wire=this.doc.wires.find(w=>w.id===selection.wire_id);
+      if(!wire)fail('UNKNOWN_WIRE','Selected conductor does not exist');
+      const index=wire.segments.findIndex(s=>s.id===selection.segment_id);
+      if(index<0)fail('UNKNOWN_SEGMENT','Selected segment does not exist');
+      const a=wire.vertices[index].at_um,b=wire.vertices[index+1].at_um;
+      return {wire,a,b};
+    });
+    if(new Set(chosen.map(v=>v.wire.id)).size!==chosen.length)
+      fail('JUNCTION_DEGREE','Select distinct conductor paths');
+    const first=chosen[0].wire;
+    if(chosen.some(c=>c.wire.net_id!==first.net_id||c.wire.layer_id!==first.layer_id))
+      fail('NET_CONFLICT','Only conductors on same signed Net and layer can join');
+    const h=chosen.find(c=>c.a[1]===c.b[1]);
+    const v=chosen.find(c=>c.a[0]===c.b[0]);
+    if(!h||!v)fail('AMBIGUOUS_JUNCTION','Parallel coincident geometry has no unique H/V intersection');
+    const at:PointUm=[v.a[0],h.a[1]];
+    point(at);
+    if(chosen.some(c=>!onSegment(at,c.a,c.b)))
+      fail('INVALID_JUNCTION_POINT','Selected segments do not meet at the same physical location');
+    if(this.doc.junctions.some(j=>same(j.at_um,at)&&j.layer_id===first.layer_id))
+      fail('ALREADY_CONNECTED','The physical intersection already has an explicit Junction');
+    let netId=first.net_id,layerId=first.layer_id;
+    return this.toggleJunction(tx,{
+      id:junctionId,net_id:netId,layer_id:layerId,at_um:at
+    },chosen.map(c=>c.wire.id));
+  }
   mergeSplice(tx:Transaction,spliceId:string):WiringSnapshot {
     return this.transaction(tx,d=>{
       const splice=d.splices.find(s=>s.id===spliceId);
