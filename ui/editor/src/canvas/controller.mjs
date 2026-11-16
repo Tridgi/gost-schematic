@@ -52,6 +52,10 @@ export function createCanvasController(initial){
    const exact=hitTest(context.scene,context.camera,p);
    const hit=context.tool==='select'&&!exact?symbolHit(context.scene,context.camera,p):exact;
    hover=hit;
+   if(context.tool==='place'&&p.button===0){
+    return emit({kind:'placeSymbol',at_um:toWorld(p),
+      base_revision:context.wireSnapshot.revision})!==false;
+   }
    if(context.tool==='junction'&&p.button===0){
     if(hit?.kind!=='ambiguous-segment'||hit.candidates.length<2){
       emit({kind:'rejectJunction',reason:'JUNCTION_SELECTION_REQUIRED'});
