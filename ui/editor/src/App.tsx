@@ -76,6 +76,10 @@ export default function App() {
   const fileInputRef=useRef<HTMLInputElement|null>(null);
   const [nativeHandle,setNativeHandle]=useState<NativeDocumentHandle|null>(null);
   const [dirty,setDirty]=useState(false);
+  // Include persisted UI settings in the edit clock; domain revisions alone miss them.
+  // A separate session clock blocks late native responses from another opened project.
+  const contentEpochRef=useRef(0);
+  const sessionEpochRef=useRef(0);
   const [document,setDocument]=useState<ProjectFileV2|null>(null);
   const [snapshot,setSnapshot]=useState<WiringSnapshot|null>(null);
   const [tool,setTool]=useState<ToolMode>('select');
@@ -160,12 +164,15 @@ export default function App() {
     engineRef.current=session.engine;
     setDocument(session.file);setSnapshot(session.snapshot);
     setHistory({undo:session.canUndo?1:0,redo:session.canRedo?1:0});
+    contentEpochRef.current++;
     setDirty(true);
   };
   const handleNew=()=>{
     if(dirty&&!window.confirm('Есть несохранённые изменения. Создать новый проект и потерять их?'))return;
     try{
       const session=new AuthoringSession(newBlankProject());
+      sessionEpochRef.current++;
+      contentEpochRef.current++;
       if(nativeHandle)void nativeCloseProject(nativeHandle.handle).catch(()=>{});
       setNativeHandle(null);
       authoringRef.current=session;engineRef.current=session.engine;
@@ -191,6 +198,7 @@ export default function App() {
     });
   };
   const mutation=()=>{
+    contentEpochRef.current++;
     refresh();setDirty(true);setHistory(h=>({undo:h.undo+1,redo:0}));
     setIssue('Проводник изменён через проверенную транзакцию WireEngine; исходные Nets неизменны.');
   };
@@ -231,14 +239,19 @@ export default function App() {
       if(nativeDesktopAvailable()){
         const expectedRevision=authoringRef.current?.revision??engineRef.current?.snapshot.revision??0;
         const projectId=next.project.id;
+        const saveEpoch=contentEpochRef.current;
+        const saveSession=sessionEpochRef.current;
         const action=saveAs||!nativeHandle
           ?nativeSaveAsProject(next,nativeHandle)
           :nativeSaveProject(nativeHandle,next);
         void action.then(result=>{
-          if(activeProjectIdRef.current!==projectId)return;
+          if(activeProjectIdRef.current!==projectId||sessionEpochRef.current!==saveSession){
+            void nativeCloseProject(result.handle).catch(()=>{});
+            return;
+          }
           setNativeHandle(result);
           const actualRevision=authoringRef.current?.revision??engineRef.current?.snapshot.revision??0;
-          if(actualRevision===expectedRevision){
+          if(actualRevision===expectedRevision&&contentEpochRef.current===saveEpoch){
             setDirty(false);
             setIssue('NATIVE_SAVED: '+result.filename+'; Python ProjectV2 PASS, ревизия '+result.generation+'.');
           }else setIssue('SAVE_COMPLETED_BUT_DOCUMENT_CHANGED: сохраните последующие изменения отдельно.');
@@ -286,6 +299,7 @@ export default function App() {
     if(next.format==='gscad-project'&&next.format_version===2&&
        next.project?.provenance?.status==='synthetic'){
       const author=new AuthoringSession(next);
+      sessionEpochRef.current++;contentEpochRef.current++;
       authoringRef.current=author;engineRef.current=author.engine;
       setDocument(author.file);setSnapshot(author.snapshot);
       setSelectedId(next.project.sheets.find(s=>s.id===next.workspace.active_sheet_id)?.instances[0]?.id??null);
@@ -305,6 +319,7 @@ export default function App() {
       sheet_id:sheet.id,revision:0,
       source_topology_hash:topologyHashRef.current??''
     }).engine;
+    sessionEpochRef.current++;contentEpochRef.current++;
     authoringRef.current=null;engineRef.current=engine;
     setDocument(next);setSnapshot(engine.snapshot);
     setSelectedId(sheet.instances[0]?.id??null);
@@ -315,9 +330,14 @@ export default function App() {
   };
   const handleOpen=async(file:File|null)=>{
     if(!file)return;
+    const pendingSession=sessionEpochRef.current;
+    const pendingContent=contentEpochRef.current;
     try {
       if(file.size>8*1024*1024)throw Error('PROJECT_FILE_TOO_LARGE');
-      const parsed:unknown=parseProjectJsonStrict(await file.text());
+      const text=await file.text();
+      if(pendingSession!==sessionEpochRef.current||pendingContent!==contentEpochRef.current)
+        throw Error('OPEN_REJECTED_CHANGED_DURING_READ');
+      const parsed:unknown=parseProjectJsonStrict(text);
       if(!parsed||typeof parsed!=='object')throw Error('INVALID_PROJECT_JSON');
       const next=parsed as ProjectFileV2;
       installValidatedProject(next);
@@ -328,7 +348,14 @@ export default function App() {
   const handleOpenRequest=()=>{
     if(dirty&&!window.confirm('Изменения не сохранены. Открыть другой файл и потерять правки?'))return;
     if(!nativeDesktopAvailable()){fileInputRef.current?.click();return;}
+    const pendingSession=sessionEpochRef.current;
+    const pendingContent=contentEpochRef.current;
     void nativeOpenProject().then(result=>{
+      if(pendingSession!==sessionEpochRef.current||pendingContent!==contentEpochRef.current){
+        void nativeCloseProject(result.handle).catch(()=>{});
+        setIssue('NATIVE_OPEN_REJECTED_CHANGED_DURING_DIALOG: изменения проекта не потеряны.');
+        return;
+      }
       installValidatedProject(result.document);
       if(nativeHandle)void nativeCloseProject(nativeHandle.handle).catch(()=>{});
       setNativeHandle(result);
@@ -544,12 +571,14 @@ export default function App() {
     const author=authoringRef.current;
     if(author){if(author.undo()){adoptAuthored();setIssue('Undo: восстановлена целостная модель проекта.');}return;}
     if(engineRef.current?.undo()){
+      contentEpochRef.current++;
       refresh();setDirty(true);setHistory(h=>({undo:Math.max(0,h.undo-1),redo:h.redo+1}));setIssue('Undo: отменена транзакция проводника.');}
   };
   const handleRedo=()=>{
     const author=authoringRef.current;
     if(author){if(author.redo()){adoptAuthored();setIssue('Redo: восстановлена целостная модель проекта.');}return;}
     if(engineRef.current?.redo()){
+      contentEpochRef.current++;
       refresh();setDirty(true);setHistory(h=>({undo:h.undo+1,redo:Math.max(0,h.redo-1)}));setIssue('Redo: маршрут восстановлен.');}
   };
   if(!document||!snapshot||!activeSheet)return <main className="gscad-boot">
@@ -586,7 +615,13 @@ export default function App() {
     canUndo={history.undo>0} canRedo={history.redo>0} canSave={true} exportReady={true}
     inspectorError={null}
     onToolChange={mode=>{setTool(mode);setPending(null);}}
-    onToggleGrid={setGrid} onToggleSnap={setSnap}
+    onToggleGrid={value=>{
+      if(value!==grid){contentEpochRef.current++;setDirty(true);}
+      setGrid(value);
+    }} onToggleSnap={value=>{
+      if(value!==snap){contentEpochRef.current++;setDirty(true);}
+      setSnap(value);
+    }}
     onPlaceSymbol={id=>{
       if(!authoringRef.current){setIssue('SOURCE_LOCKED: E695 нельзя дополнять новыми исходными PinRef.');return;}
       setPlacementSymbol(id);setTool('place');setIssue('Кликните на листе для размещения '+id+' (DRAFT).');
