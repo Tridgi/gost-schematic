@@ -230,3 +230,29 @@ test('dangling endpoint diagnostic is explicit and scoped to declared Net',()=>{
  assert.deepEqual(e.danglingEndpoints('N1'),['OPEN:end','OPEN:start']);
  assert.deepEqual(e.danglingEndpoints('N2'),[]);
 });
+
+test('ProjectV2 arbitrary globally unique free IDs remain stable across split/merge',()=>{
+ const e=make(), start={kind:'free',free_id:'external-free-α'}, end={kind:'free',free_id:'external-free-β'};
+ commit(e,constructWire('CUSTOM','N1','default',[[30000,30000],[40000,30000]],start,end));
+ assert.deepEqual([e.snapshot.wires[0].vertices[0].anchor,e.snapshot.wires[0].vertices.at(-1).anchor],[start,end]);
+ e.splitWire(tx(e,'split-custom'),'CUSTOM',[35000,30000],'S-custom');
+ assert.deepEqual(
+  e.snapshot.wires.flatMap(w=>[w.vertices[0].anchor,w.vertices.at(-1).anchor]).filter(a=>a.kind==='free').map(a=>a.free_id).sort(),
+  ['external-free-α','external-free-β']);
+ e.mergeSplice(tx(e,'merge-custom'),'S-custom');
+ assert.deepEqual([e.snapshot.wires[0].vertices[0].anchor,e.snapshot.wires[0].vertices.at(-1).anchor],[start,end]);
+});
+
+test('ProjectV2 duplicate free IDs across wire endpoints fail atomically',()=>{
+ const e=make(), anchor={kind:'free',free_id:'external-UUID'};
+ commit(e,constructWire('A','N1','default',[[25000,40000],[30000,40000]],anchor,{kind:'free',free_id:'other-UUID'}));
+ const before=e.serialize();
+ err(()=>commit(e,constructWire('B','N1','default',[[50000,40000],[60000,40000]],anchor,{kind:'free',free_id:'third-UUID'})),'FREE_ALIAS');
+ assert.equal(e.serialize(),before);
+});
+
+test('ProjectV2 empty arbitrary free ID fails closed without history mutation',()=>{
+ const e=make(),before=e.serialize();
+ err(()=>commit(e,constructWire('E','N1','default',[[35000,40000],[36000,40000]],{kind:'free',free_id:''},{kind:'free',free_id:'ok'})),'INVALID_ID');
+ assert.equal(e.serialize(),before);
+});
