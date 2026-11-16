@@ -17,7 +17,7 @@ jobs:
           node-version: '22'
       - run: node --check ui/integration/source-gate.mjs
       - run: node --check ui/integration/source-gate.test.mjs
-      - run: node --test ui/integration/source-gate.test.mjs
+      - run: node --test ui/integration/source-gate.test.mjs ui/qa/chat3-source-gate/source-gate-adversarial.test.mjs
 
   r0-editor-core:
     runs-on: ubuntu-latest
