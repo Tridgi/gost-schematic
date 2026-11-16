@@ -124,3 +124,52 @@ test('serialized user project refuses spoofed source, duplicate IDs, duplicate l
  }
  assert.deepEqual(s.file,d);
 });
+
+
+test('R5: removing an early Net cannot duplicate a surviving Net name on the next connection',()=>{
+ const s=newSession();
+ for(let i=0;i<3;i++){
+   s.place(s.newTransaction('place-r-'+i),'symbol/resistor.fixed',[100000,50000+i*60000]);
+   s.place(s.newTransaction('place-c-'+i),'symbol/capacitor.fixed',[155000,50000+i*60000]);
+ }
+ const ids=Object.fromEntries(s.file.project.components.map(c=>[c.refdes,c.id]));
+ s.connect(s.newTransaction('net-1'),pin(ids.R1,'2'),pin(ids.C1,'1'));
+ s.connect(s.newTransaction('net-2'),pin(ids.R2,'2'),pin(ids.C2,'1'));
+ const initial=s.file;
+ assert.deepEqual(initial.project.nets.map(n=>n.name),['N1','N2']);
+ const firstId=initial.project.nets[0].id;
+ const firstWire=initial.project.sheets[0].wires.find(w=>w.net_id===firstId);
+ assert.ok(firstWire);
+ s.deleteWire(s.newTransaction('unroute-net-1'),firstWire.id);
+ s.deleteComponent(s.newTransaction('delete-r1'),ids.R1);
+ s.deleteComponent(s.newTransaction('delete-c1'),ids.C1);
+ assert.deepEqual(s.file.project.nets.map(n=>n.name),['N2']);
+ s.connect(s.newTransaction('net-3'),pin(ids.R3,'2'),pin(ids.C3,'1'));
+ const names=s.file.project.nets.map(n=>n.name);
+ assert.equal(new Set(names).size,names.length,'all user-authored Net names must be unique');
+ assert.equal(s.file.project.nets.length,2);
+ assert.deepEqual(s.file.project.nets[0].members,[pin(ids.R2,'2'),pin(ids.C2,'1')]);
+});
+
+test('R5: imported synthetic ProjectV2 refuses duplicate Net names despite distinct Net IDs',()=>{
+ const s=newSession();
+ for(let i=0;i<2;i++){
+   s.place(s.newTransaction('r-'+i),'symbol/resistor.fixed',[100000,60000+i*80000]);
+   s.place(s.newTransaction('c-'+i),'symbol/capacitor.fixed',[155000,60000+i*80000]);
+ }
+ const ids=Object.fromEntries(s.file.project.components.map(c=>[c.refdes,c.id]));
+ s.connect(s.newTransaction('n1'),pin(ids.R1,'2'),pin(ids.C1,'1'));
+ s.connect(s.newTransaction('n2'),pin(ids.R2,'2'),pin(ids.C2,'1'));
+ const forged=s.file,original=JSON.stringify(forged);
+ forged.project.nets[1].name=forged.project.nets[0].name;
+ assert.notEqual(forged.project.nets[0].id,forged.project.nets[1].id);
+ assert.throws(()=>new AuthoringSession(forged),/DUPLICATE_NET_NAME/);
+ assert.equal(JSON.stringify(s.file),original,'invalid import must not mutate original session');
+});
+
+test('R5: unplaced catalogue parts cannot declare duplicate physical pin numbers',()=>{
+ const forged=newBlankProject();
+ const part=forged.project.part_definitions[0];
+ part.physical_pins.push(structuredClone(part.physical_pins[0]));
+ assert.throws(()=>new AuthoringSession(forged),/DUPLICATE_PHYSICAL_PIN/);
+});
