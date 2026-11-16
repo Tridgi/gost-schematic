@@ -100,6 +100,83 @@ def _symbol_operation(symbol: Any, *, check: bool) -> dict[str, Any]:
     return {"format": "svg", "svg": svg, "diagnostics": diagnostics}
 
 
+def _project_contract():
+    """Load the one canonical #122 model; never substitute a transport-side schema."""
+    import importlib
+
+    # In source checkout, this script may run from any working directory.
+    # In a frozen package, PyInstaller must bundle the canonical model module
+    # and ui/contracts/project-v2.schema.json at their original relative paths.
+    repository = Path(__file__).resolve().parents[3]
+    canonical_path = repository / "ui" / "editor" / "src" / "model" / "contract.py"
+    if canonical_path.is_file() and str(repository) not in sys.path:
+        sys.path.insert(0, str(repository))
+    try:
+        return importlib.import_module("ui.editor.src.model.contract")
+    except (ImportError, OSError, FileNotFoundError) as exc:
+        raise ProtocolError(
+            "MODEL_UNAVAILABLE", "canonical gscad-project v2 contract unavailable"
+        ) from exc
+
+
+def _project_operation(op: str, args: dict[str, Any]) -> dict[str, Any]:
+    """Validated read-only ProjectFileV2 bridge; NEVER mutates editor state."""
+    expected_keys = {"document", "net_id"} if op == "verify_net" else {"document"}
+    if set(args) != expected_keys or type(args.get("document")) is not dict:
+        raise ProtocolError("INVALID_REQUEST", "v2 document and exact operation keys required")
+    model = _project_contract()
+    try:
+        document = model.validate(args["document"])
+        project = document["project"]
+        project_sha256 = model.digest(document)  # workspace/camera excluded by #122
+        source_sha256 = model.source_inventory_hash(project)
+    except model.ContractError as exc:
+        raise ProtocolError(exc.code, "rejected by canonical gscad-project v2 validator") from exc
+    # Honest provenance: a source SHA only asserts declared source inventory,
+    # not that wires have been routed/approved or a GOST font has been checked.
+    if op == "verify_net":
+        net_id = args["net_id"]
+        if not isinstance(net_id, str) or not net_id:
+            raise ProtocolError("INVALID_NET", "nonempty declared net ID required")
+        net = next((item for item in project["nets"] if item["id"] == net_id), None)
+        if net is None:
+            raise ProtocolError("UNKNOWN_NET", "Net does not exist in project")
+        is_connected = model.route_is_complete(project, net)
+        return {
+            "project_sha256": project_sha256,
+            "source_topology_sha256": source_sha256,
+            "net_id": net_id,
+            "declared_route_status": net["route_status"],
+            "reachability_complete": is_connected,
+            "export_approved": False,
+            "diagnostics": [] if is_connected else ["DECLARED_MEMBERS_NOT_ALL_CONNECTED"],
+        }
+    counts = {
+        "components": len(project["components"]),
+        "nets": len(project["nets"]),
+        "memberships": sum(len(n["members"]) for n in project["nets"]),
+        "wires": sum(len(s["wires"]) for s in project["sheets"]),
+        "non_electrical_b": sum(
+            g["kind"] == "source_b_continuation"
+            for sheet in project["sheets"] for g in sheet["graphics"]
+        ),
+    }
+    return {
+        "model": "gscad-project",
+        "format_version": 2,
+        "source_sha": project["provenance"]["source_sha"],
+        "project_sha256": project_sha256,
+        "source_topology_sha256": source_sha256,
+        "inventory": counts,
+        "declared_routes": {
+            status: sum(n["route_status"] == status for n in project["nets"])
+            for status in ("unrouted", "partial", "verified")
+        },
+        "electrical_approval": False,
+        "project_write": False,
+    }
+
+
 def dispatch(request: Any) -> dict[str, Any]:
     if not isinstance(request, dict) or set(request) != ALLOWED_KEYS:
         raise ProtocolError("INVALID_REQUEST", "exact keys required: v, id, op, args")
@@ -112,15 +189,18 @@ def dispatch(request: Any) -> dict[str, Any]:
         raise ProtocolError("INVALID_REQUEST", "invalid operation or args")
     if op == "hello":
         return {"protocol": VERSION, "engine": "gost-schematic",
-                "capabilities": ["hello", "unit_roundtrip", "check_symbol", "render_symbol"],
+                "capabilities": ["hello", "unit_roundtrip", "check_symbol", "render_symbol",
+                                 "validate_document", "source_snapshot", "verify_net"],
                 "project_write": False, "process": "ephemeral-or-supervised"}
     if op == "unit_roundtrip":
         return {"x_um": decimal_um(args.get("x_um")),
                 "y_um": decimal_um(args.get("y_um"))}
     if op == "check_symbol" or op == "render_symbol":
         return _symbol_operation(args.get("symbol"), check=op == "check_symbol")
-    if op in {"source_snapshot", "position_edit", "verify_net", "render_svg", "export_png"}:
-        raise ProtocolError("NOT_WIRED", "awaiting #122 canonical model and #124 export adapter")
+    if op in {"validate_document", "source_snapshot", "verify_net"}:
+        return _project_operation(op, args)
+    if op in {"position_edit", "render_svg", "export_png"}:
+        raise ProtocolError("NOT_WIRED", "awaiting approved transactional/export adapter")
     raise ProtocolError("UNKNOWN_OPERATION", "operation not allowlisted")
 
 
