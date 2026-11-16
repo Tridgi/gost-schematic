@@ -168,7 +168,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     onPointerDown={down} onPointerMove={move} onPointerUp={up}
     onPointerCancel={e=>{controller.key('Escape');if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);invalidate()}}
     onWheel={wheel}
-    onKeyDown={e=>{if(['Escape','Enter','r','R'].includes(e.key)){if(controller.key(e.key)){e.preventDefault();invalidate()}}}}
+    onKeyDown={e=>{if(['Escape','Enter','r','R','Delete','Backspace'].includes(e.key)){if(controller.key(e.key)){e.preventDefault();invalidate()}}}}
     style={{touchAction:'none',outlineOffset:2}}>
     <defs>
       {grid&&<pattern id="cad-grid-um" width={step} height={step}
