@@ -10,7 +10,7 @@
     "prebuild": "python ../integration/prepare_editor_fixtures.py",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "node --experimental-strip-types --test src/components/inspector-units.test.ts src/components/project-view.test.ts src/components/shortcuts.test.ts src/theme/layout.test.ts src/theme/tokens.test.ts src/export/browser-export.test.ts src/authoring/strict-json.test.ts src/authoring/session-domain.test.mjs",
+    "test": "node --experimental-strip-types --test src/components/inspector-units.test.ts src/components/project-view.test.ts src/components/shortcuts.test.ts src/theme/layout.test.ts src/theme/tokens.test.ts src/export/browser-export.test.ts src/authoring/strict-json.test.ts src/authoring/session-domain.test.mjs src/native/desktop.test.ts",
     "test:e2e": "playwright test -c e2e/playwright.config.mjs"
   },
   "dependencies": {
