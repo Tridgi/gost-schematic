@@ -1,7 +1,7 @@
 //! R4 native file capability boundary. Only OS picker-selected PathBufs reach disk IO.
 //! Every open and save crosses the real Python ProjectV2 strict validation IPC.
 //! No user-controlled process paths, arbitrary FS API or shell arguments are exposed.
-use crate::{engine_request, BridgeState, EngineRequest};
+use crate::{internal_engine_request, BridgeState, EngineRequest};
 use serde::Serialize;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -86,7 +86,7 @@ async fn canonicalize(app: &AppHandle, blob: String) -> Result<Canonical, String
         v: 1, id: format!("native_{}", Uuid::new_v4().simple()),
         op: "parse_document_blob".into(), args: json!({"blob": blob}),
     };
-    let response = engine_request(app.clone(), app.state::<BridgeState>(), request).await?;
+    let response = internal_engine_request(app.clone(), app.state::<BridgeState>(), request).await?;
     if response.get("ok").and_then(Value::as_bool) != Some(true) {
         return Err(response.get("error").and_then(|x| x.get("code"))
             .and_then(Value::as_str).unwrap_or("PYTHON_MODEL_REJECTED").to_owned());
