@@ -5,10 +5,12 @@ on:
     branches: [ui/chat8-r5-export-hardening]
     paths:
       - 'ui/bridge/export/**'
+      - 'ui/editor/src/export/**'
       - '.github/workflows/visual-cad-chat8-r5.yml'
   pull_request:
     paths:
       - 'ui/bridge/export/**'
+      - 'ui/editor/src/export/**'
       - '.github/workflows/visual-cad-chat8-r5.yml'
   workflow_dispatch:
 
@@ -35,3 +37,15 @@ jobs:
         run: |
           python -m ruff check ui/bridge/export
           python -m pytest -q ui/bridge/export/tests
+
+  browser-png-guard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run real Node TypeScript PNG300 security and physical-size tests
+        working-directory: ui/editor
+        run: node --experimental-strip-types --test src/export/browser-export.test.ts
