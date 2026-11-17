@@ -186,10 +186,15 @@ try{
     assert.equal(await page.locator('[data-net-id]').count(),1);
     // A 900px desktop reopens with its inspector collapsed by design.
     // Select C9 through the authoritative project-tree item.
-    if(await page.evaluate(()=>window.innerWidth<960))
+    const narrowReopen=await page.evaluate(()=>window.innerWidth<960);
+    if(narrowReopen)
       await page.getByRole('button',{name:'Показать инспектор'}).click();
     await page.getByText('C9',{exact:true}).first().click();
     assert.equal(await page.getByTestId('inspector-nominal').inputValue(),'220н');
+    // At Tauri's 900px width the responsive inspector is a floating overlay;
+    // close it after reading C9 or it intercepts controls behind the aside.
+    if(narrowReopen)
+      await page.getByRole('button',{name:'Показать инспектор'}).click();
     console.log('R9_REAL_NATIVE_REOPEN_GUI_PASS');
     // Existing handle: Save must not open a picker and must preserve the exact model.
     // Reapply the same grid setting so the canonical document stays byte-for-byte
