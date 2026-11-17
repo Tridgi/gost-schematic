@@ -1,0 +1,39 @@
+name: Visual CAD R6 installed-binary diagnostic (frozen NSIS artifact)
+on:
+  push:
+    branches: [ui/visual-cad-mvp]
+    paths:
+      - 'ui/desktop/smoke-installed-windows.ps1'
+      - '.github/workflows/visual-cad-r6-installed-binary-smoke.yml'
+  workflow_dispatch:
+    inputs:
+      artifact_run_id:
+        description: 'Existing Windows R4 run id with uploaded NSIS installer; not source HEAD'
+        required: true
+        default: '44113692761'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  installed-binary:
+    runs-on: windows-2022
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch previously built NSIS artifact; binary SHA is reported separately
+        uses: actions/download-artifact@v4
+        with:
+          name: gost-schematic-r6-nsis-build-not-accepted
+          run-id: ${{ inputs.artifact_run_id || '44113692761' }}
+          github-token: ${{ github.token }}
+          path: test-installed-binary
+      - name: Run installed smoke on downloaded frozen binary
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem -LiteralPath test-installed-binary -Recurse -File -Filter '*setup.exe' |
+            Select-Object -First 1
+          if (!$installer) { throw 'FROZEN_NSIS_ARTIFACT_MISSING_INSTALLER' }
+          Write-Host 'BINARY_SOURCE_SHA=bfcb79dcd452fd4539c70051a9717bce6d39a435'
+          Write-Host ('SMOKE_SCRIPT_SHA=' + '${{ github.sha }}')
+          & .\ui\desktop\smoke-installed-windows.ps1 -Installer $installer.FullName
+          if (!$?) { throw 'INSTALLED_BINARY_SMOKE_FAILED' }
