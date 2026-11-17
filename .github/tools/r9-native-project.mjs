@@ -85,19 +85,27 @@ try{
     await page.getByTestId('new-project').click();
     await page.getByText(/R3 AUTHORING/).first().waitFor({state:'visible'});
     const canvas=page.getByTestId('gscad-signed-svg-canvas');
-    const box=await canvas.boundingBox();assert(box);
+    const narrow=await page.evaluate(()=>window.innerWidth<960);
+    console.log('R9_NATIVE_VIEWPORT_NARROW='+narrow);
+    // Native Tauri starts at 900px. On that width the UGO library and
+    // inspector are intentionally collapsed; exercise the real toggle UI.
     const place=async(symbol,x,y,refdes)=>{
+      if(narrow)await page.getByRole('button',{name:'Показать библиотеку УГО'}).click();
       await page.getByTestId('catalog-item-symbol/'+symbol).click();
+      if(narrow)await page.getByRole('button',{name:'Показать библиотеку УГО'}).click();
+      const box=await canvas.boundingBox();assert(box);
       await page.mouse.click(box.x+box.width*x,box.y+box.height*y);
       await page.getByTestId('symbol-'+refdes).waitFor({state:'visible',timeout:5000});
     };
     await place('resistor.fixed',.25,.40,'R1');
     await place('capacitor.fixed',.65,.40,'C1');
+    if(narrow)await page.getByRole('button',{name:'Показать инспектор'}).click();
     await page.getByLabel('Позиционное обозначение').fill('C9');
     await page.getByLabel('Позиционное обозначение').press('Enter');
     await page.getByTestId('symbol-C9').waitFor({state:'visible',timeout:5000});
     await page.getByTestId('inspector-nominal').fill('220н');
     await page.getByTestId('inspector-nominal').press('Enter');
+    if(narrow)await page.getByRole('button',{name:'Показать инспектор'}).click();
     await place('resistor.fixed',.83,.70,'R2');
     const r1=await page.getByTestId('symbol-R1').getAttribute('data-component-id');
     const c9=await page.getByTestId('symbol-C9').getAttribute('data-component-id');
@@ -128,7 +136,11 @@ try{
     await page.getByTestId('symbol-C9').waitFor({state:'visible',timeout:15000});
     assert.equal(await page.locator('[data-testid^="symbol-"]').count(),3);
     assert.equal(await page.locator('[data-net-id]').count(),1);
-    await page.getByTestId('symbol-C9').click();
+    // A 900px desktop reopens with its inspector collapsed by design.
+    // Select C9 through the authoritative project-tree item.
+    if(await page.evaluate(()=>window.innerWidth<960))
+      await page.getByRole('button',{name:'Показать инспектор'}).click();
+    await page.getByText('C9',{exact:true}).first().click();
     assert.equal(await page.getByTestId('inspector-nominal').inputValue(),'220н');
     console.log('R9_REAL_NATIVE_REOPEN_GUI_PASS');
     // Existing handle: Save must not open a picker and must preserve the exact model.
