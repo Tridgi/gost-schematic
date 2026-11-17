@@ -90,8 +90,11 @@ try {
         throw 'INSTALLED_SIDECAR_PROTOCOL_INVALID'
     }
     Write-Host 'INSTALLED_PYTHON_HELLO_PASS'
-    for ($i=1; $i -le 2; $i++) {
-        $launchDir = if ($i -eq 1) { $installedDir } else { $unicodeDir }
+    # Repeated startup in the genuine installed location precedes relocation.
+    # Failures then identify restart versus Unicode relocation distinctly.
+    for ($i=1; $i -le 3; $i++) {
+        $launchDir = if ($i -le 2) { $installedDir } else { $unicodeDir }
+        Write-Host ("APP_LAUNCH_LOCATION_$i=" + $launchDir)
         $launchExe = Join-Path $launchDir 'gost-cad-desktop.exe'
         $app = Start-Process -FilePath $launchExe -WorkingDirectory $launchDir -PassThru
         $launched.Add($app)
