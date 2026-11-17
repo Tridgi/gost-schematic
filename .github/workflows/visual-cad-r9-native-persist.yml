@@ -38,7 +38,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: gost-schematic-r6-nsis-build-not-accepted
-          run-id: 44169948977
+          run-id: 44183406191
           repository: Tridgi/gost-schematic
           github-token: ${{ github.token }}
           path: ${{ runner.temp }}/gscad-frozen-r7

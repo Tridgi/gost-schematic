@@ -25,7 +25,7 @@ $env:WEBVIEW2_USER_DATA_FOLDER = Join-Path $root 'webview-profile'
 try {
     New-Item -ItemType Directory -Path $root,$projectDir -Force | Out-Null
     if (Test-Path -LiteralPath $installDir) { throw 'R9_INSTALL_TARGET_EXISTS' }
-    Write-Host 'R9_FROZEN_BINARY_SOURCE_SHA=d00c4324b1e31db73fdb577f120c6518bb5ad335'
+    Write-Host 'R9_FROZEN_BINARY_SOURCE_SHA=449cc9dc96b170b0a4e17a6838a6a7635891017d'
     $setup = Start-Process -FilePath $setups[0].FullName -ArgumentList @('/S',('/D=' + $installDir)) -PassThru -Wait
     try { if ($setup.ExitCode -ne 0) { throw ('R9_NSIS_INSTALL_EXIT_' + $setup.ExitCode) } }
     finally { $setup.Dispose() }
