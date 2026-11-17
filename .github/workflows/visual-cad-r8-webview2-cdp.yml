@@ -1,0 +1,45 @@
+name: Visual CAD R8 experimental real WebView2 CDP close guard
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ui/visual-cad-mvp]
+    paths:
+      - '.github/workflows/visual-cad-r8-webview2-cdp.yml'
+      - '.github/tools/native-webview2-cdp.mjs'
+      - '.github/tools/native-webview2-cdp.ps1'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  webview2-cdp:
+    name: Real installed WebView2 dirty close Cancel/Confirm (experimental)
+    runs-on: windows-2022
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: ui/editor/package-lock.json
+      - name: Install project-pinned Playwright without browser download
+        shell: pwsh
+        run: |
+          npm ci --prefix ui/editor --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { throw 'PLAYWRIGHT_NPM_CI_FAILED' }
+      - name: Retrieve already-verified NSIS binary from exact R7 SHA
+        uses: actions/download-artifact@v4
+        with:
+          name: gost-schematic-r6-nsis-build-not-accepted
+          run-id: 44169948977
+          repository: Tridgi/gost-schematic
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/gscad-frozen-r7
+      - name: Test real installed WebView2 close guards in isolated temporary folder
+        shell: pwsh
+        run: |
+          & .\.github\tools\native-webview2-cdp.ps1 -ArtifactRoot (Join-Path $env:RUNNER_TEMP 'gscad-frozen-r7')
+          if (!$?) { throw 'R8_NATIVE_WEBVIEW2_SMOKE_FAILED' }
