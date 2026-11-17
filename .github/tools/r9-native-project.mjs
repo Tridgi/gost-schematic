@@ -171,7 +171,17 @@ try{
       await page.getByRole('button',{name:'Файл'}).click();
       await page.getByText('Открыть…',{exact:true}).click();
     });
-    await page.getByTestId('symbol-C9').waitFor({state:'visible',timeout:15000});
+    try {
+      await page.getByTestId('symbol-C9').waitFor({state:'visible',timeout:15000});
+    }catch(error){
+      console.log('R9_OPEN_DIAG_FILE_EXISTS='+fs.existsSync(projectPath));
+      console.log('R9_OPEN_DIAG_DIGEST='+digest(projectPath));
+      try {
+        console.log('R9_OPEN_DIAG_UI='+(await page.evaluate(()=>document.body.innerText)).slice(-2600));
+        console.log('R9_OPEN_DIAG_SYMBOL_COUNT='+await page.locator('[data-testid^="symbol-"]').count());
+      }catch(err){console.log('R9_OPEN_DIAG_UI_UNAVAILABLE '+String(err));}
+      throw error;
+    }
     assert.equal(await page.locator('[data-testid^="symbol-"]').count(),3);
     assert.equal(await page.locator('[data-net-id]').count(),1);
     // A 900px desktop reopens with its inspector collapsed by design.
