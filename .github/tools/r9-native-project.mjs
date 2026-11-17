@@ -196,7 +196,7 @@ try{
     // A native Save is asynchronous. Disk equality can hold before its Rust
     // busy/CAS reservation is released, especially if bytes are unchanged.
     // Wait for the app's actual NATIVE_SAVED acknowledgement before Save As.
-    await page.getByRole('alert').filter({hasText:'NATIVE_SAVED:'})
+    await page.getByText(/NATIVE_SAVED:/).first()
       .waitFor({state:'visible',timeout:20000});
     assert.deepStrictEqual(status(projectPath),original);
     assert.equal(digest(projectPath),beforeDigest);
