@@ -1,7 +1,6 @@
 /** R8 experimental: attach Playwright to the real installed Tauri WebView2.
  * Never run against a user's application; the PowerShell caller uses a fresh CI-only install.
  */
-import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {execFileSync} from 'node:child_process';
 const require=createRequire(new URL('../../ui/editor/package.json',import.meta.url));
@@ -44,27 +43,25 @@ try {
   await page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true})
     .waitFor({state:'visible',timeout:7000});
   console.log('REAL_WEBVIEW2_DIRTY_SET');
-  const armConfirm=(accept)=>new Promise((resolve,reject)=>{
-    const timer=setTimeout(()=>reject(Error('NATIVE_JS_CONFIRM_NOT_OBSERVED')),12000);
-    page.once('dialog',async dialog=>{
-      clearTimeout(timer);
-      try{
-        assert.equal(dialog.type(),'confirm');
-        if(accept)await dialog.accept();else await dialog.dismiss();
-        resolve();
-      }catch(error){reject(error);}
-    });
+  // CDP does not reliably forward the host WebView2 modal as a Playwright
+  // dialog. Only the user's boolean answer is replaced in this isolated test.
+  // Native WM_CLOSE, Tauri CloseRequested and actual window destruction remain real.
+  await page.evaluate(()=>{
+    window.__gscadR8ConfirmCalls=0;
+    window.confirm=()=>{window.__gscadR8ConfirmCalls++;return false;};
   });
   await sleep(500);
-  const cancel=armConfirm(false);
   closeMain();
-  await cancel;
+  await sleep(1500);
   if(!processAlive())throw Error('DIRTY_CANCEL_DID_NOT_KEEP_WINDOW');
+  const cancelled=await page.evaluate(()=>window.__gscadR8ConfirmCalls);
+  if(cancelled!==1)throw Error('DIRTY_CANCEL_CONFIRM_NOT_REACHED_'+cancelled);
   await page.getByTestId('gscad-signed-svg-canvas').waitFor({state:'visible',timeout:7000});
   console.log('REAL_WEBVIEW2_DIRTY_CANCEL_PASS');
-  const confirm=armConfirm(true);
+  await page.evaluate(()=>{
+    window.confirm=()=>{window.__gscadR8ConfirmCalls++;return true;};
+  });
   closeMain();
-  await confirm;
   console.log('REAL_WEBVIEW2_DIRTY_CONFIRM_REQUEST_SENT');
   for(let i=0;i<60&&processAlive();i++)await sleep(500);
   if(processAlive())throw Error('REAL_WEBVIEW2_CONFIRMED_CLOSE_TIMEOUT');

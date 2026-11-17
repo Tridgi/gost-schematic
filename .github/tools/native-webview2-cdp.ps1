@@ -59,6 +59,7 @@ try {
         } catch { Write-Warning ('R8 cleanup uninstall: ' + $_.Exception.Message) }
     }
     if ($traceFile -and (Test-Path -LiteralPath $traceFile)) {
+        Get-Content -LiteralPath $traceFile | ForEach-Object { Write-Host ('R8_FINAL_NATIVE_DIAG ' + $_) }
         Remove-Item -LiteralPath $traceFile -Force -ErrorAction SilentlyContinue
     }
     Remove-Item Env:GSCAD_R6_TRACE_WINDOW -ErrorAction SilentlyContinue
