@@ -229,3 +229,32 @@ test('R6: two independent Nets and two A3 sheets survive ProjectV2 reopen with i
    saved.project.sheets.map(s=>s.instances));
  assert.equal(reopened.file.workspace.active_sheet_id,second);
 });
+
+test('R9: native serde_json key ordering preserves authored components, wire and count identity',()=>{
+ const s=newSession(),{r,c}=placePair(s);
+ s.place(s.newTransaction('r9-spare'),'symbol/resistor.fixed',[210000,150000]);
+ s.connect(s.newTransaction('r9-route'),pin(r,'2'),pin(c,'1'));
+ const authored=s.file;
+ const normalize=value=>Array.isArray(value)?value.map(normalize):
+  value&&typeof value==='object'
+   ?Object.fromEntries(Object.keys(value).sort().map(k=>[k,normalize(value[k])]))
+   :value;
+ const nativeReload=JSON.parse(JSON.stringify(normalize(authored)));
+ assert.notEqual(
+  JSON.stringify(nativeReload.project.provenance.expected_counts),
+  JSON.stringify(authored.project.provenance.expected_counts),
+  'test must reproduce the native lexical serialization key order'
+ );
+ const reopened=new AuthoringSession(nativeReload);
+ assert.deepEqual(reopened.file,nativeReload);
+ assert.deepEqual(reopened.file.project.nets,authored.project.nets);
+ assert.deepEqual(reopened.file.project.sheets[0].wires,authored.project.sheets[0].wires);
+ assert.deepEqual(reopened.file.project.components,authored.project.components);
+ assert.equal(reopened.snapshot.wires.length,1);
+ const forged=structuredClone(nativeReload);
+ forged.project.provenance.expected_counts.nets=0;
+ assert.throws(()=>new AuthoringSession(forged),/SOURCE_COUNT_MISMATCH/);
+ const extra=structuredClone(nativeReload);
+ extra.project.provenance.expected_counts.unexpected=0;
+ assert.throws(()=>new AuthoringSession(extra),/SOURCE_COUNT_MISMATCH/);
+});
