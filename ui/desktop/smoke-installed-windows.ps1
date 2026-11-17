@@ -136,6 +136,12 @@ try {
     $uninstaller = Join-Path $installedDir 'uninstall.exe'
     if (!(Test-Path -LiteralPath $uninstaller -PathType Leaf)) { throw 'NSIS_UNINSTALLER_MISSING' }
     Run-Bounded -File $uninstaller -ArgumentTokens @('/S') -TimeoutMs 120000
+    $removedWait=0
+    while((Test-Path -LiteralPath $appExe -PathType Leaf) -and $removedWait -lt 30000){
+        Start-Sleep -Milliseconds 500
+        $removedWait+=500
+    }
+    Write-Host ('NSIS_DEFAULT_REMOVAL_WAIT_MS='+$removedWait)
     if (Test-Path -LiteralPath $appExe -PathType Leaf) { throw 'NSIS_UNINSTALL_LEFT_EXE' }
     $installed = $false
     Write-Host 'NSIS_INSTALL_UNINSTALL_PASS'
@@ -174,6 +180,12 @@ try {
         throw 'NSIS_D_UNICODE_UNINSTALLER_MISSING'
     }
     Run-Bounded -File $uninstaller -ArgumentTokens @('/S') -TimeoutMs 120000
+    $removedWait=0
+    while((Test-Path -LiteralPath $unicodeExe -PathType Leaf) -and $removedWait -lt 30000){
+        Start-Sleep -Milliseconds 500
+        $removedWait+=500
+    }
+    Write-Host ('NSIS_D_REMOVAL_WAIT_MS='+$removedWait)
     if (Test-Path -LiteralPath $unicodeExe -PathType Leaf) {
         throw 'NSIS_D_UNICODE_UNINSTALL_LEFT_EXE'
     }
