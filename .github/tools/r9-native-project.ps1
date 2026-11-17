@@ -53,6 +53,8 @@ try {
         throw ('R9_PACKAGED_DIRECT_PARSE_REJECTED_' + $directReply.error.code)
     }
     Write-Host 'R9_PACKAGED_DIRECT_PARSE_SOURCE_PASS'
+    & node .github/tools/r9-native-sidecar-probe.mjs $env:GSCAD_R9_SIDECAR_EXE
+    if ($LASTEXITCODE -ne 0) { throw 'R9_PACKAGED_SYNTHETIC_PARSE_FAILED' }
     foreach ($phase in @('create','reopen')) {
         $app = Start-Process -FilePath $exe -WorkingDirectory $installDir -PassThru
         Write-Host ("R9_NATIVE_LAUNCH phase=$phase pid=" + $app.Id)
