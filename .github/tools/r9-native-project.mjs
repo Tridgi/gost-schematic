@@ -193,14 +193,24 @@ try{
     console.log('R9_REAL_NATIVE_REOPEN_GUI_PASS');
     // Existing handle: Save must not open a picker and must preserve the exact model.
     await page.getByTestId('save-project').click();
-    await sleep(1000);
+    // A native Save is asynchronous. Disk equality can hold before its Rust
+    // busy/CAS reservation is released, especially if bytes are unchanged.
+    // Wait for the app's actual NATIVE_SAVED acknowledgement before Save As.
+    await page.getByRole('alert').filter({hasText:'NATIVE_SAVED:'})
+      .waitFor({state:'visible',timeout:20000});
     assert.deepStrictEqual(status(projectPath),original);
     assert.equal(digest(projectPath),beforeDigest);
     console.log('R9_REAL_NATIVE_SAVE_SAME_PATH_PASS');
-    await runDialog('save',copyPath,async()=>{
-      await page.getByRole('button',{name:'Файл'}).click();
-      await page.getByTestId('save-project-as').click();
-    });
+    try {
+      await runDialog('save',copyPath,async()=>{
+        await page.getByRole('button',{name:'Файл'}).click();
+        await page.getByTestId('save-project-as').click();
+      });
+    }catch(error){
+      console.log('R9_SECOND_SAVE_AS_UI_DIAG='+
+        (await page.evaluate(()=>document.body.innerText)).slice(-2000));
+      throw error;
+    }
     await page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true})
       .waitFor({state:'hidden',timeout:20000});
     same();
