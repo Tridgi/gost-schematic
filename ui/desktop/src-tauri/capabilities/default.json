@@ -1,7 +1,12 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
-  "description": "Desktop preview only invokes registered Rust commands; no JS shell/fs capabilities",
-  "windows": ["main"],
-  "permissions": ["core:default"]
+  "description": "Desktop preview: main-window close guard can destroy confirmed window; no JS shell/filesystem access",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-destroy"
+  ]
 }

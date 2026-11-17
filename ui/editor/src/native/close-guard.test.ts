@@ -68,3 +68,15 @@ test('save-in-progress remains guarded even if the document is clean',async()=>{
     assert.equal(active,false);
   }finally{Reflect.deleteProperty(globalThis,'window');}
 });
+
+
+test('Tauri main-window ACL explicitly permits the Tauri JS close guard to destroy clean windows',async()=>{
+  const {readFileSync}=await import('node:fs');
+  const acl=JSON.parse(readFileSync(new URL('../../../desktop/src-tauri/capabilities/default.json',import.meta.url),'utf8'));
+  // Tauri 2.12.5 Window.onCloseRequested calls this.destroy() when the handler
+  // returns without preventDefault; core:window:default does NOT allow destroy.
+  assert.deepEqual(acl.windows,['main']);
+  assert.ok(acl.permissions.includes('core:window:allow-destroy'),
+    'onCloseRequested silently leaves the main window alive without allow-destroy');
+  assert.ok(!acl.permissions.some((p:string)=>p.startsWith('shell:')||p.startsWith('fs:')));
+});
