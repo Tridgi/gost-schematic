@@ -13,5 +13,9 @@ export function traceNativeClose(stage:NativeCloseStage,dirty=false,busy=false):
   const invoke=host.__TAURI__?.core?.invoke;
   if(typeof invoke!=='function')return;
   // The trace contains neither user project data nor file names or paths.
-  void invoke('native_close_trace',{stage,dirty,busy}).catch(()=>{});
+  // Best-effort telemetry: a mocked, unavailable or denied command may throw
+  // synchronously before returning a promise. Never break the close guard.
+  try {
+    void Promise.resolve(invoke('native_close_trace',{stage,dirty,busy})).catch(()=>{});
+  } catch { /* tracing must not affect native window lifecycle */ }
 }

@@ -80,3 +80,21 @@ test('Tauri main-window ACL explicitly permits the Tauri JS close guard to destr
     'onCloseRequested silently leaves the main window alive without allow-destroy');
   assert.ok(!acl.permissions.some((p:string)=>p.startsWith('shell:')||p.startsWith('fs:')));
 });
+
+
+test('optional native telemetry cannot interrupt window-close when the IPC mock throws synchronously',async()=>{
+  let callback:(event:{preventDefault():void})=>void=()=>{};
+  Object.defineProperty(globalThis,'window',{configurable:true,value:{
+    __TAURI__:{core:{invoke:()=>{throw Error('UNEXPECTED_NATIVE_COMMAND: native_close_trace');}},
+      window:{getCurrentWindow:()=>({onCloseRequested:async(fn:typeof callback)=>{
+        callback=fn;return ()=>{};
+      }})}}
+  }});
+  try {
+    const off=await installNativeCloseGuard(()=>false,()=>false);
+    let blocked=false;
+    callback({preventDefault(){blocked=true;}});
+    assert.equal(blocked,false);
+    off?.();
+  }finally{Reflect.deleteProperty(globalThis,'window');}
+});
