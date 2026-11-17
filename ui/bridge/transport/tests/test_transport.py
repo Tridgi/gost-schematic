@@ -473,7 +473,7 @@ class TransportTests(unittest.TestCase):
 
         response = {"v": 1, "id": "r9_unicode", "ok": True,
                     "result": {"title": "Новая электрическая схема", "nominal": "220н"}}
-        input_stream = io.TextIOWrapper(io.BytesIO(b"{}\\n"), encoding="utf-8")
+        input_stream = io.TextIOWrapper(io.BytesIO(b"{}\n"), encoding="utf-8")
         output_bytes = io.BytesIO()
         output_stream = io.TextIOWrapper(output_bytes, encoding="cp1252",
                                         errors="strict", write_through=True)
@@ -484,7 +484,7 @@ class TransportTests(unittest.TestCase):
         wire_bytes = output_bytes.getvalue()
         self.assertTrue(wire_bytes.isascii())
         self.assertEqual(json.loads(wire_bytes), response)
-        self.assertIn(b"\\\\u", wire_bytes)
+        self.assertIn(b"\\u", wire_bytes)
 
     def test_wire_response_size_accounts_for_unicode_json_escape_expansion(self):
         """The 4 MiB limit must use actual escaped NDJSON bytes, not raw UTF-8."""
