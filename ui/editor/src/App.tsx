@@ -11,6 +11,7 @@ import {AuthoringSession,newBlankProject} from './authoring/session';
 import {nativeDesktopAvailable,nativeOpenProject,nativeSaveProject,nativeSaveAsProject,nativeCloseProject,
   nativeExportProject,type NativeDocumentHandle} from './native/desktop';
 import {installNativeCloseGuard} from './native/close-guard';
+import {traceNativeClose} from './native/close-trace';
 import {parseProjectJsonStrict} from './authoring/strict-json';
 import { loadProjectWires } from './wires/project-v2-adapter';
 import { projectToCanvasScene } from './canvas/scene-projection.mjs';
@@ -105,11 +106,22 @@ export default function App() {
     return()=>window.removeEventListener('beforeunload',guard);
   },[dirty]);
   useEffect(()=>{
+    if(!nativeDesktopAvailable())return;
+    traceNativeClose('app_effect_mounted',dirtyRef.current,nativeSaveBusyRef.current);
+    const beforeUnload=()=>traceNativeClose('browser_beforeunload',dirtyRef.current,nativeSaveBusyRef.current);
+    window.addEventListener('beforeunload',beforeUnload);
+    return()=>{
+      window.removeEventListener('beforeunload',beforeUnload);
+      traceNativeClose('app_effect_unmounted',dirtyRef.current,nativeSaveBusyRef.current);
+    };
+  },[]);
+  useEffect(()=>{
     let disposed=false;
     let unlisten:(()=>void)|null=null;
     void installNativeCloseGuard(
-      ()=>dirtyRef.current||nativeSaveBusyRef.current,
-      ()=>window.confirm('Есть несохранённые изменения или незавершённое сохранение. Закрыть программу?')
+      ()=>dirtyRef.current,
+      ()=>window.confirm('Есть несохранённые изменения или незавершённое сохранение. Закрыть программу?'),
+      ()=>nativeSaveBusyRef.current
     ).then(off=>{
       if(disposed)off?.();else unlisten=off;
     }).catch(error=>{

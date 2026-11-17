@@ -132,9 +132,18 @@ fn cancel_engine_request(state: State<'_, BridgeState>, id: String) -> Result<bo
     Ok(false)
 }
 
+// Only fixed lifecycle stages and booleans are accepted; no document content or paths.
+fn valid_close_trace_stage(stage: &str) -> bool {
+    matches!(stage,
+        "guard_install_begin" | "guard_subscribed" | "guard_unsubscribed" |
+        "guard_received" | "guard_allow_clean" | "guard_confirm_accept" |
+        "guard_confirm_cancel" | "guard_prevent_default" |
+        "app_effect_mounted" | "app_effect_unmounted" | "browser_beforeunload")
+}
+
 #[cfg(windows)]
-fn trace_window_event(window: &tauri::Window, event: &str) {
-    // Opt-in CI-only diagnostics: no logs or files on ordinary user launches.
+fn append_close_trace(event: &str) {
+    // Diagnostics are strictly opt-in. Never create logs on ordinary launches.
     if !matches!(std::env::var("GSCAD_R6_TRACE_WINDOW"), Ok(value) if value == "1") {
         return;
     }
@@ -146,9 +155,25 @@ fn trace_window_event(window: &tauri::Window, event: &str) {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|value| value.as_millis()).unwrap_or(0);
-        let _ = writeln!(output, "{now} pid={} window={} event={event}",
-            std::process::id(), window.label());
+        let _ = writeln!(output, "{now} pid={} {event}", std::process::id());
     }
+}
+
+#[cfg(windows)]
+fn trace_window_event(window: &tauri::Window, event: &str) {
+    append_close_trace(&format!("source=rust window={} event={event}", window.label()));
+}
+
+#[tauri::command]
+fn native_close_trace(stage: String, dirty: bool, busy: bool) -> Result<(), String> {
+    if !valid_close_trace_stage(&stage) {
+        return Err("INVALID_NATIVE_TRACE_STAGE".into());
+    }
+    #[cfg(windows)]
+    append_close_trace(&format!("source=js stage={stage} dirty={dirty} save_busy={busy}"));
+    #[cfg(not(windows))]
+    let _ = (stage, dirty, busy);
+    Ok(())
 }
 
 pub fn run() {
@@ -168,7 +193,7 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
-            engine_request, cancel_engine_request,
+            engine_request, cancel_engine_request, native_close_trace,
             native_files::native_open_project, native_files::native_save_project,
             native_files::native_save_as_project, native_files::native_close_project,
             native_files::native_export_project
@@ -180,6 +205,14 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn close_trace_rejects_untrusted_or_personal_fields() {
+        assert!(valid_close_trace_stage("guard_received"));
+        assert!(valid_close_trace_stage("browser_beforeunload"));
+        for bad in ["", "document", "filename=C:\\test", "guard_received\nsecret"] {
+            assert!(!valid_close_trace_stage(bad));
+        }
+    }
     #[test]
     fn unsafe_ids_rejected() {
         assert!(safe_id("wire_004"));

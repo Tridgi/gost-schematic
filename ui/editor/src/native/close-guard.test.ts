@@ -46,3 +46,25 @@ test('native host missing window-close hook reports unavailable instead of prete
     );
   }finally{Reflect.deleteProperty(globalThis,'window');}
 });
+
+
+test('save-in-progress remains guarded even if the document is clean',async()=>{
+  let listener:(event:{preventDefault():void})=>void=()=>{};
+  let active=true, prompts=0, prevented=0;
+  Object.defineProperty(globalThis,'window',{configurable:true,value:{
+    __TAURI__:{
+      core:{invoke:async()=>null},
+      window:{getCurrentWindow:()=>({onCloseRequested:async(fn:typeof listener)=>{
+        listener=fn;return ()=>{active=false;};
+      }})}
+    }
+  }});
+  try {
+    const off=await installNativeCloseGuard(()=>false,()=>{prompts++;return false;},()=>true);
+    listener({preventDefault(){prevented++;}});
+    assert.equal(prompts,1);
+    assert.equal(prevented,1);
+    off?.();
+    assert.equal(active,false);
+  }finally{Reflect.deleteProperty(globalThis,'window');}
+});
