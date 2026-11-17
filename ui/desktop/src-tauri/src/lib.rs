@@ -132,12 +132,41 @@ fn cancel_engine_request(state: State<'_, BridgeState>, id: String) -> Result<bo
     Ok(false)
 }
 
+#[cfg(windows)]
+fn trace_window_event(window: &tauri::Window, event: &str) {
+    // Opt-in CI-only diagnostics: no logs or files on ordinary user launches.
+    if !matches!(std::env::var("GSCAD_R6_TRACE_WINDOW"), Ok(value) if value == "1") {
+        return;
+    }
+    use std::io::Write;
+    let path = std::env::temp_dir().join(format!(
+        "gscad-r6-window-{}.log", std::process::id()
+    ));
+    if let Ok(mut output) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|value| value.as_millis()).unwrap_or(0);
+        let _ = writeln!(output, "{now} pid={} window={} event={event}",
+            std::process::id(), window.label());
+    }
+}
+
 pub fn run() {
     tauri::Builder::default()
         .manage(BridgeState::default())
         .manage(native_files::NativeFileStore::default())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
+        .on_window_event(|_window, _event| {
+            #[cfg(windows)]
+            match _event {
+                tauri::WindowEvent::CloseRequested { .. } =>
+                    trace_window_event(_window, "CloseRequested"),
+                tauri::WindowEvent::Destroyed =>
+                    trace_window_event(_window, "Destroyed"),
+                _ => {}
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             engine_request, cancel_engine_request,
             native_files::native_open_project, native_files::native_save_project,

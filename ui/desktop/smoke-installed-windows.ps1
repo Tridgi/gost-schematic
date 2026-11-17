@@ -92,12 +92,15 @@ try {
     Write-Host 'INSTALLED_PYTHON_HELLO_PASS'
     # Repeated startup in the genuine installed location precedes relocation.
     # Failures then identify restart versus Unicode relocation distinctly.
+    # Diagnostic native event stream is emitted only when this test opts in.
+    $env:GSCAD_R6_TRACE_WINDOW='1'
     for ($i=1; $i -le 3; $i++) {
         $launchDir = if ($i -le 2) { $installedDir } else { $unicodeDir }
         Write-Host ("APP_LAUNCH_LOCATION_$i=" + $launchDir)
         $launchExe = Join-Path $launchDir 'gost-cad-desktop.exe'
         $app = Start-Process -FilePath $launchExe -WorkingDirectory $launchDir -PassThru
         $launched.Add($app)
+        $traceFile=Join-Path ([IO.Path]::GetTempPath()) ('gscad-r6-window-'+$app.Id+'.log')
         $found = $false
         for ($attempt=0; $attempt -lt 30; $attempt++) {
             Start-Sleep -Milliseconds 500
@@ -119,12 +122,24 @@ try {
             $child = @(Get-CimInstance Win32_Process -Filter ('ParentProcessId = ' + $app.Id) |
                 ForEach-Object { $_.Name + ':' + $_.ProcessId })
             Write-Host ("APP_CLOSE_TIMEOUT_DIAGNOSTIC_$i alive=" + (-not $app.HasExited) +
+                ' responding=' + $app.Responding +
                 ' handle=' + $app.MainWindowHandle +
                 ' title=' + $app.MainWindowTitle + ' children=' + ($child -join ','))
-            # Never force a PASS; the finally clause terminates the test process.
+            if(Test-Path -LiteralPath $traceFile){
+                Write-Host ("APP_NATIVE_WINDOW_EVENT_TRACE_$i")
+                Get-Content -LiteralPath $traceFile | ForEach-Object { Write-Host $_ }
+            } else {Write-Host ("APP_NATIVE_WINDOW_EVENT_TRACE_MISSING_$i")}
+            # A second close is diagnostic evidence only, never makes the
+            # original 30s graceful-close failure pass.
+            $repeatClose=$app.CloseMainWindow()
+            Write-Host ("APP_SECOND_CLOSE_REQUEST_$i=" + $repeatClose)
+            if($repeatClose){$app.WaitForExit(3000) | Out-Null}
             throw ("APP_CLOSE_TIMEOUT_$i")
         }
         Write-Host ("INSTALLED_APP_LAUNCH_CLOSE_PASS_$i")
+        if(Test-Path -LiteralPath $traceFile){
+            Get-Content -LiteralPath $traceFile | ForEach-Object { Write-Host ("NATIVE_EVENT_$i " + $_) }
+        } else {Write-Host ("APP_NATIVE_WINDOW_EVENT_TRACE_MISSING_$i")}
         # Do not restart while an old WebView2 host or Python sidecar from this
         # exact application PID is still alive. Check process parent IDs, not
         # unrelated global msedgewebview2 processes.
