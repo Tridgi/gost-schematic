@@ -53,7 +53,20 @@ try {
     Write-Host 'NSIS_D_UNICODE_INSTALL_AND_IPC_PASS'
     if(!(Test-Path -LiteralPath $uninstaller -PathType Leaf)){throw 'NSIS_D_UNICODE_UNINSTALLER_MISSING'}
     Run-Checked $uninstaller @('/S') 120000
-    if(Test-Path -LiteralPath $app){throw 'NSIS_D_UNICODE_UNINSTALL_LEFT_APP'}
+    # The NSIS parent can exit before its self-deleting child finishes removal.
+    # Verify durable absence with a bounded poll; never treat lingering EXE as PASS.
+    $elapsed=0
+    while((Test-Path -LiteralPath $app -PathType Leaf) -and $elapsed -lt 30000){
+        Start-Sleep -Milliseconds 500
+        $elapsed+=500
+    }
+    Write-Host ('NSIS_D_UNICODE_REMOVAL_WAIT_MS='+$elapsed)
+    if(Test-Path -LiteralPath $app -PathType Leaf){
+        $remaining=Get-ChildItem -LiteralPath $destination -File -Recurse -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty FullName
+        Write-Host ('NSIS_D_UNICODE_REMAINING_FILES=' + ($remaining -join ','))
+        throw 'NSIS_D_UNICODE_UNINSTALL_LEFT_APP'
+    }
     $installed=$false
     Write-Host 'NSIS_D_UNICODE_INSTALL_UNINSTALL_PASS'
 } finally {
