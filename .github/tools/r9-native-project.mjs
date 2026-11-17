@@ -3,7 +3,7 @@
  */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {spawn,execFileSync} from 'node:child_process';
+import {spawn,spawnSync,execFileSync} from 'node:child_process';
 import {createRequire} from 'node:module';
 import path from 'node:path';
 
@@ -115,6 +115,19 @@ try{
     await page.getByTestId('signed-pin-'+c9+'-1').click();
     assert.equal(await page.locator('[data-net-id]').count(),1,'real physical wire');
     console.log('R9_REAL_CAD_PLACEMENT_WIRE_PASS');
+    // Read-only argument capture: delegate to the original real Tauri invoke.
+    // If Rust reports ENGINE_TERMINATED, replay the *same* document through the
+    // genuine installed sidecar without the window/dialog to distinguish causes.
+    const observed=await page.evaluate(()=>{
+      const core=window.__TAURI__?.core,original=core?.invoke;
+      if(typeof original!=='function')return false;
+      core.invoke=(command,args)=>{
+        if(command==='native_save_as_project')window.__r9NativeDocument=args?.document;
+        return original.call(core,command,args);
+      };
+      return true;
+    });
+    assert(observed,'R9_NATIVE_INVOKE_OBSERVATION_UNAVAILABLE');
     await runDialog('save',projectPath,()=>page.getByTestId('save-project').click());
     try {
       await page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true})
@@ -125,6 +138,21 @@ try{
       try {
         const ui=await page.evaluate(()=>document.body.innerText);
         console.log('R9_SAVE_AS_DIAG_UI='+ui.slice(-2300));
+        const captured=await page.evaluate(()=>window.__r9NativeDocument);
+        if(captured&&process.env.GSCAD_R9_SIDECAR_EXE){
+          const input=JSON.stringify({v:1,id:'r9_same_document',op:'parse_document_blob',
+            args:{blob:JSON.stringify(captured)}})+'\n';
+          const probe=spawnSync(process.env.GSCAD_R9_SIDECAR_EXE,[],{
+            input,encoding:'utf8',timeout:25000,windowsHide:true
+          });
+          console.log('R9_DIRECT_SAME_DOCUMENT_EXIT='+probe.status+' SIGNAL='+probe.signal);
+          console.log('R9_DIRECT_SAME_DOCUMENT_STDERR='+String(probe.stderr??'').slice(-750));
+          try{
+            const response=JSON.parse(probe.stdout?.trim()??'');
+            console.log('R9_DIRECT_SAME_DOCUMENT_OK='+response.ok+
+              ' CODE='+String(response.error?.code??'none'));
+          }catch(e){console.log('R9_DIRECT_SAME_DOCUMENT_PROTOCOL_ERROR='+String(e));}
+        }else console.log('R9_DIRECT_SAME_DOCUMENT_CAPTURE_UNAVAILABLE');
       }catch(e){console.log('R9_SAVE_AS_DIAG_UI_UNAVAILABLE '+String(e));}
       throw error;
     }

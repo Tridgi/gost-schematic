@@ -33,6 +33,26 @@ try {
     if (!(Test-Path -LiteralPath $exe -PathType Leaf)) { throw 'R9_REAL_INSTALLED_EXE_MISSING' }
     $installed = $true
     Write-Host 'R9_REAL_NSIS_INSTALLED_PASS'
+    $sidecars = @(Get-ChildItem -LiteralPath $installDir -Recurse -File -Filter 'engine-bridge*.exe')
+    if ($sidecars.Count -ne 1) { throw ('R9_INSTALLED_SIDECAR_COUNT_' + $sidecars.Count) }
+    $env:GSCAD_R9_SIDECAR_EXE = $sidecars[0].FullName
+    # Independent real packed-process check: same operation Rust uses on Save,
+    # but without Tauri or the system file picker.
+    $fixture = Get-Content -LiteralPath 'ui/fixtures/tl494-source-e695-v2.gscad.json' -Raw -Encoding utf8
+    $directRequest = [ordered]@{
+        v = 1
+        id = 'r9_direct_parse'
+        op = 'parse_document_blob'
+        args = @{ blob = $fixture }
+    } | ConvertTo-Json -Compress -Depth 5
+    $directOutput = @($directRequest | & $env:GSCAD_R9_SIDECAR_EXE)
+    if ($LASTEXITCODE -ne 0) { throw ('R9_PACKAGED_DIRECT_PARSE_EXIT_' + $LASTEXITCODE) }
+    if ($directOutput.Count -ne 1) { throw ('R9_PACKAGED_DIRECT_PARSE_LINES_' + $directOutput.Count) }
+    $directReply = $directOutput[0] | ConvertFrom-Json
+    if ($directReply.ok -ne $true -or $directReply.id -ne 'r9_direct_parse') {
+        throw ('R9_PACKAGED_DIRECT_PARSE_REJECTED_' + $directReply.error.code)
+    }
+    Write-Host 'R9_PACKAGED_DIRECT_PARSE_SOURCE_PASS'
     foreach ($phase in @('create','reopen')) {
         $app = Start-Process -FilePath $exe -WorkingDirectory $installDir -PassThru
         Write-Host ("R9_NATIVE_LAUNCH phase=$phase pid=" + $app.Id)
@@ -69,6 +89,7 @@ try {
             finally { $un.Dispose() }
         } catch { Write-Warning ('R9 CI-only NSIS cleanup: ' + $_.Exception.Message) }
     }
+    Remove-Item Env:GSCAD_R9_SIDECAR_EXE -ErrorAction SilentlyContinue
     Remove-Item Env:GSCAD_R6_TRACE_WINDOW -ErrorAction SilentlyContinue
     Remove-Item Env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS -ErrorAction SilentlyContinue
     Remove-Item Env:WEBVIEW2_USER_DATA_FOLDER -ErrorAction SilentlyContinue
