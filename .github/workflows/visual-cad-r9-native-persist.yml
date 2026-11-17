@@ -1,0 +1,49 @@
+name: Visual CAD R9 real native Windows project persistence
+on:
+  workflow_dispatch:
+  push:
+    branches: [ui/visual-cad-mvp]
+    paths:
+      - '.github/workflows/visual-cad-r9-native-persist.yml'
+      - '.github/tools/r9-native-*'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: visual-cad-r9-persist-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native-persist:
+    name: Real installed Tauri / WebView2 / OS file picker / Python ProjectV2
+    runs-on: windows-2022
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: ui/editor/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned test-only UI automation and contract validator
+        shell: pwsh
+        run: |
+          npm ci --prefix ui/editor --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { throw 'R9_NPM_CI_FAILED' }
+          python -m pip install 'pywinauto==0.6.9' 'jsonschema==4.26.0'
+          if ($LASTEXITCODE -ne 0) { throw 'R9_UI_AUTOMATION_PIP_FAILED' }
+      - name: Download already accepted exact-SHA NSIS package (no app rebuild or user files)
+        uses: actions/download-artifact@v4
+        with:
+          name: gost-schematic-r6-nsis-build-not-accepted
+          run-id: 44169948977
+          repository: Tridgi/gost-schematic
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/gscad-frozen-r7
+      - name: Real GUI New → R/C → Net → native Save As → restart → Open → digest → Save As → SVG/PNG
+        shell: pwsh
+        run: |
+          & .\.github\tools\r9-native-project.ps1 -ArtifactRoot (Join-Path $env:RUNNER_TEMP 'gscad-frozen-r7')
+          if (!$?) { throw 'R9_REAL_NATIVE_PERSISTENCE_FAILED' }

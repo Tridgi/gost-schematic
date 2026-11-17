@@ -1,0 +1,175 @@
+/** R9: real Windows NSIS + WebView2 + native IFileDialog + Python sidecar acceptance.
+ * No fake Tauri commands, no browser file input, no user paths.
+ */
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {spawn,execFileSync} from 'node:child_process';
+import {createRequire} from 'node:module';
+import path from 'node:path';
+
+const require=createRequire(new URL('../../ui/editor/package.json',import.meta.url));
+const {chromium}=require('@playwright/test');
+const [phase,pidText,portText,projectPath,copyPath,svgPath,pngPath]=process.argv.slice(2);
+const pid=Number(pidText), port=Number(portText);
+const root=process.env.RUNNER_TEMP;
+if(process.env.GITHUB_ACTIONS!=='true'||!root||!pid||!port||!['create','reopen'].includes(phase))
+  throw Error('R9_CI_ARGS_INVALID');
+for(const p of [projectPath,copyPath,svgPath,pngPath]){
+  if(!path.resolve(p).toLowerCase().startsWith(path.resolve(root).toLowerCase()+path.sep))
+    throw Error('R9_PATH_OUTSIDE_RUNNER_TEMP');
+}
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const digest=filepath=>execFileSync('python',['-c',
+  'import json,sys;from ui.editor.src.model.contract import validate,digest;d=json.load(open(sys.argv[1],encoding="utf-8"));validate(d);print(digest(d))',
+  filepath],{encoding:'utf8',timeout:30000}).trim();
+const status=file=>{
+  const value=fs.statSync(file);
+  assert(value.size>50&&value.size<850000,'native file size gate');
+  return JSON.parse(fs.readFileSync(file,'utf8'));
+};
+const same=()=>assert.deepStrictEqual(status(copyPath),status(projectPath));
+async function runDialog(mode,filepath,trigger){
+  const child=spawn('python',['.github/tools/r9-native-dialog.py','--pid',String(pid),
+    '--mode',mode,'--path',filepath],{cwd:process.cwd(),stdio:['ignore','pipe','pipe']});
+  let output='';
+  child.stdout.on('data',data=>{output+=data.toString();});
+  child.stderr.on('data',data=>{output+=data.toString();});
+  let exited=false;
+  const done=new Promise((resolve,reject)=>{
+    child.on('error',reject);
+    child.on('close',code=>{exited=true;code===0?resolve():reject(Error('R9_DIALOG_FAILED_'+code+' '+output));});
+  });
+  const timer=setTimeout(()=>{if(!exited)child.kill();},35000);
+  try {
+    await trigger();
+    await done;
+    console.log(output.trim());
+  }finally{
+    clearTimeout(timer);
+    if(!exited)child.kill();
+  }
+}
+function assertModel(doc){
+  assert.equal(doc.format,'gscad-project');
+  assert.equal(doc.format_version,2);
+  assert.equal(doc.project.provenance.status,'synthetic');
+  assert.equal(doc.project.components.length,3);
+  assert.deepStrictEqual(doc.project.components.map(x=>x.refdes).sort(),['C9','R1','R2']);
+  assert.equal(doc.project.components.find(x=>x.refdes==='C9').value,'220н');
+  assert.deepStrictEqual(doc.project.sheets[0].frame.size_um,[420000,297000]);
+  assert.equal(doc.project.nets.length,1);
+  assert.equal(doc.project.nets[0].members.length,2);
+  assert.equal(doc.project.sheets[0].wires.length,1);
+  assert.equal(doc.project.sheets[0].junctions.length,0);
+  assert(doc.project.sheets[0].instances.every(i=>i.origin_um.every(Number.isInteger)));
+}
+let browser=null,page=null;
+for(let i=0;i<45;i++){
+  try{browser=await chromium.connectOverCDP('http://127.0.0.1:'+port,{timeout:1500});break;}
+  catch{await sleep(500);}
+}
+if(!browser)throw Error('R9_REAL_WEBVIEW2_CDP_UNAVAILABLE');
+try{
+  for(let i=0;i<60;i++){
+    page=browser.contexts().flatMap(x=>x.pages()).find(x=>!x.url().startsWith('devtools://'));
+    if(page)break;
+    await sleep(250);
+  }
+  if(!page)throw Error('R9_NATIVE_PAGE_NOT_FOUND');
+  await page.getByTestId('gscad-signed-svg-canvas').waitFor({state:'visible',timeout:20000});
+  console.log('R9_REAL_WEBVIEW2_CANVAS_PASS phase='+phase);
+  if(phase==='create'){
+    for(const file of [projectPath,copyPath,svgPath,pngPath])
+      assert(!fs.existsSync(file),'R9_TEMP_FILE_PREEXISTS');
+    await page.getByRole('button',{name:'Файл'}).click();
+    await page.getByTestId('new-project').click();
+    await page.getByText(/R3 AUTHORING/).first().waitFor({state:'visible'});
+    const canvas=page.getByTestId('gscad-signed-svg-canvas');
+    const box=await canvas.boundingBox();assert(box);
+    const place=async(symbol,x,y,refdes)=>{
+      await page.getByTestId('catalog-item-symbol/'+symbol).click();
+      await page.mouse.click(box.x+box.width*x,box.y+box.height*y);
+      await page.getByTestId('symbol-'+refdes).waitFor({state:'visible',timeout:5000});
+    };
+    await place('symbol/resistor.fixed',.25,.40,'R1');
+    await place('symbol/capacitor.fixed',.65,.40,'C1');
+    await page.getByLabel('Позиционное обозначение').fill('C9');
+    await page.getByLabel('Позиционное обозначение').press('Enter');
+    await page.getByTestId('symbol-C9').waitFor({state:'visible',timeout:5000});
+    await page.getByTestId('inspector-nominal').fill('220н');
+    await page.getByTestId('inspector-nominal').press('Enter');
+    await place('symbol/resistor.fixed',.83,.70,'R2');
+    const r1=await page.getByTestId('symbol-R1').getAttribute('data-component-id');
+    const c9=await page.getByTestId('symbol-C9').getAttribute('data-component-id');
+    assert(r1&&c9);
+    await page.getByRole('button',{name:'Провод W'}).click();
+    await page.getByTestId('signed-pin-'+r1+'-2').click();
+    await page.getByTestId('signed-pin-'+c9+'-1').click();
+    assert.equal(await page.locator('[data-net-id]').count(),1,'real physical wire');
+    console.log('R9_REAL_CAD_PLACEMENT_WIRE_PASS');
+    await runDialog('save',projectPath,()=>page.getByTestId('save-project').click());
+    await page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true})
+      .waitFor({state:'hidden',timeout:20000});
+    const saved=status(projectPath);
+    assertModel(saved);
+    const sum=digest(projectPath);
+    assert.match(sum,/^[0-9a-f]{64}$/);
+    fs.writeFileSync(projectPath+'.r9digest',sum+'\n',{flag:'wx'});
+    console.log('R9_REAL_NATIVE_SAVE_AS_PASS digest='+sum);
+  }else{
+    assert(fs.existsSync(projectPath),'SAVED_DOCUMENT_MISSING_BEFORE_REOPEN');
+    const original=status(projectPath); assertModel(original);
+    const beforeDigest=digest(projectPath);
+    assert.equal(beforeDigest,fs.readFileSync(projectPath+'.r9digest','utf8').trim());
+    await runDialog('open',projectPath,async()=>{
+      await page.getByRole('button',{name:'Файл'}).click();
+      await page.getByText('Открыть…',{exact:true}).click();
+    });
+    await page.getByTestId('symbol-C9').waitFor({state:'visible',timeout:15000});
+    assert.equal(await page.locator('[data-testid^="symbol-"]').count(),3);
+    assert.equal(await page.locator('[data-net-id]').count(),1);
+    await page.getByTestId('symbol-C9').click();
+    assert.equal(await page.getByTestId('inspector-nominal').inputValue(),'220н');
+    console.log('R9_REAL_NATIVE_REOPEN_GUI_PASS');
+    // Existing handle: Save must not open a picker and must preserve the exact model.
+    await page.getByTestId('save-project').click();
+    await sleep(1000);
+    assert.deepStrictEqual(status(projectPath),original);
+    assert.equal(digest(projectPath),beforeDigest);
+    console.log('R9_REAL_NATIVE_SAVE_SAME_PATH_PASS');
+    await runDialog('save',copyPath,async()=>{
+      await page.getByRole('button',{name:'Файл'}).click();
+      await page.getByTestId('save-project-as').click();
+    });
+    await page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true})
+      .waitFor({state:'hidden',timeout:20000});
+    same();
+    assert.equal(digest(copyPath),beforeDigest);
+    console.log('R9_REAL_NATIVE_SAVE_AS_UNICODE_PASS');
+    await runDialog('save',svgPath,async()=>{
+      await page.getByRole('button',{name:'Экспорт',exact:true}).click();
+      await page.getByRole('button',{name:'Экспортировать'}).click();
+    });
+    const svg=fs.readFileSync(svgPath,'utf8');
+    assert.match(svg,/<svg|<\?xml/);
+    assert.match(svg,/420mm/);
+    assert(!svg.includes('data-selected='));
+    console.log('R9_REAL_NATIVE_SVG_PASS');
+    await runDialog('save',pngPath,async()=>{
+      await page.getByRole('button',{name:'Экспорт',exact:true}).click();
+      await page.getByText('PNG 300 DPI',{exact:true}).click();
+      await page.getByRole('button',{name:'Экспортировать'}).click();
+    });
+    const png=fs.readFileSync(pngPath);
+    assert.deepStrictEqual([...png.subarray(0,8)],[137,80,78,71,13,10,26,10]);
+    assert.equal(png.readUInt32BE(16),Math.round(420/25.4*300));
+    assert.equal(png.readUInt32BE(20),Math.round(297/25.4*300));
+    const phys=png.indexOf(Buffer.from('pHYs'));
+    assert(phys>0,'pHYs chunk missing');
+    assert.equal(png.readUInt32BE(phys+4),11811);
+    assert.equal(png.readUInt32BE(phys+8),11811);
+    assert.equal(png[phys+12],1);
+    console.log('R9_REAL_NATIVE_PNG300_PASS');
+    console.log('R9_REAL_NATIVE_PROJECT_PERSISTENCE_ACCEPTED digest='+beforeDigest);
+  }
+}finally{try{await browser?.close();}catch{/* Tauri process stays owned by PowerShell */}}
