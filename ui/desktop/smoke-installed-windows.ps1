@@ -13,9 +13,11 @@ $initialInstallDir = $installedDir
 $launched = [System.Collections.Generic.List[System.Diagnostics.Process]]::new()
 $uninstaller = $null
 $installed = $false
-function Run-Bounded([string]$File,[string[]]$Args,[int]$TimeoutMs) {
+function Run-Bounded([string]$File,[string[]]$ArgumentTokens,[int]$TimeoutMs) {
     # Native NSIS stays visible to CI's interactive user; /S itself silences the UI.
-    $p = Start-Process -FilePath $File -ArgumentList $Args -PassThru
+    if (!$ArgumentTokens -or $ArgumentTokens.Count -eq 0) { throw 'EMPTY_PROCESS_ARGUMENTS' }
+    Write-Host ('PROCESS_ARGUMENTS: ' + ($ArgumentTokens -join ' '))
+    $p = Start-Process -FilePath $File -ArgumentList $ArgumentTokens -PassThru
     try {
         $elapsed = 0
         while (!$p.WaitForExit(10000)) {
@@ -42,7 +44,7 @@ try {
     if (Test-Path -LiteralPath $installedDir) { throw 'NSIS_DEFAULT_TARGET_PREEXISTS' }
     # First isolate whether NSIS /D with Cyrillic/spaces was the reason for the stall.
     # Default currentUser mode does not require elevation or custom path handling.
-    Run-Bounded -File $setup -Args @('/S') -TimeoutMs 90000
+    Run-Bounded -File $setup -ArgumentTokens @('/S') -TimeoutMs 90000
     $registered = @(Get-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*' -ErrorAction SilentlyContinue |
         Where-Object { $_.DisplayName -eq 'GOST Schematic CAD - Desktop IPC Preview' -and $_.InstallLocation })
     if ($registered.Count -eq 1) { $installedDir = $registered[0].InstallLocation }
@@ -101,7 +103,7 @@ try {
     Write-Host 'NO_INSTALLED_SIDECAR_ORPHANS_PASS'
     $uninstaller = Join-Path $installedDir 'uninstall.exe'
     if (!(Test-Path -LiteralPath $uninstaller -PathType Leaf)) { throw 'NSIS_UNINSTALLER_MISSING' }
-    Run-Bounded -File $uninstaller -Args @('/S') -TimeoutMs 120000
+    Run-Bounded -File $uninstaller -ArgumentTokens @('/S') -TimeoutMs 120000
     if (Test-Path -LiteralPath $appExe -PathType Leaf) { throw 'NSIS_UNINSTALL_LEFT_EXE' }
     $installed = $false
     Write-Host 'NSIS_INSTALL_UNINSTALL_PASS'
@@ -114,7 +116,7 @@ try {
         } catch { Write-Warning ('cleanup: ' + $_.Exception.Message) }
     }
     if ($installed -and $uninstaller -and (Test-Path -LiteralPath $uninstaller)) {
-        try { Run-Bounded -File $uninstaller -Args @('/S') -TimeoutMs 30000 }
+        try { Run-Bounded -File $uninstaller -ArgumentTokens @('/S') -TimeoutMs 30000 }
         catch { Write-Warning ('cleanup uninstall: ' + $_.Exception.Message) }
     }
     if ((Test-Path -LiteralPath $root) -and

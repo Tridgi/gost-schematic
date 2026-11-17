@@ -5,6 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
+import {spawnSync} from 'node:child_process';
 import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -183,4 +184,48 @@ test('R5: unplaced symbol catalogue rejects duplicate and unknown physical PinRe
  const unknown=newBlankProject();
  unknown.project.symbol_definitions[1].pins[0].physical_pin_number='999';
  assert.throws(()=>new AuthoringSession(unknown),/UNKNOWN_PIN/);
+});
+
+
+test('R6: two independent Nets and two A3 sheets survive ProjectV2 reopen with identical Python digest',()=>{
+ const session=newSession();
+ for(let i=0;i<2;i++){
+  session.place(session.newTransaction('r'+i),'symbol/resistor.fixed',[80000,65000+i*85000]);
+  session.place(session.newTransaction('c'+i),'symbol/capacitor.fixed',[150000,65000+i*85000]);
+ }
+ const ids=Object.fromEntries(session.file.project.components.map(c=>[c.refdes,c.id]));
+ session.connect(session.newTransaction('wire-one'),pin(ids.R1,'2'),pin(ids.C1,'1'));
+ session.connect(session.newTransaction('wire-two'),pin(ids.R2,'2'),pin(ids.C2,'1'));
+ const second= session.addSheet(session.newTransaction('new-a3-sheet'));
+ session.selectSheet(session.newTransaction('switch-to-second'),second);
+ session.place(session.newTransaction('part-second-sheet'),'symbol/resistor.fixed',[95000,90000]);
+ const saved=JSON.parse(JSON.stringify(session.file));
+ assert.equal(saved.project.sheets.length,2);
+ assert.deepEqual(saved.project.sheets.map(s=>s.frame.size_um),[
+  [420000,297000],[420000,297000]]);
+ assert.equal(saved.project.nets.length,2);
+ assert.equal(saved.project.sheets[0].wires.length,2);
+ assert.equal(saved.project.sheets[1].instances.length,1);
+ assert.equal(saved.project.sheets[1].wires.length,0);
+ assert.equal(new Set(saved.project.nets.map(n=>n.name)).size,2);
+ assert.equal(saved.project.nets.flatMap(n=>n.members).length,4);
+ const pythonDigest=doc=>{
+  const py=spawnSync('python',['-c',
+   'import json,sys;sys.path.insert(0,"../..");from ui.editor.src.model.contract import validate,digest;d=json.load(sys.stdin);validate(d);print(digest(d))'
+  ],{input:JSON.stringify(doc),encoding:'utf8',timeout:20000});
+  assert.equal(py.status,0,py.stderr);
+  assert.match(py.stdout,/^[0-9a-f]{64}\s*$/);
+  return py.stdout.trim();
+ };
+ const originalHash=pythonDigest(saved);
+ const reopened=new AuthoringSession(JSON.parse(JSON.stringify(saved)));
+ assert.deepEqual(reopened.file,saved);
+ assert.equal(pythonDigest(reopened.file),originalHash);
+ assert.deepEqual(reopened.file.project.nets.map(n=>[n.id,n.name,n.members]),
+   saved.project.nets.map(n=>[n.id,n.name,n.members]));
+ assert.deepEqual(reopened.file.project.sheets.map(s=>s.wires),
+   saved.project.sheets.map(s=>s.wires));
+ assert.deepEqual(reopened.file.project.sheets.map(s=>s.instances),
+   saved.project.sheets.map(s=>s.instances));
+ assert.equal(reopened.file.workspace.active_sheet_id,second);
 });

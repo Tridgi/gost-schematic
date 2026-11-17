@@ -10,6 +10,7 @@ import { commitSegmentDrag, captureSegmentDrag } from './canvas/wire-intents.mjs
 import {AuthoringSession,newBlankProject} from './authoring/session';
 import {nativeDesktopAvailable,nativeOpenProject,nativeSaveProject,nativeSaveAsProject,nativeCloseProject,
   nativeExportProject,type NativeDocumentHandle} from './native/desktop';
+import {installNativeCloseGuard} from './native/close-guard';
 import {parseProjectJsonStrict} from './authoring/strict-json';
 import { loadProjectWires } from './wires/project-v2-adapter';
 import { projectToCanvasScene } from './canvas/scene-projection.mjs';
@@ -76,6 +77,9 @@ export default function App() {
   const fileInputRef=useRef<HTMLInputElement|null>(null);
   const [nativeHandle,setNativeHandle]=useState<NativeDocumentHandle|null>(null);
   const [dirty,setDirty]=useState(false);
+  const dirtyRef=useRef(dirty);
+  dirtyRef.current=dirty;
+  const nativeSaveBusyRef=useRef(false);
   // Include persisted UI settings in the edit clock; domain revisions alone miss them.
   // A separate session clock blocks late native responses from another opened project.
   const contentEpochRef=useRef(0);
@@ -100,6 +104,19 @@ export default function App() {
     window.addEventListener('beforeunload',guard);
     return()=>window.removeEventListener('beforeunload',guard);
   },[dirty]);
+  useEffect(()=>{
+    let disposed=false;
+    let unlisten:(()=>void)|null=null;
+    void installNativeCloseGuard(
+      ()=>dirtyRef.current||nativeSaveBusyRef.current,
+      ()=>window.confirm('Есть несохранённые изменения или незавершённое сохранение. Закрыть программу?')
+    ).then(off=>{
+      if(disposed)off?.();else unlisten=off;
+    }).catch(error=>{
+      if(!disposed)setIssue('NATIVE_CLOSE_GUARD_FAILED: '+String(error));
+    });
+    return()=>{disposed=true;unlisten?.();};
+  },[]);
   useEffect(()=>{
     let alive=true;
     Promise.all([
@@ -168,6 +185,9 @@ export default function App() {
     setDirty(true);
   };
   const handleNew=()=>{
+    if(nativeDesktopAvailable()&&nativeSaveBusyRef.current){
+      setIssue('NATIVE_FILE_BUSY: завершите сохранение перед созданием проекта.');return;
+    }
     if(dirty&&!window.confirm('Есть несохранённые изменения. Создать новый проект и потерять их?'))return;
     try{
       const session=new AuthoringSession(newBlankProject());
@@ -234,6 +254,9 @@ export default function App() {
   const activeProjectIdRef=useRef('');
   activeProjectIdRef.current=document?.project.id??'';
   const handleSave=(saveAs=false)=>{
+    if(nativeDesktopAvailable()&&nativeSaveBusyRef.current){
+      setIssue('NATIVE_SAVE_BUSY: дождитесь завершения файловой операции.');return;
+    }
     try {
       const next=currentProject();
       if(nativeDesktopAvailable()){
@@ -241,21 +264,27 @@ export default function App() {
         const projectId=next.project.id;
         const saveEpoch=contentEpochRef.current;
         const saveSession=sessionEpochRef.current;
+        const previousHandle=nativeHandle?.handle??null;
         const action=saveAs||!nativeHandle
           ?nativeSaveAsProject(next,nativeHandle)
           :nativeSaveProject(nativeHandle,next);
+        nativeSaveBusyRef.current=true;
         void action.then(result=>{
           if(activeProjectIdRef.current!==projectId||sessionEpochRef.current!==saveSession){
             void nativeCloseProject(result.handle).catch(()=>{});
             return;
           }
           setNativeHandle(result);
+          // Save As publishes a new Rust session; the superseded handle must not leak.
+          if(previousHandle&&previousHandle!==result.handle)
+            void nativeCloseProject(previousHandle).catch(()=>{});
           const actualRevision=authoringRef.current?.revision??engineRef.current?.snapshot.revision??0;
           if(actualRevision===expectedRevision&&contentEpochRef.current===saveEpoch){
             setDirty(false);
             setIssue('NATIVE_SAVED: '+result.filename+'; Python ProjectV2 PASS, ревизия '+result.generation+'.');
           }else setIssue('SAVE_COMPLETED_BUT_DOCUMENT_CHANGED: сохраните последующие изменения отдельно.');
-        }).catch(e=>setIssue('NATIVE_SAVE_FAILED: '+String(e)));
+        }).catch(e=>setIssue('NATIVE_SAVE_FAILED: '+String(e)))
+          .finally(()=>{nativeSaveBusyRef.current=false;});
         return;
       }
       const payload=JSON.stringify(next,null,2)+'\n';
@@ -346,6 +375,9 @@ export default function App() {
     }catch(e){setIssue('OPEN_FAILED: '+String(e));}
   };
   const handleOpenRequest=()=>{
+    if(nativeDesktopAvailable()&&nativeSaveBusyRef.current){
+      setIssue('NATIVE_FILE_BUSY: завершите сохранение перед открытием.');return;
+    }
     if(dirty&&!window.confirm('Изменения не сохранены. Открыть другой файл и потерять правки?'))return;
     if(!nativeDesktopAvailable()){fileInputRef.current?.click();return;}
     const pendingSession=sessionEpochRef.current;

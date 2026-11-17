@@ -352,6 +352,57 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(no_path["error"]["code"], "INVALID_REQUEST")
 
 
+    def test_native_export_uses_validated_sheet_a4_portrait_not_hardcoded_a3(self):
+        import base64
+        import copy
+
+        doc = copy.deepcopy(self._fixture())
+        original = doc["project"]["sheets"][0]
+        second = copy.deepcopy(original)
+        second["id"] = "qa-native-a4"
+        second["index"] = original["index"] + 1
+        second["frame"]["size_um"] = [210000, 297000]
+        second["frame"]["paper"] = "A4 portrait"
+        for key in ("instances", "wires", "junctions", "splices",
+                    "texts", "labels", "graphics"):
+            second[key] = []
+        for layer in second["layers"]:
+            layer["id"] = "qa-a4-" + layer["id"]
+        doc["project"]["sheets"].append(second)
+
+        for fmt in ("svg", "png300"):
+            with self.subTest(fmt=fmt):
+                response = worker.process(json.dumps(request(
+                    "native-a4-" + fmt, "native_export_preview",
+                    {"document": doc, "sheet_id": second["id"], "format": fmt}
+                )).encode())
+                self.assertTrue(response["ok"], response)
+                payload = response["result"]
+                self.assertEqual(payload["sheet_size_um"], [210000, 297000])
+                self.assertEqual(payload["page"], "A4")
+                self.assertEqual(payload["orientation"], "portrait")
+                self.assertEqual(payload["dpi"], 300)
+                self.assertEqual(payload["pixel_dimensions"], [2480, 3508])
+                raw = base64.b64decode(payload["payload"], validate=True)
+                if fmt == "svg":
+                    self.assertIn(b'width="210mm" height="297mm"', raw)
+                else:
+                    self.assertEqual(raw[:8], bytes([137, 80, 78, 71, 13, 10, 26, 10]))
+                    self.assertEqual(int.from_bytes(raw[16:20], "big"), 2480)
+                    self.assertEqual(int.from_bytes(raw[20:24], "big"), 3508)
+
+        mismatched = copy.deepcopy(doc)
+        mismatched["project"]["sheets"][1]["frame"]["paper"] = "A3 landscape"
+        response = worker.process(json.dumps(request(
+            "native-label-mismatch", "native_export_preview",
+            {"document": mismatched, "sheet_id": second["id"], "format": "svg"}
+        )).encode())
+        self.assertFalse(response["ok"], response)
+        # The strict model is allowed to reject an incoherent page label earlier.
+        self.assertIn(response["error"]["code"],
+                      {"SHEET_PAPER_LABEL_MISMATCH", "SCHEMA_INVALID",
+                       "INVALID_SHEET_FRAME", "INVALID_PAGE_SIZE"})
+
     def test_native_python_svg_uses_canonical_v2_export_and_never_accepts_paths(self):
         import base64
         import hashlib

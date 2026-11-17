@@ -40,7 +40,7 @@ test('native Save As completion never clears edits made while OS save dialog is 
       });
       if(command==='native_close_project')return Promise.resolve();
       throw Error('UNEXPECTED_NATIVE_COMMAND: '+command);
-    }}};
+    }},window:{getCurrentWindow:()=>({onCloseRequested:async()=>()=>{}})}};
   });
   await page.goto('/');
   await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
@@ -73,7 +73,7 @@ test('native Open completion never discards edits created after picker invocatio
         return Promise.resolve();
       }
       throw Error('UNEXPECTED_NATIVE_COMMAND: '+command);
-    }}};
+    }},window:{getCurrentWindow:()=>({onCloseRequested:async()=>()=>{}})}};
   });
   await page.goto('/');
   await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
@@ -97,4 +97,81 @@ test('native Open completion never discards edits created after picker invocatio
   await expect(page.locator('.gscad-project-label')).toContainText(originalTitle);
   await expect.poll(()=>page.evaluate(()=>
     window.__gscadMock.closedHandles.includes('aborted-open'))).toBe(true);
+});
+
+
+test('Tauri native window-close blocks discarded edits unless the user confirms',async({page})=>{
+  await page.addInitScript(()=>{
+    window.__gscadMock={onClose:null};
+    window.__TAURI__={
+      core:{invoke:async()=>{throw Error('NO_COMMAND_EXPECTED');}},
+      window:{getCurrentWindow:()=>({
+        onCloseRequested:async listener=>{
+          window.__gscadMock.onClose=listener;
+          return ()=>{window.__gscadMock.onClose=null;};
+        }
+      })}
+    };
+  });
+  await page.goto('/');
+  await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+  await page.waitForFunction(()=>!!window.__gscadMock.onClose);
+  const fire=()=>page.evaluate(()=>{
+    let blocked=false;
+    window.__gscadMock.onClose({preventDefault(){blocked=true;}});
+    return blocked;
+  });
+  expect(await fire()).toBe(false,'clean application window may close');
+  await page.getByRole('button',{name:'Показать сетку'}).click();
+  await page.evaluate(()=>{window.confirm=()=>false;});
+  expect(await fire()).toBe(true,'unsaved changes require close cancellation');
+  await page.evaluate(()=>{window.confirm=()=>true;});
+  expect(await fire()).toBe(false,'explicit user confirmation permits close');
+});
+
+test('native Save As does not overlap another save and releases superseded Rust handles',async({page})=>{
+  await page.addInitScript(()=>{
+    window.__gscadMock={saves:[],closes:[]};
+    window.__TAURI__={
+      core:{invoke:(command,args)=>{
+        if(command==='native_save_as_project')return new Promise(resolve=>{
+          window.__gscadMock.saves.push({resolve,args});
+        });
+        if(command==='native_close_project'){
+          window.__gscadMock.closes.push(args.handle);
+          return Promise.resolve();
+        }
+        throw Error('UNEXPECTED_NATIVE_COMMAND: '+command);
+      }},
+      window:{getCurrentWindow:()=>({onCloseRequested:async()=>()=>{}})}
+    };
+  });
+  await page.goto('/');
+  await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+  await page.getByTestId('save-project').click();
+  await page.waitForFunction(()=>window.__gscadMock.saves.length===1);
+  await page.getByTestId('save-project').click();
+  await page.getByRole('button',{name:/ERC/}).click();
+  await expect(page.getByText(/NATIVE_SAVE_BUSY/)).toBeVisible();
+  expect(await page.evaluate(()=>window.__gscadMock.saves.length)).toBe(1);
+  await page.evaluate(()=>{
+    const saved=window.__gscadMock.saves[0];
+    saved.resolve({
+      handle:'native-first',generation:0,filename:'first.gscad.json',
+      project_sha256:'a'.repeat(64),document:saved.args.document
+    });
+  });
+  await expect(page.getByText(/NATIVE_SAVED/)).toBeVisible();
+  await page.getByRole('button',{name:'Файл'}).click();
+  await page.getByTestId('save-project-as').click();
+  await page.waitForFunction(()=>window.__gscadMock.saves.length===2);
+  await page.evaluate(()=>{
+    const saved=window.__gscadMock.saves[1];
+    saved.resolve({
+      handle:'native-second',generation:0,filename:'second.gscad.json',
+      project_sha256:'b'.repeat(64),document:saved.args.document
+    });
+  });
+  await expect.poll(()=>page.evaluate(()=>window.__gscadMock.closes))
+    .toEqual(['native-first']);
 });

@@ -353,12 +353,29 @@ def _native_export_preview(args: dict[str, Any]) -> dict[str, Any]:
         sys.path.insert(0, str(root))
     try:
         import ui.bridge.export.project_v2 as bridge_export
-        from ui.bridge.export.canonical import ExportError, ExportRequest
+        from ui.bridge.export.canonical import ExportError, ExportRequest, PAGE_UM, pixels as exact_pixels
     except (ImportError, OSError) as exc:
         raise ProtocolError("EXPORT_UNAVAILABLE", "canonical preview backend dependency missing") from exc
     if Path(bridge_export.__file__).resolve() != exporter.resolve():
         raise ProtocolError("EXPORT_UNAVAILABLE", "untrusted Python export module")
-    request = ExportRequest(page="A3", orientation="landscape", dpi=300,
+    # A sheet's validated physical frame, not an A3 fallback, decides the export.
+    sheet = next((item for item in document["project"]["sheets"]
+                  if item["id"] == args["sheet_id"]), None)
+    if sheet is None:
+        raise ProtocolError("UNKNOWN_SHEET", "selected sheet does not exist")
+    size_um = tuple(sheet["frame"]["size_um"])
+    formats = [(name, orientation) for name, portrait in PAGE_UM.items()
+               for orientation in ("portrait", "landscape")
+               if size_um == (portrait if orientation == "portrait" else portrait[::-1])]
+    if len(formats) != 1:
+        raise ProtocolError("UNSUPPORTED_SHEET_FORMAT",
+                            "physical sheet size is not an approved A4/A3/A2 page")
+    page, orientation = formats[0]
+    if sheet["frame"]["paper"] != f"{page} {orientation}":
+        raise ProtocolError("SHEET_PAPER_LABEL_MISMATCH",
+                            "paper label does not match its physical size")
+    expected_pixels = [exact_pixels(dimension, 300) for dimension in size_um]
+    request = ExportRequest(page=page, orientation=orientation, dpi=300,
                             include_frame=False, include_title=False,
                             strict_font=False)
     try:
@@ -366,7 +383,7 @@ def _native_export_preview(args: dict[str, Any]) -> dict[str, Any]:
             payload, warnings = bridge_export.export_v2_svg(
                 document, args["sheet_id"], request,
                 expected_project_sha256=current_sha)
-            pixels = [4961, 3508]
+            pixels = expected_pixels
         else:
             exported = bridge_export.export_v2(
                 document, args["sheet_id"], request,
@@ -374,6 +391,10 @@ def _native_export_preview(args: dict[str, Any]) -> dict[str, Any]:
             payload, warnings, pixels = exported.png, exported.warnings, list(exported.pixels)
     except (ExportError, ValueError, OSError) as exc:
         raise ProtocolError("EXPORT_BLOCKED", "canonical Python preview export rejected") from exc
+    # Keep vector/raster metadata tied to the exact same physical sheet.
+    if pixels != expected_pixels:
+        raise ProtocolError("EXPORT_PIXEL_GEOMETRY_MISMATCH",
+                            "exported pixels do not match 300-DPI sheet dimensions")
     # Never silently substitute a raster screenshot or shrink physical units.
     if len(payload) > 2_600_000:
         raise ProtocolError("EXPORT_TOO_LARGE", "IPC output exceeds bounded native preview budget")
@@ -384,7 +405,10 @@ def _native_export_preview(args: dict[str, Any]) -> dict[str, Any]:
         "payload_sha256": hashlib.sha256(payload).hexdigest(),
         "project_sha256": current_sha,
         "sheet_id": args["sheet_id"],
-        "sheet_size_um": [420000, 297000],
+        "sheet_size_um": list(size_um),
+        "page": page,
+        "orientation": orientation,
+        "dpi": 300,
         "pixel_dimensions": pixels,
         "approval": "NOT_ESKD_CERTIFIED",
         "warnings": list(warnings),

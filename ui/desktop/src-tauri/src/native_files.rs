@@ -353,10 +353,25 @@ pub async fn native_export_project(
         sheet_id.is_empty() || sheet_id.len()>256 {
         return Err("INVALID_EXPORT_ARGS".into());
     }
+    // Validate the exact authoritative ProjectV2 snapshot, not arbitrary frontend metadata.
+    // The same digest must return from export; otherwise no file picker/write is allowed.
+    let raw = serde_json::to_string(&document).map_err(|_| "INVALID_JSON")?;
+    let validated = canonicalize(&app, raw).await?;
+    let expected_sha = validated.project_sha256.clone();
+    let sheet = validated.document["project"]["sheets"].as_array()
+        .and_then(|sheets| sheets.iter().find(|s| s["id"].as_str()==Some(sheet_id.as_str())))
+        .ok_or("UNKNOWN_EXPORT_SHEET")?;
+    let physical = sheet["frame"]["size_um"].as_array().ok_or("INVALID_EXPORT_FRAME")?;
+    if physical.len()!=2 { return Err("INVALID_EXPORT_FRAME".into()); }
+    let physical_um = [
+        physical[0].as_u64().ok_or("INVALID_EXPORT_FRAME")?,
+        physical[1].as_u64().ok_or("INVALID_EXPORT_FRAME")?
+    ];
+    let paper = get_string(&sheet["frame"],"paper")?.to_owned();
     let request = EngineRequest {
         v: 1, id: format!("native_{}", Uuid::new_v4().simple()),
         op: "native_export_preview".into(),
-        args: json!({"document":document,"sheet_id":sheet_id,"format":format})
+        args: json!({"document":validated.document,"sheet_id":sheet_id,"format":format})
     };
     let response = internal_engine_request(app.clone(),app.state::<BridgeState>(),request).await?;
     if response.get("ok").and_then(Value::as_bool)!=Some(true) {
@@ -365,8 +380,19 @@ pub async fn native_export_project(
     }
     let output = response.get("result").ok_or("MALFORMED_PYTHON_EXPORT")?;
     if get_string(output,"approval")? != "NOT_ESKD_CERTIFIED" ||
-       get_string(output,"format")? != format {
+       get_string(output,"format")? != format ||
+       get_string(output,"sheet_id")? != sheet_id ||
+       get_string(output,"project_sha256")? != expected_sha ||
+       output["dpi"].as_u64()!=Some(300) ||
+       format!("{} {}",get_string(output,"page")?,get_string(output,"orientation")?)!=paper {
         return Err("UNTRUSTED_EXPORT_METADATA".into());
+    }
+    if output["sheet_size_um"]!=json!([physical_um[0],physical_um[1]]) ||
+       output["pixel_dimensions"]!=json!([
+           (physical_um[0]*300+12_700)/25_400,
+           (physical_um[1]*300+12_700)/25_400
+       ]) {
+        return Err("EXPORT_SIZE_MISMATCH".into());
     }
     use base64::{engine::general_purpose::STANDARD,Engine as _};
     let bytes=STANDARD.decode(get_string(output,"payload")?)
@@ -374,8 +400,16 @@ pub async fn native_export_project(
     if bytes.len()>2_600_000 || sha(&bytes)!=get_string(output,"payload_sha256")? {
         return Err("CORRUPT_EXPORT_BYTES".into());
     }
-    if format=="png300" && !bytes.starts_with(&[137,80,78,71,13,10,26,10]) {
-        return Err("NOT_PNG".into());
+    if format=="png300" {
+        if bytes.len()<24 || !bytes.starts_with(&[137,80,78,71,13,10,26,10]) {
+            return Err("NOT_PNG".into());
+        }
+        let pixel_width = u32::from_be_bytes(bytes[16..20].try_into().unwrap()) as u64;
+        let pixel_height = u32::from_be_bytes(bytes[20..24].try_into().unwrap()) as u64;
+        if pixel_width!=(physical_um[0]*300+12_700)/25_400 ||
+           pixel_height!=(physical_um[1]*300+12_700)/25_400 {
+            return Err("PNG_PHYSICAL_SIZE_MISMATCH".into());
+        }
     }
     if format=="svg" && !bytes.starts_with(b"<?xml") && !bytes.starts_with(b"<svg") {
         return Err("NOT_SVG".into());
