@@ -47,9 +47,22 @@ try {
     Run-Bounded -File $setup -ArgumentTokens @('/S') -TimeoutMs 90000
     $registered = @(Get-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*' -ErrorAction SilentlyContinue |
         Where-Object { $_.DisplayName -eq 'GOST Schematic CAD - Desktop IPC Preview' -and $_.InstallLocation })
-    if ($registered.Count -eq 1) { $installedDir = $registered[0].InstallLocation }
-    if (!$installedDir.StartsWith($env:LOCALAPPDATA,[StringComparison]::OrdinalIgnoreCase)) {
-        throw 'NSIS_INSTALL_OUTSIDE_USER_APPDATA'
+    if ($registered.Count -eq 1) {
+        Write-Host ('NSIS_REGISTRY_INSTALL_LOCATION: ' + $registered[0].InstallLocation)
+    }
+    # A successful actual installation under the verified default per-user
+    # directory is authoritative. The uninstall registry entry may contain
+    # quoted, relative or provider-specific locations: never follow it if the
+    # target files are already at the known safe default.
+    if (!(Test-Path -LiteralPath (Join-Path $installedDir 'gost-cad-desktop.exe') -PathType Leaf)) {
+        if ($registered.Count -ne 1) { throw 'NSIS_DEFAULT_APP_MISSING_NO_REGISTRY' }
+        $candidate = [IO.Path]::GetFullPath(
+            [Environment]::ExpandEnvironmentVariables([string]$registered[0].InstallLocation).Trim('"'))
+        $safePrefix = [IO.Path]::GetFullPath($env:LOCALAPPDATA).TrimEnd('\') + '\'
+        if (!$candidate.StartsWith($safePrefix,[StringComparison]::OrdinalIgnoreCase)) {
+            throw 'NSIS_INSTALL_OUTSIDE_USER_APPDATA'
+        }
+        $installedDir = $candidate
     }
     if (!(Test-Path -LiteralPath $installedDir -PathType Container)) {
         throw 'NSIS_DEFAULT_INSTALL_DIRECTORY_MISSING'

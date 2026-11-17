@@ -112,6 +112,7 @@ jobs:
           cargo test --manifest-path ui/desktop/src-tauri/Cargo.toml
           if ($LASTEXITCODE -ne 0) { throw 'RUST_TEST_FAIL' }
       - name: Build real Tauri NSIS Windows installer
+        id: nsis_bundle
         shell: pwsh
         run: |
           npx --yes @tauri-apps/cli@2 build --bundles nsis --ci --verbose
@@ -125,11 +126,11 @@ jobs:
           if (!$installer) { throw 'NSIS_INSTALLER_NOT_FOUND' }
           & .\ui\desktop\smoke-installed-windows.ps1 -Installer $installer.FullName
           if (!$?) { throw 'INSTALLED_WINDOWS_SMOKE_FAILED' }
-      - name: Upload native Windows output for manual GUI smoke
-        if: success()
+      - name: Upload unverified NSIS artifact for manual debugging (workflow still FAILS on smoke)
+        if: ${{ always() && steps.nsis_bundle.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
-          name: gost-schematic-r4-windows-nsis
+          name: gost-schematic-r6-nsis-build-not-accepted
           path: |
             ui/desktop/src-tauri/target/release/bundle/nsis/*.exe
             ui/desktop/src-tauri/target/release/gost-cad-desktop.exe

@@ -296,31 +296,62 @@ pub async fn native_save_project(app: AppHandle, handle: String,
         Err(e) => Err(e),
     }
 }
+// Reserve the old handle before asynchronous Python validation or disk writes.
+// Saves and Save As must not race each other on one session.
+fn reserve_save_as(
+    files: &mut HashMap<String, NativeDocument>, handle: &str,
+    expected_generation: Option<u64>, expected_project_sha256: Option<&str>
+) -> Result<NativeDocument, String> {
+    let old = files.get_mut(handle).ok_or("UNKNOWN_DOCUMENT_HANDLE")?;
+    if old.busy || Some(old.generation) != expected_generation ||
+       Some(old.project_sha256.as_str()) != expected_project_sha256 {
+        return Err("STALE_DOCUMENT_CAS".into());
+    }
+    old.busy = true;
+    Ok(old.clone())
+}
+
 #[tauri::command]
 pub async fn native_save_as_project(app: AppHandle, document: Value,
     previous_handle: Option<String>,
     expected_generation: Option<u64>, expected_project_sha256: Option<String>
 ) -> Result<NativeProjectReply, String> {
-    // No JS pathname accepted. Save picker is the only authority for destination.
+    // The OS dialog remains the only source of destination paths.
     let selected = app.dialog().file().add_filter("GSCAD ProjectV2", &["json"])
         .blocking_save_file().ok_or("CANCELLED")?;
     let path = selected.into_path().map_err(|_| "UNSUPPORTED_NATIVE_PATH")?;
-    let raw = serde_json::to_string(&document).map_err(|_| "INVALID_JSON")?;
-    let validated = canonicalize(&app, raw).await?;
+    let prior = if let Some(handle) = previous_handle.as_ref() {
+        let state = app.state::<NativeFileStore>();
+        let mut map = state.files.lock().map_err(|_| "FILE_LOCK_FAILED")?;
+        Some(reserve_save_as(&mut map, handle, expected_generation,
+                             expected_project_sha256.as_deref())?)
+    } else {
+        if expected_generation.is_some() || expected_project_sha256.is_some() {
+            return Err("INVALID_SAVE_AS_CAS".into());
+        }
+        None
+    };
+    // Never leave a reserved session busy on a failed validation, inaccessible
+    // destination, denied write, or other early error.
+    let result = async {
+        let raw = serde_json::to_string(&document).map_err(|_| "INVALID_JSON")?;
+        let validated = canonicalize(&app, raw).await?;
+        if let Some(old) = prior.as_ref() {
+            source_safe(old, &validated)?;
+        } else if validated.source_status == "synthetic" && validated.source_sha == FROZEN_E695 {
+            return Err("SYNTHETIC_SOURCE_SPOOF".into());
+        }
+        let content = serialize_document(&validated.document)?;
+        let file_sha = atomic_save(&path, &content, None)?;
+        Ok::<_,String>((validated, file_sha))
+    }.await;
     if let Some(handle) = previous_handle.as_ref() {
         let state = app.state::<NativeFileStore>();
-        let map = state.files.lock().map_err(|_| "FILE_LOCK_FAILED")?;
-        let old = map.get(handle).ok_or("UNKNOWN_DOCUMENT_HANDLE")?;
-        if old.busy || Some(old.generation) != expected_generation ||
-           Some(old.project_sha256.as_str()) != expected_project_sha256.as_deref() {
-            return Err("STALE_DOCUMENT_CAS".into());
-        }
-        source_safe(old, &validated)?;
-    } else if validated.source_status == "synthetic" && validated.source_sha == FROZEN_E695 {
-        return Err("SYNTHETIC_SOURCE_SPOOF".into());
+        let mut map = state.files.lock().map_err(|_| "FILE_LOCK_FAILED")?;
+        let entry = map.get_mut(handle).ok_or("UNKNOWN_DOCUMENT_HANDLE")?;
+        entry.busy = false;
     }
-    let content = serialize_document(&validated.document)?;
-    let file_sha = atomic_save(&path, &content, None)?;
+    let (validated, file_sha) = result?;
     let native = NativeDocument {
         path, project_id: validated.project_id, source_sha: validated.source_sha,
         source_status: validated.source_status, source_path: validated.source_path,
@@ -551,6 +582,51 @@ mod tests {
         assert_eq!(fs::read(&target).unwrap(), b"payload");
         fs::remove_file(target).unwrap();
         fs::remove_dir(dir).unwrap();
+    }
+
+    #[test]
+    fn staged_write_interruption_preserves_prior_document_bytes() {
+        // Deterministic crash-before-commit surrogate: an already fsynced temp
+        // must never mutate or truncate the existing project.
+        let dir=std::env::temp_dir().join(format!("gscad-atomic-crash-{}",Uuid::new_v4()));
+        fs::create_dir(&dir).unwrap();
+        let target=dir.join("recovery.gscad.json");
+        let old=b"{\"value\":\"old\"}\n";
+        let replacement=b"{\"value\":\"new\"}\n";
+        fs::write(&target,old).unwrap();
+        let staged=write_temp(&target,replacement).unwrap();
+        assert_eq!(fs::read(&target).unwrap(),old);
+        assert_eq!(fs::read(&staged).unwrap(),replacement);
+        // Simulate a process that terminates without issuing the atomic rename.
+        fs::remove_file(&staged).unwrap();
+        assert_eq!(fs::read(&target).unwrap(),old);
+        assert_eq!(atomic_save(&target,replacement,Some(&sha(old))).unwrap(),sha(replacement));
+        assert_eq!(fs::read(&target).unwrap(),replacement);
+        fs::remove_file(target).unwrap();
+        fs::remove_dir(dir).unwrap();
+    }
+
+    #[test]
+    fn save_as_reservation_rejects_parallel_operations_and_clears_on_release() {
+        let mut files=HashMap::new();
+        let handle="opaque-handle";
+        files.insert(handle.to_owned(),NativeDocument {
+            path: PathBuf::from("test.gscad.json"), project_id:"p".into(),
+            source_sha:"0".repeat(40), source_status:"synthetic".into(),
+            source_path:"user-created/p".into(), topology_sha256:"a".repeat(64),
+            project_sha256:"b".repeat(64), disk_sha256:"c".repeat(64),
+            generation:7, busy:false,
+        });
+        assert_eq!(reserve_save_as(&mut files,handle,Some(6),Some(&"b".repeat(64)))
+            .err().unwrap(),"STALE_DOCUMENT_CAS");
+        assert!(!files[handle].busy);
+        let old=reserve_save_as(&mut files,handle,Some(7),Some(&"b".repeat(64))).unwrap();
+        assert!(old.busy);
+        assert!(files[handle].busy);
+        assert_eq!(reserve_save_as(&mut files,handle,Some(7),Some(&"b".repeat(64)))
+            .err().unwrap(),"STALE_DOCUMENT_CAS");
+        files.get_mut(handle).unwrap().busy=false;
+        assert!(reserve_save_as(&mut files,handle,Some(7),Some(&"b".repeat(64))).is_ok());
     }
 
     #[test]
