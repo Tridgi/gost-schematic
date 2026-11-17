@@ -1,0 +1,66 @@
+name: Visual CAD R9 fast diagnostic on previously accepted NSIS
+on:
+  workflow_dispatch:
+  push:
+    branches: [ui/visual-cad-mvp]
+    paths:
+      - '.github/workflows/visual-cad-r9-fast-diagnostic.yml'
+      - '.github/tools/r9-native-*'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: visual-cad-r9-fast-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  fast-diagnostic:
+    name: R9 test harness diagnostic on independently passed R4 binary (not current-SHA acceptance)
+    runs-on: windows-2022
+    timeout-minutes: 30
+    env:
+      GSCAD_R9_BINARY_SOURCE_SHA: bd00634b44cb9d827ba91848fdb14d3582b5e6b5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: ui/editor/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate diagnostic harness before launch
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $parseErrors = $null
+          $path = (Resolve-Path '.github/tools/r9-native-project.ps1').Path
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            $path, [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if (@($parseErrors).Count -gt 0) {
+            $parseErrors | ForEach-Object { Write-Host $_.ToString() }
+            throw 'R9_POWERSHELL_SYNTAX_INVALID'
+          }
+          node --check .github/tools/r9-native-project.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'R9_NODE_HARNESS_SYNTAX_INVALID' }
+      - name: Install test-only Playwright CDP and OS picker dependencies
+        shell: pwsh
+        run: |
+          npm ci --prefix ui/editor --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { throw 'R9_FAST_NPM_CI_FAILED' }
+          python -m pip install 'pywinauto==0.6.9' 'jsonschema==4.26.0'
+          if ($LASTEXITCODE -ne 0) { throw 'R9_FAST_PIP_FAILED' }
+      - name: Download previously R4-verified patched source NSIS installer
+        uses: actions/download-artifact@v4
+        with:
+          name: gost-schematic-r6-nsis-build-not-accepted
+          run-id: 44187268520
+          repository: Tridgi/gost-schematic
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/gscad-r9-fixed-verified-r4
+      - name: Real Windows installed CAD project persistence smoke (diagnostic only)
+        shell: pwsh
+        run: |
+          Write-Host ('R9_DIAGNOSTIC_BINARY_SOURCE_SHA=' + $env:GSCAD_R9_BINARY_SOURCE_SHA)
+          & .\.github\tools\r9-native-project.ps1 -ArtifactRoot (Join-Path $env:RUNNER_TEMP 'gscad-r9-fixed-verified-r4')
+          if (!$?) { throw 'R9_FAST_DIAGNOSTIC_FAILED' }
