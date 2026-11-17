@@ -24,6 +24,11 @@ jobs:
       GSCAD_R9_BINARY_SOURCE_SHA: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: ui/editor/package-lock.json
       - name: Fail fast on real R9 harness syntax before expensive Windows build
         shell: pwsh
         run: |
@@ -40,11 +45,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'R9_NODE_HARNESS_SYNTAX_INVALID' }
           node --check .github/tools/r9-native-sidecar-probe.mjs
           if ($LASTEXITCODE -ne 0) { throw 'R9_SIDECAR_PROBE_SYNTAX_INVALID' }
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: ui/editor/package-lock.json
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
