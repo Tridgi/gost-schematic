@@ -125,6 +125,20 @@ try {
             throw ("APP_CLOSE_TIMEOUT_$i")
         }
         Write-Host ("INSTALLED_APP_LAUNCH_CLOSE_PASS_$i")
+        # Do not restart while an old WebView2 host or Python sidecar from this
+        # exact application PID is still alive. Check process parent IDs, not
+        # unrelated global msedgewebview2 processes.
+        $childWait=0
+        do {
+            $children=@(Get-CimInstance Win32_Process -Filter ('ParentProcessId = '+$app.Id) |
+                Where-Object { $_.Name -like 'msedgewebview2.exe' -or $_.Name -like 'engine-bridge*.exe' })
+            if($children.Count -eq 0){break}
+            Start-Sleep -Milliseconds 500
+            $childWait+=500
+        } while($childWait -lt 30000)
+        Write-Host ("APP_DESCENDANTS_WAIT_MS_$i=" + $childWait +
+            " remaining=" + (($children | ForEach-Object { $_.Name+':'+$_.ProcessId }) -join ','))
+        if($children.Count -gt 0){throw ("APP_ORPHAN_CHILDREN_$i")}
     }
     Start-Sleep -Seconds 2
     $orphans = @(Get-CimInstance Win32_Process |
