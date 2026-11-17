@@ -91,14 +91,14 @@ try{
       await page.mouse.click(box.x+box.width*x,box.y+box.height*y);
       await page.getByTestId('symbol-'+refdes).waitFor({state:'visible',timeout:5000});
     };
-    await place('symbol/resistor.fixed',.25,.40,'R1');
-    await place('symbol/capacitor.fixed',.65,.40,'C1');
+    await place('resistor.fixed',.25,.40,'R1');
+    await place('capacitor.fixed',.65,.40,'C1');
     await page.getByLabel('Позиционное обозначение').fill('C9');
     await page.getByLabel('Позиционное обозначение').press('Enter');
     await page.getByTestId('symbol-C9').waitFor({state:'visible',timeout:5000});
     await page.getByTestId('inspector-nominal').fill('220н');
     await page.getByTestId('inspector-nominal').press('Enter');
-    await place('symbol/resistor.fixed',.83,.70,'R2');
+    await place('resistor.fixed',.83,.70,'R2');
     const r1=await page.getByTestId('symbol-R1').getAttribute('data-component-id');
     const c9=await page.getByTestId('symbol-C9').getAttribute('data-component-id');
     assert(r1&&c9);
