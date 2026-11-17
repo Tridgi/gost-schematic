@@ -192,12 +192,16 @@ try{
     assert.equal(await page.getByTestId('inspector-nominal').inputValue(),'220н');
     console.log('R9_REAL_NATIVE_REOPEN_GUI_PASS');
     // Existing handle: Save must not open a picker and must preserve the exact model.
+    // Reapply the same grid setting so the canonical document stays byte-for-byte
+    // identical, but mark the UI dirty to observe native Save completion visibly.
+    const gridToggle=page.getByTestId('toggle-grid-visible');
+    await gridToggle.click();
+    await gridToggle.click();
+    const dirtyIndicator=page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true});
+    await dirtyIndicator.waitFor({state:'visible',timeout:5000});
     await page.getByTestId('save-project').click();
-    // A native Save is asynchronous. Disk equality can hold before its Rust
-    // busy/CAS reservation is released, especially if bytes are unchanged.
-    // Wait for the app's actual NATIVE_SAVED acknowledgement before Save As.
-    await page.getByText(/NATIVE_SAVED:/).first()
-      .waitFor({state:'visible',timeout:20000});
+    // Native Save is async; do not begin Save As while its Rust CAS handle is busy.
+    await dirtyIndicator.waitFor({state:'hidden',timeout:20000});
     assert.deepStrictEqual(status(projectPath),original);
     assert.equal(digest(projectPath),beforeDigest);
     console.log('R9_REAL_NATIVE_SAVE_SAME_PATH_PASS');
