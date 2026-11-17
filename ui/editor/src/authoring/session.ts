@@ -190,7 +190,13 @@ function validateAuthoring(file:ProjectFileV2):void {
   const actual={components:p.components.length,nets:p.nets.length,
     memberships:p.nets.reduce((n,net)=>n+net.members.length,0),
     da1_pins:0,b_graphics:0};
-  if(JSON.stringify(actual)!==JSON.stringify(p.provenance.expected_counts))
+  // Rust serde_json and Python canonicalization reorder JSON object keys when
+  // reopening a native file. Counts are a named mapping, not an ordered tuple.
+  // Comparing JSON.stringify falsely rejected valid persisted synthetic projects.
+  const counts=p.provenance.expected_counts;
+  if(!counts||typeof counts!=='object'||Array.isArray(counts)||
+     Object.keys(counts).length!==Object.keys(actual).length||
+     Object.entries(actual).some(([key,value])=>counts[key as keyof typeof actual]!==value))
     reject('SOURCE_COUNT_MISMATCH');
   indexOfSheet(file);
 }
