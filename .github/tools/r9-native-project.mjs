@@ -116,8 +116,18 @@ try{
     assert.equal(await page.locator('[data-net-id]').count(),1,'real physical wire');
     console.log('R9_REAL_CAD_PLACEMENT_WIRE_PASS');
     await runDialog('save',projectPath,()=>page.getByTestId('save-project').click());
-    await page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true})
-      .waitFor({state:'hidden',timeout:20000});
+    try {
+      await page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true})
+        .waitFor({state:'hidden',timeout:15000});
+    }catch(error){
+      console.log('R9_SAVE_AS_DIAG_FILE_EXISTS='+fs.existsSync(projectPath));
+      console.log('R9_SAVE_AS_DIAG_DIR='+JSON.stringify(fs.readdirSync(path.dirname(projectPath))));
+      try {
+        const ui=await page.evaluate(()=>document.body.innerText);
+        console.log('R9_SAVE_AS_DIAG_UI='+ui.slice(-2300));
+      }catch(e){console.log('R9_SAVE_AS_DIAG_UI_UNAVAILABLE '+String(e));}
+      throw error;
+    }
     const saved=status(projectPath);
     assertModel(saved);
     const sum=digest(projectPath);

@@ -62,9 +62,12 @@ for attempt in range(100):
                 continue
             action.invoke()
             log("R9_REAL_DIALOG_ACTION_SENT mode=" + args.mode)
+            time.sleep(0.5)
+            if window.is_visible():
+                log("R9_REAL_DIALOG_STILL_VISIBLE_AFTER_ACTION mode=" + args.mode)
             # Returning from invoke is not enough: the caller verifies disk persistence.
             sys.exit(0)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - Windows UIA/COM exceptions vary by version
             last = type(exc).__name__ + ":" + str(exc)[:250]
     time.sleep(0.25)
 raise RuntimeError("R9_REAL_NATIVE_DIALOG_NOT_CONTROLLED " + str(last))
