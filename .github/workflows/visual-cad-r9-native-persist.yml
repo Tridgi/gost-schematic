@@ -24,6 +24,22 @@ jobs:
       GSCAD_R9_BINARY_SOURCE_SHA: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
+      - name: Fail fast on real R9 harness syntax before expensive Windows build
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $parseErrors = $null
+          $path = (Resolve-Path '.github/tools/r9-native-project.ps1').Path
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            $path, [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if (@($parseErrors).Count -gt 0) {
+            $parseErrors | ForEach-Object { Write-Host $_.ToString() }
+            throw 'R9_POWERSHELL_SYNTAX_INVALID'
+          }
+          node --check .github/tools/r9-native-project.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'R9_NODE_HARNESS_SYNTAX_INVALID' }
+          node --check .github/tools/r9-native-sidecar-probe.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'R9_SIDECAR_PROBE_SYNTAX_INVALID' }
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
