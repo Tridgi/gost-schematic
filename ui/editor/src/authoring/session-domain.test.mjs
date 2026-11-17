@@ -211,7 +211,7 @@ test('R6: two independent Nets and two A3 sheets survive ProjectV2 reopen with i
  assert.equal(saved.project.nets.flatMap(n=>n.members).length,4);
  const pythonDigest=doc=>{
   const py=spawnSync('python',['-c',
-   'import json,sys;sys.path.insert(0,"../..");from ui.editor.src.model.contract import validate,digest;d=json.load(sys.stdin);validate(d);print(digest(d))'
+   'import json,sys;sys.path.insert(0,"../..");from ui.editor.src.model.contract import validate,digest;d=json.loads(sys.stdin.buffer.read().decode("utf-8"));validate(d);print(digest(d))'
   ],{input:JSON.stringify(doc),encoding:'utf8',timeout:20000});
   assert.equal(py.status,0,py.stderr);
   assert.match(py.stdout,/^[0-9a-f]{64}\s*$/);

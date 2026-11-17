@@ -353,7 +353,8 @@ def _native_export_preview(args: dict[str, Any]) -> dict[str, Any]:
         sys.path.insert(0, str(root))
     try:
         import ui.bridge.export.project_v2 as bridge_export
-        from ui.bridge.export.canonical import ExportError, ExportRequest, PAGE_UM, pixels as exact_pixels
+        from ui.bridge.export.canonical import PAGE_UM, ExportError, ExportRequest
+        from ui.bridge.export.canonical import pixels as exact_pixels
     except (ImportError, OSError) as exc:
         raise ProtocolError("EXPORT_UNAVAILABLE", "canonical preview backend dependency missing") from exc
     if Path(bridge_export.__file__).resolve() != exporter.resolve():

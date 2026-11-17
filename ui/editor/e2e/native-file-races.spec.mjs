@@ -102,13 +102,19 @@ test('native Open completion never discards edits created after picker invocatio
 
 test('Tauri native window-close blocks discarded edits unless the user confirms',async({page})=>{
   await page.addInitScript(()=>{
-    window.__gscadMock={onClose:null};
+    // React StrictMode registers, removes and registers the listener again.
+    // Real Tauri unsubscribe removes only its own callback, not all listeners.
+    window.__gscadMock={onClose:null,listeners:new Set()};
     window.__TAURI__={
       core:{invoke:async()=>{throw Error('NO_COMMAND_EXPECTED');}},
       window:{getCurrentWindow:()=>({
         onCloseRequested:async listener=>{
-          window.__gscadMock.onClose=listener;
-          return ()=>{window.__gscadMock.onClose=null;};
+          const m=window.__gscadMock;
+          m.listeners.add(listener);m.onClose=listener;
+          return ()=>{
+            m.listeners.delete(listener);
+            m.onClose=[...m.listeners].at(-1)??null;
+          };
         }
       })}
     };
