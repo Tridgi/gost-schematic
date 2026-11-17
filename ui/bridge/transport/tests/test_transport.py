@@ -477,10 +477,10 @@ class TransportTests(unittest.TestCase):
         output_bytes = io.BytesIO()
         output_stream = io.TextIOWrapper(output_bytes, encoding="cp1252",
                                         errors="strict", write_through=True)
-        with patch.object(worker, "process", return_value=response):
-            with patch.object(worker.sys, "stdin", input_stream):
-                with patch.object(worker.sys, "stdout", output_stream):
-                    worker.main()
+        with (patch.object(worker, "process", return_value=response),
+              patch.object(worker.sys, "stdin", input_stream),
+              patch.object(worker.sys, "stdout", output_stream)):
+            worker.main()
         wire_bytes = output_bytes.getvalue()
         self.assertTrue(wire_bytes.isascii())
         self.assertEqual(json.loads(wire_bytes), response)
