@@ -403,6 +403,39 @@ class TransportTests(unittest.TestCase):
                       {"SHEET_PAPER_LABEL_MISMATCH", "SCHEMA_INVALID",
                        "INVALID_SHEET_FRAME", "INVALID_PAGE_SIZE"})
 
+    def test_native_a2_landscape_svg_uses_exact_non_a3_physical_extent(self):
+        """Exercise the approved large-sheet path without raster allocation."""
+        import base64
+        import copy
+        import hashlib
+
+        doc = copy.deepcopy(self._fixture())
+        sheet = copy.deepcopy(doc["project"]["sheets"][0])
+        sheet["id"] = "qa-native-a2"
+        sheet["index"] = doc["project"]["sheets"][0]["index"] + 1
+        sheet["frame"]["size_um"] = [594000, 420000]
+        sheet["frame"]["paper"] = "A2 landscape"
+        for key in ("instances", "wires", "junctions", "splices",
+                    "texts", "labels", "graphics"):
+            sheet[key] = []
+        for layer in sheet["layers"]:
+            layer["id"] = "qa-a2-" + layer["id"]
+        doc["project"]["sheets"].append(sheet)
+        response = worker.process(json.dumps(request(
+            "native-a2-svg", "native_export_preview",
+            {"document": doc, "sheet_id": sheet["id"], "format": "svg"}
+        )).encode())
+        self.assertTrue(response["ok"], response)
+        exported = response["result"]
+        self.assertEqual(exported["page"], "A2")
+        self.assertEqual(exported["orientation"], "landscape")
+        self.assertEqual(exported["sheet_size_um"], [594000, 420000])
+        self.assertEqual(exported["pixel_dimensions"], [7016, 4961])
+        raw = base64.b64decode(exported["payload"], validate=True)
+        self.assertIn(b'width="594mm" height="420mm"', raw)
+        self.assertEqual(hashlib.sha256(raw).hexdigest(), exported["payload_sha256"])
+        self.assertEqual(exported["approval"], "NOT_ESKD_CERTIFIED")
+
     def test_native_python_svg_uses_canonical_v2_export_and_never_accepts_paths(self):
         import base64
         import hashlib

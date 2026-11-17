@@ -45,6 +45,9 @@
     "windows": {
       "webviewInstallMode": {
         "type": "offlineInstaller"
+      },
+      "nsis": {
+        "installMode": "currentUser"
       }
     },
     "icon": [

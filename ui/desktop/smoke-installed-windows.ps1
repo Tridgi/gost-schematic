@@ -103,8 +103,24 @@ try {
             if ($app.MainWindowHandle -ne [IntPtr]::Zero) { $found = $true; break }
         }
         if (!$found) { throw ("APP_WINDOW_NOT_FOUND_$i") }
+        Write-Host ("APP_WINDOW_FOUND_$i handle=" + $app.MainWindowHandle +
+            ' title=' + $app.MainWindowTitle)
+        # The first native window can become visible before the React/Tauri
+        # close-request event listener has finished registering. Exercise a
+        # settled window, not a partial startup race.
+        Start-Sleep -Seconds 3
         if (!$app.CloseMainWindow()) { throw ("APP_WINDOW_CLOSE_REJECTED_$i") }
-        if (!$app.WaitForExit(15000)) { throw ("APP_CLOSE_TIMEOUT_$i") }
+        Write-Host ("APP_CLOSE_REQUEST_SENT_$i")
+        if (!$app.WaitForExit(30000)) {
+            $app.Refresh()
+            $child = @(Get-CimInstance Win32_Process -Filter ('ParentProcessId = ' + $app.Id) |
+                ForEach-Object { $_.Name + ':' + $_.ProcessId })
+            Write-Host ("APP_CLOSE_TIMEOUT_DIAGNOSTIC_$i alive=" + (-not $app.HasExited) +
+                ' handle=' + $app.MainWindowHandle +
+                ' title=' + $app.MainWindowTitle + ' children=' + ($child -join ','))
+            # Never force a PASS; the finally clause terminates the test process.
+            throw ("APP_CLOSE_TIMEOUT_$i")
+        }
         Write-Host ("INSTALLED_APP_LAUNCH_CLOSE_PASS_$i")
     }
     Start-Sleep -Seconds 2
@@ -120,6 +136,46 @@ try {
     if (Test-Path -LiteralPath $appExe -PathType Leaf) { throw 'NSIS_UNINSTALL_LEFT_EXE' }
     $installed = $false
     Write-Host 'NSIS_INSTALL_UNINSTALL_PASS'
+    # Separate test: exercise NSIS /D itself, NOT merely a relocated copy.
+    # This installer invocation is permitted only inside the fresh RUNNER_TEMP GUID.
+    $unicodeInstall = Join-Path $root 'NSIS Установка CAD с пробелами'
+    if (Test-Path -LiteralPath $unicodeInstall) { throw 'UNICODE_NSIS_TARGET_PREEXISTS' }
+    Write-Host ('NSIS_UNICODE_CUSTOM_TARGET: ' + $unicodeInstall)
+    # /D=<path> is the final command-line token, as NSIS requires.
+    Run-Bounded -File $setup -ArgumentTokens @('/S',('/D=' + $unicodeInstall)) -TimeoutMs 90000
+    $unicodeExe = Join-Path $unicodeInstall 'gost-cad-desktop.exe'
+    if (!(Test-Path -LiteralPath $unicodeExe -PathType Leaf)) {
+        if (Test-Path -LiteralPath (Join-Path $initialInstallDir 'gost-cad-desktop.exe')) {
+            $installedDir = $initialInstallDir
+            $uninstaller = Join-Path $installedDir 'uninstall.exe'
+            $installed = $true
+        }
+        throw 'NSIS_D_UNICODE_INSTALL_EXE_MISSING'
+    }
+    $installedDir = $unicodeInstall
+    $uninstaller = Join-Path $unicodeInstall 'uninstall.exe'
+    $installed = $true
+    $installedSidecars = @(Get-ChildItem -LiteralPath $unicodeInstall -Recurse -File -Filter 'engine-bridge*.exe')
+    if ($installedSidecars.Count -ne 1) { throw 'NSIS_D_UNICODE_SIDECAR_MISSING' }
+    $unicodeSidecarPath = $installedSidecars[0].FullName
+    $responseText = @($line | & $unicodeSidecarPath)
+    if ($LASTEXITCODE -ne 0 -or $responseText.Count -ne 1) {
+        throw 'NSIS_D_UNICODE_IPC_HELLO_FAILED'
+    }
+    $response = $responseText[0] | ConvertFrom-Json
+    if ($response.ok -ne $true -or $response.id -ne 'installed_hello') {
+        throw 'NSIS_D_UNICODE_IPC_INVALID'
+    }
+    Write-Host 'NSIS_D_UNICODE_AND_SPACES_HELLO_PASS'
+    if (!(Test-Path -LiteralPath $uninstaller -PathType Leaf)) {
+        throw 'NSIS_D_UNICODE_UNINSTALLER_MISSING'
+    }
+    Run-Bounded -File $uninstaller -ArgumentTokens @('/S') -TimeoutMs 120000
+    if (Test-Path -LiteralPath $unicodeExe -PathType Leaf) {
+        throw 'NSIS_D_UNICODE_UNINSTALL_LEFT_EXE'
+    }
+    $installed = $false
+    Write-Host 'NSIS_D_UNICODE_INSTALL_UNINSTALL_PASS'
 } finally {
     foreach ($app in $launched) {
         try {
