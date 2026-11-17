@@ -556,7 +556,8 @@ def process(line: bytes) -> dict[str, Any]:
             request_id = request["id"]
         result = dispatch(request)
         answer = {"v": VERSION, "id": request_id, "ok": True, "result": result}
-        if len(json.dumps(answer, ensure_ascii=False).encode("utf-8")) > MAX_RESPONSE:
+        # Bound the actual wire representation: non-ASCII becomes JSON escapes.
+        if len(json.dumps(answer, ensure_ascii=True, separators=(",", ":")).encode("ascii")) > MAX_RESPONSE:
             raise ProtocolError("RESPONSE_TOO_LARGE", "engine response exceeds 4 MiB")
         return answer
     except ProtocolError as exc:
@@ -579,7 +580,9 @@ def main() -> None:
                 if not tail or tail.endswith(b"\n"):
                     break
         response = process(line)
-        sys.stdout.write(json.dumps(response, ensure_ascii=False, separators=(",", ":")) + "\n")
+        # Windows bundled sidecars may inherit a legacy stdout codepage.
+        # ASCII-only JSON preserves arbitrary Unicode while keeping NDJSON writable.
+        sys.stdout.write(json.dumps(response, ensure_ascii=True, separators=(",", ":")) + "\n")
         sys.stdout.flush()
 
 

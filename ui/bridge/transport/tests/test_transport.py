@@ -466,5 +466,36 @@ class TransportTests(unittest.TestCase):
             self.assertEqual(denied["error"]["code"], "INVALID_REQUEST")
 
 
+    def test_windows_legacy_stdout_preserves_unicode_project_json(self):
+        """R9 real PyInstaller repro: cp1252 stdout must not terminate on Cyrillic."""
+        import io
+        from unittest.mock import patch
+
+        response = {"v": 1, "id": "r9_unicode", "ok": True,
+                    "result": {"title": "Новая электрическая схема", "nominal": "220н"}}
+        input_stream = io.TextIOWrapper(io.BytesIO(b"{}\\n"), encoding="utf-8")
+        output_bytes = io.BytesIO()
+        output_stream = io.TextIOWrapper(output_bytes, encoding="cp1252",
+                                        errors="strict", write_through=True)
+        with patch.object(worker, "process", return_value=response):
+            with patch.object(worker.sys, "stdin", input_stream):
+                with patch.object(worker.sys, "stdout", output_stream):
+                    worker.main()
+        wire_bytes = output_bytes.getvalue()
+        self.assertTrue(wire_bytes.isascii())
+        self.assertEqual(json.loads(wire_bytes), response)
+        self.assertIn(b"\\\\u", wire_bytes)
+
+    def test_wire_response_size_accounts_for_unicode_json_escape_expansion(self):
+        """The 4 MiB limit must use actual escaped NDJSON bytes, not raw UTF-8."""
+        from unittest.mock import patch
+
+        oversized_unicode = "Ж" * 700_000
+        with patch.object(worker, "dispatch", return_value={"title": oversized_unicode}):
+            reply = worker.process(json.dumps(request("oversize")).encode("ascii"))
+        self.assertFalse(reply["ok"])
+        self.assertEqual(reply["error"]["code"], "RESPONSE_TOO_LARGE")
+
+
 if __name__ == "__main__":
     unittest.main()
