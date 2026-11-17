@@ -1,5 +1,5 @@
 /** Native Tauri 2 close request guard. Browser navigations retain beforeunload. */
-import {traceNativeClose} from './close-trace';
+import {traceNativeClose} from './close-trace.ts';
 type CloseRequest={preventDefault:()=>void};
 type NativeWindow={onCloseRequested:(onClose:(event:CloseRequest)=>void)=>Promise<()=>void>};
 type TauriHost={
