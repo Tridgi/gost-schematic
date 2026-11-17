@@ -45,7 +45,8 @@ try {
     $sidecars=@(Get-ChildItem -LiteralPath $destination -File -Recurse -Filter 'engine-bridge*.exe')
     if($sidecars.Count -ne 1){throw 'NSIS_D_UNICODE_SIDECAR_MISSING'}
     $inputLine='{"v":1,"id":"unicode_d","op":"hello","args":{}}'
-    $output=@($inputLine | & $sidecars[0].FullName)
+    $sidecarExe=$sidecars[0].FullName
+    $output=@($inputLine | & $sidecarExe)
     if($LASTEXITCODE -ne 0 -or $output.Count -ne 1){throw 'NSIS_D_UNICODE_IPC_FAILED'}
     $response=$output[0] | ConvertFrom-Json
     if($response.ok -ne $true -or $response.id -ne 'unicode_d'){throw 'NSIS_D_UNICODE_PROTOCOL_INVALID'}
