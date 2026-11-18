@@ -46,6 +46,27 @@ test('empty project A3 uses DRAFT Python-source R/C library, no fabricated TL494
  assert.deepEqual(capacitor.graphics.map(x=>x.kind),['line','line','line','line']);
 });
 
+test('every exposed authoring PartDefinition resolves to one matching draft SymbolDefinition',()=>{
+ const doc=newBlankProject();
+ const parts=doc.project.part_definitions;
+ const symbols=doc.project.symbol_definitions;
+ assert.equal(new Set(parts.map(x=>x.id)).size,parts.length);
+ assert.equal(new Set(symbols.map(x=>x.id)).size,symbols.length);
+ for(const part of parts){
+  assert.equal(part.symbol_ids.length,1);
+  const symbol=symbols.find(x=>x.id===part.symbol_ids[0]);
+  assert.ok(symbol,`missing symbol for ${part.id}`);
+  assert.equal(symbol.part_id,part.id);
+  assert.equal(symbol.status,'draft');
+  assert.deepEqual(
+    part.physical_pins.map(x=>x.number),
+    symbol.pins.map(x=>x.physical_pin_number)
+  );
+  assert.equal(new Set(symbol.pins.map(x=>x.physical_pin_number)).size,symbol.pins.length);
+  assert.ok(symbol.graphics.length>0);
+ }
+});
+
 test('canonical draft diode and fuse entries retain physical pins and source geometry',()=>{
  const s=newSession();
  s.place(s.newTransaction('place-diode'),'symbol/diode.general',[100000,100000]);

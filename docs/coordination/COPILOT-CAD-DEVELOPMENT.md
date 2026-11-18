@@ -37,9 +37,11 @@ VERIFIED_TESTS:
 - frontend typecheck, 53 unit tests, and production Vite build pass
 - ProjectV2/export/bridge Python slice: 102 passed, 37 deselected, 33 subtests passed
 - full Python suite after QA correction: 2361 passed, 8 skipped, 3 warnings
-- frontend typecheck, 58 unit tests, and production Vite build pass after catalog extension
+- frontend typecheck, 59 unit tests, and production Vite build pass after catalog extension
+- catalog consistency regression verifies every exposed PartDefinition maps to one matching draft SymbolDefinition with identical physical pin numbers
 
 FAILED_TESTS:
+- first frontend test invocation omitted the isolated Python environment and failed only because `jsonschema` was not on the host interpreter path; rerun with `.venv/bin` passed all 59 tests
 - Chromium installation was attempted twice but the Playwright downloader looped after archive download; browser E2E remains environment-blocked
 - `cargo test --manifest-path ui/desktop/src-tauri/Cargo.toml`: blocked by missing Linux `glib-2.0` system development package
 ```
