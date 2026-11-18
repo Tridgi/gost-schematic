@@ -160,6 +160,19 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
   const vertices=(snapshotWire:WiringSnapshot['wires'][number])=>new Map(snapshotWire.vertices.map(v=>[v.id,v.at_um]));
   const step=document.project.settings.grid_step_um*camera.s;
   const grid=gridVisible&&step>=6&&Number.isFinite(step);
+  const pageFrame=document.project.sheets.find(sh=>sh.id===sheetId)?.frame;
+  const pageStart=screen([0,0],camera);
+  const pageEnd=pageFrame
+    ?screen([pageFrame.size_um[0],pageFrame.size_um[1]],camera):null;
+  const pageW=pageEnd?pageEnd.x-pageStart.x:0;
+  const pageH=pageEnd?pageEnd.y-pageStart.y:0;
+  const marginUm=pageFrame?.margin_um??0;
+  const marginStart=pageFrame?screen([marginUm,marginUm],camera):null;
+  const marginEnd=pageFrame?screen([
+    pageFrame.size_um[0]-marginUm,pageFrame.size_um[1]-marginUm
+  ],camera):null;
+  const showMargins=marginStart&&marginEnd&&marginUm>0&&
+    marginEnd.x>marginStart.x&&marginEnd.y>marginStart.y;
   // Revision forces deliberate repaint of hover / drag preview without storing any Net state.
   void revision;
   return <svg ref={svgRef} className="gscad-drawing" role="img" tabIndex={0}
@@ -177,8 +190,25 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
         <path d={`M ${step} 0 L 0 0 0 ${step}`} fill="none" stroke="#bbc5cb" strokeWidth={.5}/>
       </pattern>}
     </defs>
-    <rect width="100%" height="100%" fill="#fbfcfe"/>
-    {grid&&<rect width="100%" height="100%" fill="url(#cad-grid-um)" pointerEvents="none"/>}
+    <rect width="100%" height="100%" fill="#edf1f5"/>
+    {pageFrame&&pageEnd&&<g className="cad-paper-guide" data-electrical="false"
+      aria-label="Границы физического листа" pointerEvents="none">
+      <rect data-testid="gscad-paper-outline"
+        x={pageStart.x} y={pageStart.y} width={pageW} height={pageH}
+        fill="#ffffff" stroke="#66788a" strokeWidth={1.3}/>
+      {grid&&<rect data-testid="gscad-paper-grid"
+        x={pageStart.x} y={pageStart.y} width={pageW} height={pageH}
+        fill="url(#cad-grid-um)" stroke="none"/>}
+      {showMargins&&<rect data-testid="gscad-print-margin"
+        x={marginStart.x} y={marginStart.y}
+        width={marginEnd.x-marginStart.x} height={marginEnd.y-marginStart.y}
+        fill="none" stroke="#b6c0ca" strokeWidth={.9} strokeDasharray="5 4"/>}
+      {pageW>180&&pageH>100&&<text data-testid="gscad-paper-label"
+        x={pageStart.x+8} y={pageStart.y+15}
+        fontSize={11} fontFamily="sans-serif" fill="#596c7e">
+        {pageFrame.paper} · {pageFrame.size_um[0]/1000}×{pageFrame.size_um[1]/1000} мм
+      </text>}
+    </g>}
     <g className="non-electrical-source-ink" fill="none" stroke="#947858" strokeWidth={1.2} pointerEvents="none">
       {visibleScene.graphics.map(g=><g key={g.id} data-electrical="false" data-source-role={g.source_role}>
         {g.strokes.map((stroke,i)=>{
