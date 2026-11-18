@@ -19,6 +19,24 @@ for(const p of [projectPath,copyPath,svgPath,pngPath]){
     throw Error('R9_PATH_OUTSIDE_RUNNER_TEMP');
 }
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function awaitNativePublish(filepath,label){
+  // pywinauto acknowledges the OS dialog, *not* Rust/Python completion.
+  // New destination names are isolated inside RUNNER_TEMP and are never reused.
+  for(let i=0;i<120;i++){
+    if(fs.existsSync(filepath)){
+      const st=fs.statSync(filepath);
+      if(st.isFile()&&st.size>50){
+        console.log('R9_NATIVE_DISK_PUBLISH_ACK='+label+' bytes='+st.size);
+        return;
+      }
+    }
+    await sleep(250);
+  }
+  let ui='UNAVAILABLE';
+  try { ui=(await page.evaluate(()=>document.body.innerText)).slice(-1500); }catch{}
+  console.log('R9_NATIVE_PUBLISH_TIMEOUT_UI='+ui);
+  throw Error('R9_NATIVE_PUBLISH_TIMEOUT_'+label);
+}
 const digest=filepath=>execFileSync('python',['-c',
   'import json,sys;from ui.editor.src.model.contract import validate,digest;d=json.load(open(sys.argv[1],encoding="utf-8"));validate(d);print(digest(d))',
   filepath],{encoding:'utf8',timeout:30000}).trim();
@@ -222,6 +240,7 @@ try{
     }
     await page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true})
       .waitFor({state:'hidden',timeout:20000});
+    await awaitNativePublish(copyPath,'save-as-unicode');
     same();
     assert.equal(digest(copyPath),beforeDigest);
     console.log('R9_REAL_NATIVE_SAVE_AS_UNICODE_PASS');
@@ -229,6 +248,7 @@ try{
       await page.getByRole('button',{name:'Экспорт',exact:true}).click();
       await page.getByRole('button',{name:'Экспортировать'}).click();
     });
+    await awaitNativePublish(svgPath,'svg');
     const svg=fs.readFileSync(svgPath,'utf8');
     assert.match(svg,/<svg|<\?xml/);
     assert.match(svg,/420mm/);
@@ -239,6 +259,7 @@ try{
       await page.getByText('PNG 300 DPI',{exact:true}).click();
       await page.getByRole('button',{name:'Экспортировать'}).click();
     });
+    await awaitNativePublish(pngPath,'png300');
     const png=fs.readFileSync(pngPath);
     assert.deepStrictEqual([...png.subarray(0,8)],[137,80,78,71,13,10,26,10]);
     assert.equal(png.readUInt32BE(16),Math.round(420/25.4*300));
