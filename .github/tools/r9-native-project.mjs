@@ -244,10 +244,33 @@ try{
     same();
     assert.equal(digest(copyPath),beforeDigest);
     console.log('R9_REAL_NATIVE_SAVE_AS_UNICODE_PASS');
-    await runDialog('save',svgPath,async()=>{
-      await page.getByRole('button',{name:'Экспорт',exact:true}).click();
-      await page.getByRole('button',{name:'Экспортировать'}).click();
-    });
+    try {
+      await runDialog('save',svgPath,async()=>{
+        await page.getByRole('button',{name:'Экспорт',exact:true}).click();
+        await page.getByRole('button',{name:'Экспортировать'}).click();
+      });
+    }catch(error){
+      console.log('R9_NATIVE_SVG_EXPORT_UI_DIAG='+
+        (await page.evaluate(()=>document.body.innerText)).slice(-2200));
+      // Independent installed sidecar receives the exact reopened disk project.
+      // This is diagnostic only and can never substitute for the native GUI gate.
+      if(process.env.GSCAD_R9_SIDECAR_EXE){
+        const request=JSON.stringify({v:1,id:'r9_svg_direct',
+          op:'native_export_preview',args:{document:status(copyPath),
+            sheet_id:original.workspace.active_sheet_id,format:'svg'}})+'\\n';
+        const probe=spawnSync(process.env.GSCAD_R9_SIDECAR_EXE,[],{
+          input:request,encoding:'utf8',timeout:25000,maxBuffer:6*1024*1024,
+          windowsHide:true});
+        console.log('R9_SVG_DIRECT_SIDECAR_EXIT='+probe.status+
+          ' STDERR='+String(probe.stderr??'').slice(-400));
+        try{
+          const result=JSON.parse(String(probe.stdout??'').trim());
+          console.log('R9_SVG_DIRECT_SIDECAR_OK='+result.ok+
+            ' ERROR='+String(result.error?.code??'none'));
+        }catch(e){console.log('R9_SVG_DIRECT_RESPONSE_INVALID='+String(e));}
+      }
+      throw error;
+    }
     await awaitNativePublish(svgPath,'svg');
     const svg=fs.readFileSync(svgPath,'utf8');
     assert.match(svg,/<svg|<\?xml/);
