@@ -257,7 +257,7 @@ try{
       if(process.env.GSCAD_R9_SIDECAR_EXE){
         const request=JSON.stringify({v:1,id:'r9_svg_direct',
           op:'native_export_preview',args:{document:status(copyPath),
-            sheet_id:original.workspace.active_sheet_id,format:'svg'}})+'\\n';
+            sheet_id:original.workspace.active_sheet_id,format:'svg'}})+'\n';
         const probe=spawnSync(process.env.GSCAD_R9_SIDECAR_EXE,[],{
           input:request,encoding:'utf8',timeout:25000,maxBuffer:6*1024*1024,
           windowsHide:true});
