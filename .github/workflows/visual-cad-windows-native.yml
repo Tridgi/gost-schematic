@@ -15,7 +15,7 @@ permissions:
 
 concurrency:
   group: visual-cad-native-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   windows-native:
