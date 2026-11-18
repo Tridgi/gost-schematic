@@ -33,7 +33,7 @@ No additional behavior is classified as confirmed without a failing reproduction
 ## 4. suspected defects requiring focused reproduction
 
 * Native Windows acceptance may still depend on workflow-only behavior and cannot be certified from Linux.
-* The editor catalog and Python catalog can drift because `ui/editor/src/authoring/catalog.ts` duplicates only two symbol definitions instead of consuming the canonical registry.
+* The editor catalog and Python catalog can drift because `ui/editor/src/authoring/catalog.ts` duplicates eleven draft symbol definitions instead of consuming a generated or runtime canonical registry.
 * Full UI copy/paste, rectangle selection, and group transactions are not exposed by the current editor shell.
 * The canonical exporter uses conservative text envelopes and a requested font family; this is intentionally not proof of measured Type A glyph compliance.
 * Multi-sheet behavior, cross-sheet net continuation, and sheet-scoped ID rules need dedicated source fixtures before implementation claims are made.
@@ -59,7 +59,7 @@ Catalog symbols and standards are deliberately marked draft/review-required in s
 | P0 | Keep native Save/Open/Save As acceptance on current SHA | `visual-cad-r9-native-persist.yml`; Windows-only |
 | P1 | Expose complete wire editing in the UI | domain engine exists; visible editor coverage is narrower |
 | P1 | Add multi-select, clipboard, and atomic group operations | no equivalent editor command surface identified |
-| P1 | Generate editor catalog entries from canonical Part/Symbol data | `ui/editor/src/authoring/catalog.ts` currently contains four synchronized draft entries |
+| P1 | Generate editor catalog entries from canonical Part/Symbol data | `ui/editor/src/authoring/catalog.ts` currently contains eleven synchronized draft entries |
 | P1 | Add sheet-scoped fixtures and continuation contract | no verified cross-sheet electrical contract |
 | P2 | Expand ERC/DRC diagnostics and measured typography | existing validation/rendering is draft/review gated |
 | P2 | Performance measurements at 100/500/1000 components | not measured in this audit |

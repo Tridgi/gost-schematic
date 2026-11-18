@@ -6,7 +6,7 @@
 GOST CAD COPILOT HANDOFF
 
 BASE_SHA: 7ea3304a13e8e13a53a66e129ec8f66f58c367b9
-HEAD_SHA: 5721894b4737df14a8d2d386705e0b5aa046346d
+HEAD_SHA: 90919de
 BRANCH: copilot/cad-deep-stabilization
 PR: Tridgi/gost-schematic#142 (draft)
 CURRENT_STAGE: READY_FOR_REVIEW
@@ -37,7 +37,7 @@ VERIFIED_TESTS:
 - frontend typecheck, 53 unit tests, and production Vite build pass
 - ProjectV2/export/bridge Python slice: 102 passed, 37 deselected, 33 subtests passed
 - full Python suite after QA correction: 2361 passed, 8 skipped, 3 warnings
-- frontend typecheck, 54 unit tests, and production Vite build pass after catalog extension
+- frontend typecheck, 58 unit tests, and production Vite build pass after catalog extension
 
 FAILED_TESTS:
 - Chromium installation was attempted twice but the Playwright downloader looped after archive download; browser E2E remains environment-blocked
@@ -62,10 +62,10 @@ BLOCKERS:
 ## Next priority
 
 ```text
-NEXT_PRIORITY: READY_FOR_REVIEW
-NEXT_FILES: .github/workflows/visual-cad-*.yml
-NEXT_TESTS: GitHub Actions on the exact commit; Windows native current-SHA acceptance
-NEXT_IMPLEMENTATION_STEP: commit the trigger correction and open one focused draft PR; use GitHub Actions for Windows/native acceptance on the exact commit
+NEXT_PRIORITY: P1_WIRE_UI
+NEXT_FILES: ui/editor/src/canvas/controller.ts, ui/editor/src/canvas/wire-intents.ts, ui/editor/src/wires/tests/canvas-wire-integration.test.mjs
+NEXT_TESTS: focused editor wire preview/commit, stale segment CAS, Escape cancellation, and current-SHA GitHub Actions
+NEXT_IMPLEMENTATION_STEP: expose and verify one complete wire-edit interaction in the editor while preserving ManualWireEngine topology and needs_routing_review
 ```
 
 ## Architectural decisions
