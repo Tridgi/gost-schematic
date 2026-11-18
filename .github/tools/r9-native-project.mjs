@@ -80,6 +80,19 @@ function assertModel(doc){
   assert.equal(doc.project.sheets[0].wires.length,1);
   assert.equal(doc.project.sheets[0].junctions.length,0);
   assert(doc.project.sheets[0].instances.every(i=>i.origin_um.every(Number.isInteger)));
+  // Export must never rescale or silently clip symbols outside A3.
+  // This is a valid in-page authoring acceptance, not an out-of-frame test.
+  const [pw,ph]=doc.project.sheets[0].frame.size_um;
+  for(const instance of doc.project.sheets[0].instances){
+    const [x,y]=instance.origin_um;
+    assert(x>=20000&&x<=pw-20000&&y>=20000&&y<=ph-20000,
+      'R9_NATIVE_SCHEMATIC_ORIGIN_OUTSIDE_A3 '+JSON.stringify(instance.origin_um));
+  }
+  for(const wire of doc.project.sheets[0].wires)
+    for(const vertex of wire.vertices){
+      const [x,y]=vertex.at_um;
+      assert(x>=0&&x<=pw&&y>=0&&y<=ph,'R9_NATIVE_WIRE_OUTSIDE_A3');
+    }
 }
 let browser=null,page=null;
 for(let i=0;i<45;i++){
@@ -107,16 +120,25 @@ try{
     console.log('R9_NATIVE_VIEWPORT_NARROW='+narrow);
     // Native Tauri starts at 900px. On that width the UGO library and
     // inspector are intentionally collapsed; exercise the real toggle UI.
-    const place=async(symbol,x,y,refdes)=>{
+    const place=async(symbol,xUm,yUm,refdes)=>{
       if(narrow)await page.getByRole('button',{name:'Показать библиотеку УГО'}).click();
       await page.getByTestId('catalog-item-symbol/'+symbol).click();
       if(narrow)await page.getByRole('button',{name:'Показать библиотеку УГО'}).click();
       const box=await canvas.boundingBox();assert(box);
-      await page.mouse.click(box.x+box.width*x,box.y+box.height*y);
+      // The blank A3 sheet is initially fit by CanvasViewport using a
+      // 32px border. Fractional viewport clicks may be outside the actual
+      // physical page on a height-constrained 900px Windows app.
+      const widthUm=420000,heightUm=297000;
+      const scale=Math.min(.02,(box.width-64)/widthUm,(box.height-64)/heightUm);
+      const left=box.x+(box.width-widthUm*scale)/2;
+      const top=box.y+(box.height-heightUm*scale)/2;
+      assert(xUm>=20000&&xUm<=widthUm-20000);
+      assert(yUm>=20000&&yUm<=heightUm-20000);
+      await page.mouse.click(left+xUm*scale,top+yUm*scale);
       await page.getByTestId('symbol-'+refdes).waitFor({state:'visible',timeout:5000});
     };
-    await place('resistor.fixed',.25,.40,'R1');
-    await place('capacitor.fixed',.65,.40,'C1');
+    await place('resistor.fixed',90000,90000,'R1');
+    await place('capacitor.fixed',250000,90000,'C1');
     if(narrow)await page.getByRole('button',{name:'Показать инспектор'}).click();
     await page.getByLabel('Позиционное обозначение').fill('C9');
     await page.getByLabel('Позиционное обозначение').press('Enter');
@@ -124,7 +146,7 @@ try{
     await page.getByTestId('inspector-nominal').fill('220н');
     await page.getByTestId('inspector-nominal').press('Enter');
     if(narrow)await page.getByRole('button',{name:'Показать инспектор'}).click();
-    await place('resistor.fixed',.83,.70,'R2');
+    await place('resistor.fixed',340000,180000,'R2');
     const r1=await page.getByTestId('symbol-R1').getAttribute('data-component-id');
     const c9=await page.getByTestId('symbol-C9').getAttribute('data-component-id');
     assert(r1&&c9);
