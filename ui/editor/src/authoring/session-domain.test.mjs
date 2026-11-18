@@ -38,11 +38,103 @@ test('empty project A3 uses DRAFT Python-source R/C library, no fabricated TL494
  assert.deepEqual(doc.project.sheets[0].frame.size_um,[420000,297000]);
  assert.equal(doc.project.provenance.status,'synthetic');
  assert.equal(doc.project.provenance.source_sha,'0'.repeat(40));
- assert.deepEqual(doc.project.symbol_definitions.map(x=>x.status),['draft','draft']);
+ assert.deepEqual(doc.project.symbol_definitions.map(x=>x.status),
+   ['draft','draft','draft','draft','draft','draft','draft','draft','draft','draft','draft']);
  const resistor=doc.project.symbol_definitions.find(x=>x.id==='symbol/resistor.fixed');
  const capacitor=doc.project.symbol_definitions.find(x=>x.id==='symbol/capacitor.fixed');
  assert.deepEqual(resistor.pins.map(x=>x.at_um),[[-8000,0],[8000,0]]);
  assert.deepEqual(capacitor.graphics.map(x=>x.kind),['line','line','line','line']);
+});
+
+test('every exposed authoring PartDefinition resolves to one matching draft SymbolDefinition',()=>{
+ const doc=newBlankProject();
+ const parts=doc.project.part_definitions;
+ const symbols=doc.project.symbol_definitions;
+ assert.equal(new Set(parts.map(x=>x.id)).size,parts.length);
+ assert.equal(new Set(symbols.map(x=>x.id)).size,symbols.length);
+ for(const part of parts){
+  assert.equal(part.symbol_ids.length,1);
+  const symbol=symbols.find(x=>x.id===part.symbol_ids[0]);
+  assert.ok(symbol,`missing symbol for ${part.id}`);
+  assert.equal(symbol.part_id,part.id);
+  assert.equal(symbol.status,'draft');
+  assert.deepEqual(
+    part.physical_pins.map(x=>x.number),
+    symbol.pins.map(x=>x.physical_pin_number)
+  );
+  assert.equal(new Set(symbol.pins.map(x=>x.physical_pin_number)).size,symbol.pins.length);
+  assert.ok(symbol.graphics.length>0);
+ }
+});
+
+test('canonical draft diode and fuse entries retain physical pins and source geometry',()=>{
+ const s=newSession();
+ s.place(s.newTransaction('place-diode'),'symbol/diode.general',[100000,100000]);
+ s.place(s.newTransaction('place-fuse'),'symbol/fuse.general',[140000,100000]);
+ const doc=s.file;
+ assert.deepEqual(doc.project.components.map(c=>[c.refdes,c.value]),[['VD1','1N4148'],['FU1','1А']]);
+ const diode=doc.project.symbol_definitions.find(x=>x.id==='symbol/diode.general');
+ const fuse=doc.project.symbol_definitions.find(x=>x.id==='symbol/fuse.general');
+ assert.deepEqual(diode.pins.map(x=>x.physical_pin_number),['1','2']);
+ assert.deepEqual(fuse.pins.map(x=>x.physical_pin_number),['1','2']);
+ assert.ok(diode.graphics.some(x=>x.kind==='polyline'));
+ assert.ok(fuse.graphics.some(x=>x.kind==='rect'));
+});
+
+test('variable resistor keeps its third wiper PinRef distinct from the ends',()=>{
+ const s=newSession();
+ s.place(s.newTransaction('place-variable'),'symbol/resistor.variable',[100000,100000]);
+ const component=s.file.project.components[0];
+ const symbol=s.file.project.symbol_definitions.find(x=>x.id==='symbol/resistor.variable');
+ assert.equal(component.refdes,'R1');
+ assert.deepEqual(symbol.pins.map(x=>x.physical_pin_number),['1','2','3']);
+ assert.deepEqual(symbol.pins.map(x=>x.at_um),[[-9000,0],[9000,0],[0,-9000]]);
+ assert.equal(new Set(symbol.pins.map(x=>x.physical_pin_number)).size,3);
+});
+
+test('polarized capacitor variants preserve plus/minus PinRefs and draft status',()=>{
+ const s=newSession();
+ s.place(s.newTransaction('place-polarized'),'symbol/capacitor.polarized',[100000,100000]);
+ s.place(s.newTransaction('place-electrolytic'),'symbol/capacitor.electrolytic',[140000,100000]);
+ const doc=s.file;
+ assert.deepEqual(doc.project.components.map(c=>[c.refdes,c.value]),
+   [['C1','10мкФ'],['C2','100мкФ']]);
+ for(const id of ['symbol/capacitor.polarized','symbol/capacitor.electrolytic']){
+   const symbol=doc.project.symbol_definitions.find(x=>x.id===id);
+   assert.equal(symbol.status,'draft');
+   assert.deepEqual(symbol.pins.map(x=>x.physical_pin_number),['1','2']);
+   assert.deepEqual(symbol.pins.map(x=>x.at_um[1]),[0,0]);
+ }
+});
+
+test('zener and Schottky diode variants retain two physical pins',()=>{
+ const s=newSession();
+ s.place(s.newTransaction('place-zener'),'symbol/diode.zener',[100000,100000]);
+ s.place(s.newTransaction('place-schottky'),'symbol/diode.schottky',[140000,100000]);
+ const doc=s.file;
+ assert.deepEqual(doc.project.components.map(c=>[c.refdes,c.value]),
+   [['VD1','5V1'],['VD2','1N5819']]);
+ for(const id of ['symbol/diode.zener','symbol/diode.schottky']){
+   const symbol=doc.project.symbol_definitions.find(x=>x.id===id);
+   assert.equal(symbol.status,'draft');
+   assert.deepEqual(symbol.pins.map(x=>x.physical_pin_number),['1','2']);
+   assert.equal(symbol.graphics.some(x=>x.kind==='polyline'),true);
+ }
+});
+
+test('LED and photodiode keep optical graphics separate from two electrical PinRefs',()=>{
+ const s=newSession();
+ s.place(s.newTransaction('place-led'),'symbol/diode.led',[100000,100000]);
+ s.place(s.newTransaction('place-photo'),'symbol/diode.photodiode',[140000,100000]);
+ const doc=s.file;
+ assert.deepEqual(doc.project.components.map(c=>[c.refdes,c.value]),
+   [['VD1','LED'],['VD2','PD']]);
+ for(const id of ['symbol/diode.led','symbol/diode.photodiode']){
+   const symbol=doc.project.symbol_definitions.find(x=>x.id===id);
+   assert.equal(symbol.status,'draft');
+   assert.deepEqual(symbol.pins.map(x=>x.physical_pin_number),['1','2']);
+   assert.ok(symbol.graphics.length>6);
+ }
 });
 
 test('stale command CAS and duplicate refdes are rejected atomically',()=>{

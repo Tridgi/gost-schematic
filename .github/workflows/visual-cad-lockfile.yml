@@ -1,8 +1,13 @@
 name: Visual CAD dependency lockfile materialization
 on:
   push:
-    branches: [ui/visual-cad-mvp]
+    branches: [main]
     paths: ['.github/workflows/visual-cad-lockfile.yml']
+  pull_request:
+    paths:
+      - '.github/workflows/visual-cad-lockfile.yml'
+      - 'ui/editor/package.json'
+      - 'ui/editor/package-lock.json'
   workflow_dispatch:
 permissions:
   contents: read

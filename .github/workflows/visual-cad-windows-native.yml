@@ -3,7 +3,13 @@ name: Visual CAD R4 native Windows build and smoke
 on:
   workflow_dispatch:
   push:
-    branches: [ui/visual-cad-mvp]
+    branches: [main]
+    paths:
+      - 'ui/desktop/**'
+      - 'ui/bridge/**'
+      - 'ui/editor/**'
+      - '.github/workflows/visual-cad-windows-native.yml'
+  pull_request:
     paths:
       - 'ui/desktop/**'
       - 'ui/bridge/**'

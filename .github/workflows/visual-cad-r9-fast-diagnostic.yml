@@ -2,7 +2,11 @@ name: Visual CAD R9 fast diagnostic on previously accepted NSIS
 on:
   workflow_dispatch:
   push:
-    branches: [ui/visual-cad-mvp]
+    branches: [main]
+    paths:
+      - '.github/workflows/visual-cad-r9-fast-diagnostic.yml'
+      - '.github/tools/r9-native-*'
+  pull_request:
     paths:
       - '.github/workflows/visual-cad-r9-fast-diagnostic.yml'
       - '.github/tools/r9-native-*'
