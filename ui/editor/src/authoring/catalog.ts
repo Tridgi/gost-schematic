@@ -13,9 +13,16 @@ const diodePins = [
   {number:'1',name:'A',electrical_type:'passive' as const},
   {number:'2',name:'K',electrical_type:'passive' as const}
 ];
+const variableResistorPins = [
+  {number:'1',name:'A',electrical_type:'passive' as const},
+  {number:'2',name:'B',electrical_type:'passive' as const},
+  {number:'3',name:'W',electrical_type:'passive' as const}
+];
 export const AUTHORING_PARTS:PartDefinition[] = [
   {id:'resistor.fixed',reference_prefix:'R',symbol_ids:['symbol/resistor.fixed'],
     physical_pins:structuredClone(pins)},
+  {id:'resistor.variable',reference_prefix:'R',symbol_ids:['symbol/resistor.variable'],
+    physical_pins:structuredClone(variableResistorPins)},
   {id:'capacitor.fixed',reference_prefix:'C',symbol_ids:['symbol/capacitor.fixed'],
     physical_pins:structuredClone(pins)},
   {id:'diode.general',reference_prefix:'VD',symbol_ids:['symbol/diode.general'],
@@ -38,6 +45,21 @@ export const AUTHORING_SYMBOLS:SymbolDefinition[] = [
     graphics:[
       {kind:'rect',points_um:[[-5000,-2000],[5000,2000]],stroke_um:300},
       line([-8000,0],[-5000,0]),line([5000,0],[8000,0])
+    ]
+  },
+  {
+    id:'symbol/resistor.variable',part_id:'resistor.variable',revision:1,status:'draft',
+    standard_refs:['ГОСТ 2.728-74 (draft source geometry; physical pin numbering requires datasheet review)'],
+    pins:[
+      {physical_pin_number:'1',at_um:[-9000,0],side:'left'},
+      {physical_pin_number:'2',at_um:[9000,0],side:'right'},
+      {physical_pin_number:'3',at_um:[0,-9000],side:'top'}
+    ],
+    graphics:[
+      {kind:'rect',points_um:[[-5000,-2000],[5000,2000]],stroke_um:300},
+      line([-9000,0],[-5000,0]),line([5000,0],[9000,0]),
+      line([0,-9000],[0,-2000]),
+      {kind:'polyline',points_um:[[-1000,-3500],[0,-2000],[1000,-3500]],stroke_um:300}
     ]
   },
   {

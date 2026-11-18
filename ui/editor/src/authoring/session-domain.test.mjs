@@ -38,7 +38,7 @@ test('empty project A3 uses DRAFT Python-source R/C library, no fabricated TL494
  assert.deepEqual(doc.project.sheets[0].frame.size_um,[420000,297000]);
  assert.equal(doc.project.provenance.status,'synthetic');
  assert.equal(doc.project.provenance.source_sha,'0'.repeat(40));
- assert.deepEqual(doc.project.symbol_definitions.map(x=>x.status),['draft','draft','draft','draft']);
+ assert.deepEqual(doc.project.symbol_definitions.map(x=>x.status),['draft','draft','draft','draft','draft']);
  const resistor=doc.project.symbol_definitions.find(x=>x.id==='symbol/resistor.fixed');
  const capacitor=doc.project.symbol_definitions.find(x=>x.id==='symbol/capacitor.fixed');
  assert.deepEqual(resistor.pins.map(x=>x.at_um),[[-8000,0],[8000,0]]);
@@ -57,6 +57,17 @@ test('canonical draft diode and fuse entries retain physical pins and source geo
  assert.deepEqual(fuse.pins.map(x=>x.physical_pin_number),['1','2']);
  assert.ok(diode.graphics.some(x=>x.kind==='polyline'));
  assert.ok(fuse.graphics.some(x=>x.kind==='rect'));
+});
+
+test('variable resistor keeps its third wiper PinRef distinct from the ends',()=>{
+ const s=newSession();
+ s.place(s.newTransaction('place-variable'),'symbol/resistor.variable',[100000,100000]);
+ const component=s.file.project.components[0];
+ const symbol=s.file.project.symbol_definitions.find(x=>x.id==='symbol/resistor.variable');
+ assert.equal(component.refdes,'R1');
+ assert.deepEqual(symbol.pins.map(x=>x.physical_pin_number),['1','2','3']);
+ assert.deepEqual(symbol.pins.map(x=>x.at_um),[[-9000,0],[9000,0],[0,-9000]]);
+ assert.equal(new Set(symbol.pins.map(x=>x.physical_pin_number)).size,3);
 });
 
 test('stale command CAS and duplicate refdes are rejected atomically',()=>{
