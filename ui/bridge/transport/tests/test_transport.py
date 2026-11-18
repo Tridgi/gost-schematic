@@ -436,6 +436,25 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(hashlib.sha256(raw).hexdigest(), exported["payload_sha256"])
         self.assertEqual(exported["approval"], "NOT_ESKD_CERTIFIED")
 
+    def test_r10_native_offsheet_export_exposes_precise_safe_code_without_bytes(self):
+        """Valid source inventory can have off-page ink; never scale or write it."""
+        import copy
+
+        doc = copy.deepcopy(self._fixture())
+        # Move one placed source instance beyond A3 without altering a single
+        # manufacturer PinRef, Net membership or frozen source provenance.
+        doc["project"]["sheets"][0]["instances"][0]["origin_um"] = [900000, 900000]
+        for fmt in ("svg", "png300"):
+            with self.subTest(fmt=fmt):
+                result = worker.process(json.dumps(request(
+                    "r10-offsheet-" + fmt, "native_export_preview",
+                    {"document": doc, "sheet_id": "sheet-1", "format": fmt}
+                )).encode())
+                self.assertFalse(result["ok"], result)
+                self.assertEqual(result["error"]["code"], "SCHEMATIC_PAGE_OVERFLOW")
+                self.assertNotIn("result", result)
+                self.assertNotIn("payload", json.dumps(result))
+
     def test_native_python_svg_uses_canonical_v2_export_and_never_accepts_paths(self):
         import base64
         import hashlib
