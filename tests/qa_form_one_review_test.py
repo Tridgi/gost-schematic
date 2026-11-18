@@ -215,12 +215,16 @@ def test_empty_pr59_form_one_does_not_invent_people_or_approval(form_one):
     assert placed == ()
 
 
-def test_nonapproved_sans_serif_fallback_overflows_long_role_not_autoshrunk(
+def test_nonapproved_sans_serif_fallback_overflows_narrow_caption_not_autoshrunk(
     form_one,
 ):
     """Independent UI warning: cap-matched DejaVu ≠ approved OpenGost A."""
     measurer, style = _font_and_style()
-    with pytest.raises(ValueError, match="TITLE_FIELD_OVERFLOW: norm_control"):
+    # The complete caption set fails closed at the narrow 7 mm "Изм." cell
+    # before any wider role caption; this is a font-dependent QA probe.
+    with pytest.raises(
+        ValueError, match="TITLE_FIELD_OVERFLOW: rev_change"
+    ):
         form_one.write_form_one_fields(
             ET.Element("svg"), Box(0, 0, 185000, 55000),
             {}, style, measurer, captions=True, cap_height_um=2500,

@@ -19,6 +19,7 @@ CURRENT_STAGE: READY_FOR_REVIEW
 * Confirmed that seven visual-CAD workflows were still push-scoped to `ui/visual-cad-mvp`.
 * Updated lockfile, R1, R6, R8, R9 fast diagnostic, R9 native persistence, and Windows native workflows to run on `main` pushes and scoped pull requests.
 * Added `docs/audits/CAD-DEEP-AUDIT.md` with evidence, priorities, and test coverage.
+* Corrected the legacy QA expectation for the non-approved fallback font: the current measured failure is the narrow `rev_change` caption, not `norm_control`.
 
 ## Verification
 
@@ -30,9 +31,10 @@ VERIFIED_TESTS:
 - `python -m ruff check .` passes
 - frontend typecheck, 53 unit tests, and production Vite build pass
 - ProjectV2/export/bridge Python slice: 102 passed, 37 deselected, 33 subtests passed
+- full Python suite after QA correction: 2361 passed, 8 skipped, 3 warnings
 
 FAILED_TESTS:
-- Full `python -m pytest -q`: 2360 passed, 1 pre-existing QA failure, 8 skipped
+- Chromium installation was attempted twice but the Playwright downloader looped after archive download; browser E2E remains environment-blocked
 - `cargo test --manifest-path ui/desktop/src-tauri/Cargo.toml`: blocked by missing Linux `glib-2.0` system development package
 ```
 
@@ -44,7 +46,7 @@ CONFIRMED_BUGS:
 
 OPEN_RISKS:
 - Windows NSIS/native acceptance cannot be executed on this Linux host.
-- Chromium binaries are not yet installed locally.
+- Chromium binaries could not be installed locally because the downloader did not complete extraction.
 - Full Python validation requires an isolated virtual environment because the host Python is externally managed.
 
 BLOCKERS:
