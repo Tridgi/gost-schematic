@@ -38,11 +38,25 @@ test('empty project A3 uses DRAFT Python-source R/C library, no fabricated TL494
  assert.deepEqual(doc.project.sheets[0].frame.size_um,[420000,297000]);
  assert.equal(doc.project.provenance.status,'synthetic');
  assert.equal(doc.project.provenance.source_sha,'0'.repeat(40));
- assert.deepEqual(doc.project.symbol_definitions.map(x=>x.status),['draft','draft']);
+ assert.deepEqual(doc.project.symbol_definitions.map(x=>x.status),['draft','draft','draft','draft']);
  const resistor=doc.project.symbol_definitions.find(x=>x.id==='symbol/resistor.fixed');
  const capacitor=doc.project.symbol_definitions.find(x=>x.id==='symbol/capacitor.fixed');
  assert.deepEqual(resistor.pins.map(x=>x.at_um),[[-8000,0],[8000,0]]);
  assert.deepEqual(capacitor.graphics.map(x=>x.kind),['line','line','line','line']);
+});
+
+test('canonical draft diode and fuse entries retain physical pins and source geometry',()=>{
+ const s=newSession();
+ s.place(s.newTransaction('place-diode'),'symbol/diode.general',[100000,100000]);
+ s.place(s.newTransaction('place-fuse'),'symbol/fuse.general',[140000,100000]);
+ const doc=s.file;
+ assert.deepEqual(doc.project.components.map(c=>[c.refdes,c.value]),[['VD1','1N4148'],['FU1','1А']]);
+ const diode=doc.project.symbol_definitions.find(x=>x.id==='symbol/diode.general');
+ const fuse=doc.project.symbol_definitions.find(x=>x.id==='symbol/fuse.general');
+ assert.deepEqual(diode.pins.map(x=>x.physical_pin_number),['1','2']);
+ assert.deepEqual(fuse.pins.map(x=>x.physical_pin_number),['1','2']);
+ assert.ok(diode.graphics.some(x=>x.kind==='polyline'));
+ assert.ok(fuse.graphics.some(x=>x.kind==='rect'));
 });
 
 test('stale command CAS and duplicate refdes are rejected atomically',()=>{

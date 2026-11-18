@@ -20,6 +20,7 @@ CURRENT_STAGE: READY_FOR_REVIEW
 * Updated lockfile, R1, R6, R8, R9 fast diagnostic, R9 native persistence, and Windows native workflows to run on `main` pushes and scoped pull requests.
 * Added `docs/audits/CAD-DEEP-AUDIT.md` with evidence, priorities, and test coverage.
 * Corrected the legacy QA expectation for the non-approved fallback font: the current measured failure is the narrow `rev_change` caption, not `norm_control`.
+* Added canonical-source draft diode and fuse entries to the authoring catalog, including physical pins, source geometry, and prefix-specific default values.
 
 ## Verification
 
@@ -32,6 +33,7 @@ VERIFIED_TESTS:
 - frontend typecheck, 53 unit tests, and production Vite build pass
 - ProjectV2/export/bridge Python slice: 102 passed, 37 deselected, 33 subtests passed
 - full Python suite after QA correction: 2361 passed, 8 skipped, 3 warnings
+- frontend typecheck, 54 unit tests, and production Vite build pass after catalog extension
 
 FAILED_TESTS:
 - Chromium installation was attempted twice but the Playwright downloader looped after archive download; browser E2E remains environment-blocked

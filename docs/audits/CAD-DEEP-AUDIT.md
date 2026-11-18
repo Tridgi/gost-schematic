@@ -19,7 +19,7 @@ The repository is a Python engine plus a React/TypeScript editor and a Rust/Taur
 
 **Implemented:** ProjectV2 validation and SHA digest; immutable transactions and CAS revisions; exact PinRef anchors; orthogonal wires with elbows, junctions, splices, split/merge, undo/redo; conservative `needs_routing_review`; source-backed SVG/PNG export; Python sidecar; Tauri native persistence; draft discrete catalog data; broad Python/TypeScript/Rust regression suites.
 
-**Partial:** the browser editor is a working preview rather than a complete CAD command set; the authoring catalog exposes only `resistor.fixed` and `capacitor.fixed`; wire editing is primarily domain/API coverage with limited UI affordances; sheet support and diagnostics are stronger in the Python/source model than in the visible editor; standards and fonts remain review-gated.
+**Partial:** the browser editor is a working preview rather than a complete CAD command set; the authoring catalog now exposes four draft discrete types (`resistor.fixed`, `capacitor.fixed`, `diode.general`, and `fuse.general`) but is not yet generated from the Python registry; wire editing is primarily domain/API coverage with limited UI affordances; sheet support and diagnostics are stronger in the Python/source model than in the visible editor; standards and fonts remain review-gated.
 
 **Absent or explicitly out of scope:** production autorouting, full multiple-selection and copy/paste workflows, complete catalog-to-editor registry integration, verified multi-sheet electrical continuation semantics, circuit simulation, normative approval, and local Windows acceptance in this Linux session.
 
@@ -59,7 +59,7 @@ Catalog symbols and standards are deliberately marked draft/review-required in s
 | P0 | Keep native Save/Open/Save As acceptance on current SHA | `visual-cad-r9-native-persist.yml`; Windows-only |
 | P1 | Expose complete wire editing in the UI | domain engine exists; visible editor coverage is narrower |
 | P1 | Add multi-select, clipboard, and atomic group operations | no equivalent editor command surface identified |
-| P1 | Generate editor catalog entries from canonical Part/Symbol data | `ui/editor/src/authoring/catalog.ts` currently duplicates two types |
+| P1 | Generate editor catalog entries from canonical Part/Symbol data | `ui/editor/src/authoring/catalog.ts` currently contains four synchronized draft entries |
 | P1 | Add sheet-scoped fixtures and continuation contract | no verified cross-sheet electrical contract |
 | P2 | Expand ERC/DRC diagnostics and measured typography | existing validation/rendering is draft/review gated |
 | P2 | Performance measurements at 100/500/1000 components | not measured in this audit |
