@@ -1,0 +1,1362 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:gscad:experimental:visual-cad-chat6:project-v2",
+  "title": "GOST Schematic CAD project v2 (experimental contract)",
+  "$comment": "Schema verifies structure; contract.py verifies cross-references, physical pins, wire graph and provenance.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "format_version",
+    "project",
+    "workspace"
+  ],
+  "properties": {
+    "format": {
+      "const": "gscad-project"
+    },
+    "format_version": {
+      "const": 2
+    },
+    "project": {
+      "$ref": "#/$defs/project"
+    },
+    "workspace": {
+      "$ref": "#/$defs/workspace"
+    }
+  },
+  "$defs": {
+    "point_um": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "integer",
+          "minimum": -1000000000,
+          "maximum": 1000000000
+        },
+        {
+          "type": "integer",
+          "minimum": -1000000000,
+          "maximum": 1000000000
+        }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "physical_pin": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "number": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "name": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 256
+        },
+        "electrical_type": {
+          "enum": [
+            "passive",
+            "input",
+            "output",
+            "bidirectional",
+            "power_input",
+            "power_output",
+            "open_collector",
+            "unspecified"
+          ]
+        }
+      },
+      "required": [
+        "number",
+        "name",
+        "electrical_type"
+      ]
+    },
+    "symbol_pin": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "physical_pin_number": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "at_um": {
+          "$ref": "#/$defs/point_um"
+        },
+        "side": {
+          "enum": [
+            "left",
+            "right",
+            "top",
+            "bottom"
+          ]
+        }
+      },
+      "required": [
+        "physical_pin_number",
+        "at_um",
+        "side"
+      ]
+    },
+    "part_definition": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "reference_prefix": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "symbol_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "minItems": 1
+        },
+        "physical_pins": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "number": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "name": {
+                "type": "string",
+                "minLength": 0,
+                "maxLength": 256
+              },
+              "electrical_type": {
+                "enum": [
+                  "passive",
+                  "input",
+                  "output",
+                  "bidirectional",
+                  "power_input",
+                  "power_output",
+                  "open_collector",
+                  "unspecified"
+                ]
+              }
+            },
+            "required": [
+              "number",
+              "name",
+              "electrical_type"
+            ]
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "id",
+        "reference_prefix",
+        "symbol_ids",
+        "physical_pins"
+      ]
+    },
+    "graphic_primitive": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "line",
+            "rect",
+            "polyline"
+          ]
+        },
+        "points_um": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/point_um"
+          },
+          "minItems": 2
+        },
+        "stroke_um": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000
+        }
+      },
+      "required": [
+        "kind",
+        "points_um",
+        "stroke_um"
+      ]
+    },
+    "symbol_definition": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "part_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "status": {
+          "enum": [
+            "draft",
+            "approved",
+            "deprecated"
+          ]
+        },
+        "pins": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "physical_pin_number": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "at_um": {
+                "$ref": "#/$defs/point_um"
+              },
+              "side": {
+                "enum": [
+                  "left",
+                  "right",
+                  "top",
+                  "bottom"
+                ]
+              }
+            },
+            "required": [
+              "physical_pin_number",
+              "at_um",
+              "side"
+            ]
+          },
+          "minItems": 1
+        },
+        "graphics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "enum": [
+                  "line",
+                  "rect",
+                  "polyline"
+                ]
+              },
+              "points_um": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/point_um"
+                },
+                "minItems": 2
+              },
+              "stroke_um": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100000
+              }
+            },
+            "required": [
+              "kind",
+              "points_um",
+              "stroke_um"
+            ]
+          },
+          "minItems": 1
+        },
+        "standard_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 256
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "id",
+        "part_id",
+        "revision",
+        "status",
+        "pins",
+        "graphics",
+        "standard_refs"
+      ]
+    },
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "refdes": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "source_refdes": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "part_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "value": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "id",
+        "refdes",
+        "source_refdes",
+        "part_id",
+        "value"
+      ]
+    },
+    "pin_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "component_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "physical_pin_number": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "component_id",
+        "physical_pin_number"
+      ]
+    },
+    "net": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/pin_ref"
+          },
+          "minItems": 1
+        },
+        "route_status": {
+          "enum": [
+            "unrouted",
+            "partial",
+            "verified"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "members",
+        "route_status"
+      ]
+    },
+    "layer": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "kind": {
+          "enum": [
+            "electrical",
+            "annotation",
+            "drawing",
+            "diagnostics"
+          ]
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "printable": {
+          "type": "boolean"
+        },
+        "locked": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "visible",
+        "printable",
+        "locked"
+      ]
+    },
+    "symbol_instance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "component_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "symbol_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "origin_um": {
+          "$ref": "#/$defs/point_um"
+        },
+        "rotation_deg": {
+          "enum": [
+            0,
+            90,
+            180,
+            270
+          ]
+        },
+        "mirror_x": {
+          "type": "boolean"
+        },
+        "layer_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "id",
+        "component_id",
+        "symbol_id",
+        "origin_um",
+        "rotation_deg",
+        "mirror_x",
+        "layer_id"
+      ]
+    },
+    "wire_endpoint": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "pin"
+            },
+            "component_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "physical_pin_number": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "kind",
+            "component_id",
+            "physical_pin_number"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "junction"
+            },
+            "junction_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "kind",
+            "junction_id"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "splice"
+            },
+            "splice_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "kind",
+            "splice_id"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "free"
+            },
+            "free_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "kind",
+            "free_id"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "bend"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        }
+      ]
+    },
+    "vertex": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "at_um": {
+          "$ref": "#/$defs/point_um"
+        },
+        "anchor": {
+          "$ref": "#/$defs/wire_endpoint"
+        }
+      },
+      "required": [
+        "id",
+        "at_um",
+        "anchor"
+      ]
+    },
+    "wire_segment": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "from_vertex_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "to_vertex_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "id",
+        "from_vertex_id",
+        "to_vertex_id"
+      ]
+    },
+    "wire_polyline": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "net_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "layer_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "vertices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/vertex"
+          },
+          "minItems": 2
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/wire_segment"
+          },
+          "minItems": 1
+        },
+        "mode": {
+          "const": "orthogonal"
+        },
+        "needs_routing_review": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "net_id",
+        "layer_id",
+        "vertices",
+        "segments",
+        "mode"
+      ]
+    },
+    "junction": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "net_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "at_um": {
+          "$ref": "#/$defs/point_um"
+        },
+        "layer_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "id",
+        "net_id",
+        "at_um",
+        "layer_id"
+      ]
+    },
+    "splice": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "net_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "at_um": {
+          "$ref": "#/$defs/point_um"
+        },
+        "layer_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "id",
+        "net_id",
+        "at_um",
+        "layer_id"
+      ]
+    },
+    "text": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "layer_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "text": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 256
+        },
+        "at_um": {
+          "$ref": "#/$defs/point_um"
+        },
+        "rotation_deg": {
+          "enum": [
+            0,
+            90,
+            180,
+            270
+          ]
+        },
+        "height_um": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000
+        }
+      },
+      "required": [
+        "id",
+        "layer_id",
+        "text",
+        "at_um",
+        "rotation_deg",
+        "height_um"
+      ]
+    },
+    "label": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "layer_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "at_um": {
+          "$ref": "#/$defs/point_um"
+        },
+        "role": {
+          "enum": [
+            "visual",
+            "net_annotation"
+          ]
+        },
+        "net_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "layer_id",
+        "text",
+        "at_um",
+        "role",
+        "net_id"
+      ]
+    },
+    "graphic": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "layer_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "kind": {
+          "enum": [
+            "line",
+            "polyline",
+            "source_b_continuation"
+          ]
+        },
+        "points_um": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/point_um"
+          },
+          "minItems": 2
+        },
+        "stroke_um": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000
+        }
+      },
+      "required": [
+        "id",
+        "layer_id",
+        "kind",
+        "points_um",
+        "stroke_um"
+      ]
+    },
+    "sheet_frame": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "size_um": {
+          "$ref": "#/$defs/point_um"
+        },
+        "margin_um": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "paper": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "size_um",
+        "margin_um",
+        "paper"
+      ]
+    },
+    "title_block": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "designation": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 256
+        },
+        "title": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 256
+        },
+        "organization": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 256
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 256
+        },
+        "sheet_number": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        }
+      },
+      "required": [
+        "designation",
+        "title",
+        "organization",
+        "revision",
+        "sheet_number"
+      ]
+    },
+    "sheet": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "frame": {
+          "$ref": "#/$defs/sheet_frame"
+        },
+        "title_block": {
+          "$ref": "#/$defs/title_block"
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/layer"
+          },
+          "minItems": 1
+        },
+        "instances": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/symbol_instance"
+          },
+          "minItems": 0
+        },
+        "wires": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/wire_polyline"
+          },
+          "minItems": 0
+        },
+        "junctions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/junction"
+          },
+          "minItems": 0
+        },
+        "splices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/splice"
+          },
+          "minItems": 0
+        },
+        "texts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/text"
+          },
+          "minItems": 0
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/label"
+          },
+          "minItems": 0
+        },
+        "graphics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/graphic"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "index",
+        "frame",
+        "title_block",
+        "layers",
+        "instances",
+        "wires",
+        "junctions",
+        "splices",
+        "texts",
+        "labels",
+        "graphics"
+      ]
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "units": {
+          "const": "um"
+        },
+        "grid_visible": {
+          "type": "boolean"
+        },
+        "snap_enabled": {
+          "type": "boolean"
+        },
+        "grid_step_um": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "orthogonal_wires": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "units",
+        "grid_visible",
+        "snap_enabled",
+        "grid_step_um",
+        "orthogonal_wires"
+      ]
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source_sha": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "source_path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "status": {
+          "enum": [
+            "source_traced_unapproved",
+            "source_excerpt_unapproved",
+            "synthetic"
+          ]
+        },
+        "expected_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "components": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "nets": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "memberships": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "da1_pins": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000
+            },
+            "b_graphics": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000
+            }
+          },
+          "required": [
+            "components",
+            "nets",
+            "memberships",
+            "da1_pins",
+            "b_graphics"
+          ]
+        }
+      },
+      "required": [
+        "source_sha",
+        "source_path",
+        "status",
+        "expected_counts"
+      ]
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "part_definitions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/part_definition"
+          },
+          "minItems": 0
+        },
+        "symbol_definitions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/symbol_definition"
+          },
+          "minItems": 0
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/component"
+          },
+          "minItems": 0
+        },
+        "nets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/net"
+          },
+          "minItems": 0
+        },
+        "sheets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sheet"
+          },
+          "minItems": 1
+        },
+        "settings": {
+          "$ref": "#/$defs/settings"
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "part_definitions",
+        "symbol_definitions",
+        "components",
+        "nets",
+        "sheets",
+        "settings",
+        "provenance"
+      ]
+    },
+    "workspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "active_sheet_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "camera_center_um": {
+          "$ref": "#/$defs/point_um"
+        },
+        "zoom_milli": {
+          "type": "integer",
+          "minimum": 50,
+          "maximum": 100000
+        },
+        "selected_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "minItems": 0
+        },
+        "panels_px": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "left": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 2000
+            },
+            "right": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 2000
+            },
+            "bottom": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000
+            }
+          },
+          "required": [
+            "left",
+            "right",
+            "bottom"
+          ]
+        }
+      },
+      "required": [
+        "active_sheet_id",
+        "camera_center_um",
+        "zoom_milli",
+        "selected_ids",
+        "panels_px"
+      ]
+    },
+    "history_command": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "replace_entity",
+            "add_entity",
+            "remove_entity"
+          ]
+        },
+        "entity_type": {
+          "enum": [
+            "component",
+            "instance",
+            "wire",
+            "junction",
+            "splice",
+            "text",
+            "label",
+            "graphic",
+            "net"
+          ]
+        },
+        "entity_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "before": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "after": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "entity_type",
+        "entity_id",
+        "before",
+        "after"
+      ]
+    },
+    "history_transaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "base_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000000000
+        },
+        "source_topology_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "commands": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/history_command"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "id",
+        "base_sha256",
+        "generation",
+        "source_topology_hash",
+        "commands"
+      ]
+    }
+  }
+}

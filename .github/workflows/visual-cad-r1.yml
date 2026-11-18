@@ -1,0 +1,227 @@
+name: Visual CAD R1 source gate
+on:
+  push:
+    branches: [ui/visual-cad-mvp]
+    paths: ['ui/editor/**', 'ui/integration/**', 'ui/experiments/r0/**', 'ui/contracts/**', 'ui/editor/src/model/**', 'ui/editor/src/wires/**', 'ui/editor/src/canvas/**', 'ui/fixtures/**', 'ui/qa/chat3-canvas/**', '.github/workflows/visual-cad-r1.yml']
+  pull_request:
+    paths: ['ui/integration/**', 'ui/experiments/r0/**', 'ui/contracts/**', 'ui/editor/src/model/**', 'ui/editor/src/wires/**', 'ui/editor/src/canvas/**', 'ui/fixtures/**', 'ui/qa/chat3-canvas/**', '.github/workflows/visual-cad-r1.yml']
+  workflow_dispatch:
+jobs:
+  candidate-v2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check ui/integration/source-gate.mjs
+      - run: node --check ui/integration/source-gate.test.mjs
+      - run: node --test ui/integration/source-gate.test.mjs ui/qa/chat3-source-gate/source-gate-adversarial.test.mjs
+
+  r0-editor-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate standalone source
+        run: |
+          node --check ui/experiments/r0/core.mjs
+          node --check ui/experiments/r0/app.mjs
+      - name: R0 UI model regression (NOT React/Tauri acceptance)
+        run: node --test ui/experiments/r0/tests/core.test.mjs
+
+  source-v2-model:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned model requirements and the real Python E3 engine for adapter tests
+        run: |
+          python -m pip install -r ui/editor/src/model/requirements-dev.txt
+          python -m pip install -e .
+      - name: Source-locked model, schema and negative fixtures
+        env:
+          PYTHONPATH: ui/editor/src/model
+        run: python -m pytest -q ui/editor/src/model/tests
+  manual-wire-domain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ui/editor/src/wires
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned TypeScript for standalone wire tests (not production app lock)
+        run: npm install --no-audit --no-fund --ignore-scripts --no-save typescript@5.8.3
+      - name: Strict TS wire typecheck
+        run: npm run typecheck
+      - name: Compile standalone wire engine
+        run: npm run build
+      - name: Manual wire graph positive/negative suite
+        run: npm test
+  project-wire-adapter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install model validator and compile typed wire engine
+        run: |
+          python -m pip install -r ui/editor/src/model/requirements-dev.txt
+          cd ui/editor/src/wires
+          npm install --no-audit --no-fund --ignore-scripts --no-save typescript@5.8.3
+          npm run typecheck
+          npm run build
+      - name: Python source model adapter positive and negative tests
+        run: python -m unittest discover -s ui/integration -p 'test_project_wire_bridge.py' -v
+      - name: Full E695 ProjectV2 through real TypeScript WireEngine and back
+        run: node --test ui/integration/project-wire-bridge.test.mjs
+
+  react-mantine-preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install canonical fixture validator
+        run: python -m pip install -r ui/editor/src/model/requirements-dev.txt
+      - name: Install pinned React/Mantine packages and check full frontend
+        working-directory: ui/editor
+        run: |
+          npm ci --no-audit --no-fund
+          npm run typecheck
+          npm test
+          npm run build
+      - name: Verify actual compiled browser app exists
+        run: test -s ui/editor/dist/index.html
+      - name: Compile signed wire engine for browser test oracle
+        working-directory: ui/editor
+        run: ./node_modules/.bin/tsc -p src/wires/tsconfig.json
+      - name: Install real Chromium and dependencies
+        working-directory: ui/editor
+        run: npx playwright install --with-deps chromium
+      - name: End-to-end real browser physical pin/wire and theme tests
+        working-directory: ui/editor
+        run: npm run test:e2e
+      - name: Publish independently exercised R2 browser preview bundle
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-cad-r2-web-preview
+          path: ui/editor/dist/
+          if-no-files-found: error
+      - name: Upload browser failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-cad-r2-chromium
+          path: |
+            ui/editor/test-results/
+            ui/editor/playwright-report/
+          if-no-files-found: ignore
+
+  canonical-v2-export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install real Python engine and exact SVG/PNG raster requirements
+        run: |
+          python -m pip install -e '.[dev]' 'jsonschema==4.26.0' 'CairoSVG==2.9.1' 'Pillow>=12.3,<13'
+      - name: Lint canonical exporter
+        run: python -m ruff check ui/bridge/export
+      - name: Verify complete v2 source -> canonical SVG -> 300 DPI PNG, negative T-X and provenance
+        run: python -m pytest -q ui/bridge/export/tests
+      - name: Export frozen 23/15/62/16 E695 sheet through developer CLI (strict/non-strict)
+        run: python -m unittest discover -s ui/integration -p 'test_export_preview.py' -v
+      - name: Generate original-source E695 unverified-font SVG and PNG300 preview
+        run: |
+          python ui/integration/export_preview.py \
+            --project ui/fixtures/tl494-source-e695-v2.gscad.json \
+            --out ci-artifacts/e695 --preview-font
+      - name: Publish non-normative source-locked vector and raster artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gscad-e695-export-preview-py${{ matrix.python-version }}
+          path: ci-artifacts/e695/
+          if-no-files-found: error
+
+  desktop-ipc-python:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Python engine and signed project validator
+        run: |
+          python -m pip install -e '.[dev]'
+          python -m pip install -r ui/editor/src/model/requirements-dev.txt
+          # Native IPC now exercises a real PNG300 path, not SVG-only preview.
+          python -m pip install 'CairoSVG==2.9.1' 'Pillow>=12.3,<13'
+      - name: Lint transport and syntax check Rust host JSON
+        run: |
+          python -m ruff check ui/bridge/transport
+          python -m compileall -q ui/bridge/transport
+          python -m json.tool ui/desktop/src-tauri/tauri.conf.json > /dev/null
+          node --check ui/bridge/transport/smoke.mjs
+      - name: Real E695, source-Net, wire-snapshot and strict negative IPC
+        env:
+          GSCAD_REQUIRE_V2: '1'
+        run: python -m unittest discover -s ui/bridge/transport/tests -v
+      - name: Node to Python worker signed source and no arbitrary shell
+        env:
+          GSCAD_REQUIRE_V2: '1'
+          GSCAD_REQUIRE_ENGINE: '1'
+        run: node ui/bridge/transport/smoke.mjs
+
+  canvas-and-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Static canvas source
+        run: |
+          node --check ui/editor/src/canvas/precision.mjs
+          node --check ui/editor/src/canvas/scene-projection.mjs
+          node --check ui/qa/chat3-canvas/oracle.mjs
+      - name: Independent signed-geometry and QA oracle
+        run: node --test ui/editor/src/canvas/*.test.mjs ui/qa/chat3-canvas/*.test.mjs

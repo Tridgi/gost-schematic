@@ -1,0 +1,520 @@
+"""Transport-level negative tests independent of UI/model availability."""
+import importlib.util
+import json
+import os
+import pathlib
+import subprocess
+import sys
+import unittest
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+SPEC = importlib.util.spec_from_file_location("cad_transport", ROOT / "worker.py")
+worker = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(worker)
+
+
+def request(id="a", op="hello", args=None):
+    return {"v": 1, "id": id, "op": op, "args": args if args is not None else {}}
+
+
+def exchange_raw(payload: bytes):
+    proc = subprocess.run([sys.executable, "-u", str(ROOT / "worker.py")], input=payload,
+                          capture_output=True, timeout=8, check=True)
+    return [json.loads(line) for line in proc.stdout.splitlines()], proc.stderr
+
+
+class TransportTests(unittest.TestCase):
+    def test_correlated_stream(self):
+        items = [request("first"), request("second", "unit_roundtrip", {"x_um": "1", "y_um": "-2"}), request("third")]
+        got, stderr = exchange_raw(b"".join(json.dumps(x).encode() + b"\n" for x in items))
+        self.assertEqual([x["id"] for x in got], ["first", "second", "third"])
+        self.assertEqual(got[1]["result"]["y_um"], "-2")
+        self.assertEqual(stderr, b"")
+
+    def test_int64_and_invalid_numeric(self):
+        a = worker.process(json.dumps(request(args={}, op="unit_roundtrip")).encode())
+        self.assertEqual(a["error"]["code"], "INVALID_UNIT")
+        maxes = {"x_um": "9223372036854775807", "y_um": "-9223372036854775808"}
+        good = worker.process(json.dumps(request(op="unit_roundtrip", args=maxes)).encode())
+        self.assertEqual(good["result"], maxes)
+        for bad in ["-0", "01", "+1", "1.0", " 1", True, 1, "9223372036854775808", "9"*5000]:
+            with self.subTest(bad=repr(bad)[:30]):
+                got = worker.process(json.dumps(request(op="unit_roundtrip", args={"x_um": bad, "y_um": "1"})).encode())
+                self.assertFalse(got["ok"])
+
+    def test_invalid_utf8_and_duplicate_members(self):
+        samples = [b"\xff", b'{"v":1,"v":1,"id":"x","op":"hello","args":{}}',
+                   b'{"v":1,"id":"x","op":"hello","args":{"a":1,"a":2}}',
+                   b'{"v":1,"id":"x","op":"unit_roundtrip","args":{"x_um":NaN}}']
+        for body in samples:
+            with self.subTest(body=body):
+                self.assertEqual(worker.process(body)["error"]["code"], "INVALID_JSON")
+
+    def test_version_bool_and_unknown_keys(self):
+        for v in [True, 1.0, 0, 2]:
+            with self.subTest(version=v):
+                x = request(); x["v"] = v
+                self.assertEqual(worker.process(json.dumps(x).encode())["error"]["code"], "UNSUPPORTED_VERSION")
+        x = request(); x["extra"] = 5
+        self.assertEqual(worker.process(json.dumps(x).encode())["error"]["code"], "INVALID_REQUEST")
+
+    def test_traversal_and_shell_rejection(self):
+        for path in ["../../secret.json", "C:\\secret.json", "foo\\bar.json", "x/../y.json", "/etc/passwd"]:
+            with self.subTest(path=path):
+                x = worker.process(json.dumps(request(op="render_symbol", args={"symbol": path})).encode())
+                self.assertEqual(x["error"]["code"], "INVALID_SYMBOL")
+        x = worker.process(json.dumps(request(op="shell", args={"cmd": "rm -rf /"})).encode())
+        self.assertEqual(x["error"]["code"], "UNKNOWN_OPERATION")
+
+    def test_not_falsely_wired(self):
+        for op in ["position_edit", "render_svg", "export_png"]:
+            with self.subTest(op=op):
+                self.assertEqual(worker.process(json.dumps(request(op=op)).encode())["error"]["code"], "NOT_WIRED")
+        for op in ["validate_document", "source_snapshot", "verify_net", "engine_projection"]:
+            self.assertEqual(
+                worker.process(json.dumps(request(op=op)).encode())["error"]["code"],
+                "INVALID_REQUEST",
+            )
+        self.assertFalse(worker.process(json.dumps(request()).encode())["result"]["project_write"])
+
+    def test_edit_cas_and_source_lock(self):
+        rev_a, rev_b = "a" * 64, "b" * 64
+        worker.validate_edit_guard(base_revision=rev_a, current_revision=rev_a,
+                                   expected_topology_hash=rev_b, actual_topology_hash=rev_b)
+        with self.assertRaises(worker.ProtocolError) as err:
+            worker.validate_edit_guard(base_revision=rev_a, current_revision=rev_b,
+                                       expected_topology_hash=rev_b, actual_topology_hash=rev_b)
+        self.assertEqual(err.exception.code, "REVISION_CONFLICT")
+        with self.assertRaises(worker.ProtocolError) as err:
+            worker.validate_edit_guard(base_revision=rev_a, current_revision=rev_a,
+                                       expected_topology_hash=rev_a, actual_topology_hash=rev_b)
+        self.assertEqual(err.exception.code, "SOURCE_LOCKED")
+
+    def test_oversize_line_recovers_framing(self):
+        payload = b"x" * (worker.MAX_REQUEST + 31) + b"\n" + json.dumps(request("next")).encode() + b"\n"
+        replies, _ = exchange_raw(payload)
+        self.assertEqual([x["error"]["code"] if not x["ok"] else x["id"] for x in replies],
+                         ["PAYLOAD_TOO_LARGE", "next"])
+
+    def test_bad_line_does_not_kill_worker(self):
+        replies, _ = exchange_raw(b"not json\n" + json.dumps(request("next")).encode() + b"\n")
+        self.assertEqual(replies[0]["error"]["code"], "INVALID_JSON")
+        self.assertTrue(replies[1]["ok"])
+
+    def test_real_engine_gate(self):
+        got = worker.process(json.dumps(request(op="check_symbol", args={"symbol": "resistors/fixed.json"})).encode())
+        self.assertTrue(got["ok"] or got["error"]["code"] in {"ENGINE_UNAVAILABLE", "UNKNOWN_SYMBOL", "ENGINE_FAILURE"})
+
+
+    def _fixture(self):
+        """Only true #122 imported source is acceptable as an integration fixture."""
+        filename = ROOT.parents[2] / "ui" / "fixtures" / "tl494-source-e695-v2.gscad.json"
+        if not filename.is_file():
+            if os.environ.get("GSCAD_REQUIRE_V2") == "1":
+                self.fail("required ProjectFileV2 source fixture missing")
+            self.skipTest("shared #122 model and source fixture not yet imported into this checkout")
+        return json.loads(filename.read_text(encoding="utf-8"))
+
+    def test_real_v2_source_snapshot_and_no_false_routed_claim(self):
+        doc = self._fixture()
+        payload = json.dumps(request("src1", "source_snapshot", {"document": doc})).encode()
+        self.assertLess(len(payload), worker.MAX_REQUEST)
+        result = worker.process(payload)
+        self.assertTrue(result["ok"], result)
+        data = result["result"]
+        self.assertEqual(data["model"], "gscad-project")
+        self.assertEqual(data["format_version"], 2)
+        self.assertEqual(data["inventory"]["components"], 23)
+        self.assertEqual(data["inventory"]["nets"], 15)
+        self.assertEqual(data["inventory"]["memberships"], 62)
+        self.assertEqual(data["inventory"]["wires"], 0)
+        self.assertEqual(data["inventory"]["non_electrical_b"], 2)
+        self.assertEqual(data["declared_routes"]["unrouted"], 15)
+        self.assertFalse(data["electrical_approval"])
+        self.assertFalse(data["project_write"])
+        self.assertEqual(data["source_sha"], "e695c415fdced164b0e0c39c5249d030795a0aa6")
+
+    def test_real_v2_net_reachability_and_workspace_hash(self):
+        doc = self._fixture()
+        snapshot = worker.process(json.dumps(
+            request("src2", "validate_document", {"document": doc})
+        ).encode())
+        self.assertTrue(snapshot["ok"], snapshot)
+        net = next(net for net in doc["project"]["nets"] if len(net["members"]) >= 2)
+        verified = worker.process(json.dumps(request(
+            "net1", "verify_net", {"document": doc, "net_id": net["id"]}
+        )).encode())
+        self.assertTrue(verified["ok"], verified)
+        self.assertFalse(verified["result"]["reachability_complete"])
+        self.assertFalse(verified["result"]["export_approved"])
+        self.assertEqual(verified["result"]["declared_route_status"], "unrouted")
+        doc["workspace"]["selected_ids"] = []
+        doc["workspace"]["zoom_milli"] = 1750
+        after = worker.process(json.dumps(
+            request("src3", "source_snapshot", {"document": doc})
+        ).encode())
+        self.assertTrue(after["ok"], after)
+        self.assertEqual(
+            snapshot["result"]["project_sha256"], after["result"]["project_sha256"]
+        )
+        self.assertEqual(
+            snapshot["result"]["source_topology_sha256"],
+            after["result"]["source_topology_sha256"],
+        )
+
+    def test_real_v2_invalid_source_and_anchor_rejected(self):
+        doc = self._fixture()
+        doc["project"]["nets"][0]["members"][0]["physical_pin_number"] = "99999"
+        bad = worker.process(json.dumps(request(
+            "negative1", "source_snapshot", {"document": doc}
+        )).encode())
+        self.assertFalse(bad["ok"])
+        self.assertIn(
+            bad["error"]["code"],
+            {"INVALID_PINREF", "SOURCE_TOPOLOGY_DRIFT", "SCHEMA_INVALID"},
+        )
+        self.assertNotIn("99999", bad["error"]["message"])
+        self.assertEqual(bad["id"], "negative1")
+        doc = self._fixture()
+        first = next(iter(doc["project"]["nets"]))
+        result = worker.process(json.dumps(request(
+            "negative2", "verify_net", {"document": doc, "net_id": first["id"] + "_unknown"}
+        )).encode())
+        self.assertEqual(result["error"]["code"], "UNKNOWN_NET")
+
+
+    def test_real_v2_wire_snapshot_and_cas_candidate_without_disk_write(self):
+        doc = self._fixture()
+        original = worker.process(json.dumps(
+            request("v2snapshot", "wire_snapshot", {"document": doc})
+        ).encode())
+        self.assertTrue(original["ok"], original)
+        snapshot = original["result"]["wiring_snapshot"]
+        self.assertEqual(len(snapshot["components"]), 23)
+        self.assertEqual(len(snapshot["nets"]), 15)
+        self.assertEqual(len(snapshot["wires"]), 0)
+        self.assertEqual(
+            snapshot["source_topology_hash"],
+            original["result"]["source_topology_sha256"],
+        )
+        self.assertFalse(original["result"]["committed"])
+        params = {
+            "document": doc, "candidate": snapshot,
+            "expected_project_sha256": original["result"]["project_sha256"],
+        }
+        proposal = worker.process(json.dumps(
+            request("v2candidate", "validate_wire_candidate", params)
+        ).encode())
+        self.assertTrue(proposal["ok"], proposal)
+        self.assertFalse(proposal["result"]["committed"])
+        self.assertEqual(
+            proposal["result"]["project_sha256"], original["result"]["project_sha256"]
+        )
+        self.assertEqual(
+            proposal["result"]["validated_document"]["project"]["provenance"],
+            doc["project"]["provenance"],
+        )
+
+    def test_real_v2_wire_candidate_rejects_stale_sha_and_net_spoof(self):
+        doc = self._fixture()
+        original = worker.process(json.dumps(
+            request("v2snapshot", "wire_snapshot", {"document": doc})
+        ).encode())
+        self.assertTrue(original["ok"], original)
+        snapshot = original["result"]["wiring_snapshot"]
+        params = {
+            "document": doc,
+            "candidate": snapshot,
+            "expected_project_sha256": "0" * 64,
+        }
+        stale = worker.process(json.dumps(
+            request("v2stale", "validate_wire_candidate", params)
+        ).encode())
+        self.assertEqual(stale["error"]["code"], "STALE_PROJECT_SHA")
+        snapshot["nets"][0]["literal_source_name"] = "FORGED_NET"
+        params["expected_project_sha256"] = original["result"]["project_sha256"]
+        forged = worker.process(json.dumps(
+            request("v2forged", "validate_wire_candidate", params)
+        ).encode())
+        self.assertEqual(forged["error"]["code"], "SOURCE_TOPOLOGY_CHANGED")
+        self.assertEqual(doc["project"]["provenance"]["source_sha"],
+                         "e695c415fdced164b0e0c39c5249d030795a0aa6")
+
+
+
+    def test_ambiguous_model_dsu_vertex_ids_rejected_before_model_import(self):
+        # Both triples are distinct, but the old #122 colon-joined DSU key is
+        # 's:a:b:c' for BOTH. This negative test does not need jsonschema.
+        doc = {"project": {"sheets": [
+            {"id": "s", "wires": [
+                {"id": "a:b", "vertices": [{"id": "c"}]},
+                {"id": "a", "vertices": [{"id": "b:c"}]},
+            ]},
+        ]}}
+        rejected = worker.process(json.dumps(request(
+            "collision1", "verify_net", {"document": doc, "net_id": "N"}
+        )).encode())
+        self.assertEqual(rejected["id"], "collision1")
+        self.assertEqual(rejected["error"]["code"], "AMBIGUOUS_VERTEX_ID")
+        doc["project"]["sheets"][0]["wires"][1]["vertices"][0]["id"] = "safe"
+        worker._reject_ambiguous_wire_vertices(doc)
+
+
+
+    def test_project_v2_to_existing_python_engine_projection_is_read_only(self):
+        doc = self._fixture()
+        engine_adapter = ROOT.parents[2] / "ui" / "editor" / "src" / "model" / "engine_adapter.py"
+        if not engine_adapter.is_file():
+            if os.environ.get("GSCAD_REQUIRE_E3") == "1":
+                self.fail("required canonical E3 engine adapter missing")
+            self.skipTest("PR #134 E3 projection adapter not imported by MASTER")
+        response = worker.process(json.dumps(
+            request("e3projection", "engine_projection", {"document": doc})
+        ).encode())
+        self.assertTrue(response["ok"], response)
+        projected = response["result"]
+        self.assertEqual(projected["model"], "gscad-project")
+        self.assertEqual(projected["component_count"], 23)
+        self.assertEqual(projected["net_count"], 15)
+        self.assertEqual(projected["authored_segment_count"], 0)
+        self.assertEqual(projected["source_b_graphic_count"], 2)
+        self.assertEqual(projected["incomplete_net_counts"], [15])
+        self.assertTrue(projected["geometry_complete"])
+        self.assertFalse(projected["rendering_catalog_verified"])
+        self.assertFalse(projected["render_allowed"])
+        self.assertFalse(projected["project_write"])
+
+
+
+    def test_fixed_path_engine_module_registered_and_bad_source_fails_closed(self):
+        """Regression: dataclass module resolution requires sys.modules at exec."""
+        from dataclasses import is_dataclass
+
+        doc = self._fixture()
+        adapter = ROOT.parents[2] / "ui" / "editor" / "src" / "model" / "engine_adapter.py"
+        if not adapter.is_file():
+            if os.environ.get("GSCAD_REQUIRE_E3") == "1":
+                self.fail("required engine adapter absent")
+            self.skipTest("engine adapter not yet integrated")
+        response = worker.process(json.dumps(request(
+            "module-registered", "engine_projection", {"document": doc}
+        )).encode())
+        self.assertTrue(response["ok"], response)
+        module = sys.modules.get("_gscad_engine_projection")
+        self.assertIsNotNone(module, "fixed-path module must exist for dataclass")
+        self.assertEqual(pathlib.Path(module.__file__).resolve(), adapter.resolve())
+        self.assertTrue(is_dataclass(module.EngineProjectProjection))
+        self.assertFalse(response["result"]["render_allowed"])
+        self.assertFalse(response["result"]["project_write"])
+
+        bad = json.loads(json.dumps(doc))
+        bad["project"]["nets"][0]["members"][0]["physical_pin_number"] = "999"
+        denied = worker.process(json.dumps(request(
+            "source-forgery", "engine_projection", {"document": bad}
+        )).encode())
+        self.assertFalse(denied["ok"], denied)
+        self.assertIn(denied["error"]["code"],
+                      {"INVALID_PINREF", "SOURCE_TOPOLOGY_DRIFT", "SCHEMA_INVALID"})
+        self.assertNotEqual(denied["error"]["code"], "INTERNAL")
+        self.assertEqual(sys.modules["_gscad_engine_projection"].__file__, str(adapter))
+
+
+    def test_native_blob_parser_uses_strict_real_v2_model_and_no_paths(self):
+        doc = self._fixture()
+        serialized = json.dumps(doc, ensure_ascii=False)
+        response = worker.process(json.dumps(request(
+            "native-open", "parse_document_blob", {"blob": serialized}
+        )).encode())
+        self.assertTrue(response["ok"], response)
+        self.assertEqual(response["result"]["document"], doc)
+        self.assertEqual(response["result"]["project_id"], doc["project"]["id"])
+        self.assertEqual(response["result"]["source_sha"],
+                         "e695c415fdced164b0e0c39c5249d030795a0aa6")
+        self.assertFalse(response["result"]["project_write"])
+        self.assertEqual(len(response["result"]["project_sha256"]), 64)
+        bad_samples = [
+            '{"format":"gscad-project","format":"sneaky"}',
+            '{"project":{"id":"one","\\u0069d":"two"}}',
+            serialized.replace('"format_version": 2', '"format_version": 2.0', 1),
+            serialized.replace('"format_version": 2', '"format_version": NaN', 1),
+        ]
+        for bad in bad_samples:
+            with self.subTest(payload=bad[:60]):
+                denied = worker.process(json.dumps(request(
+                    "native-denied", "parse_document_blob", {"blob": bad}
+                )).encode())
+                self.assertFalse(denied["ok"], denied)
+                self.assertNotEqual(denied["error"]["code"], "INTERNAL")
+        no_path = worker.process(json.dumps(request(
+            "path-injection", "parse_document_blob",
+            {"blob": serialized, "path": "C:\\\\Windows\\\\system.ini"}
+        )).encode())
+        self.assertEqual(no_path["error"]["code"], "INVALID_REQUEST")
+
+
+    def test_native_export_uses_validated_sheet_a4_portrait_not_hardcoded_a3(self):
+        import base64
+        import copy
+
+        doc = copy.deepcopy(self._fixture())
+        original = doc["project"]["sheets"][0]
+        second = copy.deepcopy(original)
+        second["id"] = "qa-native-a4"
+        second["index"] = original["index"] + 1
+        second["frame"]["size_um"] = [210000, 297000]
+        second["frame"]["paper"] = "A4 portrait"
+        for key in ("instances", "wires", "junctions", "splices",
+                    "texts", "labels", "graphics"):
+            second[key] = []
+        for layer in second["layers"]:
+            layer["id"] = "qa-a4-" + layer["id"]
+        doc["project"]["sheets"].append(second)
+
+        for fmt in ("svg", "png300"):
+            with self.subTest(fmt=fmt):
+                response = worker.process(json.dumps(request(
+                    "native-a4-" + fmt, "native_export_preview",
+                    {"document": doc, "sheet_id": second["id"], "format": fmt}
+                )).encode())
+                self.assertTrue(response["ok"], response)
+                payload = response["result"]
+                self.assertEqual(payload["sheet_size_um"], [210000, 297000])
+                self.assertEqual(payload["page"], "A4")
+                self.assertEqual(payload["orientation"], "portrait")
+                self.assertEqual(payload["dpi"], 300)
+                self.assertEqual(payload["pixel_dimensions"], [2480, 3508])
+                raw = base64.b64decode(payload["payload"], validate=True)
+                if fmt == "svg":
+                    self.assertIn(b'width="210mm" height="297mm"', raw)
+                else:
+                    self.assertEqual(raw[:8], bytes([137, 80, 78, 71, 13, 10, 26, 10]))
+                    self.assertEqual(int.from_bytes(raw[16:20], "big"), 2480)
+                    self.assertEqual(int.from_bytes(raw[20:24], "big"), 3508)
+
+        mismatched = copy.deepcopy(doc)
+        mismatched["project"]["sheets"][1]["frame"]["paper"] = "A3 landscape"
+        response = worker.process(json.dumps(request(
+            "native-label-mismatch", "native_export_preview",
+            {"document": mismatched, "sheet_id": second["id"], "format": "svg"}
+        )).encode())
+        self.assertFalse(response["ok"], response)
+        # The strict model is allowed to reject an incoherent page label earlier.
+        self.assertIn(response["error"]["code"],
+                      {"SHEET_PAPER_LABEL_MISMATCH", "SCHEMA_INVALID",
+                       "INVALID_SHEET_FRAME", "INVALID_PAGE_SIZE"})
+
+    def test_native_a2_landscape_svg_uses_exact_non_a3_physical_extent(self):
+        """Exercise the approved large-sheet path without raster allocation."""
+        import base64
+        import copy
+        import hashlib
+
+        doc = copy.deepcopy(self._fixture())
+        sheet = copy.deepcopy(doc["project"]["sheets"][0])
+        sheet["id"] = "qa-native-a2"
+        sheet["index"] = doc["project"]["sheets"][0]["index"] + 1
+        sheet["frame"]["size_um"] = [594000, 420000]
+        sheet["frame"]["paper"] = "A2 landscape"
+        for key in ("instances", "wires", "junctions", "splices",
+                    "texts", "labels", "graphics"):
+            sheet[key] = []
+        for layer in sheet["layers"]:
+            layer["id"] = "qa-a2-" + layer["id"]
+        doc["project"]["sheets"].append(sheet)
+        response = worker.process(json.dumps(request(
+            "native-a2-svg", "native_export_preview",
+            {"document": doc, "sheet_id": sheet["id"], "format": "svg"}
+        )).encode())
+        self.assertTrue(response["ok"], response)
+        exported = response["result"]
+        self.assertEqual(exported["page"], "A2")
+        self.assertEqual(exported["orientation"], "landscape")
+        self.assertEqual(exported["sheet_size_um"], [594000, 420000])
+        self.assertEqual(exported["pixel_dimensions"], [7016, 4961])
+        raw = base64.b64decode(exported["payload"], validate=True)
+        self.assertIn(b'width="594mm" height="420mm"', raw)
+        self.assertEqual(hashlib.sha256(raw).hexdigest(), exported["payload_sha256"])
+        self.assertEqual(exported["approval"], "NOT_ESKD_CERTIFIED")
+
+    def test_r10_native_offsheet_export_exposes_precise_safe_code_without_bytes(self):
+        """Valid source inventory can have off-page ink; never scale or write it."""
+        import copy
+
+        doc = copy.deepcopy(self._fixture())
+        # Move one placed source instance beyond A3 without altering a single
+        # manufacturer PinRef, Net membership or frozen source provenance.
+        doc["project"]["sheets"][0]["instances"][0]["origin_um"] = [900000, 900000]
+        for fmt in ("svg", "png300"):
+            with self.subTest(fmt=fmt):
+                result = worker.process(json.dumps(request(
+                    "r10-offsheet-" + fmt, "native_export_preview",
+                    {"document": doc, "sheet_id": "sheet-1", "format": fmt}
+                )).encode())
+                self.assertFalse(result["ok"], result)
+                self.assertEqual(result["error"]["code"], "SCHEMATIC_PAGE_OVERFLOW")
+                self.assertNotIn("result", result)
+                self.assertNotIn("payload", json.dumps(result))
+
+    def test_native_python_svg_uses_canonical_v2_export_and_never_accepts_paths(self):
+        import base64
+        import hashlib
+        doc = self._fixture()
+        response = worker.process(json.dumps(request(
+            "native-svg", "native_export_preview",
+            {"document": doc, "sheet_id": "sheet-1", "format": "svg"}
+        )).encode())
+        self.assertTrue(response["ok"], response)
+        result = response["result"]
+        self.assertEqual(result["format"], "svg")
+        self.assertEqual(result["approval"], "NOT_ESKD_CERTIFIED")
+        self.assertEqual(result["sheet_size_um"], [420000, 297000])
+        svg = base64.b64decode(result["payload"], validate=True)
+        self.assertEqual(hashlib.sha256(svg).hexdigest(), result["payload_sha256"])
+        self.assertIn(b'width="420mm" height="297mm"', svg)
+        self.assertIn(b'data-source-net-count="15"', svg)
+        self.assertEqual(svg.count(b'data-kind="source_b_continuation"'), 2)
+        for bad_args in [
+            {"document": doc, "sheet_id": "sheet-1", "format": "svg",
+             "path": "C:\\\\Windows\\\\System32\\\\drivers\\\\etc\\\\hosts"},
+            {"document": doc, "sheet_id": "../outside", "format": "pdf"},
+            {"document": doc, "sheet_id": "sheet-1", "format": "shell"},
+        ]:
+            denied = worker.process(json.dumps(request(
+                "native-svg-reject", "native_export_preview", bad_args
+            )).encode())
+            self.assertEqual(denied["error"]["code"], "INVALID_REQUEST")
+
+
+    def test_windows_legacy_stdout_preserves_unicode_project_json(self):
+        """R9 real PyInstaller repro: cp1252 stdout must not terminate on Cyrillic."""
+        import io
+        from unittest.mock import patch
+
+        response = {"v": 1, "id": "r9_unicode", "ok": True,
+                    "result": {"title": "Новая электрическая схема", "nominal": "220н"}}
+        input_stream = io.TextIOWrapper(io.BytesIO(b"{}\n"), encoding="utf-8")
+        output_bytes = io.BytesIO()
+        output_stream = io.TextIOWrapper(output_bytes, encoding="cp1252",
+                                        errors="strict", write_through=True)
+        with (patch.object(worker, "process", return_value=response),
+              patch.object(worker.sys, "stdin", input_stream),
+              patch.object(worker.sys, "stdout", output_stream)):
+            worker.main()
+        wire_bytes = output_bytes.getvalue()
+        self.assertTrue(wire_bytes.isascii())
+        self.assertEqual(json.loads(wire_bytes), response)
+        self.assertIn(b"\\u", wire_bytes)
+
+    def test_wire_response_size_accounts_for_unicode_json_escape_expansion(self):
+        """The 4 MiB limit must use actual escaped NDJSON bytes, not raw UTF-8."""
+        from unittest.mock import patch
+
+        oversized_unicode = "Ж" * 700_000
+        with patch.object(worker, "dispatch", return_value={"title": oversized_unicode}):
+            reply = worker.process(json.dumps(request("oversize")).encode("ascii"))
+        self.assertFalse(reply["ok"])
+        self.assertEqual(reply["error"]["code"], "RESPONSE_TOO_LARGE")
+
+
+if __name__ == "__main__":
+    unittest.main()

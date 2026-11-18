@@ -1,0 +1,120 @@
+name: Visual CAD R9 real native Windows project persistence
+on:
+  workflow_dispatch:
+  push:
+    branches: [ui/visual-cad-mvp]
+    paths:
+      - '.github/workflows/visual-cad-r9-native-persist.yml'
+      - '.github/tools/r9-native-*'
+      # Every native-facing editor change must re-run the installed-app R9
+      # scenario. Restricting this to session.ts hid Canvas / paper regressions.
+      - 'ui/editor/src/**'
+      - 'ui/editor/e2e/**'
+      - 'ui/editor/package.json'
+      - 'ui/editor/package-lock.json'
+      - 'ui/desktop/**'
+      - 'ui/integration/**'
+      - 'contracts/project-v2.schema.json'
+permissions:
+  contents: read
+concurrency:
+  group: visual-cad-r9-persist-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native-persist:
+    name: Current-SHA Tauri / WebView2 / native picker / Python ProjectV2
+    runs-on: windows-2022
+    timeout-minutes: 100
+    env:
+      RUST_BACKTRACE: '1'
+      CARGO_BUILD_JOBS: '2'
+      GSCAD_R9_BINARY_SOURCE_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: ui/editor/package-lock.json
+      - name: Fail fast on real R9 harness syntax before expensive Windows build
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $parseErrors = $null
+          $path = (Resolve-Path '.github/tools/r9-native-project.ps1').Path
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            $path, [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if (@($parseErrors).Count -gt 0) {
+            $parseErrors | ForEach-Object { Write-Host $_.ToString() }
+            throw 'R9_POWERSHELL_SYNTAX_INVALID'
+          }
+          node --check .github/tools/r9-native-project.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'R9_NODE_HARNESS_SYNTAX_INVALID' }
+          node --check .github/tools/r9-native-sidecar-probe.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'R9_SIDECAR_PROBE_SYNTAX_INVALID' }
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ui/desktop/src-tauri
+      - name: Install model, browser, and native dialog test dependencies
+        shell: pwsh
+        run: |
+          python -m venv .venv
+          & .\.venv\Scripts\python.exe -m pip install -r ui/editor/src/model/requirements-dev.txt
+          if ($LASTEXITCODE -ne 0) { throw 'R9_PY_MODEL_DEPS_FAIL' }
+          & .\.venv\Scripts\python.exe -m pip install 'pywinauto==0.6.9' 'jsonschema==4.26.0'
+          if ($LASTEXITCODE -ne 0) { throw 'R9_NATIVE_AUTOMATION_DEPS_FAIL' }
+          $venvScripts = (Resolve-Path '.\.venv\Scripts').Path
+          Add-Content -Path $env:GITHUB_PATH -Value $venvScripts
+          npm ci --prefix ui/editor --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { throw 'R9_NPM_CI_FAILED' }
+      - name: R9 source regression, typecheck and compiled editor
+        shell: pwsh
+        run: |
+          npm run typecheck --prefix ui/editor
+          if ($LASTEXITCODE -ne 0) { throw 'R9_TSC_FAILED' }
+          npm test --prefix ui/editor
+          if ($LASTEXITCODE -ne 0) { throw 'R9_NODE_REGRESSION_FAILED' }
+          npm run build --prefix ui/editor
+          if ($LASTEXITCODE -ne 0) { throw 'R9_VITE_BUILD_FAILED' }
+      - name: Install native Cairo for actual Python SVG to PNG300 export
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: mingw-w64-x86_64-cairo
+      - name: Bundle exact-commit Python sidecar
+        shell: pwsh
+        run: |
+          & .\ui\desktop\build-sidecar.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'R9_SIDECAR_BUILD_FAILED' }
+          if (!(Test-Path 'ui/desktop/src-tauri/binaries/engine-bridge-x86_64-pc-windows-msvc.exe')) {
+            throw 'R9_SIDECAR_BINARY_MISSING'
+          }
+      - name: Native file CAS and safety regression tests
+        shell: pwsh
+        run: |
+          cargo test --manifest-path ui/desktop/src-tauri/Cargo.toml
+          if ($LASTEXITCODE -ne 0) { throw 'R9_RUST_NATIVE_TESTS_FAILED' }
+      - name: Build exact-commit Tauri NSIS installer
+        shell: pwsh
+        working-directory: ui/desktop/src-tauri
+        run: |
+          npx --yes @tauri-apps/cli@2 build --bundles nsis --ci --verbose
+          if ($LASTEXITCODE -ne 0) { throw 'R9_TAURI_NSIS_BUILD_FAILED' }
+      - name: Real GUI New → Net → Save As → restart → Open → SHA → SVG/PNG300
+        shell: pwsh
+        run: |
+          $staging = Join-Path $env:RUNNER_TEMP 'gscad-r9-current-commit'
+          New-Item -ItemType Directory -Path $staging -Force | Out-Null
+          $installer = @(Get-ChildItem 'ui/desktop/src-tauri/target/release/bundle/nsis' -Filter '*setup.exe' -File)
+          if ($installer.Count -ne 1) { throw ('R9_NSIS_SETUP_COUNT_' + $installer.Count) }
+          Copy-Item -LiteralPath $installer[0].FullName -Destination (Join-Path $staging $installer[0].Name)
+          Write-Host ('R9_CURRENT_SOURCE_SHA=' + $env:GSCAD_R9_BINARY_SOURCE_SHA)
+          & .\.github\tools\r9-native-project.ps1 -ArtifactRoot $staging
+          if (!$?) { throw 'R9_REAL_NATIVE_PERSISTENCE_FAILED' }

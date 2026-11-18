@@ -1,0 +1,108 @@
+{
+  "format": "gscad-spike",
+  "version": 1,
+  "projectId": "project-l85vigp2",
+  "title": "Новый проект",
+  "provenance": {
+    "kind": "synthetic-demo",
+    "note": "TL494 synthetic graphic, NOT source verified or ESKD-approved; R/C source DRAFT",
+    "catalogSources": {
+      "resistor.fixed": "integration/stage0-12:4114cecde344ce184b8271851141c254cfa9f7aa",
+      "capacitor.fixed": "integration/stage0-12:3e173b1cd52120f4cedd26e0f43348864119ec47"
+    }
+  },
+  "sheets": [
+    {
+      "id": "sheet-1",
+      "name": "Лист 1",
+      "widthUm": 420000,
+      "heightUm": 297000,
+      "symbols": [
+        {
+          "id": "r1",
+          "kind": "resistor.fixed",
+          "ref": "R1",
+          "value": "10к",
+          "x": 85000,
+          "y": 90000,
+          "rotation": 0
+        },
+        {
+          "id": "c1",
+          "kind": "capacitor.fixed",
+          "ref": "C1",
+          "value": "100н",
+          "x": 230000,
+          "y": 130000,
+          "rotation": 0
+        },
+        {
+          "id": "da1",
+          "kind": "ic.tl494.demo",
+          "ref": "DA1",
+          "value": "TL494 · ДЕМО",
+          "x": 165000,
+          "y": 185000,
+          "rotation": 0
+        }
+      ],
+      "nets": [
+        {
+          "id": "net-fabx7u3b",
+          "name": "N$1",
+          "members": [
+            {
+              "symbolId": "r1",
+              "number": "2"
+            },
+            {
+              "symbolId": "c1",
+              "number": "1"
+            }
+          ],
+          "source": "user"
+        }
+      ],
+      "wires": [
+        {
+          "id": "wire-33fpoa2z",
+          "netId": "net-fabx7u3b",
+          "start": {
+            "type": "pin",
+            "pin": {
+              "symbolId": "r1",
+              "number": "2"
+            }
+          },
+          "end": {
+            "type": "pin",
+            "pin": {
+              "symbolId": "c1",
+              "number": "1"
+            }
+          },
+          "points": [
+            {
+              "x": 93000,
+              "y": 90000
+            },
+            {
+              "x": 157500,
+              "y": 90000
+            },
+            {
+              "x": 157500,
+              "y": 130000
+            },
+            {
+              "x": 222000,
+              "y": 130000
+            }
+          ]
+        }
+      ],
+      "junctions": [],
+      "graphics": []
+    }
+  ]
+}

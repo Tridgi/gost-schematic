@@ -1,0 +1,84 @@
+{
+  "format": "gscad-project",
+  "format_version": 2,
+  "project": {
+    "id": "eb02ffb8-ca9f-58d6-bd63-9f87e0938f77",
+    "title": "Empty schematic project",
+    "part_definitions": [],
+    "symbol_definitions": [],
+    "components": [],
+    "nets": [],
+    "sheets": [
+      {
+        "id": "sheet-1",
+        "name": "Empty schematic project",
+        "index": 1,
+        "frame": {
+          "size_um": [
+            420000,
+            297000
+          ],
+          "margin_um": 10000,
+          "paper": "A3 landscape"
+        },
+        "title_block": {
+          "designation": "GSCAD-CHAT6",
+          "title": "Empty schematic project",
+          "organization": "R&D",
+          "revision": "DRAFT",
+          "sheet_number": 1
+        },
+        "layers": [
+          {
+            "id": "layer-electric",
+            "name": "Electrical",
+            "kind": "electrical",
+            "visible": true,
+            "printable": true,
+            "locked": false
+          }
+        ],
+        "instances": [],
+        "wires": [],
+        "junctions": [],
+        "splices": [],
+        "texts": [],
+        "labels": [],
+        "graphics": []
+      }
+    ],
+    "settings": {
+      "units": "um",
+      "grid_visible": true,
+      "snap_enabled": false,
+      "grid_step_um": 1000,
+      "orthogonal_wires": true
+    },
+    "provenance": {
+      "source_sha": "0000000000000000000000000000000000000000",
+      "source_path": "fixtures/synthetic",
+      "status": "synthetic",
+      "expected_counts": {
+        "components": 0,
+        "nets": 0,
+        "memberships": 0,
+        "da1_pins": 0,
+        "b_graphics": 0
+      }
+    }
+  },
+  "workspace": {
+    "active_sheet_id": "sheet-1",
+    "camera_center_um": [
+      0,
+      0
+    ],
+    "zoom_milli": 1000,
+    "selected_ids": [],
+    "panels_px": {
+      "left": 280,
+      "right": 320,
+      "bottom": 160
+    }
+  }
+}

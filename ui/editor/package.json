@@ -1,0 +1,32 @@
+{
+  "name": "gost-schematic-visual-editor",
+  "version": "0.1.0-r2-preview",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "predev": "python ../integration/prepare_editor_fixtures.py",
+    "build": "tsc --noEmit && vite build",
+    "prebuild": "python ../integration/prepare_editor_fixtures.py",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "node --experimental-strip-types --test src/components/inspector-units.test.ts src/components/project-view.test.ts src/components/shortcuts.test.ts src/theme/layout.test.ts src/theme/tokens.test.ts src/export/browser-export.test.ts src/authoring/strict-json.test.ts src/authoring/session-domain.test.mjs src/canvas/paper-bounds.test.mjs src/native/desktop.test.ts src/native/close-guard.test.ts",
+    "test:e2e": "playwright test -c e2e/playwright.config.mjs"
+  },
+  "dependencies": {
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "@mantine/core": "9.8.1",
+    "@mantine/hooks": "9.8.1",
+    "lucide-react": "1.73.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "4.3.4",
+    "vite": "6.3.5",
+    "typescript": "5.8.3",
+    "@types/react": "19.2.0",
+    "@types/react-dom": "19.2.0",
+    "@types/node": "22.15.30",
+    "@playwright/test": "1.56.1"
+  }
+}

@@ -1,0 +1,36 @@
+name: Visual CAD dependency lockfile materialization
+on:
+  push:
+    branches: [ui/visual-cad-mvp]
+    paths: ['.github/workflows/visual-cad-lockfile.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  editor-lock:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: 'ui/editor/package.json'
+      - name: Resolve pinned React editor dependency lock without executing install scripts
+        working-directory: ui/editor
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Verify lockfile supports deterministic npm ci
+        working-directory: ui/editor
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Emit numbered lock chunks for independent review and commit by MASTER
+        working-directory: ui/editor
+        run: |
+          python - <<'PY'
+          import base64
+          from pathlib import Path
+          s=base64.b64encode(Path('package-lock.json').read_bytes()).decode('ascii')
+          for i in range(0,len(s),3000):
+              print(f'GSCAD_LOCK_CHUNK_{i//3000:04d}:{s[i:i+3000]}')
+          print(f'GSCAD_LOCK_TOTAL_CHUNKS:{(len(s)+2999)//3000}')
+          PY
