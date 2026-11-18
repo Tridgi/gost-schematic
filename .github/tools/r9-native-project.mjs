@@ -269,6 +269,24 @@ try{
             ' ERROR='+String(result.error?.code??'none'));
         }catch(e){console.log('R9_SVG_DIRECT_RESPONSE_INVALID='+String(e));}
       }
+      // Expose the underlying deterministic ExportError from the *same*
+      // canonical Python converter; the IPC intentionally returns only a
+      // stable public error code and does not leak exception internals.
+      const diagnostic=[
+        'import json,sys,traceback',
+        'from ui.bridge.export.canonical import ExportRequest',
+        'from ui.bridge.export.project_v2 import export_v2_svg',
+        'from ui.editor.src.model.contract import digest',
+        'doc=json.load(open(sys.argv[1],encoding="utf-8"))',
+        'req=ExportRequest(page="A3",orientation="landscape",dpi=300,include_frame=False,include_title=False,strict_font=False)',
+        'result=export_v2_svg(doc,doc["workspace"]["active_sheet_id"],req,expected_project_sha256=digest(doc))',
+        'print("R9_PY_DIRECT_SVG_BYTES="+str(len(result[0])))'
+      ].join(String.fromCharCode(10));
+      const py=spawnSync('python',['-c',diagnostic,copyPath],{
+        encoding:'utf8',timeout:20000,maxBuffer:2*1024*1024,windowsHide:true});
+      console.log('R9_PY_SVG_DIAG_EXIT='+py.status+
+        ' STDOUT='+String(py.stdout??'').slice(-450)+
+        ' STDERR='+String(py.stderr??'').slice(-1700));
       throw error;
     }
     await awaitNativePublish(svgPath,'svg');
