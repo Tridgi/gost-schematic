@@ -1,0 +1,51 @@
+name: Visual CAD CHAT8 R5 export security regression
+
+on:
+  push:
+    branches: [ui/chat8-r5-export-hardening]
+    paths:
+      - 'ui/bridge/export/**'
+      - 'ui/editor/src/export/**'
+      - '.github/workflows/visual-cad-chat8-r5.yml'
+  pull_request:
+    paths:
+      - 'ui/bridge/export/**'
+      - 'ui/editor/src/export/**'
+      - '.github/workflows/visual-cad-chat8-r5.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  canonical-export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Python engine, validators and pinned rasterizer
+        run: |
+          python -m pip install -e '.[dev]' 'jsonschema==4.26.0' 'CairoSVG==2.9.1' 'Pillow>=12.3,<13'
+      - name: Lint exporter and run negative/positive export regression
+        run: |
+          python -m ruff check ui/bridge/export
+          python -m pytest -q ui/bridge/export/tests
+
+  browser-png-guard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run real Node TypeScript PNG300 security and physical-size tests
+        working-directory: ui/editor
+        run: node --experimental-strip-types --test src/export/browser-export.test.ts
