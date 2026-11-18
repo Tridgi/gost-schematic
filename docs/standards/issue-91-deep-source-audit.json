@@ -1,0 +1,784 @@
+{
+  "schema_version": 1,
+  "issue": 91,
+  "revision": "deep-primary-2026-11-14",
+  "baseline_card_path": "docs/standards/issue-91-cycle7-electronics-cards.json",
+  "baseline_card_count": 107,
+  "reused_issue27_count": 12,
+  "scope": "independent source-specific normative judgments, NOT production symbol approval",
+  "source_classification": {
+    "PASS": "confirmed scoped text/graphic in primary source, not certificate",
+    "FAIL": "demonstrably false assertion or prohibited output",
+    "BLOCKED": "source does not prove universal/complete UGO, needs distinct review"
+  },
+  "primary_sources": [
+    {
+      "standard": "ГОСТ 2.743-91",
+      "original": "https://lepton.ru/GOST/Data/190/19085.pdf",
+      "pages_zero_based": [
+        2,
+        3,
+        4,
+        14,
+        41
+      ],
+      "primary_figures": [
+        "2.1.6 drawings3,4",
+        "2.3.12",
+        "appendix5 table19"
+      ]
+    },
+    {
+      "standard": "ГОСТ 2.759-82",
+      "original": "https://files.stroyinf.ru/Data2/1/4294849/4294849490.pdf",
+      "pages_zero_based": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "standard": "ГОСТ 2.730-73",
+      "original": "https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf",
+      "pages_zero_based": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "standard": "ГОСТ 2.728-74",
+      "original": "https://helpeng.ru/public/normdoc/eskd/gost_2.728-74.pdf",
+      "pages_zero_based": [
+        1,
+        9
+      ]
+    },
+    {
+      "standard": "ГОСТ 2.727-68",
+      "original": "https://www.nuvis.com.ua/GOST_2.727-68_ESKD.pdf",
+      "pages_zero_based": [
+        2
+      ]
+    },
+    {
+      "standard": "ГОСТ 2.755-87",
+      "original": "https://eelib.narod.ru/eskd/GOST_2.755-87.pdf",
+      "pages_zero_based": [
+        8,
+        9
+      ]
+    },
+    {
+      "standard": "ГОСТ 2.721-74",
+      "original": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf",
+      "pages_zero_based": [
+        11,
+        12
+      ]
+    },
+    {
+      "standard": "ГОСТ 2.709-89",
+      "original": "https://files.stroyinf.ru/Data/194/19467.pdf",
+      "pages_zero_based": [
+        6
+      ]
+    },
+    {
+      "standard": "ГОСТ 2.710-81",
+      "official": "https://protect.gost.ru/gost/details/6fecf975-2fad-4d4e-ac72-176c00caa188"
+    },
+    {
+      "standard": "ГОСТ 2.702-2011",
+      "official": "https://protect.gost.ru/gost/details/d9c1c334-2a90-45cb-ac00-c31da92d706b"
+    },
+    {
+      "standard": "ГОСТ 2.304-81",
+      "official": "https://protect.gost.ru/gost/details/2acb3258-c28c-4e4a-b7ac-208043f2d95e",
+      "applied_as_of": "2026-11-14",
+      "successor_start": "2027-10-01"
+    },
+    {
+      "standard": "ГОСТ 2.701-2008",
+      "official": "https://protect.gost.ru/gost/details/87f1f382-a055-48b7-ae80-f359ff5e1f4e"
+    }
+  ],
+  "per_variant_pin_matrix": [
+    {
+      "count": 4,
+      "case": "TEST_IC_4",
+      "sample_sides": "2L/2R",
+      "status": "PASS_DRAFT_SYNTHETIC_ONLY",
+      "negative": [
+        "duplicate physical pin",
+        "number below lead",
+        "corner port",
+        "unsupported rotated function"
+      ]
+    },
+    {
+      "count": 8,
+      "case": "TEST_IC_8",
+      "sample_sides": "4L/4R",
+      "status": "PASS_DRAFT_SYNTHETIC_ONLY",
+      "negative": [
+        "NC silently connected",
+        "DA function converted to DD logic",
+        "manufacturer mapping inferred"
+      ]
+    },
+    {
+      "count": 14,
+      "case": "TEST_IC_14",
+      "sample_sides": "7L/7R",
+      "status": "PASS_DRAFT_SYNTHETIC_ONLY",
+      "negative": [
+        "DD1.2 new physical package",
+        "hidden shared power creates duplicate physical pin"
+      ]
+    },
+    {
+      "count": 40,
+      "case": "TEST_IC_40",
+      "sample_sides": "20L/20R",
+      "status": "BLOCKED_REAL_INK_AND_VENDOR",
+      "negative": [
+        "length-only text sizing",
+        "number10/40 overlaps pin lead",
+        "pin pitch treated fixed2mm"
+      ]
+    },
+    {
+      "count": 64,
+      "case": "TEST_IC_64",
+      "sample_sides": "32L/32R",
+      "status": "BLOCKED_PAGE_OVERFLOW_AND_REAL_PINMAP",
+      "negative": [
+        "A4 silently cropped",
+        "font auto-shrunk",
+        "unknown vendor pinout"
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "id": "IC-FIG3-A",
+      "family": "IC_GOST_2743",
+      "source_standard": "ГОСТ 2.743-91",
+      "clause": "§2.1.6, черт.3, PDF p.3",
+      "status": "PASS",
+      "observed_source_rule": "input TOP / output BOTTOM with upright text profile is shown; function stays in first main-field information row",
+      "acceptance_or_negative": "synthetic 4/8/14/40/64; text is not converted to output pin label",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "IC-FIG3-B",
+      "family": "IC_GOST_2743",
+      "source_standard": "ГОСТ 2.743-91",
+      "clause": "§2.1.6, черт.3, PDF p.3",
+      "status": "PASS",
+      "observed_source_rule": "variant with vertically oriented marks/function is actually shown under alternate overall UGO orientation, not generic text-only 90-degree grant",
+      "acceptance_or_negative": "accept only figure-matched whole symbol/profile with original text, field and port order",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "IC-FIG4",
+      "family": "IC_GOST_2743",
+      "source_standard": "ГОСТ 2.743-91",
+      "clause": "§2.1.6 примечание, черт.4, PDF p.3",
+      "status": "PASS",
+      "observed_source_rule": "input RIGHT or BOTTOM/output LEFT or TOP requires information-flow arrows and correspondingly modified function symbol",
+      "acceptance_or_negative": "fail closed when reversed input direction has no arrows or wrong function",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "IC-ONLY-FUNCTION-90",
+      "family": "IC_GOST_2743",
+      "source_standard": "ГОСТ 2.743-91",
+      "clause": "§§2.1.2,2.1.6,2.1.9; черт.3–4",
+      "status": "BLOCKED",
+      "observed_source_rule": "fixed upright box with only central function text rotated 90 degrees is not independently authorized",
+      "acceptance_or_negative": "do not enable rotate_function_text_only=90 as universal GOST-approved operation",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "IC-ROLE-LABEL-ROTATE",
+      "family": "IC_GOST_2743",
+      "source_standard": "ГОСТ 2.743-91",
+      "clause": "§§2.1.9,2.3.12; ГОСТ 2.304-81",
+      "status": "BLOCKED",
+      "observed_source_rule": "rotating every pin name, physical number and DA/DD refdes blindly is not proven by fig3/4",
+      "acceptance_or_negative": "reject unknown D4/text orientation profiles",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "IC-PRIMARY-ROW",
+      "family": "IC_GOST_2743",
+      "source_standard": "ГОСТ 2.743-91",
+      "clause": "§2.1.2, PDF p.2",
+      "status": "PASS",
+      "observed_source_rule": "first information row of main field carries function; follow-up rows contain data under 2.708",
+      "acceptance_or_negative": "first row must remain source-controlled after rotate",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "IC-FIELDS-LEFT-RIGHT",
+      "family": "IC_GOST_2743",
+      "source_standard": "ГОСТ 2.743-91",
+      "clause": "§2.1.1, §2.1.3 table1 pos1-4, PDF p.2",
+      "status": "PASS",
+      "observed_source_rule": "main + 0/1/2 supplementary fields, zones unbounded, conditionally absent separators",
+      "acceptance_or_negative": "text widths between adjacent fields when separator omitted at least widths of two characters not 2mm",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "IC-PIN-ABOVE",
+      "family": "IC_GOST_2743",
+      "source_standard": "ГОСТ 2.743-91",
+      "clause": "§2.3.12 PDF p.14",
+      "status": "PASS",
+      "observed_source_rule": "physical number ABOVE line to left inputs/right outputs, allowable lead gap variant",
+      "acceptance_or_negative": "never put physical number below without source-scoped alternative",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "IC-PINS-CORNER",
+      "family": "IC_GOST_2743",
+      "source_standard": "ГОСТ 2.743-91",
+      "clause": "§2.1.5 PDF p.3",
+      "status": "FAIL",
+      "observed_source_rule": "line at UGO rectangle corner prohibited",
+      "acceptance_or_negative": "reject corner pin anchors and arrow head touching frame",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "IC-CHAR-HARDCAP",
+      "family": "IC_GOST_2743",
+      "source_standard": "ГОСТ 2.743-91",
+      "clause": "§2.2.1 PDF p.4",
+      "status": "FAIL",
+      "observed_source_rule": "hard max function chars attributed to GOST contradicts unlimited source",
+      "acceptance_or_negative": "no char-count based clipping or font shrink",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "IC-MODULAR-M",
+      "family": "IC_GOST_2743",
+      "source_standard": "ГОСТ 2.743-91",
+      "clause": "§2.1.8, Appendix 5 RECOMMENDED table19 pos1 PDF p.41",
+      "status": "PASS",
+      "observed_source_rule": "adjacent line step shown >=2M; M is a relative modular unit, not fixed mm",
+      "acceptance_or_negative": "source-traced recommended module; project M=2.5mm documented editorial",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "IC-NUMBERS-VENDOR",
+      "family": "IC_GOST_2743",
+      "source_standard": "ГОСТ 2.743-91",
+      "clause": "ГОСТ 2.702-2011 §5.3.21",
+      "status": "BLOCKED",
+      "observed_source_rule": "symbol gallery synthetic numbers are not actual manufacturer package numbers",
+      "acceptance_or_negative": "require device datasheet revision and unique physical inventory",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "IC-4",
+      "family": "IC_GOST_2743",
+      "source_standard": "ГОСТ 2.743-91",
+      "clause": "2.743 §§2.1–2.3",
+      "status": "PASS",
+      "observed_source_rule": "TEST_IC_4 is a schematic synthetic test only",
+      "acceptance_or_negative": "2L/2R editorial, 4 numbers 1..4 unique, no corner pins",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "IC-8",
+      "family": "IC_GOST_2743",
+      "source_standard": "ГОСТ 2.743-91",
+      "clause": "2.743/2.759 §§1.1–1.9",
+      "status": "PASS",
+      "observed_source_rule": "TEST_IC_8 analog and digital roles remain separately typed",
+      "acceptance_or_negative": "8 unique physical pins incl NC if designated",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "IC-14",
+      "family": "IC_GOST_2743",
+      "source_standard": "ГОСТ 2.743-91",
+      "clause": "2.743 §§2.3.11,2.4.2",
+      "status": "PASS",
+      "observed_source_rule": "TEST_IC_14 multi-unit must represent one physical IC",
+      "acceptance_or_negative": "no duplicate physical pins across DD1.1/DD1.2",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "IC-40",
+      "family": "IC_GOST_2743",
+      "source_standard": "ГОСТ 2.743-91",
+      "clause": "2.743 §§2.1.7,2.3.12",
+      "status": "PASS",
+      "observed_source_rule": "TEST_IC_40 20/20 is editorial, labels and numbers 1,10,40 measured",
+      "acceptance_or_negative": "correct paper size and actual ink font metrics mandatory for accepted geometry",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "IC-64",
+      "family": "IC_GOST_2743",
+      "source_standard": "ГОСТ 2.743-91",
+      "clause": "2.743 §2.1.7, 2.701 §5.3.4",
+      "status": "BLOCKED",
+      "observed_source_rule": "TEST_IC_64 can exceed A4; no allowed silent clipping",
+      "acceptance_or_negative": "IC_PAGE_OVERFLOW/choose A3, no 64-pin vendor map implied",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "IC-ANALOG-FUNCTION",
+      "family": "IC_GOST_2743",
+      "source_standard": "ГОСТ 2.759-82",
+      "clause": "ГОСТ 2.759-82 §§1.1–1.4, 1.8, tab2–4",
+      "status": "PASS",
+      "observed_source_rule": "DA main first row function symbols from allowed Latin, numbers and special no spaces; separate analog functions",
+      "acceptance_or_negative": "do not silently treat mathematical analog as DD digital gate",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "IC-FONT-2026",
+      "family": "IC_GOST_2743",
+      "source_standard": "ГОСТ 2.743-91",
+      "clause": "ГОСТ 2.304-81, ГОСТ Р 2.304-2026 official start 2027-10-01",
+      "status": "PASS",
+      "observed_source_rule": "current RU 2026-11 profile uses old standard unless explicit early adoption",
+      "acceptance_or_negative": "measure true cap h, never interpret SVG em as cap height",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "SEM-SCHOTTKY",
+      "family": "SEMICONDUCTOR_GOST_2730",
+      "source_standard": "ГОСТ 2.730-73",
+      "clause": "табл.4 поз.9; табл.5 поз.9, PDF p.2–3",
+      "status": "PASS",
+      "observed_source_rule": "complete Schottky cathode carries distinctive opposing small steps, not one straight K bar or Zener hook",
+      "acceptance_or_negative": "compare exact 1:1 table5 source, real A/K not inferred from filename",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "SEM-ZENER",
+      "family": "SEMICONDUCTOR_GOST_2730",
+      "source_standard": "ГОСТ 2.730-73",
+      "clause": "табл.5 поз.4а/4б PDF p.2–3",
+      "status": "PASS",
+      "observed_source_rule": "one-way vs bidirectional zener are distinct layouts",
+      "acceptance_or_negative": "negative single A/K polarity reused for symmetric zener without correct physical semantics",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "SEM-VARICAP",
+      "family": "SEMICONDUCTOR_GOST_2730",
+      "source_standard": "ГОСТ 2.730-73",
+      "clause": "табл.5 поз.6 PDF p.3",
+      "status": "PASS",
+      "observed_source_rule": "capacitive plate sign at diode junction, two source-listed alternatives",
+      "acceptance_or_negative": "not ordinary capacitor substituted",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "SEM-LED-PHOTO",
+      "family": "SEMICONDUCTOR_GOST_2730",
+      "source_standard": "ГОСТ 2.730-73",
+      "clause": "табл.5 поз.10; табл.9 поз.2 PDF p.3/7",
+      "status": "PASS",
+      "observed_source_rule": "LED two optical arrows outward, photodiode two inward; never counted electrical copper pins",
+      "acceptance_or_negative": "negative reversed light arrows, SVG optical arrow creates conducting wire",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "SEM-PNP-NPN-SHIELD",
+      "family": "SEMICONDUCTOR_GOST_2730",
+      "source_standard": "ГОСТ 2.730-73",
+      "clause": "табл.7 поз.1а,1б PDF p.5",
+      "status": "PASS",
+      "observed_source_rule": "PNP 1a; NPN 1b expressly with internal SCREEN lead",
+      "acceptance_or_negative": "reject 1b source as standalone generic 3pin NPN",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "SEM-GENERIC-NPN",
+      "family": "SEMICONDUCTOR_GOST_2730",
+      "source_standard": "ГОСТ 2.730-73",
+      "clause": "табл.7 поз.1б restricted; tab1 fundamental components; tab13 printing-device scope",
+      "status": "BLOCKED",
+      "observed_source_rule": "plain 3pin NPN requires independent complete profile and source rather than deleting screen",
+      "acceptance_or_negative": "no APPROVED generic NPN based on shielded-only figure",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "SEM-BJT-CASE",
+      "family": "SEMICONDUCTOR_GOST_2730",
+      "source_standard": "ГОСТ 2.730-73",
+      "clause": "tab1 pos11/12, tab7 note after end p.6",
+      "status": "PASS",
+      "observed_source_rule": "schematic case circle may be drawn, sometimes connected but requires explicit contact semantics",
+      "acceptance_or_negative": "never package footprint or automatic extra case PinRef",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "SEM-JFET",
+      "family": "SEMICONDUCTOR_GOST_2730",
+      "source_standard": "ГОСТ 2.730-73",
+      "clause": "табл.8 поз.1,2, PDF p.6",
+      "status": "PASS",
+      "observed_source_rule": "N/P PN gate arrow points appropriately; no isolated MOS channel in JFET",
+      "acceptance_or_negative": "reject reversed JFET arrow under D4",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "SEM-MOS-CHANNEL",
+      "family": "SEMICONDUCTOR_GOST_2730",
+      "source_standard": "ГОСТ 2.730-73",
+      "clause": "табл.1 поз.4/9/10, табл.8 поз.3а–3г, PDF p.1,6",
+      "status": "PASS",
+      "observed_source_rule": "enhancement/depletion channel graphic differs, insulated gate separated electrically",
+      "acceptance_or_negative": "reject joined G-channel and wrong channel segments",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "SEM-MOS-BODY",
+      "family": "SEMICONDUCTOR_GOST_2730",
+      "source_standard": "ГОСТ 2.730-73",
+      "clause": "табл.8 поз.4,5,6 PDF p.6–7",
+      "status": "PASS",
+      "observed_source_rule": "pos4 body internally tied; pos5 external body; pos6 dual gate+body",
+      "acceptance_or_negative": "reject phantom external B when only internal link",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "SEM-THYRISTOR",
+      "family": "SEMICONDUCTOR_GOST_2730",
+      "source_standard": "ГОСТ 2.730-73",
+      "clause": "табл.6 поз.4/5/8 PDF p.3–4",
+      "status": "PASS",
+      "observed_source_rule": "A/K/G for SCR, bidirectional triac no simplistic one-way A/K mapping",
+      "acceptance_or_negative": "gate to correct side, no diode-equivalent substitute",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "SEM-OPTO",
+      "family": "SEMICONDUCTOR_GOST_2730",
+      "source_standard": "ГОСТ 2.730-73",
+      "clause": "табл.10 поз.1–5 + note PDF p.7–8",
+      "status": "PASS",
+      "observed_source_rule": "opto encapsulation/optical coupling, separated graphic authorized with optical signs",
+      "acceptance_or_negative": "reject LED-to-sensor copper short, fake base contact",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "SEM-AVALANCHE-SCOPE",
+      "family": "SEMICONDUCTOR_GOST_2730",
+      "source_standard": "ГОСТ 2.730-73",
+      "clause": "табл.4 поз.2а,2б PDF p.2",
+      "status": "BLOCKED",
+      "observed_source_rule": "only physical effect symbol listed, not complete per-variant diode UGO",
+      "acceptance_or_negative": "remove presumptive PASS provenance of complete avalanche symbols",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "SEM-BRIDGE-SCOPE",
+      "family": "SEMICONDUCTOR_GOST_2730",
+      "source_standard": "ГОСТ 2.730-73",
+      "clause": "табл.12 поз.1а/1б PDF p.9–10",
+      "status": "BLOCKED",
+      "observed_source_rule": "typical full rectifier diode circuit diagram not single off-the-shelf physical bridge part",
+      "acceptance_or_negative": "must not instantiate single PartDefinition solely from table12 schematic",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "SEM-EXPIRED-APP1",
+      "family": "SEMICONDUCTOR_GOST_2730",
+      "source_standard": "ГОСТ 2.730-73",
+      "clause": "§15 and amendment4 removed appendix 1; appendix2 reference",
+      "status": "FAIL",
+      "observed_source_rule": "mandatory absolute mm quoted from excluded old appendix1",
+      "acceptance_or_negative": "reject mm unsupported by current graphic original",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "RES-UNUSED-PIN-OMIT",
+      "family": "RESISTOR_FUSE_CONNECTOR",
+      "source_standard": "ГОСТ 2.728-74",
+      "clause": "2.728-74 табл.1 поз.4 прим.2 PDF p.1",
+      "status": "PASS",
+      "observed_source_rule": "unused variable resistor terminal MAY NOT BE DRAWN; not delete physical contact from source part inventory",
+      "acceptance_or_negative": "DRAFT explicit optional suppress terminal, no phony Circuit.Net",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "RES-RHEOSTAT",
+      "family": "RESISTOR_FUSE_CONNECTOR",
+      "source_standard": "ГОСТ 2.728-74",
+      "clause": "2.728-74 табл.1 поз.4 прим.3",
+      "status": "PASS",
+      "observed_source_rule": "two-terminal rheostat depiction allowed; not universally 3 drawn ends",
+      "acceptance_or_negative": "physical wiper remains and may be connected by explicit circuit transaction",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "RES-VARIABLE-TRIMMER",
+      "family": "RESISTOR_FUSE_CONNECTOR",
+      "source_standard": "ГОСТ 2.728-74",
+      "clause": "2.728-74 табл.1 поз.4/9; табл.6 поз.3/5 PDF p.1/9",
+      "status": "PASS",
+      "observed_source_rule": "variable/adjustment glyph distinct; trim mechanical mark not a 4th electrical pin",
+      "acceptance_or_negative": "wiper endpoint manufacturer map and source D4",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "RES-POT-20x4",
+      "family": "RESISTOR_FUSE_CONNECTOR",
+      "source_standard": "ГОСТ 2.728-74",
+      "clause": "2.728-74 табл.6 поз.6 PDF p.9",
+      "status": "PASS",
+      "observed_source_rule": "20x4mm source-scoped functional potentiometer dimensions, not all resistor variants",
+      "acceptance_or_negative": "reject applying 20x4mm to resistor.variable",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "FUSE-POS2",
+      "family": "RESISTOR_FUSE_CONNECTOR",
+      "source_standard": "ГОСТ 2.727-68",
+      "clause": "2.727-68 §4 table3 pos2 PDF p.2",
+      "status": "PASS",
+      "observed_source_rule": "general fuse melt rectangle with axial stroke, not pos1 spark-over protector",
+      "acceptance_or_negative": "check inner stroke not extra external short",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "FUSE-VOLTAGE-SIDE",
+      "family": "RESISTOR_FUSE_CONNECTOR",
+      "source_standard": "ГОСТ 2.727-68",
+      "clause": "2.727-68 table3 pos2 note PDF p.2",
+      "status": "PASS",
+      "observed_source_rule": "thick stroke can identify side remaining energized only if actual circuit provenance exists",
+      "acceptance_or_negative": "reject always-thicken-left default claimed GOST",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "CON-MALE-FEMALE",
+      "family": "RESISTOR_FUSE_CONNECTOR",
+      "source_standard": "ГОСТ 2.755-87",
+      "clause": "2.755-87 table5 pos1(1), PDF p.8",
+      "status": "PASS",
+      "observed_source_rule": "physical pin/socket different graphics with authorized alternatives",
+      "acceptance_or_negative": "typed PartDefinition, pin numbers from manufacturer, not from sketch",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "CON-MATED-4",
+      "family": "RESISTOR_FUSE_CONNECTOR",
+      "source_standard": "ГОСТ 2.755-87",
+      "clause": "2.755-87 table6 pos1–4 PDF p.9",
+      "status": "PASS",
+      "observed_source_rule": "multiple physically connected contacts, four numbers exemplar not universal package pinout",
+      "acceptance_or_negative": "no automatic net merge if mating state absent",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "CON-COAX",
+      "family": "RESISTOR_FUSE_CONNECTOR",
+      "source_standard": "ГОСТ 2.755-87",
+      "clause": "2.755-87 table6 pos5 PDF p.9",
+      "status": "PASS",
+      "observed_source_rule": "central contact and shield contact functionally distinct",
+      "acceptance_or_negative": "no join center to shield absent explicit design",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "NET-X-T",
+      "family": "NET_AND_EDITOR",
+      "source_standard": "ГОСТ 2.709-89 / 2.721-74",
+      "clause": "2.721-74 табл.6в поз.5/6, note2 PDF p.11–12",
+      "status": "PASS",
+      "observed_source_rule": "X no connection, T one branch can omit dot",
+      "acceptance_or_negative": "no automatic join on geometric X",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "NET-BREAK-X",
+      "family": "NET_AND_EDITOR",
+      "source_standard": "ГОСТ 2.709-89 / 2.721-74",
+      "clause": "2.721-74 табл.6в поз.8 PDF p.12",
+      "status": "PASS",
+      "observed_source_rule": "graphical break uses directional arrows with X-required continuation data",
+      "acceptance_or_negative": "do not demand arrow for ordinary unbroken net labels",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "NET-NAME-LOCATION",
+      "family": "NET_AND_EDITOR",
+      "source_standard": "ГОСТ 2.709-89 / 2.721-74",
+      "clause": "2.709-89 §5.13 PDF p.6",
+      "status": "PASS",
+      "observed_source_rule": "horizontal labels above; vertical labels left; justified exceptional placement permitted",
+      "acceptance_or_negative": "no universal absolute text position from pixel scan",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "NET-ADDRESS-RECIPROCAL",
+      "family": "NET_AND_EDITOR",
+      "source_standard": "ГОСТ 2.709-89 / 2.721-74",
+      "clause": "2.709-89 §5.14, figs10,11 PDF p.6",
+      "status": "PASS",
+      "observed_source_rule": "at beginning remote end address; at end source end address; address via element/device/function group code",
+      "acceptance_or_negative": "R1/C3 or A7:X16/A4:X11 examples require real entities",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "NET-MIXED",
+      "family": "NET_AND_EDITOR",
+      "source_standard": "ГОСТ 2.709-89 / 2.721-74",
+      "clause": "2.709-89 §5.14 fig12 PDF p.6",
+      "status": "PASS",
+      "observed_source_rule": "mixed net name + physical connection address permitted",
+      "acceptance_or_negative": "same actual Circuit.Net ID, no inferred cross-net merge by label",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "NET-SHEETZONE-ONLY",
+      "family": "NET_AND_EDITOR",
+      "source_standard": "ГОСТ 2.709-89 / 2.721-74",
+      "clause": "2.709-89 §5.14 vs editorial sheet-zone navigation",
+      "status": "BLOCKED",
+      "observed_source_rule": "sheet:zone string is project coordinate not necessarily compliant 2.710 element/device/group connection address",
+      "acceptance_or_negative": "show both if needed, not substitute false normative",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "NET-PHYSICAL-XP",
+      "family": "NET_AND_EDITOR",
+      "source_standard": "ГОСТ 2.709-89 / 2.721-74",
+      "clause": "2.755-87 table5/6 vs 2.721-74 table6в pos8",
+      "status": "FAIL",
+      "observed_source_rule": "net continuation emitted as real XP/XS component or wireless link",
+      "acceptance_or_negative": "reject PartDefinition on nonphysical endpoint",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "UX-GREEN-CLEAN",
+      "family": "NET_AND_EDITOR",
+      "source_standard": "ГОСТ 2.721-74 / Issue #100",
+      "clause": "2.721-74 table6в pos6 vs Issue #100 editor UI",
+      "status": "FAIL",
+      "observed_source_rule": "green squares/circles exported in final clean SVG/PDF as purported GOST junctions",
+      "acceptance_or_negative": "clean export must not contain hotspot overlay",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    },
+    {
+      "id": "UX-DIAGNOSTIC",
+      "family": "NET_AND_EDITOR",
+      "source_standard": "ГОСТ 2.721-74 / Issue #100",
+      "clause": "Issue #100 design-only; 2.721-74 does not define green hotspot",
+      "status": "PASS",
+      "observed_source_rule": "typed nonprinting opt-in debug layer with pixel-based hit targets, focus and status accessible",
+      "acceptance_or_negative": "never change PinRef/Net on hover, never accept ambiguous target without transaction",
+      "source_checked": "original print PDF graphics/text with screenshot; see linked narrative",
+      "product_approval": "DRAFT_ONLY"
+    }
+  ],
+  "totals": {
+    "rules": 52,
+    "by_status": {
+      "PASS": 39,
+      "BLOCKED": 8,
+      "FAIL": 5
+    },
+    "product_approved": 0
+  },
+  "exceptions_for_legacy_107": {
+    "diode.avalanche": "BLOCKED_SOURCE_SCOPE: table4 is physical effect not complete device UGO",
+    "diode.bidirectional_avalanche": "BLOCKED_SOURCE_SCOPE: table4 is physical effect not full device UGO",
+    "semiconductor.bridge_full": "BLOCKED_SOURCE_SCOPE: table12 typical circuit, not one guaranteed physical PartDefinition",
+    "semiconductor.bridge_compact": "BLOCKED_SOURCE_SCOPE: table12 typical circuit, not one guaranteed physical PartDefinition",
+    "resistor.variable": "POSITIVE source note permits omitting unused pin from SCHEMATIC depiction, not deleting it from physical part inventory",
+    "resistor.rheostat_two_terminal_usage": "Circuit.Net usage profile, not separate manufactured physical part",
+    "net.continuation.cross_sheet": "§5.14 normative address is counterpart element/device/function group; sheet-zone only editorial routing metadata",
+    "net.continuation.named_horizontal": "§5.13 name is not automatically break arrow",
+    "net.continuation.named_vertical": "§5.13 name is not automatically break arrow",
+    "ic.digital.pins_top_bottom": "fig3 supports vertical-layout profiles, not arbitrary function-only rotation"
+  },
+  "owner_handoffs": {
+    "PAINT93": [
+      "fig3 upright and rotated whole-UGO profiles separate",
+      "fig4 reversed arrow + changed function",
+      "real h and number in gap above external lead"
+    ],
+    "ELEKTRIK97": [
+      "one physical package and unique numbers, exact World Points",
+      "NC/power fail-closed, multiunit saved identity"
+    ],
+    "YGO94": [
+      "variable unused terminal may be omitted graphically",
+      "fuse pos2, Schottky/Zener distinct, case not footprint"
+    ],
+    "QA99": [
+      "figure3/4 negative orientation tests",
+      "optical not conductor, sheetzone vs reciprocal §5.14",
+      "clean export no green hotspot"
+    ]
+  }
+}

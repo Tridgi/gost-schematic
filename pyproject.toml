@@ -13,19 +13,23 @@ authors = [{name = "GOST Schematic contributors"}]
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=8,<10", "ruff>=0.9,<1"]
+fonts = ["Pillow>=10,<13"]
+dev = ["pytest>=8,<10", "ruff>=0.9,<1", "Pillow>=10,<13"]
+mcp = ["mcp>=1.17,<2", "resvg_py>=0.5,<1"]
 
 [project.scripts]
 gost-schematic = "gost_schematic.cli:main"
+gost-schematic-mcp = "gost_schematic.mcp_server.server:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-gost_schematic = ["catalog/symbols/**/*.json"]
+gost_schematic = ["catalog/symbols/**/*.json", "catalog/parts/**/*.json", "catalog/inductors/*.json", "standards/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 
 [tool.ruff]
 target-version = "py312"

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "inductor.gapped_core",
+  "revision": 1,
+  "turns": 4,
+  "radius_mm": "2",
+  "lead_mm": "4",
+  "line_width_mm": "0.3",
+  "core": "gapped_ferromagnetic",
+  "normative_relation": "table_1_composition",
+  "normative_basis": "ГОСТ 2.723-68, табл. 1, пп. 1 и 2б — магнитопровод с воздушным зазором"
+}

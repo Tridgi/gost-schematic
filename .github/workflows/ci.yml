@@ -16,8 +16,178 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install library and dev tools
-        run: python -m pip install -e ".[dev]"
+        run: python -m pip install -e ".[dev,mcp]"
       - name: Lint
         run: ruff check .
       - name: Test
         run: pytest -q
+      - name: Audit entire symbol catalog integrity
+        run: |
+          python scripts/audit_symbol_catalog.py \
+            --output output/catalog-integrity-audit.json
+      - name: Verify standalone wheel carries ESKD rules and all 18 UGO
+        run: |
+          python -m pip wheel . --no-deps --wheel-dir dist
+          python scripts/verify_wheel_payload.py dist
+      - name: Upload catalog integrity report
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-catalog-integrity-audit
+          path: output/catalog-integrity-audit.json
+          if-no-files-found: error
+      - name: Generate collision-overlay sample (technical font only)
+        if: matrix.python-version == '3.12'
+        shell: bash
+        run: |
+          FONT_PATH="$(fc-match -f '%{file}' 'DejaVu Sans')"
+          if [ ! -f "$FONT_PATH" ]; then
+            echo "::warning::No example TTF available; SVG review sample omitted."
+            exit 0
+          fi
+          python -m gost_schematic.cli render-annotated-symbol \
+            src/gost_schematic/catalog/symbols/resistors/fixed.json \
+            --ref R1 --value '10 kΩ' --font-file "$FONT_PATH" \
+            --font-family 'DejaVu Sans' --review-overlay \
+            --output output/resistor-annotations-review.svg
+          python -m gost_schematic.cli render-annotated-symbol \
+            src/gost_schematic/catalog/symbols/resistors/fixed.json \
+            --ref R1 --value '10 kΩ' --font-file "$FONT_PATH" \
+            --font-family 'DejaVu Sans' \
+            --output output/resistor-annotations-clean.svg
+          python -m gost_schematic.cli render-annotated-symbol \
+            src/gost_schematic/catalog/symbols/resistors/fixed.json \
+            --ref R1 --value '10 kΩ' --font-file "$FONT_PATH" \
+            --font-family 'DejaVu Sans' --show-pin-connections --review-overlay \
+            --output output/resistor-annotations-pin-escape.svg
+      - name: Generate ESKD/full/hidden nominal previews
+        if: matrix.python-version == '3.12'
+        shell: bash
+        run: |
+          FONT_PATH="$(fc-match -f '%{file}' 'DejaVu Sans')"
+          if [ ! -f "$FONT_PATH" ]; then
+            echo "::warning::No sample font; nominal previews skipped."
+            exit 0
+          fi
+          for MODE in eskd_compact full_units; do
+            python -m gost_schematic.cli render-annotated-symbol \
+              src/gost_schematic/catalog/symbols/resistors/fixed.json \
+              --nominal 2300 --unit ohm --nominal-mode "$MODE" \
+              --font-file "$FONT_PATH" --font-family 'DejaVu Sans' \
+              --review-overlay --output "output/nominal-$MODE.svg"
+          done
+          python -m gost_schematic.cli render-annotated-symbol \
+            src/gost_schematic/catalog/symbols/resistors/fixed.json \
+            --nominal 2300 --unit ohm --hide-nominal \
+            --font-file "$FONT_PATH" --font-family 'DejaVu Sans' \
+            --review-overlay --output output/nominal-hidden.svg
+      - name: Generate multi-resistor sheet samples
+        if: matrix.python-version == '3.12'
+        shell: bash
+        run: |
+          FONT_PATH="$(fc-match -f '%{file}' 'DejaVu Sans')"
+          if [ ! -f "$FONT_PATH" ]; then
+            echo "::warning::No sample font; sheet preview omitted."
+            exit 0
+          fi
+          python examples/review_sheet_annotations.py \
+            --font-file "$FONT_PATH" --font-family 'DejaVu Sans' \
+            --output-dir output/sheet-review
+      - name: Upload sheet label review samples
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sheet-label-geometry-review
+          path: output/sheet-review/*.svg
+          if-no-files-found: warn
+      - name: Install open-license OpenGOST Type A for sample render
+        if: matrix.python-version == '3.12'
+        run: |
+          python scripts/install_opengost_type_a.py \
+            --directory "$HOME/.local/share/fonts"
+          fc-cache -f
+      - name: Generate GOST Type A capacitor review
+        if: matrix.python-version == '3.12'
+        run: |
+          FONT_FILE="$(find "$HOME/.local/share/fonts" -type f \
+            -iname '*TypeA*.ttf' -o -iname '*TypeA*.otf' | head -1)"
+          test -n "$FONT_FILE"
+          python examples/review_type_a_capacitors.py \
+            --font-file "$FONT_FILE" --font-family "OpenGost Type A" \
+            --output-dir output/type-a-capacitors
+      - name: Rasterize reviewed OpenGOST SVG with the exact installed font
+        if: matrix.python-version == '3.12'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+          rsvg-convert --background-color white --width 1700 \
+            -o output/type-a-capacitors/type-a-capacitors-eskd_compact-clean.png \
+            output/type-a-capacitors/type-a-capacitors-eskd_compact-clean.svg
+          rsvg-convert --background-color white --width 1700 \
+            -o output/type-a-capacitors/type-a-capacitors-eskd_compact-review.png \
+            output/type-a-capacitors/type-a-capacitors-eskd_compact-review.svg
+          rsvg-convert --background-color white --width 1700 \
+            -o output/type-a-capacitors/type-a-capacitors-full_units-clean.png \
+            output/type-a-capacitors/type-a-capacitors-full_units-clean.svg
+      - name: Generate physical polarity ERC review
+        if: matrix.python-version == '3.12'
+        run: |
+          python examples/review_polarity_erc.py \
+            --output output/polarity-erc-review.json
+      - name: Upload polarity report for user review
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: polarized-capacitor-erc-review
+          path: output/polarity-erc-review.json
+          if-no-files-found: error
+      - name: Generate GOST 2.723 inductor family review
+        if: matrix.python-version == '3.12'
+        shell: bash
+        run: |
+          FONT_FILE="$(find "$HOME/.local/share/fonts" -type f \
+            \( -iname '*TypeA*.ttf' -o -iname '*TypeA*.otf' \) | head -1)"
+          test -n "$FONT_FILE"
+          python examples/review_inductors.py \
+            --font-file "$FONT_FILE" --font-family "OpenGost Type A" \
+            --output-dir output/inductors
+          rsvg-convert --background-color white --width 1900 \
+            -o output/inductors/inductor-family-clean.png \
+            output/inductors/inductor-family-clean.svg
+          rsvg-convert --background-color white --width 1900 \
+            -o output/inductors/inductor-family-review.png \
+            output/inductors/inductor-family-review.svg
+      - name: Upload parametric inductor family review
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-gost2723-inductor-family
+          path: |
+            output/inductors/*.svg
+            output/inductors/*.png
+            output/inductors/*.json
+            output/inductors/variants/*.svg
+          if-no-files-found: error
+      - name: Upload Type A and capacitor SVG
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-type-a-capacitors
+          path: |
+            output/type-a-capacitors/*.svg
+            output/type-a-capacitors/*.png
+          if-no-files-found: error
+      - name: Upload nominal display samples
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-eskd-nominal-display
+          path: output/nominal-*.svg
+          if-no-files-found: warn
+      - name: Upload annotated UGO preview
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-resistor-annotation-review
+          path: output/resistor-annotations-*.svg
+          if-no-files-found: warn

@@ -1,0 +1,114 @@
+name: Cycle 7 E3 DRAFT 15-family physical catalog 300DPI
+
+on:
+  push:
+    branches:
+      - parallel/catalog-electronic-cycle7
+    paths:
+      - "src/gost_schematic/catalog/symbols/**/*.json"
+      - "src/gost_schematic/catalog/parts/**/*.json"
+      - "tests/test_catalog_cycle7_first_batch.py"
+      - "tests/test_catalog_cycle7_semiconductors.py"
+      - "tests/test_catalog_cycle7_acceptance.py"
+      - "docs/catalog/issue89-acceptance-matrix.json"
+      - "docs/catalog/issue89-acceptance-review.md"
+      - "examples/review_electronic_cycle7.py"
+      - "examples/review_electronic_cycle7_extended.py"
+      - "examples/verify_electronic_cycle7_extended.py"
+      - "examples/verify_electronic_cycle7_raster.py"
+      - ".github/workflows/catalog-cycle7-review.yml"
+  pull_request:
+    branches:
+      - integration/stage0-12
+    paths:
+      - "src/gost_schematic/catalog/symbols/**/*.json"
+      - "src/gost_schematic/catalog/parts/**/*.json"
+      - "tests/test_catalog_cycle7_first_batch.py"
+      - "tests/test_catalog_cycle7_semiconductors.py"
+      - "tests/test_catalog_cycle7_acceptance.py"
+      - "docs/catalog/issue89-acceptance-matrix.json"
+      - "docs/catalog/issue89-acceptance-review.md"
+      - "examples/review_electronic_cycle7.py"
+      - "examples/review_electronic_cycle7_extended.py"
+      - "examples/verify_electronic_cycle7_extended.py"
+      - "examples/verify_electronic_cycle7_raster.py"
+      - ".github/workflows/catalog-cycle7-review.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: catalog-cycle7-first-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cycle7-draft-physical-review:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install review test deps
+        run: python -m pip install -e ".[dev]"
+      - name: Ruff cycle7 and exact physical UGO test matrix
+        run: |
+          ruff check tests/test_catalog_cycle7_first_batch.py tests/test_catalog_cycle7_semiconductors.py tests/test_catalog_cycle7_acceptance.py examples/review_electronic_cycle7.py examples/review_electronic_cycle7_extended.py examples/verify_electronic_cycle7_raster.py examples/verify_electronic_cycle7_extended.py
+          pytest -q tests/test_catalog_cycle7_first_batch.py tests/test_catalog_cycle7_semiconductors.py tests/test_catalog_cycle7_acceptance.py
+      - name: Verify full catalog and distributable wheel
+        run: |
+          python scripts/audit_symbol_catalog.py --output output/cycle7-catalog-audit.json
+          python -m pip wheel . --no-deps --wheel-dir dist
+          python scripts/verify_wheel_payload.py dist
+      - name: Export six true vector clean/diagnostic DRAFT SVG
+        if: matrix.python-version == '3.12'
+        run: python -m examples.review_electronic_cycle7 --output-dir output/cycle7-first-batch
+      - name: Rasterize each metric SVG at TRUE 300 DPI
+        if: matrix.python-version == '3.12'
+        shell: bash
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+          for svg in output/cycle7-first-batch/*.svg; do
+            rsvg-convert --dpi-x 300 --dpi-y 300 --background-color white \
+              -o "${svg%.svg}.png" "$svg"
+          done
+          python -m examples.verify_electronic_cycle7_raster \
+            --output-dir output/cycle7-first-batch
+      - name: Install pinned OpenGost Type A for actual 15-UGO gallery labels
+        if: matrix.python-version == '3.12'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/install_opengost_type_a.py --directory "$HOME/.local/share/fonts" --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a
+          fc-cache -f
+          FONT_FILE="$(find "$HOME/.local/share/fonts" -type f -iname '*TypeA*.ttf' -o -iname '*TypeA*.otf' | head -1)"
+          VIEWER_FONT="$(fc-match -f '%{file}' 'OpenGost Type A')"
+          test -n "$FONT_FILE" && test -f "$FONT_FILE"
+          test "$(realpath "$FONT_FILE")" = "$(realpath "$VIEWER_FONT")"
+      - name: Generate 15 real E3 DRAFT physical symbols in ONE vector gallery
+        if: matrix.python-version == '3.12'
+        run: python -m examples.review_electronic_cycle7_extended --output-dir output/cycle7-all-catalogue
+      - name: Rasterize 15-family gallery at metric 300 DPI and audit each physical pin
+        if: matrix.python-version == '3.12'
+        shell: bash
+        run: |
+          for svg in output/cycle7-all-catalogue/*.svg; do
+            rsvg-convert --dpi-x 300 --dpi-y 300 --background-color white -o "${svg%.svg}.png" "$svg"
+          done
+          python -m examples.verify_electronic_cycle7_extended --output-dir output/cycle7-all-catalogue
+      - name: Upload real 300DPI DRAFT E3 samples and audit
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-cycle7-first-three-physical-ugo
+          path: |
+            output/cycle7-first-batch/*
+            output/cycle7-all-catalogue/*
+            output/cycle7-catalog-audit.json
+          if-no-files-found: error

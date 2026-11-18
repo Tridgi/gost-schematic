@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="70mm" height="42mm" viewBox="0 0 70 42" data-evidence="editorial-illustration-not-owner-output" data-physical-device="DD1" data-physical-pinrefs="DD1.14 DD1.7">
+<title>Чистая схема и диагностический слой: учебный ДРАФТ</title>
+<rect width="70" height="42" fill="white"/>
+<g data-layer="physical-symbol-and-wires" fill="none" stroke="#000000" stroke-width="0.3">
+<rect x="22" y="6" width="29" height="28"/>
+<path data-pin-ref="DD1.14" d="M 12 14 H 22"/>
+<path data-pin-ref="DD1.7" d="M 12 26 H 22"/>
+</g>
+<g font-family="sans-serif" font-size="3" fill="#000000">
+<text x="28" y="11">DD1</text>
+<text x="25" y="15">+5V</text>
+<text x="25" y="27">0V</text>
+</g>
+<g data-layer="editor-connection-targets" data-editor-only="true" data-connectivity-authoritative="false" fill="#40a955" stroke="none">
+<rect data-pin-ref="DD1.14" data-actual-anchor-mm="12,14" x="11.3" y="13.3" width="1.4" height="1.4"/>
+<rect data-pin-ref="DD1.7" data-actual-anchor-mm="12,26" x="11.3" y="25.3" width="1.4" height="1.4"/>
+</g>
+</svg>

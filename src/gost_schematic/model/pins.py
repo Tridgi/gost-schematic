@@ -16,15 +16,43 @@ class ElectricalType(str, Enum):
     UNSPECIFIED = "unspecified"
 
 
+class TerminalPolarity(str, Enum):
+    """Physical terminal meaning, separate from the schematic pin's visual label."""
+
+    NONE = "none"
+    POSITIVE = "positive"
+    NEGATIVE = "negative"
+
+
+class TerminalFunction(str, Enum):
+    """Physical pin function, independent of label, polarity and driver type."""
+
+    GENERAL = "general"
+    WINDING_START = "winding_start"
+    WINDING_END = "winding_end"
+    WINDING_TAP = "winding_tap"
+    WINDING_SLIDER = "winding_slider"
+
+
 @dataclass(frozen=True, slots=True)
 class PhysicalPin:
     number: str
     name: str
     electrical_type: ElectricalType
+    polarity: TerminalPolarity = TerminalPolarity.NONE
+    function: TerminalFunction = TerminalFunction.GENERAL
 
     def __post_init__(self) -> None:
-        if not self.number.strip():
+        if not isinstance(self.number, str) or not self.number.strip():
             raise ValueError("Physical pin number must be non-empty")
+        if not isinstance(self.name, str) or not self.name.strip():
+            raise ValueError("Physical pin name must be non-empty")
+        if not isinstance(self.electrical_type, ElectricalType):
+            raise TypeError("electrical_type must be an ElectricalType")
+        if not isinstance(self.polarity, TerminalPolarity):
+            raise TypeError("polarity must be a TerminalPolarity")
+        if not isinstance(self.function, TerminalFunction):
+            raise TypeError("function must be a TerminalFunction")
 
 
 @dataclass(frozen=True, slots=True)

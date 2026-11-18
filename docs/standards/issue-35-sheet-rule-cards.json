@@ -1,0 +1,643 @@
+{
+  "schema_version": 1,
+  "issue": 35,
+  "date": "2026-11-13",
+  "jurisdiction": "RU",
+  "baseline_sha": "caf7db7ad22d9cd22202664471da5ff3a49a754c",
+  "target": "fully_formed_electrical_principle_sheet",
+  "normative_status": "NOT_APPROVED",
+  "catalog_symbols": {
+    "count": 19,
+    "status": "DRAFT",
+    "approved": 0
+  },
+  "standards": {
+    "GOST-2.701-2008": {
+      "designation": "ГОСТ 2.701-2008",
+      "official": "https://protect.gost.ru/gost/details/87f1f382-a055-48b7-ae80-f359ff5e1f4e",
+      "status": "Действует",
+      "pdf": "https://metall.world/FILES/gosts/gost_2.701-2008.pdf",
+      "edition": "Стандартинформ, 2009",
+      "figure": "пп. 5.3.4, 5.4.2–5.4.4, 5.5.1–5.5.4"
+    },
+    "GOST-2.702-2011": {
+      "designation": "ГОСТ 2.702-2011",
+      "official": "https://protect.gost.ru/gost/details/d9c1c334-2a90-45cb-ac00-c31da92d706b",
+      "status": "Действует",
+      "pdf": "https://www.elec.ru/files/2019/03/25/gost_2.702-2011.pdf",
+      "edition": "Стандартинформ, 2011, поправка 2021 по реестру",
+      "figure": "пп. 5.3.1, 5.3.7–5.3.11, 5.3.18, 5.3.20–5.3.21; PDF P7–P11 (0-based)"
+    },
+    "GOST-2.721-74": {
+      "designation": "ГОСТ 2.721-74",
+      "official": "https://protect.gost.ru/gost/details/c153a749-14f2-49e8-8544-acc32ab35406",
+      "status": "Действует",
+      "pdf": "https://ohranatruda.ru/upload/iblock/328/4294852095.pdf",
+      "edition": "Стандартинформ, 2008, изменения № 1–4",
+      "figure": "п. 7, табл. 6в, позиции 1, 5, 6; примечания 1–3 к поз. 6; PDF P11–P12 (0-based)"
+    },
+    "GOST-2.301-68": {
+      "designation": "ГОСТ 2.301-68",
+      "official": "https://protect.gost.ru/gost/details/aa681f87-ff49-4115-ad25-169e15d2af06",
+      "status": "Действует до 01.10.2027 в РФ",
+      "pdf": "https://files.stroyinf.ru/Data/9/912.pdf",
+      "edition": "август 2007, изменения № 1–3",
+      "figure": "пп. 2, 4, 9; табл. 1 (A3/A4)"
+    },
+    "GOST-R-2.104-2023": {
+      "designation": "ГОСТ Р 2.104-2023",
+      "official": "https://protect.gost.ru/gost/details/69d422a2-3c0e-4561-a521-0c99f9cf4417",
+      "status": "Действует с 01.03.2024 в РФ",
+      "pdf": "https://files.stroyinf.ru/Data/816/81679.pdf",
+      "edition": "издание сентябрь 2024, поправки 2024",
+      "figure": "пп. 4.2, 5.1, 5.2, 5.6, 5.7; обязательное приложение Б, Б.1 форма 1, PDF P14 (0-based)"
+    },
+    "GOST-2.304-81": {
+      "designation": "ГОСТ 2.304-81",
+      "official": "https://protect.gost.ru/gost/details/2acb3258-c28c-4e4a-b7ac-208043f2d95e",
+      "status": "Действует до 01.10.2027 в РФ",
+      "pdf": "https://base.garant.ru/3924210/",
+      "edition": "изменения № 1, 2, редакция 2006",
+      "figure": "п. 2.1, табл.1 (тип А d=h/14), табл.2 (тип Б d=h/10)"
+    },
+    "GOST-2.710-81": {
+      "designation": "ГОСТ 2.710-81",
+      "official": "https://protect.gost.ru/gost/details/6fecf975-2fad-4d4e-ac72-176c00caa188",
+      "status": "Действует",
+      "pdf": "https://base.garant.ru/6177277/",
+      "edition": "проверять поправки в контролируемой копии",
+      "figure": "пп. 1.3, 2.1; правила буквенно-цифровых обозначений"
+    },
+    "GOST-2.303-68": {
+      "designation": "ГОСТ 2.303-68",
+      "official": "https://protect.gost.ru/gost/details/09645eb7-ee23-467a-a319-25b3112a7227",
+      "status": "Действует до 01.10.2027 в РФ",
+      "pdf": "https://base.garant.ru/3924196/",
+      "edition": "контролируемая редакция требуется для ручного сравнения",
+      "figure": "проверка типов основных/тонких сплошных линий по п.5.2 ГОСТ Р 2.104-2023"
+    }
+  },
+  "specimen": {
+    "fixture_path": "tests/fixtures/electrical-cycle3/end-to-end-clean.svg",
+    "fixture_blob_sha": "50ac2f697e831bf84c7eee20d9e00b878c2ab857",
+    "source_path": "examples/review_end_to_end_circuit.py",
+    "components": [
+      "R1",
+      "R2",
+      "C1",
+      "C2",
+      "L1",
+      "C3"
+    ],
+    "wire_segments": 18,
+    "authored_junctions_mm": [
+      [
+        40,
+        20
+      ],
+      [
+        40,
+        40
+      ],
+      [
+        120,
+        40
+      ]
+    ],
+    "unconnected_crossings_mm": [
+      {
+        "x": 40,
+        "y": 60,
+        "nets": [
+          "TOP",
+          "BOTTOM"
+        ]
+      },
+      {
+        "x": 70,
+        "y": 40,
+        "nets": [
+          "RIGHT",
+          "TOP"
+        ]
+      },
+      {
+        "x": 98,
+        "y": 27,
+        "nets": [
+          "TAP",
+          "RIGHT"
+        ]
+      }
+    ],
+    "displayed_junction_radius_mm": 0.55,
+    "stroke_mm": 0.3,
+    "viewbox_mm": [
+      8.85,
+      12.85,
+      114.301,
+      70.301
+    ],
+    "root_dimensions_mm": [
+      114.301,
+      70.301
+    ],
+    "label_font": "sans-serif",
+    "label_css_font_size_mm": 3.5,
+    "requires_separate_controlled_vector_review": true
+  },
+  "sheet_profiles": [
+    {
+      "id": "A4_portrait",
+      "width_mm": 210,
+      "height_mm": 297,
+      "frame_insets_mm": {
+        "left": 20,
+        "right": 5,
+        "top": 5,
+        "bottom": 5
+      },
+      "frame_bounds_mm": [
+        20,
+        5,
+        205,
+        292
+      ],
+      "title_form": "1",
+      "title_bounds_mm": [
+        20,
+        237,
+        205,
+        292
+      ],
+      "title_dimensions_mm": [
+        185,
+        55
+      ],
+      "assumption": "Проектный выбор ориентации A4 portrait; расположение формы 1 по ГОСТ Р 2.104-2023 прил.Б."
+    },
+    {
+      "id": "A3_landscape",
+      "width_mm": 420,
+      "height_mm": 297,
+      "frame_insets_mm": {
+        "left": 20,
+        "right": 5,
+        "top": 5,
+        "bottom": 5
+      },
+      "frame_bounds_mm": [
+        20,
+        5,
+        415,
+        292
+      ],
+      "title_form": "1",
+      "title_bounds_mm": [
+        230,
+        237,
+        415,
+        292
+      ],
+      "title_dimensions_mm": [
+        185,
+        55
+      ],
+      "assumption": "Проектный выбор ориентации A3 landscape; расположение формы 1 по ГОСТ Р 2.104-2023 прил.Б."
+    }
+  ],
+  "cards": [
+    {
+      "id": "J35-X",
+      "category": "crossing",
+      "source_standard": "GOST-2.721-74",
+      "source_clause": "п.7, табл.6в, поз.5, PDF P11–P12",
+      "evidence": "source_confirmed",
+      "dimensions_mm": null,
+      "source_confirmed": "Линии электрически несвязанных пересечений — без точки, под 90°; излом 135° не должен совпадать с точкой пересечения.",
+      "specimen_observation": "(40,60), (70,40), (98,27) мм: три немаркированных прямоугольных X на разных net; программное правило не создаёт Net без явной точки.",
+      "acceptance_criteria": "Проверить X без электрического узла по authored net, угол 90° и отсутствие маркера; внедрение X без внешних Net запрещено.",
+      "negative_cases": [
+        "crossing with accidental dot/net union",
+        "45° crossing",
+        "bend-at-crossing"
+      ],
+      "responsible_workstream": [
+        "electrical",
+        "rendering"
+      ],
+      "status": "BLOCKED_FOR_FULL_SHEET_CERTIFICATION"
+    },
+    {
+      "id": "J35-T",
+      "category": "junction",
+      "source_standard": "GOST-2.721-74",
+      "source_clause": "п.7, табл.6в, поз.6а–6б, прим.1–3, PDF P12",
+      "evidence": "source_confirmed",
+      "dimensions_mm": null,
+      "source_confirmed": "Ответвление с одним проводом разрешено с точкой и без точки (прим.2); несколько ответвлений оформлять по приведённым рисункам; точка не должна подменяться похожим УГО.",
+      "specimen_observation": "(40,20), (40,40), (120,40) мм явно объявлены и дорисованы отдельными <circle> после рендера. Это консервативная спецификация движка, не нормативное требование обязательной точки во всех T.",
+      "acceptance_criteria": "Сохранять электрическую топологию независимо от наличия/отсутствия графической точки; для проекта выбрана единая явная dot-политика; проверять размер точки по эталону, не выдумывать ГОСТ-радиус.",
+      "negative_cases": [
+        "missing logical junction despite visual T",
+        "dot at unconnected X",
+        "dot located on symbol mark"
+      ],
+      "responsible_workstream": [
+        "electrical",
+        "rendering"
+      ],
+      "status": "BLOCKED_FOR_FULL_SHEET_CERTIFICATION"
+    },
+    {
+      "id": "J35-WIDTH",
+      "category": "wire_stroke",
+      "source_standard": "GOST-2.701-2008",
+      "source_clause": "п.5.5.1",
+      "evidence": "source_confirmed",
+      "dimensions_mm": {
+        "min": 0.2,
+        "max": 1,
+        "recommended_min": 0.3,
+        "recommended_max": 0.4
+      },
+      "source_confirmed": "Линии взаимосвязи 0,2–1,0 мм; рекомендуемые 0,3–0,4 мм.",
+      "specimen_observation": "Все 18 внешних линий в SVG имеют 0,3 мм, т.е. выполняют это ЧАСТНОЕ правило.",
+      "acceptance_criteria": "Проверять реальные ширины всех линий в мм и обоснованные исключения; 0,3 мм не делает лист целиком ГОСТ-совместимым.",
+      "negative_cases": [
+        "0.15 mm",
+        "1.2 mm",
+        "apparent width changed during raster printing"
+      ],
+      "responsible_workstream": [
+        "rendering"
+      ],
+      "status": "BLOCKED_FOR_FULL_SHEET_CERTIFICATION"
+    },
+    {
+      "id": "J35-STYLE",
+      "category": "symbol_stroke",
+      "source_standard": "GOST-2.701-2008",
+      "source_clause": "п.5.4.3; ГОСТ 2.728-74, п.7 (если применимо)",
+      "evidence": "source_confirmed",
+      "dimensions_mm": null,
+      "source_confirmed": "УГО в общем случае выполнять линиями той же толщины, что линии взаимосвязи; специальные изображения со своей нормой проверять отдельно.",
+      "specimen_observation": "Основные группы R1/R2/C1/C2/L1/C3 и внешние линии используют 0,3 мм; полная проверка всех индивидуальных примитивов отсутствует.",
+      "acceptance_criteria": "Учитывать каждую линию, специальный сердечник, прерывания, знаки полярности и принтер; не считать одинаковый атрибут всех групп полной экспертизой.",
+      "negative_cases": [
+        "symbol stroke 0.5 without normative reason",
+        "inherited stroke mismatch"
+      ],
+      "responsible_workstream": [
+        "rendering",
+        "catalog"
+      ],
+      "status": "BLOCKED_FOR_FULL_SHEET_CERTIFICATION"
+    },
+    {
+      "id": "J35-SPACING",
+      "category": "clearances",
+      "source_standard": "GOST-2.701-2008",
+      "source_clause": "п.5.3.4",
+      "evidence": "source_confirmed",
+      "dimensions_mm": {
+        "inside_ugo_min": 1,
+        "between_ugo_min": 2,
+        "parallel_wire_min": 3
+      },
+      "source_confirmed": "Минимальные просветы: между соседними линиями УГО 1 мм; между УГО 2 мм; между соседними параллельными линиями взаимосвязи 3 мм.",
+      "specimen_observation": "Текущий SVG не содержит отчёта точных stroke-edge расстояний между всеми УГО, текстом и проводниками; уже существующий checker покрывает лишь часть параллельных отрезков.",
+      "acceptance_criteria": "Мерить между краями фактического штриха; для параллельных разных линий с ширинами s1,s2 осевое расстояние >= 3+(s1+s2)/2 мм при общей проекции.",
+      "negative_cases": [
+        "clearance by centerline only",
+        "hidden stroke",
+        "symbol-to-symbol 1.9 mm"
+      ],
+      "responsible_workstream": [
+        "rendering",
+        "electrical"
+      ],
+      "status": "BLOCKED_FOR_FULL_SHEET_CERTIFICATION"
+    },
+    {
+      "id": "J35-ROUTE",
+      "category": "orthogonal_routes",
+      "source_standard": "GOST-2.701-2008",
+      "source_clause": "п.5.5.2",
+      "evidence": "source_confirmed",
+      "dimensions_mm": null,
+      "source_confirmed": "Горизонтальные и вертикальные отрезки с минимальным числом изломов/пересечений; наклонные допустимы в отдельных случаях.",
+      "specimen_observation": "18 текущих отрезков горизонтальны/вертикальны; количество изгибов не доказано минимально возможным и не сертифицируется этим тестом.",
+      "acceptance_criteria": "Проверять ортогональность; при диагонали выдавать review с обоснованием, а не категорический запрет.",
+      "negative_cases": [
+        "unjustified diagonal",
+        "false claim of proven optimal bend count"
+      ],
+      "responsible_workstream": [
+        "electrical",
+        "rendering"
+      ],
+      "status": "BLOCKED_FOR_FULL_SHEET_CERTIFICATION"
+    },
+    {
+      "id": "J35-REFDES",
+      "category": "component_labels",
+      "source_standard": "GOST-2.702-2011",
+      "source_clause": "пп.5.3.7–5.3.11; ГОСТ 2.710-81 п.2.1",
+      "evidence": "source_confirmed",
+      "dimensions_mm": null,
+      "source_confirmed": "Позиционные обозначения около УГО сверху или справа; номера по группам, обозначение компонента должно однозначно соответствовать документу.",
+      "specimen_observation": "R1,R2,C1,C2,L1,C3 расположены сверху; их наличие/расположение частично соответствует правилу, но font-family=sans-serif вручную внесён после рендера.",
+      "acceptance_criteria": "Проверять location top/right и идентичность netlist, не утверждать шрифт только из текста букв; реальное шрифтовое метрическое сравнение отдельно.",
+      "negative_cases": [
+        "missing label",
+        "annotation over wire",
+        "changed reference on rotate"
+      ],
+      "responsible_workstream": [
+        "rendering"
+      ],
+      "status": "BLOCKED_FOR_FULL_SHEET_CERTIFICATION"
+    },
+    {
+      "id": "J35-FONT",
+      "category": "drafting_typeface",
+      "source_standard": "GOST-2.304-81",
+      "source_clause": "п.2.1, табл.1, табл.2",
+      "evidence": "source_confirmed",
+      "dimensions_mm": {
+        "type_a_h_values": [
+          2.5,
+          3.5,
+          5,
+          7,
+          10,
+          14,
+          20
+        ],
+        "type_a_d_divisor": 14
+      },
+      "source_confirmed": "Размер h — высота прописных, тип А d=h/14, тип Б d=h/10, шрифт с наклоном или без по норме; требуется контроль метрик начертания.",
+      "specimen_observation": "SVG использует sans-serif font-size=3.5: это CSS em, а НЕ удостоверенная высота прописной h=3,5 мм; отсутствует подпись шрифта и его SHA.",
+      "acceptance_criteria": "Встраивать/фиксировать проверенный шрифт, высоту h и реальные глифы. Отдельное утверждение после контролируемой 1:1 проверки.",
+      "negative_cases": [
+        "sans-serif substitute",
+        "em-height interpreted as cap-height",
+        "font changed after measuring"
+      ],
+      "responsible_workstream": [
+        "rendering"
+      ],
+      "status": "BLOCKED_FOR_FULL_SHEET_CERTIFICATION"
+    },
+    {
+      "id": "J35-BOM",
+      "category": "component_list",
+      "source_standard": "GOST-2.702-2011",
+      "source_clause": "п.5.3.18",
+      "evidence": "source_confirmed",
+      "dimensions_mm": null,
+      "source_confirmed": "Сведения обо всех элементах принципиальной схемы следует фиксировать в перечне элементов с привязкой по позиционным обозначениям; для электронных документов перечень выполняется отдельным документом.",
+      "specimen_observation": "В standalone SVG присутствуют только шесть refdes; перечня или ссылки на связанный ЭД/набор реквизитов нет. Отсутствие в SVG не доказывает отсутствие отдельного перечня в проекте.",
+      "acceptance_criteria": "Нужен идентифицируемый перечень R1,R2,C1,C2,L1,C3 в комплекте документации, не обязательно в одном SVG.",
+      "negative_cases": [
+        "refdes without entry",
+        "duplicate part list item",
+        "claims that BOM must fit inside every SVG"
+      ],
+      "responsible_workstream": [
+        "rendering",
+        "coordination"
+      ],
+      "status": "BLOCKED_FOR_FULL_SHEET_CERTIFICATION"
+    },
+    {
+      "id": "J35-FORMAT",
+      "category": "sheet_formats",
+      "source_standard": "GOST-2.301-68",
+      "source_clause": "пп.2,4,9, табл.1",
+      "evidence": "source_confirmed",
+      "dimensions_mm": {
+        "A4": [
+          210,
+          297
+        ],
+        "A3": [
+          420,
+          297
+        ]
+      },
+      "source_confirmed": "А4: 210×297 мм; А3: 297×420 мм; для документа электронной формы формат вывода на бумагу должен быть однозначен. Внешняя форматная рамка имеет отдельные исключения для точного размера бумаги.",
+      "specimen_observation": "SVG viewBox=8.85 12.85 114.301 70.301, width=114.301mm height=70.301mm — это автообрезанный viewport, не A4/A3.",
+      "acceptance_criteria": "Дать режим page_profile, ориентацию и печать 1:1, не считать наличие произвольного canvas настоящим форматом.",
+      "negative_cases": [
+        "114.301x70.301 labelled A4",
+        "unrecorded scaling at export"
+      ],
+      "responsible_workstream": [
+        "rendering",
+        "coordination"
+      ],
+      "status": "BLOCKED_FOR_FULL_SHEET_CERTIFICATION"
+    },
+    {
+      "id": "J35-FRAME",
+      "category": "drawing_frame",
+      "source_standard": "GOST-R-2.104-2023",
+      "source_clause": "пп.4.2,5.1,5.2,5.6; обяз. приложение Б, форма 1",
+      "evidence": "conditional",
+      "dimensions_mm": {
+        "left": 20,
+        "right": 5,
+        "top": 5,
+        "bottom": 5
+      },
+      "source_confirmed": "Для листа с рамкой форма 1 расположена по обязательному приложению Б; рамка с полем 20 мм слева, по 5 мм справа/сверху/снизу. Для определённых электронных КД возможен режим без рисуемой рамки, при котором поля должны быть сохранены по п.5.6.",
+      "specimen_observation": "В SVG нет drawing-frame и сведений о выбранной бумажной/электронной форме документа; отсутствие рамки — дефект ЦЕЛЕВОГО печатного листа, но не абсолютный запрет для каждого электронного SVG.",
+      "acceptance_criteria": "Режим paper/digital явный; на paper draw required frame и поля; на digital без рамки только при наличии документированного решения об электронном комплекте, включая соответствующие поля.",
+      "negative_cases": [
+        "missing frame on paper sheet",
+        "blanket assertion that electronic docs always need drawn frame"
+      ],
+      "responsible_workstream": [
+        "rendering",
+        "coordination"
+      ],
+      "status": "BLOCKED_FOR_FULL_SHEET_CERTIFICATION"
+    },
+    {
+      "id": "J35-TITLE",
+      "category": "title_block",
+      "source_standard": "GOST-R-2.104-2023",
+      "source_clause": "пп.4.2,5.1,5.7; обяз. прил.Б, Б.1, форма 1, PDF P14",
+      "evidence": "conditional",
+      "dimensions_mm": {
+        "width": 185,
+        "height": 55
+      },
+      "source_confirmed": "Первый лист графического КД с основной надписью — форма 1 размером 185×55 мм; последующие — форма 2а (допускается форма 1). Решение о применении основной надписи в электронном КД — за организацией по п.4.2.",
+      "specimen_observation": "В SVG полностью отсутствует титульная таблица/штамп и его реквизиты; целевой лист с основной надписью не сформирован.",
+      "acceptance_criteria": "Для paper — разместить форму 1 по рисунку с размерными линиями, заполнить основные поля; для E-document учитывать п.4.2, без утверждения исключения автоматически.",
+      "negative_cases": [
+        "title block wrong 2006 edition",
+        "incorrect 185x50",
+        "fake signatures/requisites"
+      ],
+      "responsible_workstream": [
+        "rendering",
+        "coordination"
+      ],
+      "status": "BLOCKED_FOR_FULL_SHEET_CERTIFICATION"
+    },
+    {
+      "id": "J35-DOTSIZE",
+      "category": "junction_dot_diameter",
+      "source_standard": "GOST-2.721-74",
+      "source_clause": "п.7, табл.6в, поз.6, PDF P12",
+      "evidence": "not_specified",
+      "dimensions_mm": null,
+      "source_confirmed": "Рисунок показывает маркер точки, однако численный радиус или диаметр для него в указанной таблице не установлен.",
+      "specimen_observation": "В SVG три точки: r=0.55 mm (diameter 1.10 mm). Значение взято из сценария, не из таблицы ГОСТ.",
+      "acceptance_criteria": "Выбрать единый проектный размер, не заявлять его обязательным значением ГОСТ; ручное визуальное сравнение.",
+      "negative_cases": [
+        "claim r=0.55 is mandated by GOST",
+        "double-dot ambiguous intersection"
+      ],
+      "responsible_workstream": [
+        "rendering"
+      ],
+      "status": "BLOCKED_FOR_FULL_SHEET_CERTIFICATION"
+    },
+    {
+      "id": "J35-TEXTDIST",
+      "category": "label_clearance",
+      "source_standard": "GOST-2.702-2011",
+      "source_clause": "п.5.3.11, совместно с общими правилами читаемости ГОСТ 2.701-2008",
+      "evidence": "not_specified",
+      "dimensions_mm": null,
+      "source_confirmed": "Указано положение сверху/справа, но универсального обязательного зазора строго 2.5 мм для всех refdes из этого пункта не следует.",
+      "specimen_observation": "refdes опущен от top body на 2.5 мм (генератор), но высота букв в SVG em 3.5 мм; прямой численный норматив не получен.",
+      "acceptance_criteria": "Метрическое тестирование ink bounds и столкновений; выбранные 2.5 мм — проектное поле.",
+      "negative_cases": [
+        "claim universal 2.5 mm text offset is GOST",
+        "text intersects crossing or border"
+      ],
+      "responsible_workstream": [
+        "rendering"
+      ],
+      "status": "BLOCKED_FOR_FULL_SHEET_CERTIFICATION"
+    }
+  ],
+  "discrepancies": [
+    {
+      "id": "S35-01",
+      "severity": "BLOCKER_PAPER_SHEET",
+      "finding": "Текущий viewBox — авторазмер по содержимому, а не A4/A3; отсутствует явная конфигурация целевого бумажного листа",
+      "confirmed_from_svg": true,
+      "source_rules": [
+        "J35-FORMAT"
+      ]
+    },
+    {
+      "id": "S35-02",
+      "severity": "BLOCKER_PAPER_SHEET",
+      "finding": "Нет внутренней рамки и проверенных полей по форме 1",
+      "confirmed_from_svg": true,
+      "source_rules": [
+        "J35-FRAME"
+      ]
+    },
+    {
+      "id": "S35-03",
+      "severity": "BLOCKER_IF_TITLE_BLOCK_REQUIRED",
+      "finding": "Нет формы 1, реквизитов документа и подтверждения допустимого исключения для ЭД",
+      "confirmed_from_svg": true,
+      "source_rules": [
+        "J35-TITLE"
+      ]
+    },
+    {
+      "id": "S35-04",
+      "severity": "BLOCKER_TEXT_APPROVAL",
+      "finding": "Позиционные обозначения вручную дорисованы после SVG-render; sans-serif без метрически утверждённого начертания",
+      "confirmed_from_svg": true,
+      "source_rules": [
+        "J35-REFDES",
+        "J35-FONT"
+      ]
+    },
+    {
+      "id": "S35-05",
+      "severity": "PROCESS_GAP",
+      "finding": "Маркерный круг r=0.55 мм дорисован specimen-only после рендера, не имеет общего интерфейса авторских junction dots",
+      "confirmed_from_svg": true,
+      "source_rules": [
+        "J35-T",
+        "J35-DOTSIZE"
+      ]
+    },
+    {
+      "id": "S35-06",
+      "severity": "BLOCKED_DOCUMENT_SET",
+      "finding": "Standalone SVG не включает перечень элементов и связи с отдельным электронным документом перечня; наличие внешнего PE неизвестно",
+      "confirmed_from_svg": true,
+      "source_rules": [
+        "J35-BOM"
+      ]
+    },
+    {
+      "id": "S35-07",
+      "severity": "BLOCKED_FULL_CLEARANCE",
+      "finding": "Нет поштриховой общей проверки зазоров между УГО, соседними проводниками и надписями",
+      "confirmed_from_svg": false,
+      "source_rules": [
+        "J35-SPACING",
+        "J35-TEXTDIST"
+      ]
+    },
+    {
+      "id": "S35-08",
+      "severity": "ACCEPTABLE_SUBRULE",
+      "finding": "Три X пересечения по 90° без точек и соединений net; 18 ортогональных проводников толщиной 0.3 мм",
+      "confirmed_from_svg": true,
+      "source_rules": [
+        "J35-X",
+        "J35-WIDTH",
+        "J35-ROUTE"
+      ]
+    },
+    {
+      "id": "S35-09",
+      "severity": "ACCEPTABLE_BUT_NOT_MANDATORY",
+      "finding": "Три T точки явно указаны; ГОСТ 2.721 табл.6в поз.6 допускает один T без точки; 0.55 мм радиус — выбор проекта",
+      "confirmed_from_svg": true,
+      "source_rules": [
+        "J35-T",
+        "J35-DOTSIZE"
+      ]
+    }
+  ],
+  "acceptance_boundary": {
+    "approved_by_tests": false,
+    "manual_gates": [
+      "исходный официальный/контролируемый ГОСТ с редакциями и страницами",
+      "формат печатного листа/режим электронного документа явно выбраны",
+      "SVG 1:1 и KOMPAS-overlay для рамки, штампа, текста, точек и линий",
+      "отдельный перечень элементов по позиции и данные документа",
+      "ручное согласование реального печатного/электронного КД"
+    ],
+    "blocked_on": [
+      "отсутствие векторного шаблона КОМПАС",
+      "отсутствие утверждённых шрифтовых метрик",
+      "неподтверждённая полная метрическая проверка просветов",
+      "нет договора о форме полного документа"
+    ],
+    "not_changed": [
+      "src/",
+      "examples/",
+      "tests/fixtures/",
+      "main",
+      "integration/stage0-12"
+    ]
+  }
+}

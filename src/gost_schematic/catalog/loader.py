@@ -3,8 +3,25 @@ import json
 from pathlib import Path
 from typing import Any
 
-from gost_schematic.core.geometry import Box, Circle, Line, Point, Rectangle, Side
+from gost_schematic.core.geometry import (
+    Box,
+    Circle,
+    Line,
+    Point,
+    Rectangle,
+    Semicircle,
+    Side,
+    StyledLine,
+)
 from gost_schematic.core.units import mm
+from gost_schematic.model.annotations import (
+    Anchor,
+    AnnotationRole,
+    AnnotationSlot,
+    HorizontalAlign,
+    VerticalAlign,
+)
+from gost_schematic.model.conductor_topology import ConductorTopology
 from gost_schematic.model.pins import GraphicPin
 from gost_schematic.model.symbol import SymbolDefinition, SymbolStatus
 
@@ -38,6 +55,20 @@ def parse_symbol(data: dict[str, Any]) -> SymbolDefinition:
                     for line in shapes.get("lines", []))
             + tuple(Circle(_point(circle["center_mm"]), mm(circle["radius_mm"]))
                     for circle in shapes.get("circles", []))
+            + tuple(
+                Semicircle(
+                    _point(item["center_mm"]), mm(item["radius_mm"]), Side(item["bulge"])
+                )
+                for item in shapes.get("semicircles", [])
+            )
+            + tuple(
+                StyledLine(
+                    _point(item["start_mm"]), _point(item["end_mm"]),
+                    mm(item["stroke_width_mm"]),
+                    tuple(mm(value) for value in item.get("dash_pattern_mm", [])),
+                )
+                for item in shapes.get("styled_lines", [])
+            )
         )
         pins = tuple(
             GraphicPin(
@@ -48,6 +79,41 @@ def parse_symbol(data: dict[str, Any]) -> SymbolDefinition:
             )
             for item in data["pins"]
         )
+        slots = tuple(
+            AnnotationSlot(
+                key=str(item["key"]),
+                role=AnnotationRole(item["role"]),
+                candidates=tuple(
+                    Anchor(
+                        at=_point(candidate["at_mm"]),
+                        horizontal=HorizontalAlign(candidate.get("horizontal", "center")),
+                        vertical=VerticalAlign(candidate.get("vertical", "bottom")),
+                    )
+                    for candidate in item["candidates"]
+                ),
+                reserved_region=(
+                    _box(item["reserved_region_mm"])
+                    if "reserved_region_mm" in item
+                    else None
+                ),
+                required=bool(item.get("required", False)),
+            )
+            for item in data.get("annotations", [])
+        )
+        raw_topology = data.get("conductor_topology")
+        topology = (
+            ConductorTopology(
+                conductor_indices=tuple(raw_topology["indices"]),
+                junctions=tuple(
+                    _point(point) for point in raw_topology.get("junctions_mm", [])
+                ),
+                pin_groups=tuple(
+                    tuple(str(number) for number in group)
+                    for group in raw_topology["pin_groups"]
+                ),
+            )
+            if raw_topology is not None else None
+        )
         return SymbolDefinition(
             identifier=str(data["id"]),
             revision=data["revision"],
@@ -57,6 +123,12 @@ def parse_symbol(data: dict[str, Any]) -> SymbolDefinition:
             line_width_um=mm(data["line_width_mm"]),
             status=SymbolStatus(data.get("status", "draft")),
             standard_refs=tuple(data.get("standard_refs", [])),
+            annotation_slots=slots,
+            constant_annotations=tuple(
+                (str(key), str(value))
+                for key, value in data.get("constant_annotations", {}).items()
+            ),
+            conductor_topology=topology,
         )
     except (KeyError, TypeError, ValueError, IndexError) as error:
         raise CatalogError(f"Invalid symbol {data.get('id', '<unknown>')}: {error}") from error

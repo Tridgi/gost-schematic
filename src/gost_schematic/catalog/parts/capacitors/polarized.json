@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "id": "capacitor.polarized",
+  "reference_prefix": "C",
+  "symbol_id": "capacitor.polarized",
+  "nominal_kind": "capacitance",
+  "voltage_orientation_rule": "positive_not_below_negative",
+  "pins": [
+    {
+      "number": "1",
+      "name": "PLUS",
+      "electrical_type": "passive",
+      "polarity": "positive"
+    },
+    {
+      "number": "2",
+      "name": "MINUS",
+      "electrical_type": "passive",
+      "polarity": "negative"
+    }
+  ]
+}

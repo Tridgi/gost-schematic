@@ -1,0 +1,144 @@
+{
+  "schema_version": 1,
+  "id": "fuse.general",
+  "revision": 1,
+  "status": "draft",
+  "standard_refs": [
+    "ГОСТ 2.727-68, таблица 3, поз. 2 — предохранитель плавкий, общее обозначение, издание май 2002, изменения 1,2; PDF page=3",
+    "ГОСТ 2.727-68, §4 — символы предохранителей приведены в таблице 3",
+    "EDITORIAL_ASSUMPTION: горизонтальная ориентация основного вертикального УГО, прямоугольник 8x4мм, 9мм длина выводов, stroke 0.3мм и подписи. Внутренний штрих не является нулевым сопротивлением или Net."
+  ],
+  "line_width_mm": 0.3,
+  "body_keepout_mm": [
+    -4,
+    -2,
+    4,
+    2
+  ],
+  "geometry": {
+    "rectangles": [
+      [
+        -4,
+        -2,
+        4,
+        2
+      ]
+    ],
+    "lines": [
+      [
+        [
+          -9,
+          0
+        ],
+        [
+          -4,
+          0
+        ]
+      ],
+      [
+        [
+          4,
+          0
+        ],
+        [
+          9,
+          0
+        ]
+      ],
+      [
+        [
+          -4,
+          0
+        ],
+        [
+          4,
+          0
+        ]
+      ]
+    ],
+    "circles": []
+  },
+  "pins": [
+    {
+      "number": "1",
+      "at_mm": [
+        -9,
+        0
+      ],
+      "side": "left",
+      "label": "A"
+    },
+    {
+      "number": "2",
+      "at_mm": [
+        9,
+        0
+      ],
+      "side": "right",
+      "label": "B"
+    }
+  ],
+  "annotations": [
+    {
+      "key": "refdes",
+      "role": "refdes",
+      "required": true,
+      "candidates": [
+        {
+          "at_mm": [
+            0,
+            -6
+          ],
+          "horizontal": "center",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            12,
+            -5
+          ],
+          "horizontal": "left",
+          "vertical": "bottom"
+        }
+      ]
+    },
+    {
+      "key": "value",
+      "role": "value",
+      "required": false,
+      "candidates": [
+        {
+          "at_mm": [
+            0,
+            6
+          ],
+          "horizontal": "center",
+          "vertical": "top"
+        },
+        {
+          "at_mm": [
+            12,
+            6
+          ],
+          "horizontal": "left",
+          "vertical": "top"
+        }
+      ]
+    }
+  ],
+  "conductor_topology": {
+    "indices": [
+      1,
+      2
+    ],
+    "junctions_mm": [],
+    "pin_groups": [
+      [
+        "1"
+      ],
+      [
+        "2"
+      ]
+    ]
+  }
+}

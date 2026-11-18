@@ -1,0 +1,390 @@
+{
+  "schema_version": 1,
+  "issue": 63,
+  "review_type": "INDEPENDENT_NORMATIVE_PASS_FAIL_BLOCKED",
+  "audited_on": "2026-11-13",
+  "jurisdiction": "RU",
+  "standard": {
+    "designation": "ГОСТ Р 2.104-2023",
+    "official": "https://protect.gost.ru/gost/details/69d422a2-3c0e-4561-a521-0c99f9cf4417",
+    "image": "https://files.stroyinf.ru/Data/816/81679.pdf#page=15",
+    "pdf_page_zero_based": 14,
+    "edition": "сентябрь 2024 с поправками",
+    "clauses": [
+      "4.2",
+      "5.1",
+      "5.2",
+      "5.3",
+      "5.6",
+      "5.7",
+      "5.8",
+      "табл.1",
+      "обязательное приложение Б.1, форма 1"
+    ]
+  },
+  "target": {
+    "pr": 59,
+    "branch": "parallel/rendering-sheet-cycle5",
+    "pinned_code_commit": "c42f7b617942c8a0b1cae45e432ef12cede7f876",
+    "form_one_blob_sha": "9025fefd18ec9e50118d7353f5b2565eb064b5c4",
+    "sample_cli_commit": "a4a1d574abe2e48bed7b4c350ffed5ea41073449",
+    "sample_same_form_one_blob": true,
+    "production_modified": false
+  },
+  "matrix": [
+    {
+      "id": "F63-01",
+      "status": "PASS",
+      "observation": "ГОСТ Р 2.104-2023 введён 2024-03-01; рассматривается редакция 2024-09 с поправкой",
+      "source": "source §4, official title and date"
+    },
+    {
+      "id": "F63-02",
+      "status": "PASS",
+      "observation": "paper_first_sheet выбирает форму 1; электронная схема отдельный режим",
+      "source": "§5.1, §4.2"
+    },
+    {
+      "id": "F63-03",
+      "status": "PASS",
+      "observation": "А4 портрет: 210×297 мм, orientation=portrait",
+      "source": "ГОСТ 2.301; Б.5"
+    },
+    {
+      "id": "F63-04",
+      "status": "PASS",
+      "observation": "А3 ландшафт 420×297 мм, портрет 297×420 мм; оба режима есть",
+      "source": "ГОСТ 2.301, Б.5"
+    },
+    {
+      "id": "F63-05",
+      "status": "PASS",
+      "observation": "Рамка A4 [20,5,205,292] мм; 20 слева/5 прочие",
+      "source": "§5.6; приложение Б.1"
+    },
+    {
+      "id": "F63-06",
+      "status": "PASS",
+      "observation": "Обрезка содержимого запрещена; источник помещён с translate, data-scale=1:1",
+      "source": "project invariant / §5.1"
+    },
+    {
+      "id": "F63-07",
+      "status": "PASS",
+      "observation": "Форма 1 outline: A4 [20,237,205,292], ширина185 высота55 мм",
+      "source": "Б.1 форма1"
+    },
+    {
+      "id": "F63-08",
+      "status": "PASS",
+      "observation": "x-деления: 7+10+23+15+10+110+10=185 мм",
+      "source": "Б.1 форма1"
+    },
+    {
+      "id": "F63-09",
+      "status": "PASS",
+      "observation": "Левый блок x0,7,17,40,55,65 мм (относительно формы)",
+      "source": "Б.1 форма1"
+    },
+    {
+      "id": "F63-10",
+      "status": "PASS",
+      "observation": "Надписи должностей (10) получают ровно 17мм по x0..17, не 7мм",
+      "source": "Б.1 форма1, графа10"
+    },
+    {
+      "id": "F63-11",
+      "status": "PASS",
+      "observation": "Пять строк Разраб./Пров./Т.контр./Н.контр./Утв. имеют высоту 5мм",
+      "source": "Б.1 форма1, графа10"
+    },
+    {
+      "id": "F63-12",
+      "status": "PASS",
+      "observation": "Лит. разделена на 3 ячейки x135..140, 140..145, 145..150 мм",
+      "source": "Б.1 форма1, графа4"
+    },
+    {
+      "id": "F63-13",
+      "status": "PASS",
+      "observation": "Ширина Масса=17 мм, Масштаб=18 мм",
+      "source": "Б.1 форма1, графы5/6"
+    },
+    {
+      "id": "F63-14",
+      "status": "PASS",
+      "observation": "Заголовки Лист 20мм / Листов 30мм",
+      "source": "Б.1 форма1, графы7/8"
+    },
+    {
+      "id": "F63-15",
+      "status": "PASS",
+      "observation": "Растровая метрическая cap-height кириллической Н=2.5мм, CSS em=3.914мм",
+      "source": "ГОСТ 2.304-81; локальная метрика OpenGost A"
+    },
+    {
+      "id": "F63-16",
+      "status": "PASS",
+      "observation": "15 надписей SVG, ink-in-cell; min ink-edge margin=0.879мм ≥0.4мм",
+      "source": "инспекция SVG на pinned blob"
+    },
+    {
+      "id": "F63-17",
+      "status": "PASS",
+      "observation": "В независимом PNG 189×59мм при 300DPI 2232×697px подписи читаемы, нет визуальных наложений",
+      "source": "independent Pillow raster of SVG"
+    },
+    {
+      "id": "F63-18",
+      "status": "PASS",
+      "observation": "TITLE_FIELD_OVERFLOW при слишком длинном значении не вызывает автоуменьшение шрифта",
+      "source": "real OpenGost/Pillow runtime, 2026-11-13"
+    },
+    {
+      "id": "F63-19",
+      "status": "PASS",
+      "observation": "h=3.5мм в строке роли 5мм отклоняется вместо уменьшения; одиночная Лит.А при h=3.5 проходит",
+      "source": "real OpenGost/Pillow runtime, 2026-11-13"
+    },
+    {
+      "id": "F63-20",
+      "status": "PASS",
+      "observation": "Пустой штамп по умолчанию: реальные инициалы, подписи, даты и обозначение не измышляются",
+      "source": "§5.7; observed SVG"
+    },
+    {
+      "id": "F63-21",
+      "status": "PASS",
+      "observation": "Вектор 0.25мм внутренних линий и 0.7мм внешнего контура имеет 2 уровня толщины",
+      "source": "§5.2, ГОСТ 2.303"
+    },
+    {
+      "id": "F63-22",
+      "status": "FAIL",
+      "observation": "Полный обязательный Б.1 не реализован: отсутствуют реальные dashed-разделители вспомогательной графы (30)",
+      "source": "Б.1 форма1, (30), исходная иллюстрация PDF P14"
+    },
+    {
+      "id": "F63-23",
+      "status": "FAIL",
+      "observation": "Нет напечатанной подписи «Зона» и оформления (33) в caption-only выводе",
+      "source": "Б.1 форма1, (33), исходная иллюстрация PDF P14"
+    },
+    {
+      "id": "F63-24",
+      "status": "FAIL",
+      "observation": "Нет подписи «Вер.» и разметки (35) в caption-only выводе",
+      "source": "Б.1 форма1, (35), исходная иллюстрация PDF P14"
+    },
+    {
+      "id": "F63-25",
+      "status": "FAIL",
+      "observation": "Нет подписей «Копировал» (31) и «Формат» (32) в caption-only выводе",
+      "source": "Б.1 форма1, (31)(32), PDF P14"
+    },
+    {
+      "id": "F63-26",
+      "status": "FAIL",
+      "observation": "Поле developed принимает пользовательское значение в ячейку роли x0..17 (10), подменяя «Разраб.»; фамилия должна относиться к (11)",
+      "source": "§5.7 таблица1 графы10/11; CELLS/ CAPTIONS"
+    },
+    {
+      "id": "F63-27",
+      "status": "FAIL",
+      "observation": "API CELLS не имеет отдельных граф для фамилий (11), подписей (12) и дат (13), хотя включает role-values (10)",
+      "source": "§5.7 таблица1, графы10–13"
+    },
+    {
+      "id": "F63-28",
+      "status": "BLOCKED",
+      "observation": "Геометрия и расположение (9) organisation не подтверждены: текущий box x135..185 y50..55, рядом отсутствует оформление (31)/(32)",
+      "source": "Б.1 форма1; требуется контролируемая посекционная overlay"
+    },
+    {
+      "id": "F63-29",
+      "status": "BLOCKED",
+      "observation": "Положение и границы designation x65..175 y0..15 по отношению к отдельной пунктирной графе (30) не верифицированы",
+      "source": "Б.1 форма1, (2)/(30)"
+    },
+    {
+      "id": "F63-30",
+      "status": "BLOCKED",
+      "observation": "Дополнительные графы (19)–(29), (34) и графа (26) не формируются; необходимость/условия заполнения зависят от бумажного/электронного и заказчика",
+      "source": "§5.3, §5.6, §5.7 таблица1, приложение Б.1"
+    },
+    {
+      "id": "F63-31",
+      "status": "BLOCKED",
+      "observation": "Фактическая тонкая/основная толщина после промышленной печати не измерена; SVG числа не удостоверяют реальный оттиск",
+      "source": "§5.2 и ГОСТ 2.303"
+    },
+    {
+      "id": "F63-32",
+      "status": "BLOCKED",
+      "observation": "OpenGost TypeA не встраивается в SVG; без точного шрифта SHA256 возможна подстановка, меняющая высоту и геометрию",
+      "source": "ГОСТ 2.304-81; §5.2 typography"
+    },
+    {
+      "id": "F63-33",
+      "status": "BLOCKED",
+      "observation": "Оригинальный рисунок Б.1 имеет размерные разрывы, поэтому невозможна корректная буквальная pixel overlay скана; нужен размерный эталон/вектор КОМПАС",
+      "source": "приложение Б.1, PDF P14"
+    },
+    {
+      "id": "F63-34",
+      "status": "BLOCKED",
+      "observation": "Содержимое 1,2,7,8,10–13 и обязательные по ситуации реквизиты не представлены; законный пустой DRAFT не является оформленным КД",
+      "source": "§5.7 таблица1; бумажное vs электронное"
+    },
+    {
+      "id": "F63-35",
+      "status": "PASS",
+      "observation": "PR62 current live C3=(100,80)мм, pins=(91,80)/(109,80), 16 authored segments",
+      "source": "PR62, integration current"
+    },
+    {
+      "id": "F63-36",
+      "status": "PASS",
+      "observation": "Issue35 historical frozen SVG retains 18 wires and own JSON fixture; no link to live authored_specimen for its 18-wire coordinates",
+      "source": "PR62, tests/test_standards_issue_35.py"
+    },
+    {
+      "id": "F63-37",
+      "status": "PASS",
+      "observation": "PR59 after integration recognizes historical-vs-current C3 comparison separately; no change to historical XML",
+      "source": "PR59 new example & PR62"
+    },
+    {
+      "id": "F63-38",
+      "status": "BLOCKED",
+      "observation": "Нормативная приёмка всех 35 граф и организация-специфичных правил не выполнена; нельзя менять DRAFT на APPROVED",
+      "source": "§5.1–5.7, приложение Б.1"
+    }
+  ],
+  "summary": {
+    "total": 38,
+    "counts": {
+      "PASS": 24,
+      "FAIL": 6,
+      "BLOCKED": 8
+    },
+    "verdict": "BLOCKED_FOR_FORMAL_PAPER_KD",
+    "blocking_fail": [
+      "F63-22",
+      "F63-23",
+      "F63-24",
+      "F63-25",
+      "F63-26",
+      "F63-27"
+    ]
+  },
+  "observed": {
+    "form_bbox_mm": [
+      20,
+      237,
+      205,
+      292
+    ],
+    "paper_mm": [
+      210,
+      297
+    ],
+    "frame_bbox_mm": [
+      20,
+      5,
+      205,
+      292
+    ],
+    "form_size_mm": [
+      185,
+      55
+    ],
+    "external_stroke_mm": 0.7,
+    "grid_stroke_mm": 0.25,
+    "grid_lines": 25,
+    "captext_count": 15,
+    "heading_h_mm": 2.5,
+    "css_em_mm": 3.914,
+    "padding_required_mm": 0.4,
+    "minimum_measured_ink_margin_mm": 0.879,
+    "real_font_sha256": "f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a",
+    "svg_sha256": "c2abc1ae9f5afd466b1714d0271185cc5c087f0c996712ee4f0998ccccf9edfa",
+    "png_sha256": "1afcbefda34508bd46a2f6d9e0c9f878f034726a26649b27a2c12da9486c64f0",
+    "png_size_px": [
+      2232,
+      697
+    ],
+    "png_dpi": 300,
+    "calibration_method": "OpenGost Type A real glyph metrics PillowTextMeasurer; independent Pillow render at exact svg viewBox mm scale",
+    "letter_cells_mm": [
+      [
+        135,
+        140
+      ],
+      [
+        140,
+        145
+      ],
+      [
+        145,
+        150
+      ]
+    ],
+    "role_col_mm": [
+      0,
+      17
+    ],
+    "actual_role_row_height_mm": 5,
+    "aux_missing": [
+      "(30) dashed",
+      "(33) Зона",
+      "(35) Вер.",
+      "(31) Копировал",
+      "(32) Формат"
+    ],
+    "current_live_wires": 16,
+    "archive_issue35_wires": 18,
+    "live_c3_origin_mm": [
+      100,
+      80
+    ],
+    "live_c3_pin_coordinates_mm": [
+      [
+        91,
+        80
+      ],
+      [
+        109,
+        80
+      ]
+    ]
+  },
+  "manual_gates": [
+    "сопоставить каждую графу Б.1 с оригиналом и установить семантику граф 1–35",
+    "разнести статические подписи, должности, фамилии, подписи, даты, служебные графы",
+    "добавить линии с правильным типом и дополнительный блок, не придумывая реквизиты",
+    "повторить 1:1 печать/скрин с установленным шрифтом и SHA и сделать независимую проверку",
+    "сохранить архив Issue35 18 и live PR62 16",
+    "сверить спецификацию организации для факультативных дополнительных граф"
+  ],
+  "boundary": {
+    "own_branch": "parallel/standards-form1-review",
+    "base": "integration/stage0-12",
+    "allowed_paths": [
+      "docs/standards/issue-63-*",
+      "docs/standards/evidence/issue63-*",
+      "tests/test_standards_issue_63.py"
+    ],
+    "do_not_change": [
+      "PR59 branch",
+      "parallel/rendering-sheet-cycle5",
+      "src/",
+      "examples/",
+      "models/",
+      "generators/",
+      "tests/fixtures/",
+      "main"
+    ],
+    "merge_allowed": false
+  }
+}

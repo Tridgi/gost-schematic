@@ -1,0 +1,156 @@
+name: AI P1.1 saved E3 cold roundtrip evidence
+
+on:
+  pull_request:
+    paths:
+      - "src/gost_schematic/agent_project/**"
+      - "src/gost_schematic/mcp_server/**"
+      - "examples/agent_project_p11.py"
+      - "examples/agent_project_p11_mcp.py"
+      - "tests/agent_project/**"
+      - ".github/workflows/ai-p11-roundtrip.yml"
+  workflow_dispatch:
+
+jobs:
+  real-e3-roundtrip:
+    name: saved Circuit and authentic SVG/PNG (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install actual model, renderer and tests
+        run: python -m pip install -e ".[dev,mcp]"
+      - name: Independent strict persistence and cold-process tests
+        run: python -m pytest -q tests/agent_project
+      - name: Real MCP stdio ClientSession — five authorized project tools and default DENY
+        run: python -m pytest -vv tests/agent_project/test_mcp_saved_stdio.py
+      - name: Create and cold-reopen distinct physical E3 project
+        shell: bash
+        run: |
+          mkdir -p output
+          python -m examples.agent_project_p11 \
+            --workspace output/agent-p11-smoke \
+            --project-id "a43f0d4e-c2af-4c91-a5b0-55ff48241ad1" \
+            --idempotency-key "eac193ae-9ec4-44a3-aa12-57cffb16b386" \
+            > output/p11-evidence.json
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          evidence = json.loads(Path("output/p11-evidence.json").read_text())
+          project = evidence["source_model"]["canonical_typed_project"]
+          assert evidence["source_and_cold_model_match"]
+          assert [c["reference"] for c in project["components"]] == ["R1", "R2", "C1"]
+          assert len(project["nets"]) == 1
+          assert evidence["geometry_repair"]["after_overlap"] is False
+          assert evidence["overview_image"]["project_revision"] == evidence["revision_sha256"]
+          for ext in ("svg", "png"):
+              file = Path(evidence["overview_image"]["artifacts"][ext])
+              assert file.is_file()
+              assert hashlib.sha256(file.read_bytes()).hexdigest() == (
+                  evidence["overview_image"]["view_svg_sha256" if ext == "svg"
+                                             else "png_sha256"]
+              )
+          print("P1.1 real physical E3 project cold-open:", evidence["revision_sha256"])
+          print("PNG:", evidence["overview_image"]["png_sha256"])
+          print("SVG:", evidence["overview_image"]["view_svg_sha256"])
+          PY
+      - name: Construct real E3 with Python, then read it using native MCP ClientSession
+        shell: bash
+        run: |
+          python -m examples.agent_project_p11_mcp \
+            --workspace output/agent-p11-mcp-smoke \
+            --project-id "b9fa7db5-539a-42bb-bf7f-ce35a9bd884b" \
+            --idempotency-key "e7f8d1d2-579f-4221-bfc3-fba8fc055574" \
+            > output/p11-mcp-evidence.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          proof = json.loads(Path("output/p11-mcp-evidence.json").read_text())
+          actual = proof["actual_mcp_client"]
+          assert proof["codex_cli_used"] is False
+          assert actual["transport"] == "real MCP stdio ClientSession"
+          assert actual["physical_model_matches_python_api"]
+          assert actual["diagnostics_match_cold_reopen"]
+          assert actual["mcp_mutations_exposed"] == []
+          assert len(actual["read_tools_verified"]) == 6
+          print("MCP read-only saved E3 proven:", actual["project_revision"])
+          print("PNG:", actual["project_mcp_png_sha256"])
+          print("SVG:", actual["project_mcp_svg_sha256"])
+          PY
+      - name: Cold-process original six-part 6/5/16/3 E3 and archive full model
+        shell: bash
+        run: |
+          python -m gost_schematic.agent_project \
+            --workspace output/p11-sixpart-real \
+            import-six-part \
+            --project-id "ab6712af-c35c-4e3c-b734-f30f13486c4d" \
+            --idempotency-key "b2c55af9-b98d-4858-810f-c32cc3105142" \
+            > output/p11-sixpart-created.json
+          REV="$(python -c 'import json; print(json.load(open("output/p11-sixpart-created.json"))["revision"])')"
+          python -m gost_schematic.agent_project \
+            --workspace output/p11-sixpart-real \
+            open ab6712af-c35c-4e3c-b734-f30f13486c4d --revision "$REV" \
+            > output/p11-sixpart-validated.json
+          python -m gost_schematic.agent_project \
+            --workspace output/p11-sixpart-real \
+            render ab6712af-c35c-4e3c-b734-f30f13486c4d "$REV" \
+            --component C3 > output/p11-sixpart-c3-view.json
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          created = json.loads(Path("output/p11-sixpart-created.json").read_text())
+          report = json.loads(Path("output/p11-sixpart-validated.json").read_text())
+          image = json.loads(Path("output/p11-sixpart-c3-view.json").read_text())
+          ident, rev = created["project_id"], created["revision"]
+          assert created["generation"] == report["generation"] == 1
+          assert report["project_id"] == ident
+          assert report["project_revision"] == image["project_revision"] == rev
+          assert (
+              report["component_count"], report["net_count"],
+              report["wire_segment_count"], report["junction_count"]
+          ) == (6, 5, 16, 3)
+          assert not any(item["severity"] == "error"
+                         for item in report["diagnostics"])
+          blob = Path("output/p11-sixpart-real/projects") / ident / (
+              "revisions/" + rev + ".gseproj"
+          )
+          assert hashlib.sha256(b"GSE_PROJECT_V1\x00" + blob.read_bytes()).hexdigest() == rev
+          record = json.loads(blob.read_bytes())
+          assert len(record["wires"]) == 16
+          assert len(record["junctions"]) == 3
+          c3 = next(x for x in record["components"] if x["reference"] == "C3")
+          assert c3["part_id"] == "capacitor.electrolytic"
+          for ext in ("svg", "png"):
+              filename = Path(image["artifacts"][ext])
+              assert filename.is_file()
+              key = "view_svg_sha256" if ext == "svg" else "png_sha256"
+              assert hashlib.sha256(filename.read_bytes()).hexdigest() == image[key]
+          print("Six-part cold E3 proof SHA:", rev)
+          print("Physical Circuit/Net/Wire/Junction counts: 6/5/16/3")
+          PY
+      - name: Upload real engineering project and native image evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-p11-physical-e3-python-${{ matrix.python }}
+          path: |
+            output/p11-evidence.json
+            output/agent-p11-smoke/projects/
+            output/agent-p11-smoke/artifacts/
+            output/p11-mcp-evidence.json
+            output/agent-p11-mcp-smoke/projects/
+            output/agent-p11-mcp-smoke/artifacts/
+            output/p11-sixpart-created.json
+            output/p11-sixpart-validated.json
+            output/p11-sixpart-c3-view.json
+            output/p11-sixpart-real/projects/
+            output/p11-sixpart-real/artifacts/
+          if-no-files-found: error
+          retention-days: 30

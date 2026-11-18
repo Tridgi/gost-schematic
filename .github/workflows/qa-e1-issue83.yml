@@ -1,0 +1,75 @@
+name: QA E1 independent visual evidence (PR78 + PR80)
+
+on:
+  push:
+    branches: ["parallel/qa-e1-integration-gate"]
+  pull_request:
+    branches: ["integration/stage0-12"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  genuine-e1-artifacts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test and rasterization dependencies
+        run: python -m pip install -e ".[dev]" cairosvg
+      - name: Lint only QA-authored executable code
+        run: ruff check tests/qa_e1_integration_support.py tests/qa_e1_integration_test.py scripts/qa_e1_evidence.py
+      - name: Generate genuine renderer SVG, 300 DPI PNG, QA-only semantic image and exact measurement JSON
+        run: python scripts/qa_e1_evidence.py --output-dir output/qa-e1-issue83
+      - name: Install genuine external OpenGost Type A, not a DejaVu fallback
+        shell: bash
+        run: |
+          # GitHub's anonymous release-API rate limit is intermittent.
+          # Download a pinned public ZIP asset DIRECTLY, verify the exact face,
+          # and keep the binary external to the repository and all artifacts.
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          from urllib.request import urlopen
+          from scripts.install_opengost_type_a import select_font_asset
+
+          url = (
+              "https://github.com/ingenium-am/open-gost-arm/"
+              "releases/download/v0.7/OpenGOST_TTF_0.7.zip"
+          )
+          name, data = select_font_asset(
+              [{"name": "OpenGOST_TTF_0.7.zip", "browser_download_url": url}],
+              getter=lambda uri: urlopen(uri, timeout=30).read(),
+          )
+          expected = "f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a"
+          assert sha256(data).hexdigest() == expected, "Unexpected OpenGost font"
+          target = Path.home() / ".local/share/fonts" / (
+              "OpenGOST-TypeA-" + name
+          )
+          target.parent.mkdir(parents=True, exist_ok=True)
+          target.write_bytes(data)
+          print("Verified OpenGOST Type A SHA256", expected)
+          PY
+          fc-cache -f
+          FONT_FILE="$(find "$HOME/.local/share/fonts" -type f -iname '*TypeA*.ttf' | head -1)"
+          test -n "$FONT_FILE" && test -f "$FONT_FILE"
+          VIEWER_FONT="$(fc-match -f '%{file}' 'OpenGost Type A')"
+          test "$(realpath "$FONT_FILE")" = "$(realpath "$VIEWER_FONT")"
+          echo "E1_TEST_FONT=$FONT_FILE" >> "$GITHUB_ENV"
+      - name: Render NEW PR78 real typed seven blocks with real PR80 18 PortRefs and measure all SVG paths
+        run: |
+          python scripts/qa_e1_current_render.py \
+            --output-dir output/qa-e1-issue83 \
+            --font-file "$E1_TEST_FONT"
+      - name: Upload reproducible image and source-provenance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-issue83-e1-pr78-pr80-images
+          path: output/qa-e1-issue83/
+          retention-days: 30
+          if-no-files-found: warn

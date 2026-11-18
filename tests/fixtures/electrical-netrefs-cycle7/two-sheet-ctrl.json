@@ -1,0 +1,102 @@
+{
+  "endpoints": [
+    {
+      "address": "1/D4",
+      "anchor_um": [
+        80000,
+        40000
+      ],
+      "direction": "source",
+      "id": "M-OUT",
+      "label": "CTRL",
+      "net_id": "N-CTRL-001",
+      "sheet_id": "S1",
+      "sheet_number": 1,
+      "target_address": "2/B7"
+    },
+    {
+      "address": "2/B7",
+      "anchor_um": [
+        140000,
+        40000
+      ],
+      "direction": "target",
+      "id": "M-IN",
+      "label": "CTRL",
+      "net_id": "N-CTRL-001",
+      "sheet_id": "S2",
+      "sheet_number": 2,
+      "target_address": "1/D4"
+    }
+  ],
+  "nets": [
+    {
+      "id": "N-CTRL-001",
+      "members": [
+        {
+          "number": "5",
+          "reference": "DD1"
+        },
+        {
+          "number": "G",
+          "reference": "VT1"
+        }
+      ],
+      "net_name": "CTRL"
+    }
+  ],
+  "pairs": [
+    {
+      "id": "PAIR-CTRL",
+      "scope": "global",
+      "source_id": "M-OUT",
+      "target_id": "M-IN"
+    }
+  ],
+  "record_type": "DRAFT_E3_NET_CONTINUATIONS",
+  "schema_version": 1,
+  "sheets": [
+    {
+      "id": "S1",
+      "number": 1
+    },
+    {
+      "id": "S2",
+      "number": 2
+    }
+  ],
+  "stubs": [
+    {
+      "end_um": [
+        80000,
+        40000
+      ],
+      "endpoint_id": "M-OUT",
+      "id": "WIRE-DD",
+      "pin": {
+        "number": "5",
+        "reference": "DD1"
+      },
+      "start_um": [
+        60000,
+        40000
+      ]
+    },
+    {
+      "end_um": [
+        140000,
+        40000
+      ],
+      "endpoint_id": "M-IN",
+      "id": "WIRE-VT",
+      "pin": {
+        "number": "G",
+        "reference": "VT1"
+      },
+      "start_um": [
+        160000,
+        40000
+      ]
+    }
+  ]
+}

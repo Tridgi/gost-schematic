@@ -1,0 +1,381 @@
+{
+  "schema_version": 1,
+  "issue": 69,
+  "document_type": "Э1",
+  "status": "DRAFT_ILLUSTRATION_NOT_APPROVED",
+  "diagram_mm": [
+    240,
+    175
+  ],
+  "not_paper_sheet": true,
+  "standards_scope": "Illustrative example only; normative source for requirements is docs/standards/issue-69-e1-rule-cards.json, not this artwork",
+  "svg_path": "docs/standards/evidence/issue69-seven-block-e1.svg",
+  "font_note": "SVG uses non-approved generic visible font; no GOST cap-height verification. Use real calibrated OpenGost Type A before release.",
+  "frame_title": "not included by design; paper requirements must be checked independently",
+  "stroke_mm": 0.35,
+  "rectangles": [
+    {
+      "id": "B1",
+      "name": "Ввод",
+      "bbox": [
+        16,
+        15,
+        48,
+        24
+      ]
+    },
+    {
+      "id": "B2",
+      "name": "Блок питания",
+      "bbox": [
+        16,
+        68,
+        48,
+        24
+      ]
+    },
+    {
+      "id": "B3",
+      "name": "Контроллер",
+      "bbox": [
+        91,
+        15,
+        52,
+        24
+      ]
+    },
+    {
+      "id": "B4",
+      "name": "Управление",
+      "bbox": [
+        91,
+        68,
+        52,
+        24
+      ]
+    },
+    {
+      "id": "B5",
+      "name": "Исполнительный блок",
+      "bbox": [
+        173,
+        15,
+        51,
+        24
+      ]
+    },
+    {
+      "id": "B6",
+      "name": "Индикация",
+      "bbox": [
+        173,
+        68,
+        51,
+        24
+      ]
+    },
+    {
+      "id": "B7",
+      "name": "Диагностика",
+      "bbox": [
+        91,
+        127,
+        52,
+        24
+      ]
+    }
+  ],
+  "links": [
+    {
+      "id": "L1",
+      "source": "B1",
+      "target": "B3",
+      "route": [
+        [
+          64,
+          27
+        ],
+        [
+          91,
+          27
+        ]
+      ],
+      "signal": "команда",
+      "source_side": "right",
+      "target_side": "left"
+    },
+    {
+      "id": "L2",
+      "source": "B2",
+      "target": "B4",
+      "route": [
+        [
+          64,
+          80
+        ],
+        [
+          91,
+          80
+        ]
+      ],
+      "signal": "питание",
+      "source_side": "right",
+      "target_side": "left",
+      "fanout": "P1"
+    },
+    {
+      "id": "L3",
+      "source": "B3",
+      "target": "B5",
+      "route": [
+        [
+          143,
+          27
+        ],
+        [
+          173,
+          27
+        ]
+      ],
+      "signal": "управление",
+      "source_side": "right",
+      "target_side": "left"
+    },
+    {
+      "id": "L4",
+      "source": "B4",
+      "target": "B6",
+      "route": [
+        [
+          143,
+          80
+        ],
+        [
+          173,
+          80
+        ]
+      ],
+      "signal": "состояние",
+      "source_side": "right",
+      "target_side": "left"
+    },
+    {
+      "id": "L5",
+      "source": "B3",
+      "target": "B4",
+      "route": [
+        [
+          117,
+          39
+        ],
+        [
+          117,
+          68
+        ]
+      ],
+      "signal": "команда",
+      "source_side": "bottom",
+      "target_side": "top"
+    },
+    {
+      "id": "L6",
+      "source": "B4",
+      "target": "B7",
+      "route": [
+        [
+          112,
+          92
+        ],
+        [
+          112,
+          127
+        ]
+      ],
+      "signal": "диагностика",
+      "source_side": "bottom",
+      "target_side": "top"
+    },
+    {
+      "id": "L7",
+      "source": "B7",
+      "target": "B6",
+      "route": [
+        [
+          143,
+          139
+        ],
+        [
+          157,
+          139
+        ],
+        [
+          157,
+          105
+        ],
+        [
+          198.5,
+          105
+        ],
+        [
+          198.5,
+          92
+        ]
+      ],
+      "signal": "отчёт",
+      "source_side": "right",
+      "target_side": "bottom"
+    },
+    {
+      "id": "L8",
+      "source": "B2",
+      "target": "B3",
+      "route": [
+        [
+          64,
+          75
+        ],
+        [
+          84,
+          75
+        ],
+        [
+          84,
+          9
+        ],
+        [
+          122,
+          9
+        ],
+        [
+          122,
+          15
+        ]
+      ],
+      "signal": "резерв",
+      "source_side": "right",
+      "target_side": "top"
+    },
+    {
+      "id": "L9",
+      "source": "B2",
+      "target": "B7",
+      "route": [
+        [
+          72,
+          80
+        ],
+        [
+          72,
+          115
+        ],
+        [
+          126,
+          115
+        ],
+        [
+          126,
+          127
+        ]
+      ],
+      "signal": "питание диагностики",
+      "source_side": "right",
+      "target_side": "top",
+      "fanout": "P1",
+      "branch_from": "L2"
+    }
+  ],
+  "explicit_logical_branches": [
+    {
+      "id": "P1",
+      "at": [
+        72,
+        80
+      ],
+      "from": "B2",
+      "targets": [
+        "B4",
+        "B7"
+      ],
+      "segment_parent": "L2",
+      "not_physical_junction": true,
+      "marker_radius_mm": 0.5,
+      "marker_project_defined": true
+    }
+  ],
+  "unconnected_geometrical_crossings": [
+    {
+      "at": [
+        84,
+        27
+      ],
+      "link_ids": [
+        "L1",
+        "L8"
+      ],
+      "meaning": "independent process links, no junction"
+    },
+    {
+      "at": [
+        112,
+        115
+      ],
+      "link_ids": [
+        "L6",
+        "L9"
+      ],
+      "meaning": "independent process links, no junction"
+    }
+  ],
+  "multi_port_examples": [
+    {
+      "block": "B2",
+      "side": "right",
+      "connections": [
+        {
+          "link": "L8",
+          "point": [
+            64,
+            75
+          ]
+        },
+        {
+          "link": "L2",
+          "point": [
+            64,
+            80
+          ]
+        }
+      ],
+      "centerline_spacing_mm": 5,
+      "actual_ink_clearance_mm": 4.65
+    },
+    {
+      "block": "B7",
+      "side": "top",
+      "connections": [
+        {
+          "link": "L6",
+          "point": [
+            112,
+            127
+          ]
+        },
+        {
+          "link": "L9",
+          "point": [
+            126,
+            127
+          ]
+        }
+      ],
+      "centerline_spacing_mm": 14,
+      "actual_ink_clearance_mm": 13.65
+    }
+  ],
+  "policy": {
+    "single_side_center": "editorial default not ГОСТ",
+    "multi_port": "editorial spacing; line clearance ≥3 mm where link strokes run parallel",
+    "geometric_intersections_do_not_connect": "semantic rule, not electrical junction marker",
+    "requires_approved_font_for_eskd": true
+  }
+}

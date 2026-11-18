@@ -1,0 +1,1009 @@
+{
+  "case_count": 7,
+  "cases": [
+    {
+      "components": [
+        {
+          "part_id": "resistor.fixed",
+          "pins_um": {
+            "1": [
+              12000,
+              20000
+            ],
+            "2": [
+              28000,
+              20000
+            ]
+          },
+          "reference": "R1"
+        },
+        {
+          "part_id": "resistor.fixed",
+          "pins_um": {
+            "1": [
+              12000,
+              60000
+            ],
+            "2": [
+              28000,
+              60000
+            ]
+          },
+          "reference": "R2"
+        },
+        {
+          "part_id": "capacitor.fixed",
+          "pins_um": {
+            "1": [
+              52000,
+              20000
+            ],
+            "2": [
+              68000,
+              20000
+            ]
+          },
+          "reference": "C1"
+        },
+        {
+          "part_id": "capacitor.polarized",
+          "pins_um": {
+            "1": [
+              52000,
+              60000
+            ],
+            "2": [
+              68000,
+              60000
+            ]
+          },
+          "reference": "C2"
+        },
+        {
+          "part_id": "inductor.tapped",
+          "pins_um": {
+            "1": [
+              88000,
+              40000
+            ],
+            "2": [
+              112000,
+              40000
+            ],
+            "3": [
+              98000,
+              31000
+            ]
+          },
+          "reference": "L1"
+        }
+      ],
+      "diagnostics": [],
+      "expected_codes": [],
+      "id": "valid_catalog_sheet",
+      "junctions_um": [
+        [
+          40000,
+          20000
+        ]
+      ],
+      "nets": [
+        {
+          "name": "TOP",
+          "pins": [
+            "R1.2",
+            "C1.1",
+            "L1.1"
+          ]
+        },
+        {
+          "name": "LEFT",
+          "pins": [
+            "R1.1",
+            "R2.1"
+          ]
+        },
+        {
+          "name": "BOTTOM",
+          "pins": [
+            "R2.2",
+            "C2.1"
+          ]
+        },
+        {
+          "name": "TAP",
+          "pins": [
+            "C1.2",
+            "L1.3"
+          ]
+        },
+        {
+          "name": "RIGHT",
+          "pins": [
+            "C2.2",
+            "L1.2"
+          ]
+        }
+      ],
+      "result": "pass",
+      "wire_count": 12
+    },
+    {
+      "components": [
+        {
+          "part_id": "resistor.fixed",
+          "pins_um": {
+            "1": [
+              12000,
+              20000
+            ],
+            "2": [
+              28000,
+              20000
+            ]
+          },
+          "reference": "R1"
+        },
+        {
+          "part_id": "resistor.fixed",
+          "pins_um": {
+            "1": [
+              12000,
+              60000
+            ],
+            "2": [
+              28000,
+              60000
+            ]
+          },
+          "reference": "R2"
+        },
+        {
+          "part_id": "capacitor.fixed",
+          "pins_um": {
+            "1": [
+              52000,
+              20000
+            ],
+            "2": [
+              68000,
+              20000
+            ]
+          },
+          "reference": "C1"
+        },
+        {
+          "part_id": "capacitor.polarized",
+          "pins_um": {
+            "1": [
+              52000,
+              60000
+            ],
+            "2": [
+              68000,
+              60000
+            ]
+          },
+          "reference": "C2"
+        },
+        {
+          "part_id": "inductor.tapped",
+          "pins_um": {
+            "1": [
+              88000,
+              40000
+            ],
+            "2": [
+              112000,
+              40000
+            ],
+            "3": [
+              98000,
+              31000
+            ]
+          },
+          "reference": "L1"
+        }
+      ],
+      "diagnostics": [
+        {
+          "code": "WIRE_DANGLING_END",
+          "message": "Wire 1 has an unconnected endpoint at 40000,20000",
+          "severity": "error",
+          "subject": "1"
+        },
+        {
+          "code": "WIRE_NET_DISCONNECTED",
+          "message": "Net TOP does not form one physical wire island",
+          "severity": "error",
+          "subject": "TOP"
+        }
+      ],
+      "expected_codes": [
+        "WIRE_DANGLING_END",
+        "WIRE_NET_DISCONNECTED"
+      ],
+      "id": "missing_t_junction",
+      "junctions_um": [],
+      "nets": [
+        {
+          "name": "TOP",
+          "pins": [
+            "R1.2",
+            "C1.1",
+            "L1.1"
+          ]
+        },
+        {
+          "name": "LEFT",
+          "pins": [
+            "R1.1",
+            "R2.1"
+          ]
+        },
+        {
+          "name": "BOTTOM",
+          "pins": [
+            "R2.2",
+            "C2.1"
+          ]
+        },
+        {
+          "name": "TAP",
+          "pins": [
+            "C1.2",
+            "L1.3"
+          ]
+        },
+        {
+          "name": "RIGHT",
+          "pins": [
+            "C2.2",
+            "L1.2"
+          ]
+        }
+      ],
+      "result": "diagnostics",
+      "wire_count": 12
+    },
+    {
+      "components": [
+        {
+          "part_id": "resistor.fixed",
+          "pins_um": {
+            "1": [
+              12000,
+              20000
+            ],
+            "2": [
+              28000,
+              20000
+            ]
+          },
+          "reference": "R1"
+        },
+        {
+          "part_id": "resistor.fixed",
+          "pins_um": {
+            "1": [
+              12000,
+              60000
+            ],
+            "2": [
+              28000,
+              60000
+            ]
+          },
+          "reference": "R2"
+        },
+        {
+          "part_id": "capacitor.fixed",
+          "pins_um": {
+            "1": [
+              52000,
+              20000
+            ],
+            "2": [
+              68000,
+              20000
+            ]
+          },
+          "reference": "C1"
+        },
+        {
+          "part_id": "capacitor.polarized",
+          "pins_um": {
+            "1": [
+              52000,
+              60000
+            ],
+            "2": [
+              68000,
+              60000
+            ]
+          },
+          "reference": "C2"
+        },
+        {
+          "part_id": "inductor.tapped",
+          "pins_um": {
+            "1": [
+              88000,
+              40000
+            ],
+            "2": [
+              112000,
+              40000
+            ],
+            "3": [
+              98000,
+              31000
+            ]
+          },
+          "reference": "L1"
+        }
+      ],
+      "diagnostics": [
+        {
+          "code": "WIRE_DANGLING_END",
+          "message": "Wire 0 has an unconnected endpoint at 39999,20000",
+          "severity": "error",
+          "subject": "0"
+        },
+        {
+          "code": "WIRE_NET_DISCONNECTED",
+          "message": "Net TOP does not form one physical wire island",
+          "severity": "error",
+          "subject": "TOP"
+        }
+      ],
+      "expected_codes": [
+        "WIRE_DANGLING_END",
+        "WIRE_NET_DISCONNECTED"
+      ],
+      "id": "one_micrometre_break",
+      "junctions_um": [
+        [
+          40000,
+          20000
+        ]
+      ],
+      "nets": [
+        {
+          "name": "TOP",
+          "pins": [
+            "R1.2",
+            "C1.1",
+            "L1.1"
+          ]
+        },
+        {
+          "name": "LEFT",
+          "pins": [
+            "R1.1",
+            "R2.1"
+          ]
+        },
+        {
+          "name": "BOTTOM",
+          "pins": [
+            "R2.2",
+            "C2.1"
+          ]
+        },
+        {
+          "name": "TAP",
+          "pins": [
+            "C1.2",
+            "L1.3"
+          ]
+        },
+        {
+          "name": "RIGHT",
+          "pins": [
+            "C2.2",
+            "L1.2"
+          ]
+        }
+      ],
+      "result": "diagnostics",
+      "wire_count": 13
+    },
+    {
+      "components": [
+        {
+          "part_id": "resistor.fixed",
+          "pins_um": {
+            "1": [
+              12000,
+              20000
+            ],
+            "2": [
+              28000,
+              20000
+            ]
+          },
+          "reference": "R1"
+        },
+        {
+          "part_id": "resistor.fixed",
+          "pins_um": {
+            "1": [
+              12000,
+              60000
+            ],
+            "2": [
+              28000,
+              60000
+            ]
+          },
+          "reference": "R2"
+        },
+        {
+          "part_id": "capacitor.fixed",
+          "pins_um": {
+            "1": [
+              52000,
+              20000
+            ],
+            "2": [
+              68000,
+              20000
+            ]
+          },
+          "reference": "C1"
+        },
+        {
+          "part_id": "capacitor.polarized",
+          "pins_um": {
+            "1": [
+              52000,
+              60000
+            ],
+            "2": [
+              68000,
+              60000
+            ]
+          },
+          "reference": "C2"
+        },
+        {
+          "part_id": "inductor.tapped",
+          "pins_um": {
+            "1": [
+              88000,
+              40000
+            ],
+            "2": [
+              112000,
+              40000
+            ],
+            "3": [
+              98000,
+              31000
+            ]
+          },
+          "reference": "L1"
+        }
+      ],
+      "diagnostics": [
+        {
+          "code": "WIRE_NET_SHORT",
+          "message": "Conductors join distinct nets: RIGHT, TOP",
+          "severity": "error",
+          "subject": "0"
+        }
+      ],
+      "expected_codes": [
+        "WIRE_NET_SHORT"
+      ],
+      "id": "crossing_short_with_junction",
+      "junctions_um": [
+        [
+          40000,
+          20000
+        ],
+        [
+          70000,
+          40000
+        ]
+      ],
+      "nets": [
+        {
+          "name": "TOP",
+          "pins": [
+            "R1.2",
+            "C1.1",
+            "L1.1"
+          ]
+        },
+        {
+          "name": "LEFT",
+          "pins": [
+            "R1.1",
+            "R2.1"
+          ]
+        },
+        {
+          "name": "BOTTOM",
+          "pins": [
+            "R2.2",
+            "C2.1"
+          ]
+        },
+        {
+          "name": "TAP",
+          "pins": [
+            "C1.2",
+            "L1.3"
+          ]
+        },
+        {
+          "name": "RIGHT",
+          "pins": [
+            "C2.2",
+            "L1.2"
+          ]
+        }
+      ],
+      "result": "diagnostics",
+      "wire_count": 12
+    },
+    {
+      "components": [
+        {
+          "part_id": "resistor.fixed",
+          "pins_um": {
+            "1": [
+              12000,
+              20000
+            ],
+            "2": [
+              28000,
+              20000
+            ]
+          },
+          "reference": "R1"
+        },
+        {
+          "part_id": "resistor.fixed",
+          "pins_um": {
+            "1": [
+              12000,
+              60000
+            ],
+            "2": [
+              28000,
+              60000
+            ]
+          },
+          "reference": "R2"
+        },
+        {
+          "part_id": "capacitor.fixed",
+          "pins_um": {
+            "1": [
+              52000,
+              20000
+            ],
+            "2": [
+              68000,
+              20000
+            ]
+          },
+          "reference": "C1"
+        },
+        {
+          "part_id": "capacitor.polarized",
+          "pins_um": {
+            "1": [
+              52000,
+              60000
+            ],
+            "2": [
+              68000,
+              60000
+            ]
+          },
+          "reference": "C2"
+        },
+        {
+          "part_id": "inductor.tapped",
+          "pins_um": {
+            "1": [
+              88000,
+              40000
+            ],
+            "2": [
+              112000,
+              40000
+            ],
+            "3": [
+              98000,
+              31000
+            ]
+          },
+          "reference": "L1"
+        }
+      ],
+      "diagnostics": [
+        {
+          "code": "WIRE_NET_SHORT",
+          "message": "Conductors join distinct nets: BOTTOM, LEFT",
+          "severity": "error",
+          "subject": "4"
+        },
+        {
+          "code": "WIRE_PIN_NET_MISMATCH",
+          "message": "Wire 4 (LEFT) reaches C2.1",
+          "severity": "error",
+          "subject": "C2"
+        },
+        {
+          "code": "WIRE_PIN_NET_MISMATCH",
+          "message": "Wire 4 (LEFT) reaches R2.2",
+          "severity": "error",
+          "subject": "R2"
+        }
+      ],
+      "expected_codes": [
+        "WIRE_NET_SHORT",
+        "WIRE_PIN_NET_MISMATCH"
+      ],
+      "id": "wrong_bottom_net",
+      "junctions_um": [
+        [
+          40000,
+          20000
+        ]
+      ],
+      "nets": [
+        {
+          "name": "TOP",
+          "pins": [
+            "R1.2",
+            "C1.1",
+            "L1.1"
+          ]
+        },
+        {
+          "name": "LEFT",
+          "pins": [
+            "R1.1",
+            "R2.1"
+          ]
+        },
+        {
+          "name": "BOTTOM",
+          "pins": [
+            "R2.2",
+            "C2.1"
+          ]
+        },
+        {
+          "name": "TAP",
+          "pins": [
+            "C1.2",
+            "L1.3"
+          ]
+        },
+        {
+          "name": "RIGHT",
+          "pins": [
+            "C2.2",
+            "L1.2"
+          ]
+        }
+      ],
+      "result": "diagnostics",
+      "wire_count": 12
+    },
+    {
+      "components": [
+        {
+          "part_id": "resistor.fixed",
+          "pins_um": {
+            "1": [
+              12000,
+              20000
+            ],
+            "2": [
+              28000,
+              20000
+            ]
+          },
+          "reference": "R1"
+        },
+        {
+          "part_id": "resistor.fixed",
+          "pins_um": {
+            "1": [
+              12000,
+              60000
+            ],
+            "2": [
+              28000,
+              60000
+            ]
+          },
+          "reference": "R2"
+        },
+        {
+          "part_id": "capacitor.fixed",
+          "pins_um": {
+            "1": [
+              52000,
+              20000
+            ],
+            "2": [
+              68000,
+              20000
+            ]
+          },
+          "reference": "C1"
+        },
+        {
+          "part_id": "capacitor.polarized",
+          "pins_um": {
+            "1": [
+              52000,
+              60000
+            ],
+            "2": [
+              68000,
+              60000
+            ]
+          },
+          "reference": "C2"
+        },
+        {
+          "part_id": "inductor.tapped",
+          "pins_um": {
+            "1": [
+              88000,
+              40000
+            ],
+            "2": [
+              112000,
+              40000
+            ],
+            "3": [
+              98000,
+              31000
+            ]
+          },
+          "reference": "L1"
+        }
+      ],
+      "diagnostics": [
+        {
+          "code": "WIRE_DANGLING_END",
+          "message": "Wire 12 has an unconnected endpoint at 140000,70000",
+          "severity": "error",
+          "subject": "12"
+        },
+        {
+          "code": "WIRE_DANGLING_END",
+          "message": "Wire 12 has an unconnected endpoint at 150000,70000",
+          "severity": "error",
+          "subject": "12"
+        },
+        {
+          "code": "WIRE_ORPHAN_CONDUCTOR",
+          "message": "Wire island 12 has no physical pin",
+          "severity": "error",
+          "subject": "12"
+        }
+      ],
+      "expected_codes": [
+        "WIRE_DANGLING_END",
+        "WIRE_ORPHAN_CONDUCTOR"
+      ],
+      "id": "orphan_conductor",
+      "junctions_um": [
+        [
+          40000,
+          20000
+        ]
+      ],
+      "nets": [
+        {
+          "name": "TOP",
+          "pins": [
+            "R1.2",
+            "C1.1",
+            "L1.1"
+          ]
+        },
+        {
+          "name": "LEFT",
+          "pins": [
+            "R1.1",
+            "R2.1"
+          ]
+        },
+        {
+          "name": "BOTTOM",
+          "pins": [
+            "R2.2",
+            "C2.1"
+          ]
+        },
+        {
+          "name": "TAP",
+          "pins": [
+            "C1.2",
+            "L1.3"
+          ]
+        },
+        {
+          "name": "RIGHT",
+          "pins": [
+            "C2.2",
+            "L1.2"
+          ]
+        }
+      ],
+      "result": "diagnostics",
+      "wire_count": 13
+    },
+    {
+      "components": [
+        {
+          "part_id": "resistor.fixed",
+          "pins_um": {
+            "1": [
+              12000,
+              20000
+            ],
+            "2": [
+              28000,
+              20000
+            ]
+          },
+          "reference": "R1"
+        },
+        {
+          "part_id": "resistor.fixed",
+          "pins_um": {
+            "1": [
+              12000,
+              60000
+            ],
+            "2": [
+              28000,
+              60000
+            ]
+          },
+          "reference": "R2"
+        },
+        {
+          "part_id": "capacitor.fixed",
+          "pins_um": {
+            "1": [
+              52000,
+              20000
+            ],
+            "2": [
+              68000,
+              20000
+            ]
+          },
+          "reference": "C1"
+        },
+        {
+          "part_id": "capacitor.polarized",
+          "pins_um": {
+            "1": [
+              52000,
+              60000
+            ],
+            "2": [
+              68000,
+              60000
+            ]
+          },
+          "reference": "C2"
+        },
+        {
+          "part_id": "inductor.tapped",
+          "pins_um": {
+            "1": [
+              88000,
+              40000
+            ],
+            "2": [
+              112000,
+              40000
+            ],
+            "3": [
+              98000,
+              31000
+            ]
+          },
+          "reference": "L1"
+        }
+      ],
+      "diagnostics": [
+        {
+          "code": "WIRE_NET_DISCONNECTED",
+          "message": "Net BOTTOM does not form one physical wire island",
+          "severity": "error",
+          "subject": "BOTTOM"
+        },
+        {
+          "code": "WIRE_PIN_UNWIRED",
+          "message": "C2.1 of BOTTOM has no conductor",
+          "severity": "error",
+          "subject": "C2"
+        },
+        {
+          "code": "WIRE_PIN_UNWIRED",
+          "message": "R2.2 of BOTTOM has no conductor",
+          "severity": "error",
+          "subject": "R2"
+        }
+      ],
+      "expected_codes": [
+        "WIRE_NET_DISCONNECTED",
+        "WIRE_PIN_UNWIRED"
+      ],
+      "id": "unwired_capacitor_pin",
+      "junctions_um": [
+        [
+          40000,
+          20000
+        ]
+      ],
+      "nets": [
+        {
+          "name": "TOP",
+          "pins": [
+            "R1.2",
+            "C1.1",
+            "L1.1"
+          ]
+        },
+        {
+          "name": "LEFT",
+          "pins": [
+            "R1.1",
+            "R2.1"
+          ]
+        },
+        {
+          "name": "BOTTOM",
+          "pins": [
+            "R2.2",
+            "C2.1"
+          ]
+        },
+        {
+          "name": "TAP",
+          "pins": [
+            "C1.2",
+            "L1.3"
+          ]
+        },
+        {
+          "name": "RIGHT",
+          "pins": [
+            "C2.2",
+            "L1.2"
+          ]
+        }
+      ],
+      "result": "diagnostics",
+      "wire_count": 11
+    }
+  ],
+  "catalog_parts": [
+    "capacitor.fixed",
+    "capacitor.polarized",
+    "inductor.tapped",
+    "resistor.fixed"
+  ],
+  "kind": "external_wire_catalog_review",
+  "schema_version": 1,
+  "status": "experimental_not_eskd_approved"
+}

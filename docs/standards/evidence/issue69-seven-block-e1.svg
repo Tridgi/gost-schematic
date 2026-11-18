@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240mm" height="175mm" viewBox="0 0 240 175" data-document-type="Э1" data-approval-status="DRAFT" data-font-compliance="UNVERIFIED" data-graph-semantics="logical-process-only" data-physical-netlist="none">
+  <title>Э1 — семиблочный учебный пример (не утвержденная ЕСКД схема)</title>
+  <desc>Изолированный пример нормативного пакета #69. 7 функциональных прямоугольников, 9 смысловых линий, два непроводящих геометрических пересечения и одно логическое разветвление. Размеры блоков и положения портов — редакторские настройки, не размеры ГОСТ. Шрифт показательный, не метрически аттестован.</desc>
+  <rect x="0" y="0" width="240" height="175" stroke="none" fill="#ffffff"/>
+  <defs><marker id="process-arrow" viewBox="0 0 10 10" refX="8.0" refY="5" markerWidth="4" markerHeight="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#000000"/></marker></defs>
+  <g data-layer="process-links" fill="none" stroke="#000000" stroke-width="0.35" stroke-linejoin="miter" stroke-linecap="butt">
+    <polyline data-link-id="L1" data-source-block="B1" data-target-block="B3" data-role="logical-process" points="64,27 91,27" marker-end="url(#process-arrow)"/>
+    <polyline data-link-id="L2" data-source-block="B2" data-target-block="B4" data-role="logical-process" points="64,80 91,80" marker-end="url(#process-arrow)"/>
+    <polyline data-link-id="L3" data-source-block="B3" data-target-block="B5" data-role="logical-process" points="143,27 173,27" marker-end="url(#process-arrow)"/>
+    <polyline data-link-id="L4" data-source-block="B4" data-target-block="B6" data-role="logical-process" points="143,80 173,80" marker-end="url(#process-arrow)"/>
+    <polyline data-link-id="L5" data-source-block="B3" data-target-block="B4" data-role="logical-process" points="117,39 117,68" marker-end="url(#process-arrow)"/>
+    <polyline data-link-id="L6" data-source-block="B4" data-target-block="B7" data-role="logical-process" points="112,92 112,127" marker-end="url(#process-arrow)"/>
+    <polyline data-link-id="L7" data-source-block="B7" data-target-block="B6" data-role="logical-process" points="143,139 157,139 157,105 198.5,105 198.5,92" marker-end="url(#process-arrow)"/>
+    <polyline data-link-id="L8" data-source-block="B2" data-target-block="B3" data-role="logical-process" points="64,75 84,75 84,9 122,9 122,15" marker-end="url(#process-arrow)"/>
+    <polyline data-link-id="L9" data-source-block="B2" data-target-block="B7" data-role="logical-process" points="72,80 72,115 126,115 126,127" marker-end="url(#process-arrow)"/>
+  </g>
+  <g data-layer="functional-blocks" fill="#ffffff" stroke="#000000" stroke-width="0.35">
+    <rect data-block-id="B1" data-kind="functional-rectangle" x="16" y="15" width="48" height="24"/>
+    <rect data-block-id="B2" data-kind="functional-rectangle" x="16" y="68" width="48" height="24"/>
+    <rect data-block-id="B3" data-kind="functional-rectangle" x="91" y="15" width="52" height="24"/>
+    <rect data-block-id="B4" data-kind="functional-rectangle" x="91" y="68" width="52" height="24"/>
+    <rect data-block-id="B5" data-kind="functional-rectangle" x="173" y="15" width="51" height="24"/>
+    <rect data-block-id="B6" data-kind="functional-rectangle" x="173" y="68" width="51" height="24"/>
+    <rect data-block-id="B7" data-kind="functional-rectangle" x="91" y="127" width="52" height="24"/>
+  </g>
+  <g data-layer="logical-branch-markers" fill="#000000" stroke="none">
+    <circle data-branch-id="P1" data-kind="editorial-logical-branch" cx="72" cy="80" r="0.5"/>
+  </g>
+  <g data-layer="block-labels" font-family="sans-serif" font-size="4" fill="#000000" stroke="none" text-anchor="middle" data-font-status="DRAFT_NO_CAP_HEIGHT_CERTIFICATION">
+    <text data-block-label="B1" x="40" y="27" dominant-baseline="middle">Ввод</text>
+    <text data-block-label="B2" x="40" y="80" dominant-baseline="middle">Блок питания</text>
+    <text data-block-label="B3" x="117" y="27" dominant-baseline="middle">Контроллер</text>
+    <text data-block-label="B4" x="117" y="80" dominant-baseline="middle">Управление</text>
+    <text data-block-label="B5" x="198.5" y="25" dominant-baseline="middle"><tspan x="198.5" y="24">Исполнительный</tspan><tspan x="198.5" y="30">блок</tspan></text>
+    <text data-block-label="B6" x="198.5" y="80" dominant-baseline="middle">Индикация</text>
+    <text data-block-label="B7" x="117" y="139" dominant-baseline="middle">Диагностика</text>
+  </g>
+</svg>

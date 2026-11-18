@@ -5,6 +5,90 @@
 - Symbol SVG inspection, explicit diagnostic codes, CI tests and architecture ADRs.
 - Review architecture with the user before declaring stage 0 approved.
 
+## Stage 0.5 — annotation collision subsystem (experimental)
+- Separate text ink, collision and reserved rectangles, exact font measuring.
+- Collision tests versus symbols, wire segments and protected pin corridors.
+- Reference/name/value slots with candidate placement and debug SVG overlays.
+- User visual review and real ГОСТ font verification still pending.
+
+## Stage 0.6 — typed nominal formatting (experimental)
+- SI Decimal values, GOST 2.702-2011 §5.3.20 compact resistor/capacitor notation.
+- Full-unit mode and visibility setting with document/per-component overrides.
+- Explicit warnings for unsupported ranges and unverified literal text.
+- Rebinding labels, hitboxes and routing obstacles when text display changes.
+- JSON persistence and CLI/CI sample SVGs; review and licensed GOST font pending.
+
+## Stage 0.7 — sheet-level annotation placement (experimental)
+- Refdes above UGO or, if obstructed, to its right (ГОСТ 2.702-2011 §5.3.11).
+- Visible nominal below by configurable drafting preference; text remains upright
+  under orthogonal symbol rotation and mirror transforms.
+- Avoid labels overlapping foreign component keepouts, pin exits or existing wires.
+- Diagnose overlapping symbols, duplicated references and blocked escape corridors.
+- Provide clean/review multi-element SVG regression fixtures and manual review gate.
+
+## Stage 0.8 — external Type A and capacitor drafts (experimental)
+- Read ГОСТ 2.304-81 type A standard metrics, calibrate true capital letter h.
+- Store SHA-256 of loaded font, detect changes and document renderer fallback risk.
+- Support upright + true italic input faces without synthetically skewing fonts.
+- Install actual SIL OFL licensed OpenGOST font for CI preview, without vendoring binary.
+- Draft fixed and polarized capacitor UGO with exact plate size/gap, unique pins,
+  independent bodies, label zones and rotation/collision tests.
+- Rasterize font-accurate clean/diagnostic SVG samples for user approval.
+- Block annotation collisions with **all drawn UGO strokes**, including terminal leads.
+- Still pending: user approval and formal glyph/width/slant validation.
+
+## Stage 0.9 — physical terminal polarity and conservative ERC
+- Immutable, typed physical terminal polarity, separate from graphic labels.
+- Versioned part JSON for fixed and polarized capacitors.
+- Opt-in voltage orientation rule, not applied to diodes implicitly.
+- Static operating-point checks with signed Decimal voltages and explicit
+  common references; reversed=error, unknown=warning, zero=informational.
+- Test rotation/mirror invariance and mismatched +/- labels.
+- CI publishes a reviewable JSON with forward/reversed/unknown examples.
+- Not implemented: circuit simulation, multi-scenario transient proof,
+  capacitor voltage rating checks, or wiring autorouting.
+
+## Stage 0.10 — parametric inductors/chokes (experimental)
+- 15 separately versioned JSON family profiles based on ГОСТ 2.723-68.
+- Real semicircle and per-core styled line primitives across all renderers.
+- Air / ferro / ferrite / gapped / magnetodielectric, Cu, trims,
+  taps, sliders, variable modifiers and related choke profiles.
+- Physical contacts START, END and actual TAP/SLIDER pins in same factory.
+- Font-audited type A SVG clean/review gallery and JSON manifest.
+- Still draft: exact KOMPAS/ГОСТ symbol approval, transformer coupling,
+  multi-phase reactors, variometers, goniometers and coaxial choke topology.
+
+## Stage 0.11 — structural geometry integrity audit (draft PR #8)
+- Enforce actual inward-facing lead at every external graphical pin.
+- Fix sliding-contact indicator to join its true winding contact apex.
+- Carry real per-primitive SVG stroke widths into bounding boxes,
+  cross-symbol collision checks and annotation placement.
+- Supply previously missing physical resistor part metadata.
+- Audit all 18 current symbols and physical mappings into deterministic JSON
+  with source SHA-256, UGO status and geometry checks.
+- CI tests on Python 3.12/3.13 and publishes catalog audit artefact.
+- Commit and update a dated GitHub project log with accepted results.
+- Still pending: user approval of geometry, exact normative comparison,
+  internal graphic topology, automatic wire routing, complete ERC.
+
+## Stage 0.12 — normative traceability and authored conductor graph (PR #9)
+- Read applicable Russian ESKD source standards, create date-scoped document
+  editions, clause/URL-linked rule cards and a per-UGO normative review matrix.
+- Machine-check validated resistor 10×4 mm, fixed/polarized capacitor
+  plate length 8 mm and spacing 1.5 mm; no invented normative coil dimensions.
+- Explicit conductive layers distinguish UGO paint, physical terminals and
+  external circuit netlists; exact-line/semicircle junction model and
+  deliberately unconnected crossings.
+- Check winding taps/slider continuity, accidental capacitor plate bridges,
+  missing junctions, arc breaks and rotation/mirror invariants.
+- Conservative, independent draft-sheet wire check: 0.2–1.0 mm line
+  thickness, 3 mm minimum between parallel printed wire edges; warn for
+  diagonals requiring engineering justification.
+- Still pending: human verification of 15 winding glyphs, individual
+  electrolytic capacitor symbol, full 1 mm / 2 mm precise UGO clearances,
+  external wire graph to netlist equivalence, proper GOST line/font compliance,
+  approved symbols, full reference documents and automatic routing.
+
 ## Stage 1 — approved standard UGO
 - Resistor family, capacitor family, precise stroke/lettering constraints.
 - Reference comparisons from KOMPAS and normative verification.
