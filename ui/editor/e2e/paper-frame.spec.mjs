@@ -112,3 +112,69 @@ test('R10: shrinking A3 with positioned component warns without silently moving 
   expect(a2.project.sheets[0].instances[0].origin_um).toEqual(origin);
   expect(a2.project.nets).toEqual([]);
 });
+
+
+test('R10: explicit Fit resets wheel/pan camera without editing physical model',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=page.getByTestId('gscad-paper-outline');
+ const svg=page.getByTestId('gscad-signed-svg-canvas');
+ const start=await paper.boundingBox();
+ expect(start).toBeTruthy();
+ const canvas=await svg.boundingBox();
+ await page.mouse.move(canvas.x+canvas.width/2,canvas.y+canvas.height/2);
+ for(let i=0;i<6;i++)await page.mouse.wheel(0,-600);
+ await expect.poll(async()=>Number(await paper.getAttribute('width')))
+   .toBeGreaterThan(start.width*1.5);
+ await page.getByRole('button',{name:'Масштаб'}).click();
+ await page.getByTestId('fit-page').click();
+ await expect.poll(async()=>Math.abs(Number(await paper.getAttribute('width'))-start.width)/start.width)
+   .toBeLessThan(0.02);
+ const after=await paper.boundingBox();
+ expect(after.x).toBeGreaterThanOrEqual(canvas.x+20);
+ expect(after.x+after.width).toBeLessThanOrEqual(canvas.x+canvas.width-20);
+ const download=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const doc=JSON.parse(readFileSync(await (await download).path(),'utf8'));
+ expect(doc.project.nets).toEqual([]);
+ expect(doc.project.sheets[0].frame.size_um).toEqual([420000,297000]);
+});
+
+
+test('R10: A4/A2 physical SVG excludes guides, A4 PNG300 carries exact pHYs and pixels',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('paper-format-A4').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+ await page.mouse.click(paper.x+paper.width*.4,paper.y+paper.height*.4);
+ for(const [size,w,h] of [['A4',297,210],['A2',594,420]]){
+   if(size==='A2'){
+     await page.getByRole('button',{name:'Файл'}).click();
+     await page.getByTestId('paper-format-A2').click();
+   }
+   await page.getByRole('button',{name:'Экспорт',exact:true}).click();
+   const pending=page.waitForEvent('download');
+   await page.getByRole('button',{name:'Экспортировать'}).click();
+   const data=readFileSync(await (await pending).path(),'utf8');
+   expect(data).toContain('width="'+w+'mm" height="'+h+'mm"');
+   expect(data).toContain('data-layer="symbols"');
+   expect(data).not.toMatch(/cad-paper-guide|gscad-paper-outline|gscad-print-margin|cad-grid-um/);
+ }
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('paper-format-A4').click();
+ await page.getByRole('button',{name:'Экспорт',exact:true}).click();
+ await page.getByText('PNG 300 DPI',{exact:true}).click();
+ const pending=page.waitForEvent('download');
+ await page.getByRole('button',{name:'Экспортировать'}).click();
+ const png=readFileSync(await (await pending).path());
+ expect(png.readUInt32BE(16)).toBe(Math.round(297/25.4*300));
+ expect(png.readUInt32BE(20)).toBe(Math.round(210/25.4*300));
+ const phys=png.indexOf(Buffer.from('pHYs'));
+ expect(phys).toBeGreaterThan(0);
+ expect(png.readUInt32BE(phys+4)).toBe(11811);
+ expect(png.readUInt32BE(phys+8)).toBe(11811);
+});

@@ -16,6 +16,7 @@ export type CanvasViewportProps = {
   onIntent: (intent: CanvasIntent) => void|boolean;
   onZoomPercent?: (percent: number) => void;
   zoomRequest?: {percent:50|100|200;token:number};
+  fitRequest?:number;
 };
 
 const DEFAULT_CAMERA:Camera={s:.004,x:24,y:24};
@@ -28,7 +29,7 @@ function localStroke(symbol:CanvasSymbol,p:PointUm,camera:Camera):ScreenPoint {
   return screen([symbol.origin_um[0]+xy[0],symbol.origin_um[1]+xy[1]],camera);
 }
 /** Read-only SVG viewport. The canonical physical print/export belongs to #124. */
-export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapEnabled,onIntent,onZoomPercent,zoomRequest}:CanvasViewportProps){
+export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapEnabled,onIntent,onZoomPercent,zoomRequest,fitRequest}:CanvasViewportProps){
   const svgRef=useRef<SVGSVGElement|null>(null);
   const [size,setSize]=useState({width:960,height:640});
   const [revision,setRevision]=useState(0);
@@ -60,7 +61,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
    */
   useEffect(()=>{
     const identity=document.project.id+':'+sheetId+':'+
-      document.project.sheets.find(s=>s.id===sheetId)?.frame.size_um.join('x');
+      document.project.sheets.find(s=>s.id===sheetId)?.frame.size_um.join('x')+':'+fitRequest;
     if(fittedRef.current===identity)return;
     const bounds=svgRef.current?.getBoundingClientRect();
     if(!bounds||bounds.width<100||bounds.height<100)return;
@@ -110,7 +111,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     appliedZoomRef.current=fittedPercent;
     onZoomPercent?.(fittedPercent);
     invalidate();
-  },[scene,controller,document.project.id,sheetId,size.width,size.height,invalidate,onZoomPercent]);
+  },[scene,controller,document.project.id,sheetId,fitRequest,size.width,size.height,invalidate,onZoomPercent]);
   useEffect(()=>{
     const root=svgRef.current;
     if(!root||typeof ResizeObserver==='undefined')return;

@@ -40,6 +40,7 @@ export type EditorShellProps = {
   selected:SelectedInstance|null;diagnostics:readonly DiagnosticItem[];
   canvas:ReactNode;tool:ToolMode;gridVisible:boolean;snapEnabled:boolean;
   cursorUm?:readonly [number,number];zoomPercent?:number;onZoomPercent?:(percent:50|100|200)=>void;
+  onFitPage?:()=>void;
   canUndo:boolean;canRedo:boolean;canSave:boolean;exportReady:boolean;
   /** Authoritative CAS rejection/validation feedback from host model, not optimistically hidden. */
   inspectorError?:string|null;
@@ -303,6 +304,9 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
             <Menu position="top-end" withinPortal>
               <Menu.Target><Button size="compact-xs" variant="subtle" aria-label="Масштаб">{props.zoomPercent??100}%</Button></Menu.Target>
               <Menu.Dropdown>
+                <Menu.Item data-testid="fit-page" onClick={props.onFitPage}
+                  disabled={!props.onFitPage}>Вписать лист и содержимое</Menu.Item>
+                <Menu.Divider/>
                 {([50,100,200] as const).map(pct=><Menu.Item key={pct}
                   onClick={()=>props.onZoomPercent?.(pct)}>{pct}%</Menu.Item>)}
               </Menu.Dropdown>
