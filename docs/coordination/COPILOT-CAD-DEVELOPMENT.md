@@ -8,7 +8,7 @@ GOST CAD COPILOT HANDOFF
 BASE_SHA: 7ea3304a13e8e13a53a66e129ec8f66f58c367b9
 HEAD_SHA: 5721894b4737df14a8d2d386705e0b5aa046346d
 BRANCH: copilot/cad-deep-stabilization
-PR: pending creation
+PR: Tridgi/gost-schematic#142 (draft)
 CURRENT_STAGE: READY_FOR_REVIEW
 ```
 
