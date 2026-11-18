@@ -59,8 +59,12 @@ function expectedCounts(file:ProjectFileV2):void {
     da1_pins:0,b_graphics:0
   };
 }
-function defaultValue(referencePrefix:string):string {
+function defaultValue(partId:string,referencePrefix:string):string {
   if(referencePrefix==='R')return '1к';
+  if(partId==='capacitor.polarized')return '10мкФ';
+  if(partId==='capacitor.electrolytic')return '100мкФ';
+  if(partId==='diode.zener')return '5V1';
+  if(partId==='diode.schottky')return '1N5819';
   if(referencePrefix==='C')return '100н';
   if(referencePrefix==='VD')return '1N4148';
   if(referencePrefix==='FU')return '1А';
@@ -296,7 +300,7 @@ export class AuthoringSession {
       while(draft.project.components.some(c=>c.refdes===part.reference_prefix+n))n++;
       const refdes=part.reference_prefix+n;
       const comp:Component={id:newId('comp'),source_refdes:refdes,refdes,
-        part_id:part.id,value:defaultValue(part.reference_prefix)};
+        part_id:part.id,value:defaultValue(part.id,part.reference_prefix)};
       const sheet=draft.project.sheets[indexOfSheet(draft)];
       const layer=sheet.layers.find(l=>l.kind==='electrical');
       if(!layer)reject('MISSING_ELECTRICAL_LAYER');

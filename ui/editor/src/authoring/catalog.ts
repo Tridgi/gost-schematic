@@ -1,5 +1,5 @@
 /** Source-backed DRAFT engineering artwork. Physical mm→integer µm conversion is exact.
- * Source: canonical revision-1 Python catalog definitions for the four
+ * Source: canonical revision-1 Python catalog definitions for the nine
  * currently exposed discrete parts. These symbols remain DRAFT.
  * These symbols are NOT certified for normative ESKD printing.
  */
@@ -25,7 +25,21 @@ export const AUTHORING_PARTS:PartDefinition[] = [
     physical_pins:structuredClone(variableResistorPins)},
   {id:'capacitor.fixed',reference_prefix:'C',symbol_ids:['symbol/capacitor.fixed'],
     physical_pins:structuredClone(pins)},
+  {id:'capacitor.polarized',reference_prefix:'C',symbol_ids:['symbol/capacitor.polarized'],
+    physical_pins:[
+      {number:'1',name:'PLUS',electrical_type:'passive'},
+      {number:'2',name:'MINUS',electrical_type:'passive'}
+    ]},
+  {id:'capacitor.electrolytic',reference_prefix:'C',symbol_ids:['symbol/capacitor.electrolytic'],
+    physical_pins:[
+      {number:'1',name:'PLUS',electrical_type:'passive'},
+      {number:'2',name:'MINUS',electrical_type:'passive'}
+    ]},
   {id:'diode.general',reference_prefix:'VD',symbol_ids:['symbol/diode.general'],
+    physical_pins:structuredClone(diodePins)},
+  {id:'diode.zener',reference_prefix:'VD',symbol_ids:['symbol/diode.zener'],
+    physical_pins:structuredClone(diodePins)},
+  {id:'diode.schottky',reference_prefix:'VD',symbol_ids:['symbol/diode.schottky'],
     physical_pins:structuredClone(diodePins)},
   {id:'fuse.general',reference_prefix:'FU',symbol_ids:['symbol/fuse.general'],
     physical_pins:structuredClone(pins)}
@@ -72,6 +86,36 @@ export const AUTHORING_SYMBOLS:SymbolDefinition[] = [
     ]
   },
   {
+    id:'symbol/capacitor.polarized',part_id:'capacitor.polarized',revision:1,status:'draft',
+    standard_refs:['ГОСТ 2.728-74 (draft source geometry; polarity requires review)'],
+    pins:[
+      {physical_pin_number:'1',at_um:[-8000,0],side:'left'},
+      {physical_pin_number:'2',at_um:[8000,0],side:'right'}
+    ],
+    graphics:[
+      line([-8000,0],[-750,0]),line([750,0],[8000,0]),
+      line([-750,-4000],[-750,4000]),line([750,-4000],[750,4000]),
+      line([-3500,-4000],[-2500,-4000]),
+      line([-3000,-4500],[-3000,-3500])
+    ]
+  },
+  {
+    id:'symbol/capacitor.electrolytic',part_id:'capacitor.electrolytic',revision:1,status:'draft',
+    standard_refs:['ГОСТ 2.728-74 (draft source geometry; 1:1 approval required)'],
+    pins:[
+      {physical_pin_number:'1',at_um:[-9000,0],side:'left'},
+      {physical_pin_number:'2',at_um:[9000,0],side:'right'}
+    ],
+    graphics:[
+      line([-9000,0],[-2250,0]),line([2250,0],[9000,0]),
+      line([-750,-4000],[-2250,-4000]),line([-750,-4000],[-750,4000]),
+      line([-750,4000],[-2250,4000]),line([-2250,4000],[-2250,-4000]),
+      line([750,-4000],[2250,-4000]),line([2250,-4000],[2250,4000]),
+      line([2250,4000],[750,4000]),line([750,4000],[750,-4000]),
+      line([-4000,-4500],[-3000,-4500]),line([-3500,-5000],[-3500,-4000])
+    ]
+  },
+  {
     id:'symbol/diode.general',part_id:'diode.general',revision:1,status:'draft',
     standard_refs:['ГОСТ 2.730-73 (draft source geometry; 1:1 approval required)'],
     pins:[
@@ -82,6 +126,35 @@ export const AUTHORING_SYMBOLS:SymbolDefinition[] = [
       line([-10000,0],[-2500,0]),
       {kind:'polyline',points_um:[[-2500,-3000],[2500,0],[-2500,3000],[-2500,-3000]],stroke_um:300},
       line([2500,-3300],[2500,3300]),
+      line([2500,0],[10000,0])
+    ]
+  },
+  {
+    id:'symbol/diode.zener',part_id:'diode.zener',revision:1,status:'draft',
+    standard_refs:['ГОСТ 2.730-73 (draft source geometry; zener cathode detail requires review)'],
+    pins:[
+      {physical_pin_number:'1',at_um:[-10000,0],side:'left'},
+      {physical_pin_number:'2',at_um:[10000,0],side:'right'}
+    ],
+    graphics:[
+      line([-10000,0],[-2500,0]),
+      {kind:'polyline',points_um:[[-2500,-3000],[2500,0],[-2500,3000],[-2500,-3000]],stroke_um:300},
+      {kind:'polyline',points_um:[[2500,-3300],[1700,-3000],[2500,0],[1700,3000],[2500,3300]],stroke_um:300},
+      line([2500,0],[10000,0])
+    ]
+  },
+  {
+    id:'symbol/diode.schottky',part_id:'diode.schottky',revision:1,status:'draft',
+    standard_refs:['ГОСТ 2.730-73 (draft source geometry; Schottky marker requires review)'],
+    pins:[
+      {physical_pin_number:'1',at_um:[-10000,0],side:'left'},
+      {physical_pin_number:'2',at_um:[10000,0],side:'right'}
+    ],
+    graphics:[
+      line([-10000,0],[-2500,0]),
+      {kind:'polyline',points_um:[[-2500,-3000],[2500,0],[-2500,3000],[-2500,-3000]],stroke_um:300},
+      line([2500,-3300],[2500,3300]),
+      line([1800,-3300],[1800,3300]),
       line([2500,0],[10000,0])
     ]
   },

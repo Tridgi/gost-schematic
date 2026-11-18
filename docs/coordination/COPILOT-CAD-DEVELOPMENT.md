@@ -22,6 +22,8 @@ CURRENT_STAGE: READY_FOR_REVIEW
 * Corrected the legacy QA expectation for the non-approved fallback font: the current measured failure is the narrow `rev_change` caption, not `norm_control`.
 * Added canonical-source draft diode and fuse entries to the authoring catalog, including physical pins, source geometry, and prefix-specific default values.
 * Added the draft variable-resistor entry with three distinct physical pins, including the canonical wiper geometry.
+* Added draft polarized and electrolytic capacitor entries with explicit PLUS/MINUS physical pins and distinct default values.
+* Added draft zener and Schottky diode entries with two physical pins and distinct default values.
 
 ## Verification
 
