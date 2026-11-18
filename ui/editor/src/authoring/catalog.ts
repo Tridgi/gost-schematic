@@ -1,5 +1,5 @@
 /** Source-backed DRAFT engineering artwork. Physical mm→integer µm conversion is exact.
- * Source: canonical revision-1 Python catalog definitions for the nine
+ * Source: canonical revision-1 Python catalog definitions for the eleven
  * currently exposed discrete parts. These symbols remain DRAFT.
  * These symbols are NOT certified for normative ESKD printing.
  */
@@ -40,6 +40,10 @@ export const AUTHORING_PARTS:PartDefinition[] = [
   {id:'diode.zener',reference_prefix:'VD',symbol_ids:['symbol/diode.zener'],
     physical_pins:structuredClone(diodePins)},
   {id:'diode.schottky',reference_prefix:'VD',symbol_ids:['symbol/diode.schottky'],
+    physical_pins:structuredClone(diodePins)},
+  {id:'diode.led',reference_prefix:'VD',symbol_ids:['symbol/diode.led'],
+    physical_pins:structuredClone(diodePins)},
+  {id:'diode.photodiode',reference_prefix:'VD',symbol_ids:['symbol/diode.photodiode'],
     physical_pins:structuredClone(diodePins)},
   {id:'fuse.general',reference_prefix:'FU',symbol_ids:['symbol/fuse.general'],
     physical_pins:structuredClone(pins)}
@@ -156,6 +160,38 @@ export const AUTHORING_SYMBOLS:SymbolDefinition[] = [
       line([2500,-3300],[2500,3300]),
       line([1800,-3300],[1800,3300]),
       line([2500,0],[10000,0])
+    ]
+  },
+  {
+    id:'symbol/diode.led',part_id:'diode.led',revision:1,status:'draft',
+    standard_refs:['ГОСТ 2.730-73 (draft source geometry; optical arrows require review)'],
+    pins:[
+      {physical_pin_number:'1',at_um:[-10000,0],side:'left'},
+      {physical_pin_number:'2',at_um:[10000,0],side:'right'}
+    ],
+    graphics:[
+      line([-10000,0],[-2500,0]),
+      {kind:'polyline',points_um:[[-2500,-3000],[2500,0],[-2500,3000],[-2500,-3000]],stroke_um:300},
+      line([2500,-3300],[2500,3300]),line([2500,0],[10000,0]),
+      line([2000,-7000],[5000,-10000]),line([3400,-9900],[5000,-10000]),
+      line([4900,-8400],[5000,-10000]),line([5000,-5500],[8000,-8500]),
+      line([6400,-8400],[8000,-8500]),line([7900,-6900],[8000,-8500])
+    ]
+  },
+  {
+    id:'symbol/diode.photodiode',part_id:'diode.photodiode',revision:1,status:'draft',
+    standard_refs:['ГОСТ 2.730-73 (draft source geometry; optical arrows require review)'],
+    pins:[
+      {physical_pin_number:'1',at_um:[-10000,0],side:'left'},
+      {physical_pin_number:'2',at_um:[10000,0],side:'right'}
+    ],
+    graphics:[
+      line([-10000,0],[-2500,0]),
+      {kind:'polyline',points_um:[[-2500,-3000],[2500,0],[-2500,3000],[-2500,-3000]],stroke_um:300},
+      line([2500,-3300],[2500,3300]),line([2500,0],[10000,0]),
+      line([-7000,-10000],[-4000,-7000]),line([-5800,-7500],[-4000,-7000]),
+      line([-4500,-8800],[-4000,-7000]),line([-5000,-12000],[-2000,-9000]),
+      line([-3800,-9500],[-2000,-9000]),line([-2500,-10800],[-2000,-9000])
     ]
   },
   {

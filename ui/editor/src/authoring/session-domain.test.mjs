@@ -39,7 +39,7 @@ test('empty project A3 uses DRAFT Python-source R/C library, no fabricated TL494
  assert.equal(doc.project.provenance.status,'synthetic');
  assert.equal(doc.project.provenance.source_sha,'0'.repeat(40));
  assert.deepEqual(doc.project.symbol_definitions.map(x=>x.status),
-   ['draft','draft','draft','draft','draft','draft','draft','draft','draft']);
+   ['draft','draft','draft','draft','draft','draft','draft','draft','draft','draft','draft']);
  const resistor=doc.project.symbol_definitions.find(x=>x.id==='symbol/resistor.fixed');
  const capacitor=doc.project.symbol_definitions.find(x=>x.id==='symbol/capacitor.fixed');
  assert.deepEqual(resistor.pins.map(x=>x.at_um),[[-8000,0],[8000,0]]);
@@ -98,6 +98,21 @@ test('zener and Schottky diode variants retain two physical pins',()=>{
    assert.equal(symbol.status,'draft');
    assert.deepEqual(symbol.pins.map(x=>x.physical_pin_number),['1','2']);
    assert.equal(symbol.graphics.some(x=>x.kind==='polyline'),true);
+ }
+});
+
+test('LED and photodiode keep optical graphics separate from two electrical PinRefs',()=>{
+ const s=newSession();
+ s.place(s.newTransaction('place-led'),'symbol/diode.led',[100000,100000]);
+ s.place(s.newTransaction('place-photo'),'symbol/diode.photodiode',[140000,100000]);
+ const doc=s.file;
+ assert.deepEqual(doc.project.components.map(c=>[c.refdes,c.value]),
+   [['VD1','LED'],['VD2','PD']]);
+ for(const id of ['symbol/diode.led','symbol/diode.photodiode']){
+   const symbol=doc.project.symbol_definitions.find(x=>x.id===id);
+   assert.equal(symbol.status,'draft');
+   assert.deepEqual(symbol.pins.map(x=>x.physical_pin_number),['1','2']);
+   assert.ok(symbol.graphics.length>6);
  }
 });
 

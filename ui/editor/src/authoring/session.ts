@@ -65,6 +65,8 @@ function defaultValue(partId:string,referencePrefix:string):string {
   if(partId==='capacitor.electrolytic')return '100мкФ';
   if(partId==='diode.zener')return '5V1';
   if(partId==='diode.schottky')return '1N5819';
+  if(partId==='diode.led')return 'LED';
+  if(partId==='diode.photodiode')return 'PD';
   if(referencePrefix==='C')return '100н';
   if(referencePrefix==='VD')return '1N4148';
   if(referencePrefix==='FU')return '1А';

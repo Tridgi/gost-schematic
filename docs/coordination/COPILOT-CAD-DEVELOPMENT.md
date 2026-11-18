@@ -24,6 +24,7 @@ CURRENT_STAGE: READY_FOR_REVIEW
 * Added the draft variable-resistor entry with three distinct physical pins, including the canonical wiper geometry.
 * Added draft polarized and electrolytic capacitor entries with explicit PLUS/MINUS physical pins and distinct default values.
 * Added draft zener and Schottky diode entries with two physical pins and distinct default values.
+* Added draft LED and photodiode entries, preserving optical arrows as non-electrical graphics.
 
 ## Verification
 
