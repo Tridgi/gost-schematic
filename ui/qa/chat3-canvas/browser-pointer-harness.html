@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>CHAT3 actual-canvas JS pointer probe</title>
+<style>body{font:14px system-ui;background:#16212b;color:#ddeaf5;margin:0}#cad{position:absolute;left:100px;top:80px;width:820px;height:500px;background:#22313c;border:2px solid #8493a8;touch-action:none}#status{position:absolute;top:600px;left:100px;white-space:pre-wrap} .pin{fill:#e4ae4e}.wire{stroke:#d2ebef;stroke-width:1.2;fill:none;pointer-events:none}</style></head>
+<body><svg id="cad" viewBox="0 0 820 500"></svg><pre id="status">loading modules</pre>
+<script type="module">
+import {projectToCanvasScene} from '../../editor/src/canvas/scene-projection.mjs';
+import {hitTest,screen,world,pinWorld,snap} from '../../editor/src/canvas/precision.mjs';
+const file={format:'gscad-project',format_version:2,project:{
+ components:[{id:'U1',part_id:'P'}],
+ part_definitions:[{id:'P',symbol_ids:['S'],physical_pins:[{number:'1'},{number:'2'}]}],
+ symbol_definitions:[{id:'S',part_id:'P',status:'draft',
+   pins:[{physical_pin_number:'1',at_um:[-8000,0],side:'left'},
+         {physical_pin_number:'2',at_um:[8000,0],side:'right'}],
+   graphics:[{kind:'rect',points_um:[[-3000,-1800],[3000,1800]]}]}],
+ nets:[{id:'N_A',members:[{component_id:'U1',physical_pin_number:'1'}]},
+       {id:'N_B',members:[{component_id:'U1',physical_pin_number:'2'}]}],
+ sheets:[{id:'s1',instances:[{id:'U1-icon',component_id:'U1',symbol_id:'S',origin_um:[10000,10000],rotation_deg:0,mirror_x:false,layer_id:'L'}],wires:[
+   {id:'wA',net_id:'N_A',vertices:[{id:'a',at_um:[30000,50000]},{id:'b',at_um:[70000,50000]}],segments:[{id:'a-b',from_vertex_id:'a',to_vertex_id:'b'}]},
+   {id:'wB',net_id:'N_B',vertices:[{id:'c',at_um:[50000,30000]},{id:'d',at_um:[50000,70000]}],segments:[{id:'c-d',from_vertex_id:'c',to_vertex_id:'d'}]}
+ ],junctions:[],splices:[],graphics:[]}]
+}};
+const scene=projectToCanvasScene(file,'s1'),svg=document.getElementById('cad'),status=document.getElementById('status');
+const camera={s:0.008,x:50,y:30};let snapEnabled=false,gridVisible=true;
+const svgEl=(tag,attrs)=>{const el=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const [k,v] of Object.entries(attrs))el.setAttribute(k,String(v));return el};
+function render(){svg.replaceChildren();for(const w of scene.wires)for(const seg of w.segments){const a=w.vertices.find(v=>v.id===seg.from_vertex_id),b=w.vertices.find(v=>v.id===seg.to_vertex_id),start=screen(a.at_um,camera),end=screen(b.at_um,camera);svg.append(svgEl('line',{class:'wire',x1:start.x,y1:start.y,x2:end.x,y2:end.y}))}for(const s of scene.symbols)for(const pin of s.pins){const pt=screen(pinWorld(s,pin.physical_pin_number).at_um,camera);svg.append(svgEl('circle',{class:'pin',cx:pt.x,cy:pt.y,r:2.5}))}}
+function position(e){const r=svg.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}}
+function pick(e){const local=position(e);return hitTest(scene,camera,local)}
+function publish(e,kind){const hit=pick(e);window.qa[kind]={kind:hit?.kind??null,pin:hit?.pin??null,candidates:hit?.candidates??null,position_um:world(position(e),camera)};status.textContent=JSON.stringify(window.qa[kind],null,2)}
+svg.addEventListener('pointerdown',e=>{svg.setPointerCapture(e.pointerId);publish(e,'lastClick')});
+svg.addEventListener('pointermove',e=>publish(e,'lastHover'));
+window.qa={ready:true,scene,rect:()=>({left:svg.getBoundingClientRect().left,top:svg.getBoundingClientRect().top}),setScale:s=>{camera.s=s;render()},snapEnabled:()=>snapEnabled,setSnap:b=>{snapEnabled=b},gridVisible:()=>gridVisible,setGrid:b=>{gridVisible=b},snapped:p=>snap(p,1000,snapEnabled),toClient:p=>{const q=screen(p,camera),r=svg.getBoundingClientRect();return {x:r.left+q.x,y:r.top+q.y}},lastClick:null,lastHover:null};render();status.textContent='READY';
+</script></body></html>

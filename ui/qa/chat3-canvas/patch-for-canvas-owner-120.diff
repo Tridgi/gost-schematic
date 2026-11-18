@@ -1,0 +1,20 @@
+--- a/ui/editor/src/canvas/precision.mjs
++++ b/ui/editor/src/canvas/precision.mjs
+@@ -10,7 +10,7 @@
+ 
+ function world(p,c){if(!(c.s>0&&Number.isFinite(c.s)))throw Error("INVALID_ZOOM");return point([Math.round((p.x-c.x)/c.s),Math.round((p.y-c.y)/c.s)])}
+ 
+-function zoom(c,p,factor){if(!(factor>0&&Number.isFinite(factor)))throw Error("INVALID_ZOOM_FACTOR");const s=Math.min(.2,Math.max(.002,c.s*factor));const u=(p.x-c.x)/c.s,v=(p.y-c.y)/c.s;return {s,x:p.x-u*s,y:p.y-v*s}}
++function zoom(c,p,factor){if(!(c.s>0&&Number.isFinite(c.s)&&Number.isFinite(c.x)&&Number.isFinite(c.y)&&Number.isFinite(p.x)&&Number.isFinite(p.y)))throw Error("INVALID_ZOOM");if(!(factor>0&&Number.isFinite(factor)))throw Error("INVALID_ZOOM_FACTOR");const s=Math.min(.2,Math.max(.002,c.s*factor));const u=(p.x-c.x)/c.s,v=(p.y-c.y)/c.s;return {s,x:p.x-u*s,y:p.y-v*s}}
+ 
+ function snap(p,grid,enabled){point(p);if(!Number.isSafeInteger(grid)||grid<=0)throw Error("INVALID_GRID");return enabled?point(p.map(v=>Math.round(v/grid)*grid)):p}
+ 
+@@ -39,7 +39,7 @@
+  const hits=[];for(const w of scene.wires)for(let i=0;i<w.segments.length;i++){
+   const segment=w.segments[i],a=w.vertices.find(v=>v.id===segment.from_vertex_id),b=w.vertices.find(v=>v.id===segment.to_vertex_id);
+   if(!a||!b)throw Error("MISSING_VERTEX");
+-  point(a.at_um);point(b.at_um);if(a.at_um[0]!==b.at_um[0]&&a.at_um[1]!==b.at_um[1])throw Error("NON_ORTHOGONAL");
++  point(a.at_um);point(b.at_um);if(a.at_um[0]===b.at_um[0]&&a.at_um[1]===b.at_um[1])throw Error("ZERO_LENGTH");if(a.at_um[0]!==b.at_um[0]&&a.at_um[1]!==b.at_um[1])throw Error("NON_ORTHOGONAL");
+   const d=segmentDistance(p,screen(a.at_um,c),screen(b.at_um,c));
+   if(d<=wireBandPx)hits.push({kind:"segment",wire_id:w.id,segment_id:segment.id,distance_px:d,movable:i>0&&i<w.segments.length-1,axis:a.at_um[0]===b.at_um[0]?"v":"h"});
+  }
