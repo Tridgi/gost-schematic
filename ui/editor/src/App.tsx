@@ -15,6 +15,7 @@ import {traceNativeClose} from './native/close-trace';
 import {parseProjectJsonStrict} from './authoring/strict-json';
 import { loadProjectWires } from './wires/project-v2-adapter';
 import { projectToCanvasScene } from './canvas/scene-projection.mjs';
+import { detectPaperOverflow } from './canvas/paper-bounds.mjs';
 import { renderProjectPreviewSVG, renderPreviewPng300 } from './export/browser-export';
 
 const umToMm = (value:number):number => value/1000;
@@ -628,6 +629,8 @@ export default function App() {
   if(!document||!snapshot||!activeSheet)return <main className="gscad-boot">
     <h1>GOST Schematic Engine — R2 preview</h1><p>{issue}</p>
     <p>Выполните Python prepare_editor_fixtures.py и npm run dev.</p></main>;
+  const overflow=detectPaperOverflow(
+    projectToCanvasScene(document,activeSheet.id),snapshot,activeSheet.frame.size_um);
   const diagnostics:DiagnosticItem[]=[
     {id:'integration',severity:'info',message:issue},
     {id:'routed',severity:'warning',message:'Исходных Nets: '+document.project.nets.length+
@@ -635,6 +638,10 @@ export default function App() {
         engineRef.current?.validateNet(n.id).status==='unrouted').length+
       '. Отсутствие ошибок ERC не доказано.'}
   ];
+  if(overflow.total>0)diagnostics.push({id:'paper-overflow',severity:'warning',
+    message:'За пределами физического листа: '+overflow.symbols.length+' УГО, '+
+      overflow.wires.length+' проводников, '+overflow.graphics.length+' графических объектов; '+
+      (overflow.junctions.length+overflow.splices.length)+' узлов. Экспорт должен быть проверен.'});
   return <EditorShell
     projectName={document.project.title+(authoringRef.current?' · R3 AUTHORING':' · R2 PREVIEW')} dirty={dirty}
     baseRevision={String(snapshot.revision)} sheets={document.project.sheets.map(s=>({id:s.id,title:s.name}))}
@@ -650,6 +657,11 @@ export default function App() {
         tool={tool} gridVisible={grid} snapEnabled={snap}
         zoomRequest={zoomRequest??undefined}
         onIntent={onCanvasIntent} onZoomPercent={percent=>setZoom(percent/100)}/>
+      {overflow.total>0&&<div data-testid="gscad-paper-warning"
+        className="gscad-paper-warning" role="status">
+        За пределами листа: {overflow.symbols.length} УГО, {overflow.wires.length} проводников,
+        {overflow.graphics.length} графических объектов. Проверьте расположение и экспорт.
+      </div>}
       {/(?:NET_CONFLICT|SOURCE_LOCKED|STALE_|UNKNOWN_|REROUTE_|MISMATCH|NOT_READY|ERROR|FAILED|DUPLICATE_|INVALID_)/.test(issue)
         && <div className="gscad-error-banner" role="alert">{issue}</div>}
     </div>}
@@ -726,6 +738,15 @@ export default function App() {
     }}
     onUndo={handleUndo} onRedo={handleRedo}
     onNew={handleNew}
+    activePaper={activeSheet.frame.paper.split(' ')[0] as 'A4'|'A3'|'A2'}
+    onPaperChange={authoringRef.current?paper=>{
+      try{
+        const a=authoringRef.current!;
+        a.setPaper(a.newTransaction('set-paper-'+paper),paper);
+        adoptAuthored();
+        setIssue('Формат активного листа: '+paper+' (альбомный). Геометрия Nets и PinRef сохранена.');
+      }catch(e){setIssue('PAPER_CHANGE_REJECTED: '+String(e));}
+    }:undefined}
     onAddSheet={authoringRef.current?()=>{
       try{const a=authoringRef.current!;a.addSheet(a.newTransaction('add-sheet'));
         adoptAuthored();setIssue('Добавлен новый лист A3.');}

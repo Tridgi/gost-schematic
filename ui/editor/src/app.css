@@ -8,3 +8,7 @@ html,body,#root{height:100%;margin:0;overflow:hidden;font-family:'Segoe UI',syst
 .gscad-error-banner{position:absolute;bottom:20px;left:16px;z-index:4;
   max-width:min(580px,80%);background:#7d2432;color:#fff;outline:1px solid #eb7c8d;
   padding:10px 14px;box-shadow:0 4px 14px #0004;font-size:13px;pointer-events:none}
+.gscad-paper-warning{position:absolute;top:16px;right:16px;z-index:4;
+  max-width:min(440px,75%);background:#fff8e5;color:#704515;border:1px solid #deb76e;
+  border-radius:4px;padding:8px 11px;box-shadow:0 3px 12px #0002;
+  font-size:12px;pointer-events:none}

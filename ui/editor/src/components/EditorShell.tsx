@@ -48,7 +48,9 @@ export type EditorShellProps = {
   onPlaceSymbol:(symbolId:string)=>void;onSelectTreeItem:(id:string)=>void;
   onSelectSheet:(id:string)=>void;onInspectorProposal:(edit:InspectorProposal)=>void;
   onUndo:()=>void;onRedo:()=>void;onSave:()=>void;
-  onOpen?:()=>void;onNew?:()=>void;onAddSheet?:()=>void;onSaveAs?:()=>void;onExport?:(format:'svg'|'png300')=>void;
+  onOpen?:()=>void;onNew?:()=>void;onAddSheet?:()=>void;
+  onPaperChange?:(paper:'A4'|'A3'|'A2')=>void;activePaper?:'A4'|'A3'|'A2';
+  onSaveAs?:()=>void;onExport?:(format:'svg'|'png300')=>void;
 };
 
 function NumericAxis({selected,axis,revision,send}:{
@@ -208,6 +210,14 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
               <Menu.Dropdown>
                 <Menu.Item data-testid="new-project" onClick={props.onNew} disabled={!props.onNew}>Новый проект A3</Menu.Item>
                 <Menu.Item data-testid="new-sheet" onClick={props.onAddSheet} disabled={!props.onAddSheet}>Добавить лист A3</Menu.Item>
+                <Menu.Divider/>
+                {(['A4','A3','A2'] as const).map(paper=><Menu.Item
+                  key={paper} data-testid={'paper-format-'+paper}
+                  disabled={!props.onPaperChange||props.activePaper===paper}
+                  onClick={()=>props.onPaperChange?.(paper)}>
+                  Лист {paper} — альбомный{props.activePaper===paper?' (текущий)':''}
+                </Menu.Item>)}
+                <Menu.Divider/>
                 <Menu.Item onClick={props.onOpen} disabled={!props.onOpen}>Открыть…</Menu.Item>
                 <Menu.Item onClick={props.onSave} disabled={!props.canSave}>Сохранить</Menu.Item>
                 <Menu.Item data-testid="save-project-as" onClick={props.onSaveAs} disabled={!props.onSaveAs}>Сохранить как…</Menu.Item>

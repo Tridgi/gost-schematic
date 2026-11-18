@@ -59,11 +59,17 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
    * A pin outside the visible viewport is not an actionable CAD endpoint.
    */
   useEffect(()=>{
-    const identity=document.project.id+':'+sheetId;
+    const identity=document.project.id+':'+sheetId+':'+
+      document.project.sheets.find(s=>s.id===sheetId)?.frame.size_um.join('x');
     if(fittedRef.current===identity)return;
     const bounds=svgRef.current?.getBoundingClientRect();
     if(!bounds||bounds.width<100||bounds.height<100)return;
     const all:PointUm[]=[];
+    // R10: fit the authoritative physical sheet, not just its populated ink.
+    // A small populated circuit must not zoom so far that the A4/A3/A2 page
+    // and its print margins disappear beyond the viewport.
+    const frame=document.project.sheets.find(s=>s.id===sheetId)?.frame;
+    if(frame)all.push([0,0],[frame.size_um[0],frame.size_um[1]]);
     for(const symbol of scene.symbols){
       all.push(symbol.origin_um);
       for(const pin of symbol.pins)all.push(pinWorld(symbol,pin.physical_pin_number).at_um);
@@ -91,9 +97,9 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     const minX=Math.min(...all.map(p=>p[0])),maxX=Math.max(...all.map(p=>p[0]));
     const minY=Math.min(...all.map(p=>p[1])),maxY=Math.max(...all.map(p=>p[1]));
     // 32 CSS pixels minimum around all physical contacts, including the source b ink.
-    const scale=Math.max(.0002,Math.min(.02,
+    const scale=Math.min(.02,
       (bounds.width-64)/Math.max(1000,maxX-minX),
-      (bounds.height-64)/Math.max(1000,maxY-minY)));
+      (bounds.height-64)/Math.max(1000,maxY-minY));
     const fitted:Camera={
       s:scale,x:bounds.width/2-((minX+maxX)/2)*scale,
       y:bounds.height/2-((minY+maxY)/2)*scale

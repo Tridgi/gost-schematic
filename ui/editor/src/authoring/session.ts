@@ -311,6 +311,24 @@ export class AuthoringSession {
     });
     return added;
   }
+  /** Paper presets are exact integer micrometres; changing the sheet must
+   * never regenerate physical PinRefs, Nets, routes or source provenance.
+   */
+  setPaper(tx:Tx,paper:'A4'|'A3'|'A2'):void{
+    const sizes:{A4:PointUm;A3:PointUm;A2:PointUm}={
+      A4:[297000,210000],A3:[420000,297000],A2:[594000,420000]
+    };
+    if(!Object.hasOwn(sizes,paper))reject('UNKNOWN_PAPER');
+    this.edit(tx,draft=>{
+      const sheet=draft.project.sheets[indexOfSheet(draft)];
+      if(sheet.frame.paper===paper+' landscape'&&
+        sheet.frame.size_um[0]===sizes[paper][0]&&
+        sheet.frame.size_um[1]===sizes[paper][1])reject('NO_CHANGE');
+      sheet.frame={...sheet.frame,paper:paper+' landscape',
+        size_um:[...sizes[paper]] as PointUm};
+      return draft;
+    });
+  }
   selectSheet(tx:Tx,id:string):void{
     this.edit(tx,draft=>{
       if(!draft.project.sheets.some(s=>s.id===id))reject('UNKNOWN_SHEET');

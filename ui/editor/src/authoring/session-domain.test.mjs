@@ -258,3 +258,110 @@ test('R9: native serde_json key ordering preserves authored components, wire and
  extra.project.provenance.expected_counts.unexpected=0;
  assert.throws(()=>new AuthoringSession(extra),/SOURCE_COUNT_MISMATCH/);
 });
+
+
+test('R10: A4/A3/A2 physical paper is exact µm and undoable without editing signed Nets',()=>{
+ const s=newSession(),{r,c}=placePair(s);
+ s.connect(s.newTransaction('initial-net'),pin(r,'2'),pin(c,'1'));
+ const original=s.file;
+ const net=structuredClone(original.project.nets);
+ const wires=structuredClone(original.project.sheets[0].wires);
+ const oldRevision=s.revision;
+ s.setPaper(s.newTransaction('paper-a4'),'A4');
+ assert.deepEqual(s.file.project.sheets[0].frame,{size_um:[297000,210000],margin_um:10000,paper:'A4 landscape'});
+ assert.equal(s.revision,oldRevision+1);
+ s.setPaper(s.newTransaction('paper-a2'),'A2');
+ assert.deepEqual(s.file.project.sheets[0].frame.size_um,[594000,420000]);
+ assert.deepEqual(s.file.project.nets,net);
+ assert.deepEqual(s.file.project.sheets[0].wires,wires);
+ const last=s.file;
+ assert.throws(()=>s.setPaper(s.newTransaction('repeat'),'A2'),/NO_CHANGE/);
+ assert.throws(()=>s.setPaper(s.newTransaction('bad'),'A1'),/UNKNOWN_PAPER/);
+ assert.deepEqual(s.file,last);
+ assert.equal(s.undo(),true);
+ assert.equal(s.file.project.sheets[0].frame.paper,'A4 landscape');
+ assert.equal(s.undo(),true);
+ assert.deepEqual(s.file,original);
+ assert.equal(s.redo(),true);
+ assert.equal(s.redo(),true);
+ assert.deepEqual(s.file,last);
+ assert.deepEqual(s.file.project.nets,net);
+});
+
+
+test('R10: two physical wires reanchor on consented move, preserve distinct Nets and Undo/Redo/reopen',()=>{
+ const s=newSession(),{r,c}=placePair(s);
+ s.place(s.newTransaction('place-r2'),'symbol/resistor.fixed',[55000,150000]);
+ const r2=s.file.project.components.find(x=>x.refdes==='R2').id;
+ s.connect(s.newTransaction('net-right'),pin(r,'2'),pin(c,'1'));
+ s.connect(s.newTransaction('net-left'),pin(r2,'2'),pin(r,'1'));
+ const before=s.file;
+ assert.equal(before.project.nets.length,2);
+ assert.equal(before.project.sheets[0].wires.length,2);
+ assert.throws(()=>s.move(s.newTransaction('unapproved'),r,[110000,110000]),
+   error=>error.code==='REROUTE_REQUIRED');
+ assert.deepEqual(s.file,before);
+ const stale=s.newTransaction('stale-before-move');
+ s.move(s.newTransaction('consented'),r,[110000,110000],true);
+ const after=s.file;
+ assert.deepEqual(after.project.nets.map(({id,name,members})=>({id,name,members})),
+   before.project.nets.map(({id,name,members})=>({id,name,members})));
+ assert.ok(after.project.nets.every(n=>n.route_status==='partial'));
+ assert.deepEqual(after.project.components,before.project.components);
+ assert.equal(after.project.sheets[0].wires.length,2);
+ const originalAnchors=Object.fromEntries(before.project.sheets[0].wires.map(w=>
+   [w.id,[w.vertices[0].anchor,w.vertices.at(-1).anchor]]));
+ for(const w of after.project.sheets[0].wires){
+   assert.deepEqual([w.vertices[0].anchor,w.vertices.at(-1).anchor],originalAnchors[w.id]);
+   assert.equal(w.needs_routing_review,true);
+   for(const seg of w.segments){
+     const a=w.vertices.find(v=>v.id===seg.from_vertex_id).at_um;
+     const b=w.vertices.find(v=>v.id===seg.to_vertex_id).at_um;
+     assert.ok(a[0]===b[0]||a[1]===b[1]);
+   }
+   for(const endpoint of [w.vertices[0],w.vertices.at(-1)]){
+     if(endpoint.anchor.kind==='pin')
+       assert.deepEqual(endpoint.at_um,s.beginWire(endpoint.anchor).at_um);
+   }
+ }
+ assert.throws(()=>s.move(stale,r,[115000,115000],true),/STALE_REVISION/);
+ assert.equal(s.undo(),true);
+ assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);
+ assert.deepEqual(s.file,after);
+ const loaded=new AuthoringSession(after);
+ assert.deepEqual(loaded.file,after);
+ assert.deepEqual(loaded.file.project.nets,after.project.nets);
+});
+
+
+test('R10: connected 90-degree rotation reanchors each physical pin, fails closed before consent',()=>{
+ const s=newSession(),{r,c}=placePair(s);
+ s.place(s.newTransaction('r2'),'symbol/resistor.fixed',[55000,150000]);
+ const r2=s.file.project.components.find(x=>x.refdes==='R2').id;
+ s.connect(s.newTransaction('wire-one'),pin(r,'2'),pin(c,'1'));
+ s.connect(s.newTransaction('wire-two'),pin(r2,'2'),pin(r,'1'));
+ const baseline=s.file;
+ assert.throws(()=>s.rotate(s.newTransaction('deny-turn'),r),
+   e=>e.code==='REROUTE_REQUIRED');
+ assert.deepEqual(s.file,baseline);
+ s.rotate(s.newTransaction('permit-turn'),r,true);
+ const rotated=s.file;
+ const original=Object.fromEntries(baseline.project.sheets[0].wires.map(w=>
+   [w.id,[w.vertices[0].anchor,w.vertices.at(-1).anchor]]));
+ const moved=rotated.project.sheets[0].instances.find(i=>i.component_id===r);
+ assert.equal(moved.rotation_deg,90);
+ assert.equal(rotated.project.nets.length,2);
+ assert.ok(rotated.project.nets.every(n=>n.route_status==='partial'));
+ assert.deepEqual(rotated.project.nets.map(n=>n.members),baseline.project.nets.map(n=>n.members));
+ assert.equal(rotated.project.sheets[0].wires.length,2);
+ for(const w of rotated.project.sheets[0].wires){
+   assert.deepEqual([w.vertices[0].anchor,w.vertices.at(-1).anchor],original[w.id]);
+   assert.equal(w.needs_routing_review,true);
+   for(const end of [w.vertices[0],w.vertices.at(-1)])if(end.anchor.kind==='pin')
+     assert.deepEqual(end.at_um,s.beginWire(end.anchor).at_um);
+ }
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,baseline);
+ assert.equal(s.redo(),true);assert.deepEqual(s.file,rotated);
+ assert.deepEqual(new AuthoringSession(rotated).file,rotated);
+});
