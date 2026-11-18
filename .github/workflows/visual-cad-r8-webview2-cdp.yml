@@ -3,7 +3,12 @@ name: Visual CAD R8 experimental real WebView2 CDP close guard
 on:
   workflow_dispatch:
   push:
-    branches: [ui/visual-cad-mvp]
+    branches: [main]
+    paths:
+      - '.github/workflows/visual-cad-r8-webview2-cdp.yml'
+      - '.github/tools/native-webview2-cdp.mjs'
+      - '.github/tools/native-webview2-cdp.ps1'
+  pull_request:
     paths:
       - '.github/workflows/visual-cad-r8-webview2-cdp.yml'
       - '.github/tools/native-webview2-cdp.mjs'

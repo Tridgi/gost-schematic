@@ -2,12 +2,23 @@ name: Visual CAD R9 real native Windows project persistence
 on:
   workflow_dispatch:
   push:
-    branches: [ui/visual-cad-mvp]
+    branches: [main]
     paths:
       - '.github/workflows/visual-cad-r9-native-persist.yml'
       - '.github/tools/r9-native-*'
       # Every native-facing editor change must re-run the installed-app R9
       # scenario. Restricting this to session.ts hid Canvas / paper regressions.
+      - 'ui/editor/src/**'
+      - 'ui/editor/e2e/**'
+      - 'ui/editor/package.json'
+      - 'ui/editor/package-lock.json'
+      - 'ui/desktop/**'
+      - 'ui/integration/**'
+      - 'contracts/project-v2.schema.json'
+  pull_request:
+    paths:
+      - '.github/workflows/visual-cad-r9-native-persist.yml'
+      - '.github/tools/r9-native-*'
       - 'ui/editor/src/**'
       - 'ui/editor/e2e/**'
       - 'ui/editor/package.json'

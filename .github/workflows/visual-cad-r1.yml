@@ -1,10 +1,10 @@
 name: Visual CAD R1 source gate
 on:
   push:
-    branches: [ui/visual-cad-mvp]
+    branches: [main]
     paths: ['ui/editor/**', 'ui/integration/**', 'ui/experiments/r0/**', 'ui/contracts/**', 'ui/editor/src/model/**', 'ui/editor/src/wires/**', 'ui/editor/src/canvas/**', 'ui/fixtures/**', 'ui/qa/chat3-canvas/**', '.github/workflows/visual-cad-r1.yml']
   pull_request:
-    paths: ['ui/integration/**', 'ui/experiments/r0/**', 'ui/contracts/**', 'ui/editor/src/model/**', 'ui/editor/src/wires/**', 'ui/editor/src/canvas/**', 'ui/fixtures/**', 'ui/qa/chat3-canvas/**', '.github/workflows/visual-cad-r1.yml']
+    paths: ['ui/editor/**', 'ui/integration/**', 'ui/experiments/r0/**', 'ui/contracts/**', 'ui/editor/src/model/**', 'ui/editor/src/wires/**', 'ui/editor/src/canvas/**', 'ui/fixtures/**', 'ui/qa/chat3-canvas/**', '.github/workflows/visual-cad-r1.yml']
   workflow_dispatch:
 jobs:
   candidate-v2:
