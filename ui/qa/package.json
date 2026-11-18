@@ -1,0 +1,17 @@
+{
+  "name": "@gscad/chat1-ux-qa",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/manifest.test.mjs tests/source-b-interop.test.mjs tests/v2-snapshot-spec.test.mjs",
+    "test:source-b": "node --test tests/source-b-interop.test.mjs",
+    "check:e2e": "node --check visual-cad.ux.spec.mjs",
+    "test:e2e": "playwright test visual-cad.ux.spec.mjs --reporter=list",
+    "test:interop:strict": "node --test tests/source-b-native-gate.test.mjs",
+    "test:browser-r0": "python tests/r0-browser-focus.py",
+    "test:r2-entry:strict": "node --test tests/editor-r2-entry.test.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
