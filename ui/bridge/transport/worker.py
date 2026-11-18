@@ -390,7 +390,17 @@ def _native_export_preview(args: dict[str, Any]) -> dict[str, Any]:
                 document, args["sheet_id"], request,
                 expected_project_sha256=current_sha)
             payload, warnings, pixels = exported.png, exported.warnings, list(exported.pixels)
-    except (ExportError, ValueError, OSError) as exc:
+    except ExportError as exc:
+        # Safe, source-independent rejection code for a common user-correctable
+        # error. Do not expose arbitrary Python exception text or filesystem
+        # paths through the native IPC contract.
+        if str(exc).startswith("SCHEMATIC_PAGE_OVERFLOW:"):
+            raise ProtocolError(
+                "SCHEMATIC_PAGE_OVERFLOW",
+                "schematic ink extends outside the selected physical sheet"
+            ) from exc
+        raise ProtocolError("EXPORT_BLOCKED", "canonical Python preview export rejected") from exc
+    except (ValueError, OSError) as exc:
         raise ProtocolError("EXPORT_BLOCKED", "canonical Python preview export rejected") from exc
     # Keep vector/raster metadata tied to the exact same physical sheet.
     if pixels != expected_pixels:
