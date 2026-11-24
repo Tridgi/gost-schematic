@@ -439,3 +439,25 @@ test('repeated paste near sheet edge stays inside print margins with unique grid
  assert.deepEqual(s.file.project.nets,[]);
  assert.deepEqual(s.file.project.sheets[0].wires,[]);
 });
+
+test('R13 group move is one reversible CAS transaction and rejects attached Nets atomically',()=>{
+ const s=newSession(),{r,c}=placePair(s);
+ const before=s.file;
+ const ids=before.project.sheets[0].instances.map(i=>i.id);
+ const stale=s.newTransaction('stale');
+ s.moveGroup(s.newTransaction('group'),ids,[5000,10000]);
+ const after=s.file;
+ assert.deepEqual(after.project.sheets[0].instances.map(i=>i.origin_um),[[105000,110000],[160000,110000]]);
+ assert.deepEqual(after.project.components,before.project.components);
+ assert.deepEqual(after.project.nets,before.project.nets);
+ assert.throws(()=>s.moveGroup(stale,ids,[1000,1000]),/STALE_REVISION/);
+ assert.throws(()=>s.moveGroup(s.newTransaction('bad'),[ids[0],ids[0]],[1000,1000]),/INVALID_GROUP/);
+ assert.throws(()=>s.moveGroup(s.newTransaction('unknown'),[ids[0],'unknown'],[1000,1000]),/UNKNOWN_INSTANCE/);
+ assert.deepEqual(s.file,after);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);assert.deepEqual(s.file,after);
+ s.connect(s.newTransaction('connect'),pin(r,'2'),pin(c,'1'));
+ const connected=s.file,revision=s.revision;
+ assert.throws(()=>s.moveGroup(s.newTransaction('connected'),ids,[1000,1000]),/GROUP_REROUTE_REQUIRED/);
+ assert.equal(s.revision,revision);assert.deepEqual(s.file,connected);
+});
