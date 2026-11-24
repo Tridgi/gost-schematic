@@ -243,3 +243,40 @@ test('Escape, tool change and stale CAS cancel ghost without moving component',(
  assert.equal(c.symbolDragPreview(),null);c.up(loc([15000,13000]));
  assert.ok(events.every(e=>e.kind==='select'));
 });
+
+test('R13 marquee contains entire symbol geometry and moves only selected group by a single intent',()=>{
+ const shape=(id,x)=>({instance_id:'S-'+id,component_id:id,origin_um:[x,10000],
+  rotation_deg:0,mirror_x:false,pins:[],strokes:[{from_um:[-2000,0],to_um:[2000,0]}]});
+ const scene={symbols:[shape('R1',10000),shape('R2',20000),shape('R3',30000)],wires:[],junctions:[]};
+ const events=[];
+ const c=make('select',i=>{events.push(i);return true;},scene);
+ c.down(loc([5000,5000]));c.move(loc([31000,15000]));
+ assert.ok(c.marqueePreview());
+ c.up(loc([31000,15000]));
+ assert.deepEqual(c.getState().selectedGroup,['S-R1','S-R2']);
+ assert.deepEqual(events.at(-1),{kind:'selectGroup',instance_ids:['S-R1','S-R2'],base_revision:2});
+ assert.equal(c.key('Delete'),false);assert.equal(c.key('r'),false);
+ c.down(loc([10000,10000]));c.move(loc([14300,13200]));
+ assert.deepEqual(c.groupDragPreview(),{instance_ids:['S-R1','S-R2'],delta_um:[4000,3000]});
+ assert.equal(events.filter(e=>e.kind==='moveGroup').length,0);
+ c.up(loc([14300,13200]));
+ assert.deepEqual(events.at(-1),{kind:'moveGroup',instance_ids:['S-R1','S-R2'],delta_um:[4000,3000],base_revision:2});
+ assert.deepEqual(scene.symbols[0].origin_um,[10000,10000]);
+ c.key('Escape');assert.deepEqual(c.getState().selectedGroup,[]);
+});
+test('R13 rectangle cancels on Escape/stale revision and supports one-symbol selection',()=>{
+ const shape={instance_id:'S-R1',component_id:'R1',origin_um:[10000,10000],
+  rotation_deg:90,mirror_x:true,pins:[{physical_pin_number:'1',at_um:[-2000,0],side:'left'}],
+  strokes:[{from_um:[-1000,0],to_um:[1000,0]}]};
+ const scene={symbols:[shape],wires:[],junctions:[]};
+ const snap={project_id:'toy',source_topology_hash:'locked',revision:2,wires:[]};
+ const events=[];
+ const c=make('select',i=>{events.push(i);return true;},scene,snap);
+ c.down(loc([5000,5000]));c.move(loc([15000,15000]));c.key('Escape');
+ c.up(loc([15000,15000]));assert.equal(c.marqueePreview(),null);
+ c.down(loc([5000,5000]));c.setContext({wireSnapshot:{...snap,revision:3}});
+ c.up(loc([15000,15000]));assert.ok(events.every(e=>e.kind==='select'));
+ c.down(loc([15000,15000]));c.up(loc([5000,5000]));
+ assert.deepEqual(events.at(-1),{kind:'selectGroup',instance_ids:['S-R1'],base_revision:3});
+ assert.equal(c.getState().selected.instance_id,'S-R1');
+});
