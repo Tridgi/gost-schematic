@@ -1042,3 +1042,40 @@ test('R15: group Ctrl+C/V preserves only internal electrical identities and is u
  await page.getByRole('button',{name:'Повторить'}).click();
  expect((await saved()).project).toEqual(after.project);
 });
+
+test('R16 right-click selects UGO, context commands operate on it, Escape closes menu',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ for(const x of [.3,.65]){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*.4);
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const before=await saved(),id=before.project.components[0].id;
+ const pin=page.getByTestId('signed-pin-'+id+'-1');
+ await pin.click({button:'right'});
+ const menu=page.getByTestId('canvas-context-menu');
+ await expect(menu).toBeVisible();
+ await expect(page.getByTestId('symbol-R1')).toHaveAttribute('data-selected','true');
+ await expect(page.getByTestId('symbol-R2')).toHaveAttribute('data-selected','false');
+ await page.keyboard.press('Escape');await expect(menu).toHaveCount(0);
+ expect((await saved()).project).toEqual(before.project);
+ await pin.click({button:'right'});await page.getByTestId('context-rotate').click();
+ await expect(menu).toHaveCount(0);
+ const rotated=await saved();
+ expect(rotated.project.sheets[0].instances[0].rotation_deg).toBe(90);
+ expect(rotated.project.sheets[0].instances[1]).toEqual(before.project.sheets[0].instances[1]);
+ await pin.click({button:'right'});await page.getByTestId('context-copy').click();
+ await page.mouse.click(paper.x+paper.width*.5,paper.y+paper.height*.7,{button:'right'});
+ await expect(page.getByTestId('context-delete')).toBeDisabled();
+ await page.getByTestId('context-paste').click();
+ const pasted=await saved();
+ expect(pasted.project.components).toHaveLength(3);
+ expect(pasted.project.nets).toEqual([]);
+ expect(pasted.project.sheets[0].instances[2].rotation_deg).toBe(90);
+});

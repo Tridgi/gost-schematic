@@ -726,7 +726,11 @@ export default function App() {
         selectedInstanceId={selected?.id??null} selectedGroupIds={groupIds} selectionReset={selectionReset}
         tool={tool} gridVisible={grid} snapEnabled={snap}
         zoomRequest={zoomRequest??undefined} fitRequest={fitRequest}
-        onIntent={onCanvasIntent} onZoomPercent={percent=>setZoom(percent/100)}/>
+        onIntent={onCanvasIntent} onZoomPercent={percent=>setZoom(percent/100)}
+        canEdit={!!authoringRef.current}
+        onCopy={authoringRef.current&&(selectedInst||groupIds.length>1)&&tool==='select'?handleCopy:undefined}
+        onPaste={authoringRef.current&&clipboard&&tool==='select'?handlePaste:undefined}
+        onFitPage={()=>setFitRequest(n=>n+1)}/>
       {overflow.total>0&&<div data-testid="gscad-paper-warning"
         className="gscad-paper-warning" role="status">
         За пределами листа: {overflow.symbols.length} УГО, {overflow.wires.length} проводников,

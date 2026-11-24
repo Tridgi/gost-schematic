@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent, type MouseEvent as ReactMouseEvent } from 'react';
+import { createPortal } from 'react-dom';
 import type { ProjectFileV2 } from '../model/contract';
 import type { WiringSnapshot } from '../wires/manual-wire';
 import { projectToCanvasScene, type CanvasScene, type CanvasSymbol } from './scene-projection.mjs';
@@ -20,6 +21,10 @@ export type CanvasViewportProps = {
   selectedInstanceId:string|null;
   selectedGroupIds:readonly string[];
   selectionReset:number;
+  canEdit?:boolean;
+  onCopy?:()=>void;
+  onPaste?:()=>void;
+  onFitPage?:()=>void;
 };
 
 const DEFAULT_CAMERA:Camera={s:.004,x:24,y:24};
@@ -32,10 +37,12 @@ function localStroke(symbol:CanvasSymbol,p:PointUm,camera:Camera):ScreenPoint {
   return screen([symbol.origin_um[0]+xy[0],symbol.origin_um[1]+xy[1]],camera);
 }
 /** Read-only SVG viewport. The canonical physical print/export belongs to #124. */
-export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapEnabled,onIntent,onZoomPercent,zoomRequest,fitRequest,selectedInstanceId:hostSelectedId,selectedGroupIds,selectionReset}:CanvasViewportProps){
+export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapEnabled,onIntent,onZoomPercent,zoomRequest,fitRequest,selectedInstanceId:hostSelectedId,selectedGroupIds,selectionReset,canEdit,onCopy,onPaste,onFitPage}:CanvasViewportProps){
   const svgRef=useRef<SVGSVGElement|null>(null);
   const [size,setSize]=useState({width:960,height:640});
   const [revision,setRevision]=useState(0);
+  const [contextMenu,setContextMenu]=useState<{x:number;y:number;kind:'symbol'|'group'|'blank';revision:number}|null>(null);
+  const menuRef=useRef<HTMLDivElement|null>(null);
   const cameraRef=useRef<Camera>({...DEFAULT_CAMERA});
   const scene=useMemo(()=>projectToCanvasScene(document,sheetId),[document,sheetId]);
   // Snapshot carries the real #123 wire edits; original serialized routes are only the initial view.
@@ -149,6 +156,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
   },[]);
   const eventPoint=(e:ReactPointerEvent<SVGSVGElement>)=>({...local(e),pointerId:e.pointerId,button:e.button});
   const down=(e:ReactPointerEvent<SVGSVGElement>)=>{
+    setContextMenu(null);
     if(controller.down(eventPoint(e))){
       e.preventDefault();e.currentTarget.focus();
       if(!e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.setPointerCapture(e.pointerId);
@@ -162,6 +170,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     invalidate();
   };
   const wheel=(e:ReactWheelEvent<SVGSVGElement>)=>{
+    setContextMenu(null);
     e.preventDefault();
     if(controller.getState().drag)return;
     controller.setContext({camera:zoom(controller.getState().camera,local(e),e.deltaY<0?1.15:.85)});
@@ -169,6 +178,53 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     appliedZoomRef.current=p;onZoomPercent?.(p);
     invalidate();
   };
+  const openContextMenu=(e:ReactMouseEvent<SVGSVGElement>)=>{
+    e.preventDefault();setContextMenu(null);
+    const kind=controller.contextSelect(local(e));
+    if(!kind)return;
+    setContextMenu({x:Math.max(6,Math.min(e.clientX,window.innerWidth-246)),
+      y:Math.max(6,Math.min(e.clientY,window.innerHeight-255)),kind,revision:snapshot.revision});
+    invalidate();
+  };
+  const dismissMenu=(restoreFocus=false)=>{
+    setContextMenu(null);
+    if(restoreFocus)svgRef.current?.focus();
+  };
+  useEffect(()=>{
+    if(!contextMenu)return;
+    menuRef.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
+    const outside=(event:PointerEvent)=>{
+      if(event.target instanceof Node&&!menuRef.current?.contains(event.target))setContextMenu(null);
+    };
+    const escape=(event:KeyboardEvent)=>{
+      if(event.key==='Escape'){
+        event.preventDefault();event.stopPropagation();setContextMenu(null);svgRef.current?.focus();
+      }
+    };
+    window.addEventListener('pointerdown',outside,true);
+    window.addEventListener('keydown',escape,true);
+    const blur=()=>setContextMenu(null);
+    window.addEventListener('blur',blur);
+    return ()=>{
+      window.removeEventListener('pointerdown',outside,true);
+      window.removeEventListener('keydown',escape,true);
+      window.removeEventListener('blur',blur);
+    };
+  },[contextMenu]);
+  useEffect(()=>{setContextMenu(null)},[snapshot.revision,tool,selectionReset]);
+  const runMenu=(action:()=>void)=>{
+    if(!contextMenu||contextMenu.revision!==snapshot.revision||tool!=='select'||controller.getState().drag||controller.getState().draft){
+      dismissMenu(true);return;
+    }
+    dismissMenu(true);action();invalidate();
+  };
+  const menuCommands=contextMenu?[
+    {label:'Копировать',key:'copy',enabled:contextMenu.kind!=='blank'&&!!onCopy,run:()=>onCopy?.()},
+    {label:'Вставить',key:'paste',enabled:!!onPaste,run:()=>onPaste?.()},
+    {label:'Повернуть на 90°',key:'rotate',enabled:contextMenu.kind==='symbol'&&!!canEdit,run:()=>controller.key('r')},
+    {label:'Удалить УГО',key:'delete',enabled:contextMenu.kind==='symbol'&&!!canEdit,run:()=>controller.key('Delete')},
+    {label:'Вписать лист',key:'fit',enabled:!!onFitPage,run:()=>onFitPage?.()}
+  ]:[];
   const dragPreview=controller.symbolDragPreview();
   const dragSource=dragPreview&&visibleScene.symbols.find(s=>s.instance_id===dragPreview.instance_id&&s.component_id===dragPreview.component_id);
   const ghost:CanvasSymbol|null=dragSource&&dragPreview?{...dragSource,origin_um:[
@@ -198,12 +254,12 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     marginEnd.x>marginStart.x&&marginEnd.y>marginStart.y;
   // Revision forces deliberate repaint of hover / drag preview without storing any Net state.
   void revision;
-  return <svg ref={svgRef} className="gscad-drawing" role="img" tabIndex={0}
+  return <><svg ref={svgRef} className="gscad-drawing" role="img" tabIndex={0}
     data-testid="gscad-signed-svg-canvas" aria-label="Редактор электрической схемы, координаты в микрометрах"
     viewBox={`0 0 ${g2(size.width)} ${g2(size.height)}`}
     onPointerDown={down} onPointerMove={move} onPointerUp={up}
     onPointerCancel={e=>{controller.key('Escape');if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);invalidate()}}
-    onWheel={wheel}
+    onWheel={wheel} onContextMenu={openContextMenu}
     onKeyDown={e=>{
       // Never turn OS/browser shortcuts, held keys or IME composition into CAD edits.
       if(e.defaultPrevented||e.ctrlKey||e.metaKey||e.altKey||e.repeat||e.nativeEvent.isComposing)return;
@@ -310,6 +366,21 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
         return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y}/>;
       })}
     </g>
-  </svg>;
+  </svg>
+  {contextMenu&&createPortal(<div ref={menuRef} role="menu" aria-label="Контекстное меню схемы" data-testid="canvas-context-menu"
+    style={{position:'fixed',left:contextMenu.x,top:contextMenu.y,zIndex:1000,width:230,maxHeight:'calc(100vh - 12px)',overflowY:'auto',padding:5,
+      border:'1px solid var(--mantine-color-default-border)',borderRadius:6,background:'var(--mantine-color-body)',boxShadow:'0 4px 18px #0003'}}
+    onKeyDown={e=>{
+      if(!['ArrowDown','ArrowUp','Home','End'].includes(e.key))return;
+      e.preventDefault();const buttons=Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'));
+      if(!buttons.length)return;
+      const i=buttons.indexOf(globalThis.document.activeElement as HTMLButtonElement);
+      const next=e.key==='Home'?0:e.key==='End'?buttons.length-1:e.key==='ArrowDown'?(i+1)%buttons.length:(i-1+buttons.length)%buttons.length;
+      buttons[next].focus();
+    }}>
+    {menuCommands.map(cmd=><button type="button" role="menuitem" key={cmd.key} data-testid={'context-'+cmd.key} disabled={!cmd.enabled}
+      onClick={()=>runMenu(cmd.run)} style={{display:'block',width:'100%',textAlign:'left',padding:'7px 10px',border:0,borderRadius:3,background:'transparent',color:'var(--mantine-color-text)',opacity:cmd.enabled?1:.4,cursor:cmd.enabled?'pointer':'default'}}>{cmd.label}</button>)}
+  </div>,globalThis.document.body)}
+  </>;
 }
 export default CanvasViewport;

@@ -280,3 +280,29 @@ test('R13 rectangle cancels on Escape/stale revision and supports one-symbol sel
  assert.deepEqual(events.at(-1),{kind:'selectGroup',instance_ids:['S-R1'],base_revision:3});
  assert.equal(c.getState().selected.instance_id,'S-R1');
 });
+
+test('R16 right-click resolves one symbol or existing group without starting a drag',()=>{
+ const shape=(id,x)=>({instance_id:'S-'+id,component_id:id,origin_um:[x,10000],
+  rotation_deg:0,mirror_x:false,pins:[],strokes:[{from_um:[-2000,0],to_um:[2000,0]}]});
+ const scene={symbols:[shape('R1',10000),shape('R2',20000)],wires:[],junctions:[]};
+ const events=[],c=make('select',i=>{events.push(i);return true;},scene);
+ c.syncSymbolSelection(null,false,['S-R1','S-R2']);
+ assert.equal(c.contextSelect(loc([10000,10000])),'group');
+ assert.equal(events.length,0);assert.equal(c.getState().drag,null);
+ assert.equal(c.contextSelect(loc([40000,40000])),'blank');
+ assert.deepEqual(c.getState().selectedGroup,[]);
+ assert.equal(c.contextSelect(loc([20000,10000])),'symbol');
+ assert.equal(c.getState().selected.instance_id,'S-R2');
+ assert.ok(events.every(e=>e.kind==='select'));
+ c.down(loc([20000,10000]));
+ assert.equal(c.contextSelect(loc([10000,10000])),null);
+ c.key('Escape');c.setContext({tool:'wire'});
+ assert.equal(c.contextSelect(loc([10000,10000])),null);
+});
+test('R16 context target rejects ambiguous overlap instead of picking an arbitrary symbol',()=>{
+ const a={instance_id:'A',component_id:'R1',origin_um:[10000,10000],rotation_deg:0,mirror_x:false,pins:[],strokes:[{from_um:[-2000,0],to_um:[2000,0]}]};
+ const scene={symbols:[a,{...a,instance_id:'B',component_id:'R2'}],wires:[],junctions:[]};
+ const events=[],c=make('select',i=>{events.push(i);return true;},scene);
+ assert.equal(c.contextSelect(loc([10000,10000])),null);
+ assert.equal(c.getState().selected,null);assert.deepEqual(events,[]);
+});
