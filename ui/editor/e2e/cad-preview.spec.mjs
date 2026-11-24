@@ -1000,3 +1000,45 @@ test('R14: connected group move requires consent and preserves electrical identi
  await page.getByRole('button',{name:'Отменить'}).click();
  expect((await saved()).project).toEqual(before.project);
 });
+
+test('R15: group Ctrl+C/V preserves only internal electrical identities and is undoable',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ for(const x of [.25,.5,.75]){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*.35);
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const placed=await saved(),[a,b,c]=placed.project.components;
+ const pin=(comp,n)=>page.getByTestId('signed-pin-'+comp.id+'-'+n);
+ await page.getByRole('button',{name:'Провод W'}).click();
+ await pin(a,2).click();await pin(b,1).click();
+ await pin(b,2).click();await pin(c,1).click();
+ await expect(page.locator('[data-net-id]')).toHaveCount(2);
+ await page.getByRole('button',{name:'Выбор V'}).click();
+ const before=await saved();
+ await page.mouse.move(paper.x+paper.width*.15,paper.y+paper.height*.22);
+ await page.mouse.down();await page.mouse.move(paper.x+paper.width*.62,paper.y+paper.height*.48,{steps:6});await page.mouse.up();
+ await expect(page.getByTestId('group-selection-summary')).toContainText('2');
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');
+ await canvas.focus();await canvas.press('Control+c');await canvas.press('Control+v');
+ await expect(page.getByTestId('symbol-R4')).toHaveAttribute('data-selected','true');
+ await expect(page.getByTestId('symbol-R5')).toHaveAttribute('data-selected','true');
+ const after=await saved();
+ expect(after.project.components).toHaveLength(5);
+ expect(after.project.nets).toHaveLength(3);
+ expect(after.project.nets.slice(0,2)).toEqual(before.project.nets);
+ const copied=after.project.nets[2],newIds=after.project.components.slice(3).map(c=>c.id);
+ expect(copied.members.map(m=>m.component_id)).toEqual(newIds);
+ expect(after.project.sheets[0].wires).toHaveLength(3);
+ expect(after.project.sheets[0].wires.slice(0,2)).toEqual(before.project.sheets[0].wires);
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ expect((await saved()).project).toEqual(after.project);
+});
