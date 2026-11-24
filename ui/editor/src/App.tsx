@@ -455,8 +455,14 @@ export default function App() {
         if(!authored)throw Error('SOURCE_LOCKED: групповое перемещение исходной схемы недоступно');
         if(intent.base_revision!==authored.revision)throw Error('STALE_REVISION');
         if(intent.instance_ids.length!==groupIds.length||intent.instance_ids.some(id=>!groupIds.includes(id)))throw Error('INVALID_GROUP');
-        authored.moveGroup(authored.newTransaction('move-group'),intent.instance_ids,intent.delta_um);
-        adoptAuthored();setIssue('Группа перемещена одной транзакцией.');return true;
+        const ids=new Set(instances.filter(i=>intent.instance_ids.includes(i.id)).map(i=>i.component_id));
+        const attached=authored.snapshot.wires.some(w=>[w.vertices[0],w.vertices[w.vertices.length-1]].some(
+          v=>v.anchor.kind==='pin'&&ids.has(v.anchor.component_id)));
+        if(attached&&!window.confirm('Переместить группу с подключёнными проводниками? Внутренние маршруты будут сдвинуты, внешние перестроены. Требуется проверка трассировки.')){
+          setIssue('REROUTE_CANCELLED: перемещение группы отменено.');return false;
+        }
+        authored.moveGroup(authored.newTransaction('move-group'),intent.instance_ids,intent.delta_um,attached);
+        adoptAuthored();setIssue(attached?'REROUTE_REVIEW_REQUIRED: группа перемещена, PinRef и Nets сохранены. Проверьте маршруты.':'Группа перемещена одной транзакцией.');return true;
       }catch(e){setIssue(e instanceof WireError?e.code+': '+e.message:String(e));return false;}
     }
     if(intent.kind==='select')setGroupIds([]);
