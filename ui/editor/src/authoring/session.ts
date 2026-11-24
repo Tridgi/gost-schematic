@@ -452,9 +452,9 @@ export class AuthoringSession {
       return draft;
     });
   }
-  /** Atomic group translation. Connected members deliberately fail closed until
-   * multi-component wire rerouting is implemented as a single transaction. */
-  moveGroup(tx:Tx,instanceIds:readonly string[],delta:readonly number[]):void{
+  /** Atomic group translation through the real wire engine, with explicit consent
+   * for all electrical route changes and exact rollback on any invalid anchor. */
+  moveGroup(tx:Tx,instanceIds:readonly string[],delta:readonly number[],permitRebuild=false):void{
     const d=xy(delta);
     if(!d.some(Boolean))reject('NO_CHANGE');
     const ids=new Set(instanceIds);
@@ -464,13 +464,18 @@ export class AuthoringSession {
       const group=sheet.instances.filter(i=>ids.has(i.id));
       if(group.length!==ids.size)reject('UNKNOWN_INSTANCE');
       const componentIds=new Set(group.map(i=>i.component_id));
-      if(draft.project.nets.some(n=>n.members.some(p=>componentIds.has(p.component_id))))
-        reject('GROUP_REROUTE_REQUIRED');
+      if(componentIds.size!==ids.size)reject('INVALID_GROUP');
       for(const inst of group){
         if(sheet.layers.find(l=>l.id===inst.layer_id)?.locked)reject('LAYER_LOCKED');
-        inst.origin_um=xy([inst.origin_um[0]+d[0],inst.origin_um[1]+d[1]]);
       }
-      return draft;
+      const {subset,session}=localSession(draft,this.clock);
+      const eng=session.engine;
+      const attached=eng.snapshot.wires.filter(w=>[w.vertices[0],w.vertices.at(-1)!].some(
+        v=>v.anchor.kind==='pin'&&componentIds.has(v.anchor.component_id)));
+      if(attached.length&&!permitRebuild)reject('GROUP_REROUTE_REQUIRED');
+      if(attached.some(w=>sheet.layers.find(l=>l.id===w.layer_id)?.locked))reject('LAYER_LOCKED');
+      eng.moveComponentsAndReanchor(eng.newTransaction('move-group'),[...componentIds],d,permitRebuild);
+      return materialize(draft,subset,session);
     });
   }
   move(tx:Tx,componentId:string,position:readonly number[],permitRebuild=false):void{

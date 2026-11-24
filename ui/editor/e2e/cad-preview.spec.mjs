@@ -952,3 +952,51 @@ test('R13: rectangle selection and group move are one reversible edit',async({pa
  await page.getByRole('button',{name:'Повторить'}).click();
  expect((await saved()).project).toEqual(after.project);
 });
+
+test('R14: connected group move requires consent and preserves electrical identity',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ for(const x of [.25,.5,.75]){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*.45);
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const placed=await saved(),[a,b,c]=placed.project.components;
+ const pin=(comp,n)=>page.getByTestId('signed-pin-'+comp.id+'-'+n);
+ await page.getByRole('button',{name:'Провод W'}).click();
+ await pin(a,2).click();await pin(b,1).click();
+ await pin(b,2).click();await pin(c,1).click();
+ await expect(page.locator('[data-net-id]')).toHaveCount(2);
+ await page.getByRole('button',{name:'Выбор V'}).click();
+ const before=await saved();
+ await page.mouse.move(paper.x+paper.width*.15,paper.y+paper.height*.32);
+ await page.mouse.down();
+ await page.mouse.move(paper.x+paper.width*.62,paper.y+paper.height*.58,{steps:6});
+ await page.mouse.up();
+ await expect(page.getByTestId('group-selection-summary')).toContainText('2');
+ const p=await pin(a,1).boundingBox();
+ const drag=async(accept)=>{
+  const onDialog=dialog=>accept?dialog.accept():dialog.dismiss();
+  page.once('dialog',onDialog);
+  await page.mouse.move(p.x+p.width/2,p.y+p.height/2);
+  await page.mouse.down();await page.mouse.move(p.x+p.width/2+15,p.y+p.height/2+22,{steps:6});
+  await page.mouse.up();
+ };
+ await drag(false);
+ await expect(page.getByRole('alert').filter({hasText:'REROUTE_CANCELLED'})).toBeVisible();
+ expect((await saved()).project).toEqual(before.project);
+ await drag(true);
+ await expect(page.getByRole('alert').filter({hasText:'REROUTE_REVIEW_REQUIRED'})).toBeVisible();
+ const after=await saved();
+ expect(after.project.nets.map(n=>[n.id,n.name,n.members])).toEqual(before.project.nets.map(n=>[n.id,n.name,n.members]));
+ expect(after.project.sheets[0].wires.map(w=>w.id)).toEqual(before.project.sheets[0].wires.map(w=>w.id));
+ expect(after.project.sheets[0].wires.every(w=>w.needs_routing_review)).toBe(true);
+ expect(after.project.sheets[0].instances[2]).toEqual(before.project.sheets[0].instances[2]);
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(before.project);
+});
