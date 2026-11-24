@@ -417,3 +417,25 @@ test('detached clipboard retains value/rotation after source changes; fresh refd
  assert.equal(file.project.components[1].value,'47к');
  assert.equal(file.project.nets.length,0);
 });
+
+test('repeated paste near sheet edge stays inside print margins with unique grid-aligned origins',()=>{
+ const s=newSession();
+ const id=s.place(s.newTransaction('edge'),'symbol/resistor.fixed',[395000,275000]);
+ const template=s.copyComponent(id);
+ let anchor=template.origin_um;
+ const seen=new Set([anchor.join(',')]);
+ for(let i=0;i<12;i++){
+  const before=s.file,rev=s.revision;
+  const p=s.suggestPasteOrigin(template,anchor,true);
+  assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
+  assert.equal(p[0]%1000,0);assert.equal(p[1]%1000,0);
+  assert.ok(p[0]>=18000&&p[0]<=402000);
+  assert.ok(p[1]>=12000&&p[1]<=285000);
+  assert.ok(!seen.has(p.join(',')));seen.add(p.join(','));
+  s.pasteComponent(s.newTransaction('paste-edge'),template,p);
+  anchor=p;
+ }
+ assert.equal(s.file.project.components.length,13);
+ assert.deepEqual(s.file.project.nets,[]);
+ assert.deepEqual(s.file.project.sheets[0].wires,[]);
+});
