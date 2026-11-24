@@ -38,7 +38,8 @@ test('empty project A3 uses DRAFT Python-source R/C library, no fabricated TL494
  assert.deepEqual(doc.project.sheets[0].frame.size_um,[420000,297000]);
  assert.equal(doc.project.provenance.status,'synthetic');
  assert.equal(doc.project.provenance.source_sha,'0'.repeat(40));
- assert.deepEqual(doc.project.symbol_definitions.map(x=>x.status),['draft','draft']);
+ assert.equal(doc.project.symbol_definitions.length,21);
+ assert.ok(doc.project.symbol_definitions.every(x=>x.status==='draft'));
  const resistor=doc.project.symbol_definitions.find(x=>x.id==='symbol/resistor.fixed');
  const capacitor=doc.project.symbol_definitions.find(x=>x.id==='symbol/capacitor.fixed');
  assert.deepEqual(resistor.pins.map(x=>x.at_um),[[-8000,0],[8000,0]]);
@@ -599,4 +600,44 @@ test('R15 copy remaps explicit junction, splice and dangling endpoint identities
  assert.equal(a.engine.validateNet(copiedNet).pin_groups.length,1);
  assert.equal(a.engine.validateNet(copiedNet).status,'partial');
  assert.deepEqual(new AuthoringSession(after).file,after);
+});
+
+test('R17 every source JSON symbol can be placed with exact physical pin mapping and roundtrip',()=>{
+ const s=newSession(),before=s.file;
+ assert.equal(before.project.symbol_definitions.length,21);
+ assert.equal(before.project.part_definitions.length,21);
+ for(const [i,symbol] of before.project.symbol_definitions.entries()){
+  const id=s.place(s.newTransaction('catalog-'+i),symbol.id,[35000+i%5*75000,35000+Math.floor(i/5)*50000]);
+  const file=s.file,inst=file.project.sheets[0].instances.find(v=>v.id===id);
+  const component=file.project.components.find(c=>c.id===inst.component_id);
+  const part=file.project.part_definitions.find(p=>p.id===component.part_id);
+  assert.equal(component.part_id,symbol.part_id);
+  assert.ok(component.refdes.startsWith(part.reference_prefix));
+  assert.equal(symbol.pins.length,part.physical_pins.length);
+  for(const p of symbol.pins){
+   const resolved=s.beginWire(pin(component.id,p.physical_pin_number));
+   assert.deepEqual(resolved.at_um,[inst.origin_um[0]+p.at_um[0],inst.origin_um[1]+p.at_um[1]]);
+   assert.equal(resolved.net_id,null);
+  }
+  if(part.reference_prefix==='VD'||part.reference_prefix==='VT'||part.reference_prefix==='FU')assert.equal(component.value,'');
+ }
+ const after=s.file;
+ assert.equal(after.project.components.length,21);assert.equal(after.project.nets.length,0);
+ assert.deepEqual(new AuthoringSession(after).file,after);
+});
+test('R17 semiconductor terminal names and polarity are retained without inferred electrical edges',()=>{
+ const s=newSession();
+ const diode=s.place(s.newTransaction('diode'),'symbol/diode.general',[100000,100000]);
+ const transistor=s.place(s.newTransaction('transistor'),'symbol/transistor.bjt_npn',[155000,100000]);
+ const file=s.file;
+ const d=file.project.sheets[0].instances.find(i=>i.id===diode).component_id;
+ const t=file.project.sheets[0].instances.find(i=>i.id===transistor).component_id;
+ const pd=file.project.part_definitions.find(p=>p.id==='diode.general');
+ const pt=file.project.part_definitions.find(p=>p.id==='transistor.bjt_npn');
+ assert.deepEqual(pd.physical_pins.map(p=>[p.number,p.name]),[['1','A'],['2','K']]);
+ assert.deepEqual(pt.physical_pins.map(p=>[p.number,p.name]),[['1','B'],['2','C'],['3','E']]);
+ s.connect(s.newTransaction('connect'),pin(d,'2'),pin(t,'1'));
+ assert.deepEqual(s.file.project.nets[0].members,[pin(d,'2'),pin(t,'1')]);
+ assert.equal(s.beginWire(pin(t,'2')).net_id,null);
+ assert.equal(s.beginWire(pin(t,'3')).net_id,null);
 });
