@@ -562,3 +562,41 @@ test('R15 shared Net is excluded as a whole, detached copy can paste repeatedly 
  assert.deepEqual(after.project.sheets[1].wires,[]);
  assert.ok(after.project.sheets[1].instances.every(i=>i.layer_id===after.project.sheets[1].layers[0].id));
 });
+
+test('R15 copy remaps explicit junction, splice and dangling endpoint identities',()=>{
+ const s=newSession(),{r,c}=placePair(s);
+ s.connect(s.newTransaction('connect'),pin(r,'2'),pin(c,'1'));
+ const file=s.file,sheet=file.project.sheets[0],old=sheet.wires[0],net=file.project.nets[0];
+ const start=old.vertices[0].at_um,end=old.vertices.at(-1).at_um;
+ const mid=[Math.round((start[0]+end[0])/2),start[1]],mid2=[mid[0]+3000,mid[1]];
+ const j={id:'source-j',net_id:net.id,layer_id:old.layer_id,at_um:mid};
+ const sp={id:'source-sp',net_id:net.id,layer_id:old.layer_id,at_um:mid2};
+ const wire=(id,a,b,startAnchor,endAnchor)=>{
+  const vertices=[{id:id+'-a',at_um:a,anchor:startAnchor},{id:id+'-b',at_um:b,anchor:endAnchor}];
+  return {id,net_id:net.id,layer_id:old.layer_id,mode:'orthogonal',vertices,segments:[{id:id+'-s',from_vertex_id:vertices[0].id,to_vertex_id:vertices[1].id}]};
+ };
+ sheet.junctions=[j];sheet.splices=[sp];
+ const ja={kind:'junction',junction_id:j.id},sa={kind:'splice',splice_id:sp.id};
+ sheet.wires=[
+  wire('source-a',start,mid,old.vertices[0].anchor,ja),
+  wire('source-b',mid,mid2,ja,sa),
+  wire('source-c',mid2,end,sa,old.vertices.at(-1).anchor),
+  wire('source-d',mid,[mid[0],mid[1]+10000],ja,{kind:'free',free_id:'source-free'})
+ ];
+ net.route_status='partial';
+ const a=new AuthoringSession(file),clip=a.copyGroup(sheet.instances.map(i=>i.id));
+ const origin=a.suggestGroupPasteOrigin(clip,clip.anchor,true);
+ a.pasteGroup(a.newTransaction('paste-nodes'),clip,origin);
+ const after=a.file,sh=after.project.sheets[0];
+ assert.equal(sh.wires.length,8);assert.equal(sh.junctions.length,2);assert.equal(sh.splices.length,2);
+ const copiedNet=after.project.nets[1].id,j2=sh.junctions[1],s2=sh.splices[1];
+ assert.notEqual(j2.id,j.id);assert.notEqual(s2.id,sp.id);
+ assert.equal(j2.net_id,copiedNet);assert.equal(s2.net_id,copiedNet);
+ const anchors=sh.wires.slice(4).flatMap(w=>w.vertices.map(v=>v.anchor));
+ assert.equal(anchors.filter(v=>v.kind==='junction'&&v.junction_id===j2.id).length,3);
+ assert.equal(anchors.filter(v=>v.kind==='splice'&&v.splice_id===s2.id).length,2);
+ assert.ok(anchors.some(v=>v.kind==='free'&&v.free_id!=='source-free'));
+ assert.equal(a.engine.validateNet(copiedNet).pin_groups.length,1);
+ assert.equal(a.engine.validateNet(copiedNet).status,'partial');
+ assert.deepEqual(new AuthoringSession(after).file,after);
+});
