@@ -40,11 +40,26 @@ export function createCanvasController(initial){
  const emit=i=>{if(typeof context.onIntent!=='function')throw Error('MISSING_COMMAND_DISPATCH');return context.onIntent(i)};
  const toWorld=p=>snap(world(p,context.camera),context.gridUm,context.snapEnabled);
  const owner=p=>!active||active.pointerId===p.pointerId;
+ const symbolDelta=(drag,p)=>{
+   const a=world(drag.point,context.camera),b=world(p,context.camera);
+   const delta=point([b[0]-a[0],b[1]-a[1]]);
+   return context.snapEnabled?point(delta.map(v=>Math.round(v/context.gridUm)*context.gridUm)):delta;
+ };
+ const symbolDragPreview=()=>{
+   if(active?.kind!=='symbol'||active.baseRevision!==context.wireSnapshot.revision)return null;
+   const delta=symbolDelta(active,active.cursor);
+   if(!delta[0]&&!delta[1])return null;
+   return {instance_id:active.instanceId,component_id:active.componentId,delta_um:delta};
+ };
  const getState=()=>({camera:{...context.camera},draft:draft?{...draft,bends_um:draft.bends_um.map(p=>[...p])}:null,drag:active?{kind:active.kind,pointerId:active.pointerId}:null,hover,selected});
  return {
   getState,
+  symbolDragPreview,
   setContext(next){
-    if(next.tool!==undefined&&next.tool!==context.tool&&next.tool!=='wire')draft=null;
+    if(next.tool!==undefined&&next.tool!==context.tool){
+      active=null;
+      if(next.tool!=='wire')draft=null;
+    }
     context={...context,...next};
     // Reconcile host-owned symbol selection with the current physical sheet.
     if(selected?.kind==='symbol'&&!context.scene.symbols.some(s=>s.instance_id===selected.instance_id&&s.component_id===selected.component_id))selected=null;
@@ -110,7 +125,7 @@ export function createCanvasController(initial){
    if(context.tool==='select'&&p.button===0&&hit?.kind==='symbol'){
     selected=hit;
     active={kind:'symbol',pointerId:p.pointerId,point:{x:p.x,y:p.y},
-      instanceId:hit.instance_id,componentId:hit.component_id,
+      cursor:{x:p.x,y:p.y},instanceId:hit.instance_id,componentId:hit.component_id,
       baseRevision:context.wireSnapshot.revision};
     emit({kind:'select',target:hit});return true;
    }
@@ -128,6 +143,7 @@ export function createCanvasController(initial){
     context={...context,camera:{...c,x:c.x+dx,y:c.y+dy}};
     active.point={x:p.x,y:p.y};return true;
    }
+   if(active?.kind==='symbol'){active.cursor={x:p.x,y:p.y};return true;}
    if(draft){draft={...draft,cursor_um:toWorld(p)};return true}
    hover=hitTest(context.scene,context.camera,p);return false;
   },
@@ -135,11 +151,8 @@ export function createCanvasController(initial){
    if(!active||!owner(p))return false;
    const drag=active;
    if(drag.kind==='symbol'){
-    const a=world(drag.point,context.camera),b=world(p,context.camera);
-    const delta=point([b[0]-a[0],b[1]-a[1]]);
-    const snapped=context.snapEnabled?
-      point(delta.map(v=>Math.round(v/context.gridUm)*context.gridUm)):delta;
-    if(snapped[0]||snapped[1])emit({kind:'moveInstance',component_id:drag.componentId,
+    const snapped=symbolDelta(drag,p);
+    if(drag.baseRevision===context.wireSnapshot.revision&&(snapped[0]||snapped[1]))emit({kind:'moveInstance',component_id:drag.componentId,
       instance_id:drag.instanceId,delta_um:snapped,base_revision:drag.baseRevision});
    }
    if(drag.kind==='segment'){

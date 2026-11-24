@@ -543,7 +543,12 @@ test('R3 pointer drag, 90-degree rotation, Delete, Undo/Redo and second A3 sheet
  await page.mouse.move(center.x,center.y);
  await page.mouse.down();
  await page.mouse.move(center.x+36,center.y+24,{steps:8});
+ const ghost=page.getByTestId('gscad-symbol-drag-preview');
+ await expect(ghost).toBeVisible();
+ await expect(ghost).toHaveAttribute('data-electrical','false');
+ await expect(ghost.locator('[data-net-id]')).toHaveCount(0);
  await page.mouse.up();
+ await expect(ghost).toHaveCount(0);
  const d1=page.waitForEvent('download');
  await page.getByTestId('save-project').click();
  const moved=JSON.parse(readFileSync(await (await d1).path(),'utf8'));
