@@ -908,3 +908,47 @@ test('R11: Ctrl+C/V duplicates unconnected UGO with new identity; Undo and Redo 
  await page.getByRole('button',{name:'Повторить'}).click();
  await expect(page.getByTestId('symbol-R2')).toHaveCount(1);
 });
+
+test('R13: rectangle selection and group move are one reversible edit',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ const place=async(x,y)=>{
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*y);
+ };
+ await place(.35,.4);await place(.6,.55);
+ const r1=page.getByTestId('symbol-R1'),r2=page.getByTestId('symbol-R2');
+ await expect(r2).toBeVisible();
+ const saved=async()=>{
+  const download=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await download).path(),'utf8'));
+ };
+ const before=await saved();
+ await page.mouse.move(paper.x+paper.width*.25,paper.y+paper.height*.3);
+ await page.mouse.down();
+ await page.mouse.move(paper.x+paper.width*.7,paper.y+paper.height*.65,{steps:8});
+ await expect(page.getByTestId('gscad-selection-marquee')).toBeVisible();
+ await page.mouse.up();
+ await expect(r1).toHaveAttribute('data-selected','true');
+ await expect(r2).toHaveAttribute('data-selected','true');
+ await expect(page.getByTestId('group-selection-summary')).toContainText('2');
+ const selected=await saved();expect(selected.project).toEqual(before.project);
+ const pin=page.getByTestId('signed-pin-'+before.project.components[0].id+'-1');
+ const b=await pin.boundingBox();
+ await page.mouse.move(b.x+b.width/2,b.y+b.height/2);
+ await page.mouse.down();await page.mouse.move(b.x+b.width/2+25,b.y+b.height/2+18,{steps:6});
+ await expect(page.getByTestId('gscad-group-drag-preview')).toBeVisible();
+ await page.mouse.up();
+ const after=await saved();
+ const old=before.project.sheets[0].instances,now=after.project.sheets[0].instances;
+ const delta=now[0].origin_um.map((v,i)=>v-old[0].origin_um[i]);
+ expect(delta.some(Boolean)).toBe(true);
+ expect(now[1].origin_um.map((v,i)=>v-old[1].origin_um[i])).toEqual(delta);
+ expect(after.project.nets).toEqual(before.project.nets);
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ expect((await saved()).project).toEqual(after.project);
+});

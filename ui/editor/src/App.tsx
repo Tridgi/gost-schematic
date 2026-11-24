@@ -92,6 +92,7 @@ export default function App() {
   const [placementSymbol,setPlacementSymbol]=useState<string|null>(null);
   const [selectedId,setSelectedId]=useState<string|null>(null);
   const [selectionReset,setSelectionReset]=useState(0);
+  const [groupIds,setGroupIds]=useState<string[]>([]);
   const [clipboard,setClipboard]=useState<{template:ComponentClipboard;anchor:ComponentClipboard['origin_um']}|null>(null);
   const [,setPending]=useState<PinRef|null>(null);
   const [grid,setGrid]=useState(true),[snap,setSnap]=useState(true);
@@ -198,6 +199,10 @@ export default function App() {
     const next=session.file;
     setDocument(next);setSnapshot(session.snapshot);
     setSelectedId(id=>next.project.sheets.find(sh=>sh.id===next.workspace.active_sheet_id)?.instances.some(i=>i.id===id)?id:null);
+    setGroupIds(ids=>{
+      const visible=new Set(next.project.sheets.find(sh=>sh.id===next.workspace.active_sheet_id)?.instances.map(i=>i.id)??[]);
+      const valid=ids.filter(id=>visible.has(id));return valid.length>1?valid:[];
+    });
     setHistory({undo:session.canUndo?1:0,redo:session.canRedo?1:0});
     contentEpochRef.current++;
     setDirty(true);
@@ -217,7 +222,7 @@ export default function App() {
     try{
       const origin=a.suggestPasteOrigin(clipboard.template,clipboard.anchor,snap);
       const id=a.pasteComponent(a.newTransaction('paste-component'),clipboard.template,origin);
-      adoptAuthored();setSelectedId(id);
+      adoptAuthored();setGroupIds([]);setSelectedId(id);
       setClipboard({...clipboard,anchor:origin});
       setIssue('УГО вставлено с новым обозначением и без электрических связей.');
     }catch(e){setIssue('PASTE_FAILED: '+String(e));}
@@ -229,7 +234,7 @@ export default function App() {
     if(dirty&&!window.confirm('Есть несохранённые изменения. Создать новый проект и потерять их?'))return;
     try{
       const session=new AuthoringSession(newBlankProject());
-      sessionEpochRef.current++;setClipboard(null);
+      sessionEpochRef.current++;setClipboard(null);setGroupIds([]);
       contentEpochRef.current++;
       if(nativeHandle)void nativeCloseProject(nativeHandle.handle).catch(()=>{});
       setNativeHandle(null);
@@ -366,7 +371,7 @@ export default function App() {
     if(next.format==='gscad-project'&&next.format_version===2&&
        next.project?.provenance?.status==='synthetic'){
       const author=new AuthoringSession(next);
-      sessionEpochRef.current++;setClipboard(null);contentEpochRef.current++;
+      sessionEpochRef.current++;setClipboard(null);setGroupIds([]);contentEpochRef.current++;
       authoringRef.current=author;engineRef.current=author.engine;
       setDocument(author.file);setSnapshot(author.snapshot);
       setSelectedId(next.project.sheets.find(s=>s.id===next.workspace.active_sheet_id)?.instances[0]?.id??null);
@@ -386,7 +391,7 @@ export default function App() {
       sheet_id:sheet.id,revision:0,
       source_topology_hash:topologyHashRef.current??''
     }).engine;
-    sessionEpochRef.current++;setClipboard(null);contentEpochRef.current++;
+    sessionEpochRef.current++;setClipboard(null);setGroupIds([]);contentEpochRef.current++;
     authoringRef.current=null;engineRef.current=engine;
     setDocument(next);setSnapshot(engine.snapshot);
     setSelectedId(sheet.instances[0]?.id??null);
@@ -438,6 +443,23 @@ export default function App() {
   const onCanvasIntent=(intent:CanvasIntent)=>{
     const eng=engineRef.current;if(!eng)return;
     const authored=authoringRef.current;
+    if(intent.kind==='selectGroup'){
+      if(intent.base_revision!==eng.snapshot.revision)return false;
+      const ids=[...new Set(intent.instance_ids)];
+      if(ids.length!==intent.instance_ids.length||ids.some(id=>!instances.some(i=>i.id===id)))return false;
+      setGroupIds(ids.length>1?ids:[]);setSelectedId(ids.length===1?ids[0]:null);
+      return true;
+    }
+    if(intent.kind==='moveGroup'){
+      try{
+        if(!authored)throw Error('SOURCE_LOCKED: групповое перемещение исходной схемы недоступно');
+        if(intent.base_revision!==authored.revision)throw Error('STALE_REVISION');
+        if(intent.instance_ids.length!==groupIds.length||intent.instance_ids.some(id=>!groupIds.includes(id)))throw Error('INVALID_GROUP');
+        authored.moveGroup(authored.newTransaction('move-group'),intent.instance_ids,intent.delta_um);
+        adoptAuthored();setIssue('Группа перемещена одной транзакцией.');return true;
+      }catch(e){setIssue(e instanceof WireError?e.code+': '+e.message:String(e));return false;}
+    }
+    if(intent.kind==='select')setGroupIds([]);
     if(authored){
       try{
         if(intent.kind==='beginWire'){
@@ -460,7 +482,7 @@ export default function App() {
           if(!placementSymbol)throw Error('NO_SELECTED_CATALOG_SYMBOL');
           const id=authored.place(authored.newTransaction('place-component'),
             placementSymbol,intent.at_um);
-          adoptAuthored();setSelectedId(id);
+          adoptAuthored();setGroupIds([]);setSelectedId(id);
           setTool('select');setPlacementSymbol(null);
           setIssue('УГО размещено из DRAFT-каталога. Физические выводы сохранены.');
           return true;
@@ -671,7 +693,7 @@ export default function App() {
     projectName={document.project.title+(authoringRef.current?' · R3 AUTHORING':' · R2 PREVIEW')} dirty={dirty}
     baseRevision={String(snapshot.revision)} sheets={document.project.sheets.map(s=>({id:s.id,title:s.name}))}
     activeSheetId={activeSheet.id} catalog={catalog} tree={tree}
-    selected={selected} diagnostics={diagnostics}
+    selected={selected} groupSelectionIds={groupIds} diagnostics={diagnostics}
     canvas={<div className="gscad-canvas-wrapper">
       <input ref={fileInputRef} type="file" accept=".json,.gscad" data-testid="project-file-input"
         style={{display:'none'}} onChange={e=>{
@@ -679,7 +701,7 @@ export default function App() {
           e.currentTarget.value='';
         }}/>
       <CanvasViewport key={sessionEpochRef.current+':'+activeSheet.id} document={document} snapshot={snapshot} sheetId={activeSheet.id}
-        selectedInstanceId={selected?.id??null} selectionReset={selectionReset}
+        selectedInstanceId={selected?.id??null} selectedGroupIds={groupIds} selectionReset={selectionReset}
         tool={tool} gridVisible={grid} snapEnabled={snap}
         zoomRequest={zoomRequest??undefined} fitRequest={fitRequest}
         onIntent={onCanvasIntent} onZoomPercent={percent=>setZoom(percent/100)}/>
@@ -697,7 +719,7 @@ export default function App() {
     onFitPage={()=>setFitRequest(n=>n+1)}
     canUndo={history.undo>0} canRedo={history.redo>0} canSave={true} exportReady={true}
     inspectorError={null}
-    onToolChange={mode=>{setTool(mode);setPending(null);}}
+    onToolChange={mode=>{setTool(mode);setPending(null);if(mode!=='select')setGroupIds([]);}}
     onToggleGrid={value=>{
       if(value!==grid){contentEpochRef.current++;setDirty(true);}
       setGrid(value);
@@ -707,17 +729,17 @@ export default function App() {
     }}
     onPlaceSymbol={id=>{
       if(!authoringRef.current){setIssue('SOURCE_LOCKED: E695 нельзя дополнять новыми исходными PinRef.');return;}
-      setPlacementSymbol(id);setTool('place');setIssue('Кликните на листе для размещения '+id+' (DRAFT).');
+      setGroupIds([]);setPlacementSymbol(id);setTool('place');setIssue('Кликните на листе для размещения '+id+' (DRAFT).');
     }}
     onSelectTreeItem={id=>{const i=instances.find(v=>v.id===id);
       setSelectionReset(n=>n+1);
-      setSelectedId(i?.id??null);
+      setGroupIds([]);setSelectedId(i?.id??null);
       if(!i)setIssue('Структура: '+id);}}
     onSelectSheet={id=>{
       const author=authoringRef.current;
       if(!author)return;
       try{author.selectSheet(author.newTransaction('switch-sheet'),id);
-        adoptAuthored();setSelectedId(null);setTool('select');
+        adoptAuthored();setGroupIds([]);setSelectedId(null);setTool('select');
       }catch(e){setIssue('SHEET_REJECTED: '+String(e));}
     }}
     onInspectorProposal={(edit:InspectorProposal)=>{
@@ -767,7 +789,7 @@ export default function App() {
     }}
     onUndo={handleUndo} onRedo={handleRedo}
     onCopy={authoringRef.current&&selectedInst&&tool==='select'?handleCopy:undefined}
-    onPaste={authoringRef.current&&clipboard&&tool==='select'?handlePaste:undefined}
+    onPaste={authoringRef.current&&clipboard&&tool==='select'&&groupIds.length===0?handlePaste:undefined}
     onNew={handleNew}
     activePaper={activeSheet.frame.paper.split(' ')[0] as 'A4'|'A3'|'A2'}
     onPaperChange={authoringRef.current?paper=>{

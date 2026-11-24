@@ -37,7 +37,7 @@ export type EditorShellProps = {
   projectName:string;dirty:boolean;baseRevision:string;
   sheets:readonly {id:string;title:string}[];activeSheetId:string;
   catalog:readonly CatalogSymbol[];tree:readonly TreeItem[];
-  selected:SelectedInstance|null;diagnostics:readonly DiagnosticItem[];
+  selected:SelectedInstance|null;groupSelectionIds?:readonly string[];diagnostics:readonly DiagnosticItem[];
   canvas:ReactNode;tool:ToolMode;gridVisible:boolean;snapEnabled:boolean;
   cursorUm?:readonly [number,number];zoomPercent?:number;onZoomPercent?:(percent:50|100|200)=>void;
   onFitPage?:()=>void;
@@ -301,11 +301,11 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
         <RightSplit percent={split} onChange={changeSplit}
           top={<><Text size="sm" fw={600} p="sm">Структура проекта</Text>
             <ScrollArea h="calc(100% - 44px)">{props.tree.map(n=><NavLink key={n.id} label={n.label} data-testid={'tree-item-'+n.id}
-              pl={12+(n.indent??0)*16} active={n.kind==='instance'&&n.id===props.selected?.id} onClick={()=>props.onSelectTreeItem(n.id)}
+              pl={12+(n.indent??0)*16} active={n.kind==='instance'&&(n.id===props.selected?.id||props.groupSelectionIds?.includes(n.id))} onClick={()=>props.onSelectTreeItem(n.id)}
               leftSection={<FolderTree size={14}/>} />)}</ScrollArea></>}
           bottom={<><Text fw={600} size="sm" p="sm">Свойства</Text>
-            <ScrollArea h="calc(100% - 44px)"><Inspector selected={props.selected}
-              revision={props.baseRevision} send={props.onInspectorProposal} hostError={props.inspectorError}/></ScrollArea></>}/>
+            <ScrollArea h="calc(100% - 44px)">{(props.groupSelectionIds?.length??0)>1?<Text size="sm" p="sm" data-testid="group-selection-summary">Выбрано УГО: {props.groupSelectionIds?.length}. Групповое изменение свойств пока недоступно.</Text>:<Inspector selected={props.selected}
+              revision={props.baseRevision} send={props.onInspectorProposal} hostError={props.inspectorError}/>}</ScrollArea></>}/>
       </AppShell.Aside>
       <AppShell.Footer className="gscad-status" data-testid="status-bar">
         <Group justify="space-between" h="100%" px="xs" gap="xs" wrap="nowrap">

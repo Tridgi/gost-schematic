@@ -1,7 +1,7 @@
 /** CHAT4 pointer-independent interaction state machine (one owner pointer).
  * Emits typed intentions; only #123 ManualWireEngine can mutate electrical topology.
  */
-import {screen,world,hitTest,snap,point} from './precision.mjs';
+import {screen,world,hitTest,snap,point,pinWorld} from './precision.mjs';
 import {captureSegmentDrag} from './wire-intents.mjs';
 const same=(a,b)=>a[0]===b[0]&&a[1]===b[1];
 /** Geometry is only for selecting a symbol, never for making an electrical connection. */
@@ -34,9 +34,26 @@ function symbolHit(scene,camera,p){
  return sameDistance.length===1?hits[0]:{kind:'ambiguous-symbol',candidates:sameDistance.map(a=>a.instance_id)};
 }
 
+function selectionRect(a,b){
+ return {x:Math.min(a.x,b.x),y:Math.min(a.y,b.y),width:Math.abs(a.x-b.x),height:Math.abs(a.y-b.y)};
+}
+function containedSymbols(scene,camera,rect){
+ const inside=p=>p.x>=rect.x&&p.x<=rect.x+rect.width&&p.y>=rect.y&&p.y<=rect.y+rect.height;
+ return scene.symbols.filter(s=>{
+  const points=[screen(s.origin_um,camera)];
+  const transform=at=>{
+   const x=s.mirror_x?-at[0]:at[0],y=at[1];
+   const [u,v]=s.rotation_deg===0?[x,y]:s.rotation_deg===90?[-y,x]:s.rotation_deg===180?[-x,-y]:[y,-x];
+   return screen(point([s.origin_um[0]+u,s.origin_um[1]+v]),camera);
+  };
+  for(const p of s.pins)points.push(screen(pinWorld(s,p.physical_pin_number).at_um,camera));
+  for(const stroke of s.strokes||[])points.push(transform(stroke.from_um),transform(stroke.to_um));
+  return points.every(inside);
+ }).map(s=>s.instance_id);
+}
 function orthogonal(from,to){point(from);point(to);if(same(from,to))return [from];const corner=[to[0],from[1]];return [from,corner,to].filter((p,i,a)=>i===0||!same(p,a[i-1]))}
 export function createCanvasController(initial){
- let context=initial,active=null,draft=null,hover=null,selected=null;
+ let context=initial,active=null,draft=null,hover=null,selected=null,selectedGroup=[];
  const emit=i=>{if(typeof context.onIntent!=='function')throw Error('MISSING_COMMAND_DISPATCH');return context.onIntent(i)};
  const toWorld=p=>snap(world(p,context.camera),context.gridUm,context.snapEnabled);
  const owner=p=>!active||active.pointerId===p.pointerId;
@@ -51,21 +68,31 @@ export function createCanvasController(initial){
    if(!delta[0]&&!delta[1])return null;
    return {instance_id:active.instanceId,component_id:active.componentId,delta_um:delta};
  };
- const getState=()=>({camera:{...context.camera},draft:draft?{...draft,bends_um:draft.bends_um.map(p=>[...p])}:null,drag:active?{kind:active.kind,pointerId:active.pointerId}:null,hover,selected});
+ const getState=()=>({camera:{...context.camera},draft:draft?{...draft,bends_um:draft.bends_um.map(p=>[...p])}:null,drag:active?{kind:active.kind,pointerId:active.pointerId}:null,hover,selected,selectedGroup:[...selectedGroup]});
  return {
   getState,
   symbolDragPreview,
+  marqueePreview(){return active?.kind==='marquee'?selectionRect(active.point,active.cursor):null;},
+  groupDragPreview(){
+   if(active?.kind!=='group'||active.baseRevision!==context.wireSnapshot.revision)return null;
+   const delta=symbolDelta(active,active.cursor);
+   return delta.some(Boolean)?{instance_ids:[...active.ids],delta_um:delta}:null;
+  },
   setContext(next){
     if(next.tool!==undefined&&next.tool!==context.tool){
       active=null;
       if(next.tool!=='wire')draft=null;
     }
     context={...context,...next};
+    selectedGroup=selectedGroup.filter(id=>context.scene.symbols.some(s=>s.instance_id===id));
     // Reconcile host-owned symbol selection with the current physical sheet.
     if(selected?.kind==='symbol'&&!context.scene.symbols.some(s=>s.instance_id===selected.instance_id&&s.component_id===selected.component_id))selected=null;
     if(selected?.kind==='segment'&&!context.scene.wires.some(w=>w.id===selected.wire_id&&w.segments.some(s=>s.id===selected.segment_id)))selected=null;
   },
-  syncSymbolSelection(instanceId,clearOther=false){
+  syncSymbolSelection(instanceId,clearOther=false,groupIds=[]){
+    selectedGroup=[...new Set(groupIds)].filter(id=>context.scene.symbols.some(s=>s.instance_id===id));
+    if(selectedGroup.length>1){selected=null;return;}
+    selectedGroup=[];
     const symbol=instanceId===null?null:context.scene.symbols.find(s=>s.instance_id===instanceId);
     if(symbol){
       selected={kind:'symbol',instance_id:symbol.instance_id,component_id:symbol.component_id,distance_px:0};
@@ -116,6 +143,19 @@ export function createCanvasController(initial){
    if((context.tool==='pan'||p.button===1)&&p.button!==2){
     active={kind:'pan',pointerId:p.pointerId,point:{x:p.x,y:p.y}};return true;
    }
+   if(context.tool==='select'&&p.button===0){
+    const id=hit?.kind==='symbol'?hit.instance_id:hit?.kind==='pin'?context.scene.symbols.find(s=>s.component_id===hit.pin.component_id)?.instance_id:null;
+    if(id&&selectedGroup.includes(id)){
+     active={kind:'group',pointerId:p.pointerId,point:{x:p.x,y:p.y},cursor:{x:p.x,y:p.y},ids:[...selectedGroup],baseRevision:context.wireSnapshot.revision};
+     return true;
+    }
+    selectedGroup=[];
+    if(!hit){
+     selected=null;emit({kind:'select',target:null});
+     active={kind:'marquee',pointerId:p.pointerId,point:{x:p.x,y:p.y},cursor:{x:p.x,y:p.y},baseRevision:context.wireSnapshot.revision};
+     return true;
+    }
+   }
    if(context.tool==='select'&&p.button===0&&hit?.kind==='segment'&&hit.movable){
     selected=hit;
     const token=captureSegmentDrag(context.wireSnapshot,hit.wire_id,hit.segment_id);
@@ -143,13 +183,28 @@ export function createCanvasController(initial){
     context={...context,camera:{...c,x:c.x+dx,y:c.y+dy}};
     active.point={x:p.x,y:p.y};return true;
    }
-   if(active?.kind==='symbol'){active.cursor={x:p.x,y:p.y};return true;}
+   if(['symbol','marquee','group'].includes(active?.kind)){active.cursor={x:p.x,y:p.y};return true;}
    if(draft){draft={...draft,cursor_um:toWorld(p)};return true}
    hover=hitTest(context.scene,context.camera,p);return false;
   },
   up(p){
    if(!active||!owner(p))return false;
    const drag=active;
+   if(drag.kind==='marquee'&&drag.baseRevision===context.wireSnapshot.revision){
+    const rect=selectionRect(drag.point,p);
+    if(rect.width>=4&&rect.height>=4){
+     const ids=containedSymbols(context.scene,context.camera,rect);
+     if(emit({kind:'selectGroup',instance_ids:ids,base_revision:drag.baseRevision})!==false){
+      selectedGroup=ids.length>1?ids:[];
+      const symbol=ids.length===1?context.scene.symbols.find(s=>s.instance_id===ids[0]):null;
+      selected=symbol?{kind:'symbol',instance_id:symbol.instance_id,component_id:symbol.component_id,distance_px:0}:null;
+     }
+    }
+   }
+   if(drag.kind==='group'&&drag.baseRevision===context.wireSnapshot.revision){
+    const delta=symbolDelta(drag,p);
+    if(delta.some(Boolean))emit({kind:'moveGroup',instance_ids:drag.ids,delta_um:delta,base_revision:drag.baseRevision});
+   }
    if(drag.kind==='symbol'){
     const snapped=symbolDelta(drag,p);
     if(drag.baseRevision===context.wireSnapshot.revision&&(snapped[0]||snapped[1]))emit({kind:'moveInstance',component_id:drag.componentId,
@@ -168,7 +223,7 @@ export function createCanvasController(initial){
   key(k){
    // Destructive/transform shortcuts are only valid in idle selection mode.
    if((k==='Delete'||k==='Backspace'||k==='r'||k==='R')&&
-     (context.tool!=='select'||active||draft))return false;
+     (context.tool!=='select'||active||draft||selectedGroup.length>1))return false;
    if(k==='Delete'||k==='Backspace'){
     if(selected?.kind==='symbol'){
       const accepted=emit({kind:'deleteSymbol',component_id:selected.component_id,
@@ -190,7 +245,7 @@ export function createCanvasController(initial){
    }
    if(k==='Escape'){
     if(draft)emit({kind:'cancelWire',source:draft.source});
-    else if(!active&&context.tool==='select'&&selected){selected=null;emit({kind:'select',target:null});}
+    else if(!active&&context.tool==='select'&&(selected||selectedGroup.length)){selected=null;selectedGroup=[];emit({kind:'select',target:null});}
     draft=null;active=null;return true;
    }
    if(k==='Enter'&&draft){
