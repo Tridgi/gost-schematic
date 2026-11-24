@@ -175,7 +175,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     dragSource.origin_um[0]+dragPreview.delta_um[0],dragSource.origin_um[1]+dragPreview.delta_um[1]
   ]}:null;
   const groupDrag=controller.groupDragPreview();
-  const groupGhosts:CanvasSymbol[]=groupDrag?visibleScene.symbols.filter(s=>groupDrag.instance_ids.includes(s.instance_id)).map(s=>({...s,origin_um:[s.origin_um[0]+groupDrag.delta_um[0],s.origin_um[1]+groupDrag.delta_um[1]]})):[];
+  const groupGhosts:CanvasSymbol[]=groupDrag?visibleScene.symbols.filter(s=>groupDrag.instance_ids.includes(s.instance_id)).map((s):CanvasSymbol=>({...s,origin_um:[s.origin_um[0]+groupDrag.delta_um[0],s.origin_um[1]+groupDrag.delta_um[1]]})):[];
   const marquee=controller.marqueePreview();
   const selectedGroup=new Set(controller.getState().selectedGroup);
   const selectedSymbol=controller.getState().selected;
