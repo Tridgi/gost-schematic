@@ -39,6 +39,7 @@ export type CanvasController={
  groupDragPreview():null|{instance_ids:string[];delta_um:PointUm};
  setContext(next:Partial<CanvasContext>):void;
  syncSymbolSelection(instanceId:string|null,clearOther?:boolean,groupIds?:readonly string[]):void;
+ contextSelect(p:ScreenPoint):'symbol'|'group'|'blank'|null;
  down(p:PointerPoint):boolean;
  move(p:PointerPoint):boolean;
  up(p:PointerPoint):boolean;
