@@ -144,21 +144,27 @@ export function createCanvasController(initial){
    active=null;return true;
   },
   key(k){
+   // Destructive/transform shortcuts are only valid in idle selection mode.
+   if((k==='Delete'||k==='Backspace'||k==='r'||k==='R')&&
+     (context.tool!=='select'||active||draft))return false;
    if(k==='Delete'||k==='Backspace'){
     if(selected?.kind==='symbol'){
-      return emit({kind:'deleteSymbol',component_id:selected.component_id,
+      const accepted=emit({kind:'deleteSymbol',component_id:selected.component_id,
         instance_id:selected.instance_id,base_revision:context.wireSnapshot.revision})!==false;
+      if(accepted)selected=null;
+      return accepted;
     }
     if(selected?.kind==='segment'){
-      return emit({kind:'deleteWire',wire_id:selected.wire_id,
+      const accepted=emit({kind:'deleteWire',wire_id:selected.wire_id,
         base_revision:context.wireSnapshot.revision})!==false;
+      if(accepted)selected=null;
+      return accepted;
     }
     return false;
    }
    if((k==='r'||k==='R')&&selected?.kind==='symbol'){
-    emit({kind:'rotateInstance',component_id:selected.component_id,
-      instance_id:selected.instance_id,base_revision:context.wireSnapshot.revision});
-    return true;
+    return emit({kind:'rotateInstance',component_id:selected.component_id,
+      instance_id:selected.instance_id,base_revision:context.wireSnapshot.revision})!==false;
    }
    if(k==='Escape'){if(draft)emit({kind:'cancelWire',source:draft.source});draft=null;active=null;return true}
    if(k==='Enter'&&draft){
