@@ -28,3 +28,13 @@ test('never steal IME, active dialog, alt chords, repeat or consumed events',()=
  assert.equal(k({key:'k',ctrlKey:true},{dialogOpen:true}),null);
  assert.equal(k({key:'W',shiftKey:true}),null);
 });
+
+test('CAD clipboard shortcuts never steal native text or dialog clipboard actions',()=>{
+ for(const [key,action] of [['c','copy'],['v','paste']] as const){
+  assert.equal(k({key,ctrlKey:true}),action);
+  assert.equal(k({key,metaKey:true}),action);
+  assert.equal(k({key,ctrlKey:true},{editable:true}),null);
+  assert.equal(k({key,ctrlKey:true},{dialogOpen:true}),null);
+  assert.equal(k({key,ctrlKey:true,shiftKey:true}),null);
+ }
+});
