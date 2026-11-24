@@ -4,7 +4,8 @@ on:
     branches: [ui/visual-cad-mvp]
     paths: ['ui/editor/**', 'ui/integration/**', 'ui/experiments/r0/**', 'ui/contracts/**', 'ui/editor/src/model/**', 'ui/editor/src/wires/**', 'ui/editor/src/canvas/**', 'ui/fixtures/**', 'ui/qa/chat3-canvas/**', '.github/workflows/visual-cad-r1.yml']
   pull_request:
-    paths: ['ui/integration/**', 'ui/experiments/r0/**', 'ui/contracts/**', 'ui/editor/src/model/**', 'ui/editor/src/wires/**', 'ui/editor/src/canvas/**', 'ui/fixtures/**', 'ui/qa/chat3-canvas/**', '.github/workflows/visual-cad-r1.yml']
+    # Authoring, UI and browser-only changes must also run the full source gate.
+    paths: ['ui/editor/**', 'ui/integration/**', 'ui/experiments/r0/**', 'ui/contracts/**', 'ui/editor/src/model/**', 'ui/editor/src/wires/**', 'ui/editor/src/canvas/**', 'ui/fixtures/**', 'ui/qa/chat3-canvas/**', '.github/workflows/visual-cad-r1.yml']
   workflow_dispatch:
 jobs:
   candidate-v2:
