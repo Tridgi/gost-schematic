@@ -7,7 +7,7 @@ import { ManualWireEngine, WireError, constructWire, type PinRef, type PointUm,
 import { CanvasViewport } from './canvas/CanvasViewport';
 import type { CanvasIntent } from './canvas/controller.mjs';
 import { commitSegmentDrag, captureSegmentDrag } from './canvas/wire-intents.mjs';
-import {AuthoringSession,newBlankProject} from './authoring/session';
+import {AuthoringSession,newBlankProject,type ComponentClipboard} from './authoring/session';
 import {nativeDesktopAvailable,nativeOpenProject,nativeSaveProject,nativeSaveAsProject,nativeCloseProject,
   nativeExportProject,type NativeDocumentHandle} from './native/desktop';
 import {installNativeCloseGuard} from './native/close-guard';
@@ -91,6 +91,8 @@ export default function App() {
   const [tool,setTool]=useState<ToolMode>('select');
   const [placementSymbol,setPlacementSymbol]=useState<string|null>(null);
   const [selectedId,setSelectedId]=useState<string|null>(null);
+  const [selectionReset,setSelectionReset]=useState(0);
+  const [clipboard,setClipboard]=useState<{template:ComponentClipboard;anchor:ComponentClipboard['origin_um']}|null>(null);
   const [,setPending]=useState<PinRef|null>(null);
   const [grid,setGrid]=useState(true),[snap,setSnap]=useState(true);
   const [zoom,setZoom]=useState(1);
@@ -193,10 +195,32 @@ export default function App() {
   const adoptAuthored=()=>{
     const session=authoringRef.current;if(!session)return;
     engineRef.current=session.engine;
-    setDocument(session.file);setSnapshot(session.snapshot);
+    const next=session.file;
+    setDocument(next);setSnapshot(session.snapshot);
+    setSelectedId(id=>next.project.sheets.find(sh=>sh.id===next.workspace.active_sheet_id)?.instances.some(i=>i.id===id)?id:null);
     setHistory({undo:session.canUndo?1:0,redo:session.canRedo?1:0});
     contentEpochRef.current++;
     setDirty(true);
+  };
+  const handleCopy=()=>{
+    const a=authoringRef.current;
+    if(!a||!selectedInst||tool!=='select')return;
+    try{
+      const template=a.copyComponent(selectedInst.id);
+      setClipboard({template,anchor:[...template.origin_um]});
+      setIssue('УГО скопировано во внутренний буфер. Электрические связи не копируются.');
+    }catch(e){setIssue('COPY_FAILED: '+String(e));}
+  };
+  const handlePaste=()=>{
+    const a=authoringRef.current;
+    if(!a||!clipboard||!activeSheet||!document||tool!=='select')return;
+    try{
+      const origin=a.suggestPasteOrigin(clipboard.template,clipboard.anchor,snap);
+      const id=a.pasteComponent(a.newTransaction('paste-component'),clipboard.template,origin);
+      adoptAuthored();setSelectedId(id);
+      setClipboard({...clipboard,anchor:origin});
+      setIssue('УГО вставлено с новым обозначением и без электрических связей.');
+    }catch(e){setIssue('PASTE_FAILED: '+String(e));}
   };
   const handleNew=()=>{
     if(nativeDesktopAvailable()&&nativeSaveBusyRef.current){
@@ -205,7 +229,7 @@ export default function App() {
     if(dirty&&!window.confirm('Есть несохранённые изменения. Создать новый проект и потерять их?'))return;
     try{
       const session=new AuthoringSession(newBlankProject());
-      sessionEpochRef.current++;
+      sessionEpochRef.current++;setClipboard(null);
       contentEpochRef.current++;
       if(nativeHandle)void nativeCloseProject(nativeHandle.handle).catch(()=>{});
       setNativeHandle(null);
@@ -342,7 +366,7 @@ export default function App() {
     if(next.format==='gscad-project'&&next.format_version===2&&
        next.project?.provenance?.status==='synthetic'){
       const author=new AuthoringSession(next);
-      sessionEpochRef.current++;contentEpochRef.current++;
+      sessionEpochRef.current++;setClipboard(null);contentEpochRef.current++;
       authoringRef.current=author;engineRef.current=author.engine;
       setDocument(author.file);setSnapshot(author.snapshot);
       setSelectedId(next.project.sheets.find(s=>s.id===next.workspace.active_sheet_id)?.instances[0]?.id??null);
@@ -362,7 +386,7 @@ export default function App() {
       sheet_id:sheet.id,revision:0,
       source_topology_hash:topologyHashRef.current??''
     }).engine;
-    sessionEpochRef.current++;contentEpochRef.current++;
+    sessionEpochRef.current++;setClipboard(null);contentEpochRef.current++;
     authoringRef.current=null;engineRef.current=engine;
     setDocument(next);setSnapshot(engine.snapshot);
     setSelectedId(sheet.instances[0]?.id??null);
@@ -424,11 +448,11 @@ export default function App() {
         if(intent.kind==='cancelWire'){setPending(null);return true;}
         if(intent.kind==='select'){
           if(intent.target?.kind==='symbol')setSelectedId(intent.target.instance_id);
-          if(intent.target?.kind==='pin'){
+          else if(intent.target?.kind==='pin'){
             const selectedPin=intent.target.pin;
             const inst=instances.find(i=>i.component_id===selectedPin.component_id);
-            if(inst)setSelectedId(inst.id);
-          }
+            setSelectedId(inst?.id??null);
+          }else setSelectedId(null);
           return true;
         }
         if(intent.kind==='placeSymbol'){
@@ -541,11 +565,11 @@ export default function App() {
       if(intent.kind==='cancelWire'){setPending(null);return;}
       if(intent.kind==='select'){
         if(intent.target?.kind==='symbol')setSelectedId(intent.target.instance_id);
-        if(intent.target?.kind==='pin'){
+        else if(intent.target?.kind==='pin'){
           const targetPin=intent.target.pin;
           const chosen=instances.find(i=>i.component_id===targetPin.component_id);
-          if(chosen)setSelectedId(chosen.id);
-        }
+          setSelectedId(chosen?.id??null);
+        }else setSelectedId(null);
         return;
       }
       if(intent.kind==='rejectJunction'){
@@ -654,7 +678,8 @@ export default function App() {
           void handleOpen(e.currentTarget.files?.[0]??null);
           e.currentTarget.value='';
         }}/>
-      <CanvasViewport document={document} snapshot={snapshot} sheetId={activeSheet.id}
+      <CanvasViewport key={sessionEpochRef.current+':'+activeSheet.id} document={document} snapshot={snapshot} sheetId={activeSheet.id}
+        selectedInstanceId={selected?.id??null} selectionReset={selectionReset}
         tool={tool} gridVisible={grid} snapEnabled={snap}
         zoomRequest={zoomRequest??undefined} fitRequest={fitRequest}
         onIntent={onCanvasIntent} onZoomPercent={percent=>setZoom(percent/100)}/>
@@ -685,7 +710,9 @@ export default function App() {
       setPlacementSymbol(id);setTool('place');setIssue('Кликните на листе для размещения '+id+' (DRAFT).');
     }}
     onSelectTreeItem={id=>{const i=instances.find(v=>v.id===id);
-      if(i)setSelectedId(i.id);else setIssue('Структура: '+id);}}
+      setSelectionReset(n=>n+1);
+      setSelectedId(i?.id??null);
+      if(!i)setIssue('Структура: '+id);}}
     onSelectSheet={id=>{
       const author=authoringRef.current;
       if(!author)return;
@@ -739,6 +766,8 @@ export default function App() {
       }catch(e){setIssue('INSPECTOR_REJECTED: '+String(e));}
     }}
     onUndo={handleUndo} onRedo={handleRedo}
+    onCopy={authoringRef.current&&selectedInst&&tool==='select'?handleCopy:undefined}
+    onPaste={authoringRef.current&&clipboard&&tool==='select'?handlePaste:undefined}
     onNew={handleNew}
     activePaper={activeSheet.frame.paper.split(' ')[0] as 'A4'|'A3'|'A2'}
     onPaperChange={authoringRef.current?paper=>{

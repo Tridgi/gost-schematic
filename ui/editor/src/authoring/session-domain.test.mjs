@@ -365,3 +365,77 @@ test('R10: connected 90-degree rotation reanchors each physical pin, fails close
  assert.equal(s.redo(),true);assert.deepEqual(s.file,rotated);
  assert.deepEqual(new AuthoringSession(rotated).file,rotated);
 });
+
+test('clipboard duplicates component attributes but never its physical Net membership',()=>{
+ const s=newSession(),{r,c}=placePair(s);
+ const inst=s.file.project.sheets[0].instances.find(i=>i.component_id===r);
+ s.updateProperty(s.newTransaction('value'),inst.id,'value','47к');
+ // Copy connected C1 separately; its wire must not be inherited by a pasted C2.
+ s.connect(s.newTransaction('connect'),pin(r,'2'),pin(c,'1'));
+ const before=s.file;
+ const source=before.project.sheets[0].instances.find(i=>i.component_id===c);
+ const template=s.copyComponent(source.id);
+ const stale=s.newTransaction('stale');
+ const added=s.pasteComponent(s.newTransaction('paste-c'),template,[180000,120000]);
+ const after=s.file,copy=after.project.sheets[0].instances.find(i=>i.id===added);
+ const comp=after.project.components.find(c=>c.id===copy.component_id);
+ assert.notEqual(copy.component_id,source.component_id);
+ assert.notEqual(copy.id,source.id);
+ assert.equal(comp.refdes,'C2');
+ assert.equal(comp.source_refdes,'C2');
+ assert.equal(comp.value,template.value);
+ assert.deepEqual(after.project.nets,before.project.nets);
+ assert.deepEqual(after.project.sheets[0].wires,before.project.sheets[0].wires);
+ assert.deepEqual(after.project.sheets[0].junctions,before.project.sheets[0].junctions);
+ assert.equal(after.project.provenance.expected_counts.components,3);
+ assert.throws(()=>s.pasteComponent(stale,template,[200000,150000]),/STALE_REVISION/);
+ assert.throws(()=>s.pasteComponent(s.newTransaction('invalid'),{...template,rotation_deg:45},[200000,150000]),/INVALID_CLIPBOARD/);
+ assert.deepEqual(s.file,after);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);assert.deepEqual(s.file,after);
+ assert.deepEqual(new AuthoringSession(after).file,after);
+});
+
+test('detached clipboard retains value/rotation after source changes; fresh refdes on another sheet',()=>{
+ const s=newSession();
+ const id=s.place(s.newTransaction('r'),'symbol/resistor.fixed',[100000,100000]);
+ const component=s.file.project.components[0];
+ s.updateProperty(s.newTransaction('value'),id,'value','47к');
+ s.rotate(s.newTransaction('rotate'),component.id);
+ const template=s.copyComponent(id);
+ s.updateProperty(s.newTransaction('rename'),id,'refdes','R10');
+ s.updateProperty(s.newTransaction('new-value'),id,'value','10к');
+ const sheet=s.addSheet(s.newTransaction('sheet'));
+ s.selectSheet(s.newTransaction('switch'),sheet);
+ assert.throws(()=>s.copyComponent(id),/UNKNOWN_INSTANCE/);
+ const pasted=s.pasteComponent(s.newTransaction('paste'),template,[80000,90000]);
+ const file=s.file,instance=file.project.sheets[1].instances[0];
+ assert.equal(instance.id,pasted);
+ assert.equal(instance.rotation_deg,90);
+ assert.equal(instance.layer_id,file.project.sheets[1].layers[0].id);
+ assert.equal(file.project.components[1].refdes,'R2');
+ assert.equal(file.project.components[1].value,'47к');
+ assert.equal(file.project.nets.length,0);
+});
+
+test('repeated paste near sheet edge stays inside print margins with unique grid-aligned origins',()=>{
+ const s=newSession();
+ const id=s.place(s.newTransaction('edge'),'symbol/resistor.fixed',[395000,275000]);
+ const template=s.copyComponent(id);
+ let anchor=template.origin_um;
+ const seen=new Set([anchor.join(',')]);
+ for(let i=0;i<12;i++){
+  const before=s.file,rev=s.revision;
+  const p=s.suggestPasteOrigin(template,anchor,true);
+  assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
+  assert.equal(p[0]%1000,0);assert.equal(p[1]%1000,0);
+  assert.ok(p[0]>=18000&&p[0]<=402000);
+  assert.ok(p[1]>=12000&&p[1]<=285000);
+  assert.ok(!seen.has(p.join(',')));seen.add(p.join(','));
+  s.pasteComponent(s.newTransaction('paste-edge'),template,p);
+  anchor=p;
+ }
+ assert.equal(s.file.project.components.length,13);
+ assert.deepEqual(s.file.project.nets,[]);
+ assert.deepEqual(s.file.project.sheets[0].wires,[]);
+});

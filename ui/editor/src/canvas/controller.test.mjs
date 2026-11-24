@@ -152,3 +152,58 @@ test('explicit junction tool on ordinary stroke refuses to invent a branch or Ne
  assert.deepEqual(log,[{kind:'rejectJunction',reason:'JUNCTION_SELECTION_REQUIRED'}]);
  assert.equal(c.getState().draft,null);
 });
+
+test('idle select is required for rotate/delete and successful deletion clears selection',()=>{
+ const symbol={instance_id:'S-R1',component_id:'R1',origin_um:[10000,10000],
+  rotation_deg:0,mirror_x:false,pins:[],strokes:[{from_um:[-2000,0],to_um:[2000,0]}]};
+ const events=[];
+ const c=make('select',i=>{events.push(i);return true;},
+  {symbols:[symbol],wires:[],junctions:[]});
+ c.down(loc([10000,10000]));
+ for(const key of ['Delete','Backspace','r','R'])assert.equal(c.key(key),false);
+ c.up(loc([10000,10000]));
+ for(const tool of ['wire','pan','place','junction','text']){
+  c.setContext({tool});
+  for(const key of ['Delete','Backspace','r','R'])assert.equal(c.key(key),false);
+ }
+ assert.deepEqual(events.map(e=>e.kind),['select']);
+ c.setContext({tool:'select'});
+ assert.equal(c.key('r'),true);
+ assert.equal(c.key('Delete'),true);
+ assert.equal(c.getState().selected,null);
+ assert.equal(c.key('Delete'),false);
+ assert.deepEqual(events.map(e=>e.kind),['select','rotateInstance','deleteSymbol']);
+});
+
+test('rejected transform and deletion preserve the selected symbol',()=>{
+ const symbol={instance_id:'S-R1',component_id:'R1',origin_um:[10000,10000],
+  rotation_deg:0,mirror_x:false,pins:[],strokes:[{from_um:[-2000,0],to_um:[2000,0]}]};
+ const c=make('select',i=>i.kind==='select',
+  {symbols:[symbol],wires:[],junctions:[]});
+ c.down(loc([10000,10000]));c.up(loc([10000,10000]));
+ assert.equal(c.key('r'),false);
+ assert.equal(c.key('Delete'),false);
+ assert.equal(c.getState().selected.instance_id,'S-R1');
+});
+
+test('host selection follows tree/inspector and drops objects removed from the scene',()=>{
+ const shape=id=>({instance_id:'S-'+id,component_id:id,origin_um:[10000,10000],
+  rotation_deg:0,mirror_x:false,pins:[],strokes:[]});
+ const a=shape('R1'),b=shape('R2');
+ const scene={symbols:[a,b],wires:[],junctions:[]};
+ const events=[];
+ const c=make('select',i=>{events.push(i);return true;},scene);
+ c.syncSymbolSelection('S-R2');
+ assert.equal(c.getState().selected.component_id,'R2');
+ assert.equal(c.key('r'),true);
+ assert.equal(events.at(-1).component_id,'R2');
+ c.setContext({scene:{...scene,symbols:[a]}});
+ assert.equal(c.getState().selected,null);
+ assert.equal(c.key('Delete'),false);
+ c.syncSymbolSelection('S-R1');
+ c.key('Escape');
+ assert.equal(c.getState().selected,null);
+ assert.deepEqual(events.at(-1),{kind:'select',target:null});
+ c.syncSymbolSelection('S-UNKNOWN');
+ assert.equal(c.getState().selected,null);
+});

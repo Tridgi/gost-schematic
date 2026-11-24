@@ -2,7 +2,8 @@ name: Visual CAD R9 real native Windows project persistence
 on:
   workflow_dispatch:
   push:
-    branches: [ui/visual-cad-mvp]
+    # R11 and main must not silently bypass the installed Windows regression.
+    branches: [ui/visual-cad-mvp, main, 'fix/r11-*']
     paths:
       - '.github/workflows/visual-cad-r9-native-persist.yml'
       - '.github/tools/r9-native-*'

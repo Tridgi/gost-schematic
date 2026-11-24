@@ -49,6 +49,7 @@ export type EditorShellProps = {
   onPlaceSymbol:(symbolId:string)=>void;onSelectTreeItem:(id:string)=>void;
   onSelectSheet:(id:string)=>void;onInspectorProposal:(edit:InspectorProposal)=>void;
   onUndo:()=>void;onRedo:()=>void;onSave:()=>void;
+  onCopy?:()=>void;onPaste?:()=>void;
   onOpen?:()=>void;onNew?:()=>void;onAddSheet?:()=>void;
   onPaperChange?:(paper:'A4'|'A3'|'A2')=>void;activePaper?:'A4'|'A3'|'A2';
   onSaveAs?:()=>void;onExport?:(format:'svg'|'png300')=>void;
@@ -181,16 +182,19 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
       const action=resolveShellShortcut(e,{editable,dialogOpen:settings||exportDialog||commandDialog});
       if(!action)return;
       if(action==='save'&&!props.canSave || action==='undo'&&!props.canUndo || action==='redo'&&!props.canRedo)return;
+      if(action==='copy'&&!props.onCopy || action==='paste'&&!props.onPaste)return;
       e.preventDefault();
       if(action==='palette')setCommandDialog(true);
       else if(action==='export')setExportDialog(true);
       else if(action==='save')props.onSave();
       else if(action==='undo')props.onUndo();
       else if(action==='redo')props.onRedo();
+      else if(action==='copy')props.onCopy?.();
+      else if(action==='paste')props.onPaste?.();
       else props.onToolChange(action);
     };
     window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey);
-  },[props.onToolChange,props.onSave,props.onUndo,props.onRedo,props.canSave,props.canUndo,props.canRedo,settings,exportDialog,commandDialog]);
+  },[props.onToolChange,props.onSave,props.onUndo,props.onRedo,props.canSave,props.canUndo,props.canRedo,props.onCopy,props.onPaste,settings,exportDialog,commandDialog]);
   const commands=[
     {label:'Сохранить',ok:props.canSave,run:props.onSave},
     {label:'Экспорт',ok:true,run:()=>setExportDialog(true)},
@@ -223,6 +227,12 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
                 <Menu.Item onClick={props.onSave} disabled={!props.canSave}>Сохранить</Menu.Item>
                 <Menu.Item data-testid="save-project-as" onClick={props.onSaveAs} disabled={!props.onSaveAs}>Сохранить как…</Menu.Item>
                 <Menu.Item onClick={()=>setExportDialog(true)}>Экспорт…</Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+            <Menu position="bottom-start"><Menu.Target><Button variant="subtle" size="compact-sm">Правка</Button></Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item data-testid="copy-component" onClick={props.onCopy} disabled={!props.onCopy}>Копировать УГО · Ctrl+C</Menu.Item>
+                <Menu.Item data-testid="paste-component" onClick={props.onPaste} disabled={!props.onPaste}>Вставить УГО без связей · Ctrl+V</Menu.Item>
               </Menu.Dropdown>
             </Menu>
             <Text size="sm" fw={600} truncate className="gscad-project-label">{props.projectName}</Text>
@@ -290,8 +300,8 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
       <AppShell.Aside className="gscad-dock">
         <RightSplit percent={split} onChange={changeSplit}
           top={<><Text size="sm" fw={600} p="sm">Структура проекта</Text>
-            <ScrollArea h="calc(100% - 44px)">{props.tree.map(n=><NavLink key={n.id} label={n.label}
-              pl={12+(n.indent??0)*16} active={n.kind==='instance'&&n.id==='instance:'+props.selected?.id} onClick={()=>props.onSelectTreeItem(n.id)}
+            <ScrollArea h="calc(100% - 44px)">{props.tree.map(n=><NavLink key={n.id} label={n.label} data-testid={'tree-item-'+n.id}
+              pl={12+(n.indent??0)*16} active={n.kind==='instance'&&n.id===props.selected?.id} onClick={()=>props.onSelectTreeItem(n.id)}
               leftSection={<FolderTree size={14}/>} />)}</ScrollArea></>}
           bottom={<><Text fw={600} size="sm" p="sm">Свойства</Text>
             <ScrollArea h="calc(100% - 44px)"><Inspector selected={props.selected}

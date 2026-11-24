@@ -46,6 +46,15 @@ export function createCanvasController(initial){
   setContext(next){
     if(next.tool!==undefined&&next.tool!==context.tool&&next.tool!=='wire')draft=null;
     context={...context,...next};
+    // Reconcile host-owned symbol selection with the current physical sheet.
+    if(selected?.kind==='symbol'&&!context.scene.symbols.some(s=>s.instance_id===selected.instance_id&&s.component_id===selected.component_id))selected=null;
+    if(selected?.kind==='segment'&&!context.scene.wires.some(w=>w.id===selected.wire_id&&w.segments.some(s=>s.id===selected.segment_id)))selected=null;
+  },
+  syncSymbolSelection(instanceId,clearOther=false){
+    const symbol=instanceId===null?null:context.scene.symbols.find(s=>s.instance_id===instanceId);
+    if(symbol){
+      selected={kind:'symbol',instance_id:symbol.instance_id,component_id:symbol.component_id,distance_px:0};
+    }else if(clearOther||selected?.kind==='symbol')selected=null;
   },
   down(p){
    if(!owner(p)||active)return false;
@@ -144,23 +153,33 @@ export function createCanvasController(initial){
    active=null;return true;
   },
   key(k){
+   // Destructive/transform shortcuts are only valid in idle selection mode.
+   if((k==='Delete'||k==='Backspace'||k==='r'||k==='R')&&
+     (context.tool!=='select'||active||draft))return false;
    if(k==='Delete'||k==='Backspace'){
     if(selected?.kind==='symbol'){
-      return emit({kind:'deleteSymbol',component_id:selected.component_id,
+      const accepted=emit({kind:'deleteSymbol',component_id:selected.component_id,
         instance_id:selected.instance_id,base_revision:context.wireSnapshot.revision})!==false;
+      if(accepted)selected=null;
+      return accepted;
     }
     if(selected?.kind==='segment'){
-      return emit({kind:'deleteWire',wire_id:selected.wire_id,
+      const accepted=emit({kind:'deleteWire',wire_id:selected.wire_id,
         base_revision:context.wireSnapshot.revision})!==false;
+      if(accepted)selected=null;
+      return accepted;
     }
     return false;
    }
    if((k==='r'||k==='R')&&selected?.kind==='symbol'){
-    emit({kind:'rotateInstance',component_id:selected.component_id,
-      instance_id:selected.instance_id,base_revision:context.wireSnapshot.revision});
-    return true;
+    return emit({kind:'rotateInstance',component_id:selected.component_id,
+      instance_id:selected.instance_id,base_revision:context.wireSnapshot.revision})!==false;
    }
-   if(k==='Escape'){if(draft)emit({kind:'cancelWire',source:draft.source});draft=null;active=null;return true}
+   if(k==='Escape'){
+    if(draft)emit({kind:'cancelWire',source:draft.source});
+    else if(!active&&context.tool==='select'&&selected){selected=null;emit({kind:'select',target:null});}
+    draft=null;active=null;return true;
+   }
    if(k==='Enter'&&draft){
     const prev=draft.bends_um.at(-1)||draft.from_um;
     if(same(prev,draft.cursor_um))return false;

@@ -32,6 +32,7 @@ export type CanvasControllerState={
 export type CanvasController={
  getState():CanvasControllerState;
  setContext(next:Partial<CanvasContext>):void;
+ syncSymbolSelection(instanceId:string|null,clearOther?:boolean):void;
  down(p:PointerPoint):boolean;
  move(p:PointerPoint):boolean;
  up(p:PointerPoint):boolean;

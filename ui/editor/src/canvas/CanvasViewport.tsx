@@ -17,6 +17,8 @@ export type CanvasViewportProps = {
   onZoomPercent?: (percent: number) => void;
   zoomRequest?: {percent:50|100|200;token:number};
   fitRequest?:number;
+  selectedInstanceId:string|null;
+  selectionReset:number;
 };
 
 const DEFAULT_CAMERA:Camera={s:.004,x:24,y:24};
@@ -29,7 +31,7 @@ function localStroke(symbol:CanvasSymbol,p:PointUm,camera:Camera):ScreenPoint {
   return screen([symbol.origin_um[0]+xy[0],symbol.origin_um[1]+xy[1]],camera);
 }
 /** Read-only SVG viewport. The canonical physical print/export belongs to #124. */
-export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapEnabled,onIntent,onZoomPercent,zoomRequest,fitRequest}:CanvasViewportProps){
+export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapEnabled,onIntent,onZoomPercent,zoomRequest,fitRequest,selectedInstanceId:hostSelectedId,selectionReset}:CanvasViewportProps){
   const svgRef=useRef<SVGSVGElement|null>(null);
   const [size,setSize]=useState({width:960,height:640});
   const [revision,setRevision]=useState(0);
@@ -52,6 +54,9 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     scene:visibleScene,wireSnapshot:snapshot,tool,snapEnabled,
     gridUm:document.project.settings.grid_step_um,onIntent:intent=>callbackRef.current(intent)
   });
+  const selectionResetRef=useRef(selectionReset);
+  controller.syncSymbolSelection(hostSelectedId,selectionResetRef.current!==selectionReset);
+  selectionResetRef.current=selectionReset;
   const invalidate=useCallback(()=>{setRevision(n=>n+1)},[]);
   const fittedRef=useRef<string|null>(null);
   const appliedZoomRef=useRef<number|null>(null);
@@ -188,7 +193,13 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     onPointerDown={down} onPointerMove={move} onPointerUp={up}
     onPointerCancel={e=>{controller.key('Escape');if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);invalidate()}}
     onWheel={wheel}
-    onKeyDown={e=>{if(['Escape','Enter','r','R','Delete','Backspace'].includes(e.key)){if(controller.key(e.key)){e.preventDefault();invalidate()}}}}
+    onKeyDown={e=>{
+      // Never turn OS/browser shortcuts, held keys or IME composition into CAD edits.
+      if(e.defaultPrevented||e.ctrlKey||e.metaKey||e.altKey||e.repeat||e.nativeEvent.isComposing)return;
+      if(['Escape','Enter','r','R','Delete','Backspace'].includes(e.key)&&controller.key(e.key)){
+        e.preventDefault();invalidate();
+      }
+    }}
     style={{touchAction:'none',outlineOffset:2}}>
     <defs>
       {grid&&<pattern id="cad-grid-um" width={step} height={step}

@@ -549,6 +549,17 @@ test('R3 pointer drag, 90-degree rotation, Delete, Undo/Redo and second A3 sheet
  const moved=JSON.parse(readFileSync(await (await d1).path(),'utf8'));
  const movedInstance=moved.project.sheets[0].instances.find(i=>i.id===instance.id);
  expect(movedInstance.origin_um).not.toEqual(instance.origin_um);
+ // Modified/held/IME key events must not become CAD mutations.
+ await canvas.focus();
+ for(const event of [
+   {key:'r',ctrlKey:true},{key:'r',metaKey:true},{key:'r',altKey:true},
+   {key:'r',repeat:true},{key:'Delete',repeat:true},{key:'Delete',isComposing:true}
+ ])await canvas.dispatchEvent('keydown',{...event,bubbles:true,cancelable:true});
+ await expect(page.getByTestId('symbol-R1')).toHaveCount(1);
+ const blockedDownload=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const blocked=JSON.parse(readFileSync(await (await blockedDownload).path(),'utf8'));
+ expect(blocked.project).toEqual(moved.project);
  await canvas.focus();await canvas.press('r');
  const d2=page.waitForEvent('download');
  await page.getByTestId('save-project').click();
@@ -841,4 +852,54 @@ test('R4 connected R1 with two independent Nets: both physical routes reanchor a
   'import sys,json;sys.path.insert(0,"src/model");from contract import validate;validate(json.load(sys.stdin))'
  ],{input:JSON.stringify(redo),encoding:'utf8',timeout:20000});
  expect(py.status,py.stderr).toBe(0);
+});
+
+test('R11: tree, viewport and inspector selection agree and blank click clears them',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+ await page.mouse.click(paper.x+paper.width*.35,paper.y+paper.height*.4);
+ await expect(page.getByTestId('symbol-R1')).toHaveAttribute('data-selected','true');
+ await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+ await page.mouse.click(paper.x+paper.width*.65,paper.y+paper.height*.6);
+ await expect(page.getByTestId('symbol-R2')).toHaveAttribute('data-selected','true');
+ await expect(page.getByTestId('symbol-R1')).toHaveAttribute('data-selected','false');
+ await page.locator('[data-testid^="tree-item-"]').filter({hasText:/^R1$/}).click();
+ await expect(page.getByTestId('symbol-R1')).toHaveAttribute('data-selected','true');
+ await expect(page.getByTestId('symbol-R2')).toHaveAttribute('data-selected','false');
+ await expect(page.getByLabel('Позиционное обозначение')).toHaveValue('R1');
+ await page.mouse.click(paper.x+paper.width*.5,paper.y+paper.height*.85);
+ await expect(page.getByTestId('symbol-R1')).toHaveAttribute('data-selected','false');
+ await expect(page.getByTestId('inspector')).toHaveCount(0);
+ await canvas.focus();await canvas.press('Delete');
+ await expect(page.getByTestId('symbol-R1')).toHaveCount(1);
+ await expect(page.getByTestId('symbol-R2')).toHaveCount(1);
+});
+
+test('R11: Ctrl+C/V duplicates unconnected UGO with new identity; Undo and Redo work',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+ await page.mouse.click(paper.x+paper.width*.4,paper.y+paper.height*.45);
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');
+ await expect(page.getByTestId('symbol-R1')).toHaveAttribute('data-selected','true');
+ await canvas.focus();await canvas.press('Control+c');await canvas.press('Control+v');
+ await expect(page.getByTestId('symbol-R2')).toHaveAttribute('data-selected','true');
+ await expect(page.getByLabel('Позиционное обозначение')).toHaveValue('R2');
+ const download=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const saved=JSON.parse(readFileSync(await (await download).path(),'utf8'));
+ expect(saved.project.components.map(c=>c.refdes)).toEqual(['R1','R2']);
+ expect(saved.project.nets).toEqual([]);
+ expect(saved.project.sheets[0].wires).toEqual([]);
+ expect(saved.project.sheets[0].instances[0].origin_um).not.toEqual(saved.project.sheets[0].instances[1].origin_um);
+ await page.getByRole('button',{name:'Отменить'}).click();
+ await expect(page.getByTestId('symbol-R2')).toHaveCount(0);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ await expect(page.getByTestId('symbol-R2')).toHaveCount(1);
 });
