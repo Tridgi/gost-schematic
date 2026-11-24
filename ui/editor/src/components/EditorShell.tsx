@@ -174,7 +174,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
   });
   function resetLayout(){resize.resetAll();setSizes({});setSplit(48);const wide=typeof window==='undefined'||window.innerWidth>=960;setLeft(wide);setRight(wide);}
   function changeSplit(p:number){setSplit(p);setSizes({...sizes,inspectorPercent:p});}
-  const filtered=props.catalog.filter(x=>(x.name+' '+x.category).toLocaleLowerCase('ru-RU').includes(query.toLocaleLowerCase('ru-RU')));
+  const filtered=props.catalog.filter(x=>(x.name+' '+x.category+' '+x.id).toLocaleLowerCase('ru-RU').includes(query.toLocaleLowerCase('ru-RU')));
   useEffect(()=>{
     const onKey=(e:globalThis.KeyboardEvent)=>{
       const editable=!!(e.target as HTMLElement)?.closest('input,textarea,select,[contenteditable="true"],[role="textbox"]');
@@ -253,12 +253,12 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
       </AppShell.Header>
       <AppShell.Navbar className="gscad-dock">
         <Stack gap="xs" p="sm" h="100%">
-          <Text size="sm" fw={600}>Библиотека УГО</Text>
+          <Text size="sm" fw={600}>Библиотека УГО · {props.catalog.length}</Text>
           <TextInput size="xs" aria-label="Поиск УГО" leftSection={<Search size={14}/>}
             placeholder="Поиск по каталогу" value={query} onChange={e=>setQuery(e.currentTarget.value)} data-testid="catalog-search"/>
           <ScrollArea h="100%" type="hover"><Stack gap={4}>
             {filtered.map(s=><Button key={s.id} size="compact-lg" variant="subtle" className="gscad-catalog-item" data-testid={'catalog-item-'+s.id}
-              aria-label={'Выбрать УГО '+s.name+', '+s.approval} onClick={()=>props.onPlaceSymbol(s.id)}>
+              aria-label={'Выбрать УГО '+s.name+', '+s.approval} title={s.id} onClick={()=>props.onPlaceSymbol(s.id)}>
               <span className="gscad-symbol-preview" aria-hidden="true">{s.thumbnail??'Нет эскиза'}</span>
               <span className="gscad-symbol-info"><span>{s.name}</span><small>{s.category} · {s.approval}</small></span>
             </Button>)}
