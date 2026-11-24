@@ -7,7 +7,7 @@ import { ManualWireEngine, WireError, constructWire, type PinRef, type PointUm,
 import { CanvasViewport } from './canvas/CanvasViewport';
 import type { CanvasIntent } from './canvas/controller.mjs';
 import { commitSegmentDrag, captureSegmentDrag } from './canvas/wire-intents.mjs';
-import {AuthoringSession,newBlankProject,type ComponentClipboard} from './authoring/session';
+import {AuthoringSession,newBlankProject,type ComponentClipboard,type GroupClipboard} from './authoring/session';
 import {nativeDesktopAvailable,nativeOpenProject,nativeSaveProject,nativeSaveAsProject,nativeCloseProject,
   nativeExportProject,type NativeDocumentHandle} from './native/desktop';
 import {installNativeCloseGuard} from './native/close-guard';
@@ -93,7 +93,7 @@ export default function App() {
   const [selectedId,setSelectedId]=useState<string|null>(null);
   const [selectionReset,setSelectionReset]=useState(0);
   const [groupIds,setGroupIds]=useState<string[]>([]);
-  const [clipboard,setClipboard]=useState<{template:ComponentClipboard;anchor:ComponentClipboard['origin_um']}|null>(null);
+  const [clipboard,setClipboard]=useState<({kind:'single';template:ComponentClipboard}|{kind:'group';template:GroupClipboard})&{anchor:ComponentClipboard['origin_um']}|null>(null);
   const [,setPending]=useState<PinRef|null>(null);
   const [grid,setGrid]=useState(true),[snap,setSnap]=useState(true);
   const [zoom,setZoom]=useState(1);
@@ -209,10 +209,17 @@ export default function App() {
   };
   const handleCopy=()=>{
     const a=authoringRef.current;
-    if(!a||!selectedInst||tool!=='select')return;
+    if(!a||tool!=='select'||(!selectedInst&&groupIds.length<2))return;
     try{
+      if(groupIds.length>1){
+        const template=a.copyGroup(groupIds);
+        setClipboard({kind:'group',template,anchor:[...template.anchor]});
+        setIssue('Скопировано УГО: '+template.components.length+'; внутренних цепей: '+template.nets.length+'; внешних цепей исключено: '+template.omittedNetCount+'.');
+        return;
+      }
+      if(!selectedInst)return;
       const template=a.copyComponent(selectedInst.id);
-      setClipboard({template,anchor:[...template.origin_um]});
+      setClipboard({kind:'single',template,anchor:[...template.origin_um]});
       setIssue('УГО скопировано во внутренний буфер. Электрические связи не копируются.');
     }catch(e){setIssue('COPY_FAILED: '+String(e));}
   };
@@ -220,6 +227,14 @@ export default function App() {
     const a=authoringRef.current;
     if(!a||!clipboard||!activeSheet||!document||tool!=='select')return;
     try{
+      if(clipboard.kind==='group'){
+        const origin=a.suggestGroupPasteOrigin(clipboard.template,clipboard.anchor,snap);
+        const ids=a.pasteGroup(a.newTransaction('paste-group'),clipboard.template,origin);
+        adoptAuthored();setSelectedId(null);setGroupIds(ids);
+        setClipboard({...clipboard,anchor:origin});
+        setIssue('Группа вставлена: '+ids.length+' УГО, '+clipboard.template.nets.length+' независимых цепей. Внешних цепей исключено: '+clipboard.template.omittedNetCount+'. Проверьте маршруты.');
+        return;
+      }
       const origin=a.suggestPasteOrigin(clipboard.template,clipboard.anchor,snap);
       const id=a.pasteComponent(a.newTransaction('paste-component'),clipboard.template,origin);
       adoptAuthored();setGroupIds([]);setSelectedId(id);
@@ -700,6 +715,7 @@ export default function App() {
     baseRevision={String(snapshot.revision)} sheets={document.project.sheets.map(s=>({id:s.id,title:s.name}))}
     activeSheetId={activeSheet.id} catalog={catalog} tree={tree}
     selected={selected} groupSelectionIds={groupIds} diagnostics={diagnostics}
+    clipboardSummary={clipboard?.kind==='group'?`Буфер: ${clipboard.template.components.length} УГО · ${clipboard.template.nets.length} внутренних цепей · ${clipboard.template.omittedNetCount} внешних исключено`:clipboard?.kind==='single'?'Буфер: 1 УГО без связей':undefined}
     canvas={<div className="gscad-canvas-wrapper">
       <input ref={fileInputRef} type="file" accept=".json,.gscad" data-testid="project-file-input"
         style={{display:'none'}} onChange={e=>{
@@ -716,7 +732,7 @@ export default function App() {
         За пределами листа: {overflow.symbols.length} УГО, {overflow.wires.length} проводников,
         {overflow.graphics.length} графических объектов. Проверьте расположение и экспорт.
       </div>}
-      {/(?:NET_CONFLICT|SOURCE_LOCKED|STALE_|UNKNOWN_|REROUTE_|MISMATCH|NOT_READY|ERROR|FAILED|DUPLICATE_|INVALID_)/.test(issue)
+      {/(?:NET_CONFLICT|SOURCE_LOCKED|STALE_|UNKNOWN_|REROUTE_|MISMATCH|NOT_READY|ERROR|FAILED|DUPLICATE_|INVALID_|NO_SAFE_PASTE)/.test(issue)
         && <div className="gscad-error-banner" role="alert">{issue}</div>}
     </div>}
     tool={tool} gridVisible={grid} snapEnabled={snap} zoomPercent={Math.round(zoom*100)}
@@ -794,8 +810,8 @@ export default function App() {
       }catch(e){setIssue('INSPECTOR_REJECTED: '+String(e));}
     }}
     onUndo={handleUndo} onRedo={handleRedo}
-    onCopy={authoringRef.current&&selectedInst&&tool==='select'?handleCopy:undefined}
-    onPaste={authoringRef.current&&clipboard&&tool==='select'&&groupIds.length===0?handlePaste:undefined}
+    onCopy={authoringRef.current&&(selectedInst||groupIds.length>1)&&tool==='select'?handleCopy:undefined}
+    onPaste={authoringRef.current&&clipboard&&tool==='select'?handlePaste:undefined}
     onNew={handleNew}
     activePaper={activeSheet.frame.paper.split(' ')[0] as 'A4'|'A3'|'A2'}
     onPaperChange={authoringRef.current?paper=>{
