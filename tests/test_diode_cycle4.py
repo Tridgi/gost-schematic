@@ -48,7 +48,7 @@ def test_two_independent_draft_ugo_parts_and_source_evidence(identifier):
     assert part.reference_prefix == "VD"
     assert part.nominal_kind is None
     assert part.voltage_orientation_rule == VoltageOrientationRule.NONE
-    assert symbol.revision == 1
+    assert symbol.revision == 2
     assert symbol.status == SymbolStatus.DRAFT
     assert len(symbol.standard_refs) >= 3
     assert any("ГОСТ 2.730-73" in source for source in symbol.standard_refs)
@@ -82,17 +82,17 @@ def test_anode_and_cathode_are_distinct_explicit_conductor_islands(identifier):
     assert trace.visited_primitives == 2
     assert trace.explicit_junctions == 0
     assert symbol.conductor_topology.conductor_indices == (0, 1)
-    assert len(symbol.graphics) == (6 if identifier.endswith("general") else 8)
+    assert len(symbol.graphics) == (7 if identifier.endswith("general") else 8)
 
 
 def test_zener_kink_is_distinct_from_plain_bar_even_as_a_raw_svg():
     general, _ = _load("diode.general")
     zener, _ = _load("diode.zener")
-    assert general.graphics[:6] == zener.graphics[:6]
+    assert general.graphics == zener.graphics[:7]
     assert general.graphics[5] == Line(Point(2500, -3300), Point(2500, 3300))
-    assert zener.graphics[6:] == (
-        Line(Point(2500, -3300), Point(1300, -3300)),
-        Line(Point(2500, 3300), Point(3700, 3300)),
+    assert general.graphics[6] == Line(Point(-2500, 0), Point(2500, 0))
+    assert zener.graphics[7:] == (
+        Line(Point(2500, 3300), Point(1300, 3300)),
     )
     assert render_symbol_svg(general) != render_symbol_svg(zener)
     for symbol in (general, zener):
@@ -225,7 +225,7 @@ def test_zener_and_general_substitution_and_lost_kink_fail_closed():
         verify_draft_diode(lost_kink, part_zener)
     wrong_bend = replace(zener, graphics=(
         *zener.graphics[:7],
-        Line(Point(2500, 3300), Point(1300, 3300)),
+        Line(Point(2500, 3300), Point(3700, 3300)),
     ))
     with pytest.raises(ValueError, match="geometry lost"):
         verify_draft_diode(wrong_bend, part_zener)

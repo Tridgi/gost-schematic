@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 1,
+  "revision": 2,
   "status": "draft",
   "line_width_mm": 0.3,
   "body_keepout_mm": [
@@ -131,6 +131,16 @@
           -2,
           -9
         ]
+      ],
+      [
+        [
+          -2.5,
+          0
+        ],
+        [
+          2.5,
+          0
+        ]
       ]
     ],
     "circles": []
@@ -222,6 +232,7 @@
   "standard_refs": [
     "ГОСТ 2.730-73 (май 2002, изм. №1–4), §10 таблица 9, поз. 2 — фотодиод, оптические стрелки К диоду; https://www.cad.dp.ua/gost/files/GOST2.730-73.pdf; PDF page 7",
     "ГОСТ 2.730-73, табл. 1 и справочное приложение 2, модульное построение; абсолютные миллиметры из справочной сетки НЕ выводить",
-    "EDITORIAL_ASSUMPTION: outline diode triangle/cathode as existing diode.general, differentiated photodiode feature coordinates in mm, stroke 0.3mm, keepout and labels are DRAFT; physical 1=A/2=K abstract; photon arrows are NONCONDUCTIVE, no PinRef"
+    "EDITORIAL_ASSUMPTION: outline diode triangle/cathode as existing diode.general, differentiated photodiode feature coordinates in mm, stroke 0.3mm, keepout and labels are DRAFT; physical 1=A/2=K abstract; photon arrows are NONCONDUCTIVE, no PinRef",
+    "VISUAL_REVIEW_R2: ГОСТ 2.730-73, табл. 4, 5, 9 и справ. приложение 2; https://files.stroyinf.ru/Data2/1/4294848/4294848038.pdf ; осевая линия внутри треугольника является графикой перехода, не проводником; внешние выводы и электрические группы неизменны; DRAFT."
   ]
 }
