@@ -231,8 +231,8 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
             </Menu>
             <Menu position="bottom-start"><Menu.Target><Button variant="subtle" size="compact-sm">Правка</Button></Menu.Target>
               <Menu.Dropdown>
-                <Menu.Item data-testid="copy-component" onClick={props.onCopy} disabled={!props.onCopy}>Копировать УГО · Ctrl+C</Menu.Item>
-                <Menu.Item data-testid="paste-component" onClick={props.onPaste} disabled={!props.onPaste}>Вставить УГО без связей · Ctrl+V</Menu.Item>
+                <Menu.Item data-testid="copy-component" onClick={props.onCopy} disabled={!props.onCopy}>Копировать выделенное · Ctrl+C</Menu.Item>
+                <Menu.Item data-testid="paste-component" onClick={props.onPaste} disabled={!props.onPaste}>Вставить независимую копию · Ctrl+V</Menu.Item>
               </Menu.Dropdown>
             </Menu>
             <Text size="sm" fw={600} truncate className="gscad-project-label">{props.projectName}</Text>
