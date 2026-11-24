@@ -452,6 +452,27 @@ export class AuthoringSession {
       return draft;
     });
   }
+  /** Atomic group translation. Connected members deliberately fail closed until
+   * multi-component wire rerouting is implemented as a single transaction. */
+  moveGroup(tx:Tx,instanceIds:readonly string[],delta:readonly number[]):void{
+    const d=xy(delta);
+    if(!d.some(Boolean))reject('NO_CHANGE');
+    const ids=new Set(instanceIds);
+    if(ids.size<2||ids.size!==instanceIds.length)reject('INVALID_GROUP');
+    this.edit(tx,draft=>{
+      const sheet=draft.project.sheets[indexOfSheet(draft)];
+      const group=sheet.instances.filter(i=>ids.has(i.id));
+      if(group.length!==ids.size)reject('UNKNOWN_INSTANCE');
+      const componentIds=new Set(group.map(i=>i.component_id));
+      if(draft.project.nets.some(n=>n.members.some(p=>componentIds.has(p.component_id))))
+        reject('GROUP_REROUTE_REQUIRED');
+      for(const inst of group){
+        if(sheet.layers.find(l=>l.id===inst.layer_id)?.locked)reject('LAYER_LOCKED');
+        inst.origin_um=xy([inst.origin_um[0]+d[0],inst.origin_um[1]+d[1]]);
+      }
+      return draft;
+    });
+  }
   move(tx:Tx,componentId:string,position:readonly number[],permitRebuild=false):void{
     const target=xy(position);
     this.wireEdit(tx,eng=>{
