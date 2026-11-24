@@ -878,3 +878,28 @@ test('R11: tree, viewport and inspector selection agree and blank click clears t
  await expect(page.getByTestId('symbol-R1')).toHaveCount(1);
  await expect(page.getByTestId('symbol-R2')).toHaveCount(1);
 });
+
+test('R11: Ctrl+C/V duplicates unconnected UGO with new identity; Undo and Redo work',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+ await page.mouse.click(paper.x+paper.width*.4,paper.y+paper.height*.45);
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');
+ await expect(page.getByTestId('symbol-R1')).toHaveAttribute('data-selected','true');
+ await canvas.focus();await canvas.press('Control+c');await canvas.press('Control+v');
+ await expect(page.getByTestId('symbol-R2')).toHaveAttribute('data-selected','true');
+ await expect(page.getByLabel('Позиционное обозначение')).toHaveValue('R2');
+ const download=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const saved=JSON.parse(readFileSync(await (await download).path(),'utf8'));
+ expect(saved.project.components.map(c=>c.refdes)).toEqual(['R1','R2']);
+ expect(saved.project.nets).toEqual([]);
+ expect(saved.project.sheets[0].wires).toEqual([]);
+ expect(saved.project.sheets[0].instances[0].origin_um).not.toEqual(saved.project.sheets[0].instances[1].origin_um);
+ await page.getByRole('button',{name:'Отменить'}).click();
+ await expect(page.getByTestId('symbol-R2')).toHaveCount(0);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ await expect(page.getByTestId('symbol-R2')).toHaveCount(1);
+});
