@@ -21,6 +21,11 @@ import {loadProjectWires} from '../wires/project-v2-adapter';
 import {projectToCanvasScene} from '../canvas/scene-projection.mjs';
 import {AUTHORING_PARTS, AUTHORING_SYMBOLS} from './catalog';
 
+export type ComponentClipboard = Readonly<{
+  symbol_id:string; value:string; rotation_deg:SymbolInstance['rotation_deg']; mirror_x:boolean;
+  origin_um:readonly [number,number];
+}>;
+
 type Tx = {project_id:string;revision:number;source_guard:string;command_id:string};
 const SOURCE_ZERO='0000000000000000000000000000000000000000';
 const clone=<T>(v:T):T=>structuredClone(v);
@@ -50,6 +55,11 @@ function sourceGuard(file:ProjectFileV2):string {
     parts:p.part_definitions,symbols:p.symbol_definitions,
     components:p.components.map(c=>[c.id,c.source_refdes,c.part_id]),
     nets:p.nets.map(n=>[n.id,n.name,n.members])});
+}
+function nextRefdes(file:ProjectFileV2,prefix:string):string {
+  const used=new Set(file.project.components.flatMap(c=>[c.refdes,c.source_refdes]));
+  let n=1;while(used.has(prefix+n))n++;
+  return prefix+n;
 }
 function expectedCounts(file:ProjectFileV2):void {
   const p=file.project;
@@ -285,9 +295,7 @@ export class AuthoringSession {
       const symbol=draft.project.symbol_definitions.find(s=>s.id===symbolId);
       const part=draft.project.part_definitions.find(p=>p.id===symbol?.part_id);
       if(!symbol||!part||symbol.status==='deprecated')reject('UNKNOWN_SYMBOL');
-      let n=1;
-      while(draft.project.components.some(c=>c.refdes===part.reference_prefix+n))n++;
-      const refdes=part.reference_prefix+n;
+      const refdes=nextRefdes(draft,part.reference_prefix);
       const comp:Component={id:newId('comp'),source_refdes:refdes,refdes,
         part_id:part.id,value:part.reference_prefix==='R'?'1к':'100н'};
       const sheet=draft.project.sheets[indexOfSheet(draft)];
@@ -296,6 +304,36 @@ export class AuthoringSession {
       const instance:SymbolInstance={id:newId('inst'),component_id:comp.id,
         symbol_id:symbolId,origin_um:position,rotation_deg:0,mirror_x:false,
         layer_id:layer.id};
+      draft.project.components.push(comp);sheet.instances.push(instance);
+      expectedCounts(draft);added=instance.id;return draft;
+    });
+    return added;
+  }
+  /** Clipboard is a detached symbol template, never a Net or physical PinRef. */
+  copyComponent(instanceId:string):ComponentClipboard {
+    const instance=this.current.project.sheets[indexOfSheet(this.current)].instances.find(i=>i.id===instanceId);
+    const comp=this.current.project.components.find(c=>c.id===instance?.component_id);
+    if(!instance||!comp)reject('UNKNOWN_INSTANCE');
+    return {symbol_id:instance.symbol_id,value:comp.value,rotation_deg:instance.rotation_deg,
+      mirror_x:instance.mirror_x,origin_um:[...instance.origin_um]};
+  }
+  pasteComponent(tx:Tx,template:ComponentClipboard,origin:readonly number[]):string {
+    const position=xy(origin);
+    if(!template||typeof template.value!=='string'||template.value.length>256||
+      ![0,90,180,270].includes(template.rotation_deg)||typeof template.mirror_x!=='boolean')
+      reject('INVALID_CLIPBOARD');
+    let added='';
+    this.edit(tx,draft=>{
+      const symbol=draft.project.symbol_definitions.find(s=>s.id===template.symbol_id);
+      const part=draft.project.part_definitions.find(p=>p.id===symbol?.part_id);
+      if(!symbol||!part||symbol.status==='deprecated')reject('UNKNOWN_SYMBOL');
+      const sheet=draft.project.sheets[indexOfSheet(draft)];
+      const layer=sheet.layers.find(l=>l.kind==='electrical'&&!l.locked);
+      if(!layer)reject('MISSING_ELECTRICAL_LAYER');
+      const refdes=nextRefdes(draft,part.reference_prefix);
+      const comp:Component={id:newId('comp'),refdes,source_refdes:refdes,part_id:part.id,value:template.value};
+      const instance:SymbolInstance={id:newId('inst'),component_id:comp.id,symbol_id:symbol.id,
+        origin_um:position,rotation_deg:template.rotation_deg,mirror_x:template.mirror_x,layer_id:layer.id};
       draft.project.components.push(comp);sheet.instances.push(instance);
       expectedCounts(draft);added=instance.id;return draft;
     });
