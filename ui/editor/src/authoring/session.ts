@@ -61,6 +61,26 @@ function nextRefdes(file:ProjectFileV2,prefix:string):string {
   let n=1;while(used.has(prefix+n))n++;
   return prefix+n;
 }
+type Bounds={minX:number;minY:number;maxX:number;maxY:number};
+function symbolBounds(symbol:SymbolDefinition,rotation:SymbolInstance['rotation_deg'],mirror:boolean):Bounds {
+  const bounds:Bounds={minX:0,minY:0,maxX:0,maxY:0};
+  const include=(at:readonly number[],pad=0)=>{
+    const x=mirror?-at[0]:at[0],y=at[1];
+    const [u,v]=rotation===0?[x,y]:rotation===90?[-y,x]:rotation===180?[-x,-y]:[y,-x];
+    bounds.minX=Math.min(bounds.minX,u-pad);bounds.minY=Math.min(bounds.minY,v-pad);
+    bounds.maxX=Math.max(bounds.maxX,u+pad);bounds.maxY=Math.max(bounds.maxY,v+pad);
+  };
+  for(const pin of symbol.pins)include(pin.at_um);
+  for(const g of symbol.graphics)for(const p of g.points_um)include(p,g.stroke_um/2);
+  return bounds;
+}
+function translateBounds(b:Bounds,p:readonly number[]):Bounds {
+  return {minX:b.minX+p[0],minY:b.minY+p[1],maxX:b.maxX+p[0],maxY:b.maxY+p[1]};
+}
+function separated(a:Bounds,b:Bounds,clearance:number):boolean {
+  return a.maxX+clearance<=b.minX||b.maxX+clearance<=a.minX||
+    a.maxY+clearance<=b.minY||b.maxY+clearance<=a.minY;
+}
 function expectedCounts(file:ProjectFileV2):void {
   const p=file.project;
   p.provenance.expected_counts={
@@ -316,6 +336,47 @@ export class AuthoringSession {
     if(!instance||!comp)reject('UNKNOWN_INSTANCE');
     return {symbol_id:instance.symbol_id,value:comp.value,rotation_deg:instance.rotation_deg,
       mirror_x:instance.mirror_x,origin_um:[...instance.origin_um]};
+  }
+  /** Suggest a nearby on-paper origin without overlapping another symbol's
+   * transformed ink/pin bounds. This is placement assistance, not full DRC:
+   * wires, text and labels remain separately checked by the editor. */
+  suggestPasteOrigin(template:ComponentClipboard,anchor:readonly number[],snap:boolean):PointUm {
+    const at=xy(anchor);
+    const file=this.current;
+    const sheet=file.project.sheets[indexOfSheet(file)];
+    const defs=new Map(file.project.symbol_definitions.map(s=>[s.id,s]));
+    const symbol=defs.get(template.symbol_id);
+    if(!symbol||symbol.status==='deprecated')reject('UNKNOWN_SYMBOL');
+    const grid=snap?file.project.settings.grid_step_um:1;
+    if(!Number.isSafeInteger(grid)||grid<=0)reject('INVALID_GRID');
+    const stride=Math.ceil(10000/grid)*grid;
+    const margin=sheet.frame.margin_um,[width,height]=sheet.frame.size_um;
+    const shape=symbolBounds(symbol,template.rotation_deg,template.mirror_x);
+    const occupied=sheet.instances.map(i=>{
+      const def=defs.get(i.symbol_id);if(!def)reject('UNKNOWN_SYMBOL');
+      return translateBounds(symbolBounds(def,i.rotation_deg,i.mirror_x),i.origin_um);
+    });
+    // Anchor at the nearest valid grid coordinate even after a cross-sheet paste.
+    const center:[number,number]=[
+      Math.round(Math.max(0,Math.min(width,at[0]))/grid)*grid,
+      Math.round(Math.max(0,Math.min(height,at[1]))/grid)*grid
+    ];
+    const candidate=(dx:number,dy:number):PointUm|null=>{
+      const p:PointUm=[center[0]+dx*stride,center[1]+dy*stride];
+      const b=translateBounds(shape,p);
+      if(b.minX<margin||b.minY<margin||b.maxX>width-margin||b.maxY>height-margin)return null;
+      return occupied.every(o=>separated(b,o,1000))?p:null;
+    };
+    // Bounded expanding rings; prefer the familiar down/right paste offset.
+    for(let radius=1;radius<=24;radius++){
+      const preferred=candidate(radius,radius);if(preferred)return preferred;
+      for(let d=-radius;d<=radius;d++){
+        for(const [dx,dy] of [[d,radius],[d,-radius],[radius,d],[-radius,d]]){
+          const p=candidate(dx,dy);if(p)return p;
+        }
+      }
+    }
+    reject('NO_SAFE_PASTE_ORIGIN');
   }
   pasteComponent(tx:Tx,template:ComponentClipboard,origin:readonly number[]):string {
     const position=xy(origin);
