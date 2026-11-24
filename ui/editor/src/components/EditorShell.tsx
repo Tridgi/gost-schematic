@@ -290,8 +290,8 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
       <AppShell.Aside className="gscad-dock">
         <RightSplit percent={split} onChange={changeSplit}
           top={<><Text size="sm" fw={600} p="sm">Структура проекта</Text>
-            <ScrollArea h="calc(100% - 44px)">{props.tree.map(n=><NavLink key={n.id} label={n.label}
-              pl={12+(n.indent??0)*16} active={n.kind==='instance'&&n.id==='instance:'+props.selected?.id} onClick={()=>props.onSelectTreeItem(n.id)}
+            <ScrollArea h="calc(100% - 44px)">{props.tree.map(n=><NavLink key={n.id} label={n.label} data-testid={'tree-item-'+n.id}
+              pl={12+(n.indent??0)*16} active={n.kind==='instance'&&n.id===props.selected?.id} onClick={()=>props.onSelectTreeItem(n.id)}
               leftSection={<FolderTree size={14}/>} />)}</ScrollArea></>}
           bottom={<><Text fw={600} size="sm" p="sm">Свойства</Text>
             <ScrollArea h="calc(100% - 44px)"><Inspector selected={props.selected}
