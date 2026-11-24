@@ -18,6 +18,7 @@ export type CanvasViewportProps = {
   zoomRequest?: {percent:50|100|200;token:number};
   fitRequest?:number;
   selectedInstanceId:string|null;
+  selectedGroupIds:readonly string[];
   selectionReset:number;
 };
 
@@ -31,7 +32,7 @@ function localStroke(symbol:CanvasSymbol,p:PointUm,camera:Camera):ScreenPoint {
   return screen([symbol.origin_um[0]+xy[0],symbol.origin_um[1]+xy[1]],camera);
 }
 /** Read-only SVG viewport. The canonical physical print/export belongs to #124. */
-export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapEnabled,onIntent,onZoomPercent,zoomRequest,fitRequest,selectedInstanceId:hostSelectedId,selectionReset}:CanvasViewportProps){
+export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapEnabled,onIntent,onZoomPercent,zoomRequest,fitRequest,selectedInstanceId:hostSelectedId,selectedGroupIds,selectionReset}:CanvasViewportProps){
   const svgRef=useRef<SVGSVGElement|null>(null);
   const [size,setSize]=useState({width:960,height:640});
   const [revision,setRevision]=useState(0);
@@ -55,7 +56,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     gridUm:document.project.settings.grid_step_um,onIntent:intent=>callbackRef.current(intent)
   });
   const selectionResetRef=useRef(selectionReset);
-  controller.syncSymbolSelection(hostSelectedId,selectionResetRef.current!==selectionReset);
+  controller.syncSymbolSelection(hostSelectedId,selectionResetRef.current!==selectionReset,selectedGroupIds);
   selectionResetRef.current=selectionReset;
   const invalidate=useCallback(()=>{setRevision(n=>n+1)},[]);
   const fittedRef=useRef<string|null>(null);
@@ -173,6 +174,10 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
   const ghost:CanvasSymbol|null=dragSource&&dragPreview?{...dragSource,origin_um:[
     dragSource.origin_um[0]+dragPreview.delta_um[0],dragSource.origin_um[1]+dragPreview.delta_um[1]
   ]}:null;
+  const groupDrag=controller.groupDragPreview();
+  const groupGhosts:CanvasSymbol[]=groupDrag?visibleScene.symbols.filter(s=>groupDrag.instance_ids.includes(s.instance_id)).map(s=>({...s,origin_um:[s.origin_um[0]+groupDrag.delta_um[0],s.origin_um[1]+groupDrag.delta_um[1]]})):[];
+  const marquee=controller.marqueePreview();
+  const selectedGroup=new Set(controller.getState().selectedGroup);
   const selectedSymbol=controller.getState().selected;
   const selectedInstanceId=selectedSymbol?.kind==='symbol'?selectedSymbol.instance_id:null;
   const vertices=(snapshotWire:WiringSnapshot['wires'][number])=>new Map(snapshotWire.vertices.map(v=>[v.id,v.at_um]));
@@ -243,9 +248,9 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     </g>
     <g className="symbol-ugo" fill="none" stroke="#24384b" strokeWidth={1.5} pointerEvents="none">
       {visibleScene.symbols.map(s=><g key={s.instance_id} data-component-id={s.component_id}
-        data-selected={String(selectedInstanceId===s.instance_id)}
+        data-selected={String((selectedInstanceId===s.instance_id||selectedGroup.has(s.instance_id)))}
         data-testid={'symbol-'+(document.project.components.find(c=>c.id===s.component_id)?.refdes??s.component_id)}
-        stroke={selectedInstanceId===s.instance_id?'#e29225':undefined}>
+        stroke={(selectedInstanceId===s.instance_id||selectedGroup.has(s.instance_id))?'#e29225':undefined}>
         {s.strokes.map((stroke,i)=>{
           const a=localStroke(s,stroke.from_um,camera),b=localStroke(s,stroke.to_um,camera);
           return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y}/>;
@@ -288,6 +293,16 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
         return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y}/>;
       })}
     </g>}
+    {groupGhosts.length>0&&<g data-testid="gscad-group-drag-preview" data-electrical="false"
+      pointerEvents="none" fill="none" stroke="#d58c27" strokeWidth={1.8} strokeDasharray="5 3">
+      {groupGhosts.map(s=><g key={s.instance_id}>{s.strokes.map((stroke,i)=>{
+        const a=localStroke(s,stroke.from_um,camera),b=localStroke(s,stroke.to_um,camera);
+        return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y}/>;
+      })}</g>)}
+    </g>}
+    {marquee&&<rect data-testid="gscad-selection-marquee" data-electrical="false"
+      {...marquee} fill="#2c82bd" fillOpacity={.12} stroke="#2c82bd" strokeWidth={1}
+      strokeDasharray="4 3" pointerEvents="none"/>}
     <g className="draft-preview" fill="none" stroke="#d58c27" strokeWidth={1.8}
       strokeDasharray="6 3" pointerEvents="none">
       {controller.preview().slice(1).map((p,i)=>{
