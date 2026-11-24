@@ -162,11 +162,17 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
   };
   const wheel=(e:ReactWheelEvent<SVGSVGElement>)=>{
     e.preventDefault();
+    if(controller.getState().drag)return;
     controller.setContext({camera:zoom(controller.getState().camera,local(e),e.deltaY<0?1.15:.85)});
     const p=Math.round(controller.getState().camera.s/DEFAULT_CAMERA.s*100);
     appliedZoomRef.current=p;onZoomPercent?.(p);
     invalidate();
   };
+  const dragPreview=controller.symbolDragPreview();
+  const dragSource=dragPreview&&visibleScene.symbols.find(s=>s.instance_id===dragPreview.instance_id&&s.component_id===dragPreview.component_id);
+  const ghost:CanvasSymbol|null=dragSource&&dragPreview?{...dragSource,origin_um:[
+    dragSource.origin_um[0]+dragPreview.delta_um[0],dragSource.origin_um[1]+dragPreview.delta_um[1]
+  ]}:null;
   const selectedSymbol=controller.getState().selected;
   const selectedInstanceId=selectedSymbol?.kind==='symbol'?selectedSymbol.instance_id:null;
   const vertices=(snapshotWire:WiringSnapshot['wires'][number])=>new Map(snapshotWire.vertices.map(v=>[v.id,v.at_um]));
@@ -274,6 +280,14 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
           cx={p.x} cy={p.y} r={3}/>;
       }))}
     </g>
+    {ghost&&<g data-testid="gscad-symbol-drag-preview" data-electrical="false"
+      aria-label="Предпросмотр перемещения УГО" pointerEvents="none" fill="none" stroke="#d58c27"
+      strokeWidth={1.8} strokeDasharray="5 3" opacity={.9}>
+      {ghost.strokes.map((stroke,i)=>{
+        const a=localStroke(ghost,stroke.from_um,camera),b=localStroke(ghost,stroke.to_um,camera);
+        return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y}/>;
+      })}
+    </g>}
     <g className="draft-preview" fill="none" stroke="#d58c27" strokeWidth={1.8}
       strokeDasharray="6 3" pointerEvents="none">
       {controller.preview().slice(1).map((p,i)=>{
