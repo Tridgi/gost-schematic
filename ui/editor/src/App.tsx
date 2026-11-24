@@ -91,6 +91,7 @@ export default function App() {
   const [tool,setTool]=useState<ToolMode>('select');
   const [placementSymbol,setPlacementSymbol]=useState<string|null>(null);
   const [selectedId,setSelectedId]=useState<string|null>(null);
+  const [selectionReset,setSelectionReset]=useState(0);
   const [,setPending]=useState<PinRef|null>(null);
   const [grid,setGrid]=useState(true),[snap,setSnap]=useState(true);
   const [zoom,setZoom]=useState(1);
@@ -193,7 +194,9 @@ export default function App() {
   const adoptAuthored=()=>{
     const session=authoringRef.current;if(!session)return;
     engineRef.current=session.engine;
-    setDocument(session.file);setSnapshot(session.snapshot);
+    const next=session.file;
+    setDocument(next);setSnapshot(session.snapshot);
+    setSelectedId(id=>next.project.sheets.find(sh=>sh.id===next.workspace.active_sheet_id)?.instances.some(i=>i.id===id)?id:null);
     setHistory({undo:session.canUndo?1:0,redo:session.canRedo?1:0});
     contentEpochRef.current++;
     setDirty(true);
@@ -424,11 +427,11 @@ export default function App() {
         if(intent.kind==='cancelWire'){setPending(null);return true;}
         if(intent.kind==='select'){
           if(intent.target?.kind==='symbol')setSelectedId(intent.target.instance_id);
-          if(intent.target?.kind==='pin'){
+          else if(intent.target?.kind==='pin'){
             const selectedPin=intent.target.pin;
             const inst=instances.find(i=>i.component_id===selectedPin.component_id);
-            if(inst)setSelectedId(inst.id);
-          }
+            setSelectedId(inst?.id??null);
+          }else setSelectedId(null);
           return true;
         }
         if(intent.kind==='placeSymbol'){
@@ -541,11 +544,11 @@ export default function App() {
       if(intent.kind==='cancelWire'){setPending(null);return;}
       if(intent.kind==='select'){
         if(intent.target?.kind==='symbol')setSelectedId(intent.target.instance_id);
-        if(intent.target?.kind==='pin'){
+        else if(intent.target?.kind==='pin'){
           const targetPin=intent.target.pin;
           const chosen=instances.find(i=>i.component_id===targetPin.component_id);
-          if(chosen)setSelectedId(chosen.id);
-        }
+          setSelectedId(chosen?.id??null);
+        }else setSelectedId(null);
         return;
       }
       if(intent.kind==='rejectJunction'){
@@ -654,7 +657,8 @@ export default function App() {
           void handleOpen(e.currentTarget.files?.[0]??null);
           e.currentTarget.value='';
         }}/>
-      <CanvasViewport document={document} snapshot={snapshot} sheetId={activeSheet.id}
+      <CanvasViewport key={sessionEpochRef.current+':'+activeSheet.id} document={document} snapshot={snapshot} sheetId={activeSheet.id}
+        selectedInstanceId={selected?.id??null} selectionReset={selectionReset}
         tool={tool} gridVisible={grid} snapEnabled={snap}
         zoomRequest={zoomRequest??undefined} fitRequest={fitRequest}
         onIntent={onCanvasIntent} onZoomPercent={percent=>setZoom(percent/100)}/>
@@ -685,7 +689,9 @@ export default function App() {
       setPlacementSymbol(id);setTool('place');setIssue('Кликните на листе для размещения '+id+' (DRAFT).');
     }}
     onSelectTreeItem={id=>{const i=instances.find(v=>v.id===id);
-      if(i)setSelectedId(i.id);else setIssue('Структура: '+id);}}
+      setSelectionReset(n=>n+1);
+      setSelectedId(i?.id??null);
+      if(!i)setIssue('Структура: '+id);}}
     onSelectSheet={id=>{
       const author=authoringRef.current;
       if(!author)return;
