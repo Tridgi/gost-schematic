@@ -98,6 +98,24 @@ export function createCanvasController(initial){
       selected={kind:'symbol',instance_id:symbol.instance_id,component_id:symbol.component_id,distance_px:0};
     }else if(clearOther||selected?.kind==='symbol')selected=null;
   },
+  /** Right-click selection never starts a drag or electrical edit. */
+  contextSelect(p){
+   if(context.tool!=='select'||active||draft)return null;
+   const exact=hitTest(context.scene,context.camera,p);
+   const hit=exact||symbolHit(context.scene,context.camera,p);
+   const symbol=hit?.kind==='symbol'?context.scene.symbols.find(s=>s.instance_id===hit.instance_id):
+     hit?.kind==='pin'?context.scene.symbols.find(s=>s.component_id===hit.pin.component_id):null;
+   if(symbol&&selectedGroup.includes(symbol.instance_id))return 'group';
+   if(symbol){
+    const target={kind:'symbol',instance_id:symbol.instance_id,component_id:symbol.component_id,distance_px:0};
+    if(emit({kind:'select',target})===false)return null;
+    selectedGroup=[];selected=target;return 'symbol';
+   }
+   // Do not guess targets for wire hits or ambiguous overlapping geometry.
+   if(hit)return null;
+   if(emit({kind:'select',target:null})===false)return null;
+   selectedGroup=[];selected=null;return 'blank';
+  },
   down(p){
    if(!owner(p)||active)return false;
    const exact=hitTest(context.scene,context.camera,p);
