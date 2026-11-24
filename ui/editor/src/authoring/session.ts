@@ -11,7 +11,7 @@
  */
 import type {
   ProjectFileV2, Sheet, PointUm, PinRef, SymbolInstance,
-  Component, SymbolDefinition, Net
+  Component, SymbolDefinition, Net, WireEndpoint, WirePolyline, Junction, Splice
 } from '../model/contract';
 import {
   ManualWireEngine, WireError, constructWire, type WiringSnapshot,
@@ -25,6 +25,14 @@ export type ComponentClipboard = Readonly<{
   symbol_id:string; value:string; rotation_deg:SymbolInstance['rotation_deg']; mirror_x:boolean;
   origin_um:readonly [number,number];
 }>;
+
+/** Detached per-project group template. Original IDs are local mapping keys only. */
+export type GroupClipboard = {
+  anchor:PointUm;
+  components:{key:string;template:ComponentClipboard}[];
+  nets:Net[]; wires:WirePolyline[]; junctions:Junction[]; splices:Splice[];
+  omittedNetCount:number;
+};
 
 type Tx = {project_id:string;revision:number;source_guard:string;command_id:string};
 const SOURCE_ZERO='0000000000000000000000000000000000000000';
@@ -397,6 +405,132 @@ export class AuthoringSession {
         origin_um:position,rotation_deg:template.rotation_deg,mirror_x:template.mirror_x,layer_id:layer.id};
       draft.project.components.push(comp);sheet.instances.push(instance);
       expectedCounts(draft);added=instance.id;return draft;
+    });
+    return added;
+  }
+  /** Copy complete internal Nets only. A Net with any member or geometry
+   * outside the selection/sheet is omitted in full, never silently shorted. */
+  copyGroup(instanceIds:readonly string[]):GroupClipboard {
+    const ids=new Set(instanceIds),file=this.current;
+    const sheet=file.project.sheets[indexOfSheet(file)];
+    const instances=sheet.instances.filter(i=>ids.has(i.id));
+    if(ids.size<2||ids.size!==instanceIds.length||instances.length!==ids.size)reject('INVALID_GROUP');
+    const keys=new Set(instances.map(i=>i.component_id));
+    const related=file.project.nets.filter(n=>n.members.some(p=>keys.has(p.component_id)));
+    const nets=related.filter(n=>n.members.every(p=>keys.has(p.component_id))&&
+      !file.project.sheets.some(sh=>sh.id!==sheet.id&&
+        [...sh.wires,...sh.junctions,...sh.splices].some(o=>o.net_id===n.id)));
+    const included=new Set(nets.map(n=>n.id));
+    return clone({
+      anchor:[Math.min(...instances.map(i=>i.origin_um[0])),Math.min(...instances.map(i=>i.origin_um[1]))],
+      components:instances.map(i=>({key:i.component_id,template:this.copyComponent(i.id)})),
+      nets,wires:sheet.wires.filter(w=>included.has(w.net_id)),
+      junctions:sheet.junctions.filter(j=>included.has(j.net_id)),
+      splices:sheet.splices.filter(j=>included.has(j.net_id)),
+      omittedNetCount:related.length-nets.length
+    });
+  }
+  /** Entire group (including route vertices) must fit inside printable margins.
+   * Conservative placement uses one bounding box; this is not a full DRC. */
+  suggestGroupPasteOrigin(template:GroupClipboard,anchor:readonly number[],snap:boolean):PointUm {
+    const at=xy(anchor),file=this.current,sheet=file.project.sheets[indexOfSheet(file)];
+    const defs=new Map(file.project.symbol_definitions.map(s=>[s.id,s]));
+    const bounds:Bounds={minX:0,minY:0,maxX:0,maxY:0};
+    const include=(b:Bounds)=>{
+      bounds.minX=Math.min(bounds.minX,b.minX);bounds.minY=Math.min(bounds.minY,b.minY);
+      bounds.maxX=Math.max(bounds.maxX,b.maxX);bounds.maxY=Math.max(bounds.maxY,b.maxY);
+    };
+    const relative=(p:readonly number[])=>[p[0]-template.anchor[0],p[1]-template.anchor[1]];
+    for(const {template:t} of template.components){
+      const def=defs.get(t.symbol_id);if(!def||def.status==='deprecated')reject('UNKNOWN_SYMBOL');
+      include(translateBounds(symbolBounds(def,t.rotation_deg,t.mirror_x),relative(t.origin_um)));
+    }
+    for(const p of [...template.wires.flatMap(w=>w.vertices.map(v=>v.at_um)),...template.junctions.map(j=>j.at_um),...template.splices.map(j=>j.at_um)]){
+      const [x,y]=relative(p);include({minX:x,maxX:x,minY:y,maxY:y});
+    }
+    const occupied=sheet.instances.map(i=>{
+      const def=defs.get(i.symbol_id);if(!def)reject('UNKNOWN_SYMBOL');
+      return translateBounds(symbolBounds(def,i.rotation_deg,i.mirror_x),i.origin_um);
+    });
+    for(const wire of sheet.wires)for(let i=1;i<wire.vertices.length;i++){
+      const a=wire.vertices[i-1].at_um,b=wire.vertices[i].at_um;
+      occupied.push({minX:Math.min(a[0],b[0]),maxX:Math.max(a[0],b[0]),minY:Math.min(a[1],b[1]),maxY:Math.max(a[1],b[1])});
+    }
+    const grid=snap?file.project.settings.grid_step_um:1;
+    if(!Number.isSafeInteger(grid)||grid<=0)reject('INVALID_GRID');
+    const stride=Math.ceil(10000/grid)*grid;
+    const [width,height]=sheet.frame.size_um,margin=sheet.frame.margin_um;
+    const center=at.map((v,i)=>Math.round(Math.max(0,Math.min(sheet.frame.size_um[i],v))/grid)*grid);
+    const candidate=(dx:number,dy:number):PointUm|null=>{
+      const p:PointUm=[center[0]+dx*stride,center[1]+dy*stride],b=translateBounds(bounds,p);
+      if(b.minX<margin||b.minY<margin||b.maxX>width-margin||b.maxY>height-margin)return null;
+      return occupied.every(o=>separated(b,o,1000))?p:null;
+    };
+    for(let radius=1;radius<=60;radius++){
+      const preferred=candidate(radius,radius);if(preferred)return preferred;
+      for(let d=-radius;d<=radius;d++)for(const [dx,dy] of [[d,radius],[d,-radius],[radius,d],[-radius,d]]){
+        const p=candidate(dx,dy);if(p)return p;
+      }
+    }
+    reject('NO_SAFE_PASTE_ORIGIN');
+  }
+  pasteGroup(tx:Tx,template:GroupClipboard,origin:readonly number[]):string[] {
+    const at=xy(origin),base=xy(template.anchor);
+    const shift=(p:readonly number[]):MutablePoint=>xy([p[0]+at[0]-base[0],p[1]+at[1]-base[1]]);
+    const added:string[]=[];
+    this.edit(tx,draft=>{
+      const sheet=draft.project.sheets[indexOfSheet(draft)];
+      const layer=sheet.layers.find(l=>l.kind==='electrical'&&!l.locked);
+      if(!layer)reject('MISSING_ELECTRICAL_LAYER');
+      if(template.components.length<2)reject('INVALID_GROUP');
+      const comps=new Map<string,string>(),nets=new Map<string,string>(),junctions=new Map<string,string>(),splices=new Map<string,string>();
+      const mapped=(map:Map<string,string>,key:string):string=>{
+        const value=map.get(key);if(!value)reject('INVALID_CLIPBOARD');return value;
+      };
+      const fresh=(map:Map<string,string>,key:string,prefix:string):string=>{
+        if(map.has(key))reject('INVALID_CLIPBOARD');
+        const id=newId(prefix);map.set(key,id);return id;
+      };
+      for(const {key,template:t} of template.components){
+        const symbol=draft.project.symbol_definitions.find(s=>s.id===t.symbol_id);
+        const part=draft.project.part_definitions.find(p=>p.id===symbol?.part_id);
+        if(!symbol||!part||symbol.status==='deprecated')reject('UNKNOWN_SYMBOL');
+        if(typeof t.value!=='string'||t.value.length>256||![0,90,180,270].includes(t.rotation_deg)||typeof t.mirror_x!=='boolean')reject('INVALID_CLIPBOARD');
+        const compId=fresh(comps,key,'comp'),refdes=nextRefdes(draft,part.reference_prefix),id=newId('inst');
+        draft.project.components.push({id:compId,refdes,source_refdes:refdes,part_id:part.id,value:t.value});
+        sheet.instances.push({id,component_id:compId,symbol_id:symbol.id,origin_um:shift(t.origin_um),rotation_deg:t.rotation_deg,mirror_x:t.mirror_x,layer_id:layer.id});
+        added.push(id);
+      }
+      const names=new Set(draft.project.nets.map(n=>n.name));
+      let num=1;
+      for(const net of template.nets){
+        const id=fresh(nets,net.id,'net');
+        while(names.has('N'+num))num++;
+        const name='N'+num++;names.add(name);
+        draft.project.nets.push({id,name,members:net.members.map(p=>({component_id:mapped(comps,p.component_id),physical_pin_number:p.physical_pin_number})),route_status:'unrouted'});
+      }
+      for(const j of template.junctions)sheet.junctions.push({id:fresh(junctions,j.id,'junction'),net_id:mapped(nets,j.net_id),layer_id:layer.id,at_um:shift(j.at_um)});
+      for(const j of template.splices)sheet.splices.push({id:fresh(splices,j.id,'splice'),net_id:mapped(nets,j.net_id),layer_id:layer.id,at_um:shift(j.at_um)});
+      const anchor=(a:WireEndpoint):WireEndpoint=>{
+        switch(a.kind){
+          case 'pin':return {kind:'pin',component_id:mapped(comps,a.component_id),physical_pin_number:a.physical_pin_number};
+          case 'junction':return {kind:'junction',junction_id:mapped(junctions,a.junction_id)};
+          case 'splice':return {kind:'splice',splice_id:mapped(splices,a.splice_id)};
+          case 'free':return {kind:'free',free_id:newId('free')};
+          case 'bend':return {kind:'bend'};
+        }
+      };
+      for(const wire of template.wires){
+        const id=newId('wire'),vertices=new Map<string,string>();
+        sheet.wires.push({id,net_id:mapped(nets,wire.net_id),layer_id:layer.id,mode:'orthogonal',needs_routing_review:true,
+          vertices:wire.vertices.map(v=>({id:fresh(vertices,v.id,'vertex'),at_um:shift(v.at_um),anchor:anchor(v.anchor)})),
+          segments:wire.segments.map(s=>({id:newId('segment'),from_vertex_id:mapped(vertices,s.from_vertex_id),to_vertex_id:mapped(vertices,s.to_vertex_id)}))});
+      }
+      expectedCounts(draft);
+      const {session}=localSession(draft,this.clock);
+      // Recompute only the copied Nets; never rewrite original route status.
+      for(const id of nets.values())draft.project.nets.find(n=>n.id===id)!.route_status=session.engine.validateNet(id).status;
+      return draft;
     });
     return added;
   }
