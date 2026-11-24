@@ -549,6 +549,17 @@ test('R3 pointer drag, 90-degree rotation, Delete, Undo/Redo and second A3 sheet
  const moved=JSON.parse(readFileSync(await (await d1).path(),'utf8'));
  const movedInstance=moved.project.sheets[0].instances.find(i=>i.id===instance.id);
  expect(movedInstance.origin_um).not.toEqual(instance.origin_um);
+ // Modified/held/IME key events must not become CAD mutations.
+ await canvas.focus();
+ for(const event of [
+   {key:'r',ctrlKey:true},{key:'r',metaKey:true},{key:'r',altKey:true},
+   {key:'r',repeat:true},{key:'Delete',repeat:true},{key:'Delete',isComposing:true}
+ ])await canvas.dispatchEvent('keydown',{...event,bubbles:true,cancelable:true});
+ await expect(page.getByTestId('symbol-R1')).toHaveCount(1);
+ const blockedDownload=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const blocked=JSON.parse(readFileSync(await (await blockedDownload).path(),'utf8'));
+ expect(blocked.project).toEqual(moved.project);
  await canvas.focus();await canvas.press('r');
  const d2=page.waitForEvent('download');
  await page.getByTestId('save-project').click();
