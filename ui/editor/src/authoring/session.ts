@@ -19,7 +19,7 @@ import {
 } from '../wires/manual-wire';
 import {loadProjectWires} from '../wires/project-v2-adapter';
 import {projectToCanvasScene} from '../canvas/scene-projection.mjs';
-import {AUTHORING_PARTS, AUTHORING_SYMBOLS,catalogDefaultValue} from './catalog';
+import {AUTHORING_PARTS, AUTHORING_SYMBOLS,catalogDefaultValue,catalogAdditions} from './catalog';
 
 export type ComponentClipboard = Readonly<{
   symbol_id:string; value:string; rotation_deg:SymbolInstance['rotation_deg']; mirror_x:boolean;
@@ -315,6 +315,19 @@ export class AuthoringSession {
       doWire(session.engine);
       return materialize(draft,subset,session);
     });
+  }
+  upgradeCatalog(tx:Tx):number {
+    let added=0;
+    this.edit(tx,draft=>{
+      const {part_definitions:parts,symbol_definitions:symbols}=draft.project;
+      const additions=catalogAdditions(parts,symbols);
+      if(!additions.length)reject('NO_CHANGE');
+      for(const entry of additions){
+        parts.push(clone(entry.part));symbols.push(clone(entry.symbol));added++;
+      }
+      return draft;
+    });
+    return added;
   }
   place(tx:Tx,symbolId:string,origin:readonly number[]):string {
     const position=xy(origin);

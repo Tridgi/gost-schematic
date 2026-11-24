@@ -37,6 +37,7 @@ export type EditorShellProps = {
   projectName:string;dirty:boolean;baseRevision:string;
   sheets:readonly {id:string;title:string}[];activeSheetId:string;
   catalog:readonly CatalogSymbol[];tree:readonly TreeItem[];
+  catalogMissingCount?:number;onCatalogUpgrade?:()=>void;
   selected:SelectedInstance|null;groupSelectionIds?:readonly string[];diagnostics:readonly DiagnosticItem[];
   clipboardSummary?:string;
   canvas:ReactNode;tool:ToolMode;gridVisible:boolean;snapEnabled:boolean;
@@ -254,6 +255,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
       <AppShell.Navbar className="gscad-dock">
         <Stack gap="xs" p="sm" h="100%">
           <Text size="sm" fw={600}>Библиотека УГО · {props.catalog.length}</Text>
+          {!!props.catalogMissingCount&&<Button size="compact-xs" variant="light" data-testid="upgrade-catalog" onClick={props.onCatalogUpgrade}>Добавить УГО (+{props.catalogMissingCount})</Button>}
           <TextInput size="xs" aria-label="Поиск УГО" leftSection={<Search size={14}/>}
             placeholder="Поиск по каталогу" value={query} onChange={e=>setQuery(e.currentTarget.value)} data-testid="catalog-search"/>
           <ScrollArea h="100%" type="hover"><Stack gap={4}>

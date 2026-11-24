@@ -129,3 +129,10 @@ export function catalogDefaultValue(partId:string):string {
  const e=entries.find(x=>x.part.id===partId);
  return e?.part.nominal_kind==='resistance'?'1к':e?.part.nominal_kind==='capacitance'?'100н':'';
 }
+
+/** Add only pairs absent from a saved synthetic project's immutable library.
+ * Existing part/symbol IDs (even custom or older revisions) are never replaced. */
+export function catalogAdditions(parts:readonly PartDefinition[],symbols:readonly SymbolDefinition[]){
+ const partIds=new Set(parts.map(p=>p.id)),symbolIds=new Set(symbols.map(s=>s.id));
+ return converted.filter(x=>!partIds.has(x.part.id)&&!symbolIds.has(x.symbol.id));
+}

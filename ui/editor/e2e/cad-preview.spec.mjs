@@ -1105,3 +1105,32 @@ test('R17: source library search and real semiconductor placement',async({page})
  for(const n of [1,2,3])await expect(page.getByTestId('signed-pin-'+t.id+'-'+n)).toBeVisible();
  expect(doc.project.nets).toEqual([]);
 });
+
+test('R17b: open legacy project, add catalog entries explicitly, undo and redo',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const legacy=await saved();
+ const keep=new Set(['resistor.fixed','capacitor.fixed']);
+ legacy.project.part_definitions=legacy.project.part_definitions.filter(p=>keep.has(p.id));
+ legacy.project.symbol_definitions=legacy.project.symbol_definitions.filter(p=>keep.has(p.part_id));
+ await page.getByTestId('project-file-input').setInputFiles({name:'legacy.gscad',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(legacy))});
+ await expect(page.locator('[data-testid^="catalog-item-"]')).toHaveCount(2);
+ await expect(page.getByTestId('upgrade-catalog')).toContainText('+19');
+ await page.getByTestId('upgrade-catalog').click();
+ await expect(page.locator('[data-testid^="catalog-item-"]')).toHaveCount(21);
+ await expect(page.getByTestId('upgrade-catalog')).toHaveCount(0);
+ const upgraded=await saved();
+ expect(upgraded.project.part_definitions.slice(0,2)).toEqual(legacy.project.part_definitions);
+ expect(upgraded.project.symbol_definitions.slice(0,2)).toEqual(legacy.project.symbol_definitions);
+ expect(upgraded.project.sheets).toEqual(legacy.project.sheets);
+ await page.getByRole('button',{name:'Отменить'}).click();
+ await expect(page.locator('[data-testid^="catalog-item-"]')).toHaveCount(2);
+ expect((await saved()).project).toEqual(legacy.project);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ expect((await saved()).project).toEqual(upgraded.project);
+});

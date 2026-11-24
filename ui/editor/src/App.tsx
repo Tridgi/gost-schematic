@@ -7,7 +7,7 @@ import { ManualWireEngine, WireError, constructWire, type PinRef, type PointUm,
 import { CanvasViewport } from './canvas/CanvasViewport';
 import type { CanvasIntent } from './canvas/controller.mjs';
 import { commitSegmentDrag, captureSegmentDrag } from './canvas/wire-intents.mjs';
-import {catalogDisplay} from './authoring/catalog';
+import {catalogDisplay,catalogAdditions} from './authoring/catalog';
 import {AuthoringSession,newBlankProject,type ComponentClipboard,type GroupClipboard} from './authoring/session';
 import {nativeDesktopAvailable,nativeOpenProject,nativeSaveProject,nativeSaveAsProject,nativeCloseProject,
   nativeExportProject,type NativeDocumentHandle} from './native/desktop';
@@ -718,6 +718,12 @@ export default function App() {
     projectName={document.project.title+(authoringRef.current?' · R3 AUTHORING':' · R2 PREVIEW')} dirty={dirty}
     baseRevision={String(snapshot.revision)} sheets={document.project.sheets.map(s=>({id:s.id,title:s.name}))}
     activeSheetId={activeSheet.id} catalog={catalog} tree={tree}
+    catalogMissingCount={authoringRef.current?catalogAdditions(document.project.part_definitions,document.project.symbol_definitions).length:0}
+    onCatalogUpgrade={authoringRef.current?()=>{
+      try{const a=authoringRef.current!;const added=a.upgradeCatalog(a.newTransaction('upgrade-catalog'));
+        adoptAuthored();setIssue('Добавлено УГО: '+added+'. Существующая библиотека, PinRef и Nets сохранены.');}
+      catch(e){setIssue('CATALOG_UPGRADE_FAILED: '+String(e));}
+    }:undefined}
     selected={selected} groupSelectionIds={groupIds} diagnostics={diagnostics}
     clipboardSummary={clipboard?.kind==='group'?`Буфер: ${clipboard.template.components.length} УГО · ${clipboard.template.nets.length} внутренних цепей · ${clipboard.template.omittedNetCount} внешних исключено`:clipboard?.kind==='single'?'Буфер: 1 УГО без связей':undefined}
     canvas={<div className="gscad-canvas-wrapper">

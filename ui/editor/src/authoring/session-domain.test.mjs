@@ -6,7 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
 import {spawnSync} from 'node:child_process';
-import {mkdtempSync,rmSync} from 'node:fs';
+import {mkdtempSync,rmSync,readdirSync,readFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
@@ -640,4 +640,67 @@ test('R17 semiconductor terminal names and polarity are retained without inferre
  assert.deepEqual(s.file.project.nets[0].members,[pin(d,'2'),pin(t,'1')]);
  assert.equal(s.beginWire(pin(t,'2')).net_id,null);
  assert.equal(s.beginWire(pin(t,'3')).net_id,null);
+});
+
+test('R17b old R/C project library upgrade is explicit, additive and reversible',()=>{
+ const source=newSession(),{r,c}=placePair(source);
+ source.connect(source.newTransaction('connect'),pin(r,'2'),pin(c,'1'));
+ const legacy=source.file,keep=new Set(['resistor.fixed','capacitor.fixed']);
+ legacy.project.part_definitions=legacy.project.part_definitions.filter(p=>keep.has(p.id));
+ legacy.project.symbol_definitions=legacy.project.symbol_definitions.filter(p=>keep.has(p.part_id));
+ // Simulate older or locally edited pin name/geometry metadata.
+ legacy.project.part_definitions[0].physical_pins[0].name='OLD_NAME';
+ legacy.project.symbol_definitions[0].standard_refs=['LEGACY_DRAFT'];
+ const s=new AuthoringSession(legacy),stale=s.newTransaction('stale');
+ assert.equal(s.upgradeCatalog(s.newTransaction('upgrade')),19);
+ const after=s.file;
+ assert.equal(after.project.symbol_definitions.length,21);
+ assert.deepEqual(after.project.part_definitions.slice(0,2),legacy.project.part_definitions);
+ assert.deepEqual(after.project.symbol_definitions.slice(0,2),legacy.project.symbol_definitions);
+ assert.deepEqual(after.project.components,legacy.project.components);
+ assert.deepEqual(after.project.nets,legacy.project.nets);
+ assert.deepEqual(after.project.sheets,legacy.project.sheets);
+ assert.deepEqual(after.project.provenance,legacy.project.provenance);
+ assert.throws(()=>s.upgradeCatalog(stale),/STALE_REVISION/);
+ assert.throws(()=>s.upgradeCatalog(s.newTransaction('already')),/NO_CHANGE/);
+ assert.deepEqual(s.file,after);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,legacy);
+ assert.equal(s.redo(),true);assert.deepEqual(s.file,after);
+ s.place(s.newTransaction('new-diode'),'symbol/diode.general',[120000,150000]);
+ assert.ok(s.file.project.components.some(c=>c.refdes==='VD1'));
+});
+
+test('R17b canonical catalog parity and actual Python SVG export of all 21 placed UGO',()=>{
+ const s=newSession(),source=s.file;
+ const root=new URL('../../../../src/gost_schematic/catalog/symbols/',import.meta.url);
+ const files=readdirSync(root,{recursive:true}).filter(p=>p.endsWith('.json')).sort();
+ assert.equal(files.length,21);
+ const mm=n=>Math.round(n*1000),point=p=>p.map(mm);
+ for(const filename of files){
+  const raw=JSON.parse(readFileSync(new URL(filename.replaceAll('\\','/'),root),'utf8'));
+  const part=JSON.parse(readFileSync(new URL('../parts/'+filename.replaceAll('\\','/'),root),'utf8'));
+  const sym=source.project.symbol_definitions.find(x=>x.id==='symbol/'+raw.id);
+  assert.ok(sym,raw.id);
+  assert.equal(sym.revision,raw.revision);
+  assert.deepEqual(sym.pins,raw.pins.map(p=>({physical_pin_number:p.number,at_um:point(p.at_mm),side:p.side})));
+  assert.deepEqual(source.project.part_definitions.find(x=>x.id===part.id).physical_pins,part.pins.map(p=>({number:p.number,name:p.name,electrical_type:p.electrical_type})));
+  const expected=[
+   ...raw.geometry.rectangles.map(r=>({kind:'rect',points_um:[point(r.slice(0,2)),point(r.slice(2))],stroke_um:mm(raw.line_width_mm)})),
+   ...raw.geometry.lines.map(l=>({kind:'line',points_um:l.map(point),stroke_um:mm(raw.line_width_mm)}))
+  ];
+  assert.deepEqual(sym.graphics.slice(0,expected.length),expected);
+  assert.equal(sym.graphics.length,expected.length+raw.geometry.circles.length);
+  for(const [i,c] of raw.geometry.circles.entries()){
+   const p=sym.graphics[expected.length+i],center=point(c.center_mm),radius=mm(c.radius_mm);
+   assert.equal(p.kind,'polyline');assert.deepEqual(p.points_um[0],p.points_um.at(-1));
+   for(const v of p.points_um)assert.ok(Math.abs(Math.hypot(v[0]-center[0],v[1]-center[1])-radius)<=1);
+  }
+ }
+ for(const [i,symbol] of source.project.symbol_definitions.entries())
+  s.place(s.newTransaction('export-'+i),symbol.id,[35000+i%5*75000,35000+Math.floor(i/5)*50000]);
+ const py=spawnSync('python',['-c',
+  'import json,sys;sys.path.insert(0,"../..");from ui.editor.src.model.contract import validate,digest;from ui.bridge.export.project_v2 import render_v2_source;d=json.loads(sys.stdin.buffer.read().decode("utf-8"));validate(d);sys.stdout.buffer.write(render_v2_source(d,d["workspace"]["active_sheet_id"],expected_project_sha256=digest(d)))'
+ ],{input:JSON.stringify(s.file),encoding:'utf8',timeout:30000,maxBuffer:2*1024*1024});
+ assert.equal(py.status,0,py.stderr);
+ assert.match(py.stdout,/<svg\b|<ns0:svg\b/);
 });
