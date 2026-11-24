@@ -715,6 +715,7 @@ export default function App() {
     baseRevision={String(snapshot.revision)} sheets={document.project.sheets.map(s=>({id:s.id,title:s.name}))}
     activeSheetId={activeSheet.id} catalog={catalog} tree={tree}
     selected={selected} groupSelectionIds={groupIds} diagnostics={diagnostics}
+    clipboardSummary={clipboard?.kind==='group'?`Буфер: ${clipboard.template.components.length} УГО · ${clipboard.template.nets.length} внутренних цепей · ${clipboard.template.omittedNetCount} внешних исключено`:clipboard?.kind==='single'?'Буфер: 1 УГО без связей':undefined}
     canvas={<div className="gscad-canvas-wrapper">
       <input ref={fileInputRef} type="file" accept=".json,.gscad" data-testid="project-file-input"
         style={{display:'none'}} onChange={e=>{
@@ -731,7 +732,7 @@ export default function App() {
         За пределами листа: {overflow.symbols.length} УГО, {overflow.wires.length} проводников,
         {overflow.graphics.length} графических объектов. Проверьте расположение и экспорт.
       </div>}
-      {/(?:NET_CONFLICT|SOURCE_LOCKED|STALE_|UNKNOWN_|REROUTE_|MISMATCH|NOT_READY|ERROR|FAILED|DUPLICATE_|INVALID_)/.test(issue)
+      {/(?:NET_CONFLICT|SOURCE_LOCKED|STALE_|UNKNOWN_|REROUTE_|MISMATCH|NOT_READY|ERROR|FAILED|DUPLICATE_|INVALID_|NO_SAFE_PASTE)/.test(issue)
         && <div className="gscad-error-banner" role="alert">{issue}</div>}
     </div>}
     tool={tool} gridVisible={grid} snapEnabled={snap} zoomPercent={Math.round(zoom*100)}
