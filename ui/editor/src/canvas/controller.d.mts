@@ -16,6 +16,8 @@ export type CanvasIntent =
  | {kind:'rejectJunction';reason:string}
  | {kind:'moveInstance';component_id:string;instance_id:string;delta_um:PointUm;base_revision:number}
  | {kind:'rotateInstance';component_id:string;instance_id:string;base_revision:number}
+ | {kind:'selectGroup';instance_ids:string[];base_revision:number}
+ | {kind:'moveGroup';instance_ids:string[];delta_um:PointUm;base_revision:number}
  | {kind:'select';target:VisualHit|{kind:'symbol';instance_id:string;component_id:string;distance_px:number}|{kind:'ambiguous-symbol';candidates:string[]}|null};
 export type CanvasContext={
  scene:CanvasScene;wireSnapshot:WiringSnapshot;camera:Camera;
@@ -25,15 +27,18 @@ export type CanvasContext={
 export type PointerPoint=ScreenPoint & {pointerId:number;button:number};
 export type CanvasControllerState={
  camera:Camera;draft:null|{source:PinRef;from_um:PointUm;bends_um:PointUm[];cursor_um:PointUm};
- drag:null|{kind:'pan'|'segment'|'symbol';pointerId:number};
+ drag:null|{kind:'pan'|'segment'|'symbol'|'marquee'|'group';pointerId:number};
  hover:VisualHit|null;
+ selectedGroup:string[];
  selected:VisualHit|{kind:'symbol';instance_id:string;component_id:string;distance_px:number}|null;
 };
 export type CanvasController={
  getState():CanvasControllerState;
  symbolDragPreview():null|{instance_id:string;component_id:string;delta_um:PointUm};
+ marqueePreview():null|{x:number;y:number;width:number;height:number};
+ groupDragPreview():null|{instance_ids:string[];delta_um:PointUm};
  setContext(next:Partial<CanvasContext>):void;
- syncSymbolSelection(instanceId:string|null,clearOther?:boolean):void;
+ syncSymbolSelection(instanceId:string|null,clearOther?:boolean,groupIds?:readonly string[]):void;
  down(p:PointerPoint):boolean;
  move(p:PointerPoint):boolean;
  up(p:PointerPoint):boolean;
