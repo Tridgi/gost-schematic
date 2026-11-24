@@ -19,7 +19,7 @@ import {
 } from '../wires/manual-wire';
 import {loadProjectWires} from '../wires/project-v2-adapter';
 import {projectToCanvasScene} from '../canvas/scene-projection.mjs';
-import {AUTHORING_PARTS, AUTHORING_SYMBOLS} from './catalog';
+import {AUTHORING_PARTS, AUTHORING_SYMBOLS,catalogDefaultValue} from './catalog';
 
 export type ComponentClipboard = Readonly<{
   symbol_id:string; value:string; rotation_deg:SymbolInstance['rotation_deg']; mirror_x:boolean;
@@ -325,7 +325,7 @@ export class AuthoringSession {
       if(!symbol||!part||symbol.status==='deprecated')reject('UNKNOWN_SYMBOL');
       const refdes=nextRefdes(draft,part.reference_prefix);
       const comp:Component={id:newId('comp'),source_refdes:refdes,refdes,
-        part_id:part.id,value:part.reference_prefix==='R'?'1к':'100н'};
+        part_id:part.id,value:catalogDefaultValue(part.id)};
       const sheet=draft.project.sheets[indexOfSheet(draft)];
       const layer=sheet.layers.find(l=>l.kind==='electrical');
       if(!layer)reject('MISSING_ELECTRICAL_LAYER');
