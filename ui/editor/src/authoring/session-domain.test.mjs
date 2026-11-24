@@ -461,3 +461,40 @@ test('R13 group move is one reversible CAS transaction and rejects attached Nets
  assert.throws(()=>s.moveGroup(s.newTransaction('connected'),ids,[1000,1000]),/GROUP_REROUTE_REQUIRED/);
  assert.equal(s.revision,revision);assert.deepEqual(s.file,connected);
 });
+
+test('R14: connected group translates internal wire exactly and reanchors external wire in one undo',()=>{
+ const s=newSession(),{r,c}=placePair(s);
+ s.place(s.newTransaction('r2'),'symbol/resistor.fixed',[210000,100000]);
+ const third=s.file.project.components.find(x=>x.refdes==='R2').id;
+ s.connect(s.newTransaction('internal'),pin(r,'2'),pin(c,'1'));
+ s.connect(s.newTransaction('external'),pin(c,'2'),pin(third,'1'));
+ const before=s.file,rev=s.revision;
+ const group=before.project.sheets[0].instances.filter(i=>[r,c].includes(i.component_id)).map(i=>i.id);
+ assert.throws(()=>s.moveGroup(s.newTransaction('no-consent'),group,[5000,10000]),/GROUP_REROUTE_REQUIRED/);
+ assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
+ s.moveGroup(s.newTransaction('connected-group'),group,[5000,10000],true);
+ const after=s.file,old=before.project.sheets[0],now=after.project.sheets[0];
+ assert.equal(s.revision,rev+1);
+ assert.deepEqual(after.project.components,before.project.components);
+ assert.deepEqual(after.project.nets.map(n=>[n.id,n.name,n.members]),before.project.nets.map(n=>[n.id,n.name,n.members]));
+ assert.deepEqual(now.instances.find(i=>i.component_id===third),old.instances.find(i=>i.component_id===third));
+ assert.deepEqual(now.junctions,old.junctions);assert.deepEqual(now.splices,old.splices);
+ for(const wire of now.wires){
+  const prior=old.wires.find(w=>w.id===wire.id);
+  assert.equal(wire.net_id,prior.net_id);assert.equal(wire.layer_id,prior.layer_id);
+  assert.equal(wire.needs_routing_review,true);
+  assert.deepEqual(wire.vertices[0].anchor,prior.vertices[0].anchor);
+  assert.deepEqual(wire.vertices.at(-1).anchor,prior.vertices.at(-1).anchor);
+  assert.ok(wire.vertices.slice(1).every((v,i)=>v.at_um[0]===wire.vertices[i].at_um[0]||v.at_um[1]===wire.vertices[i].at_um[1]));
+ }
+ const internalOld=old.wires[0],internalNew=now.wires[0];
+ assert.deepEqual(internalNew.segments,internalOld.segments);
+ assert.deepEqual(internalNew.vertices,internalOld.vertices.map(v=>({...v,at_um:[v.at_um[0]+5000,v.at_um[1]+10000]})));
+ assert.deepEqual(now.wires[1].vertices.at(-1).at_um,old.wires[1].vertices.at(-1).at_um);
+ assert.ok(after.project.nets.every(n=>n.route_status==='partial'));
+ assert.throws(()=>s.moveGroup(s.newTransaction('out-of-range'),group,[1000000000,0],true));
+ assert.deepEqual(s.file,after);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);assert.deepEqual(s.file,after);
+ assert.deepEqual(new AuthoringSession(after).file,after);
+});
