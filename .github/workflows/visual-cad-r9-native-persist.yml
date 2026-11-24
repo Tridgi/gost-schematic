@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     # R11 and main must not silently bypass the installed Windows regression.
-    branches: [ui/visual-cad-mvp, main, 'fix/r11-*']
+    branches: [ui/visual-cad-mvp, main, 'fix/r11-*', ui/r15-group-clipboard']
     paths:
       - '.github/workflows/visual-cad-r9-native-persist.yml'
       - '.github/tools/r9-native-*'
