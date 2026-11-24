@@ -92,7 +92,7 @@ export default function App() {
   const [placementSymbol,setPlacementSymbol]=useState<string|null>(null);
   const [selectedId,setSelectedId]=useState<string|null>(null);
   const [selectionReset,setSelectionReset]=useState(0);
-  const [clipboard,setClipboard]=useState<{template:ComponentClipboard;anchor:PointUm}|null>(null);
+  const [clipboard,setClipboard]=useState<{template:ComponentClipboard;anchor:ComponentClipboard['origin_um']}|null>(null);
   const [,setPending]=useState<PinRef|null>(null);
   const [grid,setGrid]=useState(true),[snap,setSnap]=useState(true);
   const [zoom,setZoom]=useState(1);
