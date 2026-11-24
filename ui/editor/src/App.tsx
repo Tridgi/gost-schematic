@@ -215,15 +215,7 @@ export default function App() {
     const a=authoringRef.current;
     if(!a||!clipboard||!activeSheet||!document||tool!=='select')return;
     try{
-      const step=document.project.settings.grid_step_um;
-      const offset=snap?Math.ceil(10000/step)*step:10000;
-      const origin=clipboard.anchor.map((v,axis)=>{
-        const limit=activeSheet.frame.size_um[axis];
-        const margin=activeSheet.frame.margin_um;
-        const next=v+offset<=limit-margin?v+offset:v-offset;
-        const clamped=Math.max(margin,Math.min(limit-margin,next));
-        return snap?Math.round(clamped/step)*step:clamped;
-      }) as PointUm;
+      const origin=a.suggestPasteOrigin(clipboard.template,clipboard.anchor,snap);
       const id=a.pasteComponent(a.newTransaction('paste-component'),clipboard.template,origin);
       adoptAuthored();setSelectedId(id);
       setClipboard({...clipboard,anchor:origin});
