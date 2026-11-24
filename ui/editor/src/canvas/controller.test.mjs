@@ -207,3 +207,39 @@ test('host selection follows tree/inspector and drops objects removed from the s
  c.syncSymbolSelection('S-UNKNOWN');
  assert.equal(c.getState().selected,null);
 });
+
+test('symbol drag ghost uses the same snapped delta as release and is non-mutating',()=>{
+ const shape={instance_id:'S-R1',component_id:'R1',origin_um:[10000,10000],
+  rotation_deg:0,mirror_x:false,pins:[],strokes:[{from_um:[-2000,0],to_um:[2000,0]}]};
+ const scene={symbols:[shape],wires:[],junctions:[]};
+ const snap={project_id:'toy',source_topology_hash:'locked',revision:3,wires:[]};
+ const events=[];
+ const c=make('select',i=>{events.push(i);return true;},scene,snap);
+ c.down(loc([10000,10000]));
+ assert.equal(c.symbolDragPreview(),null);
+ assert.equal(c.move(loc([14500,12900],0,2)),false);
+ assert.equal(c.symbolDragPreview(),null);
+ c.move(loc([14500,12900]));
+ assert.deepEqual(c.symbolDragPreview(),{instance_id:'S-R1',component_id:'R1',delta_um:[5000,3000]});
+ assert.deepEqual(events.map(e=>e.kind),['select']);
+ assert.deepEqual(scene.symbols[0].origin_um,[10000,10000]);
+ c.up(loc([14500,12900]));
+ assert.deepEqual(events.at(-1).delta_um,[5000,3000]);
+ assert.equal(c.symbolDragPreview(),null);
+});
+
+test('Escape, tool change and stale CAS cancel ghost without moving component',()=>{
+ const shape={instance_id:'S-R1',component_id:'R1',origin_um:[10000,10000],
+  rotation_deg:0,mirror_x:false,pins:[],strokes:[{from_um:[-2000,0],to_um:[2000,0]}]};
+ const scene={symbols:[shape],wires:[],junctions:[]};
+ const snap={project_id:'toy',source_topology_hash:'locked',revision:3,wires:[]};
+ const events=[];
+ const c=make('select',i=>{events.push(i);return true;},scene,snap);
+ const start=()=>{c.down(loc([10000,10000]));c.move(loc([15000,13000]));assert.ok(c.symbolDragPreview());};
+ start();c.key('Escape');assert.equal(c.symbolDragPreview(),null);c.up(loc([15000,13000]));
+ start();c.setContext({tool:'wire'});assert.equal(c.symbolDragPreview(),null);c.up(loc([15000,13000]));
+ c.setContext({tool:'select'});start();
+ c.setContext({wireSnapshot:{...snap,revision:4}});
+ assert.equal(c.symbolDragPreview(),null);c.up(loc([15000,13000]));
+ assert.ok(events.every(e=>e.kind==='select'));
+});
