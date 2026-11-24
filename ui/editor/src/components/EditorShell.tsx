@@ -38,6 +38,7 @@ export type EditorShellProps = {
   sheets:readonly {id:string;title:string}[];activeSheetId:string;
   catalog:readonly CatalogSymbol[];tree:readonly TreeItem[];
   selected:SelectedInstance|null;groupSelectionIds?:readonly string[];diagnostics:readonly DiagnosticItem[];
+  clipboardSummary?:string;
   canvas:ReactNode;tool:ToolMode;gridVisible:boolean;snapEnabled:boolean;
   cursorUm?:readonly [number,number];zoomPercent?:number;onZoomPercent?:(percent:50|100|200)=>void;
   onFitPage?:()=>void;
@@ -310,6 +311,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
       <AppShell.Footer className="gscad-status" data-testid="status-bar">
         <Group justify="space-between" h="100%" px="xs" gap="xs" wrap="nowrap">
           <Text size="xs">{props.cursorUm?'X '+formatMillimetres(props.cursorUm[0])+' / Y '+formatMillimetres(props.cursorUm[1])+' мм':'XY —'}</Text>
+          {props.clipboardSummary&&<Text size="xs" truncate title={props.clipboardSummary} data-testid="clipboard-summary" role="status">{props.clipboardSummary}</Text>}
           <Group gap="xs" wrap="nowrap">
             <Menu position="top-end" withinPortal>
               <Menu.Target><Button size="compact-xs" variant="subtle" aria-label="Масштаб">{props.zoomPercent??100}%</Button></Menu.Target>
