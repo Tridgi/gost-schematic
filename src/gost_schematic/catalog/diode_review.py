@@ -22,11 +22,13 @@ _DRAFT_BODY = (
     Line(Point(2500, 0), Point(-2500, 3000)),
     Line(Point(-2500, 3000), Point(-2500, -3000)),
 )
-_GENERAL_CATHODE = (Line(Point(2500, -3300), Point(2500, 3300)),)
+_GENERAL_CATHODE = (
+    Line(Point(2500, -3300), Point(2500, 3300)),
+    Line(Point(-2500, 0), Point(2500, 0)),
+)
 _ZENER_CATHODE = (
     *_GENERAL_CATHODE,
-    Line(Point(2500, -3300), Point(1300, -3300)),
-    Line(Point(2500, 3300), Point(3700, 3300)),
+    Line(Point(2500, 3300), Point(1300, 3300)),
 )
 _PROFILES = {
     "diode.general": _DRAFT_LEADS + _DRAFT_BODY + _GENERAL_CATHODE,
@@ -52,8 +54,8 @@ def verify_draft_diode(symbol: SymbolDefinition, part: PartDefinition) -> None:
         or part.voltage_orientation_rule != VoltageOrientationRule.NONE
     ):
         raise ValueError("Diode part/profile identity or unsupported electrical rule")
-    if symbol.revision != 1 or symbol.status != SymbolStatus.DRAFT:
-        raise ValueError("Unreviewed diode must remain revision-one DRAFT")
+    if symbol.revision != 2 or symbol.status != SymbolStatus.DRAFT:
+        raise ValueError("Unreviewed diode must remain revision-two DRAFT")
     if len(symbol.standard_refs) < 2 or not any(
         "EDITORIAL_ASSUMPTION" in reference for reference in symbol.standard_refs
     ):
