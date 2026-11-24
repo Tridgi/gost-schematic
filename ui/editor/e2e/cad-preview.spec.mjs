@@ -853,3 +853,28 @@ test('R4 connected R1 with two independent Nets: both physical routes reanchor a
  ],{input:JSON.stringify(redo),encoding:'utf8',timeout:20000});
  expect(py.status,py.stderr).toBe(0);
 });
+
+test('R11: tree, viewport and inspector selection agree and blank click clears them',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+ await page.mouse.click(paper.x+paper.width*.35,paper.y+paper.height*.4);
+ await expect(page.getByTestId('symbol-R1')).toHaveAttribute('data-selected','true');
+ await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+ await page.mouse.click(paper.x+paper.width*.65,paper.y+paper.height*.6);
+ await expect(page.getByTestId('symbol-R2')).toHaveAttribute('data-selected','true');
+ await expect(page.getByTestId('symbol-R1')).toHaveAttribute('data-selected','false');
+ await page.locator('[data-testid^="tree-item-"]').filter({hasText:/^R1$/}).click();
+ await expect(page.getByTestId('symbol-R1')).toHaveAttribute('data-selected','true');
+ await expect(page.getByTestId('symbol-R2')).toHaveAttribute('data-selected','false');
+ await expect(page.getByLabel('Позиционное обозначение')).toHaveValue('R1');
+ await page.mouse.click(paper.x+paper.width*.5,paper.y+paper.height*.85);
+ await expect(page.getByTestId('symbol-R1')).toHaveAttribute('data-selected','false');
+ await expect(page.getByTestId('inspector')).toHaveCount(0);
+ await canvas.focus();await canvas.press('Delete');
+ await expect(page.getByTestId('symbol-R1')).toHaveCount(1);
+ await expect(page.getByTestId('symbol-R2')).toHaveCount(1);
+});
