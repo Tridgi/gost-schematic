@@ -1079,3 +1079,29 @@ test('R16 right-click selects UGO, context commands operate on it, Escape closes
  expect(pasted.project.nets).toEqual([]);
  expect(pasted.project.sheets[0].instances[2].rotation_deg).toBe(90);
 });
+
+test('R17: source library search and real semiconductor placement',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const search=page.getByTestId('catalog-search');
+ await expect(page.locator('[data-testid^="catalog-item-"]')).toHaveCount(21);
+ await search.fill('фотодиод');
+ await expect(page.locator('[data-testid^="catalog-item-"]')).toHaveCount(1);
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await page.getByTestId('catalog-item-symbol/diode.photodiode').click();
+ await page.mouse.click(paper.x+paper.width*.3,paper.y+paper.height*.5);
+ await expect(page.getByTestId('symbol-VD1')).toBeVisible();
+ await search.fill('NPN с корпусом');
+ await page.getByTestId('catalog-item-symbol/transistor.bjt_npn.with_case').click();
+ await page.mouse.click(paper.x+paper.width*.65,paper.y+paper.height*.5);
+ await expect(page.getByTestId('symbol-VT1')).toBeVisible();
+ const download=page.waitForEvent('download');await page.getByTestId('save-project').click();
+ const doc=JSON.parse(readFileSync(await (await download).path(),'utf8'));
+ expect(doc.project.components).toHaveLength(2);
+ const [d,t]=doc.project.components;
+ await expect(page.getByTestId('signed-pin-'+d.id+'-1')).toBeVisible();
+ await expect(page.getByTestId('signed-pin-'+d.id+'-2')).toBeVisible();
+ for(const n of [1,2,3])await expect(page.getByTestId('signed-pin-'+t.id+'-'+n)).toBeVisible();
+ expect(doc.project.nets).toEqual([]);
+});
