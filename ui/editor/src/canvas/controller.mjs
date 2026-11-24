@@ -56,7 +56,10 @@ export function createCanvasController(initial){
   getState,
   symbolDragPreview,
   setContext(next){
-    if(next.tool!==undefined&&next.tool!==context.tool&&next.tool!=='wire')draft=null;
+    if(next.tool!==undefined&&next.tool!==context.tool){
+      active=null;
+      if(next.tool!=='wire')draft=null;
+    }
     context={...context,...next};
     // Reconcile host-owned symbol selection with the current physical sheet.
     if(selected?.kind==='symbol'&&!context.scene.symbols.some(s=>s.instance_id===selected.instance_id&&s.component_id===selected.component_id))selected=null;
