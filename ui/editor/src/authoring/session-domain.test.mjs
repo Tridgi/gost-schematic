@@ -641,3 +641,31 @@ test('R17 semiconductor terminal names and polarity are retained without inferre
  assert.equal(s.beginWire(pin(t,'2')).net_id,null);
  assert.equal(s.beginWire(pin(t,'3')).net_id,null);
 });
+
+test('R17b old R/C project library upgrade is explicit, additive and reversible',()=>{
+ const source=newSession(),{r,c}=placePair(source);
+ source.connect(source.newTransaction('connect'),pin(r,'2'),pin(c,'1'));
+ const legacy=source.file,keep=new Set(['resistor.fixed','capacitor.fixed']);
+ legacy.project.part_definitions=legacy.project.part_definitions.filter(p=>keep.has(p.id));
+ legacy.project.symbol_definitions=legacy.project.symbol_definitions.filter(p=>keep.has(p.part_id));
+ // Simulate older or locally edited pin name/geometry metadata.
+ legacy.project.part_definitions[0].physical_pins[0].name='OLD_NAME';
+ legacy.project.symbol_definitions[0].standard_refs=['LEGACY_DRAFT'];
+ const s=new AuthoringSession(legacy),stale=s.newTransaction('stale');
+ assert.equal(s.upgradeCatalog(s.newTransaction('upgrade')),19);
+ const after=s.file;
+ assert.equal(after.project.symbol_definitions.length,21);
+ assert.deepEqual(after.project.part_definitions.slice(0,2),legacy.project.part_definitions);
+ assert.deepEqual(after.project.symbol_definitions.slice(0,2),legacy.project.symbol_definitions);
+ assert.deepEqual(after.project.components,legacy.project.components);
+ assert.deepEqual(after.project.nets,legacy.project.nets);
+ assert.deepEqual(after.project.sheets,legacy.project.sheets);
+ assert.deepEqual(after.project.provenance,legacy.project.provenance);
+ assert.throws(()=>s.upgradeCatalog(stale),/STALE_REVISION/);
+ assert.throws(()=>s.upgradeCatalog(s.newTransaction('already')),/NO_CHANGE/);
+ assert.deepEqual(s.file,after);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,legacy);
+ assert.equal(s.redo(),true);assert.deepEqual(s.file,after);
+ s.place(s.newTransaction('new-diode'),'symbol/diode.general',[120000,150000]);
+ assert.ok(s.file.project.components.some(c=>c.refdes==='VD1'));
+});
