@@ -31,6 +31,7 @@ export type CanvasControllerState={
 };
 export type CanvasController={
  getState():CanvasControllerState;
+ symbolDragPreview():null|{instance_id:string;component_id:string;delta_um:PointUm};
  setContext(next:Partial<CanvasContext>):void;
  syncSymbolSelection(instanceId:string|null,clearOther?:boolean):void;
  down(p:PointerPoint):boolean;
