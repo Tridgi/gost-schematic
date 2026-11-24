@@ -7,6 +7,7 @@ import { ManualWireEngine, WireError, constructWire, type PinRef, type PointUm,
 import { CanvasViewport } from './canvas/CanvasViewport';
 import type { CanvasIntent } from './canvas/controller.mjs';
 import { commitSegmentDrag, captureSegmentDrag } from './canvas/wire-intents.mjs';
+import {catalogDisplay} from './authoring/catalog';
 import {AuthoringSession,newBlankProject,type ComponentClipboard,type GroupClipboard} from './authoring/session';
 import {nativeDesktopAvailable,nativeOpenProject,nativeSaveProject,nativeSaveAsProject,nativeCloseProject,
   nativeExportProject,type NativeDocumentHandle} from './native/desktop';
@@ -21,7 +22,10 @@ import { renderProjectPreviewSVG, renderPreviewPng300 } from './export/browser-e
 const umToMm = (value:number):number => value/1000;
 const asPoint = (point:readonly number[]):string => String(umToMm(point[0]))+' '+String(umToMm(point[1]));
 function CataloguePreview({symbol}:{symbol:SymbolDefinition}) {
-  return <svg viewBox="-12 -8 24 16" fill="none" stroke="currentColor" strokeWidth={0.45}
+  const points=[...symbol.graphics.flatMap(g=>g.points_um),...symbol.pins.map(p=>p.at_um),[0,0]];
+  const minX=Math.min(...points.map(p=>p[0]))/1000-1,minY=Math.min(...points.map(p=>p[1]))/1000-1;
+  const maxX=Math.max(...points.map(p=>p[0]))/1000+1,maxY=Math.max(...points.map(p=>p[1]))/1000+1;
+  return <svg viewBox={`${minX} ${minY} ${maxX-minX} ${maxY-minY}`} fill="none" stroke="currentColor" strokeWidth={0.45}
     aria-hidden="true">
     {symbol.graphics.map((graphic,index)=>{
       const pts=graphic.points_um.map(p=>asPoint(p));
@@ -172,8 +176,8 @@ export default function App() {
   } as SelectedInstance:null;
   const catalog=useMemo<CatalogSymbol[]>(()=>{
     if(!document)return [];
-    return document.project.symbol_definitions.map(symbol=>({
-      id:symbol.id,name:symbol.id,category:symbol.part_id,
+    return document.project.symbol_definitions.filter(symbol=>symbol.status!=='deprecated').map(symbol=>({
+      id:symbol.id,name:catalogDisplay(symbol.id)?.name??symbol.id,category:catalogDisplay(symbol.id)?.category??symbol.part_id,
       approval:symbol.status==='approved'?'approved':'draft',
       thumbnail:<CataloguePreview symbol={symbol}/>
     }));
