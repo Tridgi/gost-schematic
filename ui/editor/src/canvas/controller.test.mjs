@@ -185,3 +185,25 @@ test('rejected transform and deletion preserve the selected symbol',()=>{
  assert.equal(c.key('Delete'),false);
  assert.equal(c.getState().selected.instance_id,'S-R1');
 });
+
+test('host selection follows tree/inspector and drops objects removed from the scene',()=>{
+ const shape=id=>({instance_id:'S-'+id,component_id:id,origin_um:[10000,10000],
+  rotation_deg:0,mirror_x:false,pins:[],strokes:[]});
+ const a=shape('R1'),b=shape('R2');
+ const scene={symbols:[a,b],wires:[],junctions:[]};
+ const events=[];
+ const c=make('select',i=>{events.push(i);return true;},scene);
+ c.syncSymbolSelection('S-R2');
+ assert.equal(c.getState().selected.component_id,'R2');
+ assert.equal(c.key('r'),true);
+ assert.equal(events.at(-1).component_id,'R2');
+ c.setContext({scene:{...scene,symbols:[a]}});
+ assert.equal(c.getState().selected,null);
+ assert.equal(c.key('Delete'),false);
+ c.syncSymbolSelection('S-R1');
+ c.key('Escape');
+ assert.equal(c.getState().selected,null);
+ assert.deepEqual(events.at(-1),{kind:'select',target:null});
+ c.syncSymbolSelection('S-UNKNOWN');
+ assert.equal(c.getState().selected,null);
+});
