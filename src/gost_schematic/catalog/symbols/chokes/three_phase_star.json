@@ -1,0 +1,297 @@
+{
+  "schema_version": 1,
+  "id": "choke.three_phase_star",
+  "revision": 1,
+  "status": "draft",
+  "standard_refs": [
+    "ГОСТ 2.723-68, таблица 2, поз. 9а, форма II; https://rosgosts.ru/file/gost/01/080/gost_2.723-68.pdf",
+    "EDITORIAL_ASSUMPTION: single bank/Y; dimensions, terminal layout and abstract numbering are project choices. No vector group or ratio certification."
+  ],
+  "line_width_mm": 0.3,
+  "body_keepout_mm": [
+    -10.4,
+    -0.4,
+    12.4,
+    18.4
+  ],
+  "routing_keepouts_mm": [
+    [
+      -10.6,
+      -0.6000000000000001,
+      12.6,
+      18.599999999999998
+    ]
+  ],
+  "geometry": {
+    "lines": [
+      [
+        [
+          -10,
+          18
+        ],
+        [
+          -10,
+          25
+        ]
+      ],
+      [
+        [
+          0,
+          18
+        ],
+        [
+          0,
+          25
+        ]
+      ],
+      [
+        [
+          10,
+          18
+        ],
+        [
+          10,
+          25
+        ]
+      ],
+      [
+        [
+          -10,
+          6
+        ],
+        [
+          -10,
+          4
+        ]
+      ],
+      [
+        [
+          0,
+          6
+        ],
+        [
+          0,
+          4
+        ]
+      ],
+      [
+        [
+          10,
+          6
+        ],
+        [
+          10,
+          4
+        ]
+      ],
+      [
+        [
+          -10,
+          4
+        ],
+        [
+          10,
+          4
+        ]
+      ]
+    ],
+    "circles": [
+      {
+        "center_mm": [
+          0,
+          4
+        ],
+        "radius_mm": 0.15
+      }
+    ],
+    "semicircles": [
+      {
+        "center_mm": [
+          -10,
+          8
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          -10,
+          12
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          -10,
+          16
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          0,
+          8
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          0,
+          12
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          0,
+          16
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          10,
+          8
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          10,
+          12
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          10,
+          16
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      }
+    ],
+    "styled_lines": [
+      {
+        "start_mm": [
+          -10,
+          0
+        ],
+        "end_mm": [
+          12,
+          0
+        ],
+        "stroke_width_mm": 0.3
+      }
+    ]
+  },
+  "pins": [
+    {
+      "number": "1",
+      "at_mm": [
+        -10,
+        25
+      ],
+      "side": "bottom",
+      "label": "PH_A"
+    },
+    {
+      "number": "2",
+      "at_mm": [
+        0,
+        25
+      ],
+      "side": "bottom",
+      "label": "PH_B"
+    },
+    {
+      "number": "3",
+      "at_mm": [
+        10,
+        25
+      ],
+      "side": "bottom",
+      "label": "PH_C"
+    }
+  ],
+  "annotations": [
+    {
+      "key": "refdes",
+      "role": "refdes",
+      "required": true,
+      "candidates": [
+        {
+          "at_mm": [
+            -17,
+            0
+          ],
+          "horizontal": "right",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            22,
+            0
+          ],
+          "horizontal": "left",
+          "vertical": "bottom"
+        }
+      ]
+    },
+    {
+      "key": "value",
+      "role": "value",
+      "required": false,
+      "candidates": [
+        {
+          "at_mm": [
+            22,
+            15
+          ],
+          "horizontal": "left",
+          "vertical": "top"
+        }
+      ]
+    }
+  ],
+  "conductor_topology": {
+    "indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16
+    ],
+    "junctions_mm": [
+      [
+        0,
+        4
+      ]
+    ],
+    "pin_groups": [
+      [
+        "1",
+        "2",
+        "3"
+      ]
+    ]
+  }
+}

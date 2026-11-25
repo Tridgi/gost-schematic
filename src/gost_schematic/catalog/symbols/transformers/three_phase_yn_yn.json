@@ -1,0 +1,584 @@
+{
+  "schema_version": 1,
+  "id": "transformer.three_phase_yn_yn",
+  "revision": 1,
+  "status": "draft",
+  "standard_refs": [
+    "ГОСТ 2.723-68, таблица 2, поз. 20 (editorial variation), форма II; https://rosgosts.ru/file/gost/01/080/gost_2.723-68.pdf",
+    "EDITORIAL_ASSUMPTION: YN/YN; dimensions, terminal layout and abstract numbering are project choices. No vector group or ratio certification."
+  ],
+  "line_width_mm": 0.3,
+  "body_keepout_mm": [
+    -10.4,
+    -18.4,
+    16.4,
+    18.4
+  ],
+  "routing_keepouts_mm": [
+    [
+      -10.6,
+      -18.599999999999998,
+      16.599999999999998,
+      18.599999999999998
+    ]
+  ],
+  "geometry": {
+    "lines": [
+      [
+        [
+          -10,
+          -18
+        ],
+        [
+          -10,
+          -25
+        ]
+      ],
+      [
+        [
+          0,
+          -18
+        ],
+        [
+          0,
+          -25
+        ]
+      ],
+      [
+        [
+          10,
+          -18
+        ],
+        [
+          10,
+          -25
+        ]
+      ],
+      [
+        [
+          -10,
+          -6
+        ],
+        [
+          -10,
+          -4
+        ]
+      ],
+      [
+        [
+          0,
+          -6
+        ],
+        [
+          0,
+          -4
+        ]
+      ],
+      [
+        [
+          10,
+          -6
+        ],
+        [
+          10,
+          -4
+        ]
+      ],
+      [
+        [
+          -10,
+          -4
+        ],
+        [
+          10,
+          -4
+        ]
+      ],
+      [
+        [
+          10,
+          -4
+        ],
+        [
+          16,
+          -4
+        ]
+      ],
+      [
+        [
+          16,
+          -4
+        ],
+        [
+          16,
+          -25
+        ]
+      ],
+      [
+        [
+          -10,
+          18
+        ],
+        [
+          -10,
+          25
+        ]
+      ],
+      [
+        [
+          0,
+          18
+        ],
+        [
+          0,
+          25
+        ]
+      ],
+      [
+        [
+          10,
+          18
+        ],
+        [
+          10,
+          25
+        ]
+      ],
+      [
+        [
+          -10,
+          6
+        ],
+        [
+          -10,
+          4
+        ]
+      ],
+      [
+        [
+          0,
+          6
+        ],
+        [
+          0,
+          4
+        ]
+      ],
+      [
+        [
+          10,
+          6
+        ],
+        [
+          10,
+          4
+        ]
+      ],
+      [
+        [
+          -10,
+          4
+        ],
+        [
+          10,
+          4
+        ]
+      ],
+      [
+        [
+          10,
+          4
+        ],
+        [
+          16,
+          4
+        ]
+      ],
+      [
+        [
+          16,
+          4
+        ],
+        [
+          16,
+          25
+        ]
+      ]
+    ],
+    "circles": [
+      {
+        "center_mm": [
+          0,
+          -4
+        ],
+        "radius_mm": 0.15
+      },
+      {
+        "center_mm": [
+          10,
+          -4
+        ],
+        "radius_mm": 0.15
+      },
+      {
+        "center_mm": [
+          0,
+          4
+        ],
+        "radius_mm": 0.15
+      },
+      {
+        "center_mm": [
+          10,
+          4
+        ],
+        "radius_mm": 0.15
+      }
+    ],
+    "semicircles": [
+      {
+        "center_mm": [
+          -10,
+          -8
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          -10,
+          -12
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          -10,
+          -16
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          0,
+          -8
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          0,
+          -12
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          0,
+          -16
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          10,
+          -8
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          10,
+          -12
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          10,
+          -16
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          -10,
+          8
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          -10,
+          12
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          -10,
+          16
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          0,
+          8
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          0,
+          12
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          0,
+          16
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          10,
+          8
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          10,
+          12
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          10,
+          16
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      }
+    ],
+    "styled_lines": [
+      {
+        "start_mm": [
+          -10,
+          0
+        ],
+        "end_mm": [
+          12,
+          0
+        ],
+        "stroke_width_mm": 0.3
+      }
+    ]
+  },
+  "pins": [
+    {
+      "number": "1",
+      "at_mm": [
+        -10,
+        -25
+      ],
+      "side": "top",
+      "label": "P_A"
+    },
+    {
+      "number": "2",
+      "at_mm": [
+        0,
+        -25
+      ],
+      "side": "top",
+      "label": "P_B"
+    },
+    {
+      "number": "3",
+      "at_mm": [
+        10,
+        -25
+      ],
+      "side": "top",
+      "label": "P_C"
+    },
+    {
+      "number": "4",
+      "at_mm": [
+        16,
+        -25
+      ],
+      "side": "top",
+      "label": "P_N"
+    },
+    {
+      "number": "5",
+      "at_mm": [
+        -10,
+        25
+      ],
+      "side": "bottom",
+      "label": "S_A"
+    },
+    {
+      "number": "6",
+      "at_mm": [
+        0,
+        25
+      ],
+      "side": "bottom",
+      "label": "S_B"
+    },
+    {
+      "number": "7",
+      "at_mm": [
+        10,
+        25
+      ],
+      "side": "bottom",
+      "label": "S_C"
+    },
+    {
+      "number": "8",
+      "at_mm": [
+        16,
+        25
+      ],
+      "side": "bottom",
+      "label": "S_N"
+    }
+  ],
+  "annotations": [
+    {
+      "key": "refdes",
+      "role": "refdes",
+      "required": true,
+      "candidates": [
+        {
+          "at_mm": [
+            -17,
+            -15
+          ],
+          "horizontal": "right",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            22,
+            -15
+          ],
+          "horizontal": "left",
+          "vertical": "bottom"
+        }
+      ]
+    },
+    {
+      "key": "value",
+      "role": "value",
+      "required": false,
+      "candidates": [
+        {
+          "at_mm": [
+            22,
+            15
+          ],
+          "horizontal": "left",
+          "vertical": "top"
+        }
+      ]
+    }
+  ],
+  "conductor_topology": {
+    "indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39
+    ],
+    "junctions_mm": [
+      [
+        0,
+        -4
+      ],
+      [
+        10,
+        -4
+      ],
+      [
+        0,
+        4
+      ],
+      [
+        10,
+        4
+      ]
+    ],
+    "pin_groups": [
+      [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      [
+        "5",
+        "6",
+        "7",
+        "8"
+      ]
+    ]
+  }
+}

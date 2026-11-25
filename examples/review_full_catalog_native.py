@@ -23,7 +23,11 @@ def generate(output: Path) -> int:
     catalog = CatalogResolver()
     ids = sorted(catalog.symbols)
     # Fixed mm scale, paginated rather than squeezing artwork to fit.
-    page_size, row_h, width = 16, 48, 230
+    # Respect the tallest actual symbol, including terminal labels. Keep one scale.
+    radius_y = max(max(abs(s.stroked_bounds.min_y), abs(s.stroked_bounds.max_y))
+                   for s in catalog.symbols.values())
+    row_h = max(48, (2 * radius_y + 999) // 1000 + 10)
+    page_size, width = min(16, 760 // row_h), 230
     for start in range(0, len(ids), page_size):
         page = ids[start:start + page_size]
         height = 20 + row_h * len(page)

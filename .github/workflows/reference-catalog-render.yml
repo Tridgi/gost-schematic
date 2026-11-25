@@ -40,4 +40,4 @@ jobs:
       - name: Check catalog structural integrity and focused regressions
         run: |
           python scripts/audit_symbol_catalog.py --output output/catalog-integrity-audit.json
-          pytest -q tests/test_resistor_batch01.py tests/test_resistor_batch02.py tests/test_full_catalog_native.py tests/test_protective_routing_keepout.py tests/test_inductor_extended_profile.py tests/test_transformer_family.py tests/test_measurement_transformers.py
+          pytest -q tests/test_resistor_batch01.py tests/test_resistor_batch02.py tests/test_full_catalog_native.py tests/test_protective_routing_keepout.py tests/test_inductor_extended_profile.py tests/test_transformer_family.py tests/test_measurement_transformers.py tests/test_three_phase_magnetic.py
