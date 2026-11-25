@@ -5,9 +5,9 @@ integer micrometres, not measured GOST glyph extents. No Net mutations.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from math import ceil, floor
-from typing import Callable
 
 from ui.editor.src.model.contract import pin_world
 
