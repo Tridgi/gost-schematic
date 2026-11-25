@@ -149,6 +149,22 @@ def _draw_validated(document: dict, sheet_id: str) -> bytes:
             else:
                 raise ExportError("UNSUPPORTED_SYMBOL_PRIMITIVE: " + kind)
 
+        for note in symbol.get("constant_annotations", []):
+            x, y = pin_world(inst, note["at_um"])
+            h = note["height_um"]
+            y += h if note["vertical"] == "top" else (h+1)//3 if note["vertical"] == "center" else 0
+            anchor = {"left":"start","center":"middle","right":"end"}[note["horizontal"]]
+            w = (len(note["text"])+1)*h
+            left = x-h if anchor == "start" else x-w if anchor == "end" else x-(w+1)//2
+            right = x+w if anchor == "start" else x+h if anchor == "end" else x+(w+1)//2
+            extents.append((left,y-2*h,right,y+h))
+            label = ET.SubElement(group, _S+"text", {
+                "data-symbol-note":note["key"],"data-electrical":"false",
+                "x":mm(x),"y":mm(y),"font-size":mm(h),"text-anchor":anchor,
+                "font-family":"OpenGost Type A","fill":"#000000","stroke":"none",
+            })
+            label.text = note["text"]
+
     for wire in sheet["wires"]:
         if not printable(wire["layer_id"]):
             continue
