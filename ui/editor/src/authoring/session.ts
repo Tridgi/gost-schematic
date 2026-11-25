@@ -1585,6 +1585,9 @@ export class AuthoringSession {
           ts.wires.sort((a,b)=>order.get(a.id)!-order.get(b.id)!);
           const {subset,session}=localSession(trial,this.clock);
           const next=materialize(trial,subset,session);
+          const affectedNets=new Set(incident.map(w=>w.net_id));
+          for(const n of next.project.nets)if(!affectedNets.has(n.id))
+            n.route_status=draft.project.nets.find(v=>v.id===n.id)!.route_status;
           const assessment=assessLayout(next,session.engine);
           if(!improvesLayout(before,assessment)||!improvesLayout(bestAssessment,assessment))continue;
           best=next;bestAssessment=assessment;result={moved:instanceId,delta,wires:incident.length};
@@ -1706,9 +1709,11 @@ export class AuthoringSession {
     for(const w of multiSheet.wires)for(const v of [w.vertices[0],w.vertices.at(-1)!]){
       if(v.anchor.kind==='pin')degree.set(v.anchor.component_id,(degree.get(v.anchor.component_id)??0)+1);
     }
+    let multiAttempts=0;
     for(const i of group){
-      if(attempted>=11)break;
+      if(attempted>=9||multiAttempts>=3)break;
       if(defs.get(i.symbol_id)?.pins.length!==2||(degree.get(i.component_id)??0)<2)continue;
+      multiAttempts++;
       tryEdit('Совместное выравнивание '+(base.project.components.find(c=>c.id===i.component_id)?.refdes??i.id),
         s=>s.alignMultiConnected(s.newTransaction('auto-multi-align'),i.id,instanceIds));
     }
