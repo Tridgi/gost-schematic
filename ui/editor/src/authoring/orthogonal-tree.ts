@@ -21,7 +21,27 @@ class Heap{
  pop(){const a=this.a,first=a[0],last=a.pop();if(!last||!a.length)return first;let i=0;while(i*2+1<a.length){let c=i*2+1;if(c+1<a.length&&a[c+1].cost<a[c].cost)c++;if(a[c].cost>=last.cost)break;a[i]=a[c];i=c}a[i]=last;return first}
  get size(){return this.a.length}
 }
-export function planOrthogonalTree(ports:TreePort[],obstacles:TreeBox[],frame:TreeBox,crossable:TreeCrossable[]=[]):TreePlan|null{
+/** Keep every terminal coordinate and frame edge; thin optional obstacle
+ * channels by splitting the largest remaining coordinate gap. Geometry
+ * predicates still test every obstacle, so thinning cannot permit a collision. */
+function thinAxis(all:number[],mandatory:Set<number>,limit:number):number[]{
+ if(all.length<=limit)return all;
+ const selected=new Set(all.filter(v=>mandatory.has(v)));
+ if(selected.size>limit)throw Error('TREE_GRID_LIMIT');
+ while(selected.size<limit&&selected.size<all.length){
+  const sorted=[...selected].sort((a,b)=>a-b);
+  let best:number|undefined,bestGap=-1;
+  for(let i=1;i<sorted.length;i++){
+   const lo=sorted[i-1],hi=sorted[i],mid=(lo+hi)/2;
+   const values=all.filter(v=>v>lo&&v<hi);
+   if(!values.length||hi-lo<=bestGap)continue;
+   bestGap=hi-lo;best=values.reduce((a,b)=>Math.abs(a-mid)<=Math.abs(b-mid)?a:b);
+  }
+  if(best===undefined)break;selected.add(best);
+ }
+ return [...selected].sort((a,b)=>a-b);
+}
+export function planOrthogonalTree(ports:TreePort[],obstacles:TreeBox[],frame:TreeBox,crossable:TreeCrossable[]=[],adaptiveGrid=false):TreePlan|null{
  if(ports.length<2||ports.length>32||obstacles.length+crossable.length>640)return null;
  const inside=(p:TreePoint)=>p[0]>=frame.minX&&p[0]<=frame.maxX&&p[1]>=frame.minY&&p[1]<=frame.maxY;
  const stubs=ports.map(p=>box(p.pin,p.tip));
@@ -65,8 +85,22 @@ export function planOrthogonalTree(ports:TreePort[],obstacles:TreeBox[],frame:Tr
   xs.add(Math.floor(b.minX)-1);xs.add(Math.ceil(b.maxX)+1);
   ys.add(Math.floor(b.minY)-1);ys.add(Math.ceil(b.maxY)+1);
  }
- const X=[...xs].filter(x=>x>=frame.minX&&x<=frame.maxX).sort((a,b)=>a-b);
- const Y=[...ys].filter(y=>y>=frame.minY&&y<=frame.maxY).sort((a,b)=>a-b);
+ let X=[...xs].filter(x=>x>=frame.minX&&x<=frame.maxX).sort((a,b)=>a-b);
+ let Y=[...ys].filter(y=>y>=frame.minY&&y<=frame.maxY).sort((a,b)=>a-b);
+ if(adaptiveGrid){
+  const mx=new Set([frame.minX,frame.maxX,...ports.map(p=>p.tip[0])]);
+  const my=new Set([frame.minY,frame.maxY,...ports.map(p=>p.tip[1])]);
+  // Each vertex and its at most two forward visibility edges are
+  // checked against all keepouts. Reserve headroom for the hard cap.
+  const budget=Math.min(6500,Math.floor(2700000/(3*Math.max(1,obstacles.length+crossable.length+stubs.length))));
+  let nx=Math.min(96,X.length),ny=Math.min(96,Y.length);
+  while(nx*ny>budget){
+   const canX=nx>mx.size,canY=ny>my.size;
+   if(!canX&&!canY)throw Error('TREE_GRID_LIMIT');
+   if(canX&&(!canY||nx/mx.size>=ny/my.size))nx--;else ny--;
+  }
+  X=thinAxis(X,mx,nx);Y=thinAxis(Y,my,ny);
+ }
  if(X.length>96||Y.length>96||X.length*Y.length>6500)throw Error('TREE_GRID_LIMIT');
  const points:TreePoint[]=[],indices=new Map<string,number>(),edges:Edge[][]=[];
  const node=(p:TreePoint)=>indices.get(key(p));

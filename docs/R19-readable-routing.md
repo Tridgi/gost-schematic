@@ -405,3 +405,22 @@ and overflow protections are unchanged. Strict mode remains the default.
 Bounded search/grid limits remain, and no completeness or GOST approval
 is claimed. Three regression tests include TL494_R32D_CONTROLLED.
 Full CI and actual controlled routing counts are pending.
+
+
+## R32e — adaptive visibility-grid capacity and blocked-first retry
+
+The controlled initial-routing mode now retains every mandatory pin-tip
+coordinate and both frame boundaries, selecting optional obstacle channels
+deterministically by subdivision of the widest remaining gap. The 96-axis,
+6500-vertex and 3-million comparison hard limits remain. A conservative
+budget accounts for the number of solid keepouts, crossable segments and
+signed stubs. Every original obstacle is still checked, including those
+whose optional channels were omitted; reduced grid coverage can reject
+feasible routes, never authorize collisions. Strict default routing is
+unchanged. Two additional deterministic orders prioritize blocked Nets
+from the best initial trial; up to five orders / 80 Net attempts (75 for
+TL494) on detached copies, no partial Apply. Existing controlled crossing
+and topology gates remain. Regression exercises a dense coordinate grid,
+straight route, deterministic replay and an impassable barrier. Updated
+TL494 benchmark emits TL494_R32E_ADAPTIVE; no claim of improvement until
+CI results. The original R32d report remains in its own commit's CI.
