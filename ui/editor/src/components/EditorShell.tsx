@@ -10,6 +10,7 @@ import {
   Magnet, Menu as MenuIcon, MousePointer2, Save, Search, Settings2,
   Undo2, Redo2, Type as TypeIcon, Moon, Sun, CircleDot
 } from 'lucide-react';
+import type {TopologyInventory} from '../authoring/topology-inventory.mjs';
 import type {LayoutPreview} from '../authoring/session';
 import { normalizeDockLayout, DOCK_LAYOUT_KEY, type DockLayout } from '../theme/layout';
 import { formatMillimetres, parseMillimetres } from './inspector-units';
@@ -35,7 +36,7 @@ export type InspectorProposal =
 
 /** The host owns all electrical topology, source PinRefs, command validation and actual persistence. */
 export type EditorShellProps = {
-  projectName:string;dirty:boolean;baseRevision:string;
+  projectName:string;dirty:boolean;baseRevision:string;topology?:TopologyInventory;
   sheets:readonly {id:string;title:string}[];activeSheetId:string;
   catalog:readonly CatalogSymbol[];tree:readonly TreeItem[];
   catalogMissingCount?:number;onCatalogUpgrade?:()=>void;
@@ -162,6 +163,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
   const [sizes,setSizes]=useLocalStorage<DockLayout>({key:DOCK_LAYOUT_KEY,defaultValue:{}});
   const [left,setLeft]=useState(()=>typeof window==='undefined'||window.innerWidth>=960);
   const [right,setRight]=useState(()=>typeof window==='undefined'||window.innerWidth>=960);
+  const [topologyDialog,setTopologyDialog]=useState(false);
   const [settings,setSettings]=useState(false),[exportDialog,setExportDialog]=useState(false);
   const [commandDialog,setCommandDialog]=useState(false),[diagnostics,setDiagnostics]=useState(false);
   const [diagnosticFilter,setDiagnosticFilter]=useState<'all'|'error'|'warning'|'info'>('all');
@@ -248,6 +250,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
                 <Menu.Item data-testid="distribute-series" disabled={!props.onDistributeSeries} onClick={props.onDistributeSeries}>Равные промежутки цепочки</Menu.Item>
                 <Menu.Item data-testid="parallel-rails" disabled={!props.onBuildParallelRails} onClick={props.onBuildParallelRails}>Построить параллельные магистрали</Menu.Item>
                 <Menu.Item data-testid="distribute-parallel" disabled={!props.onDistributeParallel} onClick={props.onDistributeParallel}>Выровнять параллельные ветви</Menu.Item>
+                <Menu.Item data-testid="topology-inventory" disabled={!props.topology} onClick={()=>setTopologyDialog(true)}>Анализ электрической структуры</Menu.Item>
                 <Menu.Item data-testid="optimize-layout" disabled={!props.onOptimizeLayout} onClick={props.onOptimizeLayout}>Оптимизировать компоновку{(props.groupSelectionIds?.length??0)>1?' выделения':' листа'}</Menu.Item>
                 <Menu.Item data-testid="simplify-routes" disabled={!props.onSimplifyRoutes} onClick={props.onSimplifyRoutes}>Упростить проводники{(props.groupSelectionIds?.length??0)>1?' выделения':' листа'}</Menu.Item>
                 <Menu.Divider/>
@@ -383,6 +386,32 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
           <Button data-testid="layout-apply" onClick={props.onApplyLayoutPreview}>Применить</Button>
         </Group>
       </Stack>}
+    </Modal>
+    <Modal opened={topologyDialog} onClose={()=>setTopologyDialog(false)} title="Электрическая структура листа" size="xl" centered>
+      {props.topology&&<ScrollArea.Autosize mah="65vh" data-testid="topology-report">
+        <Stack gap="sm">
+          <Text size="sm">УГО: {props.topology.components}; объявленных цепей: {props.topology.nets}.</Text>
+          <Text size="xs" c="dimmed">Только объявленные физические выводы и Net. Названия цепей не доказывают их назначение. Общая цепь не обязательно является шиной питания.</Text>
+          {props.topology.hubs.map(h=><Stack key={h.id} gap={4}>
+            <Group justify="space-between"><Text fw={600}>{h.refdes} — {h.pins.length} выводов, {h.netCount} цепей</Text>
+              <Button size="xs" variant="light" onClick={()=>{props.onSelectTreeItem(h.id);setTopologyDialog(false)}}>Выбрать УГО</Button></Group>
+            <Text size="xs">Связанные УГО: {h.neighbors.join(', ')||'нет'}</Text>
+            <div style={{display:'grid',gridTemplateColumns:'60px 100px 1fr',gap:4}}>
+              <Text size="xs" fw={600}>Вывод</Text><Text size="xs" fw={600}>Тип</Text><Text size="xs" fw={600}>Цепь / связанные УГО</Text>
+              {h.pins.map(p=><div key={p.number} style={{display:'contents'}}>
+                <Text size="xs">{p.number}</Text><Text size="xs">{p.type}</Text>
+                <Text size="xs">{p.net??'—'}{p.neighbors.length?' · '+p.neighbors.join(', '):''}</Text>
+              </div>)}
+            </div>
+            <Divider/>
+          </Stack>)}
+          <Text fw={600} size="sm">Общие цепи (не менее 3 УГО на листе)</Text>
+          {props.topology.shared.map(n=><Stack key={n.id} gap={2}>
+            <Text size="sm">{n.name} — {n.pins} выводов, {n.devices} УГО</Text>
+            <Text size="xs" c="dimmed">{n.powerEvidence.length?'Типы power_input/power_output: '+n.powerEvidence.map(p=>p.refdes+'.'+p.pin).join(', '):'Нет явных типов выводов питания в каталоге.'}{n.externalDevices?' Вне листа: '+n.externalDevices:''}</Text>
+          </Stack>)}
+        </Stack>
+      </ScrollArea.Autosize>}
     </Modal>
     <Modal opened={settings} onClose={()=>setSettings(false)} title="Настройки интерфейса" centered>
       <Stack><SegmentedControl value={props.scheme} onChange={v=>props.setScheme(v as 'dark'|'light')}

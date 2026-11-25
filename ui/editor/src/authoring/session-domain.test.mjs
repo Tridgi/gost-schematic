@@ -1271,3 +1271,33 @@ test('R23 satellite with an external route stays fixed; unselected satellites ar
  assert.deepEqual(sh.wires.at(-1),sh0.wires.at(-1));
  assert.equal(sh.instances.find(i=>i.id===leaves[0]).origin_um[1],90000);
 });
+
+test('R23 topology inventory checks the real frozen TL494 source without mutating it',async()=>{
+ const {topologyInventory}=await import('./topology-inventory.mjs');
+ const file=JSON.parse(readFileSync(new URL('../../../fixtures/tl494-source-e695-v2.gscad.json',import.meta.url),'utf8'));
+ const before=structuredClone(file),report=topologyInventory(file,file.workspace.active_sheet_id);
+ assert.equal(report.components,23);assert.equal(report.nets,15);
+ const da=report.hubs.find(h=>h.refdes==='DA1');
+ assert.equal(da.pins.length,16);assert.equal(da.netCount,9);
+ assert.equal(da.pins.find(p=>p.number==='5').net,'OSCILLATOR_CT');
+ assert.deepEqual(da.pins.find(p=>p.number==='5').neighbors,['C7']);
+ assert.equal(da.pins.find(p=>p.number==='6').net,'OSCILLATOR_RT');
+ assert.deepEqual(da.pins.find(p=>p.number==='6').neighbors,['R7']);
+ const common=report.shared.find(n=>n.name==='COMMON');
+ assert.equal(common.pins,14);assert.equal(common.devices,11);
+ // The source uses mostly passive/unspecified pin types. Do not claim
+ // a supply simply because a literal Net name resembles one.
+ assert.equal(common.powerEvidence.length,0);
+ assert.deepEqual(file,before);
+});
+test('R23 inventory distinguishes declared power evidence from literal Net names',async()=>{
+ const {topologyInventory}=await import('./topology-inventory.mjs');
+ const {s}=hubFixture(),file=s.file;
+ const p=file.project.part_definitions.find(p=>p.id==='part/test-hub');
+ p.physical_pins[0].electrical_type='power_input';
+ const net=file.project.nets[0];net.name='not_a_supply_label';
+ const r=topologyInventory(file,file.workspace.active_sheet_id);
+ assert.equal(r.hubs[0].pins.find(p=>p.number==='1').type,'power_input');
+ assert.equal(r.hubs[0].pins.find(p=>p.number==='1').net,'not_a_supply_label');
+ assert.equal(r.shared.length,0);
+});

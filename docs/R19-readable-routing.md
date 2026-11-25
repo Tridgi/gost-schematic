@@ -100,3 +100,25 @@ and checks the owning session and content epoch; Cancel discards it.
 One Undo restores the complete pre-optimization document. Native physical
 export is still separate; the preview is not a normative approval or a complete
 annotation/clearance certificate.
+
+
+## R23 — multi-terminal anchors and source topology inventory
+
+The automatic optimizer now recognizes a fixed multi-terminal anchor (at least
+four signed physical pins and at least two attached wires). A selected
+two-terminal satellite with exactly one attached direct wire can be aligned to
+its own facing hub pin. The anchor pose is checked unchanged after each trial;
+other satellites, external connections and topology are preserved. All trials
+still pass the R22 quality gate. This is local alignment, not a full placement
+algorithm or inference of circuit function.
+
+The read-only Electrical Structure report enumerates actual physical pins,
+literal Net names, unique neighboring devices and shared Nets (at least three
+local components). Explicit power evidence comes only from catalog
+power_input/power_output types, not names or coordinates.
+
+The frozen TL494 E695 fixture has 23 placed components, 15 declared Nets,
+DA1 with 16 physical pins across nine Nets; COMMON has 14 memberships across
+11 distinct components. The CT and RT connections are reported from literal
+source memberships. The source itself remains immutable and unrouted in
+ProjectV2. Tests do not silently copy or alter it.
