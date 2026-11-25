@@ -537,3 +537,30 @@ exists. Preview font metrics and actual printed typography remain
 unverified; canonical Python/Windows export parity is not claimed.
 Two regression tests cover deterministic identity, label counts,
 non-overlap, empty values, XML escaping and explicit refusal.
+
+
+## R32k — complete visible reference inventory
+
+R32j CI verified 156/156 unit tests and 52/52 browser tests.
+The three-stage actual TL494 artifact reported 23, 22 and 22 placed
+reference designators respectively; the refined geometry connected
+15/15 Nets with 81 bends, 38 X crossings and 5340.345 mm wire length.
+
+The shared label planner now first evaluates the original nearby slots
+against immutable geometry, then retries in fewest-candidates-first
+order if assignment is incomplete. Only if necessary it expands
+candidate channels along the owning symbol's sides (2.5 mm offsets,
+up to 20 mm normal gap), preserving 2.5 mm font height, the existing
+conservative envelopes and 0.5 mm padding. Successful original
+assignments are preferred; the expanded result is used only if it
+places more labels. Search remains bounded by a 12-million static
+geometry comparison cap; incomplete assignments are reported honestly.
+One regression exercises blocked original slots, deterministic replay,
+unchanged text size and obstacle clearance. Evidence now records exact
+unplaced reference designators/reasons and checks the full inventory.
+After publishing the evidence and running browser E2E, CI requires
+23/23 visible references at every TL494 stage. A failed acceptance gate
+does not erase the diagnostic artifact. This is a bounded heuristic,
+not global placement completeness or normative GOST typography.
+Labels remain derived, not permanent route obstacles. Main and frozen
+source unchanged. R32k results pending.
