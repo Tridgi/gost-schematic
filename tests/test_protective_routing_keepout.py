@@ -14,6 +14,11 @@ from gost_schematic.model.circuit import Circuit, ComponentInstance, Net, PinRef
 from gost_schematic.rendering.annotation_svg import render_annotation_svg
 from gost_schematic.rendering.svg import render_symbol_svg
 from gost_schematic.validation.conductor_checks import inspect_conductor_topology
+from gost_schematic.validation.external_wire_checks import (
+    ExternalWireGraph,
+    WireSegment,
+    validate_external_wires,
+)
 
 SVG = "{http://www.w3.org/2000/svg}"
 
@@ -206,3 +211,41 @@ def test_endpoint_component_other_wiper_stroke_stays_protected(rotation, mirror)
     assert route.points[0] == start and route.points[-1] == end
     assert all(not segment_intersects_box(Line(a, b), hazard)
                for a, b in zip(route.points, route.points[1:], strict=False))
+
+
+def test_incremental_route_does_not_require_unrelated_nets_to_be_complete():
+    catalog = CatalogResolver()
+    first, second = PinRef("R1", "2"), PinRef("R2", "1")
+    third, fourth = PinRef("R3", "2"), PinRef("R4", "1")
+    circuit = Circuit((
+        ComponentInstance("R1", "resistor.fixed", Point(-20000, 0)),
+        ComponentInstance("R2", "resistor.fixed", Point(20000, 0)),
+        ComponentInstance("R3", "resistor.fixed", Point(-20000, 20000)),
+        ComponentInstance("R4", "resistor.fixed", Point(20000, 20000)),
+    ), (Net("FIRST", (first, second)), Net("LATER", (third, fourth))))
+    route = route_circuit_two_pins(
+        circuit, catalog.parts, catalog.symbols, first, second, net_name="FIRST",
+    )
+    assert route.ok, route.diagnostics
+    graph = route.external_graph("FIRST")
+    assert not validate_external_wires(
+        circuit, graph, catalog.parts, catalog.symbols,
+        required_nets=frozenset(("FIRST",)),
+    )
+    assert {d.code for d in validate_external_wires(
+        circuit, graph, catalog.parts, catalog.symbols,
+    )} == {"WIRE_PIN_UNWIRED", "WIRE_NET_DISCONNECTED"}
+    # Wrong ownership is still rejected even in incremental mode.
+    third_at = circuit.components[2].pin_positions(catalog.symbols["resistor.fixed"])["2"]
+    corrupt = ExternalWireGraph((*graph.segments, WireSegment(
+        graph.segments[0].start, third_at, "FIRST",
+    )))
+    errors = validate_external_wires(
+        circuit, corrupt, catalog.parts, catalog.symbols,
+        required_nets=frozenset(("FIRST",)),
+    )
+    assert {"WIRE_PIN_NET_MISMATCH", "WIRE_NET_SHORT"} <= {d.code for d in errors}
+    assert "WIRE_VALIDATION_SCOPE_INVALID" in {d.code for d in validate_external_wires(
+        circuit, graph, catalog.parts, catalog.symbols,
+        required_nets=frozenset(("UNKNOWN",)),
+    )}

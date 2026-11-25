@@ -158,6 +158,7 @@ def route_circuit_two_pins(
     # from crossings or route ink. No junction is added by this adapter.
     diagnostics = validate_external_wires(
         circuit, result.external_graph(net_name), parts, symbols,
+        required_nets=frozenset((net_name,)),
     )
     if diagnostics:
         codes = ", ".join(sorted({item.code for item in diagnostics}))

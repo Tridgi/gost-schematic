@@ -113,12 +113,17 @@ def validate_external_wires(
     graph: ExternalWireGraph,
     parts: Mapping[str, PartDefinition],
     symbols: Mapping[str, SymbolDefinition],
+    *,
+    required_nets: frozenset[str] | None = None,
 ) -> tuple[Diagnostic, ...]:
     """Compare physical sheet contacts to the declared nets without mutating either.
 
     Returns deterministic diagnostics, not an inferred/persisted netlist.
     A single-member net need not have a drawn wire. Geometry is exact; no
     tolerance, pin-escape check, global labels, sheet ports or autorouting.
+    By default all multi-pin nets must be complete. In incremental routing,
+    required_nets selects only the nets whose completeness is being certified;
+    all ownership, pin-contact, short and dangling-wire checks still apply.
     """
     issues: list[Diagnostic] = []
 
@@ -263,7 +268,16 @@ def validate_external_wires(
                 str(root),
             )
 
+    if required_nets is not None and (
+        not isinstance(required_nets, frozenset) or not required_nets
+        or not required_nets <= declared.keys()
+    ):
+        error("WIRE_VALIDATION_SCOPE_INVALID", "Required nets must be nonempty declared names")
+        return tuple(issues)
+
     for net_name, members in declared.items():
+        if required_nets is not None and net_name not in required_nets:
+            continue
         unique = tuple(dict.fromkeys(members))
         if len(unique) < 2:
             continue
