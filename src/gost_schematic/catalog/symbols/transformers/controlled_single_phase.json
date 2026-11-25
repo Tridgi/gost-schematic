@@ -4,7 +4,7 @@
   "revision": 1,
   "status": "draft",
   "standard_refs": [
-    "ГОСТ 2.723-68, таблица 2, поз. 37а (однофазный), форма II; https://rosgosts.ru/file/gost/01/080/gost_2.723-68.pdf",
+    "ГОСТ 2.723-68, таблица 2, поз. 37, подпункт а (однофазный), форма II; https://rosgosts.ru/file/gost/01/080/gost_2.723-68.pdf",
     "EDITORIAL_ASSUMPTION: two independent power windings and one bias winding; rotated layout derived from table; project millimetre dimensions and terminal extensions; abstract pin numbering; DRAFT."
   ],
   "line_width_mm": 0.3,
