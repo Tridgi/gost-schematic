@@ -22,9 +22,16 @@ export function detectPaperOverflow(scene,snapshot,sizeUm){
    (s.notes||[]).some(n=>noteLayout(n,at(s,n.at_um)).bounds.some(p=>outside(p))))
    .map(s=>s.component_id);
  const graphics=scene.graphics.filter(g=>g.strokes.some(k=>
-   outside(k.from_um)||outside(k.to_um))).map(g=>g.id);
- const wires=snapshot.wires.filter(w=>w.vertices.some(v=>outside(v.at_um))).map(w=>w.id);
- const junctions=snapshot.junctions.filter(j=>outside(j.at_um)).map(j=>j.id);
+   outside(k.from_um,(k.stroke_um??0)/2)||outside(k.to_um,(k.stroke_um??0)/2))).map(g=>g.id);
+ // Canonical browser print uses 300 µm butt-capped orthogonal wires
+ // and 550 µm radius junction dots. Invisible splices remain point checks.
+ const wires=snapshot.wires.filter(w=>w.vertices.some(v=>outside(v.at_um))||
+   w.vertices.slice(1).some((v,i)=>{
+    const a=w.vertices[i].at_um,b=v.at_um;
+    const t=a[0]===b[0]?0:1;
+    return [a,b].some(p=>p[t]-150<0||p[t]+150>sizeUm[t]);
+   })).map(w=>w.id);
+ const junctions=snapshot.junctions.filter(j=>outside(j.at_um,550)).map(j=>j.id);
  const splices=snapshot.splices.filter(s=>outside(s.at_um)).map(s=>s.id);
  return {symbols,graphics,wires,junctions,splices,
    total:symbols.length+graphics.length+wires.length+junctions.length+splices.length};
