@@ -277,3 +277,21 @@ not a globally optimal placement solver and not automatic movement of
 multi-terminal hubs. New domain tests cover fixed neighbors, two-wire
 straightening, preview discovery and rollback for forbidden moves.
 Full CI pending.
+
+
+## R31a — visible ink protection and paper extents
+
+Live diagnostics now check straight stroke width (round-envelope distance
+to a disjoint conductor centerline) in addition to exact centerline
+intersection. An existing signed pin contact remains exempt under the
+previous exact-contact rule. Constant symbol notes are checked separately
+against their conservative upright sheet-space text boxes and reported as
+DRC_WIRE_SYMBOL_TEXT warnings, without any electrical edge. The existing
+layout quality gate includes this new warning. Paper overflow uses exact
+cardinal curve extents and straight stroke half-width, including rotated
+and mirrored instances; legacy stroke-only scenes remain supported.
+Four focused regression tests cover near-miss strokes, text transforms,
+and paper edges. This is not a normative GOST clearance certificate:
+actual font glyph extents, wire stroke width, arc stroke contact distance,
+and dynamic refdes/value labels remain outside this increment. No change
+to frozen E695, catalog approval, or electrical membership.

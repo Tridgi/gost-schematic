@@ -14,11 +14,12 @@ const at=(symbol,p)=>{
 export function detectPaperOverflow(scene,snapshot,sizeUm){
  if(!Array.isArray(sizeUm)||sizeUm.length!==2||
    !sizeUm.every(n=>Number.isSafeInteger(n)&&n>0))throw Error('INVALID_FRAME');
- const outside=p=>p[0]<0||p[1]<0||p[0]>sizeUm[0]||p[1]>sizeUm[1];
+ const outside=(p,pad=0)=>p[0]-pad<0||p[1]-pad<0||p[0]+pad>sizeUm[0]||p[1]+pad>sizeUm[1];
  const symbols=scene.symbols.filter(s=>outside(s.origin_um)||
    s.pins.some(p=>outside(at(s,p.at_um)))||
-   s.strokes.some(k=>outside(at(s,k.from_um))||outside(at(s,k.to_um)))||
-   (s.notes||[]).some(n=>noteLayout(n,at(s,n.at_um)).bounds.some(outside)))
+   (s.inkStrokes??s.strokes).some(k=>outside(at(s,k.from_um),(k.stroke_um??0)/2)||outside(at(s,k.to_um),(k.stroke_um??0)/2))||
+   (s.curves??[]).some(c=>c.bounds.some(p=>outside(at(s,p),c.stroke_um/2)))||
+   (s.notes||[]).some(n=>noteLayout(n,at(s,n.at_um)).bounds.some(p=>outside(p))))
    .map(s=>s.component_id);
  const graphics=scene.graphics.filter(g=>g.strokes.some(k=>
    outside(k.from_um)||outside(k.to_um))).map(g=>g.id);

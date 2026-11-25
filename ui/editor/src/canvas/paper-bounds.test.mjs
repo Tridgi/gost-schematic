@@ -33,3 +33,21 @@ test('R10: paper overflow reports each electrical/non-electrical group without c
  assert.deepEqual(v,{symbols:[],graphics:['annotation'],wires:['W'],junctions:['J'],splices:['S'],total:4});
  assert.throws(()=>detectPaperOverflow(scene,wire,[0,0]),/INVALID_FRAME/);
 });
+
+
+test('R31 paper edge includes stroke thickness even when centerlines are inside',()=>{
+ const scene=make(),s=scene.symbols[0];s.origin_um=[100000,100];
+ s.pins=[];s.inkStrokes=[{from_um:[-1000,0],to_um:[1000,0],stroke_um:202}];
+ assert.deepEqual(detectPaperOverflow(scene,snapshot(),[297000,210000]).symbols,['R1']);
+ s.origin_um=[100000,101];
+ assert.equal(detectPaperOverflow(scene,snapshot(),[297000,210000]).total,0);
+});
+test('R31 analytic semicircle bounds and stroke are used under rotation and reflection',()=>{
+ const scene=make(),s=scene.symbols[0];s.origin_um=[100000,2050];s.pins=[];s.inkStrokes=[];s.strokes=[];
+ s.curves=[{kind:'semicircle',bounds:[[-2000,0],[0,-2000],[2000,0]],stroke_um:200}];
+ assert.deepEqual(detectPaperOverflow(scene,snapshot(),[297000,210000]).symbols,['R1']);
+ s.rotation_deg=180;
+ assert.equal(detectPaperOverflow(scene,snapshot(),[297000,210000]).total,0);
+ s.rotation_deg=90;s.mirror_x=true;
+ assert.deepEqual(detectPaperOverflow(scene,snapshot(),[297000,210000]).symbols,['R1']);
+});

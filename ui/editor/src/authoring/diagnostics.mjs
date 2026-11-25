@@ -57,6 +57,19 @@ function straightContact(segment,a,b){
  if(numerator<lo*denominator||numerator>hi*denominator)return [];
  return numerator%denominator===0n?[{at:at(Number(numerator/denominator))}]:[{nonInteger:true}];
 }
+/** Distance between disjoint closed straight segments. Stroke clearance
+ * is a visual warning only; it cannot create connectivity. */
+function pointSegmentDistance2(p,a,b){
+ const dx=b[0]-a[0],dy=b[1]-a[1],d=dx*dx+dy*dy;
+ const t=d===0?0:Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/d));
+ return (p[0]-a[0]-t*dx)**2+(p[1]-a[1]-t*dy)**2;
+}
+function strokeNear(segment,a,b,radius){
+ if(!(radius>0))return false;
+ const p=segment.a.at_um,q=segment.b.at_um;
+ return Math.min(pointSegmentDistance2(p,a,b),pointSegmentDistance2(q,a,b),
+  pointSegmentDistance2(a,p,q),pointSegmentDistance2(b,p,q))<=radius*radius;
+}
 /** Analytic H/V-circle intersection, clipped to the semicircle's visible half.
  * Square-root values are used only for a visual warning, never connectivity. */
 function curvedContact(segment,symbol,curve){
@@ -178,12 +191,23 @@ export function analyzeDiagnostics(file,scene,snapshot,routeStatuses={},options=
    for(const stroke of s.inkStrokes??s.strokes){
     if(!budget())break outer;
     const a=world(s,stroke.from_um),b=world(s,stroke.to_um);
-    if(!overlap(seg.box,bbox(a,b)))continue;
-    if(straightContact(seg,a,b).some(hit=>!allowed(hit))){collision=true;break}
+    const radius=(stroke.stroke_um??0)/2,extent=bbox(a,b);
+    if(!overlap(seg.box,{x0:extent.x0-radius,x1:extent.x1+radius,y0:extent.y0-radius,y1:extent.y1+radius}))continue;
+    const hits=straightContact(seg,a,b);
+    if(hits.some(hit=>!allowed(hit))||(!hits.length&&strokeNear(seg,a,b,radius))){collision=true;break}
    }
    if(!collision)for(const curve of s.curves??[]){
     if(!budget())break outer;
     if(curvedContact(seg,s,curve).some(hit=>!allowed(hit))){collision=true;break}
+   }
+   // Text is upright sheet ink; use the same conservative envelope as
+   // the placement/print geometry rather than treating it as a conductor.
+   for(const note of s.notes??[]){
+    if(!budget())break outer;
+    const [a,b]=noteLayout(note,world(s,note.at_um)).bounds;
+    if(overlap(seg.box,bbox(a,b)))add('DRC_WIRE_SYMBOL_TEXT','warning',
+     'Проводник '+netName(seg.wire.net_id)+' пересекает область надписи '+ref(s.component_id)+' ('+note.key+'). Проверьте читаемость.',
+     [seg.wire.id,s.component_id,note.key],s.instance_id);
    }
    if(collision)add('DRC_WIRE_SYMBOL_INK','warning',
     'Проводник '+netName(seg.wire.net_id)+' пересекает графику УГО '+ref(s.component_id)+' вне подписанного вывода. Проверьте разводку.',[seg.wire.id,s.component_id],s.instance_id);
