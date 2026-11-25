@@ -132,3 +132,26 @@ test('R31 checks rotated/mirrored upright annotation envelopes without changing 
  assert.equal(notes.length,1);assert.equal(notes[0].instanceId,'I-R1');
  assert.equal(notes[0].severity,'warning');assert.equal(report.counts.error,0);
 });
+
+
+test('R31b detects thick circle near misses, including a short wire endpoint',()=>{
+ const s=shape('R1',[20000,20000]);s.pins=[];s.inkStrokes=[];s.strokes=[];
+ s.curves=[{kind:'circle',center:[0,0],radius:2000,stroke_um:400,points_um:[[0,0],[2000,0]],bounds:[[-2000,-2000],[2000,2000]],sweep:0}];
+ const check=points=>codes(inspect(fixture([s],[wire('a','A',points)],[net('A')]))).includes('DRC_WIRE_SYMBOL_INK');
+ assert.equal(check([[17000,22199],[23000,22199]]),true);
+ assert.equal(check([[17000,22201],[23000,22201]]),false);
+ assert.equal(check([[22001,20000],[22199,20000]]),true);
+ assert.equal(check([[22201,20000],[23000,20000]]),false);
+ assert.equal(check([[19500,20000],[20500,20000]]),false);
+});
+test('R31b thick semicircle respects the visible half under rotation and mirroring',()=>{
+ const s=shape('R1',[20000,20000]);s.pins=[];s.inkStrokes=[];s.strokes=[];
+ s.curves=[{kind:'semicircle',center:[0,0],radius:2000,stroke_um:400,points_um:[[-2000,0],[0,-2000],[2000,0]],bounds:[[-2000,0],[0,-2000],[2000,0]],sweep:1}];
+ const check=points=>codes(inspect(fixture([s],[wire('a','A',points)],[net('A')]))).includes('DRC_WIRE_SYMBOL_INK');
+ assert.equal(check([[17000,17801],[23000,17801]]),true);
+ assert.equal(check([[17000,22199],[23000,22199]]),false);
+ assert.equal(check([[22050,20050],[23000,20050]]),true);
+ s.rotation_deg=90;s.mirror_x=true;
+ assert.equal(check([[22199,17000],[22199,23000]]),true);
+ assert.equal(check([[17801,17000],[17801,23000]]),false);
+});
