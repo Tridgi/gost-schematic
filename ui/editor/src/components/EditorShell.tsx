@@ -53,7 +53,7 @@ export type EditorShellProps = {
   onUndo:()=>void;onRedo:()=>void;onSave:()=>void;
   onCopy?:()=>void;onPaste?:()=>void;
   pinMagnet?:boolean;onTogglePinMagnet?:(enabled:boolean)=>void;
-  smartRouting?:boolean;onToggleSmartRouting?:(enabled:boolean)=>void;onAlignConnectedPair?:()=>void;onSimplifyRoutes?:()=>void;onAlignSeries?:()=>void;onDistributeSeries?:()=>void;onBuildParallelRails?:()=>void;
+  smartRouting?:boolean;onToggleSmartRouting?:(enabled:boolean)=>void;onAlignConnectedPair?:()=>void;onSimplifyRoutes?:()=>void;onAlignSeries?:()=>void;onDistributeSeries?:()=>void;onBuildParallelRails?:()=>void;onDistributeParallel?:()=>void;
   onOpen?:()=>void;onNew?:()=>void;onAddSheet?:()=>void;
   onPaperChange?:(paper:'A4'|'A3'|'A2')=>void;activePaper?:'A4'|'A3'|'A2';
   onSaveAs?:()=>void;onExport?:(format:'svg'|'png300')=>void;
@@ -245,6 +245,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
                 <Menu.Item data-testid="align-series" disabled={!props.onAlignSeries} onClick={props.onAlignSeries}>Выровнять цепочку УГО</Menu.Item>
                 <Menu.Item data-testid="distribute-series" disabled={!props.onDistributeSeries} onClick={props.onDistributeSeries}>Равные промежутки цепочки</Menu.Item>
                 <Menu.Item data-testid="parallel-rails" disabled={!props.onBuildParallelRails} onClick={props.onBuildParallelRails}>Построить параллельные магистрали</Menu.Item>
+                <Menu.Item data-testid="distribute-parallel" disabled={!props.onDistributeParallel} onClick={props.onDistributeParallel}>Выровнять параллельные ветви</Menu.Item>
                 <Menu.Item data-testid="simplify-routes" disabled={!props.onSimplifyRoutes} onClick={props.onSimplifyRoutes}>Упростить проводники{(props.groupSelectionIds?.length??0)>1?' выделения':' листа'}</Menu.Item>
                 <Menu.Divider/>
                 <Menu.Item data-testid="paste-component" onClick={props.onPaste} disabled={!props.onPaste}>Вставить независимую копию · Ctrl+V</Menu.Item>
