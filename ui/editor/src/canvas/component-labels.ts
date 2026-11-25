@@ -57,34 +57,97 @@ export function planComponentLabels(file:ProjectFileV2,sheetId:string,scene:Canv
  }
  const m=sh.frame.margin_um,[w,h]=sh.frame.size_um;
  const inside=(b:Box)=>b.x0>=m&&b.y0>=m&&b.x1<=w-m&&b.y1<=h-m;
+ // Preserve the original nearby positions as the preferred candidates.
+ // Only expand the search when the inexpensive first pass misses a label.
+ type Entry={instanceId:string;refdes:string;near:ComponentLabel[];extra:()=>ComponentLabel[]};
+ const entries:Entry[]=[];
+ let comparisons=0;
+ const budget=12_000_000;
  for(const s of symbols){
   const c=components.get(s.component_id)!;
   const fail=(reason:string)=>unplaced.push({instanceId:s.instance_id,refdes:c.refdes,reason});
   const text=[c.refdes,c.value].filter(v=>v.length>0);
   if(!c.refdes||text.some(v=>Array.from(v).length>64||/[\u0000-\u001f\u007f]/.test(v))){fail('LABEL_TEXT_UNSUPPORTED');continue}
-  // Monospace preview with deliberately overestimated width, plus padding.
   const width=(Math.max(...text.map(v=>Array.from(v).length))+1)*H;
   const height=3*H+(text.length-1)*STEP;
   const b=bounds.get(s.instance_id)!;
   const cx=Math.round((b.x0+b.x1)/2),cy=Math.round((b.y0+b.y1)/2);
-  let found:ComponentLabel|undefined;
+  const seen=new Set<string>();
+  const make=(x:number,y:number):ComponentLabel|undefined=>{
+   x=Math.round(x);y=Math.round(y);
+   const key=x+':'+y;if(seen.has(key))return;seen.add(key);
+   const left=Math.floor(x-width/2),top=Math.floor(y-height/2),right=left+width,bottom=top+height;
+   const envelope={x0:left-PAD,y0:top-PAD,x1:right+PAD,y1:bottom+PAD};
+   if(!inside(envelope))return;
+   for(const o of obstacles){
+    if(++comparisons>budget)return;
+    if(hits(o,envelope))return;
+   }
+   return {instanceId:s.instance_id,componentId:s.component_id,refdes:c.refdes,value:c.value,x,y:top+2*H,heightUm:H,lineStepUm:STEP,bounds:envelope};
+  };
+  const collect=(positions:[number,number][])=>positions.flatMap(([x,y])=>{const v=make(x,y);return v?[v]:[]});
+  const near:ComponentLabel[]=[];
   for(const gap of [1000,2500,5000,8000]){
-   const candidates:[number,number][]=[
+   near.push(...collect([
     [cx,b.y0-gap-height/2],[cx,b.y1+gap+height/2],
     [b.x1+gap+width/2,cy],[b.x0-gap-width/2,cy],
     [b.x0+width/2,b.y0-gap-height/2],[b.x1-width/2,b.y0-gap-height/2],
     [b.x0+width/2,b.y1+gap+height/2],[b.x1-width/2,b.y1+gap+height/2]
-   ];
-   for(const [x,y] of candidates){
-    const left=Math.floor(x-width/2),top=Math.floor(y-height/2),right=left+width,bottom=top+height;
-    const envelope={x0:left-PAD,y0:top-PAD,x1:right+PAD,y1:bottom+PAD};
-    if(!inside(envelope)||obstacles.some(o=>hits(o,envelope)))continue;
-    found={instanceId:s.instance_id,componentId:s.component_id,refdes:c.refdes,value:c.value,x:Math.round(x),y:top+2*H,heightUm:H,lineStepUm:STEP,bounds:envelope};break;
-   }
-   if(found)break;
+   ]));
   }
-  if(found){labels.push(found);obstacles.push(found.bounds)}
-  else fail('LABEL_NO_SAFE_POSITION');
+  const extra=()=>{
+   const positions:[number,number][]=[];
+   // Slide along each side of the physical envelope; keep candidates
+   // near the owning symbol and never shrink the text or clearance.
+   for(const gap of [1000,2500,5000,8000,12000,16000,20000]){
+    for(const d of [0,-2500,2500,-5000,5000,-7500,7500,-10000,10000,-12500,12500]){
+     const x=cx+d,y=cy+d;
+     if(x>=b.x0-width/2&&x<=b.x1+width/2)
+      positions.push([x,b.y0-gap-height/2],[x,b.y1+gap+height/2]);
+     if(y>=b.y0-height/2&&y<=b.y1+height/2)
+      positions.push([b.x1+gap+width/2,y],[b.x0-gap-width/2,y]);
+    }
+   }
+   return collect(positions);
+  };
+  entries.push({instanceId:s.instance_id,refdes:c.refdes,near,extra});
+ }
+ const choose=(order:Entry[],candidates:Map<string,ComponentLabel[]>,seed:ComponentLabel[]=[]):ComponentLabel[]=>{
+  const result=[...seed];
+  for(const e of order){
+   if(result.some(l=>l.instanceId===e.instanceId))continue;
+   const candidate=candidates.get(e.instanceId)?.find(l=>result.every(k=>!hits(k.bounds,l.bounds)));
+   if(candidate)result.push(candidate);
+  }
+  return result;
+ };
+ const nearby=new Map(entries.map(e=>[e.instanceId,e.near]));
+ let best=choose(entries,nearby);
+ if(best.length<entries.length){
+  const constrained=[...entries].sort((a,b)=>a.near.length-b.near.length||a.instanceId.localeCompare(b.instanceId));
+  const retry=choose(constrained,nearby);
+  if(retry.length>best.length)best=retry;
+ }
+ if(best.length<entries.length){
+  // Retain successful placements if possible. If that still fails,
+  // give the most constrained labels first choice of the expanded pool.
+  const expanded=new Map(nearby);
+  const missing=entries.filter(e=>!best.some(l=>l.instanceId===e.instanceId));
+  for(const e of missing)expanded.set(e.instanceId,[...e.near,...e.extra()]);
+  best=choose(missing,expanded,best);
+  if(best.length<entries.length){
+   const missingIds=new Set(missing.map(e=>e.instanceId));
+   for(const e of entries)if(!missingIds.has(e.instanceId))expanded.set(e.instanceId,[...e.near,...e.extra()]);
+   const order=[...entries].sort((a,b)=>expanded.get(a.instanceId)!.length-expanded.get(b.instanceId)!.length||a.instanceId.localeCompare(b.instanceId));
+   const retry=choose(order,expanded);
+   if(retry.length>best.length)best=retry;
+  }
+ }
+ const placed=new Map(best.map(l=>[l.instanceId,l]));
+ for(const e of entries){
+  const l=placed.get(e.instanceId);
+  if(l)labels.push(l);
+  else unplaced.push({instanceId:e.instanceId,refdes:e.refdes,reason:comparisons>budget?'LABEL_SEARCH_LIMIT':'LABEL_NO_SAFE_POSITION'});
  }
  return {labels,unplaced};
 }
