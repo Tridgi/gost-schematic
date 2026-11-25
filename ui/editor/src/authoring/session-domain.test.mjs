@@ -1373,7 +1373,7 @@ test('R25 mixed-axis Net uses a direct trunk and one L-shaped lead while preserv
  for(const w of sh.wires){
   const v=w.vertices[0];if(v.anchor.kind!=='pin')continue;
   const p=s.beginWire(v.anchor),q=w.vertices[1].at_um;
-  assert.deepEqual([Math.sign(q[0]-v.at_um[0]),Math.sign(q[1]-v.at_um[1])],p.normal);
+  assert.deepEqual([Math.sign(q[0]-v.at_um[0]),Math.sign(q[1]-v.at_um[1])],p.normal.map(v=>v===0?0:v));
  }
  assert.equal(s.revision,rev+1);
  assert.throws(()=>s.buildNetRail(s.newTransaction('repeat'),net),/NO_CHANGE/);
