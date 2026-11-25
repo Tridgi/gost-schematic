@@ -311,7 +311,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
                 {d.instanceId&&<Button size="compact-xs" variant="subtle" onClick={()=>props.onSelectTreeItem(d.instanceId!)}>Выбрать УГО</Button>}
               </Group>)}
           </ScrollArea>
-        </div>
+        </div>}
       </div></AppShell.Main>
       <AppShell.Aside className="gscad-dock">
         <RightSplit percent={split} onChange={changeSplit}
