@@ -251,7 +251,11 @@ try{
     const narrowReopen=await page.evaluate(()=>window.innerWidth<960);
     if(narrowReopen)
       await page.getByRole('button',{name:'Показать инспектор'}).click();
-    await page.getByText('C9',{exact:true}).first().click();
+    // C9 is now also a visible non-interactive SVG label. Select the
+    // authoritative tree instance, not an ambiguous text match.
+    const c9=original.project.components.find(c=>c.refdes==='C9');
+    const instance=original.project.sheets[0].instances.find(i=>i.component_id===c9.id);
+    await page.getByTestId('tree-item-'+instance.id).click();
     assert.equal(await page.getByTestId('inspector-nominal').inputValue(),'220н');
     // At Tauri's 900px width the responsive inspector is a floating overlay;
     // close it after reading C9 or it intercepts controls behind the aside.
