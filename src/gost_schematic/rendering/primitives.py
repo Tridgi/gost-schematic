@@ -7,6 +7,7 @@ magnetodielectric core); other shapes inherit the symbol's stroke width.
 from xml.etree import ElementTree as ET
 
 from gost_schematic.core.geometry import (
+    Arc270,
     Circle,
     Line,
     Primitive,
@@ -64,6 +65,13 @@ def draw_primitive(parent: ET.Element, item: Primitive) -> ET.Element:
             "cx": format_mm(item.center.x), "cy": format_mm(item.center.y),
             "r": format_mm(item.radius),
         })
+    if isinstance(item, Arc270):
+        a, b = item.endpoint(item.start_side), item.endpoint(item.end_side)
+        r = format_mm(item.radius)
+        return ET.SubElement(parent, "path", {"d": (
+            f"M {format_mm(a.x)} {format_mm(a.y)} A {r} {r} 0 1 "
+            f"{int(item.clockwise)} {format_mm(b.x)} {format_mm(b.y)}"
+        )})
     if isinstance(item, Semicircle):
         return ET.SubElement(parent, "path", {"d": _arc_path(item)})
     raise TypeError(f"Unsupported SVG primitive: {type(item)!r}")

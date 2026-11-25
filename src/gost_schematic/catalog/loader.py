@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from gost_schematic.core.geometry import (
+    Arc270,
     Box,
     Circle,
     Line,
@@ -69,6 +70,11 @@ def parse_symbol(data: dict[str, Any]) -> SymbolDefinition:
                 )
                 for item in shapes.get("styled_lines", [])
             )
+            + tuple(
+                Arc270(_point(item["center_mm"]), mm(item["radius_mm"]),
+                       Side(item["start_side"]), item.get("clockwise", True))
+                for item in shapes.get("arcs270", [])
+            )
         )
         pins = tuple(
             GraphicPin(
@@ -129,6 +135,7 @@ def parse_symbol(data: dict[str, Any]) -> SymbolDefinition:
                 for key, value in data.get("constant_annotations", {}).items()
             ),
             conductor_topology=topology,
+            routing_keepouts=tuple(_box(box) for box in data.get('routing_keepouts_mm', [])),
         )
     except (KeyError, TypeError, ValueError, IndexError) as error:
         raise CatalogError(f"Invalid symbol {data.get('id', '<unknown>')}: {error}") from error

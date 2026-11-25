@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 from gost_schematic.core.geometry import (
     SIDE_VECTORS,
+    Arc270,
     Box,
     Circle,
     Line,
@@ -66,6 +67,10 @@ class Transform:
             return Rectangle(self.box(primitive.box).translated(origin))
         if isinstance(primitive, Circle):
             return Circle(at(primitive.center), primitive.radius)
+        if isinstance(primitive, Arc270):
+            return Arc270(at(primitive.center), primitive.radius,
+                          self.side(primitive.start_side),
+                          primitive.clockwise != self.mirror_x)
         if isinstance(primitive, Semicircle):
             return Semicircle(
                 at(primitive.center), primitive.radius, self.side(primitive.bulge)

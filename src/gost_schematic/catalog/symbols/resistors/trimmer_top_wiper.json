@@ -1,11 +1,12 @@
 {
   "schema_version": 1,
   "id": "resistor.trimmer_top_wiper",
-  "revision": 1,
+  "revision": 2,
   "status": "draft",
   "standard_refs": [
     "ГОСТ 2.728-74, таблица 1, поз. 9; таблица 6, размеры; https://radio-hobby.org/uploads/instruction/other/ugo/gost/gost_2.728-74.pdf",
-    "EDITORIAL_ASSUMPTION: User reference 03; raised elbow, vertical end; stub is graphic only; 0.3 mm project stroke, abstract pin numbers, DRAFT."
+    "EDITORIAL_ASSUMPTION: User reference 03; raised elbow, vertical end; stub is graphic only; 0.3 mm project stroke, abstract pin numbers, DRAFT.",
+    "EDITORIAL_R2: blue functional routing protection; physical terminal locations unchanged; not a normative dimension."
   ],
   "line_width_mm": 0.3,
   "body_keepout_mm": [
@@ -184,5 +185,13 @@
         "3"
       ]
     ]
-  }
+  },
+  "routing_keepouts_mm": [
+    [
+      -5.5,
+      -6.4,
+      5.5,
+      2.2
+    ]
+  ]
 }

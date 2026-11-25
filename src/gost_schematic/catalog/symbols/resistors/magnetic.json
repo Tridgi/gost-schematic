@@ -1,11 +1,12 @@
 {
   "schema_version": 1,
   "id": "resistor.magnetic",
-  "revision": 1,
+  "revision": 2,
   "status": "draft",
   "standard_refs": [
     "ГОСТ 2.730-73, табл. 11, поз. 2; https://files.stroyinf.ru/Data2/1/4294848/4294848038.pdf",
-    "EDITORIAL_ASSUMPTION: Marker and lead dimensions are editorial; not a certified drawing; all physical numbers abstract; DRAFT."
+    "EDITORIAL_ASSUMPTION: Marker and lead dimensions are editorial; not a certified drawing; all physical numbers abstract; DRAFT.",
+    "EDITORIAL_R2: functional-ink exclusion; no physical pin changes."
   ],
   "line_width_mm": 0.3,
   "body_keepout_mm": [
@@ -159,5 +160,13 @@
         "2"
       ]
     ]
-  }
+  },
+  "routing_keepouts_mm": [
+    [
+      -5.2,
+      -5.2,
+      5.2,
+      7.8
+    ]
+  ]
 }

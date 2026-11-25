@@ -17,7 +17,7 @@ def test_new_symbol_ports_and_topology(identifier):
     assert not [d for d in validate_symbol(symbol) if d.severity.value == "error"]
     result = inspect_conductor_topology(symbol)
     assert result.valid
-    assert result.pin_islands == tuple((p.number,) for p in symbol.pins)
+    assert result.pin_islands == symbol.conductor_topology.pin_groups
     assert symbol.status.value == "draft"
 
 

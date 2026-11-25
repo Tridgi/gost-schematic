@@ -94,8 +94,9 @@ def route_circuit_two_pins(
             return _fail("ROUTE_CATALOG_INVALID", "Physical-to-graphic pin mismatch")
         # Exclude every catalog UGO body. Only two *physical contacts* are
         # authorized, not their entire component or any of its other pins.
-        obstacles.append(
-            component.transform.box(symbol.body_keepout).translated(component.origin)
+        obstacles.extend(
+            component.transform.box(box).translated(component.origin)
+            for box in symbol.routing_boxes
         )
         corridors = {
             corridor.pin.number: corridor

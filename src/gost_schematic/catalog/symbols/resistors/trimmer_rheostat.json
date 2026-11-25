@@ -1,11 +1,12 @@
 {
   "schema_version": 1,
   "id": "resistor.trimmer_rheostat",
-  "revision": 1,
+  "revision": 2,
   "status": "draft",
   "standard_refs": [
     "ГОСТ 2.728-74, таблица 1, поз. 9, примечание 2; таблица 6, размеры; https://radio-hobby.org/uploads/instruction/other/ugo/gost/gost_2.728-74.pdf",
-    "EDITORIAL_ASSUMPTION: 45° adjustment with perpendicular cap, two-terminal schematic use; 0.3 mm project stroke, abstract pin numbers, DRAFT."
+    "EDITORIAL_ASSUMPTION: 45° adjustment with perpendicular cap, two-terminal schematic use; 0.3 mm project stroke, abstract pin numbers, DRAFT.",
+    "EDITORIAL_R2: functional-ink exclusion; no physical pin changes."
   ],
   "line_width_mm": 0.3,
   "body_keepout_mm": [
@@ -149,5 +150,13 @@
         "2"
       ]
     ]
-  }
+  },
+  "routing_keepouts_mm": [
+    [
+      -6.9,
+      -6.9,
+      6.9,
+      5.6
+    ]
+  ]
 }

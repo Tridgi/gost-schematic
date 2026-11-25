@@ -28,7 +28,10 @@ def normalized(value: Any) -> Any:
     if isinstance(value, Decimal):
         return format(value, "f")
     if is_dataclass(value) and not isinstance(value, type):
-        return {field.name: normalized(getattr(value, field.name)) for field in fields(value)}
+        return {
+            field.name: normalized(getattr(value, field.name)) for field in fields(value)
+            if not (field.name == "routing_keepouts" and not getattr(value, field.name))
+        }
     if isinstance(value, (tuple, list)):
         return [normalized(item) for item in value]
     if isinstance(value, Mapping):

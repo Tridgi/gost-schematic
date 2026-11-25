@@ -7,6 +7,7 @@ from gost_schematic.core.units import format_mm
 from gost_schematic.rendering.svg import render_symbol_svg
 
 IDS = (
+    "reactor.current_limiting",
     "acoustic.loudspeaker",
     "acoustic.piezo_laryngophone",
     "resistor.thermistor_ptc",

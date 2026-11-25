@@ -1,0 +1,3 @@
+# Functional routing protection — R2 (DRAFT)
+
+Blue boxes are separate authored routing keepouts consumed by the Python two-pin sheet router. Orange body boxes remain; physical terminal endpoints are not inside blue boxes. User review identified unprotected wiper arrows and optical rays. New fields affect revised symbol locks; unchanged symbols preserve their previous hashes. A true circular 270 degree arc is now used for the reactor; bounds, rotation, mirror, SVG, and conductor inspection support it. Radius and clearance are editorial draft choices. Text ink is protected by separate measured annotation obstacles when supplied. Desktop ProjectV2/manual routing is not yet integrated. CI and review required before merging.

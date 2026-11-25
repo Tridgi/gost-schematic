@@ -38,6 +38,15 @@ def render_symbol_svg(symbol: SymbolDefinition, *, review_overlay: bool = False)
             "stroke-width": "0.15",
             "fill": "none",
         })
+        for zone in symbol.routing_keepouts:
+            ET.SubElement(svg, "rect", {
+                "x": format_mm(zone.min_x), "y": format_mm(zone.min_y),
+                "width": format_mm(zone.max_x - zone.min_x),
+                "height": format_mm(zone.max_y - zone.min_y),
+                "stroke": "#2477d4", "stroke-dasharray": "1,0.7",
+                "stroke-width": "0.18", "fill": "none",
+                "data-kind": "routing-keepout",
+            })
         for pin in symbol.pins:
             ET.SubElement(svg, "circle", {
                 "cx": format_mm(pin.at.x), "cy": format_mm(pin.at.y),

@@ -1,11 +1,12 @@
 {
   "schema_version": 1,
   "id": "resistor.strain_linear",
-  "revision": 1,
+  "revision": 2,
   "status": "draft",
   "standard_refs": [
     "ГОСТ 2.728-74, табл. 1, поз. 11; табл. 6, поз. 1; https://files.stroyinf.ru/Data2/1/4294847/4294847788.pdf",
-    "EDITORIAL_ASSUMPTION: Marker and lead dimensions are editorial; not a certified drawing; all physical numbers abstract; DRAFT."
+    "EDITORIAL_ASSUMPTION: Marker and lead dimensions are editorial; not a certified drawing; all physical numbers abstract; DRAFT.",
+    "EDITORIAL_R2: functional-ink exclusion; no physical pin changes."
   ],
   "line_width_mm": 0.3,
   "body_keepout_mm": [
@@ -189,5 +190,13 @@
   },
   "constant_annotations": {
     "effect": "p"
-  }
+  },
+  "routing_keepouts_mm": [
+    [
+      -5.2,
+      -5.2,
+      5.2,
+      5.2
+    ]
+  ]
 }
