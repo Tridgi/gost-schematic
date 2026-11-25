@@ -253,3 +253,27 @@ E695 editing. This remains synchronous and intentionally bounded.
 Three domain regressions and one Chromium acceptance scenario cover
 success, rollback, stale CAS, invalid inputs and atomic Undo/Redo.
 Full CI and installed native acceptance are still required.
+
+
+## R30 — joint alignment of a multi-connected satellite
+
+The layout preview now tries moving a two-terminal symbol with 2–8
+incident direct physical-pin conductors, including a satellite connected
+both to a multi-pin hub and another device. Candidate translations come
+from signed opposing pin axes, not symbol center coordinates. Neighbor
+poses, rotation, electrical membership, wire identities and terminal
+vertex identities stay fixed; all incident routes are rebuilt together.
+Unselected endpoints, cross-sheet membership, partial connectivity,
+locked layers, annotations and junction-attached paths fail closed.
+The move is rejected if it violates symbol/foreign-route clearance,
+print margins, diagnostic safety or the strict Pareto gate on total
+wire length and turns. No new interior crossings are permitted by the
+route builder. Unrelated wire geometry and route statuses remain fixed.
+At most eight candidate translations per device and three multi-device
+trials per preview; the existing 12-trial overall cap remains.
+Preview stays detached until the existing explicit Apply; one Undo
+reverts the entire optimization. This is a bounded local heuristic,
+not a globally optimal placement solver and not automatic movement of
+multi-terminal hubs. New domain tests cover fixed neighbors, two-wire
+straightening, preview discovery and rollback for forbidden moves.
+Full CI pending.
