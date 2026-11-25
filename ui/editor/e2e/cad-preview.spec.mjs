@@ -1085,7 +1085,7 @@ test('R17: source library search and real semiconductor placement',async({page})
  await page.getByRole('button',{name:'Файл'}).click();
  await page.getByTestId('new-project').click();
  const search=page.getByTestId('catalog-search');
- await expect(page.locator('[data-testid^="catalog-item-"]')).toHaveCount(21);
+ await expect(page.locator('[data-testid^="catalog-item-"]')).toHaveCount(35);
  await search.fill('фотодиод');
  await expect(page.locator('[data-testid^="catalog-item-"]')).toHaveCount(1);
  const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
@@ -1120,9 +1120,9 @@ test('R17b: open legacy project, add catalog entries explicitly, undo and redo',
  legacy.project.symbol_definitions=legacy.project.symbol_definitions.filter(p=>keep.has(p.part_id));
  await page.getByTestId('project-file-input').setInputFiles({name:'legacy.gscad',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(legacy))});
  await expect(page.locator('[data-testid^="catalog-item-"]')).toHaveCount(2);
- await expect(page.getByTestId('upgrade-catalog')).toContainText('+19');
+ await expect(page.getByTestId('upgrade-catalog')).toContainText('+33');
  await page.getByTestId('upgrade-catalog').click();
- await expect(page.locator('[data-testid^="catalog-item-"]')).toHaveCount(21);
+ await expect(page.locator('[data-testid^="catalog-item-"]')).toHaveCount(35);
  await expect(page.getByTestId('upgrade-catalog')).toHaveCount(0);
  const upgraded=await saved();
  expect(upgraded.project.part_definitions.slice(0,2)).toEqual(legacy.project.part_definitions);
@@ -1133,4 +1133,26 @@ test('R17b: open legacy project, add catalog entries explicitly, undo and redo',
  expect((await saved()).project).toEqual(legacy.project);
  await page.getByRole('button',{name:'Повторить'}).click();
  expect((await saved()).project).toEqual(upgraded.project);
+});
+
+test('R17d real winding symbols render analytic arcs and signed tap contacts',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ await page.getByTestId('catalog-search').fill('двумя отводами');
+ await page.getByTestId('catalog-item-symbol/inductor.double_tapped').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await page.mouse.click(paper.x+paper.width*.4,paper.y+paper.height*.5);
+ const symbol=page.getByTestId('symbol-L1');
+ await expect(symbol.locator('path[data-ugo-curve="semicircle"]').first()).toBeVisible();
+ const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+ const doc=JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ const comp=doc.project.components[0];
+ const def=doc.project.symbol_definitions.find(s=>s.part_id===comp.part_id);
+ await expect(symbol.locator('path[data-ugo-curve="semicircle"]')).toHaveCount(def.graphics.filter(g=>g.kind==='semicircle').length);
+ for(const n of ['1','2','3','4'])await expect(page.getByTestId('signed-pin-'+comp.id+'-'+n)).toBeVisible();
+ expect(doc.project.nets).toEqual([]);
+ await page.getByTestId('gscad-signed-svg-canvas').focus();
+ await page.keyboard.press('r');
+ await expect(symbol.locator('path[data-ugo-curve="semicircle"]').first()).toBeVisible();
 });

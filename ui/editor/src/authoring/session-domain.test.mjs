@@ -38,7 +38,7 @@ test('empty project A3 uses DRAFT Python-source R/C library, no fabricated TL494
  assert.deepEqual(doc.project.sheets[0].frame.size_um,[420000,297000]);
  assert.equal(doc.project.provenance.status,'synthetic');
  assert.equal(doc.project.provenance.source_sha,'0'.repeat(40));
- assert.equal(doc.project.symbol_definitions.length,21);
+ assert.equal(doc.project.symbol_definitions.length,35);
  assert.ok(doc.project.symbol_definitions.every(x=>x.status==='draft'));
  const resistor=doc.project.symbol_definitions.find(x=>x.id==='symbol/resistor.fixed');
  const capacitor=doc.project.symbol_definitions.find(x=>x.id==='symbol/capacitor.fixed');
@@ -604,10 +604,10 @@ test('R15 copy remaps explicit junction, splice and dangling endpoint identities
 
 test('R17 every source JSON symbol can be placed with exact physical pin mapping and roundtrip',()=>{
  const s=newSession(),before=s.file;
- assert.equal(before.project.symbol_definitions.length,21);
- assert.equal(before.project.part_definitions.length,21);
+ assert.equal(before.project.symbol_definitions.length,35);
+ assert.equal(before.project.part_definitions.length,35);
  for(const [i,symbol] of before.project.symbol_definitions.entries()){
-  const id=s.place(s.newTransaction('catalog-'+i),symbol.id,[35000+i%5*75000,35000+Math.floor(i/5)*50000]);
+  const id=s.place(s.newTransaction('catalog-'+i),symbol.id,[30000+i%7*60000,35000+Math.floor(i/7)*50000]);
   const file=s.file,inst=file.project.sheets[0].instances.find(v=>v.id===id);
   const component=file.project.components.find(c=>c.id===inst.component_id);
   const part=file.project.part_definitions.find(p=>p.id===component.part_id);
@@ -622,7 +622,7 @@ test('R17 every source JSON symbol can be placed with exact physical pin mapping
   if(part.reference_prefix==='VD'||part.reference_prefix==='VT'||part.reference_prefix==='FU')assert.equal(component.value,'');
  }
  const after=s.file;
- assert.equal(after.project.components.length,21);assert.equal(after.project.nets.length,0);
+ assert.equal(after.project.components.length,35);assert.equal(after.project.nets.length,0);
  assert.deepEqual(new AuthoringSession(after).file,after);
 });
 test('R17 semiconductor terminal names and polarity are retained without inferred electrical edges',()=>{
@@ -652,9 +652,9 @@ test('R17b old R/C project library upgrade is explicit, additive and reversible'
  legacy.project.part_definitions[0].physical_pins[0].name='OLD_NAME';
  legacy.project.symbol_definitions[0].standard_refs=['LEGACY_DRAFT'];
  const s=new AuthoringSession(legacy),stale=s.newTransaction('stale');
- assert.equal(s.upgradeCatalog(s.newTransaction('upgrade')),19);
+ assert.equal(s.upgradeCatalog(s.newTransaction('upgrade')),33);
  const after=s.file;
- assert.equal(after.project.symbol_definitions.length,21);
+ assert.equal(after.project.symbol_definitions.length,35);
  assert.deepEqual(after.project.part_definitions.slice(0,2),legacy.project.part_definitions);
  assert.deepEqual(after.project.symbol_definitions.slice(0,2),legacy.project.symbol_definitions);
  assert.deepEqual(after.project.components,legacy.project.components);
@@ -670,7 +670,7 @@ test('R17b old R/C project library upgrade is explicit, additive and reversible'
  assert.ok(s.file.project.components.some(c=>c.refdes==='VD1'));
 });
 
-test('R17b canonical catalog parity and actual Python SVG export of all 21 placed UGO',()=>{
+test('R17b canonical catalog parity and actual Python SVG export of all 35 placed UGO',()=>{
  const s=newSession(),source=s.file;
  const root=new URL('../../../../src/gost_schematic/catalog/symbols/',import.meta.url);
  const files=readdirSync(root,{recursive:true}).filter(p=>p.endsWith('.json')).sort();
@@ -696,7 +696,7 @@ test('R17b canonical catalog parity and actual Python SVG export of all 21 place
   }
  }
  for(const [i,symbol] of source.project.symbol_definitions.entries())
-  s.place(s.newTransaction('export-'+i),symbol.id,[35000+i%5*75000,35000+Math.floor(i/5)*50000]);
+  s.place(s.newTransaction('export-'+i),symbol.id,[30000+i%7*60000,35000+Math.floor(i/7)*50000]);
  const py=spawnSync('python',['-c',
   'import json,sys;sys.path.insert(0,"../..");from ui.editor.src.model.contract import validate,digest;from ui.bridge.export.project_v2 import render_v2_source;d=json.loads(sys.stdin.buffer.read().decode("utf-8"));validate(d);sys.stdout.buffer.write(render_v2_source(d,d["workspace"]["active_sheet_id"],expected_project_sha256=digest(d)))'
  ],{input:JSON.stringify(s.file),encoding:'utf8',timeout:30000,maxBuffer:2*1024*1024});
@@ -724,4 +724,34 @@ test('R17c Python canonical curve validation and exact SVG sweep across every po
  assert.throws(()=>new AuthoringSession(doc),/INVALID_CURVE/);
  const bad=spawnSync('python',['-c','import json,sys;sys.path.insert(0,"../..");from ui.editor.src.model.contract import validate;validate(json.loads(sys.stdin.buffer.read().decode("utf-8")))'],{input:JSON.stringify(doc),encoding:'utf8',timeout:30000});
  assert.notEqual(bad.status,0);assert.match(bad.stderr,/INVALID_CURVE/);
+});
+
+test('R17d all generated winding variants retain true arcs, actual core widths and tap/slider PinRefs',()=>{
+ const s=newSession(),catalog=s.file.project;
+ const defs=catalog.symbol_definitions.filter(d=>d.part_id.startsWith('inductor.')||d.part_id.startsWith('choke.'));
+ assert.equal(defs.length,14);
+ const dir=new URL('../../../../src/gost_schematic/catalog/inductors/',import.meta.url);
+ for(const symbol of defs){
+  const raw=JSON.parse(readFileSync(new URL(symbol.part_id+'.json',dir),'utf8'));
+  const turns=raw.turns??4,radius=Math.round(Number(raw.radius_mm??2)*1000),lead=Math.round(Number(raw.lead_mm??4)*1000);
+  const arcs=symbol.graphics.filter(g=>g.kind==='semicircle');
+  assert.equal(arcs.length,turns);
+  for(const [i,arc] of arcs.entries()){
+   const x=-turns*radius+2*radius*i;
+   assert.deepEqual(arc.points_um,[[x,0],[x+radius,-radius],[x+radius*2,0]]);
+  }
+  assert.deepEqual(symbol.pins[0].at_um,[-turns*radius-lead,0]);
+  assert.deepEqual(symbol.pins[1].at_um,[turns*radius+lead,0]);
+  assert.equal(symbol.pins.length,2+(raw.tap_turns?.length??0)+(raw.slider_turns?.length??0));
+  const part=catalog.part_definitions.find(p=>p.id===symbol.part_id);
+  assert.equal(part.reference_prefix,'L');assert.deepEqual(part.physical_pins.map(p=>p.number),symbol.pins.map(p=>p.physical_pin_number));
+  if(raw.core==='ferrite')assert.ok(symbol.graphics.some(g=>g.stroke_um===2*Math.round(Number(raw.line_width_mm??.3)*1000)));
+ }
+ const id=s.place(s.newTransaction('tapped'),'symbol/inductor.double_tapped',[100000,100000]);
+ const c=s.file.project.sheets[0].instances.find(i=>i.id===id).component_id;
+ assert.equal(s.snapshot.components.find(p=>p.id===c).pins.length,4);
+ s.rotate(s.newTransaction('rotate'),c);
+ const actual=s.beginWire(pin(c,'3'));
+ assert.equal(actual.net_id,null);assert.deepEqual(actual.normal,[1,0]);
+ assert.equal(s.file.project.nets.length,0);
 });

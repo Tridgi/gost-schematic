@@ -1,6 +1,7 @@
 /** Direct imports of canonical Python catalog JSON, no second hand-maintained geometry.
  * Circles retain exact centers and radii; all source geometry remains DRAFT.
  */
+import windingCatalog from './windings.generated.json';
 import type {PartDefinition, SymbolDefinition, PointUm, Primitive, ElectricalType} from '../model/contract';
 import resistors_fixedPart from '../../../../src/gost_schematic/catalog/parts/resistors/fixed.json';
 import resistors_fixedSymbol from '../../../../src/gost_schematic/catalog/symbols/resistors/fixed.json';
@@ -112,12 +113,13 @@ function convert(entry:Entry):{part:PartDefinition;symbol:SymbolDefinition}{
    standard_refs:[...s.standard_refs]}
  };
 }
-const converted=entries.map(convert);
+const windings=windingCatalog as unknown as {part:PartDefinition;symbol:SymbolDefinition;name:string;category:string}[];
+const converted=[...entries.map(convert),...windings];
 export const AUTHORING_PARTS:PartDefinition[]=converted.map(x=>x.part);
 export const AUTHORING_SYMBOLS:SymbolDefinition[]=converted.map(x=>x.symbol);
 const metadata=new Map(entries.map(e=>['symbol/'+e.symbol.id,e]));
 export function catalogDisplay(id:string):{name:string;category:string}|undefined {
- const e=metadata.get(id);return e?{name:e.name,category:e.category}:undefined;
+ const e=metadata.get(id)??windings.find(w=>w.symbol.id===id);return e?{name:e.name,category:e.category}:undefined;
 }
 export function catalogDefaultValue(partId:string):string {
  const e=entries.find(x=>x.part.id===partId);
