@@ -11,7 +11,7 @@ export type LayoutQuality={
 export type LayoutAssessment={quality:LayoutQuality;hazards:Record<string,number>;connectivity:string;overflowIds:string[]};
 const direction=(a:PointUm,b:PointUm)=>[Math.sign(b[0]-a[0]),Math.sign(b[1]-a[1])];
 const pinKey=(p:{component_id:string;physical_pin_number:string})=>JSON.stringify([p.component_id,p.physical_pin_number]);
-export function assessLayout(file:ProjectFileV2,engine:ManualWireEngine):LayoutAssessment{
+export function assessLayout(file:ProjectFileV2,engine:ManualWireEngine,changingNetId?:string):LayoutAssessment{
  const sh=file.project.sheets.find(s=>s.id===file.workspace.active_sheet_id)!;
  const scene=projectToCanvasScene(file,sh.id),snapshot=engine.snapshot;
  let bends=0,lengthUm=0,straightWires=0;
@@ -52,7 +52,8 @@ export function assessLayout(file:ProjectFileV2,engine:ManualWireEngine):LayoutA
  const statuses:Record<string,string>={},groups:string[]=[];
  for(const n of snapshot.nets){
   const result=engine.validateNet(n.id);statuses[n.id]=result.status;
-  groups.push(JSON.stringify([n.id,result.pin_groups.map(g=>JSON.stringify(g.map(pinKey).sort())).sort()]));
+  // Initial routing may join only the explicitly selected declared Net.
+  if(n.id!==changingNetId)groups.push(JSON.stringify([n.id,result.pin_groups.map(g=>JSON.stringify(g.map(pinKey).sort())).sort()]));
  }
  const report=analyzeDiagnostics(file,scene,snapshot,statuses,{maxItems:10000,maxComparisons:500000});
  complete=complete&&!report.incomplete&&report.omitted===0;

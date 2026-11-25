@@ -21,7 +21,7 @@ class Heap{
  get size(){return this.a.length}
 }
 export function planOrthogonalTree(ports:TreePort[],obstacles:TreeBox[],frame:TreeBox):TreePlan|null{
- if(ports.length<3||ports.length>32||obstacles.length>640)return null;
+ if(ports.length<2||ports.length>32||obstacles.length>640)return null;
  const inside=(p:TreePoint)=>p[0]>=frame.minX&&p[0]<=frame.maxX&&p[1]>=frame.minY&&p[1]<=frame.maxY;
  const stubs=ports.map(p=>box(p.pin,p.tip));
  if(ports.some(p=>!inside(p.tip)||!inside(p.pin)||eq(p.pin,p.tip)||(p.pin[0]!==p.tip[0]&&p.pin[1]!==p.tip[1])))return null;

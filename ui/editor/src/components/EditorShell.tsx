@@ -36,7 +36,7 @@ export type InspectorProposal =
 
 /** The host owns all electrical topology, source PinRefs, command validation and actual persistence. */
 export type EditorShellProps = {
-  projectName:string;dirty:boolean;baseRevision:string;topology?:TopologyInventory;onBuildNetRail?:(netId:string)=>void;onBuildNetTree?:(netId:string)=>void;
+  projectName:string;dirty:boolean;baseRevision:string;topology?:TopologyInventory;onBuildNetRail?:(netId:string)=>void;onBuildNetTree?:(netId:string)=>void;onRouteInitialNet?:(netId:string)=>void;
   sheets:readonly {id:string;title:string}[];activeSheetId:string;
   catalog:readonly CatalogSymbol[];tree:readonly TreeItem[];
   catalogMissingCount?:number;onCatalogUpgrade?:()=>void;
@@ -405,6 +405,14 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
             </div>
             <Divider/>
           </Stack>)}
+          {props.onRouteInitialNet&&props.topology.unrouted.length>0&&<>
+            <Text fw={600} size="sm">Неразведённые цепи</Text>
+            {props.topology.unrouted.map(n=><Group key={n.id} justify="space-between">
+              <Text size="sm">{n.name} — {n.pins} выводов</Text>
+              <Button size="xs" variant="light" data-testid={'net-initial-'+n.id} onClick={()=>{setTopologyDialog(false);props.onRouteInitialNet?.(n.id)}}>Развести цепь</Button>
+            </Group>)}
+            <Divider/>
+          </>}
           <Text fw={600} size="sm">Общие цепи (не менее 3 УГО на листе)</Text>
           {props.topology.shared.map(n=><Stack key={n.id} gap={2}>
             <Group justify="space-between"><Text size="sm">{n.name} — {n.pins} выводов, {n.devices} УГО</Text>

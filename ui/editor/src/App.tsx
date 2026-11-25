@@ -772,6 +772,13 @@ export default function App() {
     projectName={document.project.title+(authoringRef.current?' · R3 AUTHORING':' · R2 PREVIEW')} dirty={dirty}
     baseRevision={String(snapshot.revision)} sheets={document.project.sheets.map(s=>({id:s.id,title:s.name}))}
     activeSheetId={activeSheet.id} catalog={catalog} tree={tree} topology={topology}
+    onRouteInitialNet={authoringRef.current&&tool==='select'?id=>{
+      const a=authoringRef.current!;
+      if(!window.confirm('Развести объявленную цепь? Состав Net и положения УГО сохранятся. Маршрут потребует проверки.'))return;
+      try{const result=a.buildNetTree(a.newTransaction('initial-net-route'),id,true);adoptAuthored();
+        setIssue('Первичная трассировка: '+result.pins+' выводов, '+result.bends+' изгибов. Проверьте маршрут.');}
+      catch(e){setIssue('INITIAL_NET_ROUTE_FAILED: '+String(e));}
+    }:undefined}
     onBuildNetTree={authoringRef.current&&tool==='select'?id=>{
       const a=authoringRef.current!;
       if(!window.confirm('Перестроить выбранную цепь в ортогональное дерево? Положения УГО и состав Net сохранятся, проводники и узлы этой цепи будут заменены.'))return;

@@ -39,5 +39,8 @@ export function topologyInventory(file,sheetId){
    neighbors:[...neighbors].map(id=>comps.get(id)?.refdes??id).sort()}];
  });
  const shared=nets.filter(n=>n.localDevices>=3).sort((a,b)=>b.localDevices-a.localDevices||b.pins-a.pins||a.name.localeCompare(b.name));
- return {hubs,shared,nets:nets.length,components:sh.instances.length};
+ const routed=new Set(p.sheets.flatMap(s=>[...s.wires,...s.junctions,...s.splices].map(w=>w.net_id)));
+ const unrouted=nets.filter(n=>n.pins>=2&&n.pins<=32&&n.externalDevices===0&&!routed.has(n.id))
+  .map(({id,name,pins})=>({id,name,pins}));
+ return {hubs,shared,unrouted,nets:nets.length,components:sh.instances.length};
 }
