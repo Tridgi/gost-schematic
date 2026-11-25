@@ -853,6 +853,13 @@ export default function App() {
         setIssue('Оптимизировано '+result.changed+' из '+result.checked+' проводников; устранено изгибов: '+result.removedBends+'; сокращено '+(result.removedLengthUm/1000).toFixed(3)+' мм. Проверьте маршруты.');}
       catch(e){setIssue(e instanceof WireError&&e.code==='NO_CHANGE'?'Без изменений: безопасного улучшения не найдено.':'ROUTE_CLEANUP_FAILED: '+String(e));}
     }:undefined}
+    onDistributeSeries={authoringRef.current&&groupIds.length>=3&&tool==='select'?()=>{
+      const a=authoringRef.current!;
+      if(!window.confirm('Выровнять цепочку и сделать одинаковыми промежутки между физическими выводами? Продольные координаты крайних УГО сохранятся.'))return;
+      try{const result=a.alignSeries(a.newTransaction('distribute-series'),groupIds,true);adoptAuthored();
+        setIssue('Цепочка распределена по равным межвыводным промежуткам: перемещено УГО '+result.moved+', изменено проводников '+result.wires+'. Проверьте маршруты.');}
+      catch(e){setIssue(e instanceof WireError&&e.code==='NO_CHANGE'?'Цепочка уже распределена.':'SERIES_SPACING_FAILED: '+String(e));}
+    }:undefined}
     onAlignSeries={authoringRef.current&&groupIds.length>=3&&tool==='select'?()=>{
       const a=authoringRef.current!;
       if(!window.confirm('Выровнять выделенную последовательную цепочку по физическим выводам? Внешние соединения и закреплённые УГО останутся на месте.'))return;
