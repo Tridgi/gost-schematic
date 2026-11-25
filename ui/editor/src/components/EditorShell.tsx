@@ -222,7 +222,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
           <Group gap="xs" wrap="nowrap">
             <ActionIcon aria-label="Показать библиотеку УГО" variant="subtle" onClick={()=>setLeft(v=>!v)}><MenuIcon size={18}/></ActionIcon>
             <Text size="sm" fw={700} visibleFrom="sm">GOST CAD</Text>
-            <Menu position="bottom-start"><Menu.Target><Button variant="subtle" size="compact-sm">Файл</Button></Menu.Target>
+            <Menu position="bottom-start" transitionProps={{duration:0}}><Menu.Target><Button variant="subtle" size="compact-sm">Файл</Button></Menu.Target>
               <Menu.Dropdown>
                 <Menu.Item data-testid="new-project" onClick={props.onNew} disabled={!props.onNew}>Новый проект A3</Menu.Item>
                 <Menu.Item data-testid="new-sheet" onClick={props.onAddSheet} disabled={!props.onAddSheet}>Добавить лист A3</Menu.Item>
@@ -240,7 +240,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
                 <Menu.Item onClick={()=>setExportDialog(true)}>Экспорт…</Menu.Item>
               </Menu.Dropdown>
             </Menu>
-            <Menu position="bottom-start"><Menu.Target><Button variant="subtle" size="compact-sm">Правка</Button></Menu.Target>
+            <Menu position="bottom-start" transitionProps={{duration:0}}><Menu.Target><Button variant="subtle" size="compact-sm">Правка</Button></Menu.Target>
               <Menu.Dropdown>
                 <Menu.Item data-testid="copy-component" onClick={props.onCopy} disabled={!props.onCopy}>Копировать выделенное · Ctrl+C</Menu.Item>
                 <Menu.Item data-testid="smart-routing" disabled={!props.onToggleSmartRouting} onClick={()=>props.onToggleSmartRouting?.(!props.smartRouting)}>Умная трассировка: {props.smartRouting?'вкл.':'выкл.'}</Menu.Item>
