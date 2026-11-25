@@ -73,25 +73,41 @@ def verify_wheel(wheel: Path) -> dict[str, int]:
             name for name in payload
             if name.startswith("catalog/inductors/") and name.endswith(".json")
         }
-        if len(inductors) != 15:
-            raise ValueError(f"Expected exactly 15 versioned inductors, got {len(inductors)}")
+        source_root = Path(__file__).resolve().parents[1] / "src" / "gost_schematic"
+        expected = {
+            p.relative_to(source_root).as_posix(): p
+            for folder in ("catalog", "standards")
+            for p in (source_root / folder).rglob("*.json")
+        }
+        actual = {name for name in payload if name.endswith(".json")
+                  and name.startswith(("catalog/", "standards/"))}
+        if not expected or actual != set(expected):
+            raise ValueError(f"Wheel catalog mismatch: missing={sorted(set(expected) - actual)}, "
+                             f"unexpected={sorted(actual - set(expected))}")
+        for name, source in expected.items():
+            if archive.read(_PREFIX + name) != source.read_bytes():
+                raise ValueError(f"Wheel data differs from versioned source: {name}")
+        transformers = {name for name in actual if name.startswith("catalog/transformers/")}
+        all_symbols = {name for name in actual if name.startswith("catalog/symbols/")}
+        all_parts = {name for name in actual if name.startswith("catalog/parts/")}
         data = json.loads(archive.read(_PREFIX + _REQUIREMENTS))
         if data.get("profile_id") != "eskd-ru-2026-11":
             raise ValueError("Wheel contains an unexpected ESKD requirements edition")
-        for name in _SYMBOLS:
+        for name in all_symbols:
             symbol = json.loads(archive.read(_PREFIX + name))
             if symbol.get("status", "draft") != "draft":
                 raise ValueError(f"Unreviewed {name} must remain DRAFT")
-        for name in inductors:
+        for name in inductors | transformers:
             winding = json.loads(archive.read(_PREFIX + name))
             if winding.get("schema_version") != 1 or winding.get("revision", 0) < 1:
                 raise ValueError(f"Malformed draft winding: {name}")
             if winding.get("status", "draft") != "draft":
                 raise ValueError(f"Unreviewed winding is not DRAFT: {name}")
     return {
-        "symbol_files": len(_SYMBOLS),
-        "physical_part_files": len(_PARTS),
+        "symbol_files": len(all_symbols),
+        "physical_part_files": len(all_parts),
         "winding_profiles": len(inductors),
+        "transformer_profiles": len(transformers),
         "normative_profiles": 1,
     }
 
