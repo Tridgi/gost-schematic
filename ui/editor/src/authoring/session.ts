@@ -1419,6 +1419,14 @@ export class AuthoringSession {
       if(connected.length===2)tryEdit('Выравнивание пары',s=>s.alignConnectedPair(s.newTransaction('auto-pair'),connected));
       else if(connected.length>=3&&connected.length<=32)tryEdit('Выравнивание цепочки: '+connected.length,s=>s.alignSeries(s.newTransaction('auto-series'),connected));
     }
+    // Try shared single-Net trunks only when every physical member belongs
+    // to the selected scope. The quality gate may reject longer rail routes.
+    const netCandidates=base.project.nets.filter(n=>n.members.length>=3&&n.members.length<=32&&
+      n.members.every(p=>byComp.has(p.component_id))).sort((a,b)=>b.members.length-a.members.length||a.id.localeCompare(b.id));
+    for(const n of netCandidates){
+      if(attempted>=11){limited=true;break}
+      tryEdit('Магистраль '+n.name,s=>s.buildNetRail(s.newTransaction('auto-net-rail'),n.id));
+    }
     tryEdit('Упрощение проводников',s=>s.simplifyRoutes(s.newTransaction('auto-cleanup'),instanceIds));
     const token=operations.length?newId('layout'):null;
     if(token)this.layoutPlan={token,revision:this.clock,sheet:sh.id,next:best.file};
