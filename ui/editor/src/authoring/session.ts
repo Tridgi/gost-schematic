@@ -1007,7 +1007,13 @@ export class AuthoringSession {
           const old=edge.wire,w=clone(old);
           const same=old.vertices.length===2&&old.vertices.every((v,i)=>v.at_um[0]===points[i][0]&&v.at_um[1]===points[i][1]);
           if(!same){
-            removedBends+=old.vertices.length-2;changed++;
+            // Count actual direction changes, not redundant collinear vertices.
+            for(let i=1;i<old.vertices.length-1;i++){
+              const p=old.vertices[i-1].at_um,c=old.vertices[i].at_um,n=old.vertices[i+1].at_um;
+              if(Math.sign(c[0]-p[0])!==Math.sign(n[0]-c[0])||
+                 Math.sign(c[1]-p[1])!==Math.sign(n[1]-c[1]))removedBends++;
+            }
+            changed++;
             w.vertices=[{...old.vertices[0],at_um:points[0]},{...old.vertices.at(-1)!,at_um:points[1]}];
             w.segments=[{id:newId('segment'),from_vertex_id:w.vertices[0].id,to_vertex_id:w.vertices[1].id}];
             w.needs_routing_review=true;
