@@ -772,6 +772,18 @@ export default function App() {
     projectName={document.project.title+(authoringRef.current?' · R3 AUTHORING':' · R2 PREVIEW')} dirty={dirty}
     baseRevision={String(snapshot.revision)} sheets={document.project.sheets.map(s=>({id:s.id,title:s.name}))}
     activeSheetId={activeSheet.id} catalog={catalog} tree={tree} topology={topology}
+    onPreviewHubPlacement={authoringRef.current&&tool==='select'&&!activeSheet.wires.length&&!activeSheet.junctions.length&&!activeSheet.splices.length?()=>{
+      const a=authoringRef.current!;
+      try{
+        const p=a.previewHubPlacement();
+        if(!p.token){setIssue('Не найдено безопасное улучшение компоновки.');return;}
+        if(!window.confirm('Предлагается переместить или повернуть '+p.moved.length+' двухвыводных УГО. Суммарный размах цепей: '+(p.beforeSpanUm/1000).toFixed(3)+' → '+(p.afterSpanUm/1000).toFixed(3)+' мм (оценка, не длина маршрутов). Применить?')){
+          a.discardLayoutPreview(p.token);return;
+        }
+        a.applyLayoutPreview(a.newTransaction('apply-hub-placement'),p.token);adoptAuthored();
+        setIssue('Компоновка: перемещено '+p.moved.length+' УГО. Состав электрических цепей сохранён.');
+      }catch(e){setIssue('HUB_PLACEMENT_FAILED: '+String(e));}
+    }:undefined}
     onPrepareInitialRouting={authoringRef.current&&tool==='select'&&!activeSheet.wires.length&&!activeSheet.junctions.length&&!activeSheet.splices.length?()=>{
       const a=authoringRef.current!;
       if(!window.confirm('Сместить УГО у полей внутрь листа, чтобы освободить выходы физических выводов? Состав цепей и графические объекты сохранятся.'))return;

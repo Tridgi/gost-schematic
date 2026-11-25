@@ -40,6 +40,7 @@ export type GroupClipboard = {
 
 export type PlacementHint={origin:MutablePoint;from:MutablePoint;to:MutablePoint;target:PinRef;newPin:string};
 export type LayoutPreview={token:string|null;before:LayoutQuality;after:LayoutQuality;operations:string[];attempted:number;rejected:number;limited:boolean};
+export type HubPlacementPreview={token:string|null;moved:string[];beforeSpanUm:number;afterSpanUm:number;attempted:number};
 export type InitialBatchOutcome={id:string;name:string;pins:number;rejected?:string};
 export type InitialBatchPreview={token:string|null;requested:number;routed:number;attempted:number;order:string;outcomes:InitialBatchOutcome[];quality:LayoutQuality};
 type Tx = {project_id:string;revision:number;source_guard:string;command_id:string};
@@ -1575,6 +1576,119 @@ export class AuthoringSession {
       return draft;
     });
     return {moved,maxShiftUm};
+  }
+  /** Read-only pre-placement of two-terminal satellites beside signed hub
+   * pins on a wholly unrouted sheet. Span is a lower-bound proxy, not a
+   * claim about actual routed length. No electrical membership changes. */
+  previewHubPlacement():HubPlacementPreview{
+    this.layoutPlan=null;
+    const base=this.file,sh=base.project.sheets[indexOfSheet(base)];
+    if(sh.instances.length>128)reject('LAYOUT_SIZE_LIMIT');
+    if(sh.wires.length||sh.junctions.length||sh.splices.length)reject('PREPARE_REQUIRES_UNROUTED_SHEET');
+    if(sh.texts.length||sh.labels.length+sh.graphics.length>32||
+      sh.labels.some(l=>l.role!=='visual'||l.net_id!==null||typeof l.text!=='string'||l.text.length>64)||
+      sh.graphics.some(g=>!['line','polyline','source_b_continuation'].includes(g.kind)||
+        g.points_um.length<2||g.points_um.length>64||!Number.isSafeInteger(g.stroke_um)||g.stroke_um<=0||g.stroke_um>10000))
+      reject('LAYOUT_ANNOTATIONS_UNSUPPORTED');
+    const defs=new Map(base.project.symbol_definitions.map(d=>[d.id,d]));
+    const byComp=new Map(sh.instances.map(i=>[i.component_id,i]));
+    const localNets=base.project.nets.filter(n=>n.members.every(p=>byComp.has(p.component_id)));
+    const rect=(a:PointUm,b:PointUm,pad=0):Bounds=>({minX:Math.min(a[0],b[0])-pad,minY:Math.min(a[1],b[1])-pad,maxX:Math.max(a[0],b[0])+pad,maxY:Math.max(a[1],b[1])+pad});
+    const ink:Bounds[]=[];
+    for(const g of sh.graphics)for(let k=1;k<g.points_um.length;k++)ink.push(rect(xy(g.points_um[k-1]),xy(g.points_um[k]),g.stroke_um/2));
+    for(const l of sh.labels){
+      const p=xy(l.at_um),[a,b]=noteLayout({key:l.id,text:l.text,at_um:p,height_um:3500,horizontal:'left',vertical:'bottom'},p).bounds;
+      ink.push(rect(a,b));
+    }
+    if(ink.length>128)reject('LAYOUT_ANNOTATIONS_UNSUPPORTED');
+    const bounds=(i:SymbolInstance)=>translateBounds(symbolBounds(defs.get(i.symbol_id)!,i.rotation_deg,i.mirror_x),i.origin_um);
+    const span=(s:AuthoringSession,nets:readonly Net[]=localNets)=>nets.reduce((sum,n)=>{
+      const p=n.members.map(m=>s.beginWire(m).at_um);
+      return p.length?sum+Math.max(...p.map(v=>v[0]))-Math.min(...p.map(v=>v[0]))+Math.max(...p.map(v=>v[1]))-Math.min(...p.map(v=>v[1])):sum;
+    },0);
+    const beforeSpanUm=span(this),before=assessLayout(base,this.engine);
+    if(!before.quality.complete)reject('LAYOUT_CHECK_INCOMPLETE');
+    let best=new AuthoringSession(base),bestSpan=beforeSpanUm,attempted=0;
+    const moved:string[]=[];
+    const pairs:{leaf:PinRef;hub:PinRef;net:Net}[]=[];
+    for(const net of localNets){
+      if(net.members.length!==2)continue;
+      for(const [leaf,hub] of [[net.members[0],net.members[1]],[net.members[1],net.members[0]]]){
+        if(leaf.component_id===hub.component_id)continue;
+        const a=byComp.get(leaf.component_id)!,b=byComp.get(hub.component_id)!;
+        if(defs.get(a.symbol_id)?.pins.length!==2||(defs.get(b.symbol_id)?.pins.length??0)<4)continue;
+        if(!sh.layers.some(l=>l.id===a.layer_id&&l.kind==='electrical'&&l.visible&&l.printable&&!l.locked))continue;
+        if(base.project.nets.some(n=>n.members.some(p=>p.component_id===leaf.component_id)&&!localNets.includes(n)))continue;
+        if(base.project.sheets.some(s=>s.id!==sh.id&&s.instances.some(i=>i.component_id===leaf.component_id)))continue;
+        pairs.push({leaf,hub,net});
+      }
+    }
+    pairs.sort((a,b)=>span(this,[b.net])-span(this,[a.net])||a.net.id.localeCompare(b.net.id));
+    const transform=(i:SymbolInstance,p:PointUm):MutablePoint=>{
+      const x=i.mirror_x?-p[0]:p[0],y=p[1];
+      return i.rotation_deg===0?[x,y]:i.rotation_deg===90?[-y,x]:i.rotation_deg===180?[-x,-y]:[y,-x];
+    };
+    const margin=sh.frame.margin_um,[w,h]=sh.frame.size_um;
+    const inside=(p:PointUm)=>p[0]>=margin&&p[1]>=margin&&p[0]<=w-margin&&p[1]<=h-margin;
+    for(const {leaf,hub,net} of pairs){
+      if(attempted>=48)break;
+      if(moved.includes(leaf.component_id))continue;
+      const anchor=best.beginWire(hub),current=best.file;
+      const original=current.project.sheets[indexOfSheet(current)].instances.find(i=>i.component_id===leaf.component_id)!;
+      const pin=defs.get(original.symbol_id)!.pins.find(p=>p.physical_pin_number===leaf.physical_pin_number)!;
+      const dirs={left:[-1,0],right:[1,0],top:[0,-1],bottom:[0,1]} as const;
+      let winner:AuthoringSession|undefined,winnerSpan=bestSpan;
+      const oldPairSpan=span(best,[net]);
+      for(const rotation of [0,90,180,270] as const){
+        const pose={...original,rotation_deg:rotation};
+        const normal=transform(pose,xy(dirs[pin.side]));
+        if(normal[0]!==-anchor.normal[0]||normal[1]!==-anchor.normal[1])continue;
+        const offset=transform(pose,pin.at_um);
+        for(const gap of [12000,20000,30000,40000]){
+          if(attempted>=48)break;
+          attempted++;
+          if(gap>=oldPairSpan)continue;
+          const doc=clone(current),sheet=doc.project.sheets[indexOfSheet(doc)];
+          const inst=sheet.instances.find(i=>i.id===original.id)!;
+          inst.rotation_deg=rotation;inst.origin_um=xy([anchor.at_um[0]+anchor.normal[0]*gap-offset[0],anchor.at_um[1]+anchor.normal[1]*gap-offset[1]]);
+          const box=bounds(inst),m=margin+3000;
+          if(box.minX<m||box.minY<m||box.maxX>w-m||box.maxY>h-m)continue;
+          const others=sheet.instances.filter(i=>i.id!==inst.id);
+          if(others.some(i=>!separated(box,bounds(i),1000))||ink.some(b=>!separated(box,b,1000)))continue;
+          const trial=new AuthoringSession(doc),score=span(trial);
+          if(score>=winnerSpan)continue;
+          // Protect the future signed exit corridors of both the moved
+          // component and all other declared local physical terminals.
+          const allPins=localNets.flatMap(n=>n.members);
+          const envelopes=new Map(sheet.instances.map(i=>[i.component_id,bounds(i)]));
+          const leads=allPins.map(ref=>{
+            const p=trial.beginWire(ref),b=envelopes.get(ref.component_id)!;
+            const axis=p.normal[0]!==0?0:1,sign=p.normal[axis],tip=xy(p.at_um);
+            const edge=axis===0?(sign>0?b.maxX:b.minX):(sign>0?b.maxY:b.minY);
+            tip[axis]=sign>0?Math.max(Math.ceil(edge)+1001,tip[axis]+2000):Math.min(Math.floor(edge)-1001,tip[axis]-2000);
+            return {ref,p,tip,box:rect(p.at_um,tip,1000)};
+          });
+          const own=leads.filter(l=>l.ref.component_id===leaf.component_id),foreign=leads.filter(l=>l.ref.component_id!==leaf.component_id);
+          if(own.some(l=>!inside(l.p.at_um)||!inside(l.tip)||others.some(i=>!separated(l.box,bounds(i),0))||ink.some(b=>!separated(l.box,b,0)))||
+            foreign.some(l=>!separated(l.box,box,0))||
+            own.some(l=>foreign.some(k=>!separated(l.box,k.box,0))))continue;
+          // The dedicated pair must also have a clear straight corridor.
+          const target=trial.beginWire(leaf),corridor=rect(anchor.at_um,target.at_um,1000);
+          if(others.some(i=>i.component_id!==hub.component_id&&!separated(corridor,bounds(i),0))||
+            ink.some(b=>!separated(corridor,b,0))||foreign.some(l=>pinKey(l.ref)!==pinKey(hub)&&!separated(corridor,l.box,0)))continue;
+          if(!preservesLayoutSafety(before,assessLayout(doc,trial.engine)))continue;
+          winner=trial;winnerSpan=score;
+        }
+      }
+      if(winner){best=winner;bestSpan=winnerSpan;moved.push(leaf.component_id)}
+    }
+    const token=moved.length?newId('hub-placement'):null;
+    if(token){
+      const next=best.file;
+      if(sourceGuard(next)!==sourceGuard(base))reject('LAYOUT_TOPOLOGY_MISMATCH');
+      this.layoutPlan={token,revision:this.clock,sheet:sh.id,next};
+    }
+    return {token,moved,beforeSpanUm,afterSpanUm:bestSpan,attempted};
   }
   /** Route an explicit batch of untouched Nets on an isolated draft.
    * All selected Nets must succeed; no intermediate edits/history are published.

@@ -424,3 +424,24 @@ and topology gates remain. Regression exercises a dense coordinate grid,
 straight route, deterministic replay and an impassable barrier. Updated
 TL494 benchmark emits TL494_R32E_ADAPTIVE; no claim of improvement until
 CI results. The original R32d report remains in its own commit's CI.
+
+
+## R32f — topology-driven hub satellite pre-placement
+
+On wholly unrouted editable sheets, a separate read-only proposal finds
+two-terminal components joined by a declared two-member Net to a hub
+having at least four physical terminals. It keeps the hub stationary,
+tries the facing cardinal orientation and 12/20/30/40 mm pin gaps,
+and accepts only a strictly lower total Manhattan bounding-box span
+across local Nets. The directly associated pins must share an axis and
+have a clear corridor. Candidate checks preserve all declared future
+pin leads, ink/annotation clearance, print margins, locks, cross-sheet
+membership, and existing diagnostics. Maximum 48 candidates. No Net
+inference, no automatic placement on already wired sheets, and no
+source unlock. This is a geometric proxy, not a guarantee of improved
+routing; the existing controlled multinet benchmark measures actual
+feasibility and quality separately. Existing revision-bound Apply
+requires explicit confirmation; Undo restores the original placement.
+Three tests cover rotation, fixed hub, read-only preview/Undo, refusal
+on wired or locked sheets, and detached TL494 comparison
+(TL494_R32F_PREPLACEMENT). CI and actual improvement are pending.

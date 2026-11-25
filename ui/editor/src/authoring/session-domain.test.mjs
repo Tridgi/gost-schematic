@@ -1871,3 +1871,65 @@ test('R32e adaptive channels retain every terminal axis and still respect all om
  const blocked=[...obstacles,{minX:49000,maxX:51000,minY:0,maxY:100000}];
  assert.equal(planOrthogonalTree(ports,blocked,frame,[],true),null);
 });
+
+
+test('R32f signed hub placement moves only local two-pin satellites, may rotate them, and is undoable',()=>{
+ const fixture=hubFixture(),doc=fixture.s.file,sh=doc.project.sheets[0];
+ sh.wires=[];sh.junctions=[];sh.splices=[];
+ for(const n of doc.project.nets)n.route_status='unrouted';
+ sh.instances.find(i=>i.component_id===fixture.b).rotation_deg=180;
+ const s=new AuthoringSession(doc),before=s.file;
+ const p=s.previewHubPlacement();
+ assert.ok(p.token);assert.ok(p.moved.includes(fixture.b));
+ assert.ok(p.afterSpanUm<p.beforeSpanUm);assert.ok(p.attempted<=48);
+ assert.deepEqual(s.file,before);assert.equal(s.revision,0);
+ const next=s.layoutPreviewDocument(p.token);
+ assert.deepEqual(next.project.nets,before.project.nets);
+ assert.deepEqual(next.project.components,before.project.components);
+ assert.deepEqual(next.project.sheets[0].instances.find(i=>i.component_id===fixture.h),sh.instances.find(i=>i.component_id===fixture.h));
+ assert.equal(next.project.sheets[0].instances.find(i=>i.component_id===fixture.b).rotation_deg,0);
+ s.applyLayoutPreview(s.newTransaction('place'),p.token);
+ const a=s.beginWire(pin(fixture.h,'3')),b=s.beginWire(pin(fixture.b,'1'));
+ assert.equal(a.at_um[1],b.at_um[1]);assert.ok(b.at_um[0]>a.at_um[0]);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);assert.deepEqual(s.file,next);
+});
+test('R32f wired sheets refuse preplacement and locked unrouted sheets yield no proposal',()=>{
+ const {s}=hubFixture(),before=s.file;
+ assert.throws(()=>s.previewHubPlacement(),/PREPARE_REQUIRES_UNROUTED_SHEET/);
+ assert.deepEqual(s.file,before);
+ const doc=structuredClone(before),sh=doc.project.sheets[0];
+ sh.wires=[];sh.junctions=[];sh.splices=[];
+ for(const n of doc.project.nets)n.route_status='unrouted';
+ for(const l of sh.layers)l.locked=true;
+ const locked=new AuthoringSession(doc),p=locked.previewHubPlacement();
+ assert.equal(p.token,null);assert.equal(p.moved.length,0);assert.deepEqual(locked.file,doc);
+});
+test('R32f TL494 topology-based preplacement and controlled multinet feasibility',t=>{
+ const source=JSON.parse(readFileSync(new URL('../../../fixtures/tl494-source-e695-v2.gscad.json',import.meta.url),'utf8'));
+ const original=structuredClone(source),doc=structuredClone(source),p=doc.project,sh=p.sheets[0];
+ p.provenance={...p.provenance,status:'synthetic',source_sha:'0'.repeat(40),source_path:'test-only/TL494-hub-preplacement',
+  expected_counts:{...p.provenance.expected_counts,da1_pins:0,b_graphics:0}};
+ const s=new AuthoringSession(doc);s.prepareInitialRouting(s.newTransaction('prepare'));
+ const before=s.file,rev=s.revision;
+ const placement=s.previewHubPlacement();
+ assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
+ if(placement.token)s.applyLayoutPreview(s.newTransaction('place'),placement.token);
+ const prepared=s.file;
+ assert.deepEqual(prepared.project.nets,p.nets);
+ assert.deepEqual(prepared.project.components,p.components);
+ assert.deepEqual(prepared.project.sheets[0].graphics,sh.graphics);
+ assert.deepEqual(prepared.project.sheets[0].labels,sh.labels);
+ const report=s.previewInitialBatch(p.nets.map(n=>n.id),true);
+ assert.equal(report.requested,15);assert.ok(report.attempted<=75);
+ assert.equal(report.quality.errors,0);assert.equal(report.quality.geometryWarnings,0);
+ assert.equal(report.quality.overflow,0);
+ assert.deepEqual(s.file,prepared);
+ if(report.token){
+  s.applyLayoutPreview(s.newTransaction('apply'),report.token);
+  for(const n of p.nets)assert.equal(s.engine.validateNet(n.id).pin_groups.length,1);
+  assert.deepEqual(s.file.project.nets.map(n=>[n.id,n.members]),p.nets.map(n=>[n.id,n.members]));
+ }
+ t.diagnostic('TL494_R32F_PREPLACEMENT '+JSON.stringify({placement:{...placement,token:!!placement.token,moved:placement.moved.map(id=>p.components.find(c=>c.id===id)?.refdes??id)},routing:{...report,token:!!report.token}}));
+ assert.deepEqual(source,original);
+});
