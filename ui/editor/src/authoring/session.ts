@@ -163,13 +163,18 @@ function cleanRoute(file:ProjectFileV2,start:PinRef,end:PinRef,a:WorldPin,b:Worl
  catch(e){if(!allowInteriorCrossings||!(e instanceof WireError)||e.code!=='REROUTE_REQUIRED')throw e;}
  return routeManhattan(xy(a.at_um),xy(b.at_um),xy(a.normal),xy(b.normal),2000,{...opts,accept:p=>accept(p,true)});
 }
-function expectedCounts(file:ProjectFileV2):void {
-  const p=file.project;
-  p.provenance.expected_counts={
+// Match the canonical Python inventory for every provenance status.
+function actualCounts(file:ProjectFileV2):ProjectFileV2['project']['provenance']['expected_counts']{
+  const p=file.project,parts=new Map(p.part_definitions.map(part=>[part.id,part]));
+  return {
     components:p.components.length,nets:p.nets.length,
     memberships:p.nets.reduce((count,n)=>count+n.members.length,0),
-    da1_pins:0,b_graphics:0
+    da1_pins:p.components.reduce((count,c)=>count+(c.source_refdes==='DA1'?(parts.get(c.part_id)?.physical_pins.length??0):0),0),
+    b_graphics:p.sheets.reduce((count,sh)=>count+sh.graphics.filter(g=>g.kind==='source_b_continuation').length,0)
   };
+}
+function expectedCounts(file:ProjectFileV2):void {
+  file.project.provenance.expected_counts=actualCounts(file);
 }
 function frameSheet(id:string,index:number,title:string):Sheet {
   return {id,name:title,index,frame:{size_um:[420000,297000],margin_um:10000,paper:'A3 landscape'},
@@ -301,9 +306,7 @@ function validateAuthoring(file:ProjectFileV2):void {
     projectToCanvasScene(file,sh.id);
   }
   if(placed.size!==p.components.length)reject('UNPLACED_COMPONENT');
-  const actual={components:p.components.length,nets:p.nets.length,
-    memberships:p.nets.reduce((n,net)=>n+net.members.length,0),
-    da1_pins:0,b_graphics:0};
+  const actual=actualCounts(file);
   // Rust serde_json and Python canonicalization reorder JSON object keys when
   // reopening a native file. Counts are a named mapping, not an ordered tuple.
   // Comparing JSON.stringify falsely rejected valid persisted synthetic projects.
