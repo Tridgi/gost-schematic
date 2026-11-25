@@ -1219,3 +1219,55 @@ test('R22b hidden or nonprintable used layers reject automatic preview, with no 
   assert.deepEqual(a.file,before);assert.equal(a.revision,0);
  }
 });
+
+function hubFixture(){
+ const doc=newBlankProject();
+ const pins=[
+  {physical_pin_number:'1',at_um:[-10000,-10000],side:'left'},
+  {physical_pin_number:'2',at_um:[-10000,10000],side:'left'},
+  {physical_pin_number:'3',at_um:[10000,-10000],side:'right'},
+  {physical_pin_number:'4',at_um:[10000,10000],side:'right'}
+ ];
+ doc.project.part_definitions.push({id:'part/test-hub',reference_prefix:'DA',symbol_ids:['symbol/test-hub'],
+  physical_pins:pins.map(p=>({number:p.physical_pin_number,name:p.physical_pin_number,electrical_type:'unspecified'}))});
+ doc.project.symbol_definitions.push({id:'symbol/test-hub',part_id:'part/test-hub',revision:1,status:'draft',
+  pins,standard_refs:[],graphics:[{kind:'rect',points_um:[[-5000,-15000],[5000,15000]],stroke_um:300},
+   ...pins.map(p=>({kind:'line',points_um:[p.at_um,[p.at_um[0]/2,p.at_um[1]]],stroke_um:300}))]});
+ const s=new AuthoringSession(doc);
+ const hub=s.place(s.newTransaction('hub'),'symbol/test-hub',[150000,100000]);
+ const leaves=[[80000,80000],[220000,75000],[220000,125000]].map((p,i)=>s.place(s.newTransaction('leaf'+i),'symbol/resistor.fixed',p));
+ const [h,a,b,c]=s.file.project.components.map(c=>c.id);
+ s.connect(s.newTransaction('left'),pin(a,'2'),pin(h,'1'));
+ s.connect(s.newTransaction('right-top'),pin(h,'3'),pin(b,'1'));
+ s.connect(s.newTransaction('right-bottom'),pin(h,'4'),pin(c,'1'));
+ return {s,hub,leaves,h,a,b,c};
+}
+test('R23 fixed four-pin hub aligns facing satellites to individual signed pin rows',()=>{
+ const {s,hub,leaves}=hubFixture(),before=s.file,rev=s.revision;
+ const plan=s.previewLayout();
+ assert.ok(plan.token);assert.equal(plan.before.bends,6);assert.equal(plan.after.bends,0);
+ assert.equal(plan.operations.filter(n=>n.includes('Выводы DA1')).length,3);
+ assert.deepEqual(s.file,before);
+ const next=s.layoutPreviewDocument(plan.token),sh=next.project.sheets[0];
+ assert.deepEqual(sh.instances.find(i=>i.id===hub),before.project.sheets[0].instances.find(i=>i.id===hub));
+ assert.deepEqual(leaves.map(id=>sh.instances.find(i=>i.id===id).origin_um),[[80000,90000],[220000,90000],[220000,110000]]);
+ assert.ok(sh.wires.every(w=>w.vertices.length===2));
+ assert.deepEqual(next.project.nets.map(n=>[n.id,n.members]),before.project.nets.map(n=>[n.id,n.members]));
+ s.applyLayoutPreview(s.newTransaction('apply-hub'),plan.token);
+ assert.equal(s.revision,rev+1);assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);assert.deepEqual(s.file,next);
+});
+test('R23 satellite with an external route stays fixed; unselected satellites are not moved',()=>{
+ const {s,hub,leaves,b}=hubFixture();
+ s.place(s.newTransaction('outside'),'symbol/resistor.fixed',[290000,75000]);
+ const outside=s.file.project.components.at(-1).id;
+ s.connect(s.newTransaction('outside-wire'),pin(b,'2'),pin(outside,'1'));
+ const before=s.file,sh0=before.project.sheets[0];
+ const plan=s.previewLayout([hub,leaves[0],leaves[1]]);
+ assert.ok(plan.token);
+ const next=s.layoutPreviewDocument(plan.token),sh=next.project.sheets[0];
+ for(const id of [hub,leaves[1],leaves[2],sh0.instances.at(-1).id])
+  assert.deepEqual(sh.instances.find(i=>i.id===id),sh0.instances.find(i=>i.id===id));
+ assert.deepEqual(sh.wires.at(-1),sh0.wires.at(-1));
+ assert.equal(sh.instances.find(i=>i.id===leaves[0]).origin_um[1],90000);
+});
