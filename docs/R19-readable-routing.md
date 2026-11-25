@@ -209,3 +209,25 @@ Regression tests exercise actual production planner, signed endpoint geometry,
 junction, unchanged input and deterministic repeated output.
 This remains a bounded heuristic for already-connected Nets; no global
 optimality, automatic creation of missing source routes, or GOST approval.
+
+
+## R28 — first route for an existing declared Net
+
+In a synthetic editable ProjectV2, the topology report lists untouched local
+Nets with 2–32 declared physical PinRefs and no wires, junctions or splices
+on any sheet. The explicit "Развести цепь" action asks for confirmation.
+It uses the bounded R27 orthogonal planner, supports two-terminal paths,
+and requires exactly one visible printable unlocked electrical layer.
+The pre/post connectivity comparison excludes only the target Net, whose
+complete one-group connectivity is verified independently; all other Nets,
+diagnostic hazard multiplicities, crossings and overflow remain gated.
+Other route statuses are retained. No inferred membership, component motion,
+or replacement of partially drawn manual routes is allowed. One transaction
+supports Undo/Redo; generated wires retain needs_routing_review.
+
+This does not unlock the frozen E695 source or route a full board automatically.
+No geometry may be added if annotations are present or the safety/search
+budget is exceeded. A failed route leaves the document and history untouched.
+Unit and real-browser regression tests cover initial routing, physical
+membership, foreign routes, locked layers, stale CAS and repeat refusal.
+Full CI and installed native acceptance are required before declaring PASS.
