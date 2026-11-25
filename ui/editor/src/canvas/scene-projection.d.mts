@@ -20,6 +20,8 @@ export type CanvasSymbol = {
   mirror_x:boolean;
   pins:CanvasPin[];
   strokes:CanvasStroke[];
+  inkStrokes:(CanvasStroke&{stroke_um:number})[];
+  curves:{kind:'circle'|'semicircle';points_um:PointUm[];stroke_um:number;center:PointUm;radius:number;sweep:0|1;bounds:PointUm[]}[];
   status:'draft'|'approved'|'deprecated';
   layer_id:string;
 };
