@@ -7,6 +7,7 @@ import { ManualWireEngine, WireError, constructWire, type PinRef, type PointUm,
 import { CanvasViewport } from './canvas/CanvasViewport';
 import type { CanvasIntent } from './canvas/controller.mjs';
 import { commitSegmentDrag, captureSegmentDrag } from './canvas/wire-intents.mjs';
+import {noteLayout} from './model/symbol-notes.mjs';
 import {curveGeometry} from './model/curves.mjs';
 import {catalogDisplay,catalogAdditions} from './authoring/catalog';
 import {AuthoringSession,newBlankProject,type ComponentClipboard,type GroupClipboard} from './authoring/session';
@@ -23,7 +24,7 @@ import { renderProjectPreviewSVG, renderPreviewPng300 } from './export/browser-e
 const umToMm = (value:number):number => value/1000;
 const asPoint = (point:readonly number[]):string => String(umToMm(point[0]))+' '+String(umToMm(point[1]));
 function CataloguePreview({symbol}:{symbol:SymbolDefinition}) {
-  const points=[...symbol.graphics.flatMap(g=>g.kind==='circle'||g.kind==='semicircle'?curveGeometry(g.kind,g.points_um).bounds:g.points_um),...symbol.pins.map(p=>p.at_um),[0,0]];
+  const points=[...symbol.graphics.flatMap(g=>g.kind==='circle'||g.kind==='semicircle'?curveGeometry(g.kind,g.points_um).bounds:g.points_um),...symbol.pins.map(p=>p.at_um),...(symbol.constant_annotations??[]).flatMap(n=>noteLayout(n,n.at_um).bounds),[0,0]];
   const minX=Math.min(...points.map(p=>p[0]))/1000-1,minY=Math.min(...points.map(p=>p[1]))/1000-1;
   const maxX=Math.max(...points.map(p=>p[0]))/1000+1,maxY=Math.max(...points.map(p=>p[1]))/1000+1;
   return <svg viewBox={`${minX} ${minY} ${maxX-minX} ${maxY-minY}`} fill="none" stroke="currentColor" strokeWidth={0.45}
@@ -43,6 +44,7 @@ function CataloguePreview({symbol}:{symbol:SymbolDefinition}) {
       }
       return <polyline key={index} points={pts.join(' ')} strokeWidth={umToMm(graphic.stroke_um)} />;
     })}
+    {(symbol.constant_annotations??[]).map(n=>{const l=noteLayout(n,n.at_um);return <text key={n.key} x={umToMm(l.baseline[0])} y={umToMm(l.baseline[1])} textAnchor={l.anchor} fontSize={umToMm(n.height_um)} fill="currentColor" stroke="none">{n.text}</text>})}
   </svg>;
 }
 
