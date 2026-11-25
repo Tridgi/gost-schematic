@@ -1250,6 +1250,43 @@ export class AuthoringSession {
       tryEdit('Параллельные ветви: '+g.length,s=>s.buildParallelRails(s.newTransaction('auto-parallel'),g,true));
       tryEdit('Общие магистрали: '+g.length,s=>s.buildParallelRails(s.newTransaction('auto-rails'),g));
     }
+    // Multi-terminal anchors: keep the hub absolutely fixed, and straighten
+    // individual two-terminal satellites attached by exactly one signed wire.
+    // This does not infer the electrical function of any component or Net.
+    const hubSheet=best.file.project.sheets[indexOfSheet(best.file)];
+    const attached=new Map<string,Set<string>>();
+    for(const w of hubSheet.wires)for(const v of [w.vertices[0],w.vertices.at(-1)!]){
+      if(v.anchor.kind!=='pin')continue;
+      const key=v.anchor.component_id,list=attached.get(key)??new Set<string>();
+      list.add(w.id);attached.set(key,list);
+    }
+    const hubs=new Set(group.filter(i=>(defs.get(i.symbol_id)?.pins.length??0)>=4&&
+      (attached.get(i.component_id)?.size??0)>=2).map(i=>i.component_id));
+    const satellites:{hub:string;leaf:string;wire:string;distance:number;ref:string}[]=[];
+    for(const w of hubSheet.wires){
+      const a=w.vertices[0].anchor,b=w.vertices.at(-1)!.anchor;
+      if(a.kind!=='pin'||b.kind!=='pin')continue;
+      const hub=hubs.has(a.component_id)?a:hubs.has(b.component_id)?b:null;
+      if(!hub)continue;
+      const leaf=hub===a?b:a,inst=group.find(i=>i.component_id===leaf.component_id);
+      if(!inst||defs.get(inst.symbol_id)?.pins.length!==2||attached.get(leaf.component_id)?.size!==1)continue;
+      const h=best.beginWire(hub),l=best.beginWire(leaf);
+      if(h.normal[0]!==-l.normal[0]||h.normal[1]!==-l.normal[1])continue;
+      const axis=h.normal[0]!==0?0:1;
+      if((l.at_um[axis]-h.at_um[axis])*h.normal[axis]<=0)continue;
+      const transverse=1-axis;
+      if(h.at_um[transverse]===l.at_um[transverse]&&w.vertices.length===2)continue;
+      const ref=base.project.components.find(c=>c.id===hub.component_id)?.refdes??hub.component_id;
+      satellites.push({hub:byComp.get(hub.component_id)!,leaf:inst.id,wire:w.id,
+        distance:Math.abs(l.at_um[transverse]-h.at_um[transverse]),ref});
+    }
+    satellites.sort((a,b)=>a.distance-b.distance||a.wire.localeCompare(b.wire));
+    for(const pair of satellites)tryEdit('Выводы '+pair.ref+': соседний компонент',s=>{
+      const initial=s.file,anchor=initial.project.sheets[indexOfSheet(initial)].instances.find(i=>i.id===pair.hub)!;
+      const result=s.alignConnectedPair(s.newTransaction('auto-hub-satellite'),[pair.hub,pair.leaf]);
+      const after=s.file,stationary=after.project.sheets[indexOfSheet(after)].instances.find(i=>i.id===pair.hub);
+      if(result.moved!==pair.leaf||JSON.stringify(anchor)!==JSON.stringify(stationary))reject('HUB_MUST_STAY_FIXED');
+    });
     // Discover direct-wire connected components of the current trial.
     // Chain solver rejects cycles, branches, mixed axes and fixed conflicts.
     const adj=new Map(group.map(i=>[i.id,new Set<string>()]));
