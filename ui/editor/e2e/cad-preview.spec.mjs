@@ -1657,3 +1657,49 @@ test('R26 tree reconstruction from topology report bypasses a rail obstruction',
  await page.getByRole('button',{name:'Повторить'}).click();
  expect((await saved()).project).toEqual(after.project);
 });
+
+
+test('R28 explicit first route for a saved declared two-pin Net, Undo and Redo',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');
+ await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ for(const [i,x] of [.25,.65].entries()){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await expect(canvas).toHaveAttribute('data-tool','place');
+  const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+  const px=paper.x+paper.width*x,py=paper.y+paper.height*.4;
+  await assertCanvasReceivesPointer(page,px,py);
+  await page.mouse.click(px,py);
+  await expect(page.getByTestId('symbol-R'+(i+1))).toBeVisible();
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const placed=await saved(),[a,b]=placed.project.components;
+ await page.getByTestId('tool-wire').click();
+ await page.getByTestId('signed-pin-'+a.id+'-2').click();
+ await page.getByTestId('signed-pin-'+b.id+'-1').click();
+ await page.getByTestId('tool-select').click();
+ const doc=await saved(),net=doc.project.nets[0];
+ expect(doc.project.sheets[0].wires).toHaveLength(1);
+ doc.project.sheets[0].wires=[];net.route_status='unrouted';
+ await page.getByTestId('project-file-input').setInputFiles({name:'unrouted.gscad',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(doc))});
+ await expect(page.locator('[data-net-id]')).toHaveCount(0);
+ const before=await saved();
+ await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByTestId('topology-inventory').click();
+ page.once('dialog',d=>d.accept());
+ await page.getByTestId('net-initial-'+net.id).click();
+ const after=await saved(),sh=after.project.sheets[0];
+ expect(sh.wires).toHaveLength(1);
+ expect(sh.wires[0].needs_routing_review).toBe(true);
+ expect(sh.instances).toEqual(before.project.sheets[0].instances);
+ expect(after.project.nets.map(n=>[n.id,n.members])).toEqual(before.project.nets.map(n=>[n.id,n.members]));
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ expect((await saved()).project).toEqual(after.project);
+});
