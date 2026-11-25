@@ -1393,7 +1393,14 @@ export class AuthoringSession {
     this.edit(tx,draft=>{
       const sh=draft.project.sheets[indexOfSheet(draft)];
       if(sh.instances.length>128||sh.wires.reduce((n,w)=>n+w.segments.length,0)>512)reject('LAYOUT_SIZE_LIMIT');
-      if(sh.texts.length||sh.labels.length||sh.graphics.length)reject('LAYOUT_ANNOTATIONS_UNSUPPORTED');
+      // Initial routing can protect bounded visual annotations. Other
+      // geometry edits still fail closed; no Net labels or free text.
+      if(sh.texts.length||(!initial&&(sh.labels.length||sh.graphics.length))||
+        sh.labels.length+sh.graphics.length>32||
+        sh.labels.some(l=>l.role!=='visual'||l.net_id!==null||typeof l.text!=='string'||l.text.length>64)||
+        sh.graphics.some(g=>!['line','polyline','source_b_continuation'].includes(g.kind)||
+          g.points_um.length<2||g.points_um.length>64||!Number.isSafeInteger(g.stroke_um)||g.stroke_um<=0||g.stroke_um>10000))
+        reject('LAYOUT_ANNOTATIONS_UNSUPPORTED');
       const net=draft.project.nets.find(n=>n.id===netId);
       if(!net)reject('UNKNOWN_NET');
       if(net.members.length<(initial?2:3)||net.members.length>32)reject('TREE_PIN_COUNT');
@@ -1423,8 +1430,18 @@ export class AuthoringSession {
         const d=defs.get(i.symbol_id);if(!d)reject('UNKNOWN_SYMBOL');
         return {id:i.component_id,box:inflate(translateBounds(symbolBounds(d,i.rotation_deg,i.mirror_x),i.origin_um))};
       });
+      const annotations:Bounds[]=[];
+      for(const g of sh.graphics)for(let i=1;i<g.points_um.length;i++){
+        const b=rect(xy(g.points_um[i-1]),xy(g.points_um[i])),pad=g.stroke_um/2;
+        annotations.push(inflate({minX:b.minX-pad,minY:b.minY-pad,maxX:b.maxX+pad,maxY:b.maxY+pad}));
+      }
+      for(const l of sh.labels){
+        const p=xy(l.at_um),[lo,hi]=noteLayout({key:l.id,text:l.text,at_um:p,height_um:3500,horizontal:'left',vertical:'bottom'},p).bounds;
+        annotations.push(inflate(rect(lo,hi)));
+      }
+      if(annotations.length>128)reject('LAYOUT_ANNOTATIONS_UNSUPPORTED');
       const outside=sh.wires.filter(w=>w.net_id!==netId);
-      const foreign=[...outside.flatMap(w=>w.vertices.slice(1).map((v,i)=>inflate(rect(w.vertices[i].at_um,v.at_um)))),
+      const foreign=[...annotations,...outside.flatMap(w=>w.vertices.slice(1).map((v,i)=>inflate(rect(w.vertices[i].at_um,v.at_um)))),
         ...[...sh.junctions,...sh.splices].filter(n=>n.net_id!==netId).map(n=>inflate(rect(n.at_um,n.at_um)))];
       const pins=net.members.map(ref=>({ref,p:this.beginWire(ref)}));
       const ports=pins.map(({ref,p})=>{
