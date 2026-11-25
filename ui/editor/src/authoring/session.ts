@@ -1230,62 +1230,127 @@ export class AuthoringSession {
       const layer=[...layers][0],layerDef=sh.layers.find(l=>l.id===layer);
       if(!layerDef||layerDef.locked||!layerDef.visible||!layerDef.printable||layerDef.kind!=='electrical')reject('LAYER_LOCKED');
       const pins=net.members.map(ref=>({ref,p:this.beginWire(ref)}));
-      const branchAxis:0|1=pins[0].p.normal[0]!==0?0:1,railAxis:0|1=branchAxis===0?1:0;
-      if(pins.some(({p})=>p.normal[branchAxis]===0))reject('RAIL_MIXED_PIN_AXES');
+      const mixed=pins.some(({p})=>p.normal[0]!==pins[0].p.normal[0]&&p.normal[0]!==-pins[0].p.normal[0]);
       const defs=new Map(draft.project.symbol_definitions.map(d=>[d.id,d]));
       const boxes=sh.instances.map(i=>{
         const d=defs.get(i.symbol_id);if(!d)reject('UNKNOWN_SYMBOL');
         return {id:i.component_id,box:translateBounds(symbolBounds(d,i.rotation_deg,i.mirror_x),i.origin_um)};
       });
       const rect=(p:PointUm,q:PointUm):Bounds=>({minX:Math.min(p[0],q[0]),minY:Math.min(p[1],q[1]),maxX:Math.max(p[0],q[0]),maxY:Math.max(p[1],q[1])});
-      const min=(b:Bounds)=>branchAxis===0?b.minX:b.minY,max=(b:Bounds)=>branchAxis===0?b.maxX:b.maxY;
       const outside=sh.wires.filter(w=>w.net_id!==netId);
       const obstacles=[...outside.flatMap(w=>w.vertices.slice(1).map((v,i)=>rect(w.vertices[i].at_um,v.at_um))),
         ...[...sh.junctions,...sh.splices].filter(n=>n.net_id!==netId).map(n=>rect(n.at_um,n.at_um))];
-      const taps=new Map<number,typeof pins>();
-      for(const pin of pins){
-        const at=pin.p.at_um[railAxis],list=taps.get(at)??[];
-        if(list.some(v=>v.p.normal[branchAxis]===pin.p.normal[branchAxis]))reject('RAIL_OVERLAPPING_LEADS');
-        list.push(pin);taps.set(at,list);
-      }
-      const sorted=[...taps.keys()].sort((a,b)=>a-b);
-      if(sorted.length<2)reject('RAIL_NO_TRUNK');
       const margin=sh.frame.margin_um;
       const inside=(p:PointUm)=>p.every((v,i)=>v>=margin&&v<=sh.frame.size_um[i]-margin);
       if(pins.some(({p})=>!inside(p.at_um)))reject('RAIL_OUTSIDE_FRAME');
-      let lo=margin,hi=sh.frame.size_um[branchAxis]-margin;
-      for(const {ref,p} of pins){
-        const own=boxes.find(b=>b.id===ref.component_id)!.box;
-        if(p.normal[branchAxis]>0)lo=Math.max(lo,Math.ceil(max(own))+5000,p.at_um[branchAxis]+5000);
-        else hi=Math.min(hi,Math.floor(min(own))-5000,p.at_um[branchAxis]-5000);
+      type Lead={ref:PinRef;points:MutablePoint[];tap:number;approach:number};
+      type Plan={branchAxis:0|1;line:number;leads:Lead[];length:number;bends:number};
+      let best:Plan|undefined,feasible=false;
+      const axes: (0|1)[]=mixed?[0,1]:[pins[0].p.normal[0]!==0?0:1];
+      for(const branchAxis of axes){
+        const railAxis:0|1=branchAxis===0?1:0;
+        const min=(b:Bounds,axis:0|1)=>axis===0?b.minX:b.minY;
+        const max=(b:Bounds,axis:0|1)=>axis===0?b.maxX:b.maxY;
+        const at=(line:number,tap:number):MutablePoint=>branchAxis===0?[line,tap]:[tap,line];
+        const direct=pins.filter(({p})=>p.normal[branchAxis]!==0);
+        const indirect=pins.filter(({p})=>p.normal[branchAxis]===0);
+        let lo=margin,hi=sh.frame.size_um[branchAxis]-margin;
+        for(const {ref,p} of direct){
+          const own=boxes.find(b=>b.id===ref.component_id)!.box;
+          if(p.normal[branchAxis]>0)lo=Math.max(lo,Math.ceil(max(own,branchAxis))+5000,p.at_um[branchAxis]+5000);
+          else hi=Math.min(hi,Math.floor(min(own,branchAxis))-5000,p.at_um[branchAxis]-5000);
+        }
+        if(lo>hi)continue;
+        feasible=true;
+        const candidates=new Set([lo,hi,Math.floor((lo+hi)/2)]);
+        for(const b of [...boxes.map(v=>v.box),...obstacles]){
+          candidates.add(Math.floor(min(b,branchAxis))-1001);candidates.add(Math.ceil(max(b,branchAxis))+1001);
+        }
+        for(const {p} of pins)for(const offset of [-10000,-5000,5000,10000])candidates.add(p.at_um[branchAxis]+offset);
+        const estimate=(line:number)=>pins.reduce((n,{p})=>n+Math.abs(line-p.at_um[branchAxis]),0);
+        const lines=[...candidates].filter(v=>v>=lo&&v<=hi).sort((a,b)=>estimate(a)-estimate(b)||a-b).slice(0,mixed?32:64);
+        const eq=(a:PointUm,b:PointUm)=>a[0]===b[0]&&a[1]===b[1];
+        const collision=(a:Bounds,b:Bounds)=>a.minX<=b.maxX&&b.minX<=a.maxX&&a.minY<=b.maxY&&b.minY<=a.maxY;
+        const segs=(points:MutablePoint[])=>points.slice(1).map((q,i)=>({a:points[i],b:q,box:rect(points[i],q)}));
+        const pathLength=(points:MutablePoint[])=>points.slice(1).reduce((n,q,i)=>n+Math.abs(q[0]-points[i][0])+Math.abs(q[1]-points[i][1]),0);
+        for(const line of lines){
+          const leads:Lead[]=[];
+          const accept=(ref:PinRef,points:MutablePoint[],tap:number,approach:number)=>{
+            if(points.some(p=>!inside(p)))return false;
+            // Only the shared tap itself may touch another branch; leads
+            // approaching it from the same side would overlap.
+            if(leads.some(l=>l.tap===tap&&l.approach===approach))return false;
+            if(leads.some(l=>l.tap!==tap&&Math.abs(l.tap-tap)<1000))return false;
+            const segments=segs(points);
+            for(const [i,s] of segments.entries()){
+              if(boxes.some(o=>!(i===0&&o.id===ref.component_id)&&!separated(s.box,o.box,1000))||
+                obstacles.some(o=>!separated(s.box,o,1000)))return false;
+              for(const other of leads)for(const t of segs(other.points)){
+                if(!collision(s.box,t.box))continue;
+                const shared=at(line,tap);
+                const intersection:Bounds={minX:Math.max(s.box.minX,t.box.minX),maxX:Math.min(s.box.maxX,t.box.maxX),
+                  minY:Math.max(s.box.minY,t.box.minY),maxY:Math.min(s.box.maxY,t.box.maxY)};
+                if(other.tap!==tap||intersection.minX!==intersection.maxX||intersection.minY!==intersection.maxY||
+                  !eq([intersection.minX,intersection.minY],shared)||
+                  !(eq(s.a,shared)||eq(s.b,shared))||!(eq(t.a,shared)||eq(t.b,shared)))return false;
+              }
+            }
+            // Prevent a lead ending on a trunk that would run through ink.
+            const positions=[...leads.map(l=>l.tap),tap];
+            const trunk=rect(at(line,Math.min(...positions)),at(line,Math.max(...positions)));
+            return !boxes.some(o=>!separated(trunk,o.box,1000))&&!obstacles.some(o=>!separated(trunk,o,1000));
+          };
+          let valid=true;
+          for(const {ref,p} of direct){
+            const tap=p.at_um[railAxis],points=[p.at_um,at(line,tap)];
+            const approach=Math.sign(p.at_um[branchAxis]-line);
+            if(!accept(ref,points,tap,approach)){valid=false;break}
+            leads.push({ref,points,tap,approach});
+          }
+          if(!valid)continue;
+          // A pin parallel to the trunk first leaves its own symbol outward,
+          // then turns once toward the trunk. Search bounded clear tap offsets.
+          for(const {ref,p} of indirect){
+            const own=boxes.find(b=>b.id===ref.component_id)!.box,sign=p.normal[railAxis];
+            if(p.at_um[branchAxis]===line){valid=false;break}
+            const start=p.at_um[railAxis];
+            const limit=sign>0?Math.max(start+5000,Math.ceil(max(own,railAxis))+1001):
+              Math.min(start-5000,Math.floor(min(own,railAxis))-1001);
+            const taps=new Set([limit,limit+sign*5000,limit+sign*10000,limit+sign*20000]);
+            for(const l of leads){taps.add(l.tap);taps.add(l.tap-2000);taps.add(l.tap+2000)}
+            for(const o of [...boxes.map(v=>v.box),...obstacles]){
+              taps.add(Math.floor(min(o,railAxis))-1001);taps.add(Math.ceil(max(o,railAxis))+1001);
+            }
+            const ordered=[...taps].filter(v=>(v-limit)*sign>=0&&v>=margin&&v<=sh.frame.size_um[railAxis]-margin)
+              .sort((a,b)=>Math.abs(a-start)-Math.abs(b-start)||a-b).slice(0,24);
+            let lead:Lead|undefined;
+            for(const tap of ordered){
+              const corner=xy(p.at_um);corner[railAxis]=tap;
+              const points=[p.at_um,corner,at(line,tap)],approach=Math.sign(p.at_um[branchAxis]-line);
+              if(accept(ref,points,tap,approach)){lead={ref,points,tap,approach};break}
+            }
+            if(!lead){valid=false;break}
+            leads.push(lead);
+          }
+          if(!valid)continue;
+          const positions=[...new Set(leads.map(l=>l.tap))].sort((a,b)=>a-b);
+          if(positions.length<2)continue;
+          const length=leads.reduce((n,l)=>n+pathLength(l.points),positions.at(-1)!-positions[0]);
+          const bends=leads.reduce((n,l)=>n+l.points.length-2,0);
+          if(!best||bends<best.bends||bends===best.bends&&length<best.length)best={branchAxis,line,leads,length,bends};
+        }
       }
-      if(lo>hi)reject('RAIL_NO_COMMON_CHANNEL');
-      const at=(line:number,tap:number):MutablePoint=>branchAxis===0?[line,tap]:[tap,line];
-      const candidates=new Set([lo,hi,Math.floor((lo+hi)/2)]);
-      for(const b of [...boxes.map(v=>v.box),...obstacles]){
-        candidates.add(Math.floor(min(b))-1001);candidates.add(Math.ceil(max(b))+1001);
-      }
-      // Prefer shortest total conductor length; cap search work explicitly.
-      const length=(line:number)=>pins.reduce((n,{p})=>n+Math.abs(line-p.at_um[branchAxis]),sorted.at(-1)!-sorted[0]);
-      const lines=[...candidates].filter(v=>v>=lo&&v<=hi).sort((a,b)=>length(a)-length(b)||a-b).slice(0,64);
-      let chosen:number|undefined;
-      for(const line of lines){
-        const trunk=rect(at(line,sorted[0]),at(line,sorted.at(-1)!));
-        if(boxes.some(o=>!separated(trunk,o.box,1000))||obstacles.some(o=>!separated(trunk,o,1000)))continue;
-        if(pins.some(({ref,p})=>{
-          const lead=rect(p.at_um,at(line,p.at_um[railAxis]));
-          return boxes.some(o=>o.id!==ref.component_id&&!separated(lead,o.box,1000))||
-            obstacles.some(o=>!separated(lead,o,1000));
-        }))continue;
-        chosen=line;break;
-      }
-      if(chosen===undefined)reject('RAIL_NO_SAFE_CHANNEL');
-      const line=chosen;
+      if(!best)reject(!feasible?'RAIL_NO_COMMON_CHANNEL':'RAIL_NO_SAFE_CHANNEL');
+      const {branchAxis,line,leads}=best,railAxis:0|1=branchAxis===0?1:0;
+      const at=(tap:number):MutablePoint=>branchAxis===0?[line,tap]:[tap,line];
+      const taps=new Map<number,Lead[]>();
+      for(const lead of leads){const list=taps.get(lead.tap)??[];list.push(lead);taps.set(lead.tap,list)}
+      const sorted=[...taps.keys()].sort((a,b)=>a-b);
       const wires:WirePolyline[]=[],junctions:Junction[]=[],splices:Splice[]=[];
       const anchors=sorted.map((tap,i)=>{
         const degree=taps.get(tap)!.length+(i>0?1:0)+(i<sorted.length-1?1:0);
         const id=newId(degree===2?'splice':'junction');
-        const node={id,net_id:netId,layer_id:layer,at_um:at(line,tap)};
+        const node={id,net_id:netId,layer_id:layer,at_um:at(tap)};
         if(degree===2){splices.push(node);return {kind:'splice' as const,splice_id:id}}
         junctions.push(node);return {kind:'junction' as const,junction_id:id};
       });
@@ -1294,8 +1359,8 @@ export class AuthoringSession {
         w.needs_routing_review=true;wires.push(w);
       };
       for(const [i,tap] of sorted.entries()){
-        for(const {ref,p} of taps.get(tap)!)add([p.at_um,at(line,tap)],{kind:'pin',...ref},anchors[i]);
-        if(i>0)add([at(line,sorted[i-1]),at(line,tap)],anchors[i-1],anchors[i]);
+        for(const lead of taps.get(tap)!)add(lead.points,{kind:'pin',...lead.ref},anchors[i]);
+        if(i>0)add([at(sorted[i-1]),at(tap)],anchors[i-1],anchors[i]);
       }
       const signature=(w:WirePolyline)=>{
         const vertices=w.vertices.map(v=>[v.at_um,v.anchor.kind,v.anchor.kind==='pin'?pinKey(v.anchor):null]);
@@ -1310,7 +1375,7 @@ export class AuthoringSession {
       sh.splices=[...sh.splices.filter(n=>n.net_id!==netId),...splices];
       const {subset,session}=localSession(draft,this.clock);
       if(session.engine.validateNet(netId).pin_groups.length!==1)reject('RAIL_TOPOLOGY_MISMATCH');
-      result={pins:pins.length,wires:wires.length,junctions:junctions.length,axis:railAxis===0?'horizontal':'vertical',lengthUm:length(line)};
+      result={pins:pins.length,wires:wires.length,junctions:junctions.length,axis:railAxis===0?'horizontal':'vertical',lengthUm:best.length};
       const next=materialize(draft,subset,session);
       if(!preservesLayoutSafety(prior,assessLayout(next,session.engine)))reject('RAIL_UNSAFE_DIAGNOSTICS');
       return next;
