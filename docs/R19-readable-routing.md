@@ -74,3 +74,29 @@ electrical layer per Net. No membership inference from proximity or labels.
 
 This is not a general power/ground bus or arbitrary branched Net solver.
 Rail offsets, minimum gap and bounding clearance are DRAFT heuristics.
+
+
+## R22 — quality-gated optimization preview
+
+The optimizer works on isolated AuthoringSessions; no mutation occurs while
+generating the preview. It discovers closed two-Net parallel groups and
+connected direct-wire groups, invokes the existing pair/series/rail solvers,
+and tries direct-wire cleanup. All accepted operations accumulate in one
+candidate. Only 12 trials are attempted, with 128 components and 512 segments
+maximum on the active sheet. It is a bounded greedy search, not a global optimum.
+
+Measured quality includes length, direction changes (also across degree-2
+splices), strict interior perpendicular crossing coordinates, diagnostic
+hazard multiplicities, paper overflow identities and signed pin-group
+connectivity. No candidate may increase length, bends or crossings, add
+measured hazards/overflow or alter pin connectivity; at least one criterion
+must improve. Routing-review flags are not geometry errors. Incomplete
+diagnostics fail closed. Sheet-level annotations and hidden/nonprintable used
+layers are currently excluded.
+
+The modal uses the two actual detached ProjectV2 preview SVGs with an identical
+physical viewBox, not a mockup. Apply consumes an opaque revision-bound token
+and checks the owning session and content epoch; Cancel discards it.
+One Undo restores the complete pre-optimization document. Native physical
+export is still separate; the preview is not a normative approval or a complete
+annotation/clearance certificate.
