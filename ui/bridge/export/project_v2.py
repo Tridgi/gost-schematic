@@ -113,7 +113,23 @@ def _draw_validated(document: dict, sheet_id: str) -> bytes:
             kind = primitive["kind"]
             points = [pin_world(inst,p) for p in primitive["points_um"]]
             width = primitive["stroke_um"]
-            if kind == "rect":
+            if kind in ("circle", "semicircle"):
+                if kind == "circle":
+                    (x,y), (u,v) = points
+                    radius = abs(u-x)+abs(v-y)
+                    ET.SubElement(group, _S+"circle", {"cx":mm(x),"cy":mm(y),"r":mm(radius),
+                        "stroke":"#000000","stroke-width":mm(width),"fill":"none"})
+                    bounds([(x-radius,y-radius),(x+radius,y+radius)],width)
+                else:
+                    a, m, b = points
+                    x,y = (a[0]+b[0])//2,(a[1]+b[1])//2
+                    radius = abs(a[0]-x)+abs(a[1]-y)
+                    sweep = int((a[0]-x)*(m[1]-y)-(a[1]-y)*(m[0]-x)>0)
+                    r = mm(radius)
+                    ET.SubElement(group, _S+"path", {"d":f"M {mm(a[0])},{mm(a[1])} A {r} {r} 0 0 {sweep} {mm(b[0])},{mm(b[1])}",
+                        "stroke":"#000000","stroke-width":mm(width),"fill":"none"})
+                    bounds(points,width)
+            elif kind == "rect":
                 if len(points) != 2:
                     raise ExportError("RECT_NEEDS_2_CORNERS")
                 x0,x1 = sorted((points[0][0],points[1][0]))
