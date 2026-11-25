@@ -846,6 +846,26 @@ export default function App() {
     onPaste={authoringRef.current&&clipboard&&tool==='select'?handlePaste:undefined}
     smartRouting={smartRouting} onToggleSmartRouting={authoringRef.current?setSmartRouting:undefined}
     pinMagnet={pinMagnet} onTogglePinMagnet={authoringRef.current?setPinMagnet:undefined}
+    onOptimizeLayout={authoringRef.current&&tool==='select'?()=>{
+      const a=authoringRef.current!,ids=groupIds.length>1?groupIds:[];
+      try{
+        const p=a.previewLayout(ids);
+        if(!p.token){setIssue('Без изменений: безопасного улучшения компоновки не найдено.'+(p.limited?' Поиск ограничен.':''));return;}
+        const summary=[
+          ids.length?'Оптимизация выделения':'Оптимизация активного листа',
+          'Изгибы: '+p.before.bends+' → '+p.after.bends,
+          'Длина: '+(p.before.lengthUm/1000).toFixed(3)+' → '+(p.after.lengthUm/1000).toFixed(3)+' мм',
+          'Пересечения: '+p.before.crossings+' → '+p.after.crossings,
+          'Операции: '+p.operations.join('; '),
+          'Проверено вариантов: '+p.attempted+'; отклонено: '+p.rejected,
+          p.limited?'Поиск ограничен.':'',
+          'Применить план? Состав цепей сохраняется; изменённые маршруты требуют проверки.'
+        ].filter(Boolean).join('\n');
+        if(!window.confirm(summary)){a.discardLayoutPreview(p.token);return;}
+        a.applyLayoutPreview(a.newTransaction('optimize-layout'),p.token);adoptAuthored();
+        setIssue('Компоновка оптимизирована: изгибы '+p.before.bends+' → '+p.after.bends+'. Проверьте маршруты.');
+      }catch(e){setIssue('LAYOUT_OPTIMIZE_FAILED: '+String(e));}
+    }:undefined}
     onSimplifyRoutes={authoringRef.current&&tool==='select'?()=>{
       const a=authoringRef.current!,ids=groupIds.length>1?groupIds:[];
       if(!window.confirm(ids.length?'Упростить прямые межвыводные проводники внутри выделения?':'Упростить прямые межвыводные проводники активного листа? Положение УГО и электрические цепи не изменятся.'))return;
