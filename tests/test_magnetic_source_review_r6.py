@@ -31,7 +31,13 @@ def test_general_amplifier_has_three_lobes_and_exact_triangle_contact():
     arcs = [g for g in symbol.graphics if isinstance(g, Semicircle)]
     assert len(arcs) == 3
     assert all(g.bulge == Side.TOP for g in arcs)
-    assert len([g for g in symbol.graphics if isinstance(g, StyledLine)]) == 3
+    steps = [g for g in symbol.graphics if isinstance(g, StyledLine)]
+    assert len(steps) == 3
+    # Inner magnetic strokes must not touch either triangular edge.
+    # Triangle edges are y = +/- 0.4*(7000-x), reserve 0.4 mm vertical gap.
+    for step in steps:
+        for point in (step.start, step.end):
+            assert 5 * abs(point.y) + 2000 <= 2 * (7000 - point.x)
     assert Line(Point(500, 2600), Point(500, 13000)) in symbol.graphics
     assert len(symbol.pins) == 3
 
