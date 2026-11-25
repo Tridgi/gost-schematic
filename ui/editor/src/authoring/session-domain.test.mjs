@@ -1666,7 +1666,7 @@ test('R32a frozen TL494 independent-Net preflight on a detached test-only synthe
  assert.throws(()=>new AuthoringSession(source),/SOURCE_SHA_MISMATCH/);
  const doc=structuredClone(source),p=doc.project,sh=p.sheets[0];
  p.provenance={...p.provenance,status:'synthetic',source_sha:'0'.repeat(40),source_path:'test-only/TL494-routing-preflight',
-   expected_counts:{...p.provenance.expected_counts,da1_pins:0,b_graphics:0}};
+   expected_counts:{...p.provenance.expected_counts}};
  const outcomes=[];
  for(const net of p.nets){
   const session=new AuthoringSession(doc);
@@ -1728,7 +1728,7 @@ test('R32b real TL494 independent-Net preflight after explicit margin repair',t=
  const source=JSON.parse(readFileSync(new URL('../../../fixtures/tl494-source-e695-v2.gscad.json',import.meta.url),'utf8'));
  const original=structuredClone(source),doc=structuredClone(source),p=doc.project,sh=p.sheets[0];
  p.provenance={...p.provenance,status:'synthetic',source_sha:'0'.repeat(40),source_path:'test-only/TL494-margin-preflight',
-  expected_counts:{...p.provenance.expected_counts,da1_pins:0,b_graphics:0}};
+  expected_counts:{...p.provenance.expected_counts}};
  const preparation=new AuthoringSession(doc);
  const repair=preparation.prepareInitialRouting(preparation.newTransaction('inset')),prepared=preparation.file;
  assert.ok(repair.moved>=4);
@@ -1787,7 +1787,7 @@ test('R32c whole-sheet TL494 multi-order simultaneous routing diagnostic',t=>{
  const source=JSON.parse(readFileSync(new URL('../../../fixtures/tl494-source-e695-v2.gscad.json',import.meta.url),'utf8'));
  const original=structuredClone(source),doc=structuredClone(source),p=doc.project,sh=p.sheets[0];
  p.provenance={...p.provenance,status:'synthetic',source_sha:'0'.repeat(40),source_path:'test-only/TL494-multinet-preflight',
-  expected_counts:{...p.provenance.expected_counts,da1_pins:0,b_graphics:0}};
+  expected_counts:{...p.provenance.expected_counts}};
  const s=new AuthoringSession(doc);
  s.prepareInitialRouting(s.newTransaction('prepare'));
  const prepared=s.file,rev=s.revision;
@@ -1838,7 +1838,7 @@ test('R32e actual TL494 adaptive-grid and blocked-first diagnostic',t=>{
  const source=JSON.parse(readFileSync(new URL('../../../fixtures/tl494-source-e695-v2.gscad.json',import.meta.url),'utf8'));
  const original=structuredClone(source),doc=structuredClone(source),p=doc.project,sh=p.sheets[0];
  p.provenance={...p.provenance,status:'synthetic',source_sha:'0'.repeat(40),source_path:'test-only/TL494-controlled-crossing',
-  expected_counts:{...p.provenance.expected_counts,da1_pins:0,b_graphics:0}};
+  expected_counts:{...p.provenance.expected_counts}};
  const s=new AuthoringSession(doc);
  s.prepareInitialRouting(s.newTransaction('prepare'));
  const prepared=s.file,rev=s.revision;
@@ -1909,7 +1909,7 @@ test('R32f TL494 topology-based preplacement and controlled multinet feasibility
  const source=JSON.parse(readFileSync(new URL('../../../fixtures/tl494-source-e695-v2.gscad.json',import.meta.url),'utf8'));
  const original=structuredClone(source),doc=structuredClone(source),p=doc.project,sh=p.sheets[0];
  p.provenance={...p.provenance,status:'synthetic',source_sha:'0'.repeat(40),source_path:'test-only/TL494-hub-preplacement',
-  expected_counts:{...p.provenance.expected_counts,da1_pins:0,b_graphics:0}};
+  expected_counts:{...p.provenance.expected_counts}};
  const s=new AuthoringSession(doc);s.prepareInitialRouting(s.newTransaction('prepare'));
  const before=s.file,rev=s.revision;
  const placement=s.previewHubPlacement();
@@ -1980,7 +1980,7 @@ test('R32g actual TL494 full-connectivity refinement benchmark',t=>{
  const source=JSON.parse(readFileSync(new URL('../../../fixtures/tl494-source-e695-v2.gscad.json',import.meta.url),'utf8'));
  const original=structuredClone(source),doc=structuredClone(source),p=doc.project,sh=p.sheets[0];
  p.provenance={...p.provenance,status:'synthetic',source_sha:'0'.repeat(40),source_path:'test-only/TL494-route-refinement',
-  expected_counts:{...p.provenance.expected_counts,da1_pins:0,b_graphics:0}};
+  expected_counts:{...p.provenance.expected_counts}};
  const s=new AuthoringSession(doc);s.prepareInitialRouting(s.newTransaction('prepare'));
  const placement=s.previewHubPlacement();
  if(placement.token)s.applyLayoutPreview(s.newTransaction('place'),placement.token);
@@ -2039,7 +2039,7 @@ test('R32h actual TL494 compares hub-only with functional peer-chain routing',t=
  const source=JSON.parse(readFileSync(new URL('../../../fixtures/tl494-source-e695-v2.gscad.json',import.meta.url),'utf8'));
  const original=structuredClone(source),doc=structuredClone(source),p=doc.project,sh=p.sheets[0];
  p.provenance={...p.provenance,status:'synthetic',source_sha:'0'.repeat(40),source_path:'test-only/TL494-functional-routing',
-  expected_counts:{...p.provenance.expected_counts,da1_pins:0,b_graphics:0}};
+  expected_counts:{...p.provenance.expected_counts}};
  const s=new AuthoringSession(doc),report=s.previewFunctionalRouting();
  assert.equal(report.requested,15);assert.equal(report.routed,15);assert.ok(report.token);
  assert.ok(report.attempted<=150);
@@ -2056,4 +2056,21 @@ test('R32h actual TL494 compares hub-only with functional peer-chain routing',t=
  assert.equal(s.undo(),true);assert.deepEqual(s.file,doc);
  t.diagnostic('TL494_R32H_FUNCTIONAL '+JSON.stringify({...report,token:!!report.token,moved:report.moved.map(id=>p.components.find(c=>c.id===id)?.refdes??id)}));
  assert.deepEqual(source,original);
+});
+
+
+test('R32l synthetic source copy retains canonical DA1 and b inventory through routing edits',()=>{
+ const source=JSON.parse(readFileSync(new URL('../../../fixtures/tl494-source-e695-v2.gscad.json',import.meta.url),'utf8'));
+ const doc=structuredClone(source),p=doc.project;
+ p.provenance={...p.provenance,status:'synthetic',source_sha:'0'.repeat(40),source_path:'test-only/count-parity'};
+ const s=new AuthoringSession(doc);
+ const counts={components:23,nets:15,memberships:62,da1_pins:16,b_graphics:2};
+ assert.deepEqual(s.file.project.provenance.expected_counts,counts);
+ s.prepareInitialRouting(s.newTransaction('prepare'));
+ assert.deepEqual(s.file.project.provenance.expected_counts,counts);
+ const corrupt=structuredClone(s.file);
+ corrupt.project.provenance.expected_counts.da1_pins=0;
+ corrupt.project.provenance.expected_counts.b_graphics=0;
+ assert.throws(()=>new AuthoringSession(corrupt),/SOURCE_COUNT_MISMATCH/);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,doc);
 });
