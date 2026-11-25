@@ -1255,11 +1255,15 @@ test('R19b magnetic placement preview aligns pins without creating a wire',async
  await page.goto('/');
  await page.getByRole('button',{name:'Файл'}).click();
  await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');
+ await expect(canvas).toHaveAttribute('data-camera-ready','true');
  const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
  await page.getByRole('button',{name:'Правка'}).click();
  await page.getByTestId('pin-magnet').click();
  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+ await expect(canvas).toHaveAttribute('data-tool','place');
  await page.mouse.click(paper.x+paper.width*.3,paper.y+paper.height*.4);
+ await expect(page.getByTestId('symbol-R1')).toBeVisible();
  // Use actual signed contact screen position, not an approximate paper ratio.
  const initialDownload=page.waitForEvent('download');await page.getByTestId('save-project').click();
  const initial=JSON.parse(readFileSync(await (await initialDownload).path(),'utf8'));
@@ -1268,11 +1272,13 @@ test('R19b magnetic placement preview aligns pins without creating a wire',async
  const frame=await page.getByTestId('gscad-paper-outline').boundingBox();
  const scale=frame.width/initial.project.sheets[0].frame.size_um[0];
  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+ await expect(canvas).toHaveAttribute('data-tool','place');
  const x=contact.x+contact.width/2+42000*scale,y=contact.y+contact.height/2+3000*scale;
  await page.mouse.move(x,y,{steps:5});
  await expect(page.getByTestId('pin-placement-guide')).toBeVisible();
  await expect(page.getByTestId('pin-placement-guide')).toHaveAttribute('data-electrical','false');
  await page.mouse.click(x,y);
+ await expect(page.getByTestId('symbol-R2')).toBeVisible();
  await expect(page.getByTestId('pin-placement-guide')).toHaveCount(0);
  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
  const doc=JSON.parse(readFileSync(await (await d).path(),'utf8'));
@@ -1360,10 +1366,14 @@ test('R20b equal pin gaps in actual editor keep the end poses and preserve Undo'
  await page.goto('/');
  await page.getByRole('button',{name:'Файл'}).click();
  await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');
+ await expect(canvas).toHaveAttribute('data-camera-ready','true');
  const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
- for(const x of [.2,.36,.8]){
+ for(const [i,x] of [.2,.36,.8].entries()){
   await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+ await expect(canvas).toHaveAttribute('data-tool','place');
   await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*.4);
+  await expect(page.getByTestId('symbol-R'+(i+1))).toBeVisible();
  }
  const saved=async()=>{
   const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
