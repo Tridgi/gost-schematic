@@ -1,7 +1,7 @@
 """Generate editor winding definitions from the actual Python catalog.
 
 No hand-transcribed coil shapes. Output is a build input, not a second catalog.
-Cu-core symbol is intentionally excluded until required constant text is supported.
+Required constant annotations are preserved with their first source anchor.
 """
 import json
 import sys
@@ -29,6 +29,7 @@ NAMES = {
     "inductor.magnetodielectric": "Катушка с магнитодиэлектрическим магнитопроводом",
     "inductor.sliding_contact": "Катушка со скользящим контактом",
     "inductor.tapped": "Катушка с отводом",
+    "inductor.trim_copper": "Катушка подстроечная с медным сердечником",
     "inductor.trim_magnetodielectric": "Катушка подстроечная магнитодиэлектрическая",
     "inductor.variable": "Катушка переменной индуктивности",
 }
@@ -87,16 +88,19 @@ def primitive(shape, width):
 
 def generate():
     entries = []
-    omitted = []
     for filename in sorted(SOURCE.glob("*.json")):
         definition = load_inductor(filename)
         s,p = definition.symbol,definition.part
-        if s.constant_annotations:
-            omitted.append(s.identifier)
-            continue
         if s.identifier not in NAMES:
             raise ValueError("Unclassified winding: "+s.identifier)
         symbol_id = "symbol/"+s.identifier
+        annotations = []
+        for key, text in s.constant_annotations:
+            slot = next(slot for slot in s.annotation_slots if slot.key == key)
+            anchor = slot.candidates[0]
+            annotations.append({"key":key,"text":text,"at_um":point(anchor.at),
+                                "height_um":3500,"horizontal":anchor.horizontal.value,
+                                "vertical":anchor.vertical.value})
         entries.append({
             "part": {"id":p.identifier,"reference_prefix":p.reference_prefix,
                      "symbol_ids":[symbol_id],"physical_pins":[
@@ -106,16 +110,17 @@ def generate():
                        "status":s.status.value,"standard_refs":list(s.standard_refs),
                        "pins":[{"physical_pin_number":pin.number,"at_um":point(pin.at),"side":pin.side.value}
                                for pin in s.pins],
-                       "graphics":[g for shape in s.graphics for g in primitive(shape,s.line_width_um)]},
+                       "graphics":[g for shape in s.graphics for g in primitive(shape,s.line_width_um)],
+                       **({"constant_annotations":annotations} if annotations else {})},
             "name":NAMES[s.identifier],
             "category":"Дроссели" if s.identifier.startswith("choke.") else "Катушки индуктивности",
         })
-    if len(entries)!=len(NAMES) or omitted!=["inductor.trim_copper"]:
-        raise ValueError(f"Unexpected winding inventory: {len(entries)}, omitted={omitted}")
+    if len(entries)!=len(NAMES):
+        raise ValueError(f"Unexpected winding inventory: {len(entries)}")
     return entries
 
 
 if __name__ == "__main__":
     data = generate()
     TARGET.write_text(json.dumps(data,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
-    print(f"Generated {len(data)} exact winding symbols; Cu annotation pending.")
+    print(f"Generated {len(data)} exact winding symbols and required constant annotations.")
