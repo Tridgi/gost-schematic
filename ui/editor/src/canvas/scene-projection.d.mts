@@ -11,7 +11,7 @@ export type CanvasPin = {
   at_um:PointUm;
   normal:CanvasPinNormal;
 };
-export type CanvasStroke = {from_um:PointUm;to_um:PointUm};
+export type CanvasStroke = {from_um:PointUm;to_um:PointUm;stroke_um?:number};
 export type CanvasSymbol = {
   instance_id:string;
   component_id:string;
