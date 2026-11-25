@@ -779,15 +779,16 @@ export default function App() {
         setIssue('Подготовка трассировки: смещено '+result.moved+' УГО, максимальное смещение '+(result.maxShiftUm/1000).toFixed(3)+' мм.');}
       catch(e){setIssue(e instanceof WireError&&e.code==='NO_CHANGE'?'Выходы у полей уже свободны.':'PREPARE_ROUTE_FAILED: '+String(e));}
     }:undefined}
-    onPreviewInitialBatch={authoringRef.current&&tool==='select'?ids=>{
+    onPreviewInitialBatch={authoringRef.current&&tool==='select'?(ids,controlled)=>{
       const a=authoringRef.current!;
       try{
-        const p=a.previewInitialBatch(ids);
+        if(controlled&&!window.confirm('Зарезервировать выходы выводов и разрешить только пересечения крестом без электрического соединения, если обход невозможен?'))return;
+        const p=a.previewInitialBatch(ids,controlled);
         if(!p.token){
           setIssue('Совместная трассировка: '+p.routed+'/'+p.requested+' цепей. Без изменений. '+p.outcomes.filter(o=>o.rejected).map(o=>o.name+': '+o.rejected).join('; '));
           return;
         }
-        if(!window.confirm('Найдена совместная разводка '+p.routed+'/'+p.requested+' цепей. Изгибов: '+p.quality.bends+', длина '+(p.quality.lengthUm/1000).toFixed(3)+' мм. Применить весь пакет?')){
+        if(!window.confirm('Найдена совместная разводка '+p.routed+'/'+p.requested+' цепей. Пересечений: '+p.quality.crossings+', изгибов: '+p.quality.bends+', длина '+(p.quality.lengthUm/1000).toFixed(3)+' мм. Применить весь пакет?')){
           a.discardLayoutPreview(p.token);return;
         }
         a.applyLayoutPreview(a.newTransaction('apply-initial-batch'),p.token);adoptAuthored();
