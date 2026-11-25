@@ -51,3 +51,16 @@ test('R31 analytic semicircle bounds and stroke are used under rotation and refl
  s.rotation_deg=90;s.mirror_x=true;
  assert.deepEqual(detectPaperOverflow(scene,snapshot(),[297000,210000]).symbols,['R1']);
 });
+
+
+test('R31b print bounds include wire transverse thickness, dot radius and non-electric stroke',()=>{
+ const scene={symbols:[],graphics:[{id:'G',strokes:[{from_um:[1000,149],to_um:[3000,149],stroke_um:300}]}]};
+ const snapshot={wires:[
+ {id:'H',vertices:[{at_um:[0,149]},{at_um:[1000,149]}]},
+ {id:'V',vertices:[{at_um:[149,1000]},{at_um:[149,3000]}]},
+ {id:'butt',vertices:[{at_um:[0,150]},{at_um:[1000,150]}]}],
+ junctions:[{id:'J',at_um:[549,1000]},{id:'OK',at_um:[550,1000]}],
+ splices:[{id:'S',at_um:[0,0]}]};
+ const report=detectPaperOverflow(scene,snapshot,[10000,10000]);
+ assert.deepEqual(report,{symbols:[],graphics:['G'],wires:['H','V'],junctions:['J'],splices:[],total:4});
+});

@@ -61,7 +61,7 @@ function projectToCanvasScene(file,sheetId){
   if(!isB&&!["line","polyline"].includes(g.kind))deny("UNKNOWN_SHEET_GRAPHIC");
   return {id:g.id,layer_id:g.layer_id,kind:g.kind,
    source_role:isB?"source_b_continuation":g.source_role??"none",
-   electrical:false,strokes:graphicsToStrokes(isB?{...g,kind:"line"}:g)};
+   electrical:false,strokes:graphicsToStrokes(isB?{...g,kind:"line"}:g).map(stroke=>({...stroke,stroke_um:g.stroke_um}))};
  });
  const clone=v=>JSON.parse(JSON.stringify(v));
  return {symbols:sourceSymbols,wires:clone(sheet.wires),junctions:clone(sheet.junctions),splices:clone(sheet.splices),graphics:visualGraphics};

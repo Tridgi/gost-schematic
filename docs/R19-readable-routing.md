@@ -295,3 +295,21 @@ and paper edges. This is not a normative GOST clearance certificate:
 actual font glyph extents, wire stroke width, arc stroke contact distance,
 and dynamic refdes/value labels remain outside this increment. No change
 to frozen E695, catalog approval, or electrical membership.
+
+
+## R31b — curved ink and physical print extents
+
+The arc proximity warning now tests the visible cardinal semicircle
+or full circle, using radial endpoint projections and cardinal extrema.
+For disjoint conductor centerlines it compares minimum distance against
+the symbol stroke half-width. Exact signed pin contact exemptions from
+R31a remain. This is visual protection, not an electrical clearance rule.
+Paper overflow also accounts for the browser print's 300 µm orthogonal
+butt-capped wire stroke and 550 µm explicit junction dot radius.
+The projection retains non-electrical sheet graphic stroke widths.
+Invisible splice nodes remain point checks. Four tests cover thick
+circle near misses, mirrored semicircles, physical print bounds and
+non-electrical graphics. No dynamic refdes/value label rendering or
+font metric verification is introduced here. Wire width in DRC and
+non-cardinal curves are still outside this increment. Frozen E695
+and catalogue approval are unchanged.
