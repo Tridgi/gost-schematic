@@ -1457,11 +1457,20 @@ test('R22 automatic layout previews metrics, cancel is harmless, confirm is one 
  await page.getByTestId('tool-select').click();
  const before=await saved();
  const openPlan=async(accept)=>{
-  let summary='';
-  page.once('dialog',async d=>{summary=d.message();if(accept)await d.accept();else await d.dismiss()});
   await page.getByRole('button',{name:'Правка'}).click();
   await page.getByTestId('optimize-layout').click();
-  expect(summary).toContain('Изгибы: 4 → 0');expect(summary).toContain('Длина:');
+  await expect(page.getByTestId('layout-preview-dialog')).toBeVisible();
+  await expect(page.getByTestId('layout-bends')).toHaveText('4 → 0');
+  const before=page.getByTestId('layout-before'),after=page.getByTestId('layout-after');
+  await expect(before).toBeVisible();await expect(after).toBeVisible();
+  await expect.poll(()=>before.evaluate(img=>img.complete&&img.naturalWidth>0)).toBeTruthy();
+  await expect.poll(()=>after.evaluate(img=>img.complete&&img.naturalWidth>0)).toBeTruthy();
+  const svgA=decodeURIComponent((await before.getAttribute('src')).split(',').slice(1).join(','));
+  const svgB=decodeURIComponent((await after.getAttribute('src')).split(',').slice(1).join(','));
+  expect(svgA).not.toBe(svgB);
+  expect(svgA.match(/viewBox="([^"]+)"/)[1]).toBe(svgB.match(/viewBox="([^"]+)"/)[1]);
+  await page.getByTestId(accept?'layout-apply':'layout-cancel').click();
+  await expect(page.getByTestId('layout-preview-dialog')).toHaveCount(0);
  };
  await openPlan(false);expect((await saved()).project).toEqual(before.project);
  await openPlan(true);
