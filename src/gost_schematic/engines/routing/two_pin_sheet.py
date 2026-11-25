@@ -8,7 +8,7 @@ No inference of nets or junctions from ink; no changes to shared APIs.
 
 from collections.abc import Mapping
 
-from gost_schematic.core.geometry import Box, Point, primitive_stroked_bounds
+from gost_schematic.core.geometry import Box, Line, Point, StyledLine, primitive_stroked_bounds
 from gost_schematic.engines.ports import pin_corridors_for_component
 from gost_schematic.engines.routing.two_pin_orthogonal import (
     TwoPinRoute,
@@ -106,19 +106,25 @@ def route_circuit_two_pins(
             component.transform.box(box).translated(component.origin)
             for box in symbol.routing_boxes
         )
-        # A foreign component's terminal stubs and functional graphics are
-        # ink, too. Its complete stroke bounds must be protected, even where
-        # the catalog body/blue boxes intentionally stop short of contacts.
-        # Do not blanket-block the two endpoint components: their attached
-        # terminals must remain reachable (their body and authored zones
-        # still apply).
-        if component.reference not in (source.reference, target.reference):
-            obstacles.extend(
-                component.transform.box(
-                    primitive_stroked_bounds(primitive, symbol.line_width_um)
-                ).translated(component.origin)
-                for primitive in symbol.graphics
-            )
+        # Reserve all ink, including the other terminals of endpoint components.
+        # Only an authored straight conductor ending at a requested physical
+        # contact is exempt from its own stroke box. Body/functional boxes
+        # still apply; foreign primitives never receive this exemption.
+        endpoint_locals = {
+            pin.at for pin in symbol.pins
+            if PinRef(component.reference, pin.number) in (source, target)
+        }
+        topology = symbol.conductor_topology
+        for index, primitive in enumerate(symbol.graphics):
+            if (
+                isinstance(primitive, (Line, StyledLine))
+                and (topology is None or index in topology.conductor_indices)
+                and (primitive.start in endpoint_locals or primitive.end in endpoint_locals)
+            ):
+                continue
+            obstacles.append(component.transform.box(
+                primitive_stroked_bounds(primitive, symbol.line_width_um)
+            ).translated(component.origin))
         corridors = {
             corridor.pin.number: corridor
             for corridor in pin_corridors_for_component(symbol, component)

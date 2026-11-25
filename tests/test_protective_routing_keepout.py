@@ -175,3 +175,34 @@ def test_foreign_wiper_stubs_outside_blue_zone_are_not_crossed(rotation, mirror)
     assert len(result.points) > 2
     for a, b in zip(result.points, result.points[1:], strict=False):
         assert not any(segment_intersects_box(Line(a, b), hazard) for hazard in hazards)
+
+
+@pytest.mark.parametrize("rotation", (0, 90, 180, 270))
+@pytest.mark.parametrize("mirror", (False, True))
+def test_endpoint_component_other_wiper_stroke_stays_protected(rotation, mirror):
+    catalog = CatalogResolver()
+    transform = Transform(rotation, mirror)
+    symbol = catalog.symbols["resistor.variable_side_wiper"]
+    source, target = PinRef("R1", "2"), PinRef("R2", "1")
+    start = transform.apply(Point(10000, 0))
+    end = transform.apply(Point(7000, -18000))
+    fixed = catalog.symbols["resistor.fixed"]
+    pin = next(p for p in fixed.pins if p.number == "1")
+    circuit = Circuit((
+        ComponentInstance("R1", symbol.identifier, Point(0, 0), transform),
+        ComponentInstance("R2", fixed.identifier, end - transform.apply(pin.at), transform),
+    ), (Net("LINK", (source, target)),))
+    # The unselected wiper's long horizontal stroke extends beyond blue protection.
+    wiper = symbol.graphics[4]
+    assert isinstance(wiper, Line)
+    assert wiper.end == Point(10000, -5000)
+    hazard = transform.box(primitive_stroked_bounds(
+        wiper, symbol.line_width_um
+    )).expanded(550)
+    route = route_circuit_two_pins(
+        circuit, catalog.parts, catalog.symbols, source, target, net_name="LINK",
+    )
+    assert route.ok, route.diagnostics
+    assert route.points[0] == start and route.points[-1] == end
+    assert all(not segment_intersects_box(Line(a, b), hazard)
+               for a, b in zip(route.points, route.points[1:], strict=False))
