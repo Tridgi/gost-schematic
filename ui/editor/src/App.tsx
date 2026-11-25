@@ -846,6 +846,13 @@ export default function App() {
     onPaste={authoringRef.current&&clipboard&&tool==='select'?handlePaste:undefined}
     smartRouting={smartRouting} onToggleSmartRouting={authoringRef.current?setSmartRouting:undefined}
     pinMagnet={pinMagnet} onTogglePinMagnet={authoringRef.current?setPinMagnet:undefined}
+    onSimplifyRoutes={authoringRef.current&&tool==='select'?()=>{
+      const a=authoringRef.current!,ids=groupIds.length>1?groupIds:[];
+      if(!window.confirm(ids.length?'Упростить прямые межвыводные проводники внутри выделения?':'Упростить прямые межвыводные проводники активного листа? Положение УГО и электрические цепи не изменятся.'))return;
+      try{const result=a.simplifyRoutes(a.newTransaction('simplify-routes'),ids);adoptAuthored();
+        setIssue('Оптимизировано '+result.changed+' из '+result.checked+' проводников; устранено изгибов: '+result.removedBends+'; сокращено '+(result.removedLengthUm/1000).toFixed(3)+' мм. Проверьте маршруты.');}
+      catch(e){setIssue(e instanceof WireError&&e.code==='NO_CHANGE'?'Без изменений: безопасного улучшения не найдено.':'ROUTE_CLEANUP_FAILED: '+String(e));}
+    }:undefined}
     onAlignConnectedPair={authoringRef.current&&groupIds.length===2&&tool==='select'?()=>{
       const a=authoringRef.current!;
       if(!window.confirm('Выровнять соединённые физические выводы, переместив один из двух элементов? Остальные связи сохраняются.'))return;
