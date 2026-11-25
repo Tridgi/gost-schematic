@@ -63,3 +63,19 @@ test('PNG300 encoder rejects invalid chunk CRC, missing IDAT and trailing garbag
  const trailing=Uint8Array.from([...valid,0x61]);
  assert.throws(()=>setPng300Dpi(trailing),/INVALID_PNG_STRUCTURE/);
 });
+
+test('R17c exact circle and semicircle under all D4 transforms, invalid curves rejected',()=>{
+ const doc=structuredClone(source);
+ const inst=doc.project.sheets[0].instances[0];
+ const sym=doc.project.symbol_definitions.find((s:{id:string})=>s.id===inst.symbol_id);
+ sym.graphics=[{kind:'circle',points_um:[[0,0],[2000,0]],stroke_um:300},
+  {kind:'semicircle',points_um:[[-2000,0],[0,-2000],[2000,0]],stroke_um:300}];
+ for(const rotation of [0,90,180,270])for(const mirror of [false,true]){
+  inst.rotation_deg=rotation;inst.mirror_x=mirror;
+  const svg=renderProjectPreviewSVG(doc,'sheet-1');
+  assert.match(svg,/<circle[^>]* r="2"[^>]*stroke-width="0.300"/);
+  assert.match(svg,new RegExp(' A 2 2 0 0 '+(mirror?0:1)+' '));
+ }
+ sym.graphics[1].points_um[1]=[0,-1999];
+ assert.throws(()=>renderProjectPreviewSVG(doc,'sheet-1'),/INVALID_CURVE/);
+});
