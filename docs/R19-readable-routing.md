@@ -445,3 +445,26 @@ requires explicit confirmation; Undo restores the original placement.
 Three tests cover rotation, fixed hub, read-only preview/Undo, refusal
 on wired or locked sheets, and detached TL494 comparison
 (TL494_R32F_PREPLACEMENT). CI and actual improvement are pending.
+
+
+## R32g — connected route refinement
+
+R32f passed the real TL494 test with all 15 Nets connected after moving
+C7, R7 and R3: 89 bends, 48 crossings, 6026.963 mm, 79 wires,
+34 straight wires, zero errors/geometry warnings/overflow.
+The new explicitly confirmed refinement preview considers only connected
+local 2–32-pin Nets whose wires all carry needs_routing_review.
+This flag is not proof of generated provenance; users must consent to
+replacing the eligible routes. It ranks Nets by existing crossings
+and length, tries up to two passes / 32 rebuilds on detached copies,
+and accepts only strict Pareto improvements in actual geometry.
+The controlled adaptive planner retains bounded visual annotations,
+physical lead reservations and foreign geometry. Each replacement
+must preserve all physical pin groups and existing safety gates;
+crossings, bends and length may not increase. Other Net geometry
+and route statuses remain unchanged. No movement of components or
+change to the frozen source. Entire accepted sequence is one
+revision-bound Apply, with exact Undo. Three regressions include
+staircase simplification, protection of unmarked routes, and actual
+15-Net TL494 refinement benchmark TL494_R32G_REFINEMENT.
+Full CI and improvement measurements pending.
