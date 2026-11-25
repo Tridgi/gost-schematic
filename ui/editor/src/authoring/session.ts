@@ -1388,7 +1388,7 @@ export class AuthoringSession {
   }
   /** Reconstruct a connected Net as a bounded obstacle-aware rectilinear
    * tree. Signed pin membership, component poses and other Nets are fixed. */
-  buildNetTree(tx:Tx,netId:string):{pins:number;wires:number;junctions:number;lengthUm:number;bends:number}{
+  buildNetTree(tx:Tx,netId:string,initial=false):{pins:number;wires:number;junctions:number;lengthUm:number;bends:number}{
     let result:{pins:number;wires:number;junctions:number;lengthUm:number;bends:number}|undefined;
     this.edit(tx,draft=>{
       const sh=draft.project.sheets[indexOfSheet(draft)];
@@ -1396,18 +1396,24 @@ export class AuthoringSession {
       if(sh.texts.length||sh.labels.length||sh.graphics.length)reject('LAYOUT_ANNOTATIONS_UNSUPPORTED');
       const net=draft.project.nets.find(n=>n.id===netId);
       if(!net)reject('UNKNOWN_NET');
-      if(net.members.length<3||net.members.length>32)reject('TREE_PIN_COUNT');
+      if(net.members.length<(initial?2:3)||net.members.length>32)reject('TREE_PIN_COUNT');
       const byComp=new Map(sh.instances.map(i=>[i.component_id,i]));
       if(net.members.some(p=>!byComp.has(p.component_id))||
-        draft.project.sheets.some(s=>s.id!==sh.id&&s.wires.some(w=>w.net_id===netId)))reject('RAIL_CROSS_SHEET');
-      if(this.engine.validateNet(netId).pin_groups.length!==1)reject('RAIL_UNCONNECTED_NET');
-      const prior=assessLayout(draft,this.engine);
+        draft.project.sheets.some(s=>s.id!==sh.id&&[...s.wires,...s.junctions,...s.splices].some(w=>w.net_id===netId)))reject('RAIL_CROSS_SHEET');
+      const validation=this.engine.validateNet(netId);
+      if(initial){
+        // Only completely untouched declared Nets. Never erase partial/manual geometry.
+        if(validation.status!=='unrouted'||draft.project.sheets.some(s=>[...s.wires,...s.junctions,...s.splices].some(w=>w.net_id===netId)))reject('TREE_ALREADY_ROUTED');
+      }else if(validation.pin_groups.length!==1)reject('RAIL_UNCONNECTED_NET');
+      const prior=assessLayout(draft,this.engine,initial?netId:undefined);
       if(!prior.quality.complete)reject('LAYOUT_CHECK_INCOMPLETE');
       const old=sh.wires.filter(w=>w.net_id===netId);
       if(old.some(w=>[w.vertices[0],w.vertices.at(-1)!].some(v=>v.anchor.kind==='free')))reject('RAIL_DANGLING');
       const layers=new Set(old.map(w=>w.layer_id));
-      if(layers.size!==1)reject('RAIL_MIXED_LAYERS');
-      const layer=[...layers][0],layerDef=sh.layers.find(l=>l.id===layer);
+      if(!initial&&layers.size!==1)reject('RAIL_MIXED_LAYERS');
+      const eligible=sh.layers.filter(l=>l.kind==='electrical'&&!l.locked&&l.visible&&l.printable);
+      if(initial&&eligible.length!==1)reject('TREE_ELECTRICAL_LAYER_AMBIGUOUS');
+      const layer=initial?eligible[0].id:[...layers][0],layerDef=sh.layers.find(l=>l.id===layer);
       if(!layerDef||layerDef.locked||!layerDef.visible||!layerDef.printable||layerDef.kind!=='electrical')reject('LAYER_LOCKED');
       const defs=new Map(draft.project.symbol_definitions.map(d=>[d.id,d]));
       const inflate=(b:Bounds):Bounds=>({minX:Math.floor(b.minX)-1000,minY:Math.floor(b.minY)-1000,
@@ -1459,8 +1465,10 @@ export class AuthoringSession {
       sh.splices=sh.splices.filter(n=>n.net_id!==netId);
       const {subset,session}=localSession(draft,this.clock);
       if(session.engine.validateNet(netId).pin_groups.length!==1)reject('RAIL_TOPOLOGY_MISMATCH');
+      const otherStatuses=new Map(draft.project.nets.filter(n=>n.id!==netId).map(n=>[n.id,n.route_status]));
       const next=materialize(draft,subset,session);
-      if(!preservesLayoutSafety(prior,assessLayout(next,session.engine)))reject('TREE_UNSAFE_DIAGNOSTICS');
+      if(initial)for(const n of next.project.nets)if(otherStatuses.has(n.id))n.route_status=otherStatuses.get(n.id)!;
+      if(!preservesLayoutSafety(prior,assessLayout(next,session.engine,initial?netId:undefined)))reject('TREE_UNSAFE_DIAGNOSTICS');
       result={pins:pins.length,wires:wires.length,junctions:junctions.length,lengthUm:plan.lengthUm,bends:plan.bends};
       return next;
     });
