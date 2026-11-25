@@ -37,6 +37,44 @@ function contact(a,b){
  if(!within(at,a.box)||!within(at,b.box))return null;
  return {kind:'touch',at};
 }
+/** Exact straight stroke versus H/V wire centerline. Rational arithmetic avoids
+ * floating rounding of signed µm coordinates, even for steep diagonals. */
+function straightContact(segment,a,b){
+ const fixed=segment.horizontal?1:0,variable=1-fixed,q=segment.a.at_um[fixed];
+ const lo=BigInt(Math.min(segment.a.at_um[variable],segment.b.at_um[variable]));
+ const hi=BigInt(Math.max(segment.a.at_um[variable],segment.b.at_um[variable]));
+ if(q<Math.min(a[fixed],b[fixed])||q>Math.max(a[fixed],b[fixed]))return [];
+ const at=v=>segment.horizontal?[v,q]:[q,v];
+ if(a[fixed]===b[fixed]){
+  const left=lo>BigInt(Math.min(a[variable],b[variable]))?lo:BigInt(Math.min(a[variable],b[variable]));
+  const right=hi<BigInt(Math.max(a[variable],b[variable]))?hi:BigInt(Math.max(a[variable],b[variable]));
+  if(left>right)return [];
+  return left===right?[{at:at(Number(left))}]:[{overlap:true}];
+ }
+ let denominator=BigInt(b[fixed])-BigInt(a[fixed]);
+ let numerator=BigInt(a[variable])*denominator+(BigInt(b[variable])-BigInt(a[variable]))*(BigInt(q)-BigInt(a[fixed]));
+ if(denominator<0n){denominator=-denominator;numerator=-numerator}
+ if(numerator<lo*denominator||numerator>hi*denominator)return [];
+ return numerator%denominator===0n?[{at:at(Number(numerator/denominator))}]:[{nonInteger:true}];
+}
+/** Analytic H/V-circle intersection, clipped to the semicircle's visible half.
+ * Square-root values are used only for a visual warning, never connectivity. */
+function curvedContact(segment,symbol,curve){
+ const center=world(symbol,curve.center),r=curve.radius;
+ const fixed=segment.horizontal?1:0,variable=1-fixed,q=segment.a.at_um[fixed];
+ const d=q-center[fixed];if(Math.abs(d)>r)return [];
+ const t=Math.sqrt((r-Math.abs(d))*(r+Math.abs(d)));
+ const lo=Math.min(segment.a.at_um[variable],segment.b.at_um[variable]),hi=Math.max(segment.a.at_um[variable],segment.b.at_um[variable]);
+ const apex=curve.kind==='semicircle'?world(symbol,curve.points_um[1]):null;
+ const result=[];
+ for(const v of new Set([center[variable]-t,center[variable]+t])){
+  if(v<lo-1e-6||v>hi+1e-6)continue;
+  const at=segment.horizontal?[v,q]:[q,v];
+  if(apex&&(at[0]-center[0])*(apex[0]-center[0])+(at[1]-center[1])*(apex[1]-center[1])< -1e-6)continue;
+  result.push({at});
+ }
+ return result;
+}
 export function analyzeDiagnostics(file,scene,snapshot,routeStatuses={},options={}){
  const maxItems=options.maxItems??200,maxComparisons=options.maxComparisons??150000;
  const buckets={error:[],warning:[],info:[]},seen=new Set(),counts={error:0,warning:0,info:0};
@@ -124,6 +162,31 @@ export function analyzeDiagnostics(file,scene,snapshot,routeStatuses={},options=
    const foreign=assigned!==undefined&&assigned!==seg.wire.net_id;
    add(foreign?'DRC_FOREIGN_PIN_CONTACT':'DRC_UNSIGNED_PIN_CONTACT',foreign?'error':'warning',
     'Проводник '+netName(seg.wire.net_id)+' касается '+ref(s.component_id)+'.'+p.physical_pin_number+' без соответствующего PinRef.',[seg.wire.id,pinId],s.instance_id);
+  }
+ }
+ // Visual wire-to-symbol ink checks: real straight segments and analytic arcs.
+ // A genuine signed pin contact is exempt only at its exact terminal.
+ outer:for(const {s,box} of boxes){
+  for(const seg of sorted){
+   if(seg.box.x0>box.x1)break;
+   if(!budget())break outer;
+   if(!overlap(seg.box,box))continue;
+   const allowed=hit=>hit.at&&[seg.a,seg.b].some(v=>
+     v.anchor.kind==='pin'&&v.anchor.component_id===s.component_id&&same(v.at_um,hit.at)&&
+     s.pins.some(p=>p.physical_pin_number===v.anchor.physical_pin_number&&same(pinWorld(s,p.physical_pin_number).at_um,hit.at)));
+   let collision=false;
+   for(const stroke of s.inkStrokes??s.strokes){
+    if(!budget())break outer;
+    const a=world(s,stroke.from_um),b=world(s,stroke.to_um);
+    if(!overlap(seg.box,bbox(a,b)))continue;
+    if(straightContact(seg,a,b).some(hit=>!allowed(hit))){collision=true;break}
+   }
+   if(!collision)for(const curve of s.curves??[]){
+    if(!budget())break outer;
+    if(curvedContact(seg,s,curve).some(hit=>!allowed(hit))){collision=true;break}
+   }
+   if(collision)add('DRC_WIRE_SYMBOL_INK','warning',
+    'Проводник '+netName(seg.wire.net_id)+' пересекает графику УГО '+ref(s.component_id)+' вне подписанного вывода. Проверьте разводку.',[seg.wire.id,s.component_id],s.instance_id);
   }
  }
  // A large number of disconnected pins must never hide critical DRC errors.
