@@ -1260,9 +1260,16 @@ test('R19b magnetic placement preview aligns pins without creating a wire',async
  await page.getByTestId('pin-magnet').click();
  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
  await page.mouse.click(paper.x+paper.width*.3,paper.y+paper.height*.4);
+ // Use actual signed contact screen position, not an approximate paper ratio.
+ const initialDownload=page.waitForEvent('download');await page.getByTestId('save-project').click();
+ const initial=JSON.parse(readFileSync(await (await initialDownload).path(),'utf8'));
+ const component=initial.project.components[0];
+ const contact=await page.getByTestId('signed-pin-'+component.id+'-2').boundingBox();
+ const frame=await page.getByTestId('gscad-paper-outline').boundingBox();
+ const scale=frame.width/initial.project.sheets[0].frame.size_um[0];
  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
- const x=paper.x+paper.width*.42,y=paper.y+paper.height*.4+paper.height*3/297;
- await page.mouse.move(x,y);
+ const x=contact.x+contact.width/2+42000*scale,y=contact.y+contact.height/2+3000*scale;
+ await page.mouse.move(x,y,{steps:5});
  await expect(page.getByTestId('pin-placement-guide')).toBeVisible();
  await expect(page.getByTestId('pin-placement-guide')).toHaveAttribute('data-electrical','false');
  await page.mouse.click(x,y);
