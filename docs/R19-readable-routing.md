@@ -517,3 +517,23 @@ reference/value labels. This is not normative ESKD print acceptance,
 a canonical source unlock, or native Windows acceptance.
 R32g confirmed 15/15, 87 bends, 41 crossings, 5763.668 mm after refinement.
 R32h main CI passed; browser result and R32i evidence CI pending.
+
+
+## R32j — derived visible component labels
+
+Canvas and browser SVG share one bounded read-only label placement
+function. Upright reference designators and existing nonempty values
+use 2.5 mm monospace preview text, conservative physical envelopes
+and eight nearby candidate positions at four distances. Candidate
+envelopes must stay inside print margins and clear every transformed
+symbol envelope, conductor, junction, source graphic, sheet annotation
+and previously placed label. Missing values are never invented.
+Unplaced labels are explicitly counted on canvas and listed in SVG
+metadata and the R32i evidence manifest. Existing Net membership and
+serialized projects remain unchanged. Labels are derived after route
+geometry, not yet reserved as permanent routing obstacles. The planner
+is conservative, so a failed placement is not proof that no placement
+exists. Preview font metrics and actual printed typography remain
+unverified; canonical Python/Windows export parity is not claimed.
+Two regression tests cover deterministic identity, label counts,
+non-overlap, empty values, XML escaping and explicit refusal.

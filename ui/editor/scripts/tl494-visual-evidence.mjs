@@ -67,6 +67,11 @@ try{
   assert.equal((svg.match(/data-layer="wires"/g)??[]).length,sheet.wires.length);
   assert.equal((svg.match(/data-kind="source_b_continuation"/g)??[]).length,2);
   assert.equal((svg.match(/data-layer="explicit-junctions"/g)??[]).length,sheet.junctions.length);
+  const placedLabels=Number(svg.match(/data-component-label-count="(\d+)"/)?.[1]);
+  const unplacedLabels=Number(svg.match(/data-unplaced-label-count="(\d+)"/)?.[1]);
+  assert.equal(placedLabels+unplacedLabels,23);
+  assert.equal((svg.match(/data-label-role="reference"/g)??[]).length,placedLabels);
+  assert.equal((svg.match(/data-label-role="value"/g)??[]).length,0);
   const pngBytes=await page.evaluate(async({svg,size})=>{
    const blob=await globalThis.GSCADPreview.renderPreviewPng300(svg,size);
    return Array.from(new Uint8Array(await blob.arrayBuffer()));
@@ -76,7 +81,7 @@ try{
   assert.equal(height,Math.round(sheet.frame.size_um[1]/25400*300));
   const json=JSON.stringify(file,null,2)+'\n';
   writeFileSync(join(output,name+'.gscad.json'),json);writeFileSync(join(output,name+'.svg'),svg);writeFileSync(join(output,name+'.png'),png);
-  report.stages.push({name,quality,connectedNets:15,pinRefs:62,png:{width,height,dpi:300},sha256:{project:hash(json),svg:hash(svg),png:hash(png)}});
+  report.stages.push({name,quality,connectedNets:15,pinRefs:62,componentLabels:{placed:placedLabels,unplaced:unplacedLabels},png:{width,height,dpi:300},sha256:{project:hash(json),svg:hash(svg),png:hash(png)}});
  }
  assert.deepEqual(source,original);assert.deepEqual(readFileSync(sourcePath),raw);
  writeFileSync(join(output,'report.json'),JSON.stringify(report,null,2)+'\n');

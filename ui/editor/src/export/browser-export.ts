@@ -8,6 +8,7 @@ import {noteLayout} from '../model/symbol-notes.mjs';
 import {curveGeometry} from '../model/curves.mjs';
 import { worldPin } from '../model/contract.ts';
 import { projectToCanvasScene } from '../canvas/scene-projection.mjs';
+import {planComponentLabels} from '../canvas/component-labels.ts';
 
 const esc=(x:unknown):string=>String(x).replace(/[&<>"']/g,c=>({
   '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'
@@ -51,7 +52,8 @@ function primitiveInk(inst:SymbolInstance,primitive:Primitive):string{
 export function renderProjectPreviewSVG(file:ProjectFileV2,sheetId:string):string{
   if(file?.format!=='gscad-project'||file.format_version!==2)throw Error('INVALID_PROJECT_V2');
   // Reject malformed external ids, parts, foreign graphic pin references, duplicate entities.
-  projectToCanvasScene(file,sheetId);
+  const scene=projectToCanvasScene(file,sheetId);
+  const labelPlan=planComponentLabels(file,sheetId,scene);
   const p=file.project,sh=p.sheets.find(s=>s.id===sheetId);
   if(!sh)throw Error('UNKNOWN_SHEET');
   const width=mm(sh.frame.size_um[0]),height=mm(sh.frame.size_um[1]);
@@ -66,7 +68,7 @@ export function renderProjectPreviewSVG(file:ProjectFileV2,sheetId:string):strin
   const out=[
     '<svg xmlns="http://www.w3.org/2000/svg" width="'+width+'mm" height="'+height+
     'mm" viewBox="0 0 '+width+' '+height+'" data-source-model="gscad-project-v2"'+
-    ' data-font-status="unverified-preview" data-source-net-count="'+p.nets.length+
+    ' data-font-status="unverified-preview" data-component-label-count="'+labelPlan.labels.length+'" data-unplaced-label-count="'+labelPlan.unplaced.length+'" data-source-net-count="'+p.nets.length+
     '" data-authored-wire-count="'+sh.wires.length+'">',
     '<metadata data-kind="source-netlist" data-electrical="declared-not-geometry-inferred">'+
     esc(JSON.stringify(nets))+'</metadata>',
@@ -119,6 +121,14 @@ export function renderProjectPreviewSVG(file:ProjectFileV2,sheetId:string):strin
     out.push('<text data-layer="annotations" x="'+mm(item.at_um[0])+
       '" y="'+mm(item.at_um[1])+'" font-size="'+mm('height_um' in item?item.height_um:3500)+
       '" font-family="sans-serif" fill="#000">'+esc(item.text)+'</text>');
+  }
+  out.push('<metadata data-kind="unplaced-component-labels">'+esc(JSON.stringify(labelPlan.unplaced))+'</metadata>');
+  for(const l of labelPlan.labels){
+    out.push('<g data-layer="component-labels" data-electrical="false" data-instance-id="'+esc(l.instanceId)+'">');
+    const line=(value:string,y:number,role:string)=>'<text data-label-role="'+role+'" x="'+mm(l.x)+'" y="'+mm(y)+'" text-anchor="middle" font-family="monospace" font-size="'+mm(l.heightUm)+'" fill="#000" stroke="none">'+esc(value)+'</text>';
+    out.push(line(l.refdes,l.y,'reference'));
+    if(l.value)out.push(line(l.value,l.y+l.lineStepUm,'value'));
+    out.push('</g>');
   }
   out.push('</svg>');
   return out.join('');

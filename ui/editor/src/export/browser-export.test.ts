@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {renderProjectPreviewSVG,setPng300Dpi} from './browser-export.ts';
+import {planComponentLabels} from '../canvas/component-labels.ts';
 
 const source=JSON.parse(readFileSync(
   new URL('../../../fixtures/tl494-source-e695-v2.gscad.json',import.meta.url),'utf8'
@@ -78,4 +79,35 @@ test('R17c exact circle and semicircle under all D4 transforms, invalid curves r
  }
  sym.graphics[1].points_um[1]=[0,-1999];
  assert.throws(()=>renderProjectPreviewSVG(doc,'sheet-1'),/INVALID_CURVE/);
+});
+
+
+test('R32j frozen source component labels are upright, deterministic and do not invent missing values',()=>{
+ const original=structuredClone(source),p=planComponentLabels(source,'sheet-1');
+ assert.equal(p.labels.length+p.unplaced.length,23);
+ assert.ok(p.labels.length>0);
+ assert.ok(p.labels.every(l=>!l.value));
+ assert.deepEqual(planComponentLabels(source,'sheet-1'),p);
+ assert.deepEqual(source,original);
+ const svg=renderProjectPreviewSVG(source,'sheet-1');
+ assert.equal((svg.match(/data-label-role="reference"/g)??[]).length,p.labels.length);
+ assert.equal((svg.match(/data-label-role="value"/g)??[]).length,0);
+ assert.ok(svg.includes('data-unplaced-label-count="'+p.unplaced.length+'"'));
+ for(const a of p.labels)for(const b of p.labels.filter(x=>x!==a)){
+  assert.ok(a.bounds.x1<b.bounds.x0||a.bounds.x0>b.bounds.x1||a.bounds.y1<b.bounds.y0||a.bounds.y0>b.bounds.y1);
+ }
+});
+test('R32j nonempty values escape XML and unresolved placement is explicit',()=>{
+ const doc=structuredClone(source);
+ doc.project.components[0].value='10 < 20 & "V"';
+ const labels=planComponentLabels(doc,'sheet-1');
+ assert.ok(labels.labels.some(l=>l.refdes==='C1'&&l.value===doc.project.components[0].value));
+ const svg=renderProjectPreviewSVG(doc,'sheet-1');
+ assert.ok(svg.includes('10 &lt; 20 &amp; &quot;V&quot;'));
+ assert.ok(svg.includes('data-label-role="value"'));
+ const bad=structuredClone(doc);
+ bad.project.components[0].value='x'.repeat(65);
+ const p=planComponentLabels(bad,'sheet-1');
+ assert.ok(p.unplaced.some(l=>l.refdes==='C1'&&l.reason==='LABEL_TEXT_UNSUPPORTED'));
+ assert.ok(renderProjectPreviewSVG(bad,'sheet-1').includes('LABEL_TEXT_UNSUPPORTED'));
 });
