@@ -8,6 +8,19 @@ const source = JSON.parse(readFileSync(
 const wiring = JSON.parse(readFileSync(
   new URL('../public/fixtures/tl494-source-e695-v2.wiring.json',import.meta.url),'utf8'));
 
+
+/** Immediate hit-test oracle: distinguish a blocked pointer from bad CAD
+ * geometry. Do not retry placement or wait for a transient overlay to vanish. */
+async function assertCanvasReceivesPointer(page,x,y){
+ const hit=await page.evaluate(({x,y})=>{
+  const el=document.elementFromPoint(x,y);
+  return {canvas:!!el?.closest('[data-testid="gscad-signed-svg-canvas"]'),
+    tag:el?.tagName??null,testId:el?.closest('[data-testid]')?.getAttribute('data-testid')??null,
+    role:el?.closest('[role]')?.getAttribute('role')??null};
+ },{x,y});
+ expect(hit.canvas,'Pointer at '+x+','+y+' hits '+JSON.stringify(hit)).toBe(true);
+}
+
 function signedPair() {
   // Choose pair using the REAL domain command implementation, not image proximity.
   for (const net of wiring.nets) {
@@ -1262,6 +1275,7 @@ test('R19b magnetic placement preview aligns pins without creating a wire',async
  await page.getByTestId('pin-magnet').click();
  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
  await expect(canvas).toHaveAttribute('data-tool','place');
+ await assertCanvasReceivesPointer(page,paper.x+paper.width*.3,paper.y+paper.height*.4);
  await page.mouse.click(paper.x+paper.width*.3,paper.y+paper.height*.4);
  await expect(page.getByTestId('symbol-R1')).toBeVisible();
  // Use actual signed contact screen position, not an approximate paper ratio.
@@ -1372,6 +1386,7 @@ test('R20b equal pin gaps in actual editor keep the end poses and preserve Undo'
  for(const [i,x] of [.2,.36,.8].entries()){
   await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
  await expect(canvas).toHaveAttribute('data-tool','place');
+  await assertCanvasReceivesPointer(page,paper.x+paper.width*x,paper.y+paper.height*.4);
   await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*.4);
   await expect(page.getByTestId('symbol-R'+(i+1))).toBeVisible();
  }
@@ -1564,6 +1579,7 @@ test('R25 mixed-axis Net rail keeps real signed pin directions and undoable geom
   await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
   await expect(canvas).toHaveAttribute('data-tool','place');
   const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+  await assertCanvasReceivesPointer(page,paper.x+paper.width*x,paper.y+paper.height*y);
   await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*y);
   await expect(page.getByTestId('symbol-R'+(i+1))).toBeVisible();
   if(i===1){await canvas.focus();await canvas.press('r')}
@@ -1608,6 +1624,7 @@ test('R26 tree reconstruction from topology report bypasses a rail obstruction',
   await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
   await expect(canvas).toHaveAttribute('data-tool','place');
   const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+  await assertCanvasReceivesPointer(page,paper.x+paper.width*x,paper.y+paper.height*y);
   await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*y);
   await expect(page.getByTestId('symbol-R'+(i+1))).toBeVisible();
   if(i<4){await canvas.focus();await canvas.press('r')}
