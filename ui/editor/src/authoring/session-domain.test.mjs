@@ -1691,3 +1691,68 @@ test('R32a frozen TL494 independent-Net preflight on a detached test-only synthe
  t.diagnostic('TL494_R32A_PREFLIGHT '+JSON.stringify(outcomes));
  // Diagnostic only: independent feasibility is not simultaneous routing.
 });
+
+
+test('R32b margin repair reserves signed leads before routing, preserves membership and supports Undo',()=>{
+ const s=newSession(),{r,c}=placePair(s);
+ s.connect(s.newTransaction('declare'),pin(r,'1'),pin(c,'1'));
+ const doc=s.file,sh=doc.project.sheets[0],net=doc.project.nets[0];
+ sh.wires=[];net.route_status='unrouted';sh.instances.find(i=>i.component_id===r).origin_um=[18000,100000];
+ const a=new AuthoringSession(doc);
+ assert.throws(()=>a.buildNetTree(a.newTransaction('blocked'),net.id,true),/TREE_PIN_LEAD_OUTSIDE_FRAME/);
+ assert.deepEqual(a.file,doc);
+ const repair=a.prepareInitialRouting(a.newTransaction('prepare')),prepared=a.file;
+ assert.equal(repair.moved,1);assert.ok(repair.maxShiftUm>=3000);
+ assert.deepEqual(prepared.project.nets,doc.project.nets);
+ assert.deepEqual(prepared.project.sheets[0].instances.find(i=>i.component_id===c),sh.instances.find(i=>i.component_id===c));
+ assert.throws(()=>a.prepareInitialRouting(a.newTransaction('repeat')),/NO_CHANGE/);
+ assert.equal(a.undo(),true);assert.deepEqual(a.file,doc);
+ assert.equal(a.redo(),true);assert.deepEqual(a.file,prepared);
+ a.buildNetTree(a.newTransaction('route'),net.id,true);
+ assert.equal(a.engine.validateNet(net.id).pin_groups.length,1);
+ assert.throws(()=>a.prepareInitialRouting(a.newTransaction('wired')),/PREPARE_REQUIRES_UNROUTED_SHEET/);
+});
+test('R32b rejects locked edge component and occupied inset target atomically',()=>{
+ const s=newSession(),{r}=placePair(s),doc=s.file,sh=doc.project.sheets[0];
+ sh.instances.find(i=>i.component_id===r).origin_um=[18000,100000];
+ const locked=structuredClone(doc);locked.project.sheets[0].layers.find(l=>l.kind==='electrical').locked=true;
+ const a=new AuthoringSession(locked);
+ assert.throws(()=>a.prepareInitialRouting(a.newTransaction('locked')),/LAYER_LOCKED/);
+ assert.deepEqual(a.file,locked);assert.equal(a.revision,0);
+ sh.graphics.push({id:'block',kind:'line',layer_id:sh.layers[0].id,points_um:[[29500,96000],[29500,104000]],stroke_um:300});
+ const b=new AuthoringSession(doc);
+ assert.throws(()=>b.prepareInitialRouting(b.newTransaction('blocked')),/PREPARE_NO_SAFE_PLACEMENT/);
+ assert.deepEqual(b.file,doc);assert.equal(b.revision,0);
+});
+test('R32b real TL494 independent-Net preflight after explicit margin repair',t=>{
+ const source=JSON.parse(readFileSync(new URL('../../../fixtures/tl494-source-e695-v2.gscad.json',import.meta.url),'utf8'));
+ const original=structuredClone(source),doc=structuredClone(source),p=doc.project,sh=p.sheets[0];
+ p.provenance={...p.provenance,status:'synthetic',source_sha:'0'.repeat(40),source_path:'test-only/TL494-margin-preflight',
+  expected_counts:{...p.provenance.expected_counts,da1_pins:0,b_graphics:0}};
+ const preparation=new AuthoringSession(doc);
+ const repair=preparation.prepareInitialRouting(preparation.newTransaction('inset')),prepared=preparation.file;
+ assert.ok(repair.moved>=4);
+ assert.deepEqual(prepared.project.nets,p.nets);
+ assert.deepEqual(prepared.project.sheets[0].graphics,sh.graphics);
+ assert.deepEqual(prepared.project.sheets[0].labels,sh.labels);
+ assert.equal(preparation.undo(),true);assert.deepEqual(preparation.file,doc);
+ const outcomes=[];
+ for(const net of p.nets){
+  const trial=new AuthoringSession(prepared);
+  try{
+   const route=trial.buildNetTree(trial.newTransaction('preflight'),net.id,true);
+   assert.equal(trial.engine.validateNet(net.id).pin_groups.length,1);
+   assert.deepEqual(trial.file.project.nets.map(n=>[n.id,n.members]),p.nets.map(n=>[n.id,n.members]));
+   assert.deepEqual(trial.file.project.sheets[0].instances,prepared.project.sheets[0].instances);
+   assert.deepEqual(trial.file.project.sheets[0].graphics,sh.graphics);
+   assert.deepEqual(trial.file.project.sheets[0].labels,sh.labels);
+   outcomes.push({net:net.name,pins:net.members.length,bends:route.bends,lengthUm:route.lengthUm});
+  }catch(e){
+   assert.equal(e.name,'WireError');assert.notEqual(e.code,'TREE_PIN_LEAD_OUTSIDE_FRAME');
+   assert.deepEqual(trial.file,prepared);outcomes.push({net:net.name,pins:net.members.length,rejected:e.code});
+  }
+ }
+ t.diagnostic('TL494_R32B_PREFLIGHT '+JSON.stringify({repair,outcomes}));
+ assert.equal(outcomes.length,15);assert.equal(outcomes.reduce((n,o)=>n+o.pins,0),62);
+ assert.deepEqual(source,original);
+});

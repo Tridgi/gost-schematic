@@ -1449,6 +1449,8 @@ export class AuthoringSession {
         const axis:0|1=p.normal[0]!==0?0:1,sign=p.normal[axis],tip=xy(p.at_um);
         const edge=axis===0?(sign>0?own.maxX:own.minX):(sign>0?own.maxY:own.minY);
         tip[axis]=sign>0?Math.max(edge+1,tip[axis]+2000):Math.min(edge-1,tip[axis]-2000);
+        const m=sh.frame.margin_um,[w,h]=sh.frame.size_um;
+        if([p.at_um,tip].some(v=>v[0]<m||v[1]<m||v[0]>w-m||v[1]>h-m))reject('TREE_PIN_LEAD_OUTSIDE_FRAME');
         const lead=rect(p.at_um,tip);
         if(boxes.some(o=>o.id!==ref.component_id&&!separated(lead,o.box,0))||
           foreign.some(o=>!separated(lead,o,0)))reject('TREE_BLOCKED_PIN_LEAD');
@@ -1490,6 +1492,61 @@ export class AuthoringSession {
       return next;
     });
     if(!result)reject('TREE_NO_SAFE_ROUTE');return result;
+  }
+  /** Explicit pre-routing placement repair: reserve space for signed
+   * outward leads without weakening the printable frame or moving wired UGO. */
+  prepareInitialRouting(tx:Tx):{moved:number;maxShiftUm:number}{
+    let moved=0,maxShiftUm=0;
+    this.edit(tx,draft=>{
+      const sh=draft.project.sheets[indexOfSheet(draft)];
+      if(sh.instances.length>128)reject('LAYOUT_SIZE_LIMIT');
+      if(sh.wires.length||sh.junctions.length||sh.splices.length)reject('PREPARE_REQUIRES_UNROUTED_SHEET');
+      if(sh.texts.length||sh.labels.length+sh.graphics.length>32||
+        sh.labels.some(l=>l.role!=='visual'||l.net_id!==null||typeof l.text!=='string'||l.text.length>64)||
+        sh.graphics.some(g=>!['line','polyline','source_b_continuation'].includes(g.kind)||
+          g.points_um.length<2||g.points_um.length>64||!Number.isSafeInteger(g.stroke_um)||g.stroke_um<=0||g.stroke_um>10000))
+        reject('LAYOUT_ANNOTATIONS_UNSUPPORTED');
+      const defs=new Map(draft.project.symbol_definitions.map(d=>[d.id,d]));
+      const bounds=(i:SymbolInstance)=>translateBounds(symbolBounds(defs.get(i.symbol_id)!,i.rotation_deg,i.mirror_x),i.origin_um);
+      const rect=(a:PointUm,b:PointUm,pad=0):Bounds=>({minX:Math.min(a[0],b[0])-pad,minY:Math.min(a[1],b[1])-pad,maxX:Math.max(a[0],b[0])+pad,maxY:Math.max(a[1],b[1])+pad});
+      const ink:Bounds[]=[];
+      for(const g of sh.graphics)for(let k=1;k<g.points_um.length;k++)ink.push(rect(xy(g.points_um[k-1]),xy(g.points_um[k]),g.stroke_um/2));
+      for(const l of sh.labels){
+        const p=xy(l.at_um),[a,b]=noteLayout({key:l.id,text:l.text,at_um:p,height_um:3500,horizontal:'left',vertical:'bottom'},p).bounds;
+        ink.push(rect(a,b));
+      }
+      if(ink.length>128)reject('LAYOUT_ANNOTATIONS_UNSUPPORTED');
+      const before=assessLayout(draft,this.engine);
+      if(!before.quality.complete)reject('LAYOUT_CHECK_INCOMPLETE');
+      // 2 mm minimum signed lead plus 1 mm free channel; bounds
+      // already include symbol ink, text and physical terminals.
+      const m=sh.frame.margin_um+3000,[w,h]=sh.frame.size_um;
+      const shift=(lo:number,hi:number,size:number)=>{
+        const min=Math.ceil(m-lo),max=Math.floor(size-m-hi);
+        if(min>max)reject('PREPARE_FRAME_TOO_SMALL');
+        return Math.max(min,Math.min(0,max));
+      };
+      const changed=new Set<string>();
+      for(const i of sh.instances){
+        const b=bounds(i),dx=shift(b.minX,b.maxX,w),dy=shift(b.minY,b.maxY,h);
+        if(!dx&&!dy)continue;
+        if(!sh.layers.some(l=>l.id===i.layer_id&&l.kind==='electrical'&&l.visible&&l.printable&&!l.locked))reject('LAYER_LOCKED');
+        if(draft.project.nets.some(n=>n.members.some(p=>p.component_id===i.component_id)&&
+          n.members.some(p=>!sh.instances.some(j=>j.component_id===p.component_id))))reject('RAIL_CROSS_SHEET');
+        i.origin_um=xy([i.origin_um[0]+dx,i.origin_um[1]+dy]);
+        changed.add(i.id);moved++;maxShiftUm=Math.max(maxShiftUm,Math.abs(dx)+Math.abs(dy));
+      }
+      if(!moved)reject('NO_CHANGE');
+      for(const i of sh.instances.filter(i=>changed.has(i.id))){
+        const b=bounds(i);
+        if(sh.instances.some(j=>j.id!==i.id&&!separated(b,bounds(j),1000))||
+          ink.some(k=>!separated(b,k,1000)))reject('PREPARE_NO_SAFE_PLACEMENT');
+      }
+      const {session}=localSession(draft,this.clock);
+      if(!preservesLayoutSafety(before,assessLayout(draft,session.engine)))reject('PREPARE_UNSAFE_DIAGNOSTICS');
+      return draft;
+    });
+    return {moved,maxShiftUm};
   }
   /** Route an explicit batch of untouched Nets on an isolated draft.
    * All selected Nets must succeed; no intermediate edits/history are published.

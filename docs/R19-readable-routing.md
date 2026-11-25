@@ -338,3 +338,28 @@ or explicit rejection reason. No minimum successful count is asserted:
 this is a diagnostic baseline, not simultaneous routing acceptance.
 No source unlock, saved candidate, native validation or change to the
 canonical source fixture is authorized by this test.
+
+
+## R32b — reserve signed lead space inside the print margin
+
+R32a CI verified 11/15 independent TL494 routes. SWITCH, TRANSFER,
+OSCILLATOR_CT and OSCILLATOR_RT each use a left-facing terminal at
+x=10 mm, exactly on the 10 mm print margin. The mandatory outward
+lead extends beyond the allowed routing frame. The route builder now
+reports TREE_PIN_LEAD_OUTSIDE_FRAME explicitly rather than collapsing
+this case into TREE_NO_SAFE_ROUTE.
+
+An explicit preparation command for completely unrouted editable
+sheets clamps transformed symbol ink bounds to margin + 3 mm, without
+changing rotation, mirror, part definitions, Net membership or visual
+annotations. Only the minimum integer translation is applied. Locked
+layers, cross-sheet membership, occupied destinations and unsupported
+annotations cause atomic refusal. No automatic movement when routing.
+The user must confirm the separate preparation action; one Undo
+restores the exact original document.
+
+Three tests exercise the boundary failure, preparation and refusal,
+and repeat the independent 15-Net TL494 diagnostic on the detached
+synthetic copy after preparation (TL494_R32B_PREFLIGHT). No claim of
+15/15 before the actual CI log, or simultaneous feasibility. The
+frozen source fixture remains unchanged and is not editable.

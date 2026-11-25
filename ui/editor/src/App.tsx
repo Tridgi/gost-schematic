@@ -772,6 +772,13 @@ export default function App() {
     projectName={document.project.title+(authoringRef.current?' · R3 AUTHORING':' · R2 PREVIEW')} dirty={dirty}
     baseRevision={String(snapshot.revision)} sheets={document.project.sheets.map(s=>({id:s.id,title:s.name}))}
     activeSheetId={activeSheet.id} catalog={catalog} tree={tree} topology={topology}
+    onPrepareInitialRouting={authoringRef.current&&tool==='select'&&!activeSheet.wires.length&&!activeSheet.junctions.length&&!activeSheet.splices.length?()=>{
+      const a=authoringRef.current!;
+      if(!window.confirm('Сместить УГО у полей внутрь листа, чтобы освободить выходы физических выводов? Состав цепей и графические объекты сохранятся.'))return;
+      try{const result=a.prepareInitialRouting(a.newTransaction('prepare-initial-routing'));adoptAuthored();
+        setIssue('Подготовка трассировки: смещено '+result.moved+' УГО, максимальное смещение '+(result.maxShiftUm/1000).toFixed(3)+' мм.');}
+      catch(e){setIssue(e instanceof WireError&&e.code==='NO_CHANGE'?'Выходы у полей уже свободны.':'PREPARE_ROUTE_FAILED: '+String(e));}
+    }:undefined}
     onRouteInitialBatch={authoringRef.current&&tool==='select'?ids=>{
       const a=authoringRef.current!;
       if(!window.confirm('Развести '+ids.length+' объявленных цепей? Если хотя бы одну не удастся безопасно развести, весь пакет будет отменён.'))return;
