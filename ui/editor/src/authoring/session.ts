@@ -40,6 +40,8 @@ export type GroupClipboard = {
 
 export type PlacementHint={origin:MutablePoint;from:MutablePoint;to:MutablePoint;target:PinRef;newPin:string};
 export type LayoutPreview={token:string|null;before:LayoutQuality;after:LayoutQuality;operations:string[];attempted:number;rejected:number;limited:boolean};
+export type InitialBatchOutcome={id:string;name:string;pins:number;rejected?:string};
+export type InitialBatchPreview={token:string|null;requested:number;routed:number;attempted:number;order:string;outcomes:InitialBatchOutcome[];quality:LayoutQuality};
 type Tx = {project_id:string;revision:number;source_guard:string;command_id:string};
 const SOURCE_ZERO='0000000000000000000000000000000000000000';
 const clone=<T>(v:T):T=>structuredClone(v);
@@ -1586,6 +1588,61 @@ export class AuthoringSession {
       throw new WireError('BATCH_NO_SAFE_ROUTE','BATCH_NO_SAFE_ROUTE: '+lastFailure);
     });
     if(!result)reject('BATCH_NO_SAFE_ROUTE');return result;
+  }
+  /** Evaluate bounded whole-sheet initial routing orders on detached copies.
+   * Failed Nets are skipped for diagnosis, never partially committed. Only
+   * a candidate connecting every requested Net receives an Apply token. */
+  previewInitialBatch(netIds:readonly string[]):InitialBatchPreview{
+    this.layoutPlan=null;
+    const base=this.file,sh=base.project.sheets[indexOfSheet(base)];
+    if(netIds.length<1||netIds.length>16)reject('BATCH_NET_COUNT');
+    if(new Set(netIds).size!==netIds.length)reject('BATCH_DUPLICATE_NET');
+    const byId=new Map(base.project.nets.map(n=>[n.id,n]));
+    if(netIds.some(id=>!byId.has(id)))reject('UNKNOWN_NET');
+    const local=new Set(sh.instances.map(i=>i.component_id));
+    for(const id of netIds){
+      const n=byId.get(id)!;
+      if(n.members.length<2||n.members.length>32)reject('TREE_PIN_COUNT');
+      if(n.members.some(p=>!local.has(p.component_id)))reject('RAIL_CROSS_SHEET');
+      if(this.engine.validateNet(id).status!=='unrouted'||
+        base.project.sheets.some(s=>[...s.wires,...s.junctions,...s.splices].some(w=>w.net_id===id)))reject('TREE_ALREADY_ROUTED');
+    }
+    const span=new Map(netIds.map(id=>{
+      const p=byId.get(id)!.members.map(m=>this.beginWire(m).at_um);
+      return [id,Math.max(...p.map(v=>v[0]))-Math.min(...p.map(v=>v[0]))+
+        Math.max(...p.map(v=>v[1]))-Math.min(...p.map(v=>v[1]))] as const;
+    }));
+    const byCount=(a:string,b:string)=>byId.get(b)!.members.length-byId.get(a)!.members.length;
+    const orders=[
+      {name:'large-first',ids:[...netIds].sort((a,b)=>byCount(a,b)||a.localeCompare(b))},
+      {name:'small-first',ids:[...netIds].sort((a,b)=>byCount(b,a)||a.localeCompare(b))},
+      {name:'short-span-first',ids:[...netIds].sort((a,b)=>span.get(a)!-span.get(b)!||a.localeCompare(b))}
+    ];
+    const tried=new Set<string>();
+    let attempted=0,best:{session:AuthoringSession;order:string;routed:number;outcomes:InitialBatchOutcome[];quality:LayoutQuality}|undefined;
+    for(const order of orders){
+      const signature=JSON.stringify(order.ids);if(tried.has(signature))continue;tried.add(signature);
+      const session=new AuthoringSession(base),outcomes:InitialBatchOutcome[]=[];
+      let routed=0;
+      for(const id of order.ids){
+        attempted++;
+        const n=byId.get(id)!;
+        const item:InitialBatchOutcome={id,name:n.name,pins:n.members.length};
+        try{session.buildNetTree(session.newTransaction('preview-batch-net'),id,true);routed++}
+        catch(e){if(!(e instanceof WireError))throw e;item.rejected=e.code}
+        outcomes.push(item);
+      }
+      const quality=assessLayout(session.file,session.engine).quality;
+      if(!quality.complete||sourceGuard(session.file)!==sourceGuard(base)||
+        outcomes.some(o=>!o.rejected&&session.engine.validateNet(o.id).pin_groups.length!==1))reject('BATCH_TOPOLOGY_MISMATCH');
+      if(!best||routed>best.routed||(routed===best.routed&&
+        (quality.bends<best.quality.bends||(quality.bends===best.quality.bends&&quality.lengthUm<best.quality.lengthUm))))
+        best={session,order:order.name,routed,outcomes,quality};
+    }
+    if(!best)reject('BATCH_NO_SAFE_ROUTE');
+    const token=best.routed===netIds.length?newId('initial-batch'):null;
+    if(token)this.layoutPlan={token,revision:this.clock,sheet:sh.id,next:best.session.file};
+    return {token,requested:netIds.length,routed:best.routed,attempted,order:best.order,outcomes:best.outcomes,quality:best.quality};
   }
   /** Align a two-pin component with multiple direct signed neighbors,
    * rebuilding all its incident routes on one detached candidate. */

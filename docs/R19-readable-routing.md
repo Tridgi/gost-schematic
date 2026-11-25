@@ -363,3 +363,21 @@ and repeat the independent 15-Net TL494 diagnostic on the detached
 synthetic copy after preparation (TL494_R32B_PREFLIGHT). No claim of
 15/15 before the actual CI log, or simultaneous feasibility. The
 frozen source fixture remains unchanged and is not editable.
+
+
+## R32c — simultaneous initial routing feasibility
+
+The new read-only whole-sheet preview checks up to 16 explicitly declared
+untouched local Nets. Three deterministic orders are tried on independent
+copies: descending pin count, ascending pin count and ascending bounding-box
+Manhattan span. Duplicate orders are skipped. Each route respects previously
+placed foreign wires as obstacles; a rejected Net is skipped for diagnostic
+coverage only. Candidates rank by connected Net count, bends and wire length.
+Only a complete candidate receives the existing revision-bound Apply token.
+Partial results are not saved, even if most Nets succeed. The UI reports
+failed Net names/codes and asks for explicit confirmation before full Apply.
+Maximum 48 attempts, no guarantee of global routing feasibility, no ordinary
+foreign X crossings in this mode. Existing 8-Net atomic operation unchanged.
+Three tests verify complete and partial previews and emit TL494_R32C_MULTINET
+for the prepared detached source copy with all 15 Nets. The source fixture,
+annotations and electrical membership remain unchanged; no source unlocking.

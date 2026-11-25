@@ -779,6 +779,21 @@ export default function App() {
         setIssue('Подготовка трассировки: смещено '+result.moved+' УГО, максимальное смещение '+(result.maxShiftUm/1000).toFixed(3)+' мм.');}
       catch(e){setIssue(e instanceof WireError&&e.code==='NO_CHANGE'?'Выходы у полей уже свободны.':'PREPARE_ROUTE_FAILED: '+String(e));}
     }:undefined}
+    onPreviewInitialBatch={authoringRef.current&&tool==='select'?ids=>{
+      const a=authoringRef.current!;
+      try{
+        const p=a.previewInitialBatch(ids);
+        if(!p.token){
+          setIssue('Совместная трассировка: '+p.routed+'/'+p.requested+' цепей. Без изменений. '+p.outcomes.filter(o=>o.rejected).map(o=>o.name+': '+o.rejected).join('; '));
+          return;
+        }
+        if(!window.confirm('Найдена совместная разводка '+p.routed+'/'+p.requested+' цепей. Изгибов: '+p.quality.bends+', длина '+(p.quality.lengthUm/1000).toFixed(3)+' мм. Применить весь пакет?')){
+          a.discardLayoutPreview(p.token);return;
+        }
+        a.applyLayoutPreview(a.newTransaction('apply-initial-batch'),p.token);adoptAuthored();
+        setIssue('Совместная трассировка: '+p.routed+'/'+p.requested+' цепей. Проверьте маршруты.');
+      }catch(e){setIssue('BATCH_PREVIEW_FAILED: '+String(e));}
+    }:undefined}
     onRouteInitialBatch={authoringRef.current&&tool==='select'?ids=>{
       const a=authoringRef.current!;
       if(!window.confirm('Развести '+ids.length+' объявленных цепей? Если хотя бы одну не удастся безопасно развести, весь пакет будет отменён.'))return;
