@@ -1245,7 +1245,9 @@ export class AuthoringSession {
       if(pins.some(({p})=>!inside(p.at_um)))reject('RAIL_OUTSIDE_FRAME');
       type Lead={ref:PinRef;points:MutablePoint[];tap:number;approach:number};
       type Plan={branchAxis:0|1;line:number;leads:Lead[];length:number;bends:number};
-      let best:Plan|undefined,feasible=false;
+      let best:Plan|undefined,feasible=false,comparisons=0;
+      const budget=()=>{if(++comparisons>500000)reject('RAIL_SEARCH_LIMIT')};
+      const clear=(a:Bounds,b:Bounds)=>{budget();return separated(a,b,1000)};
       const axes: (0|1)[]=mixed?[0,1]:[pins[0].p.normal[0]!==0?0:1];
       for(const branchAxis of axes){
         const railAxis:0|1=branchAxis===0?1:0;
@@ -1270,7 +1272,7 @@ export class AuthoringSession {
         const estimate=(line:number)=>pins.reduce((n,{p})=>n+Math.abs(line-p.at_um[branchAxis]),0);
         const lines=[...candidates].filter(v=>v>=lo&&v<=hi).sort((a,b)=>estimate(a)-estimate(b)||a-b).slice(0,mixed?32:64);
         const eq=(a:PointUm,b:PointUm)=>a[0]===b[0]&&a[1]===b[1];
-        const collision=(a:Bounds,b:Bounds)=>a.minX<=b.maxX&&b.minX<=a.maxX&&a.minY<=b.maxY&&b.minY<=a.maxY;
+        const collision=(a:Bounds,b:Bounds)=>{budget();return a.minX<=b.maxX&&b.minX<=a.maxX&&a.minY<=b.maxY&&b.minY<=a.maxY};
         const segs=(points:MutablePoint[])=>points.slice(1).map((q,i)=>({a:points[i],b:q,box:rect(points[i],q)}));
         const pathLength=(points:MutablePoint[])=>points.slice(1).reduce((n,q,i)=>n+Math.abs(q[0]-points[i][0])+Math.abs(q[1]-points[i][1]),0);
         for(const line of lines){
@@ -1283,8 +1285,8 @@ export class AuthoringSession {
             if(leads.some(l=>l.tap!==tap&&Math.abs(l.tap-tap)<1000))return false;
             const segments=segs(points);
             for(const [i,s] of segments.entries()){
-              if(boxes.some(o=>!(i===0&&o.id===ref.component_id)&&!separated(s.box,o.box,1000))||
-                obstacles.some(o=>!separated(s.box,o,1000)))return false;
+              if(boxes.some(o=>!(i===0&&o.id===ref.component_id)&&!clear(s.box,o.box))||
+                obstacles.some(o=>!clear(s.box,o)))return false;
               for(const other of leads)for(const t of segs(other.points)){
                 if(!collision(s.box,t.box))continue;
                 const shared=at(line,tap);
@@ -1298,7 +1300,7 @@ export class AuthoringSession {
             // Prevent a lead ending on a trunk that would run through ink.
             const positions=[...leads.map(l=>l.tap),tap];
             const trunk=rect(at(line,Math.min(...positions)),at(line,Math.max(...positions)));
-            return !boxes.some(o=>!separated(trunk,o.box,1000))&&!obstacles.some(o=>!separated(trunk,o,1000));
+            return !boxes.some(o=>!clear(trunk,o.box))&&!obstacles.some(o=>!clear(trunk,o));
           };
           let valid=true;
           for(const {ref,p} of direct){
