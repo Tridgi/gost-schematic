@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "id": "transformer.controlled_three_phase",
+  "symbol_id": "transformer.controlled_three_phase",
+  "reference_prefix": "T",
+  "nominal_kind": null,
+  "voltage_orientation_rule": "none",
+  "pins": [
+    {
+      "number": "1",
+      "name": "P_A",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    },
+    {
+      "number": "2",
+      "name": "P_B",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    },
+    {
+      "number": "3",
+      "name": "P_C",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    },
+    {
+      "number": "4",
+      "name": "S_A",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    },
+    {
+      "number": "5",
+      "name": "S_B",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    },
+    {
+      "number": "6",
+      "name": "S_C",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    },
+    {
+      "number": "7",
+      "name": "CONTROL_START",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_start"
+    },
+    {
+      "number": "8",
+      "name": "CONTROL_END",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_end"
+    }
+  ]
+}

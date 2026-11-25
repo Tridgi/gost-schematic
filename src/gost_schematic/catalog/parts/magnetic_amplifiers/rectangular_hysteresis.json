@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "id": "magnetic_amplifier.rectangular_hysteresis",
+  "symbol_id": "magnetic_amplifier.rectangular_hysteresis",
+  "reference_prefix": "A",
+  "nominal_kind": null,
+  "voltage_orientation_rule": "none",
+  "pins": [
+    {
+      "number": "1",
+      "name": "WORK1_START",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_start"
+    },
+    {
+      "number": "2",
+      "name": "WORK1_END",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_end"
+    },
+    {
+      "number": "3",
+      "name": "WORK2_START",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_start"
+    },
+    {
+      "number": "4",
+      "name": "WORK2_END",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_end"
+    },
+    {
+      "number": "5",
+      "name": "CONTROL_START",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_start"
+    },
+    {
+      "number": "6",
+      "name": "CONTROL_END",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_end"
+    }
+  ]
+}
