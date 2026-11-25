@@ -111,3 +111,42 @@ test('R32j nonempty values escape XML and unresolved placement is explicit',()=>
  assert.ok(p.unplaced.some(l=>l.refdes==='C1'&&l.reason==='LABEL_TEXT_UNSUPPORTED'));
  assert.ok(renderProjectPreviewSVG(bad,'sheet-1').includes('LABEL_TEXT_UNSUPPORTED'));
 });
+
+
+test('R32k extended nearby channels place a label beyond blocked original slots without reducing clearance',async()=>{
+ const {projectToCanvasScene}=await import('../canvas/scene-projection.mjs');
+ const doc=structuredClone(source);
+ const sh=doc.project.sheets[0];
+ sh.texts=[];sh.labels=[];sh.graphics=[];sh.wires=[];sh.junctions=[];sh.splices=[];
+ const scene=projectToCanvasScene(doc,'sheet-1');
+ const symbol=scene.symbols[0];
+ // A synthetic projected symbol with exact 10 x 6 mm ink envelope.
+ // Four conservative ink bands obstruct every original nearby slot.
+ const only={...symbol,origin_um:[100000,100000] as [number,number],
+  rotation_deg:0 as const,mirror_x:false,pins:[],curves:[],notes:[],
+  strokes:[],inkStrokes:[{from_um:[-5000,-3000] as [number,number],
+    to_um:[5000,3000] as [number,number],stroke_um:0}]};
+ const bands=[
+  {from_um:[80000,90000],to_um:[120000,90000],stroke_um:9000},
+  {from_um:[80000,110000],to_um:[120000,110000],stroke_um:9000},
+  {from_um:[85000,80000],to_um:[85000,120000],stroke_um:10000},
+  {from_um:[115000,80000],to_um:[115000,120000],stroke_um:10000}
+ ] as const;
+ const projected={...scene,symbols:[only],graphics:bands.map((b,i)=>({
+  id:'band-'+i,layer_id:only.layer_id,kind:'line' as const,source_role:'none',electrical:false as const,
+  strokes:[{from_um:[...b.from_um] as [number,number],to_um:[...b.to_um] as [number,number],stroke_um:b.stroke_um}]
+ }))};
+ const before=structuredClone(projected),p=planComponentLabels(doc,'sheet-1',projected);
+ assert.equal(p.labels.length,1);assert.equal(p.unplaced.length,0);
+ assert.equal(p.labels[0].heightUm,2500);
+ const b=p.labels[0].bounds;
+ for(const s of bands){
+  const x0=Math.min(s.from_um[0],s.to_um[0])-s.stroke_um/2;
+  const x1=Math.max(s.from_um[0],s.to_um[0])+s.stroke_um/2;
+  const y0=Math.min(s.from_um[1],s.to_um[1])-s.stroke_um/2;
+  const y1=Math.max(s.from_um[1],s.to_um[1])+s.stroke_um/2;
+  assert.ok(b.x1<x0||b.x0>x1||b.y1<y0||b.y0>y1);
+ }
+ assert.deepEqual(planComponentLabels(doc,'sheet-1',projected),p);
+ assert.deepEqual(projected,before);
+});

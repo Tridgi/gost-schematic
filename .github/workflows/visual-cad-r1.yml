@@ -133,6 +133,9 @@ jobs:
       - name: End-to-end real browser physical pin/wire and theme tests
         working-directory: ui/editor
         run: npm run test:e2e
+      - name: Require complete TL494 visible reference inventory
+        run: |
+          node --input-type=module -e 'import assert from "node:assert/strict"; import {readFileSync} from "node:fs"; const report=JSON.parse(readFileSync("ci-artifacts/tl494-routing-evidence/report.json","utf8")); for(const stage of report.stages){assert.equal(stage.componentLabels.placed,23,stage.name+": "+JSON.stringify(stage.componentLabels.missing)); assert.equal(stage.componentLabels.unplaced,0);}'
       - name: Publish independently exercised R2 browser preview bundle
         if: success()
         uses: actions/upload-artifact@v4

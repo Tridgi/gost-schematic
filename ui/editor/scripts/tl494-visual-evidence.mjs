@@ -26,8 +26,8 @@ assert.equal(sh.graphics.filter(g=>g.kind==='source_b_continuation').length,2);
 let browser;
 try{
  const module=join(temp,'evidence.mjs');
- await build({stdin:{contents:"export {AuthoringSession} from './src/authoring/session.ts'; export {assessLayout} from './src/authoring/layout-quality.ts'; export {renderProjectPreviewSVG} from './src/export/browser-export.ts';",resolveDir:editor,sourcefile:'evidence-entry.ts'},outfile:module,bundle:true,platform:'node',format:'esm',target:'node22',logLevel:'silent'});
- const {AuthoringSession,assessLayout,renderProjectPreviewSVG}=await import(pathToFileURL(module).href);
+ await build({stdin:{contents:"export {AuthoringSession} from './src/authoring/session.ts'; export {assessLayout} from './src/authoring/layout-quality.ts'; export {renderProjectPreviewSVG} from './src/export/browser-export.ts'; export {planComponentLabels} from './src/canvas/component-labels.ts';",resolveDir:editor,sourcefile:'evidence-entry.ts'},outfile:module,bundle:true,platform:'node',format:'esm',target:'node22',logLevel:'silent'});
+ const {AuthoringSession,assessLayout,renderProjectPreviewSVG,planComponentLabels}=await import(pathToFileURL(module).href);
  assert.throws(()=>new AuthoringSession(source),/SOURCE_SHA_MISMATCH/);
  const doc=structuredClone(source);
  doc.project.provenance={...p.provenance,status:'synthetic',source_sha:'0'.repeat(40),source_path:'test-only/TL494-visual-evidence',expected_counts:{...p.provenance.expected_counts,da1_pins:0,b_graphics:0}};
@@ -70,6 +70,11 @@ try{
   const placedLabels=Number(svg.match(/data-component-label-count="(\d+)"/)?.[1]);
   const unplacedLabels=Number(svg.match(/data-unplaced-label-count="(\d+)"/)?.[1]);
   assert.equal(placedLabels+unplacedLabels,23);
+  const labels=planComponentLabels(file,sheet.id);
+  assert.equal(labels.labels.length,placedLabels);
+  assert.equal(labels.unplaced.length,unplacedLabels);
+  const expectedRefs=file.project.components.map(c=>c.refdes).sort();
+  assert.deepEqual([...labels.labels,...labels.unplaced].map(l=>l.refdes).sort(),expectedRefs);
   assert.equal((svg.match(/data-label-role="reference"/g)??[]).length,placedLabels);
   assert.equal((svg.match(/data-label-role="value"/g)??[]).length,0);
   const pngBytes=await page.evaluate(async({svg,size})=>{
@@ -81,7 +86,7 @@ try{
   assert.equal(height,Math.round(sheet.frame.size_um[1]/25400*300));
   const json=JSON.stringify(file,null,2)+'\n';
   writeFileSync(join(output,name+'.gscad.json'),json);writeFileSync(join(output,name+'.svg'),svg);writeFileSync(join(output,name+'.png'),png);
-  report.stages.push({name,quality,connectedNets:15,pinRefs:62,componentLabels:{placed:placedLabels,unplaced:unplacedLabels},png:{width,height,dpi:300},sha256:{project:hash(json),svg:hash(svg),png:hash(png)}});
+  report.stages.push({name,quality,connectedNets:15,pinRefs:62,componentLabels:{placed:placedLabels,unplaced:unplacedLabels,missing:labels.unplaced.map(l=>({refdes:l.refdes,reason:l.reason}))},png:{width,height,dpi:300},sha256:{project:hash(json),svg:hash(svg),png:hash(png)}});
  }
  assert.deepEqual(source,original);assert.deepEqual(readFileSync(sourcePath),raw);
  writeFileSync(join(output,'report.json'),JSON.stringify(report,null,2)+'\n');
