@@ -31,7 +31,7 @@ export type CanvasViewportProps = {
 const DEFAULT_CAMERA:Camera={s:.004,x:24,y:24};
 const asCoords=(p:ScreenPoint)=>({x:p.x,y:p.y});
 const g2=(n:number)=>Number.isFinite(n)?n:0;
-function localStroke(symbol:CanvasSymbol,p:PointUm,camera:Camera):ScreenPoint {
+function localStroke(symbol:CanvasSymbol,p:readonly [number,number],camera:Camera):ScreenPoint {
   const x=symbol.mirror_x?-p[0]:p[0],y=p[1];
   const xy=symbol.rotation_deg===0?[x,y]:symbol.rotation_deg===90?[-y,x]:
     symbol.rotation_deg===180?[-x,-y]:[y,-x];
