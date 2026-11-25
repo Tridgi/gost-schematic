@@ -564,3 +564,29 @@ does not erase the diagnostic artifact. This is a bounded heuristic,
 not global placement completeness or normative GOST typography.
 Labels remain derived, not permanent route obstacles. Main and frozen
 source unchanged. R32k results pending.
+
+
+## R32l — native Python label and export parity
+
+R32k passed both CI gates: 157/157 unit tests, 52/52 Chromium tests,
+23/23 visible reference labels on each of the three actual routed TL494
+stages, with unchanged refined geometry (15/15 Nets, 81 bends, 38 X
+crossings, 5340.345 mm). The canonical Python exporter previously did
+not emit visible component reference/value labels. It now derives
+upright labels from the same bounded placement contract as the browser,
+preserves their non-electrical identity and reports unplaced labels in
+metadata and export warnings. The canonical source SHA gate remains;
+no actual nominal values are inferred. Preview text remains unverified
+and strict-font export still refuses unoutlined text.
+
+The added integration check consumes the real browser evidence for all
+three stages and invokes the canonical Python SVG/PNG300 export engine.
+It requires identical instance/role/text/position/font-height/anchor
+records, 23/23 visible references, 15 declared Nets, 62 PinRefs, two b
+graphics, preserved wire/junction inventories, correct project digest
+and A3 4961 x 3508 pixels at 300 DPI. Native evidence is published as
+tl494-native-export-parity. Browser and native raster bytes are not
+required to match because rendering/font fallback may differ. The
+independent implementations need CI parity checks to detect drift.
+Actual installed Windows/WebView2, print typography, and normative
+approval remain separate acceptance stages. R32l CI pending.
