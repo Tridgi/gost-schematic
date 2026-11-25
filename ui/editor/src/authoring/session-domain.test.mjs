@@ -1834,7 +1834,7 @@ test('R32d controlled whole-sheet preview preserves existing strict success and 
  for(const id of ids)assert.equal(s.engine.validateNet(id).pin_groups.length,1);
  assert.equal(s.undo(),true);assert.deepEqual(s.file,doc);
 });
-test('R32d actual TL494 reserved-lead and controlled crossing diagnostic',t=>{
+test('R32e actual TL494 adaptive-grid and blocked-first diagnostic',t=>{
  const source=JSON.parse(readFileSync(new URL('../../../fixtures/tl494-source-e695-v2.gscad.json',import.meta.url),'utf8'));
  const original=structuredClone(source),doc=structuredClone(source),p=doc.project,sh=p.sheets[0];
  p.provenance={...p.provenance,status:'synthetic',source_sha:'0'.repeat(40),source_path:'test-only/TL494-controlled-crossing',
@@ -1843,7 +1843,7 @@ test('R32d actual TL494 reserved-lead and controlled crossing diagnostic',t=>{
  s.prepareInitialRouting(s.newTransaction('prepare'));
  const prepared=s.file,rev=s.revision;
  const report=s.previewInitialBatch(p.nets.map(n=>n.id),true);
- assert.equal(report.requested,15);assert.ok(report.attempted<=45);
+ assert.equal(report.requested,15);assert.ok(report.attempted<=75);
  assert.equal(report.outcomes.reduce((a,o)=>a+o.pins,0),62);
  assert.equal(report.quality.errors,0);assert.equal(report.quality.geometryWarnings,0);
  assert.deepEqual(s.file,prepared);assert.equal(s.revision,rev);
@@ -1853,6 +1853,21 @@ test('R32d actual TL494 reserved-lead and controlled crossing diagnostic',t=>{
   assert.deepEqual(s.file.project.nets.map(n=>[n.id,n.members]),p.nets.map(n=>[n.id,n.members]));
   assert.deepEqual(s.file.project.sheets[0].graphics,sh.graphics);assert.deepEqual(s.file.project.sheets[0].labels,sh.labels);
  }else assert.ok(report.routed<15);
- t.diagnostic('TL494_R32D_CONTROLLED '+JSON.stringify({...report,token:!!report.token}));
+ t.diagnostic('TL494_R32E_ADAPTIVE '+JSON.stringify({...report,token:!!report.token}));
  assert.deepEqual(source,original);
+});
+
+
+test('R32e adaptive channels retain every terminal axis and still respect all omitted obstacle extents',async()=>{
+ const {planOrthogonalTree}=await import('./orthogonal-tree.ts');
+ const frame={minX:0,minY:0,maxX:100000,maxY:100000};
+ const ports=[{pin:[10000,50000],tip:[12000,50000]},{pin:[90000,50000],tip:[88000,50000]}];
+ const obstacles=Array.from({length:60},(_,i)=>({minX:1000+i*1400,maxX:1200+i*1400,minY:10000+i*10,maxY:10200+i*10}));
+ assert.throws(()=>planOrthogonalTree(ports,obstacles,frame),/TREE_GRID_LIMIT/);
+ const p=planOrthogonalTree(ports,obstacles,frame,[],true);
+ assert.ok(p);assert.equal(p.bends,0);assert.equal(p.lengthUm,80000);
+ assert.deepEqual(p.paths[0].points,[[10000,50000],[90000,50000]]);
+ assert.deepEqual(planOrthogonalTree(ports,obstacles,frame,[],true),p);
+ const blocked=[...obstacles,{minX:49000,maxX:51000,minY:0,maxY:100000}];
+ assert.equal(planOrthogonalTree(ports,blocked,frame,[],true),null);
 });
