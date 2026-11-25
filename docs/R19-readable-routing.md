@@ -122,3 +122,27 @@ DA1 with 16 physical pins across nine Nets; COMMON has 14 memberships across
 11 distinct components. The CT and RT connections are reported from literal
 source memberships. The source itself remains immutable and unrouted in
 ProjectV2. Tests do not silently copy or alter it.
+
+
+## R24 — individual Net trunk reconstruction
+
+The topology report exposes an explicit common-trunk command for shared Nets
+on authored sheets. The solver accepts 3–32 physical pins in one already
+connected, local Net on a single unlocked electrical layer. All pin normals
+must lie on the same axis, but leads may point toward the trunk from either
+side. Opposite leads may share a tap; same-side coincident leads are rejected.
+
+The feasible trunk interval is constrained by actual transformed symbol
+envelopes, a 5 mm lead allowance, and the printable frame. Candidate channels
+come from the interval limits, midpoint and obstacle boundaries; at most 64
+are evaluated, ordered by total conductor length. All branches and the trunk
+must clear unrelated wires, nodes and symbols. Explicit degree-3/4 junctions
+and degree-2 invisible splices preserve signed topology. No symbol moves or
+new memberships occur. Existing route IDs are replaced only with consent;
+equivalent geometry is a no-op, and Undo restores the exact old geometry.
+
+The R22 optimizer also tries these candidates within the selected scope and
+trial budget. Its stricter quality gate may reject a longer trunk. No
+automatic power assignment, arbitrary mixed-axis branch routing, or source
+fixture mutation is implied. Text/label/graphic obstacles are still excluded
+rather than guessed. Limits and clearances are draft engineering heuristics.
