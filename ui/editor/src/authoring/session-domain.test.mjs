@@ -1578,3 +1578,57 @@ test('R29 rejects stale, duplicate, unknown and oversized batches without modify
  assert.throws(()=>s.routeInitialNets(old,[ids[1]]),/STALE_REVISION/);
  assert.deepEqual(s.file,before);
 });
+
+
+function multiAlignFixture(){
+ const f=hubFixture(),{s,b}=f;
+ const outside=s.place(s.newTransaction('outside'),'symbol/resistor.fixed',[290000,90000]);
+ const external=s.file.project.components.at(-1).id;
+ s.connect(s.newTransaction('second-route'),pin(b,'2'),pin(external,'1'));
+ return {...f,outside,external,moving:f.leaves[1]};
+}
+test('R30 aligns a two-pin satellite with two direct routes, keeping both neighbors fixed',()=>{
+ const {s,moving,b}=multiAlignFixture(),before=s.file,rev=s.revision,sh=before.project.sheets[0];
+ const ids=sh.wires.filter(w=>w.vertices.some(v=>v.anchor.kind==='pin'&&v.anchor.component_id===b)).map(w=>w.id);
+ const result=s.alignMultiConnected(s.newTransaction('multi-align'),moving);
+ const after=s.file,ns=after.project.sheets[0];
+ assert.equal(result.moved,moving);assert.deepEqual(result.delta,[0,15000]);assert.equal(result.wires,2);
+ assert.deepEqual(ns.instances.find(i=>i.id===moving).origin_um,[220000,90000]);
+ assert.deepEqual(ns.instances.filter(i=>i.id!==moving),sh.instances.filter(i=>i.id!==moving));
+ assert.deepEqual(ns.wires.filter(w=>!ids.includes(w.id)),sh.wires.filter(w=>!ids.includes(w.id)));
+ for(const id of ids){
+  const old=sh.wires.find(w=>w.id===id),now=ns.wires.find(w=>w.id===id);
+  assert.equal(now.vertices.length,2);assert.equal(now.vertices[0].id,old.vertices[0].id);
+  assert.equal(now.vertices.at(-1).id,old.vertices.at(-1).id);
+ }
+ assert.deepEqual(after.project.nets.map(n=>[n.id,n.members]),before.project.nets.map(n=>[n.id,n.members]));
+ assert.equal(s.revision,rev+1);assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);assert.deepEqual(new AuthoringSession(s.file).file,after);
+});
+test('R30 global preview discovers the multi-connected satellite missed by the simple chain solver',()=>{
+ const {s,moving}=multiAlignFixture(),before=s.file,rev=s.revision;
+ const plan=s.previewLayout();
+ assert.ok(plan.token);assert.ok(plan.operations.some(n=>n.includes('Совместное выравнивание')));
+ assert.equal(plan.after.bends,0);assert.ok(plan.after.lengthUm<plan.before.lengthUm);
+ assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
+ const candidate=s.layoutPreviewDocument(plan.token);
+ assert.deepEqual(candidate.project.sheets[0].instances.find(i=>i.id===moving).origin_um,[220000,90000]);
+ s.applyLayoutPreview(s.newTransaction('apply'),plan.token);
+ assert.deepEqual(s.file,candidate);
+});
+test('R30 refuses external scope, locked layer and occupied target with exact rollback',()=>{
+ const f=multiAlignFixture(),{s,moving,hub}=f;
+ const before=s.file,rev=s.revision;
+ assert.throws(()=>s.alignMultiConnected(s.newTransaction('scope'),moving,[hub,moving]),/MULTI_EXTERNAL_OR_BRANCH/);
+ assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
+ const doc=s.file,sh=doc.project.sheets[0];
+ sh.layers.push({...sh.layers[0],id:'fixed-satellite',locked:true});
+ sh.instances.find(i=>i.id===moving).layer_id='fixed-satellite';
+ const locked=new AuthoringSession(doc);
+ assert.throws(()=>locked.alignMultiConnected(locked.newTransaction('locked'),moving),/LAYER_LOCKED/);
+ assert.deepEqual(locked.file,doc);
+ s.place(s.newTransaction('block'),'symbol/resistor.fixed',[220000,90000]);
+ const blocked=s.file,r=s.revision;
+ assert.throws(()=>s.alignMultiConnected(s.newTransaction('blocked'),moving),/MULTI_NO_SAFE_IMPROVEMENT/);
+ assert.deepEqual(s.file,blocked);assert.equal(s.revision,r);
+});
