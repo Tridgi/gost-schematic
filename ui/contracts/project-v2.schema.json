@@ -377,6 +377,56 @@
             "maxLength": 256
           },
           "minItems": 0
+        },
+        "constant_annotations": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "key": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "at_um": {
+                "$ref": "#/$defs/point_um"
+              },
+              "height_um": {
+                "type": "integer",
+                "minimum": 500,
+                "maximum": 20000
+              },
+              "horizontal": {
+                "enum": [
+                  "left",
+                  "center",
+                  "right"
+                ]
+              },
+              "vertical": {
+                "enum": [
+                  "top",
+                  "center",
+                  "bottom"
+                ]
+              }
+            },
+            "required": [
+              "key",
+              "text",
+              "at_um",
+              "height_um",
+              "horizontal",
+              "vertical"
+            ]
+          }
         }
       },
       "required": [

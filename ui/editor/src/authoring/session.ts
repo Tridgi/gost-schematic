@@ -18,6 +18,7 @@ import {
   type PointUm as MutablePoint, type PinRef as MutablePin
 } from '../wires/manual-wire';
 import {loadProjectWires} from '../wires/project-v2-adapter';
+import {validateNotes,noteLayout} from '../model/symbol-notes.mjs';
 import {curveGeometry} from '../model/curves.mjs';
 import {projectToCanvasScene} from '../canvas/scene-projection.mjs';
 import {AUTHORING_PARTS, AUTHORING_SYMBOLS,catalogDefaultValue,catalogAdditions} from './catalog';
@@ -83,6 +84,14 @@ function symbolBounds(symbol:SymbolDefinition,rotation:SymbolInstance['rotation_
   for(const g of symbol.graphics){
     const points=g.kind==='circle'||g.kind==='semicircle'?curveGeometry(g.kind,g.points_um).bounds:g.points_um;
     for(const p of points)include(p,g.stroke_um/2);
+  }
+  for(const n of validateNotes(symbol.constant_annotations)){
+    const x=mirror?-n.at_um[0]:n.at_um[0],y=n.at_um[1];
+    const at:PointUm=rotation===0?[x,y]:rotation===90?[-y,x]:rotation===180?[-x,-y]:[y,-x];
+    for(const p of noteLayout(n,at).bounds){
+      bounds.minX=Math.min(bounds.minX,p[0]);bounds.maxX=Math.max(bounds.maxX,p[0]);
+      bounds.minY=Math.min(bounds.minY,p[1]);bounds.maxY=Math.max(bounds.maxY,p[1]);
+    }
   }
   return bounds;
 }
@@ -165,6 +174,7 @@ function validateAuthoring(file:ProjectFileV2):void {
     if(!part)reject('UNKNOWN_PART');
     if(!Array.isArray(symbol.pins))reject('INVALID_SYMBOL_PINS');
     const numbers=new Set<string>();
+    validateNotes(symbol.constant_annotations);
     for(const g of symbol.graphics)if(g.kind==='circle'||g.kind==='semicircle')curveGeometry(g.kind,g.points_um);
     for(const pin of symbol.pins){
       checkId(pin?.physical_pin_number,'INVALID_PINREF');

@@ -2,7 +2,7 @@
  * Bound to scene-projection.mjs; signed coordinates remain integer micrometres.
  * Neither this API nor the view can write source Nets or attach electrical pins.
  */
-import type { ProjectFileV2, WirePolyline, Junction, Splice } from '../model/contract';
+import type { ProjectFileV2, WirePolyline, Junction, Splice, ConstantAnnotation } from '../model/contract';
 
 export type PointUm = [number, number];
 export type CanvasPinNormal = 'left'|'right'|'up'|'down';
@@ -22,6 +22,7 @@ export type CanvasSymbol = {
   strokes:CanvasStroke[];
   inkStrokes:(CanvasStroke&{stroke_um:number})[];
   curves:{kind:'circle'|'semicircle';points_um:PointUm[];stroke_um:number;center:PointUm;radius:number;sweep:0|1;bounds:PointUm[]}[];
+  notes:ConstantAnnotation[];
   status:'draft'|'approved'|'deprecated';
   layer_id:string;
 };

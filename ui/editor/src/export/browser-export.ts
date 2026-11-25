@@ -4,6 +4,7 @@
  * Production-certified export remains the canonical Python exporter (#130).
  */
 import type { ProjectFileV2, PointUm, SymbolInstance, Primitive } from '../model/contract';
+import {noteLayout} from '../model/symbol-notes.mjs';
 import {curveGeometry} from '../model/curves.mjs';
 import { worldPin } from '../model/contract.ts';
 import { projectToCanvasScene } from '../canvas/scene-projection.mjs';
@@ -80,6 +81,10 @@ export function renderProjectPreviewSVG(file:ProjectFileV2,sheetId:string):strin
       ' data-component-id="'+esc(c.id)+'" data-reference="'+esc(c.refdes)+'"'+
       ' data-pinrefs="'+esc(JSON.stringify(s.pins.map(pin=>[c.id,pin.physical_pin_number])))+'">');
     for(const prim of s.graphics)out.push(primitiveInk(inst,prim));
+    for(const n of s.constant_annotations??[]){
+      const layout=noteLayout(n,worldPin(inst,n.at_um));
+      out.push('<text data-symbol-note="'+esc(n.key)+'" data-electrical="false" x="'+mm(layout.baseline[0])+'" y="'+mm(layout.baseline[1])+'" text-anchor="'+layout.anchor+'" font-size="'+mm(n.height_um)+'" font-family="sans-serif" fill="#000" stroke="none">'+esc(n.text)+'</text>');
+    }
     out.push('</g>');
   }
   for(const wire of sh.wires){
