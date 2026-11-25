@@ -725,3 +725,33 @@ test('R17c Python canonical curve validation and exact SVG sweep across every po
  const bad=spawnSync('python',['-c','import json,sys;sys.path.insert(0,"../..");from ui.editor.src.model.contract import validate;validate(json.loads(sys.stdin.buffer.read().decode("utf-8")))'],{input:JSON.stringify(doc),encoding:'utf8',timeout:30000});
  assert.notEqual(bad.status,0);assert.match(bad.stderr,/INVALID_CURVE/);
 });
+
+test('R17d all generated winding variants retain true arcs, actual core widths and tap/slider PinRefs',()=>{
+ const s=newSession(),catalog=s.file.project;
+ const defs=catalog.symbol_definitions.filter(d=>d.part_id.startsWith('inductor.')||d.part_id.startsWith('choke.'));
+ assert.equal(defs.length,14);
+ const dir=new URL('../../../../src/gost_schematic/catalog/inductors/',import.meta.url);
+ for(const symbol of defs){
+  const raw=JSON.parse(readFileSync(new URL(symbol.part_id+'.json',dir),'utf8'));
+  const turns=raw.turns??4,radius=Math.round(Number(raw.radius_mm??2)*1000),lead=Math.round(Number(raw.lead_mm??4)*1000);
+  const arcs=symbol.graphics.filter(g=>g.kind==='semicircle');
+  assert.equal(arcs.length,turns);
+  for(const [i,arc] of arcs.entries()){
+   const x=-turns*radius+2*radius*i;
+   assert.deepEqual(arc.points_um,[[x,0],[x+radius,-radius],[x+radius*2,0]]);
+  }
+  assert.deepEqual(symbol.pins[0].at_um,[-turns*radius-lead,0]);
+  assert.deepEqual(symbol.pins[1].at_um,[turns*radius+lead,0]);
+  assert.equal(symbol.pins.length,2+(raw.tap_turns?.length??0)+(raw.slider_turns?.length??0));
+  const part=catalog.part_definitions.find(p=>p.id===symbol.part_id);
+  assert.equal(part.reference_prefix,'L');assert.deepEqual(part.physical_pins.map(p=>p.number),symbol.pins.map(p=>p.physical_pin_number));
+  if(raw.core==='ferrite')assert.ok(symbol.graphics.some(g=>g.stroke_um===2*Math.round(Number(raw.line_width_mm??.3)*1000)));
+ }
+ const id=s.place(s.newTransaction('tapped'),'symbol/inductor.double_tapped',[100000,100000]);
+ const c=s.file.project.sheets[0].instances.find(i=>i.id===id).component_id;
+ assert.equal(s.snapshot.components.find(p=>p.id===c).pins.length,4);
+ s.rotate(s.newTransaction('rotate'),c);
+ const actual=s.beginWire(pin(c,'3'));
+ assert.equal(actual.net_id,null);assert.deepEqual(actual.normal,[1,0]);
+ assert.equal(s.file.project.nets.length,0);
+});
