@@ -36,7 +36,7 @@ export type InspectorProposal =
 
 /** The host owns all electrical topology, source PinRefs, command validation and actual persistence. */
 export type EditorShellProps = {
-  projectName:string;dirty:boolean;baseRevision:string;topology?:TopologyInventory;onBuildNetRail?:(netId:string)=>void;onBuildNetTree?:(netId:string)=>void;onRouteInitialNet?:(netId:string)=>void;
+  projectName:string;dirty:boolean;baseRevision:string;topology?:TopologyInventory;onBuildNetRail?:(netId:string)=>void;onBuildNetTree?:(netId:string)=>void;onRouteInitialNet?:(netId:string)=>void;onRouteInitialBatch?:(netIds:readonly string[])=>void;
   sheets:readonly {id:string;title:string}[];activeSheetId:string;
   catalog:readonly CatalogSymbol[];tree:readonly TreeItem[];
   catalogMissingCount?:number;onCatalogUpgrade?:()=>void;
@@ -407,6 +407,11 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
           </Stack>)}
           {props.onRouteInitialNet&&props.topology.unrouted.length>0&&<>
             <Text fw={600} size="sm">Неразведённые цепи</Text>
+            {props.onRouteInitialBatch&&props.topology.unrouted.length>1&&
+              <Button size="xs" data-testid="route-initial-batch"
+                onClick={()=>{setTopologyDialog(false);props.onRouteInitialBatch?.(props.topology!.unrouted.slice(0,8).map(n=>n.id))}}>
+                {props.topology.unrouted.length>8?'Развести первые 8 цепей':'Развести все '+props.topology.unrouted.length+' цепей'}
+              </Button>}
             {props.topology.unrouted.map(n=><Group key={n.id} justify="space-between">
               <Text size="sm">{n.name} — {n.pins} выводов</Text>
               <Button size="xs" variant="light" data-testid={'net-initial-'+n.id} onClick={()=>{setTopologyDialog(false);props.onRouteInitialNet?.(n.id)}}>Развести цепь</Button>
