@@ -19,6 +19,7 @@ import {
 } from '../wires/manual-wire';
 import {loadProjectWires} from '../wires/project-v2-adapter';
 import {validateNotes,noteLayout} from '../model/symbol-notes.mjs';
+import {assessLayout,improvesLayout,type LayoutQuality} from './layout-quality';
 import {curveGeometry} from '../model/curves.mjs';
 import {projectToCanvasScene} from '../canvas/scene-projection.mjs';
 import {AUTHORING_PARTS, AUTHORING_SYMBOLS,catalogDefaultValue,catalogAdditions} from './catalog';
@@ -37,6 +38,7 @@ export type GroupClipboard = {
 };
 
 export type PlacementHint={origin:MutablePoint;from:MutablePoint;to:MutablePoint;target:PinRef;newPin:string};
+export type LayoutPreview={token:string|null;before:LayoutQuality;after:LayoutQuality;operations:string[];attempted:number;rejected:number;limited:boolean};
 type Tx = {project_id:string;revision:number;source_guard:string;command_id:string};
 const SOURCE_ZERO='0000000000000000000000000000000000000000';
 const clone=<T>(v:T):T=>structuredClone(v);
@@ -349,6 +351,7 @@ function addRouteBends(start:WorldPin,end:WorldPin,bends:readonly PointUm[]):Mut
 }
 export class AuthoringSession {
   private current:ProjectFileV2;
+  private layoutPlan:{token:string;revision:number;sheet:string;next:ProjectFileV2}|null=null;
   private clock=0;
   private undoFiles:ProjectFileV2[]=[];
   private redoFiles:ProjectFileV2[]=[];
@@ -1199,6 +1202,90 @@ export class AuthoringSession {
     });
     if(!result)reject('PARALLEL_NO_SAFE_RAIL');
     return result;
+  }
+  /** Read-only plan, using isolated AuthoringSessions and strict non-regression.
+   * No edits or Undo history until applyLayoutPreview consumes the opaque token.
+   * Bounded to 12 trials. Never infer an electrical connection from placement. */
+  previewLayout(instanceIds:readonly string[]=[]):LayoutPreview{
+    this.layoutPlan=null;
+    const base=this.file,sh=base.project.sheets[indexOfSheet(base)];
+    const ids=new Set(instanceIds);
+    if(ids.size!==instanceIds.length||instanceIds.some(id=>!sh.instances.some(i=>i.id===id)))reject('INVALID_GROUP');
+    if(sh.instances.length>128||sh.wires.reduce((n,w)=>n+w.segments.length,0)>512)reject('LAYOUT_SIZE_LIMIT');
+    // Sheet-level annotation collision envelopes are not yet certified.
+    // Fail closed instead of automatically moving through text or graphics.
+    if(sh.texts.length||sh.labels.length||sh.graphics.length)reject('LAYOUT_ANNOTATIONS_UNSUPPORTED');
+    const before=assessLayout(base,this.engine);
+    if(!before.quality.complete)reject('LAYOUT_CHECK_INCOMPLETE');
+    let best=new AuthoringSession(base),assessment=before,attempted=0,rejected=0,limited=false;
+    const operations:string[]=[];
+    const group=sh.instances.filter(i=>!ids.size||ids.has(i.id));
+    const byComp=new Map(group.map(i=>[i.component_id,i.id]));
+    const tryEdit=(name:string,edit:(trial:AuthoringSession)=>void)=>{
+      if(attempted>=12){limited=true;return}
+      attempted++;
+      const trial=new AuthoringSession(best.file);
+      try{edit(trial)}
+      catch(e){if(e instanceof WireError){rejected++;return}throw e}
+      const next=trial.file;
+      if(sourceGuard(next)!==sourceGuard(base))reject('LAYOUT_TOPOLOGY_MISMATCH');
+      const nextAssessment=assessLayout(next,trial.engine);
+      if(!improvesLayout(assessment,nextAssessment)){rejected++;return}
+      best=trial;assessment=nextAssessment;operations.push(name);
+    };
+    // Closed parallel groups are discovered by actual two-Net membership.
+    // A Net with any external physical member is deliberately not a candidate.
+    const defs=new Map(base.project.symbol_definitions.map(d=>[d.id,d]));
+    const netByPin=new Map(base.project.nets.flatMap(n=>n.members.map(p=>[pinKey(p),n.id] as const)));
+    const buckets=new Map<string,string[]>();
+    for(const i of group){
+      const d=defs.get(i.symbol_id);if(!d||d.pins.length!==2)continue;
+      const nets=d.pins.map(p=>netByPin.get(pinKey({component_id:i.component_id,physical_pin_number:p.physical_pin_number})));
+      if(!nets[0]||!nets[1]||nets[0]===nets[1])continue;
+      const key=JSON.stringify(nets.sort()),b=buckets.get(key)??[];b.push(i.id);buckets.set(key,b);
+    }
+    for(const g of buckets.values())if(g.length>=3&&g.length<=24){
+      tryEdit('Параллельные ветви: '+g.length,s=>s.buildParallelRails(s.newTransaction('auto-parallel'),g,true));
+      tryEdit('Общие магистрали: '+g.length,s=>s.buildParallelRails(s.newTransaction('auto-rails'),g));
+    }
+    // Discover direct-wire connected components of the current trial.
+    // Chain solver rejects cycles, branches, mixed axes and fixed conflicts.
+    const adj=new Map(group.map(i=>[i.id,new Set<string>()]));
+    const current=best.file.project.sheets[indexOfSheet(best.file)];
+    for(const w of current.wires){
+      const a=w.vertices[0].anchor,b=w.vertices.at(-1)!.anchor;
+      if(a.kind!=='pin'||b.kind!=='pin')continue;
+      const x=byComp.get(a.component_id),y=byComp.get(b.component_id);
+      if(x&&y&&x!==y){adj.get(x)!.add(y);adj.get(y)!.add(x)}
+    }
+    const visited=new Set<string>();
+    for(const id of adj.keys()){
+      if(visited.has(id))continue;
+      const pending=[id],connected:string[]=[];visited.add(id);
+      while(pending.length){
+        const v=pending.pop()!;connected.push(v);
+        for(const n of adj.get(v)!)if(!visited.has(n)){visited.add(n);pending.push(n)}
+      }
+      if(connected.length===2)tryEdit('Выравнивание пары',s=>s.alignConnectedPair(s.newTransaction('auto-pair'),connected));
+      else if(connected.length>=3&&connected.length<=32)tryEdit('Выравнивание цепочки: '+connected.length,s=>s.alignSeries(s.newTransaction('auto-series'),connected));
+    }
+    tryEdit('Упрощение проводников',s=>s.simplifyRoutes(s.newTransaction('auto-cleanup'),instanceIds));
+    const token=operations.length?newId('layout'):null;
+    if(token)this.layoutPlan={token,revision:this.clock,sheet:sh.id,next:best.file};
+    return {token,before:before.quality,after:assessment.quality,operations,attempted,rejected,limited};
+  }
+  applyLayoutPreview(tx:Tx,token:string):void{
+    const plan=this.layoutPlan;
+    if(!plan||plan.token!==token)reject('LAYOUT_PLAN_UNKNOWN');
+    if(plan.revision!==this.clock||plan.sheet!==this.current.workspace.active_sheet_id)reject('STALE_REVISION');
+    this.edit(tx,draft=>{
+      if(sourceGuard(draft)!==sourceGuard(plan.next))reject('LAYOUT_TOPOLOGY_MISMATCH');
+      return clone(plan.next);
+    });
+    this.layoutPlan=null;
+  }
+  discardLayoutPreview(token:string):void{
+    if(this.layoutPlan?.token===token)this.layoutPlan=null;
   }
   /** Explicit post-processing: only existing signed pin-to-pin wires.
    * Never increase length or turns, never introduce wire intersections, never
