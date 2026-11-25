@@ -52,6 +52,7 @@ export type EditorShellProps = {
   onSelectSheet:(id:string)=>void;onInspectorProposal:(edit:InspectorProposal)=>void;
   onUndo:()=>void;onRedo:()=>void;onSave:()=>void;
   onCopy?:()=>void;onPaste?:()=>void;
+  pinMagnet?:boolean;onTogglePinMagnet?:(enabled:boolean)=>void;
   smartRouting?:boolean;onToggleSmartRouting?:(enabled:boolean)=>void;onAlignConnectedPair?:()=>void;
   onOpen?:()=>void;onNew?:()=>void;onAddSheet?:()=>void;
   onPaperChange?:(paper:'A4'|'A3'|'A2')=>void;activePaper?:'A4'|'A3'|'A2';
@@ -239,6 +240,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
               <Menu.Dropdown>
                 <Menu.Item data-testid="copy-component" onClick={props.onCopy} disabled={!props.onCopy}>Копировать выделенное · Ctrl+C</Menu.Item>
                 <Menu.Item data-testid="smart-routing" disabled={!props.onToggleSmartRouting} onClick={()=>props.onToggleSmartRouting?.(!props.smartRouting)}>Умная трассировка: {props.smartRouting?'вкл.':'выкл.'}</Menu.Item>
+                <Menu.Item data-testid="pin-magnet" disabled={!props.onTogglePinMagnet} onClick={()=>props.onTogglePinMagnet?.(!props.pinMagnet)}>Привязка выводов: {props.pinMagnet?'вкл.':'выкл.'}</Menu.Item>
                 <Menu.Item data-testid="align-connected-pair" disabled={!props.onAlignConnectedPair} onClick={props.onAlignConnectedPair}>Выровнять соединённые выводы</Menu.Item>
                 <Menu.Divider/>
                 <Menu.Item data-testid="paste-component" onClick={props.onPaste} disabled={!props.onPaste}>Вставить независимую копию · Ctrl+V</Menu.Item>
