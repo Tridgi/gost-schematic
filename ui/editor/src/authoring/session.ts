@@ -1396,9 +1396,10 @@ export class AuthoringSession {
     this.edit(tx,draft=>{
       const sh=draft.project.sheets[indexOfSheet(draft)];
       if(sh.instances.length>128||sh.wires.reduce((n,w)=>n+w.segments.length,0)>512)reject('LAYOUT_SIZE_LIMIT');
-      // Initial routing can protect bounded visual annotations. Other
-      // geometry edits still fail closed; no Net labels or free text.
-      if(sh.texts.length||(!initial&&(sh.labels.length||sh.graphics.length))||
+      const refinement=!initial&&controlled;
+      // Explicit controlled refinement can protect the same bounded visual
+      // annotations as initial routing. Ordinary geometry edits fail closed.
+      if(sh.texts.length||(!initial&&!refinement&&(sh.labels.length||sh.graphics.length))||
         sh.labels.length+sh.graphics.length>32||
         sh.labels.some(l=>l.role!=='visual'||l.net_id!==null||typeof l.text!=='string'||l.text.length>64)||
         sh.graphics.some(g=>!['line','polyline','source_b_continuation'].includes(g.kind)||
@@ -1406,7 +1407,7 @@ export class AuthoringSession {
         reject('LAYOUT_ANNOTATIONS_UNSUPPORTED');
       const net=draft.project.nets.find(n=>n.id===netId);
       if(!net)reject('UNKNOWN_NET');
-      if(net.members.length<(initial?2:3)||net.members.length>32)reject('TREE_PIN_COUNT');
+      if(net.members.length<(initial||refinement?2:3)||net.members.length>32)reject('TREE_PIN_COUNT');
       const byComp=new Map(sh.instances.map(i=>[i.component_id,i]));
       if(net.members.some(p=>!byComp.has(p.component_id))||
         draft.project.sheets.some(s=>s.id!==sh.id&&[...s.wires,...s.junctions,...s.splices].some(w=>w.net_id===netId)))reject('RAIL_CROSS_SHEET');
@@ -1419,10 +1420,14 @@ export class AuthoringSession {
       if(!prior.quality.complete)reject('LAYOUT_CHECK_INCOMPLETE');
       const old=sh.wires.filter(w=>w.net_id===netId);
       if(old.some(w=>[w.vertices[0],w.vertices.at(-1)!].some(v=>v.anchor.kind==='free')))reject('RAIL_DANGLING');
+      // Review flags are not proof of generated provenance. This explicit
+      // operation is restricted to routes already marked for review.
+      if(refinement&&(!old.length||old.some(w=>!w.needs_routing_review)))reject('REFINE_REVIEW_REQUIRED');
       const layers=new Set(old.map(w=>w.layer_id));
       if(!initial&&layers.size!==1)reject('RAIL_MIXED_LAYERS');
       const eligible=sh.layers.filter(l=>l.kind==='electrical'&&!l.locked&&l.visible&&l.printable);
       if(initial&&eligible.length!==1)reject('TREE_ELECTRICAL_LAYER_AMBIGUOUS');
+      if(refinement&&[...sh.junctions,...sh.splices].some(n=>n.net_id===netId&&!layers.has(n.layer_id)))reject('RAIL_MIXED_LAYERS');
       const layer=initial?eligible[0].id:[...layers][0],layerDef=sh.layers.find(l=>l.id===layer);
       if(!layerDef||layerDef.locked||!layerDef.visible||!layerDef.printable||layerDef.kind!=='electrical')reject('LAYER_LOCKED');
       const defs=new Map(draft.project.symbol_definitions.map(d=>[d.id,d]));
@@ -1444,7 +1449,7 @@ export class AuthoringSession {
       }
       if(annotations.length>128)reject('LAYOUT_ANNOTATIONS_UNSUPPORTED');
       const outside=sh.wires.filter(w=>w.net_id!==netId);
-      const crossingMode=initial&&controlled;
+      const crossingMode=controlled;
       const foreignSegments=outside.flatMap(w=>w.vertices.slice(1).map((v,i)=>({a:xy(w.vertices[i].at_um),b:xy(v.at_um),clearance:1000})));
       const wireBoxes=foreignSegments.map(w=>inflate(rect(w.a,w.b)));
       const fixed=[...annotations,
@@ -1484,9 +1489,15 @@ export class AuthoringSession {
       const m=sh.frame.margin_um,frame={minX:m,minY:m,maxX:sh.frame.size_um[0]-m,maxY:sh.frame.size_um[1]-m};
       let plan:ReturnType<typeof planOrthogonalTree>;
       try{
-        plan=planOrthogonalTree(ports,[...boxes.map(o=>o.box),...foreign],frame,[],crossingMode);
-        if(!plan&&crossingMode&&foreignSegments.length)
+        // For a route already connected, compare the weighted crossing-aware
+        // path against actual existing geometry via the full Pareto gate.
+        if(refinement&&foreignSegments.length)
           plan=planOrthogonalTree(ports,[...boxes.map(o=>o.box),...fixed,...reservations],frame,foreignSegments,true);
+        else{
+          plan=planOrthogonalTree(ports,[...boxes.map(o=>o.box),...foreign],frame,[],crossingMode);
+          if(!plan&&crossingMode&&foreignSegments.length)
+            plan=planOrthogonalTree(ports,[...boxes.map(o=>o.box),...fixed,...reservations],frame,foreignSegments,true);
+        }
       }
       catch(e){if(e instanceof Error&&['TREE_SEARCH_LIMIT','TREE_GRID_LIMIT'].includes(e.message))reject(e.message);throw e}
       if(!plan)reject('TREE_NO_SAFE_ROUTE');
@@ -1515,8 +1526,18 @@ export class AuthoringSession {
       if(session.engine.validateNet(netId).pin_groups.length!==1)reject('RAIL_TOPOLOGY_MISMATCH');
       const otherStatuses=new Map(draft.project.nets.filter(n=>n.id!==netId).map(n=>[n.id,n.route_status]));
       const next=materialize(draft,subset,session);
-      if(initial)for(const n of next.project.nets)if(otherStatuses.has(n.id))n.route_status=otherStatuses.get(n.id)!;
-      if(!preservesLayoutSafety(prior,assessLayout(next,session.engine,initial?netId:undefined),crossingMode?netId:undefined))reject('TREE_UNSAFE_DIAGNOSTICS');
+      if(initial||refinement)for(const n of next.project.nets)if(otherStatuses.has(n.id))n.route_status=otherStatuses.get(n.id)!;
+      const after=assessLayout(next,session.engine,initial?netId:undefined);
+      if(!preservesLayoutSafety(prior,after,crossingMode?netId:undefined))reject('TREE_UNSAFE_DIAGNOSTICS');
+      if(refinement){
+        // No trade-off: fewer crossings, bends or length, with no increase
+        // in any of those metrics; signed groups and hazards remain fixed.
+        if(!improvesLayout(prior,after))reject('REFINE_NO_IMPROVEMENT');
+        const ns=next.project.sheets[indexOfSheet(next)];
+        if(JSON.stringify(ns.wires.filter(w=>w.net_id!==netId))!==JSON.stringify(outside)||
+          JSON.stringify(ns.junctions.filter(n=>n.net_id!==netId))!==JSON.stringify(sh.junctions.filter(n=>n.net_id!==netId))||
+          JSON.stringify(ns.splices.filter(n=>n.net_id!==netId))!==JSON.stringify(sh.splices.filter(n=>n.net_id!==netId)))reject('REFINE_FOREIGN_GEOMETRY');
+      }
       result={pins:pins.length,wires:wires.length,junctions:junctions.length,lengthUm:plan.lengthUm,bends:plan.bends};
       return next;
     });
@@ -1795,6 +1816,49 @@ export class AuthoringSession {
     const token=best.routed===netIds.length?newId('initial-batch'):null;
     if(token)this.layoutPlan={token,revision:this.clock,sheet:sh.id,next:best.session.file};
     return {token,requested:netIds.length,routed:best.routed,attempted,order:best.order,outcomes:best.outcomes,quality:best.quality};
+  }
+  /** Bounded read-only refinement of connected routes marked for review.
+   * The entire accepted sequence is a single revision-bound proposal. */
+  previewRouteRefinement():LayoutPreview{
+    this.layoutPlan=null;
+    const base=this.file,sh=base.project.sheets[indexOfSheet(base)];
+    if(sh.instances.length>128||sh.wires.reduce((n,w)=>n+w.segments.length,0)>512)reject('LAYOUT_SIZE_LIMIT');
+    const before=assessLayout(base,this.engine);
+    if(!before.quality.complete)reject('LAYOUT_CHECK_INCOMPLETE');
+    let best=new AuthoringSession(base),assessment=before,attempted=0,rejected=0;
+    const operations:string[]=[];
+    const local=new Set(sh.instances.map(i=>i.component_id));
+    const eligible=base.project.nets.filter(n=>{
+      const wires=sh.wires.filter(w=>w.net_id===n.id);
+      return n.members.length>=2&&n.members.length<=32&&n.members.every(p=>local.has(p.component_id))&&
+        wires.length>0&&wires.every(w=>w.needs_routing_review)&&this.engine.validateNet(n.id).pin_groups.length===1;
+    });
+    for(let pass=0;pass<2&&attempted<32;pass++){
+      let changed=0;
+      const counts=new Map<string,number>();
+      for(const k of assessment.crossingKeys??[]){
+        const [a,b]=JSON.parse(k) as [string,string,number,number];
+        counts.set(a,(counts.get(a)??0)+1);if(a!==b)counts.set(b,(counts.get(b)??0)+1);
+      }
+      const current=best.file.project.sheets[indexOfSheet(best.file)];
+      const length=(id:string)=>current.wires.filter(w=>w.net_id===id).reduce((sum,w)=>
+        sum+w.vertices.slice(1).reduce((n,v,i)=>n+Math.abs(v.at_um[0]-w.vertices[i].at_um[0])+Math.abs(v.at_um[1]-w.vertices[i].at_um[1]),0),0);
+      const ordered=[...eligible].sort((a,b)=>(counts.get(b.id)??0)-(counts.get(a.id)??0)||length(b.id)-length(a.id)||a.id.localeCompare(b.id));
+      for(const n of ordered){
+        if(attempted>=32)break;
+        attempted++;
+        const trial=new AuthoringSession(best.file);
+        try{trial.buildNetTree(trial.newTransaction('refine-review-net'),n.id,false,true)}
+        catch(e){if(!(e instanceof WireError))throw e;rejected++;continue}
+        const after=assessLayout(trial.file,trial.engine);
+        if(sourceGuard(trial.file)!==sourceGuard(base)||!improvesLayout(assessment,after)){rejected++;continue}
+        best=trial;assessment=after;changed++;operations.push('Перестроение '+n.name);
+      }
+      if(!changed)break;
+    }
+    const token=operations.length?newId('route-refinement'):null;
+    if(token)this.layoutPlan={token,revision:this.clock,sheet:sh.id,next:best.file};
+    return {token,before:before.quality,after:assessment.quality,operations,attempted,rejected,limited:attempted>=32};
   }
   /** Align a two-pin component with multiple direct signed neighbors,
    * rebuilding all its incident routes on one detached candidate. */
