@@ -1373,7 +1373,7 @@ test('R25 mixed-axis Net uses a direct trunk and one L-shaped lead while preserv
  for(const w of sh.wires){
   const v=w.vertices[0];if(v.anchor.kind!=='pin')continue;
   const p=s.beginWire(v.anchor),q=w.vertices[1].at_um;
-  assert.deepEqual([Math.sign(q[0]-v.at_um[0]),Math.sign(q[1]-v.at_um[1])],p.normal);
+  assert.deepEqual([Math.sign(q[0]-v.at_um[0]),Math.sign(q[1]-v.at_um[1])],p.normal.map(v=>v===0?0:v));
  }
  assert.equal(s.revision,rev+1);
  assert.throws(()=>s.buildNetRail(s.newTransaction('repeat'),net),/NO_CHANGE/);
@@ -1393,3 +1393,35 @@ test('R25 selected common trunk keeps unrelated Net geometry byte-for-byte',()=>
  assert.deepEqual(s.file.project.nets.at(-1),other);
 });
 
+
+test('R26 orthogonal tree bypasses obstruction that blocks a single straight rail',()=>{
+ const {s,net}=railFixture();
+ s.place(s.newTransaction('obstruction'),'symbol/resistor.fixed',[130000,80000]);
+ const before=s.file,rev=s.revision;
+ assert.throws(()=>s.buildNetRail(s.newTransaction('blocked'),net),/RAIL_NO_SAFE_CHANNEL/);
+ assert.deepEqual(s.file,before);
+ const result=s.buildNetTree(s.newTransaction('tree'),net),after=s.file,sh=after.project.sheets[0];
+ assert.equal(result.pins,4);assert.ok(result.junctions>=1);
+ assert.equal(s.revision,rev+1);assert.deepEqual(sh.instances,before.project.sheets[0].instances);
+ assert.deepEqual(after.project.nets.map(n=>[n.id,n.members]),before.project.nets.map(n=>[n.id,n.members]));
+ assert.equal(s.engine.validateNet(net).pin_groups.length,1);
+ assert.equal(sh.splices.length,0);
+ const terminals=sh.wires.flatMap(w=>[w.vertices[0].anchor,w.vertices.at(-1).anchor]);
+ assert.equal(terminals.filter(a=>a.kind==='pin').length,4);
+ for(const j of sh.junctions)assert.ok(terminals.filter(a=>a.kind==='junction'&&a.junction_id===j.id).length>=3);
+ assert.equal(sh.wires.length,4+sh.junctions.length-1);
+ for(const w of sh.wires)for(let i=1;i<w.vertices.length;i++){
+  const a=w.vertices[i-1].at_um,b=w.vertices[i].at_um;
+  assert.ok((a[0]===b[0])!== (a[1]===b[1]));
+ }
+ assert.throws(()=>s.buildNetTree(s.newTransaction('repeat'),net),/NO_CHANGE/);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);assert.deepEqual(new AuthoringSession(s.file).file,after);
+});
+test('R26 tree rejects disconnected signed membership without modifying the document',()=>{
+ const {s,net}=railFixture(),doc=s.file;
+ doc.project.sheets[0].wires.shift();
+ const a=new AuthoringSession(doc);
+ assert.throws(()=>a.buildNetTree(a.newTransaction('incomplete'),net),/RAIL_UNCONNECTED_NET/);
+ assert.deepEqual(a.file,doc);assert.equal(a.revision,0);
+});

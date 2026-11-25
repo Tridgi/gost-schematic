@@ -1596,3 +1596,47 @@ test('R25 mixed-axis Net rail keeps real signed pin directions and undoable geom
  await page.getByRole('button',{name:'Повторить'}).click();
  expect((await saved()).project).toEqual(after.project);
 });
+
+test('R26 tree reconstruction from topology report bypasses a rail obstruction',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');
+ await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ const positions=[[.17,.34],[.31,.39],[.45,.32],[.60,.37],[.31,.27]];
+ for(const [i,[x,y]] of positions.entries()){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await expect(canvas).toHaveAttribute('data-tool','place');
+  const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*y);
+  await expect(page.getByTestId('symbol-R'+(i+1))).toBeVisible();
+  if(i<4){await canvas.focus();await canvas.press('r')}
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const placed=await saved(),comps=placed.project.components.slice(0,4);
+ await page.getByTestId('tool-wire').click();
+ for(let i=1;i<comps.length;i++){
+  await page.getByTestId('signed-pin-'+comps[i-1].id+'-1').click();
+  await page.getByTestId('signed-pin-'+comps[i].id+'-1').click();
+ }
+ await page.getByTestId('tool-select').click();
+ const before=await saved(),net=before.project.nets[0];
+ expect(net.members).toHaveLength(4);
+ await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByTestId('topology-inventory').click();
+ page.once('dialog',d=>d.accept());
+ await page.getByTestId('net-tree-'+net.id).click();
+ const after=await saved(),sh=after.project.sheets[0];
+ expect(sh.junctions.length).toBeGreaterThanOrEqual(1);
+ expect(sh.wires.length).toBe(4+sh.junctions.length-1);
+ expect(sh.splices).toHaveLength(0);
+ expect(sh.instances).toEqual(before.project.sheets[0].instances);
+ expect(after.project.nets.map(n=>[n.id,n.members])).toEqual(before.project.nets.map(n=>[n.id,n.members]));
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ expect((await saved()).project).toEqual(after.project);
+});

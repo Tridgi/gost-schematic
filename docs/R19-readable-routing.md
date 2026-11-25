@@ -166,3 +166,24 @@ The procedure is greedy, not a complete maze/Steiner solver. It may reject
 a routable Net that needs two or more lead bends, moving symbols, or multiple
 trunk sections. Same-axis R24 behavior, immutable signed membership,
 no-new-hazard/crossing gate, route review flags and one-step Undo remain.
+
+
+## R26 — obstacle-aware orthogonal Net tree
+
+If one straight trunk cannot reach all signed pins, an explicit tree command
+can reconstruct an already-connected local Net. The planner creates mandatory
+outward leads, expands obstacle envelopes by 1 mm, and builds a compressed
+rectilinear visibility grid from lead tips, obstacle boundaries and printable
+frame limits. A multi-source shortest-path search grows an acyclic tree,
+using a 5 mm equivalent bend penalty. Degree-two chains are compacted into
+orthogonal polylines; only degree-three/four branch nodes become junctions.
+Other Nets and symbol poses are untouched. No inferred contacts are allowed.
+
+Limits: 3–32 pins, 96 coordinates per axis, 6,500 grid cells, 640 obstacles,
+3 million geometric comparisons. No result on exhaustion or blocked leads.
+The R22 optimizer may try the tree under the existing non-regression gate;
+the explicit command preserves signed connectivity and adds no measured
+hazards or crossings. The user must review the resulting routes. This is a
+bounded heuristic, not an exact rectilinear Steiner optimum or complete
+maze solver. Unrouted declared Nets and frozen source projects remain
+outside the reconstruction command.

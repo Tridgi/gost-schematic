@@ -19,6 +19,7 @@ import {
 } from '../wires/manual-wire';
 import {loadProjectWires} from '../wires/project-v2-adapter';
 import {validateNotes,noteLayout} from '../model/symbol-notes.mjs';
+import {planOrthogonalTree} from './orthogonal-tree';
 import {assessLayout,improvesLayout,preservesLayoutSafety,type LayoutQuality} from './layout-quality';
 import {curveGeometry} from '../model/curves.mjs';
 import {projectToCanvasScene} from '../canvas/scene-projection.mjs';
@@ -1385,6 +1386,86 @@ export class AuthoringSession {
     if(!result)reject('RAIL_NO_SAFE_CHANNEL');
     return result;
   }
+  /** Reconstruct a connected Net as a bounded obstacle-aware rectilinear
+   * tree. Signed pin membership, component poses and other Nets are fixed. */
+  buildNetTree(tx:Tx,netId:string):{pins:number;wires:number;junctions:number;lengthUm:number;bends:number}{
+    let result:{pins:number;wires:number;junctions:number;lengthUm:number;bends:number}|undefined;
+    this.edit(tx,draft=>{
+      const sh=draft.project.sheets[indexOfSheet(draft)];
+      if(sh.instances.length>128||sh.wires.reduce((n,w)=>n+w.segments.length,0)>512)reject('LAYOUT_SIZE_LIMIT');
+      if(sh.texts.length||sh.labels.length||sh.graphics.length)reject('LAYOUT_ANNOTATIONS_UNSUPPORTED');
+      const net=draft.project.nets.find(n=>n.id===netId);
+      if(!net)reject('UNKNOWN_NET');
+      if(net.members.length<3||net.members.length>32)reject('TREE_PIN_COUNT');
+      const byComp=new Map(sh.instances.map(i=>[i.component_id,i]));
+      if(net.members.some(p=>!byComp.has(p.component_id))||
+        draft.project.sheets.some(s=>s.id!==sh.id&&s.wires.some(w=>w.net_id===netId)))reject('RAIL_CROSS_SHEET');
+      if(this.engine.validateNet(netId).pin_groups.length!==1)reject('RAIL_UNCONNECTED_NET');
+      const prior=assessLayout(draft,this.engine);
+      if(!prior.quality.complete)reject('LAYOUT_CHECK_INCOMPLETE');
+      const old=sh.wires.filter(w=>w.net_id===netId);
+      if(old.some(w=>[w.vertices[0],w.vertices.at(-1)!].some(v=>v.anchor.kind==='free')))reject('RAIL_DANGLING');
+      const layers=new Set(old.map(w=>w.layer_id));
+      if(layers.size!==1)reject('RAIL_MIXED_LAYERS');
+      const layer=[...layers][0],layerDef=sh.layers.find(l=>l.id===layer);
+      if(!layerDef||layerDef.locked||!layerDef.visible||!layerDef.printable||layerDef.kind!=='electrical')reject('LAYER_LOCKED');
+      const defs=new Map(draft.project.symbol_definitions.map(d=>[d.id,d]));
+      const inflate=(b:Bounds):Bounds=>({minX:Math.floor(b.minX)-1000,minY:Math.floor(b.minY)-1000,
+        maxX:Math.ceil(b.maxX)+1000,maxY:Math.ceil(b.maxY)+1000});
+      const rect=(p:PointUm,q:PointUm):Bounds=>({minX:Math.min(p[0],q[0]),minY:Math.min(p[1],q[1]),maxX:Math.max(p[0],q[0]),maxY:Math.max(p[1],q[1])});
+      const boxes=sh.instances.map(i=>{
+        const d=defs.get(i.symbol_id);if(!d)reject('UNKNOWN_SYMBOL');
+        return {id:i.component_id,box:inflate(translateBounds(symbolBounds(d,i.rotation_deg,i.mirror_x),i.origin_um))};
+      });
+      const outside=sh.wires.filter(w=>w.net_id!==netId);
+      const foreign=[...outside.flatMap(w=>w.vertices.slice(1).map((v,i)=>inflate(rect(w.vertices[i].at_um,v.at_um)))),
+        ...[...sh.junctions,...sh.splices].filter(n=>n.net_id!==netId).map(n=>inflate(rect(n.at_um,n.at_um)))];
+      const pins=net.members.map(ref=>({ref,p:this.beginWire(ref)}));
+      const ports=pins.map(({ref,p})=>{
+        const own=boxes.find(b=>b.id===ref.component_id)!.box;
+        const axis:0|1=p.normal[0]!==0?0:1,sign=p.normal[axis],tip=xy(p.at_um);
+        const edge=axis===0?(sign>0?own.maxX:own.minX):(sign>0?own.maxY:own.minY);
+        tip[axis]=sign>0?Math.max(edge+1,tip[axis]+2000):Math.min(edge-1,tip[axis]-2000);
+        const lead=rect(p.at_um,tip);
+        if(boxes.some(o=>o.id!==ref.component_id&&!separated(lead,o.box,0))||
+          foreign.some(o=>!separated(lead,o,0)))reject('TREE_BLOCKED_PIN_LEAD');
+        return {pin:p.at_um,tip};
+      });
+      const m=sh.frame.margin_um;
+      let plan:ReturnType<typeof planOrthogonalTree>;
+      try{plan=planOrthogonalTree(ports,[...boxes.map(o=>o.box),...foreign],{minX:m,minY:m,maxX:sh.frame.size_um[0]-m,maxY:sh.frame.size_um[1]-m});}
+      catch(e){if(e instanceof Error&&['TREE_SEARCH_LIMIT','TREE_GRID_LIMIT'].includes(e.message))reject(e.message);throw e}
+      if(!plan)reject('TREE_NO_SAFE_ROUTE');
+      const junctions:Junction[]=plan.nodes.map(at_um=>({id:newId('junction'),net_id:netId,layer_id:layer,at_um}));
+      const nodeByPoint=new Map(junctions.map(j=>[j.at_um.join(','),j.id]));
+      const anchor=(pin:number|null,point:PointUm):Parameters<typeof constructWire>[4]=>{
+        if(pin!==null)return {kind:'pin',...pins[pin].ref};
+        const id=nodeByPoint.get(point.join(','));if(!id)reject('TREE_NODE_MISMATCH');
+        return {kind:'junction',junction_id:id};
+      };
+      const wires=plan.paths.map(p=>{
+        const w=constructWire(newId('wire'),netId,layer,p.points,anchor(p.startPin,p.points[0]),anchor(p.endPin,p.points.at(-1)!));
+        w.needs_routing_review=true;return w;
+      });
+      const signature=(w:WirePolyline)=>{
+        const v=w.vertices.map(v=>[v.at_um,v.anchor.kind,v.anchor.kind==='pin'?pinKey(v.anchor):null]);
+        const a=JSON.stringify(v),b=JSON.stringify([...v].reverse());
+        return JSON.stringify([w.net_id,w.layer_id,a<b?a:b]);
+      };
+      const nodes=(v:Junction[])=>JSON.stringify(v.map(n=>n.at_um.join(',')).sort());
+      if(JSON.stringify(old.map(signature).sort())===JSON.stringify(wires.map(signature).sort())&&
+        nodes(sh.junctions.filter(n=>n.net_id===netId))===nodes(junctions)&&!sh.splices.some(n=>n.net_id===netId))reject('NO_CHANGE');
+      sh.wires=[...outside,...wires];sh.junctions=[...sh.junctions.filter(n=>n.net_id!==netId),...junctions];
+      sh.splices=sh.splices.filter(n=>n.net_id!==netId);
+      const {subset,session}=localSession(draft,this.clock);
+      if(session.engine.validateNet(netId).pin_groups.length!==1)reject('RAIL_TOPOLOGY_MISMATCH');
+      const next=materialize(draft,subset,session);
+      if(!preservesLayoutSafety(prior,assessLayout(next,session.engine)))reject('TREE_UNSAFE_DIAGNOSTICS');
+      result={pins:pins.length,wires:wires.length,junctions:junctions.length,lengthUm:plan.lengthUm,bends:plan.bends};
+      return next;
+    });
+    if(!result)reject('TREE_NO_SAFE_ROUTE');return result;
+  }
   /** Read-only plan, using isolated AuthoringSessions and strict non-regression.
    * No edits or Undo history until applyLayoutPreview consumes the opaque token.
    * Bounded to 12 trials. Never infer an electrical connection from placement. */
@@ -1497,6 +1578,7 @@ export class AuthoringSession {
     for(const n of netCandidates){
       if(attempted>=11){limited=true;break}
       tryEdit('Магистраль '+n.name,s=>s.buildNetRail(s.newTransaction('auto-net-rail'),n.id));
+      if(attempted<11)tryEdit('Дерево '+n.name,s=>s.buildNetTree(s.newTransaction('auto-net-tree'),n.id));
     }
     tryEdit('Упрощение проводников',s=>s.simplifyRoutes(s.newTransaction('auto-cleanup'),instanceIds));
     const token=operations.length?newId('layout'):null;
