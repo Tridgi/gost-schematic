@@ -1,6 +1,7 @@
 /** CHAT 4 / #120: read-only projection of #122 canonical ProjectFileV2 to canvas scene.
  * Does not modify source Nets, wire connectivity, or render graphics as electrical anchors.
  */
+import {validateNotes} from '../model/symbol-notes.mjs';
 import {curveGeometry,curveChords} from '../model/curves.mjs';
 function projectToCanvasScene(file,sheetId){
  const deny=(code)=>{throw Error(code)};
@@ -49,7 +50,7 @@ function projectToCanvasScene(file,sheetId){
   const strokes=(s.graphics||[]).flatMap(graphicsToStrokes);
   const curves=(s.graphics||[]).filter(g=>g.kind==='circle'||g.kind==='semicircle').map(g=>({kind:g.kind,points_um:g.points_um.map(point),stroke_um:g.stroke_um,...curveGeometry(g.kind,g.points_um)}));
   const inkStrokes=(s.graphics||[]).filter(g=>g.kind!=='circle'&&g.kind!=='semicircle').flatMap(g=>graphicsToStrokes(g).map(stroke=>({...stroke,stroke_um:g.stroke_um})));
-  sourceSymbols.push({instance_id:i.id,component_id:c.id,origin_um:point(i.origin_um),rotation_deg:i.rotation_deg,mirror_x:i.mirror_x,pins,strokes,curves,inkStrokes,status:s.status,layer_id:i.layer_id});
+  sourceSymbols.push({instance_id:i.id,component_id:c.id,origin_um:point(i.origin_um),rotation_deg:i.rotation_deg,mirror_x:i.mirror_x,pins,strokes,curves,inkStrokes,notes:validateNotes(s.constant_annotations),status:s.status,layer_id:i.layer_id});
  }
  const visualGraphics=sheet.graphics.map(g=>{
   const isB=g.kind==="source_b_continuation";
