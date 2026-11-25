@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent, type MouseEvent as ReactMouseEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import {noteLayout} from '../model/symbol-notes.mjs';
 import { createPortal } from 'react-dom';
 import type { PlacementHint } from '../authoring/session';
@@ -99,7 +99,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
   /** Initial camera fits the actual signed E695 scene, not a hardcoded sheet corner.
    * A pin outside the visible viewport is not an actionable CAD endpoint.
    */
-  useEffect(()=>{
+  useLayoutEffect(()=>{
     const identity=document.project.id+':'+sheetId+':'+
       document.project.sheets.find(s=>s.id===sheetId)?.frame.size_um.join('x')+':'+fitRequest;
     if(fittedRef.current===identity)return;
@@ -292,6 +292,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
   // Revision forces deliberate repaint of hover / drag preview without storing any Net state.
   void revision;
   return <><svg ref={svgRef} className="gscad-drawing" role="img" tabIndex={0}
+    data-camera-ready={fittedRef.current!==null?'true':'false'} data-tool={tool}
     data-testid="gscad-signed-svg-canvas" aria-label="Редактор электрической схемы, координаты в микрометрах"
     viewBox={`0 0 ${g2(size.width)} ${g2(size.height)}`}
     onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={()=>setPlacementPointer(null)}
