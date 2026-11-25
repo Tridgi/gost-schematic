@@ -231,3 +231,25 @@ budget is exceeded. A failed route leaves the document and history untouched.
 Unit and real-browser regression tests cover initial routing, physical
 membership, foreign routes, locked layers, stale CAS and repeat refusal.
 Full CI and installed native acceptance are required before declaring PASS.
+
+
+## R29 — atomic initial routing batch
+
+The topology dialog offers an explicit batch action for the first eight
+eligible untouched local Nets (or all eligible Nets when there are at
+most eight). A confirmation describes all-or-nothing semantics.
+The domain command accepts 1–8 distinct existing Net IDs. It routes a
+detached AuthoringSession in descending terminal-count order, then tries
+the reversed order from the original document if the first fails. Each
+R28 route treats earlier committed draft routes as foreign obstacles and
+retains the diagnostic, frame, and other-Net connectivity gates.
+No intermediate draft, revision or history entry is published. Only
+complete success with unchanged source inventory and one connected group
+per target Net can commit; one Undo reverses the entire batch.
+Failure reports the last rejected Net and reason and preserves the document.
+At most 16 individual route attempts; no claim of complete multi-Net
+search, global optimum, crossing insertion, partial-route repair or source
+E695 editing. This remains synchronous and intentionally bounded.
+Three domain regressions and one Chromium acceptance scenario cover
+success, rollback, stale CAS, invalid inputs and atomic Undo/Redo.
+Full CI and installed native acceptance are still required.
