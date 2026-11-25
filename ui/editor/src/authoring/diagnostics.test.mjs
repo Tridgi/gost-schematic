@@ -67,3 +67,15 @@ test('R18 overlapping symbol bounds, bounded report and incomplete scan are expl
  assert.equal(capped.incomplete,true);assert.ok(codes(capped).includes('CHECK_LIMIT'));
  assert.equal(capped.items.length,2);assert.equal(capped.omitted,1);
 });
+
+test('R18 report cap keeps a critical overlap ahead of many unassigned pins',()=>{
+ const symbols=Array.from({length:20},(_,i)=>shape('R'+i,[1000+i*1000,30000]));
+ const a=wire('a','A',[[0,10000],[20000,10000]]);
+ const b=wire('b','B',[[5000,10000],[25000,10000]]);
+ const report=inspect(fixture(symbols,[a,b],[net('A'),net('B')]),{}, {maxItems:2});
+ assert.equal(report.items[0].code,'DRC_FOREIGN_WIRE_OVERLAP');
+ assert.equal(report.counts.error,1);
+ assert.equal(report.counts.warning,22);
+ assert.equal(report.omitted,21);
+ assert.ok(codes(report).includes('CHECK_LIMIT'));
+});
