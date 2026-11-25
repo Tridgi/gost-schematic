@@ -30,7 +30,7 @@ try{
  const {AuthoringSession,assessLayout,renderProjectPreviewSVG,planComponentLabels}=await import(pathToFileURL(module).href);
  assert.throws(()=>new AuthoringSession(source),/SOURCE_SHA_MISMATCH/);
  const doc=structuredClone(source);
- doc.project.provenance={...p.provenance,status:'synthetic',source_sha:'0'.repeat(40),source_path:'test-only/TL494-visual-evidence',expected_counts:{...p.provenance.expected_counts,da1_pins:0,b_graphics:0}};
+ doc.project.provenance={...p.provenance,status:'synthetic',source_sha:'0'.repeat(40),source_path:'test-only/TL494-visual-evidence',expected_counts:{...p.provenance.expected_counts}};
  const baseline=new AuthoringSession(doc);
  baseline.prepareInitialRouting(baseline.newTransaction('inset'));
  const initial=baseline.previewInitialBatch(ids,true);
