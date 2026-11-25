@@ -1433,3 +1433,43 @@ test('R21 parallel rails replace routes with explicit junctions without changing
  await page.getByRole('button',{name:'Повторить'}).click();
  expect((await saved()).project).toEqual(after.project);
 });
+
+test('R22 automatic layout previews metrics, cancel is harmless, confirm is one undoable edit',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ for(const [i,[x,y]] of [[.22,.35],[.5,.49],[.78,.4]].entries()){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*y);
+  await expect(page.getByTestId('symbol-R'+(i+1))).toBeVisible();
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const placed=await saved(),[a,b,c]=placed.project.components;
+ await page.getByTestId('tool-wire').click();
+ for(const [x,y] of [[a,b],[b,c]]){
+  await page.getByTestId('signed-pin-'+x.id+'-2').click();
+  await page.getByTestId('signed-pin-'+y.id+'-1').click();
+ }
+ await page.getByTestId('tool-select').click();
+ const before=await saved();
+ const openPlan=async(accept)=>{
+  let summary='';
+  page.once('dialog',async d=>{summary=d.message();if(accept)await d.accept();else await d.dismiss()});
+  await page.getByRole('button',{name:'Правка'}).click();
+  await page.getByTestId('optimize-layout').click();
+  expect(summary).toContain('Изгибы: 4 → 0');expect(summary).toContain('Длина:');
+ };
+ await openPlan(false);expect((await saved()).project).toEqual(before.project);
+ await openPlan(true);
+ const after=await saved();
+ expect(after.project.sheets[0].wires.map(w=>w.vertices.length)).toEqual([2,2]);
+ expect(after.project.nets.map(n=>[n.id,n.members])).toEqual(before.project.nets.map(n=>[n.id,n.members]));
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ expect((await saved()).project).toEqual(after.project);
+});
