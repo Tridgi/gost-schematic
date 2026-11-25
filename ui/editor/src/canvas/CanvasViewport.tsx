@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import {noteLayout} from '../model/symbol-notes.mjs';
+import {planComponentLabels} from './component-labels';
 import { createPortal } from 'react-dom';
 import type { PlacementHint } from '../authoring/session';
 import type { ProjectFileV2 } from '../model/contract';
@@ -74,6 +75,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
   const scene=useMemo(()=>projectToCanvasScene(document,sheetId),[document,sheetId]);
   // Snapshot carries the real #123 wire edits; original serialized routes are only the initial view.
   const visibleScene=useMemo<CanvasScene>(()=>({...scene,wires:snapshot.wires,junctions:snapshot.junctions,splices:snapshot.splices}),[scene,snapshot]);
+  const componentLabels=useMemo(()=>planComponentLabels(document,sheetId,visibleScene),[document,sheetId,visibleScene]);
   const callbackRef=useRef(onIntent);
   callbackRef.current=onIntent;
   const controllerRef=useRef<CanvasController|null>(null);
@@ -376,6 +378,21 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
         return <circle key={j.id} data-junction-id={j.id} cx={p.x} cy={p.y} r={3.1}/>;
       })}
     </g>
+    <g className="component-labels" data-electrical="false" pointerEvents="none"
+      data-unplaced-label-count={componentLabels.unplaced.length}>
+      {componentLabels.labels.map(l=>{
+        const p=screen([l.x,l.y],camera);
+        return <g key={l.instanceId} data-instance-id={l.instanceId} fill="#24384b" stroke="none"
+          fontFamily="monospace" fontSize={l.heightUm*camera.s} textAnchor="middle">
+          <text data-label-role="reference" x={p.x} y={p.y}>{l.refdes}</text>
+          {l.value&&<text data-label-role="value" x={p.x} y={p.y+l.lineStepUm*camera.s}>{l.value}</text>}
+        </g>;
+      })}
+    </g>
+    {componentLabels.unplaced.length>0&&<g pointerEvents="none" data-electrical="false">
+      <title>{componentLabels.unplaced.map(l=>l.refdes+': '+l.reason).join('; ')}</title>
+      <text x={8} y={Math.max(16,size.height-10)} fontSize={11} fill="#9a4e00">Не размещено обозначений: {componentLabels.unplaced.length}</text>
+    </g>}
     <g className="physical-pin-markers" fill="#fff" stroke="#237f69" strokeWidth={1.35} pointerEvents="all">
       {visibleScene.symbols.flatMap(s=>s.pins.map(pin=>{
         const p=screen(pinWorld(s,pin.physical_pin_number).at_um,camera);
