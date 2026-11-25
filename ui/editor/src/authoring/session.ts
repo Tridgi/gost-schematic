@@ -19,7 +19,7 @@ import {
 } from '../wires/manual-wire';
 import {loadProjectWires} from '../wires/project-v2-adapter';
 import {validateNotes,noteLayout} from '../model/symbol-notes.mjs';
-import {assessLayout,improvesLayout,type LayoutQuality} from './layout-quality';
+import {assessLayout,improvesLayout,preservesLayoutSafety,type LayoutQuality} from './layout-quality';
 import {curveGeometry} from '../model/curves.mjs';
 import {projectToCanvasScene} from '../canvas/scene-projection.mjs';
 import {AUTHORING_PARTS, AUTHORING_SYMBOLS,catalogDefaultValue,catalogAdditions} from './catalog';
@@ -1221,6 +1221,8 @@ export class AuthoringSession {
       if(net.members.some(p=>!byComp.has(p.component_id))||
         draft.project.sheets.some(s=>s.id!==sh.id&&s.wires.some(w=>w.net_id===netId)))reject('RAIL_CROSS_SHEET');
       if(this.engine.validateNet(netId).pin_groups.length!==1)reject('RAIL_UNCONNECTED_NET');
+      const prior=assessLayout(draft,this.engine);
+      if(!prior.quality.complete)reject('LAYOUT_CHECK_INCOMPLETE');
       const old=sh.wires.filter(w=>w.net_id===netId);
       if(old.some(w=>[w.vertices[0],w.vertices.at(-1)!].some(v=>v.anchor.kind==='free')))reject('RAIL_DANGLING');
       const layers=new Set(old.map(w=>w.layer_id));
@@ -1309,7 +1311,9 @@ export class AuthoringSession {
       const {subset,session}=localSession(draft,this.clock);
       if(session.engine.validateNet(netId).pin_groups.length!==1)reject('RAIL_TOPOLOGY_MISMATCH');
       result={pins:pins.length,wires:wires.length,junctions:junctions.length,axis:railAxis===0?'horizontal':'vertical',lengthUm:length(line)};
-      return materialize(draft,subset,session);
+      const next=materialize(draft,subset,session);
+      if(!preservesLayoutSafety(prior,assessLayout(next,session.engine)))reject('RAIL_UNSAFE_DIAGNOSTICS');
+      return next;
     });
     if(!result)reject('RAIL_NO_SAFE_CHANNEL');
     return result;
