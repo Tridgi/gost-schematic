@@ -1037,7 +1037,7 @@ export class AuthoringSession {
    * components must already belong to exactly the same two complete Nets.
    * End taps are invisible degree-2 splices; middle taps are degree-3 dots.
    * Existing route IDs are replaced intentionally; Undo restores them. */
-  buildParallelRails(tx:Tx,instanceIds:readonly string[]):{branches:number;wires:number;junctions:number;axis:'horizontal'|'vertical'}{
+  buildParallelRails(tx:Tx,instanceIds:readonly string[],distribute=false):{branches:number;wires:number;junctions:number;axis:'horizontal'|'vertical'}{
     let result:{branches:number;wires:number;junctions:number;axis:'horizontal'|'vertical'}|undefined;
     this.edit(tx,draft=>{
       const sheet=draft.project.sheets[indexOfSheet(draft)];
@@ -1080,6 +1080,41 @@ export class AuthoringSession {
           a.at_um[railAxis]!==b.at_um[railAxis]||
           (a.at_um[branchAxis]-b.at_um[branchAxis])*normal[branchAxis]<=0)reject('PARALLEL_REQUIRES_OPPOSED_ALIGNED_PINS');
       }
+      // Optional symmetry: preserve the two outer lateral pin coordinates,
+      // equalize their intervals, and align both pin rows when spans match.
+      // Only fully closed Nets have reached this point; locked UGO cannot move.
+      const movedIds=new Set<string>();
+      if(distribute){
+        const ordered=[...rails[0].pins].sort((a,b)=>a.p.at_um[railAxis]-b.p.at_um[railAxis]);
+        const lo=ordered[0].p.at_um[railAxis],hi=ordered.at(-1)!.p.at_um[railAxis];
+        const span=hi-lo,intervals=ordered.length-1;
+        if(Math.floor(span/intervals)<4000)reject('PARALLEL_GAP_TOO_SMALL');
+        const rows=ordered.map(({p})=>p.at_um[branchAxis]).sort((a,b)=>a-b);
+        const fixedRows=ordered.filter(({ref})=>{
+          const i=group.find(v=>v.component_id===ref.component_id)!;
+          return sheet.layers.find(l=>l.id===i.layer_id)?.locked;
+        }).map(({p})=>p.at_um[branchAxis]);
+        if(new Set(fixedRows).size>1)reject('PARALLEL_FIXED_CONFLICT');
+        const row=fixedRows[0]??rows[Math.floor((rows.length-1)/2)];
+        const spans=ordered.map(({ref,p})=>p.at_um[branchAxis]-
+          rails[1].pins.find(t=>t.ref.component_id===ref.component_id)!.p.at_um[branchAxis]);
+        if(new Set(spans).size!==1)reject('PARALLEL_UNEQUAL_PIN_SPAN');
+        for(const [k,{ref,p}] of ordered.entries()){
+          const lateral=lo+Math.floor(span*k/intervals);
+          const delta:MutablePoint=[0,0];
+          delta[railAxis]=lateral-p.at_um[railAxis];delta[branchAxis]=row-p.at_um[branchAxis];
+          if(!delta[0]&&!delta[1])continue;
+          const inst=group.find(i=>i.component_id===ref.component_id)!;
+          if(sheet.layers.find(l=>l.id===inst.layer_id)?.locked)reject('PARALLEL_FIXED_CONFLICT');
+          if(draft.project.sheets.some(s=>s.id!==sheet.id&&s.instances.some(i=>i.component_id===inst.component_id)))reject('PARALLEL_CROSS_SHEET');
+          inst.origin_um=xy([inst.origin_um[0]+delta[0],inst.origin_um[1]+delta[1]]);
+          for(const rail of rails){
+            const pin=rail.pins.find(t=>t.ref.component_id===ref.component_id)!;
+            pin.p.at_um=xy([pin.p.at_um[0]+delta[0],pin.p.at_um[1]+delta[1]]);
+          }
+          movedIds.add(inst.component_id);
+        }
+      }
       const positions=rails[0].pins.map(p=>p.p.at_um[railAxis]).sort((a,b)=>a-b);
       if(positions.some((v,i)=>i>0&&v-positions[i-1]<4000))reject('PARALLEL_GAP_TOO_SMALL');
       const boxes=sheet.instances.map(i=>{
@@ -1095,8 +1130,11 @@ export class AuthoringSession {
         ...sheet.graphics.flatMap(g=>g.points_um.slice(1).map((v,i)=>rect(g.points_um[i],v))),
         ...sheet.labels.map(l=>rect(l.at_um,l.at_um)),...sheet.texts.map(t=>rect(t.at_um,t.at_um))];
       const margin=sheet.frame.margin_um;
+      if(boxes.some(({id,box})=>movedIds.has(id)&&(
+        box.minX<margin||box.minY<margin||box.maxX>sheet.frame.size_um[0]-margin||box.maxY>sheet.frame.size_um[1]-margin||
+        boxes.some(o=>o.id!==id&&!separated(box,o.box,1000))||externalBoxes.some(b=>!separated(box,b,1000)))))reject('PARALLEL_NO_SAFE_LAYOUT');
       const inside=(p:PointUm)=>p.every((v,i)=>v>=margin&&v<=sheet.frame.size_um[i]-margin);
-      const plans:{net:string;layer:string;points:MutablePoint[];pins:PinRef[]}[]=[];
+      const plans:{net:string;layer:string;points:MutablePoint[];pins:PinRef[];starts:MutablePoint[]}[]=[];
       for(const rail of rails){
         const sign=rail.pins[0].p.normal[branchAxis];
         const limits=selectedBoxes.map(({box})=>branchAxis===0?(sign<0?box.minX:box.maxX):(sign<0?box.minY:box.maxY));
@@ -1114,7 +1152,7 @@ export class AuthoringSession {
             return boxes.some(o=>o.id!==ref.component_id&&!separated(branch,o.box,1000))||
               externalBoxes.some(b=>!separated(branch,b,1000));
           }))continue;
-          plan={net:rail.net.id,layer:layers.get(rail.net.id)!,points:taps,pins:sorted.map(p=>p.ref)};break;
+          plan={net:rail.net.id,layer:layers.get(rail.net.id)!,points:taps,pins:sorted.map(p=>p.ref),starts:sorted.map(p=>p.p.at_um)};break;
         }
         if(!plan)reject('PARALLEL_NO_SAFE_RAIL');
         plans.push(plan);
@@ -1135,7 +1173,7 @@ export class AuthoringSession {
           w.needs_routing_review=true;newWires.push(w);
         };
         for(const [i,ref] of plan.pins.entries()){
-          add([this.beginWire(ref).at_um,plan.points[i]],{kind:'pin',...ref},anchors[i]);
+          add([plan.starts[i],plan.points[i]],{kind:'pin',...ref},anchors[i]);
           if(i>0)add([plan.points[i-1],plan.points[i]],anchors[i-1],anchors[i]);
         }
       }
