@@ -53,7 +53,7 @@ export type EditorShellProps = {
   onUndo:()=>void;onRedo:()=>void;onSave:()=>void;
   onCopy?:()=>void;onPaste?:()=>void;
   pinMagnet?:boolean;onTogglePinMagnet?:(enabled:boolean)=>void;
-  smartRouting?:boolean;onToggleSmartRouting?:(enabled:boolean)=>void;onAlignConnectedPair?:()=>void;onSimplifyRoutes?:()=>void;
+  smartRouting?:boolean;onToggleSmartRouting?:(enabled:boolean)=>void;onAlignConnectedPair?:()=>void;onSimplifyRoutes?:()=>void;onAlignSeries?:()=>void;
   onOpen?:()=>void;onNew?:()=>void;onAddSheet?:()=>void;
   onPaperChange?:(paper:'A4'|'A3'|'A2')=>void;activePaper?:'A4'|'A3'|'A2';
   onSaveAs?:()=>void;onExport?:(format:'svg'|'png300')=>void;
@@ -242,6 +242,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
                 <Menu.Item data-testid="smart-routing" disabled={!props.onToggleSmartRouting} onClick={()=>props.onToggleSmartRouting?.(!props.smartRouting)}>Умная трассировка: {props.smartRouting?'вкл.':'выкл.'}</Menu.Item>
                 <Menu.Item data-testid="pin-magnet" disabled={!props.onTogglePinMagnet} onClick={()=>props.onTogglePinMagnet?.(!props.pinMagnet)}>Привязка выводов: {props.pinMagnet?'вкл.':'выкл.'}</Menu.Item>
                 <Menu.Item data-testid="align-connected-pair" disabled={!props.onAlignConnectedPair} onClick={props.onAlignConnectedPair}>Выровнять соединённые выводы</Menu.Item>
+                <Menu.Item data-testid="align-series" disabled={!props.onAlignSeries} onClick={props.onAlignSeries}>Выровнять цепочку УГО</Menu.Item>
                 <Menu.Item data-testid="simplify-routes" disabled={!props.onSimplifyRoutes} onClick={props.onSimplifyRoutes}>Упростить проводники{(props.groupSelectionIds?.length??0)>1?' выделения':' листа'}</Menu.Item>
                 <Menu.Divider/>
                 <Menu.Item data-testid="paste-component" onClick={props.onPaste} disabled={!props.onPaste}>Вставить независимую копию · Ctrl+V</Menu.Item>
@@ -327,7 +328,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
               pl={12+(n.indent??0)*16} active={n.kind==='instance'&&(n.id===props.selected?.id||props.groupSelectionIds?.includes(n.id))} onClick={()=>props.onSelectTreeItem(n.id)}
               leftSection={<FolderTree size={14}/>} />)}</ScrollArea></>}
           bottom={<><Text fw={600} size="sm" p="sm">Свойства</Text>
-            <ScrollArea h="calc(100% - 44px)">{(props.groupSelectionIds?.length??0)>1?<Text size="sm" p="sm" data-testid="group-selection-summary">Выбрано УГО: {props.groupSelectionIds?.length}. Групповое изменение свойств пока недоступно.{props.onAlignConnectedPair&&<Button fullWidth size="xs" mt="xs" data-testid="align-connected-pair-inspector" onClick={props.onAlignConnectedPair}>Выровнять выводы</Button>}</Text>:<Inspector selected={props.selected}
+            <ScrollArea h="calc(100% - 44px)">{(props.groupSelectionIds?.length??0)>1?<Text size="sm" p="sm" data-testid="group-selection-summary">Выбрано УГО: {props.groupSelectionIds?.length}. Групповое изменение свойств пока недоступно.{props.onAlignConnectedPair&&<Button fullWidth size="xs" mt="xs" data-testid="align-connected-pair-inspector" onClick={props.onAlignConnectedPair}>Выровнять выводы</Button>}{props.onAlignSeries&&<Button fullWidth size="xs" mt="xs" data-testid="align-series-inspector" onClick={props.onAlignSeries}>Выровнять цепочку</Button>}</Text>:<Inspector selected={props.selected}
               revision={props.baseRevision} send={props.onInspectorProposal} hostError={props.inspectorError}/>}</ScrollArea></>}/>
       </AppShell.Aside>
       <AppShell.Footer className="gscad-status" data-testid="status-bar">
