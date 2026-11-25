@@ -1052,3 +1052,67 @@ test('R20 blocked fixed axis rejects entire chain layout without moving any UGO'
  assert.throws(()=>s.alignSeries(s.newTransaction('blocked'),ids),/SERIES_NO_SAFE_LAYOUT/);
  assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
 });
+
+function parallelFixture(vertical=true){
+ const s=newSession();
+ const positions=vertical?[[70000,100000],[130000,105000],[190000,95000]]:[[100000,60000],[105000,120000],[95000,180000]];
+ const ids=positions.map((at,i)=>s.place(s.newTransaction('parallel-place-'+i),'symbol/resistor.fixed',at));
+ const components=s.file.project.components.map(c=>c.id);
+ if(vertical)for(const id of components)s.rotate(s.newTransaction('parallel-rotate'),id);
+ for(const n of ['1','2'])for(let i=1;i<components.length;i++)
+  s.connect(s.newTransaction('parallel-'+n+'-'+i),pin(components[i-1],n),pin(components[i],n));
+ return {s,ids,components};
+}
+test('R21 parallel rails preserve two complete signed Nets and create only explicit degree-3 dots',()=>{
+ const {s,ids}=parallelFixture(),before=s.file,rev=s.revision;
+ const result=s.buildParallelRails(s.newTransaction('rails'),ids);
+ assert.deepEqual(result,{branches:3,wires:10,junctions:2,axis:'horizontal'});
+ const after=s.file,sh=after.project.sheets[0];
+ assert.equal(s.revision,rev+1);
+ assert.deepEqual(sh.instances,before.project.sheets[0].instances);
+ assert.deepEqual(after.project.nets.map(n=>[n.id,n.name,n.members]),before.project.nets.map(n=>[n.id,n.name,n.members]));
+ assert.equal(sh.splices.length,4);assert.equal(sh.junctions.length,2);
+ for(const n of after.project.nets){
+  assert.equal(s.engine.validateNet(n.id).pin_groups.length,1);
+  const ws=sh.wires.filter(w=>w.net_id===n.id);
+  assert.equal(ws.length,5);assert.ok(ws.every(w=>w.vertices.length===2&&w.needs_routing_review));
+  const ends=ws.flatMap(w=>w.vertices.map(v=>v.anchor));
+  const dot=sh.junctions.find(j=>j.net_id===n.id);
+  assert.equal(ends.filter(a=>a.kind==='junction'&&a.junction_id===dot.id).length,3);
+  for(const splice of sh.splices.filter(j=>j.net_id===n.id))
+   assert.equal(ends.filter(a=>a.kind==='splice'&&a.splice_id===splice.id).length,2);
+ }
+ assert.throws(()=>s.buildParallelRails(s.newTransaction('again'),ids),/NO_CHANGE/);
+ assert.deepEqual(s.file,after);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);assert.deepEqual(new AuthoringSession(s.file).file,after);
+});
+test('R21 horizontal components get vertical rails without rotating the symbols',()=>{
+ const {s,ids}=parallelFixture(false);
+ const before=s.file;
+ assert.equal(s.buildParallelRails(s.newTransaction('rails'),ids).axis,'vertical');
+ assert.deepEqual(s.file.project.sheets[0].instances,before.project.sheets[0].instances);
+ for(const n of s.file.project.nets){
+  const nodes=[...s.file.project.sheets[0].junctions,...s.file.project.sheets[0].splices].filter(j=>j.net_id===n.id);
+  assert.equal(new Set(nodes.map(j=>j.at_um[0])).size,1);
+ }
+});
+test('R21 refuses shared external Net, incomplete geometry and blocked branch without mutation',()=>{
+ const {s,ids,components}=parallelFixture();
+ s.place(s.newTransaction('extra'),'symbol/resistor.fixed',[250000,100000]);
+ const ext=s.file.project.components.at(-1).id;
+ s.connect(s.newTransaction('external'),pin(components[2],'1'),pin(ext,'1'));
+ const before=s.file,rev=s.revision;
+ assert.throws(()=>s.buildParallelRails(s.newTransaction('external'),ids),/PARALLEL_REQUIRES_CLOSED_NETS/);
+ assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
+ const f=parallelFixture(),doc=f.s.file;
+ doc.project.sheets[0].wires.shift();
+ const disconnected=new AuthoringSession(doc);
+ assert.throws(()=>disconnected.buildParallelRails(disconnected.newTransaction('incomplete'),f.ids),/PARALLEL_UNCONNECTED_NET/);
+ assert.deepEqual(disconnected.file,doc);
+ const b=parallelFixture();
+ b.s.place(b.s.newTransaction('block'),'symbol/resistor.fixed',[130000,80000]);
+ const blocked=b.s.file;
+ assert.throws(()=>b.s.buildParallelRails(b.s.newTransaction('blocked'),b.ids),/PARALLEL_NO_SAFE_RAIL/);
+ assert.deepEqual(b.s.file,blocked);
+});
