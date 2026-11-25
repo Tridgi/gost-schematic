@@ -1,0 +1,3 @@
+# R3 integration audit
+
+R2 native render: 89 symbols, 0 hard errors, 204 focused tests passed. Full CI: 2563 passed, 2 failed, 8 skipped on Python 3.13; Python 3.12 canceled. The historical port-blocked diagnostic was shadowed by a premature foreign-net ERC guard; move guard after geometric routing succeeds, still reject unverified foreign net before return. Independent integration QA omitted the new transformer profile directory; load it and verify duplicate IDs and audit equality. Frozen PR39 remains unchanged, live adapter pinned to 5beefc2495de0ecc3a352bca574ca922022c3921. R3 adds six profiles; final CI required.

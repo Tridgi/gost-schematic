@@ -14,6 +14,7 @@ from examples.review_end_to_end_circuit import authored_specimen, definitions
 from gost_schematic.catalog.inductors import load_inductor
 from gost_schematic.catalog.loader import load_symbol
 from gost_schematic.catalog.part_loader import load_part
+from gost_schematic.catalog.transformers import load_transformer
 from gost_schematic.core.geometry import Point
 from gost_schematic.core.transforms import Transform
 from gost_schematic.engines.routing.two_pin_sheet import route_circuit_two_pins
@@ -38,6 +39,12 @@ def all_parts():
         item = load_inductor(path)
         parts[item.part.identifier] = item.part
         symbols[item.symbol.identifier] = item.symbol
+    for path in sorted((root / "transformers").glob("*.json")):
+        item = load_transformer(path)
+        assert item.part.identifier not in parts
+        assert item.symbol.identifier not in symbols
+        parts[item.part.identifier] = item.part
+        symbols[item.symbol.identifier] = item.symbol
     assert len(parts) == len(symbols) >= 21  # 21 baseline, extendable catalog
     assert set(parts) == set(symbols)
     assert {"diode.general", "diode.zener"}.issubset(parts)
@@ -55,7 +62,7 @@ def _place(parts, symbols, name, part_id, pin_number, at, transform):
 
 @pytest.mark.parametrize("angle", (0, 90, 180, 270))
 @pytest.mark.parametrize("mirror", (False, True))
-def test_all_21_draft_physical_pin_passports_and_transforms(
+def test_all_draft_physical_pin_passports_and_transforms(
     all_parts, angle, mirror,
 ):
     """All discovered symbol/part pairs × 8 D4 transforms, with stable pin identity."""
@@ -78,7 +85,7 @@ def test_all_21_draft_physical_pin_passports_and_transforms(
             )
 
 
-def test_installed_catalog_is_exactly_21_draft_and_has_no_hard_errors(
+def test_installed_catalog_all_draft_and_has_no_hard_errors(
     all_parts,
 ):
     parts, symbols = all_parts
@@ -94,7 +101,7 @@ def test_installed_catalog_is_exactly_21_draft_and_has_no_hard_errors(
 
 @pytest.mark.parametrize("angle", (0, 90, 180, 270))
 @pytest.mark.parametrize("mirror", (False, True))
-def test_installed_safe_adapter_keeps_all_21_real_pin_families_out_of_link(
+def test_installed_safe_adapter_keeps_all_real_pin_families_out_of_link(
     all_parts, angle, mirror,
 ):
     """All discovered physical families × 8 transforms routed against integrated adapter."""

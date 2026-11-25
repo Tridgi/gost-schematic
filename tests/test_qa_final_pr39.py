@@ -147,7 +147,7 @@ def test_pr39_source_is_distinct_from_previously_audited_pr53(engine):
         if module is integrated_sheet:
             # New reviewed adapter: measured text, authored blue zones and foreign ink.
             # Keep the historical frozen source hash intact and pin the new source separately.
-            assert blob == "ab00481196f147e9d7a37a49f122a98538fe4e8f"
+            assert blob == "5beefc2495de0ecc3a352bca574ca922022c3921"
         else:
             assert blob == expected_blob
     if engine[0] is integrated_low:
