@@ -206,22 +206,68 @@ function splitPoints(w:WirePolyline, at:PointUm):[PointUm[],PointUm[]] {
   return [[...pts.slice(0,idx+1),...(!same(at,pts[idx])?[at]:[])],
           [at,...pts.slice(idx+1).filter((p,i)=>i!==0 || !same(p,at))]];
 }
-export function routeManhattan(start:PointUm,end:PointUm,startNormal?:PointUm,endNormal?:PointUm,lead=2000):PointUm[] {
+/** Prefer straight, L and Z/U routes; never reverse along a conductor.
+ * Optional acceptance predicate is supplied by the sheet-level obstacle planner.
+ * This bounded candidate search is not a complete global maze router. */
+export function routeManhattan(start:PointUm,end:PointUm,startNormal?:PointUm,endNormal?:PointUm,lead=2000,
+  options?:{accept?:(path:PointUm[])=>boolean;channelsX?:readonly number[];channelsY?:readonly number[]}):PointUm[] {
   point(start);point(end);int(lead);
   if(lead<=0) fail('LEAD_LENGTH','Lead must be >0 µm');
   if(same(start,end)) fail('WIRE_GEOMETRY','Coincident wire terminals');
-  const a:PointUm=startNormal?[start[0]+startNormal[0]*lead,start[1]+startNormal[1]*lead]:copy(start);
-  const b:PointUm=endNormal?[end[0]+endNormal[0]*lead,end[1]+endNormal[1]*lead]:copy(end);
-  const path:PointUm[]=[start,a,[b[0],a[1]],b,end];
-  const compact:PointUm[]=[]; for(const p of path) if(!compact.length || !same(p,compact.at(-1)!)) compact.push(p);
-  for(let i=1;i<compact.length-1;) {
-    const p=compact[i-1],q=compact[i],r=compact[i+1];
-    if(onSegment(q,p,r)) compact.splice(i,1); else i++;
-  }
-  compact.forEach(point);
-  if(compact.some((p,i)=>i>0 && !axis(p,compact[i-1]))) fail('REROUTE_REQUIRED','Cannot route with current lead ordering');
-  return compact;
+  for(const n of [startNormal,endNormal])if(n&&(!Number.isInteger(n[0])||!Number.isInteger(n[1])||Math.abs(n[0])+Math.abs(n[1])!==1))
+    fail('PIN_NORMAL','Expected cardinal pin normal');
+  const extend=(p:PointUm,n?:PointUm):PointUm=>n?[p[0]+n[0]*lead,p[1]+n[1]*lead]:copy(p);
+  const a=extend(start,startNormal),b=extend(end,endNormal);
+  const candidates:PointUm[][]=[];
+  const keys=new Set<string>();
+  const add=(raw:PointUm[])=>{
+    const compact:PointUm[]=[];
+    for(const p of raw){
+      if(!p.every(v=>Number.isSafeInteger(v)&&Math.abs(v)<=1e9))return;
+      if(compact.length&&same(p,compact.at(-1)!))continue;
+      compact.push(p);
+      while(compact.length>=3){
+        const [x,y,z]=compact.slice(-3);
+        if(onSegment(y,x,z))compact.splice(compact.length-2,1);else break;
+      }
+    }
+    if(compact.length<2||compact.some((p,i)=>i>0&&!axis(compact[i-1],p)))return;
+    if(startNormal&&!segmentOutward(start,compact[1],startNormal)||endNormal&&!segmentOutward(end,compact.at(-2)!,endNormal))return;
+    for(let i=1;i<compact.length-1;i++){
+      const [x,y,z]=compact.slice(i-1,i+2);
+      if(x[0]===y[0]&&y[0]===z[0]||x[1]===y[1]&&y[1]===z[1])return;
+    }
+    // No self intersections, including nonadjacent endpoint touches.
+    for(let i=0;i<compact.length-1;i++)for(let j=i+2;j<compact.length-1;j++){
+      const [p,q,r,t]=[compact[i],compact[i+1],compact[j],compact[j+1]];
+      if(Math.max(Math.min(p[0],q[0]),Math.min(r[0],t[0]))<=Math.min(Math.max(p[0],q[0]),Math.max(r[0],t[0]))&&
+         Math.max(Math.min(p[1],q[1]),Math.min(r[1],t[1]))<=Math.min(Math.max(p[1],q[1]),Math.max(r[1],t[1])))return;
+    }
+    const key=JSON.stringify(compact);if(!keys.has(key)){keys.add(key);candidates.push(compact)}
+  };
+  // Direct candidates allow shorter terminal leads when geometrically legal.
+  add([start,end]);add([start,[end[0],start[1]],end]);add([start,[start[0],end[1]],end]);
+  const channels=(i:0|1,extra:readonly number[]=[])=>{
+    const lo=Math.min(start[i],end[i],a[i],b[i]),hi=Math.max(start[i],end[i],a[i],b[i]);
+    const mid=Math.round((start[i]+end[i])/2);
+    const base=[mid,a[i],b[i],lo-lead,hi+lead,start[i],end[i],lo-2*lead,hi+2*lead];
+    const more=[...new Set(extra)].filter(v=>Number.isSafeInteger(v)&&Math.abs(v)<=1e9)
+      .sort((x,y)=>Math.abs(x-mid)-Math.abs(y-mid)||x-y).slice(0,48);
+    return [...new Set([...base,...more])];
+  };
+  const xs=channels(0,options?.channelsX),ys=channels(1,options?.channelsY);
+  for(const x of xs){add([start,[x,start[1]],[x,end[1]],end]);add([start,a,[x,a[1]],[x,b[1]],b,end])}
+  for(const y of ys){add([start,[start[0],y],[end[0],y],end]);add([start,a,[a[0],y],[b[0],y],b,end])}
+  add([start,a,[b[0],a[1]],b,end]);add([start,a,[a[0],b[1]],b,end]);
+  const length=(p:PointUm[])=>p.slice(1).reduce((sum,q,i)=>sum+Math.abs(q[0]-p[i][0])+Math.abs(q[1]-p[i][1]),0);
+  const balance=(p:PointUm[])=>p.length===4?Math.abs((Math.abs(p[1][0]-p[0][0])+Math.abs(p[1][1]-p[0][1]))-
+    (Math.abs(p[3][0]-p[2][0])+Math.abs(p[3][1]-p[2][1]))):0;
+  candidates.sort((p,q)=>p.length-q.length||length(p)-length(q)||balance(p)-balance(q));
+  const best=candidates.find(p=>!options?.accept||options.accept(p));
+  if(!best)fail('REROUTE_REQUIRED','No safe simple orthogonal route found');
+  return best;
 }
+
 export class ManualWireEngine {
   private doc:WiringSnapshot;
   private undoStack:WiringSnapshot[]=[];
