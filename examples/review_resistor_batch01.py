@@ -52,7 +52,7 @@ def generate(output: Path) -> None:
             ET.SubElement(svg, "text", {"x": str(x), "y": str(y + 16),
                                         "font-size": "2", "text-anchor": "middle"}).text = identifier
         (output / f"gallery-{mode}.svg").write_text(
-            ET.tostring(svg, encoding="unicode") + "\\n", encoding="utf-8",
+            ET.tostring(svg, encoding="unicode") + "\n", encoding="utf-8",
         )
 
 
