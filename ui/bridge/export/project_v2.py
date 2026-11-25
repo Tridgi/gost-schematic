@@ -10,8 +10,6 @@ from dataclasses import replace
 from itertools import pairwise
 from xml.etree import ElementTree as ET
 
-from ui.bridge.export.component_labels import H, STEP, plan_component_labels
-
 from ui.bridge.export.canonical import (
     PAGE_UM,
     ExportError,
@@ -21,6 +19,7 @@ from ui.bridge.export.canonical import (
     export,
     mm,
 )
+from ui.bridge.export.component_labels import STEP, H, plan_component_labels
 
 _S = "{http://www.w3.org/2000/svg}"
 ET.register_namespace("", "http://www.w3.org/2000/svg")
