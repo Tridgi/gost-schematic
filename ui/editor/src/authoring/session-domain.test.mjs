@@ -1756,3 +1756,54 @@ test('R32b real TL494 independent-Net preflight after explicit margin repair',t=
  assert.equal(outcomes.length,15);assert.equal(outcomes.reduce((n,o)=>n+o.pins,0),62);
  assert.deepEqual(source,original);
 });
+
+
+test('R32c complete multi-order preview is read-only until explicit atomic Apply',()=>{
+ const {session:s,ids,doc}=batchRouteFixture();
+ const p=s.previewInitialBatch(ids);
+ assert.equal(p.requested,2);assert.equal(p.routed,2);assert.ok(p.token);
+ assert.ok(p.attempted>=2&&p.attempted<=6);assert.equal(p.quality.bends,0);
+ assert.deepEqual(s.file,doc);assert.equal(s.revision,0);assert.equal(s.canUndo,false);
+ const candidate=s.layoutPreviewDocument(p.token);
+ assert.equal(candidate.project.sheets[0].wires.length,2);
+ s.applyLayoutPreview(s.newTransaction('apply'),p.token);
+ for(const id of ids)assert.equal(s.engine.validateNet(id).pin_groups.length,1);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,doc);
+ assert.equal(s.redo(),true);assert.deepEqual(s.file,candidate);
+});
+test('R32c partial feasibility has no Apply token and cannot mutate the live document',()=>{
+ const {doc,ids}=batchRouteFixture(),sh=doc.project.sheets[0];
+ sh.instances[0].rotation_deg=180;sh.instances[0].origin_um=[18000,80000];
+ const s=new AuthoringSession(doc);
+ const p=s.previewInitialBatch(ids);
+ assert.equal(p.routed,1);assert.equal(p.requested,2);assert.equal(p.token,null);
+ assert.equal(p.outcomes.find(o=>o.id===ids[0]).rejected,'TREE_PIN_LEAD_OUTSIDE_FRAME');
+ assert.deepEqual(s.file,doc);assert.equal(s.revision,0);assert.equal(s.canUndo,false);
+ assert.throws(()=>s.previewInitialBatch([ids[0],ids[0]]),/BATCH_DUPLICATE_NET/);
+ assert.throws(()=>s.previewInitialBatch(Array(17).fill(ids[0])),/BATCH_NET_COUNT/);
+ assert.deepEqual(s.file,doc);
+});
+test('R32c whole-sheet TL494 multi-order simultaneous routing diagnostic',t=>{
+ const source=JSON.parse(readFileSync(new URL('../../../fixtures/tl494-source-e695-v2.gscad.json',import.meta.url),'utf8'));
+ const original=structuredClone(source),doc=structuredClone(source),p=doc.project,sh=p.sheets[0];
+ p.provenance={...p.provenance,status:'synthetic',source_sha:'0'.repeat(40),source_path:'test-only/TL494-multinet-preflight',
+  expected_counts:{...p.provenance.expected_counts,da1_pins:0,b_graphics:0}};
+ const s=new AuthoringSession(doc);
+ s.prepareInitialRouting(s.newTransaction('prepare'));
+ const prepared=s.file,rev=s.revision;
+ const report=s.previewInitialBatch(p.nets.map(n=>n.id));
+ assert.equal(report.requested,15);assert.ok(report.attempted<=45);
+ assert.equal(report.outcomes.reduce((a,o)=>a+o.pins,0),62);
+ assert.deepEqual(s.file,prepared);assert.equal(s.revision,rev);
+ assert.equal(report.quality.crossings,0);
+ if(report.token){
+  const candidate=s.layoutPreviewDocument(report.token);
+  assert.equal(report.routed,15);
+  s.applyLayoutPreview(s.newTransaction('apply'),report.token);
+  for(const n of p.nets)assert.equal(s.engine.validateNet(n.id).pin_groups.length,1);
+  assert.deepEqual(s.file,candidate);assert.deepEqual(s.file.project.nets.map(n=>[n.id,n.members]),p.nets.map(n=>[n.id,n.members]));
+  assert.deepEqual(s.file.project.sheets[0].graphics,sh.graphics);assert.deepEqual(s.file.project.sheets[0].labels,sh.labels);
+ }else assert.ok(report.routed<15);
+ t.diagnostic('TL494_R32C_MULTINET '+JSON.stringify({...report,token:!!report.token}));
+ assert.deepEqual(source,original);
+});
