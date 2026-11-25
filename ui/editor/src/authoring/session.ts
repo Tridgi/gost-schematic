@@ -14,7 +14,7 @@ import type {
   Component, SymbolDefinition, Net, WireEndpoint, WirePolyline, Junction, Splice
 } from '../model/contract';
 import {
-  ManualWireEngine, WireError, constructWire, type WiringSnapshot,
+  ManualWireEngine, WireError, constructWire, routeManhattan, type WiringSnapshot,
   type PointUm as MutablePoint, type PinRef as MutablePin
 } from '../wires/manual-wire';
 import {loadProjectWires} from '../wires/project-v2-adapter';
@@ -101,6 +101,59 @@ function translateBounds(b:Bounds,p:readonly number[]):Bounds {
 function separated(a:Bounds,b:Bounds,clearance:number):boolean {
   return a.maxX+clearance<=b.minX||b.maxX+clearance<=a.minX||
     a.maxY+clearance<=b.minY||b.maxY+clearance<=a.minY;
+}
+/** Sheet-aware bounded orthogonal route. Keep other symbols/wires clear;
+ * endpoint symbol boxes may only be traversed by their own outward lead.
+ * Ordinary interior X crossings are a fallback, never implicit connections. */
+function cleanRoute(file:ProjectFileV2,start:PinRef,end:PinRef,a:WorldPin,b:WorldPin,netId:string,ignoreWire?:string):MutablePoint[]{
+ const sheet=file.project.sheets[indexOfSheet(file)],margin=sheet.frame.margin_um;
+ const defs=new Map(file.project.symbol_definitions.map(d=>[d.id,d]));
+ const obstacles=sheet.instances.map(i=>{
+   const def=defs.get(i.symbol_id);if(!def)reject('UNKNOWN_SYMBOL');
+   const box=translateBounds(symbolBounds(def,i.rotation_deg,i.mirror_x),i.origin_um);
+   return {id:i.component_id,box};
+ });
+ const clearance=1000;
+ const rect=(p:readonly number[],q:readonly number[]):Bounds=>({minX:Math.min(p[0],q[0]),minY:Math.min(p[1],q[1]),maxX:Math.max(p[0],q[0]),maxY:Math.max(p[1],q[1])});
+ const hit=(p:Bounds,q:Bounds)=>p.minX<=q.maxX&&q.minX<=p.maxX&&p.minY<=q.maxY&&q.minY<=p.maxY;
+ const eq=(p:readonly number[],q:readonly number[])=>p[0]===q[0]&&p[1]===q[1];
+ const channelsX:number[]=[],channelsY:number[]=[];
+ const channel=(box:Bounds)=>{
+   channelsX.push(Math.floor(box.minX)-clearance,Math.ceil(box.maxX)+clearance);
+   channelsY.push(Math.floor(box.minY)-clearance,Math.ceil(box.maxY)+clearance);
+ };
+ obstacles.forEach(o=>channel(o.box));
+ const wires=sheet.wires.filter(w=>w.id!==ignoreWire).flatMap(w=>w.vertices.slice(1).map((v,i)=>({w,a:w.vertices[i],b:v,box:rect(w.vertices[i].at_um,v.at_um)})));
+ wires.forEach(w=>channel(w.box));
+ const nodePoints=[...sheet.junctions,...sheet.splices].map(n=>n.at_um);
+ const isShared=(p:readonly number[],w:typeof wires[number])=>w.w.net_id===netId&&
+   [w.a,w.b].some(v=>eq(v.at_um,p)&&v.anchor.kind==='pin'&&
+    ((eq(p,a.at_um)&&pinKey(v.anchor)===pinKey(start))||(eq(p,b.at_um)&&pinKey(v.anchor)===pinKey(end))));
+ const accept=(path:MutablePoint[],allowCrossing:boolean)=>{
+   if(path.some(p=>p[0]<margin||p[1]<margin||p[0]>sheet.frame.size_um[0]-margin||p[1]>sheet.frame.size_um[1]-margin))return false;
+   for(let i=1;i<path.length;i++){
+     const p=path[i-1],q=path[i],box=rect(p,q);
+     for(const o of obstacles){
+       if((i===1&&o.id===start.component_id)||(i===path.length-1&&o.id===end.component_id))continue;
+       if(!separated(box,o.box,clearance))return false;
+     }
+     if(nodePoints.some(n=>hit(box,rect(n,n))))return false;
+     for(const w of wires){
+       if(!hit(box,w.box))continue;
+       const overlap= {minX:Math.max(box.minX,w.box.minX),maxX:Math.min(box.maxX,w.box.maxX),minY:Math.max(box.minY,w.box.minY),maxY:Math.min(box.maxY,w.box.maxY)};
+       if(overlap.minX!==overlap.maxX||overlap.minY!==overlap.maxY)return false;
+       const at=[overlap.minX,overlap.minY];
+       if((eq(at,p)||eq(at,q))&&isShared(at,w))continue;
+       const cross=(p[0]===q[0])!==(w.a.at_um[0]===w.b.at_um[0]);
+       if(!allowCrossing||!cross||eq(at,p)||eq(at,q)||eq(at,w.a.at_um)||eq(at,w.b.at_um))return false;
+     }
+   }
+   return true;
+ };
+ const opts={channelsX,channelsY};
+ try{return routeManhattan(xy(a.at_um),xy(b.at_um),xy(a.normal),xy(b.normal),2000,{...opts,accept:p=>accept(p,false)});}
+ catch(e){if(!(e instanceof WireError)||e.code!=='REROUTE_REQUIRED')throw e;}
+ return routeManhattan(xy(a.at_um),xy(b.at_um),xy(a.normal),xy(b.normal),2000,{...opts,accept:p=>accept(p,true)});
 }
 function expectedCounts(file:ProjectFileV2):void {
   const p=file.project;
@@ -671,7 +724,7 @@ export class AuthoringSession {
     return {at_um:[local[0]+comp.origin_um[0],local[1]+comp.origin_um[1]],normal,
       net_id:net?.id??null};
   }
-  connect(tx:Tx,start:PinRef,end:PinRef,bends:readonly PointUm[]=[]):void{
+  connect(tx:Tx,start:PinRef,end:PinRef,bends:readonly PointUm[]=[],smart=false):void{
     this.edit(tx,draft=>{
       const a=this.beginWire(start),b=this.beginWire(end);
       if(pinKey(start)===pinKey(end))reject('SAME_PIN');
@@ -693,7 +746,7 @@ export class AuthoringSession {
       const {subset,session}=localSession(draft,this.clock);
       const wpA=session.engine.beginWire(start),wpB=session.engine.beginWire(end);
       const from:WorldPin={...wpA,net_id:netId},to:WorldPin={...wpB,net_id:netId};
-      const points=bends.length?addRouteBends(from,to,bends):
+      const points=bends.length?addRouteBends(from,to,bends):smart?cleanRoute(draft,start,end,from,to,netId):
         session.engine.previewRoute({kind:'pin',...start},{kind:'pin',...end});
       let num=1;
       while(session.engine.snapshot.wires.some(w=>w.id==='manual-'+num))num++;
