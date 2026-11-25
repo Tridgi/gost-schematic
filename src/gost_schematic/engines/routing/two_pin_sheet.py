@@ -76,6 +76,16 @@ def route_circuit_two_pins(
     ):
         return _fail("ROUTE_OBSTACLE_INVALID", "Foreign wires need actual stroke metadata")
 
+    # A geometry-only obstacle is not evidence of an already verified foreign
+    # declared net. Keep the historical fail-closed contract for that case.
+    # Unrouted nets (no supplied foreign wire) may remain incomplete.
+    declared_other_nets = {net.name for net in circuit.nets if net.name != net_name}
+    if any(wire.net_name in declared_other_nets for wire in foreign_wires):
+        return _fail(
+            "ROUTE_ELECTRICAL_REJECTED",
+            "Foreign declared net needs verified graph, not only geometry obstacles",
+        )
+
     if not isinstance(annotations, tuple) or any(
         not isinstance(item, AnnotationPlacement) for item in annotations
     ):

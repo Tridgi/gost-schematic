@@ -16,7 +16,16 @@ from enum import Enum
 from pathlib import Path
 
 from gost_schematic.catalog.loader import CatalogError
-from gost_schematic.core.geometry import Box, Line, Point, Semicircle, Side, StyledLine
+from gost_schematic.core.geometry import (
+    Box,
+    Line,
+    Point,
+    Semicircle,
+    Side,
+    StyledLine,
+    enclosing_box,
+    primitive_stroked_bounds,
+)
 from gost_schematic.core.units import mm
 from gost_schematic.model.annotations import (
     Anchor,
@@ -44,6 +53,11 @@ class CoreKind(str, Enum):
     FERRITE = "ferrite"
     MAGNETODIELECTRIC = "magnetodielectric"
     NONMAGNETIC_COPPER = "nonmagnetic_copper"
+
+
+class LeadStyle(str, Enum):
+    STRAIGHT = "straight"
+    PERPENDICULAR = "perpendicular"
 
 
 class AdjustmentKind(str, Enum):
@@ -74,6 +88,9 @@ class InductorSpec:
     revision: int = 1
     normative_relation: NormativeRelation = NormativeRelation.EDITORIAL_ADAPTATION
     normative_basis: str = "User-defined, unverified geometry"
+    lead_style: LeadStyle = LeadStyle.STRAIGHT
+    tap_junctions: tuple[int, ...] = ()
+    protect_functional: bool = False
 
     def __post_init__(self) -> None:
         if not isinstance(self.identifier, str) or not self.identifier.startswith(
@@ -84,8 +101,8 @@ class InductorSpec:
             self.adjustment, AdjustmentKind
         ):
             raise TypeError("Core and adjustment must be typed enums")
-        if type(self.turns) is not int or not 3 <= self.turns <= 12:
-            raise ValueError("Draft winding supports 3–12 half-circle lobes")
+        if type(self.turns) is not int or not 1 <= self.turns <= 12:
+            raise ValueError("Draft winding supports 1–12 half-circle lobes")
         for name, value in (
             ("radius", self.radius_um),
             ("lead length", self.lead_um),
@@ -112,10 +129,36 @@ class InductorSpec:
             raise ValueError(
                 "Core + exposed contacts need a separate verified route over core symbol"
             )
+        if not isinstance(self.lead_style, LeadStyle):
+            raise TypeError("Lead style must be a typed enum")
+        if type(self.protect_functional) is not bool:
+            raise TypeError("Protect functional must be a boolean")
+        if len(self.tap_junctions) != len(set(self.tap_junctions)) or any(
+            type(index) is not int or not 1 <= index < self.turns
+            for index in self.tap_junctions
+        ):
+            raise ValueError("Junction taps must be unique internal arc boundaries")
+        if self.tap_junctions and (self.tap_turns or self.slider_turns):
+            raise ValueError("Legacy apex contacts and junction contacts cannot be mixed")
+        if self.tap_junctions and self.adjustment != AdjustmentKind.FIXED:
+            raise ValueError("Junction taps plus adjustment require separate review")
+        if self.turns < 3 and self.adjustment != AdjustmentKind.FIXED:
+            raise ValueError("Adjustment geometry requires at least three lobes")
+        if self.uses_extended_profile and self.lead_um < mm("3"):
+            raise ValueError("Extended profile requires at least 3 mm terminal leads")
         if self.adjustment == AdjustmentKind.CORE_TRIM and self.core == CoreKind.NONE:
             raise ValueError("Core trim requires a physical core")
         if self.adjustment == AdjustmentKind.VARIABLE and self.core != CoreKind.NONE:
             raise ValueError("Variable-winding symbol must not silently imply core tuning")
+
+    @property
+    def uses_extended_profile(self) -> bool:
+        return (
+            self.protect_functional
+            or self.lead_style != LeadStyle.STRAIGHT
+            or bool(self.tap_junctions)
+            or self.turns < 3
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -137,6 +180,9 @@ def parse_inductor_spec(payload: dict[str, object]) -> InductorSpec:
             adjustment=AdjustmentKind(payload.get("adjustment", "fixed")),
             turns=payload.get("turns", 4),
             tap_turns=tuple(payload.get("tap_turns", [])),
+            tap_junctions=tuple(payload.get("tap_junctions", [])),
+            lead_style=LeadStyle(payload.get("lead_style", "straight")),
+            protect_functional=payload.get("protect_functional", False),
             slider_turns=tuple(payload.get("slider_turns", [])),
             radius_um=mm(payload.get("radius_mm", "2")),
             lead_um=mm(payload.get("lead_mm", "4")),
@@ -185,18 +231,21 @@ def build_inductor(spec: InductorSpec) -> InductorDefinition:
     lead_start = first - spec.lead_um
     lead_end = last + spec.lead_um
 
+    perpendicular = spec.lead_style == LeadStyle.PERPENDICULAR
+    start_at = Point(first, spec.lead_um) if perpendicular else Point(lead_start, 0)
+    end_at = Point(last, spec.lead_um) if perpendicular else Point(lead_end, 0)
     graphics: list[Line | Semicircle | StyledLine] = [
-        Line(Point(lead_start, 0), Point(first, 0)),
+        Line(start_at, Point(first, 0)),
     ]
     for index in range(spec.turns):
         graphics.append(Semicircle(Point(first + (2 * index + 1) * r, 0), r, Side.TOP))
-    graphics.append(Line(Point(last, 0), Point(lead_end, 0)))
+    graphics.append(Line(Point(last, 0), end_at))
     conducting_indices = list(range(len(graphics)))
     explicit_junctions: list[Point] = []
 
     pins = [
-        GraphicPin("1", Point(lead_start, 0), Side.LEFT),
-        GraphicPin("2", Point(lead_end, 0), Side.RIGHT),
+        GraphicPin("1", start_at, Side.BOTTOM if perpendicular else Side.LEFT),
+        GraphicPin("2", end_at, Side.BOTTOM if perpendicular else Side.RIGHT),
     ]
     physical = [
         PhysicalPin("1", "START", ElectricalType.PASSIVE, function=TerminalFunction.WINDING_START),
@@ -252,6 +301,20 @@ def build_inductor(spec: InductorSpec) -> InductorDefinition:
         pins.append(GraphicPin(number, pos, Side.TOP))
         physical.append(PhysicalPin(number, f"TAP{offset + 1}", ElectricalType.PASSIVE, function=TerminalFunction.WINDING_TAP))
 
+    for offset, index in enumerate(spec.tap_junctions):
+        x = first + 2 * index * r
+        joint = Point(x, 0)
+        pos = Point(x, spec.lead_um)
+        number = str(3 + offset)
+        explicit_junctions.append(joint)
+        conducting_indices.append(len(graphics))
+        graphics.append(Line(joint, pos))
+        pins.append(GraphicPin(number, pos, Side.BOTTOM))
+        physical.append(PhysicalPin(
+            number, f"TAP{offset + 1}", ElectricalType.PASSIVE,
+            function=TerminalFunction.WINDING_TAP,
+        ))
+
     for offset, index in enumerate(spec.slider_turns):
         x = first + (2 * index + 1) * r
         number = str(3 + len(spec.tap_turns) + offset)
@@ -270,6 +333,22 @@ def build_inductor(spec: InductorSpec) -> InductorDefinition:
     if spec.adjustment != AdjustmentKind.FIXED:
         top_y = min(top_y, -r - mm("4"))
     body = Box(first - mm("0.5"), top_y, last + mm("0.5"), mm("1.2"))
+    routing_keepouts: tuple[Box, ...] = ()
+    if spec.uses_extended_profile:
+        # Protect core strokes and modifiers, not the external contact ends.
+        # Include the complete stroked winding envelope (arcs only).
+        ink = tuple(
+            primitive_stroked_bounds(shape, width)
+            for index, shape in enumerate(graphics)
+            if isinstance(shape, Semicircle) or index not in conducting_indices
+        )
+        zone = enclosing_box((body, *ink)).expanded(mm("0.2"))
+        if any(zone.expanded(mm("0.55")).includes(pin.at) for pin in pins):
+            raise ValueError("Extended profile traps a terminal at default routing clearance")
+        routing_keepouts = (zone,)
+    value_y = max(mm("4"), spec.lead_um + mm("2")) if (
+        perpendicular or spec.tap_junctions
+    ) else mm("4")
     # Routed wire exit is protected independently from this central body keepout.
     labels: list[AnnotationSlot] = [
         AnnotationSlot("refdes", AnnotationRole.REFDES, (
@@ -277,8 +356,8 @@ def build_inductor(spec: InductorSpec) -> InductorDefinition:
             Anchor(Point(lead_end + mm("2"), top_y), HorizontalAlign.LEFT, VerticalAlign.BOTTOM),
         ), required=True),
         AnnotationSlot("value", AnnotationRole.VALUE, (
-            Anchor(Point(0, mm("4")), HorizontalAlign.CENTER, VerticalAlign.TOP),
-            Anchor(Point(lead_end + mm("2"), mm("4")), HorizontalAlign.LEFT, VerticalAlign.TOP),
+            Anchor(Point(0, value_y), HorizontalAlign.CENTER, VerticalAlign.TOP),
+            Anchor(Point(lead_end + mm("2"), value_y), HorizontalAlign.LEFT, VerticalAlign.TOP),
         )),
     ]
     constants: tuple[tuple[str, str], ...] = ()
@@ -310,10 +389,11 @@ def build_inductor(spec: InductorSpec) -> InductorDefinition:
             f"review_relation={spec.normative_relation.value}; approval=draft",
         ),
         annotation_slots=tuple(labels), constant_annotations=constants,
+        routing_keepouts=routing_keepouts,
         conductor_topology=ConductorTopology(
             conductor_indices=tuple(conducting_indices),
             junctions=tuple(explicit_junctions),
-            pin_groups=(tuple(pin.number for pin in pins),),
+            pin_groups=(tuple(sorted(pin.number for pin in pins)),),
         ),
     )
     part = PartDefinition(
