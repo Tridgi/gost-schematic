@@ -39,7 +39,7 @@ function contact(a,b){
 }
 export function analyzeDiagnostics(file,scene,snapshot,routeStatuses={},options={}){
  const maxItems=options.maxItems??200,maxComparisons=options.maxComparisons??150000;
- const items=[],seen=new Set(),counts={error:0,warning:0,info:0};
+ const buckets={error:[],warning:[],info:[]},seen=new Set(),counts={error:0,warning:0,info:0};
  let comparisons=0,incomplete=false;
  const add=(code,severity,message,identities=[],instanceId)=>{
   const id=JSON.stringify([code,...identities]);
@@ -47,7 +47,7 @@ export function analyzeDiagnostics(file,scene,snapshot,routeStatuses={},options=
   // Electrical counts are exact for the scanned entities; only geometry comparisons
   // and rendered rows are capped. Do not silently drop known issue counts.
   seen.add(id);counts[severity]++;
-  if(items.length<maxItems)items.push({id,code,severity,message,...(instanceId?{instanceId}:{})});
+  if(buckets[severity].length<maxItems)buckets[severity].push({id,code,severity,message,...(instanceId?{instanceId}:{})});
  };
  const budget=()=>{if(comparisons>=maxComparisons){incomplete=true;return false}comparisons++;return true};
  const project=file.project,byComp=new Map(project.components.map(c=>[c.id,c]));
@@ -126,6 +126,8 @@ export function analyzeDiagnostics(file,scene,snapshot,routeStatuses={},options=
     'Проводник '+netName(seg.wire.net_id)+' касается '+ref(s.component_id)+'.'+p.physical_pin_number+' без соответствующего PinRef.',[seg.wire.id,pinId],s.instance_id);
   }
  }
+ // A large number of disconnected pins must never hide critical DRC errors.
+ const items=[...buckets.error,...buckets.warning,...buckets.info].slice(0,maxItems);
  const omitted=counts.error+counts.warning+counts.info-items.length;
  if(incomplete||omitted>0)items.push({id:'diagnostics-limit',code:'CHECK_LIMIT',severity:'info',message:'Диагностика ограничена: '+omitted+' сообщений скрыто'+(incomplete?'; геометрическая проверка неполная.':'.')});
  return {items,counts,comparisons,incomplete,omitted};
