@@ -492,3 +492,28 @@ the geometric span proxy. Three regression tests cover fixed peer
 anchors, complete atomic Apply/Undo and the frozen TL494 test copy.
 No source unlock, main merge, or claim of global functional clustering.
 CI and quantitative improvement pending.
+
+
+## R32i — reproducible visual comparison artifacts
+
+The browser CI now executes scripts/tl494-visual-evidence.mjs after
+installing Chromium. It bundles the production authoring and export
+modules, reads the frozen E695 inventory without changing its bytes,
+and builds three independent evidence stages: margin-repaired initial
+routing, selected functional routing, and connected route refinement.
+Every stage must connect all 15 declared Nets and preserve 23 components,
+62 PinRefs, DA1's 16 physical pins, two non-electrical b graphics,
+annotations and symbol definitions, with zero diagnosed geometry
+warnings/errors/overflow. Refinement must not increase bends, crossings
+or length. Each stage exports actual ProjectV2, SVG and browser PNG300;
+the JSON manifest records dimensions, metrics, source-file SHA256 and
+artifact SHA256 values. This makes the geometry inspectable rather than
+relying on schematic illustrations or aggregate scores alone. The
+artifact is named tl494-routing-visual-evidence. IDs are generated at
+runtime; hashes identify the produced files, not a promise of identical
+bytes across runs. Preview fonts remain unverified, and the current
+browser exporter records refdes in metadata rather than complete visible
+reference/value labels. This is not normative ESKD print acceptance,
+a canonical source unlock, or native Windows acceptance.
+R32g confirmed 15/15, 87 bends, 41 crossings, 5763.668 mm after refinement.
+R32h main CI passed; browser result and R32i evidence CI pending.

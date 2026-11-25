@@ -121,6 +121,15 @@ jobs:
       - name: Install real Chromium and dependencies
         working-directory: ui/editor
         run: npx playwright install --with-deps chromium
+      - name: Generate verified TL494 routing comparison in SVG and PNG300
+        working-directory: ui/editor
+        run: node scripts/tl494-visual-evidence.mjs ../../ci-artifacts/tl494-routing-evidence
+      - name: Publish TL494 routing comparison evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: tl494-routing-visual-evidence
+          path: ci-artifacts/tl494-routing-evidence/
+          if-no-files-found: error
       - name: End-to-end real browser physical pin/wire and theme tests
         working-directory: ui/editor
         run: npm run test:e2e
