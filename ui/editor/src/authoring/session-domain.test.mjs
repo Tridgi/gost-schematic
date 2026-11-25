@@ -692,8 +692,7 @@ test('R17b canonical catalog parity and actual Python SVG export of all 21 place
   assert.equal(sym.graphics.length,expected.length+raw.geometry.circles.length);
   for(const [i,c] of raw.geometry.circles.entries()){
    const p=sym.graphics[expected.length+i],center=point(c.center_mm),radius=mm(c.radius_mm);
-   assert.equal(p.kind,'polyline');assert.deepEqual(p.points_um[0],p.points_um.at(-1));
-   for(const v of p.points_um)assert.ok(Math.abs(Math.hypot(v[0]-center[0],v[1]-center[1])-radius)<=1);
+   assert.equal(p.kind,'circle');assert.deepEqual(p.points_um,[center,[center[0]+radius,center[1]]]);
   }
  }
  for(const [i,symbol] of source.project.symbol_definitions.entries())
