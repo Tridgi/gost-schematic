@@ -134,7 +134,7 @@ jobs:
           & .\.github\tools\r9-native-project.ps1 -ArtifactRoot $staging
           if (!$?) { throw 'R9_REAL_NATIVE_PERSISTENCE_FAILED' }
       - name: Publish actual full TL494 native acceptance evidence
-        if: always() && startsWith(github.ref_name, 'ui/r33-')
+        if: always() && startsWith(github.head_ref || github.ref_name, 'ui/r33-')
         uses: actions/upload-artifact@v4
         with:
           name: r33-full-tl494-installed-windows
