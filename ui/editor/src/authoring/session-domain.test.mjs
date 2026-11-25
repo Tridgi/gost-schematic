@@ -703,3 +703,25 @@ test('R17b canonical catalog parity and actual Python SVG export of all 21 place
  assert.equal(py.status,0,py.stderr);
  assert.match(py.stdout,/<svg\b|<ns0:svg\b/);
 });
+
+test('R17c Python canonical curve validation and exact SVG sweep across every pose',()=>{
+ const s=newSession();
+ s.place(s.newTransaction('case'),'symbol/transistor.bjt_npn.with_case',[100000,100000]);
+ const doc=s.file,inst=doc.project.sheets[0].instances[0];
+ const sym=doc.project.symbol_definitions.find(s=>s.id===inst.symbol_id);
+ sym.graphics.push({kind:'semicircle',points_um:[[-2000,0],[0,-2000],[2000,0]],stroke_um:300});
+ const py=spawnSync('python',['-c',
+  'import json,sys;sys.path.insert(0,"../..");from ui.editor.src.model.contract import validate,digest;from ui.bridge.export.project_v2 import render_v2_source;import xml.etree.ElementTree as E;d=json.loads(sys.stdin.buffer.read().decode("utf-8"));i=d["project"]["sheets"][0]["instances"][0];ns={"s":"http://www.w3.org/2000/svg"};out=[]\nfor r in (0,90,180,270):\n for m in (False,True):\n  i["rotation_deg"]=r;i["mirror_x"]=m;validate(d);root=E.fromstring(render_v2_source(d,"sheet-1",expected_project_sha256=digest(d)));out.append([root.find(".//s:circle",ns).get("r"),root.find(".//s:path",ns).get("d")])\nprint(json.dumps(out))'
+ ],{input:JSON.stringify(doc),encoding:'utf8',timeout:30000});
+ assert.equal(py.status,0,py.stderr);
+ const results=JSON.parse(py.stdout);
+ assert.equal(results.length,8);
+ for(const [i,[radius,path]] of results.entries()){
+  assert.equal(Number(radius),8);
+  assert.match(path,new RegExp(' A 2(?:\\.0+)? 2(?:\\.0+)? 0 0 '+(i%2?0:1)+' '));
+ }
+ sym.graphics.at(-1).points_um[1]=[0,-1999];
+ assert.throws(()=>new AuthoringSession(doc),/INVALID_CURVE/);
+ const bad=spawnSync('python',['-c','import json,sys;sys.path.insert(0,"../..");from ui.editor.src.model.contract import validate;validate(json.loads(sys.stdin.buffer.read().decode("utf-8")))'],{input:JSON.stringify(doc),encoding:'utf8',timeout:30000});
+ assert.notEqual(bad.status,0);assert.match(bad.stderr,/INVALID_CURVE/);
+});
