@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "id": "transformer.voltage_measurement",
+  "symbol_id": "transformer.voltage_measurement",
+  "reference_prefix": "TV",
+  "nominal_kind": null,
+  "voltage_orientation_rule": "none",
+  "pins": [
+    {
+      "number": "1",
+      "name": "P1",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_start"
+    },
+    {
+      "number": "2",
+      "name": "P2",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_end"
+    },
+    {
+      "number": "3",
+      "name": "S1",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_start"
+    },
+    {
+      "number": "4",
+      "name": "S2",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_end"
+    }
+  ]
+}

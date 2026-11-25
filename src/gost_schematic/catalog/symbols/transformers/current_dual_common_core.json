@@ -1,0 +1,266 @@
+{
+  "schema_version": 1,
+  "id": "transformer.current_dual_common_core",
+  "revision": 1,
+  "status": "draft",
+  "standard_refs": [
+    "ГОСТ 2.723-68, таблица 2, поз. 31, форма II; https://rosgosts.ru/file/gost/01/080/gost_2.723-68.pdf",
+    "EDITORIAL_ASSUMPTION: explicit two-terminal primary bar; secondary shares graphic axis but has no authored junction with primary; hollow primary-end marks inset from CAD connection endpoints by 3 mm; no physical isolation rating; project dimensions; abstract pin numbers; DRAFT."
+  ],
+  "line_width_mm": 0.3,
+  "body_keepout_mm": [
+    -4.1,
+    -12.7,
+    0.5,
+    12.7
+  ],
+  "routing_keepouts_mm": [
+    [
+      -4.4,
+      -13,
+      0.8,
+      13
+    ]
+  ],
+  "geometry": {
+    "lines": [
+      [
+        [
+          0,
+          -16
+        ],
+        [
+          0,
+          16
+        ]
+      ],
+      [
+        [
+          0,
+          -10
+        ],
+        [
+          6,
+          -10
+        ]
+      ],
+      [
+        [
+          0,
+          -2
+        ],
+        [
+          6,
+          -2
+        ]
+      ],
+      [
+        [
+          0,
+          2
+        ],
+        [
+          6,
+          2
+        ]
+      ],
+      [
+        [
+          0,
+          10
+        ],
+        [
+          6,
+          10
+        ]
+      ]
+    ],
+    "circles": [
+      {
+        "center_mm": [
+          0,
+          -12
+        ],
+        "radius_mm": 0.35
+      },
+      {
+        "center_mm": [
+          0,
+          12
+        ],
+        "radius_mm": 0.35
+      }
+    ],
+    "semicircles": [
+      {
+        "center_mm": [
+          0,
+          -8
+        ],
+        "radius_mm": 2,
+        "bulge": "left"
+      },
+      {
+        "center_mm": [
+          0,
+          -4
+        ],
+        "radius_mm": 2,
+        "bulge": "left"
+      },
+      {
+        "center_mm": [
+          0,
+          4
+        ],
+        "radius_mm": 2,
+        "bulge": "left"
+      },
+      {
+        "center_mm": [
+          0,
+          8
+        ],
+        "radius_mm": 2,
+        "bulge": "left"
+      }
+    ],
+    "styled_lines": [
+      {
+        "start_mm": [
+          -3.6,
+          -10
+        ],
+        "end_mm": [
+          -3.6,
+          10
+        ],
+        "stroke_width_mm": 0.3
+      }
+    ]
+  },
+  "pins": [
+    {
+      "number": "1",
+      "at_mm": [
+        0,
+        -16
+      ],
+      "side": "top",
+      "label": "P1"
+    },
+    {
+      "number": "2",
+      "at_mm": [
+        0,
+        16
+      ],
+      "side": "bottom",
+      "label": "P2"
+    },
+    {
+      "number": "3",
+      "at_mm": [
+        6,
+        -10
+      ],
+      "side": "right",
+      "label": "S1_START"
+    },
+    {
+      "number": "4",
+      "at_mm": [
+        6,
+        -2
+      ],
+      "side": "right",
+      "label": "S1_END"
+    },
+    {
+      "number": "5",
+      "at_mm": [
+        6,
+        2
+      ],
+      "side": "right",
+      "label": "S2_START"
+    },
+    {
+      "number": "6",
+      "at_mm": [
+        6,
+        10
+      ],
+      "side": "right",
+      "label": "S2_END"
+    }
+  ],
+  "annotations": [
+    {
+      "key": "refdes",
+      "role": "refdes",
+      "required": true,
+      "candidates": [
+        {
+          "at_mm": [
+            -7.4,
+            -16
+          ],
+          "horizontal": "right",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            3.8,
+            -16
+          ],
+          "horizontal": "left",
+          "vertical": "bottom"
+        }
+      ]
+    },
+    {
+      "key": "value",
+      "role": "value",
+      "required": false,
+      "candidates": [
+        {
+          "at_mm": [
+            3.8,
+            16
+          ],
+          "horizontal": "left",
+          "vertical": "top"
+        }
+      ]
+    }
+  ],
+  "conductor_topology": {
+    "indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      7,
+      8,
+      9,
+      10
+    ],
+    "junctions_mm": [],
+    "pin_groups": [
+      [
+        "1",
+        "2"
+      ],
+      [
+        "3",
+        "4"
+      ],
+      [
+        "5",
+        "6"
+      ]
+    ]
+  }
+}

@@ -1,0 +1,243 @@
+{
+  "schema_version": 1,
+  "id": "transformer.auto_regulated",
+  "revision": 1,
+  "status": "draft",
+  "standard_refs": [
+    "ГОСТ 2.723-68, таблица 2, поз. 25а, форма II; https://rosgosts.ru/file/gost/01/080/gost_2.723-68.pdf",
+    "EDITORIAL_ASSUMPTION: four terminal voltage regulation profile, common right end, adjustment arrow is nonconductive; project dimensions; abstract pin numbers; DRAFT."
+  ],
+  "line_width_mm": 0.3,
+  "body_keepout_mm": [
+    -8.3,
+    -5.5,
+    8.3,
+    4.5
+  ],
+  "routing_keepouts_mm": [
+    [
+      -8.6,
+      -5.8,
+      8.6,
+      4.8
+    ]
+  ],
+  "geometry": {
+    "lines": [
+      [
+        [
+          -8,
+          -10
+        ],
+        [
+          -8,
+          0
+        ]
+      ],
+      [
+        [
+          8,
+          0
+        ],
+        [
+          8,
+          -10
+        ]
+      ],
+      [
+        [
+          8,
+          0
+        ],
+        [
+          8,
+          10
+        ]
+      ],
+      [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          10
+        ]
+      ],
+      [
+        [
+          -4,
+          4
+        ],
+        [
+          4,
+          -5
+        ]
+      ],
+      [
+        [
+          4,
+          -5
+        ],
+        [
+          1.9,
+          -4.1
+        ]
+      ],
+      [
+        [
+          4,
+          -5
+        ],
+        [
+          3.8,
+          -2.7
+        ]
+      ]
+    ],
+    "circles": [],
+    "semicircles": [
+      {
+        "center_mm": [
+          -6,
+          0
+        ],
+        "radius_mm": 2,
+        "bulge": "bottom"
+      },
+      {
+        "center_mm": [
+          -2,
+          0
+        ],
+        "radius_mm": 2,
+        "bulge": "bottom"
+      },
+      {
+        "center_mm": [
+          2,
+          0
+        ],
+        "radius_mm": 2,
+        "bulge": "bottom"
+      },
+      {
+        "center_mm": [
+          6,
+          0
+        ],
+        "radius_mm": 2,
+        "bulge": "bottom"
+      }
+    ],
+    "styled_lines": []
+  },
+  "pins": [
+    {
+      "number": "1",
+      "at_mm": [
+        -8,
+        -10
+      ],
+      "side": "top",
+      "label": "INPUT_A"
+    },
+    {
+      "number": "2",
+      "at_mm": [
+        8,
+        -10
+      ],
+      "side": "top",
+      "label": "INPUT_B"
+    },
+    {
+      "number": "3",
+      "at_mm": [
+        8,
+        10
+      ],
+      "side": "bottom",
+      "label": "COMMON_OUTPUT"
+    },
+    {
+      "number": "4",
+      "at_mm": [
+        0,
+        10
+      ],
+      "side": "bottom",
+      "label": "OUTPUT_TAP"
+    }
+  ],
+  "annotations": [
+    {
+      "key": "refdes",
+      "role": "refdes",
+      "required": true,
+      "candidates": [
+        {
+          "at_mm": [
+            -11.6,
+            -8.8
+          ],
+          "horizontal": "right",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            11.6,
+            -8.8
+          ],
+          "horizontal": "left",
+          "vertical": "bottom"
+        }
+      ]
+    },
+    {
+      "key": "value",
+      "role": "value",
+      "required": false,
+      "candidates": [
+        {
+          "at_mm": [
+            11.6,
+            7.8
+          ],
+          "horizontal": "left",
+          "vertical": "top"
+        }
+      ]
+    }
+  ],
+  "conductor_topology": {
+    "indices": [
+      0,
+      1,
+      2,
+      3,
+      7,
+      8,
+      9,
+      10
+    ],
+    "junctions_mm": [
+      [
+        8,
+        0
+      ],
+      [
+        0,
+        0
+      ]
+    ],
+    "pin_groups": [
+      [
+        "1",
+        "2",
+        "3",
+        "4"
+      ]
+    ]
+  }
+}

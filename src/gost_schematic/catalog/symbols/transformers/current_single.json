@@ -1,0 +1,192 @@
+{
+  "schema_version": 1,
+  "id": "transformer.current_single",
+  "revision": 1,
+  "status": "draft",
+  "standard_refs": [
+    "ГОСТ 2.723-68, таблица 2, поз. 30, форма II; https://rosgosts.ru/file/gost/01/080/gost_2.723-68.pdf",
+    "EDITORIAL_ASSUMPTION: explicit two-terminal primary bar; secondary shares graphic axis but has no authored junction with primary; hollow primary-end marks inset from CAD connection endpoints by 3 mm; no physical isolation rating; project dimensions; abstract pin numbers; DRAFT."
+  ],
+  "line_width_mm": 0.3,
+  "body_keepout_mm": [
+    -4.1,
+    -6.7,
+    0.5,
+    6.7
+  ],
+  "routing_keepouts_mm": [
+    [
+      -4.4,
+      -7,
+      0.8,
+      7
+    ]
+  ],
+  "geometry": {
+    "lines": [
+      [
+        [
+          0,
+          -10
+        ],
+        [
+          0,
+          10
+        ]
+      ],
+      [
+        [
+          0,
+          -4
+        ],
+        [
+          6,
+          -4
+        ]
+      ],
+      [
+        [
+          0,
+          4
+        ],
+        [
+          6,
+          4
+        ]
+      ]
+    ],
+    "circles": [
+      {
+        "center_mm": [
+          0,
+          -6
+        ],
+        "radius_mm": 0.35
+      },
+      {
+        "center_mm": [
+          0,
+          6
+        ],
+        "radius_mm": 0.35
+      }
+    ],
+    "semicircles": [
+      {
+        "center_mm": [
+          0,
+          -2
+        ],
+        "radius_mm": 2,
+        "bulge": "left"
+      },
+      {
+        "center_mm": [
+          0,
+          2
+        ],
+        "radius_mm": 2,
+        "bulge": "left"
+      }
+    ],
+    "styled_lines": []
+  },
+  "pins": [
+    {
+      "number": "1",
+      "at_mm": [
+        0,
+        -10
+      ],
+      "side": "top",
+      "label": "P1"
+    },
+    {
+      "number": "2",
+      "at_mm": [
+        0,
+        10
+      ],
+      "side": "bottom",
+      "label": "P2"
+    },
+    {
+      "number": "3",
+      "at_mm": [
+        6,
+        -4
+      ],
+      "side": "right",
+      "label": "S1_START"
+    },
+    {
+      "number": "4",
+      "at_mm": [
+        6,
+        4
+      ],
+      "side": "right",
+      "label": "S1_END"
+    }
+  ],
+  "annotations": [
+    {
+      "key": "refdes",
+      "role": "refdes",
+      "required": true,
+      "candidates": [
+        {
+          "at_mm": [
+            -7.4,
+            -10
+          ],
+          "horizontal": "right",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            3.8,
+            -10
+          ],
+          "horizontal": "left",
+          "vertical": "bottom"
+        }
+      ]
+    },
+    {
+      "key": "value",
+      "role": "value",
+      "required": false,
+      "candidates": [
+        {
+          "at_mm": [
+            3.8,
+            10
+          ],
+          "horizontal": "left",
+          "vertical": "top"
+        }
+      ]
+    }
+  ],
+  "conductor_topology": {
+    "indices": [
+      0,
+      1,
+      2,
+      5,
+      6
+    ],
+    "junctions_mm": [],
+    "pin_groups": [
+      [
+        "1",
+        "2"
+      ],
+      [
+        "3",
+        "4"
+      ]
+    ]
+  }
+}
