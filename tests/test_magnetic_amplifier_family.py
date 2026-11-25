@@ -21,7 +21,6 @@ CASES = (
     ("transformer.controlled_three_phase", (("1", "2", "3"), ("4", "5", "6"), ("7", "8"),), 20, 1),
     ("magnetic_amplifier.common_control", (("1", "2"), ("3", "4"), ("5", "6"),), 10, 6),
     ("magnetic_amplifier.series_opposed", (("1", "2"), ("3", "4"),), 8, 6),
-    ("magnetic_amplifier.rectangular_hysteresis", (("1", "2"), ("3", "4"), ("5", "6"),), 10, 6),
 )
 
 

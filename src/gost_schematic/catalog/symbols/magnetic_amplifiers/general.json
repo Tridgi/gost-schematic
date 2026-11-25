@@ -1,28 +1,30 @@
 {
   "schema_version": 1,
   "id": "magnetic_amplifier.general",
-  "revision": 1,
+  "revision": 2,
   "status": "draft",
   "standard_refs": [
     "ГОСТ 2.723-68, таблица 2, поз. 37а, форма II; https://rosgosts.ru/file/gost/01/080/gost_2.723-68.pdf",
-    "EDITORIAL_ASSUMPTION: general triangular amplifier; three schematic ports; internal magnetic glyph decorative, no explicit conductive paths between ports; project dimensions and terminal extensions; abstract pin numbering; DRAFT."
+    "EDITORIAL_ASSUMPTION: general triangular amplifier; three schematic ports; internal magnetic glyph decorative, no explicit conductive paths between ports; project dimensions and terminal extensions; abstract pin numbering; DRAFT.",
+    "R2 SOURCE_VISUAL_REVIEW: uploaded ГОСТ 2.723-68 (Стандартинформ 2010), enlarged Form II scan; PDF p.11 item 37a: three equal lobes, stepped magnetic glyph, exact control stub at triangle edge. Interior graphic nonconductive.; project dimensions; DRAFT."
   ],
   "line_width_mm": 0.3,
   "body_keepout_mm": [
-    -6.4,
-    -7.4,
-    7.4,
-    7.4
+    -7.3,
+    -7.3,
+    7.3,
+    7.3
   ],
   "routing_keepouts_mm": [
     [
-      -6.6,
-      -7.6,
-      7.6,
-      7.6
+      -7.5,
+      -7.5,
+      7.5,
+      7.5
     ]
   ],
   "geometry": {
+    "rectangles": [],
     "lines": [
       [
         [
@@ -30,7 +32,7 @@
           0
         ],
         [
-          -6,
+          -7,
           0
         ]
       ],
@@ -47,7 +49,7 @@
       [
         [
           0.5,
-          3.5
+          3.25
         ],
         [
           0.5,
@@ -56,17 +58,17 @@
       ],
       [
         [
-          -6,
+          -7,
           -7
         ],
         [
-          -6,
+          -7,
           7
         ]
       ],
       [
         [
-          -6,
+          -7,
           -7
         ],
         [
@@ -76,42 +78,12 @@
       ],
       [
         [
-          -6,
+          -7,
           7
         ],
         [
           7,
           0
-        ]
-      ],
-      [
-        [
-          -2,
-          -3
-        ],
-        [
-          -0.5,
-          -3
-        ]
-      ],
-      [
-        [
-          -0.5,
-          -3
-        ],
-        [
-          -0.5,
-          3
-        ]
-      ],
-      [
-        [
-          -0.5,
-          3
-        ],
-        [
-          -2,
-          3
         ]
       ]
     ],
@@ -119,14 +91,64 @@
     "semicircles": [
       {
         "center_mm": [
+          -4,
+          0
+        ],
+        "radius_mm": 1,
+        "bulge": "top"
+      },
+      {
+        "center_mm": [
           -2,
           0
         ],
-        "radius_mm": 2,
+        "radius_mm": 1,
+        "bulge": "top"
+      },
+      {
+        "center_mm": [
+          0,
+          0
+        ],
+        "radius_mm": 1,
         "bulge": "top"
       }
     ],
-    "styled_lines": []
+    "styled_lines": [
+      {
+        "start_mm": [
+          -2,
+          -2.8
+        ],
+        "end_mm": [
+          -0.2,
+          -2.8
+        ],
+        "stroke_width_mm": 0.3
+      },
+      {
+        "start_mm": [
+          -2,
+          -2.8
+        ],
+        "end_mm": [
+          -2,
+          2.8
+        ],
+        "stroke_width_mm": 0.3
+      },
+      {
+        "start_mm": [
+          -3.8,
+          2.8
+        ],
+        "end_mm": [
+          -2,
+          2.8
+        ],
+        "stroke_width_mm": 0.3
+      }
+    ]
   },
   "pins": [
     {

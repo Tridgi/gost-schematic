@@ -1,34 +1,35 @@
 {
   "schema_version": 1,
   "id": "transductor.general",
-  "revision": 1,
+  "revision": 2,
   "status": "draft",
   "standard_refs": [
     "ГОСТ 2.723-68, таблица 2, позиция 45, форма II; https://meganorm.ru/Data/431/43151.pdf#page=14",
-    "EDITORIAL_ASSUMPTION: enclosed general transductor symbol; inner glyph is symbolic and does not certify internal continuity; two external contacts; project dimensions and CAD terminal extensions; DRAFT"
+    "EDITORIAL_ASSUMPTION: enclosed general transductor symbol; inner glyph is symbolic and does not certify internal continuity; two external contacts; project dimensions and CAD terminal extensions; DRAFT",
+    "R2 SOURCE_VISUAL_REVIEW: uploaded ГОСТ 2.723-68 (Стандартинформ 2010), enlarged Form II scan; PDF p.13 item 45: horizontal 14 x 10 mm rectangle, centered three-lobe glyph and stepped core, unchanged contacts.; project dimensions; DRAFT."
   ],
   "line_width_mm": 0.3,
   "body_keepout_mm": [
-    -6.2,
-    -7.2,
-    6.2,
-    7.2
+    -7.3,
+    -5.3,
+    7.3,
+    5.3
   ],
   "routing_keepouts_mm": [
     [
-      -6.4,
-      -7.4,
-      6.4,
-      7.4
+      -7.5,
+      -5.5,
+      7.5,
+      5.5
     ]
   ],
   "geometry": {
     "rectangles": [
       [
-        -6,
         -7,
-        6,
-        7
+        -5,
+        7,
+        5
       ]
     ],
     "lines": [
@@ -38,13 +39,13 @@
           0
         ],
         [
-          -6,
+          -7,
           0
         ]
       ],
       [
         [
-          6,
+          7,
           0
         ],
         [
@@ -84,33 +85,33 @@
       {
         "start_mm": [
           0,
-          -5
+          -2.8
         ],
         "end_mm": [
-          0,
-          5
+          1.8,
+          -2.8
         ],
         "stroke_width_mm": 0.3
       },
       {
         "start_mm": [
           0,
-          -5
+          -2.8
         ],
         "end_mm": [
-          1.5,
-          -5
+          0,
+          2.8
         ],
         "stroke_width_mm": 0.3
       },
       {
         "start_mm": [
-          -1.5,
-          5
+          -1.8,
+          2.8
         ],
         "end_mm": [
           0,
-          5
+          2.8
         ],
         "stroke_width_mm": 0.3
       }
