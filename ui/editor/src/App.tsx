@@ -772,6 +772,18 @@ export default function App() {
     projectName={document.project.title+(authoringRef.current?' · R3 AUTHORING':' · R2 PREVIEW')} dirty={dirty}
     baseRevision={String(snapshot.revision)} sheets={document.project.sheets.map(s=>({id:s.id,title:s.name}))}
     activeSheetId={activeSheet.id} catalog={catalog} tree={tree} topology={topology}
+    onPreviewRouteRefinement={authoringRef.current&&tool==='select'&&activeSheet.wires.some(w=>w.needs_routing_review)?()=>{
+      const a=authoringRef.current!;
+      try{
+        const p=a.previewRouteRefinement();
+        if(!p.token){setIssue('Не найдено безопасное улучшение маршрутов.');return;}
+        if(!window.confirm('Перестроить '+p.operations.length+' маршрутов, отмеченных для проверки? Изгибы: '+p.before.bends+' → '+p.after.bends+', пересечения: '+p.before.crossings+' → '+p.after.crossings+', длина: '+(p.before.lengthUm/1000).toFixed(3)+' → '+(p.after.lengthUm/1000).toFixed(3)+' мм. Применить?')){
+          a.discardLayoutPreview(p.token);return;
+        }
+        a.applyLayoutPreview(a.newTransaction('apply-route-refinement'),p.token);adoptAuthored();
+        setIssue('Маршруты упрощены. Проверьте результат.');
+      }catch(e){setIssue('ROUTE_REFINEMENT_FAILED: '+String(e));}
+    }:undefined}
     onPreviewHubPlacement={authoringRef.current&&tool==='select'&&!activeSheet.wires.length&&!activeSheet.junctions.length&&!activeSheet.splices.length?()=>{
       const a=authoringRef.current!;
       try{
