@@ -22,19 +22,22 @@ jobs:
         run: |
           python examples/review_resistor_batch01.py
           python examples/review_resistor_batch02.py
+          python examples/review_full_catalog_native.py
       - name: Rasterize native galleries
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq librsvg2-bin
-          for gallery in output/resistor-batch*/gallery-*.svg; do
+          for gallery in output/resistor-batch*/gallery-*.svg output/full-catalog-native/catalog-*.svg; do
             rsvg-convert --background-color white --width 2400 -o "${gallery%.svg}.png" "$gallery"
           done
       - uses: actions/upload-artifact@v4
         with:
           name: native-reference-catalog-svg-png
-          path: output/resistor-batch*/
+          path: |
+            output/resistor-batch*/
+            output/full-catalog-native/
           if-no-files-found: error
       - name: Check catalog structural integrity and focused regressions
         run: |
           python scripts/audit_symbol_catalog.py --output output/catalog-integrity-audit.json
-          pytest -q tests/test_resistor_batch01.py tests/test_resistor_batch02.py
+          pytest -q tests/test_resistor_batch01.py tests/test_resistor_batch02.py tests/test_full_catalog_native.py
