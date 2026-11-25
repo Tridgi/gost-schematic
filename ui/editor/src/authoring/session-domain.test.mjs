@@ -1632,3 +1632,62 @@ test('R30 refuses external scope, locked layer and occupied target with exact ro
  assert.throws(()=>s.alignMultiConnected(s.newTransaction('blocked'),moving),/MULTI_NO_SAFE_IMPROVEMENT/);
  assert.deepEqual(s.file,blocked);assert.equal(s.revision,r);
 });
+
+
+test('R32a initial route goes around non-electrical sheet ink and preserves it byte-for-byte',()=>{
+ const s=newSession(),{r,c}=placePair(s);
+ s.connect(s.newTransaction('declare'),pin(r,'2'),pin(c,'1'));
+ const doc=s.file,sh=doc.project.sheets[0],net=doc.project.nets[0];
+ sh.wires=[];net.route_status='unrouted';
+ const layer=sh.layers.find(l=>l.kind==='electrical').id;
+ sh.graphics.push({id:'visual-line',layer_id:layer,kind:'line',points_um:[[127500,95000],[127500,105000]],stroke_um:300});
+ sh.labels.push({id:'visual-label',layer_id:layer,role:'visual',net_id:null,text:'b',at_um:[120000,120000]});
+ const a=new AuthoringSession(doc);
+ const route=a.buildNetTree(a.newTransaction('route-visual'),net.id,true),after=a.file.project.sheets[0];
+ assert.ok(route.bends>=2);
+ assert.deepEqual(after.graphics,sh.graphics);assert.deepEqual(after.labels,sh.labels);
+ for(const w of after.wires)for(let i=1;i<w.vertices.length;i++){
+  const p=w.vertices[i-1].at_um,q=w.vertices[i].at_um;
+  assert.ok(Math.max(p[0],q[0])<126350||Math.min(p[0],q[0])>128650||
+    Math.max(p[1],q[1])<93850||Math.min(p[1],q[1])>106150);
+ }
+ assert.equal(a.engine.validateNet(net.id).pin_groups.length,1);
+ assert.equal(a.undo(),true);assert.deepEqual(a.file,doc);
+ const bad=structuredClone(doc);bad.project.sheets[0].labels[0].role='net_annotation';
+ bad.project.sheets[0].labels[0].net_id=net.id;
+ const b=new AuthoringSession(bad);
+ assert.throws(()=>b.buildNetTree(b.newTransaction('reject-label'),net.id,true),/LAYOUT_ANNOTATIONS_UNSUPPORTED/);
+ assert.deepEqual(b.file,bad);
+});
+
+test('R32a frozen TL494 independent-Net preflight on a detached test-only synthetic copy',t=>{
+ const source=JSON.parse(readFileSync(new URL('../../../fixtures/tl494-source-e695-v2.gscad.json',import.meta.url),'utf8'));
+ const original=structuredClone(source);
+ assert.throws(()=>new AuthoringSession(source),/SOURCE_SHA_MISMATCH/);
+ const doc=structuredClone(source),p=doc.project,sh=p.sheets[0];
+ p.provenance={...p.provenance,status:'synthetic',source_sha:'0'.repeat(40),source_path:'test-only/TL494-routing-preflight',
+   expected_counts:{...p.provenance.expected_counts,da1_pins:0,b_graphics:0}};
+ const outcomes=[];
+ for(const net of p.nets){
+  const session=new AuthoringSession(doc);
+  let route;
+  try{route=session.buildNetTree(session.newTransaction('preflight'),net.id,true)}
+  catch(e){
+   assert.equal(e.name,'WireError');assert.deepEqual(session.file,doc);assert.equal(session.revision,0);
+   outcomes.push({net:net.name,pins:net.members.length,rejected:e.code});continue;
+  }
+  const after=session.file;
+  assert.equal(session.engine.validateNet(net.id).pin_groups.length,1);
+  assert.deepEqual(after.project.nets.map(n=>[n.id,n.members]),p.nets.map(n=>[n.id,n.members]));
+  assert.deepEqual(after.project.sheets[0].instances,sh.instances);
+  assert.deepEqual(after.project.sheets[0].graphics,sh.graphics);
+  assert.deepEqual(after.project.sheets[0].labels,sh.labels);
+  assert.ok(after.project.sheets[0].wires.every(w=>w.net_id===net.id&&w.needs_routing_review));
+  outcomes.push({net:net.name,pins:net.members.length,bends:route.bends,lengthUm:route.lengthUm});
+ }
+ assert.equal(outcomes.length,15);
+ assert.equal(outcomes.reduce((n,o)=>n+o.pins,0),62);
+ assert.equal(sh.graphics.length,2);assert.deepEqual(source,original);
+ t.diagnostic('TL494_R32A_PREFLIGHT '+JSON.stringify(outcomes));
+ // Diagnostic only: independent feasibility is not simultaneous routing.
+});
