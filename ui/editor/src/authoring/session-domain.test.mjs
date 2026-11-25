@@ -1530,3 +1530,51 @@ test('R28 refuses partial/manual geometry, stale revision and locked layer witho
  assert.throws(()=>locked.buildNetTree(locked.newTransaction('locked'),net,true),/TREE_ELECTRICAL_LAYER_AMBIGUOUS/);
  assert.deepEqual(locked.file,doc);assert.equal(locked.revision,0);
 });
+
+
+function batchRouteFixture(){
+ const s=newSession();
+ for(const p of [[80000,80000],[180000,80000],[80000,180000],[180000,180000]])
+  s.place(s.newTransaction('batch-place'),'symbol/resistor.fixed',p);
+ const [a,b,c,d]=s.file.project.components.map(c=>c.id);
+ s.connect(s.newTransaction('ab'),pin(a,'2'),pin(b,'1'));
+ s.connect(s.newTransaction('cd'),pin(c,'2'),pin(d,'1'));
+ const doc=s.file,ids=doc.project.nets.map(n=>n.id);
+ doc.project.sheets[0].wires=[];for(const n of doc.project.nets)n.route_status='unrouted';
+ return {doc,ids,session:new AuthoringSession(doc)};
+}
+test('R29 two untouched Nets are routed in a single history entry with fixed physical topology',()=>{
+ const {session:s,ids,doc}=batchRouteFixture();
+ const result=s.routeInitialNets(s.newTransaction('batch'),ids),after=s.file;
+ assert.equal(result.nets,2);assert.equal(result.wires,2);assert.equal(result.bends,0);
+ assert.equal(result.attempts,2);assert.equal(s.revision,1);
+ assert.deepEqual(after.project.components,doc.project.components);
+ assert.deepEqual(after.project.sheets[0].instances,doc.project.sheets[0].instances);
+ assert.deepEqual(after.project.nets.map(n=>[n.id,n.members]),doc.project.nets.map(n=>[n.id,n.members]));
+ for(const id of ids)assert.equal(s.engine.validateNet(id).pin_groups.length,1);
+ assert.ok(after.project.sheets[0].wires.every(w=>w.needs_routing_review));
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,doc);assert.equal(s.canUndo,false);
+ assert.equal(s.redo(),true);assert.deepEqual(new AuthoringSession(s.file).file,after);
+});
+test('R29 failure of a later Net rolls back the entire batch, including successful earlier trial',()=>{
+ const {session:s,ids}=batchRouteFixture();
+ s.buildNetTree(s.newTransaction('existing'),ids[1],true);
+ const before=s.file,rev=s.revision;
+ assert.throws(()=>s.routeInitialNets(s.newTransaction('batch'),ids),/BATCH_NO_SAFE_ROUTE.*TREE_ALREADY_ROUTED/);
+ assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
+ assert.equal(s.engine.validateNet(ids[0]).status,'unrouted');
+ assert.equal(s.undo(),true);assert.equal(s.file.project.sheets[0].wires.length,0);
+ assert.equal(s.canUndo,false);
+});
+test('R29 rejects stale, duplicate, unknown and oversized batches without modifying history',()=>{
+ const {session:s,ids,doc}=batchRouteFixture();
+ assert.throws(()=>s.routeInitialNets(s.newTransaction('empty'),[]),/BATCH_NET_COUNT/);
+ assert.throws(()=>s.routeInitialNets(s.newTransaction('large'),Array(9).fill(ids[0])),/BATCH_NET_COUNT/);
+ assert.throws(()=>s.routeInitialNets(s.newTransaction('duplicate'),[ids[0],ids[0]]),/BATCH_DUPLICATE_NET/);
+ assert.throws(()=>s.routeInitialNets(s.newTransaction('unknown'),['not-a-net']),/UNKNOWN_NET/);
+ assert.deepEqual(s.file,doc);assert.equal(s.canUndo,false);
+ const old=s.newTransaction('stale');
+ s.buildNetTree(s.newTransaction('single'),ids[0],true);const before=s.file;
+ assert.throws(()=>s.routeInitialNets(old,[ids[1]]),/STALE_REVISION/);
+ assert.deepEqual(s.file,before);
+});

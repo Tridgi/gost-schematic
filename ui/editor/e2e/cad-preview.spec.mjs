@@ -1703,3 +1703,51 @@ test('R28 explicit first route for a saved declared two-pin Net, Undo and Redo',
  await page.getByRole('button',{name:'Повторить'}).click();
  expect((await saved()).project).toEqual(after.project);
 });
+
+
+test('R29 batch initial routing commits two declared Nets and one Undo restores both',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');
+ await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ for(const [i,[x,y]] of [[.25,.3],[.65,.3],[.25,.7],[.65,.7]].entries()){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await expect(canvas).toHaveAttribute('data-tool','place');
+  const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+  const px=paper.x+paper.width*x,py=paper.y+paper.height*y;
+  await assertCanvasReceivesPointer(page,px,py);
+  await page.mouse.click(px,py);
+  await expect(page.getByTestId('symbol-R'+(i+1))).toBeVisible();
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const placed=await saved(),comps=placed.project.components;
+ await page.getByTestId('tool-wire').click();
+ for(const [a,b] of [[comps[0],comps[1]],[comps[2],comps[3]]]){
+  await page.getByTestId('signed-pin-'+a.id+'-2').click();
+  await page.getByTestId('signed-pin-'+b.id+'-1').click();
+ }
+ await page.getByTestId('tool-select').click();
+ const doc=await saved();
+ expect(doc.project.nets).toHaveLength(2);
+ expect(doc.project.sheets[0].wires).toHaveLength(2);
+ doc.project.sheets[0].wires=[];for(const n of doc.project.nets)n.route_status='unrouted';
+ await page.getByTestId('project-file-input').setInputFiles({name:'batch-unrouted.gscad',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(doc))});
+ await expect(page.locator('[data-net-id]')).toHaveCount(0);
+ const before=await saved();
+ await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByTestId('topology-inventory').click();
+ page.once('dialog',d=>d.accept());
+ await page.getByTestId('route-initial-batch').click();
+ const after=await saved();
+ expect(after.project.sheets[0].wires).toHaveLength(2);
+ expect(after.project.sheets[0].instances).toEqual(before.project.sheets[0].instances);
+ expect(after.project.nets.map(n=>[n.id,n.members])).toEqual(before.project.nets.map(n=>[n.id,n.members]));
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ expect((await saved()).project).toEqual(after.project);
+});

@@ -772,6 +772,13 @@ export default function App() {
     projectName={document.project.title+(authoringRef.current?' · R3 AUTHORING':' · R2 PREVIEW')} dirty={dirty}
     baseRevision={String(snapshot.revision)} sheets={document.project.sheets.map(s=>({id:s.id,title:s.name}))}
     activeSheetId={activeSheet.id} catalog={catalog} tree={tree} topology={topology}
+    onRouteInitialBatch={authoringRef.current&&tool==='select'?ids=>{
+      const a=authoringRef.current!;
+      if(!window.confirm('Развести '+ids.length+' объявленных цепей? Если хотя бы одну не удастся безопасно развести, весь пакет будет отменён.'))return;
+      try{const result=a.routeInitialNets(a.newTransaction('initial-net-batch'),ids);adoptAuthored();
+        setIssue('Пакетная трассировка: '+result.nets+' цепей, '+result.wires+' проводников, '+result.bends+' изгибов. Проверьте маршруты.');}
+      catch(e){setIssue('BATCH_ROUTE_FAILED: '+String(e));}
+    }:undefined}
     onRouteInitialNet={authoringRef.current&&tool==='select'?id=>{
       const a=authoringRef.current!;
       if(!window.confirm('Развести объявленную цепь? Состав Net и положения УГО сохранятся. Маршрут потребует проверки.'))return;
