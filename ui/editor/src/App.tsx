@@ -772,6 +772,13 @@ export default function App() {
     projectName={document.project.title+(authoringRef.current?' · R3 AUTHORING':' · R2 PREVIEW')} dirty={dirty}
     baseRevision={String(snapshot.revision)} sheets={document.project.sheets.map(s=>({id:s.id,title:s.name}))}
     activeSheetId={activeSheet.id} catalog={catalog} tree={tree} topology={topology}
+    onBuildNetTree={authoringRef.current&&tool==='select'?id=>{
+      const a=authoringRef.current!;
+      if(!window.confirm('Перестроить выбранную цепь в ортогональное дерево? Положения УГО и состав Net сохранятся, проводники и узлы этой цепи будут заменены.'))return;
+      try{const result=a.buildNetTree(a.newTransaction('build-net-tree'),id);adoptAuthored();
+        setIssue('Дерево: '+result.pins+' выводов, '+result.junctions+' узлов, '+result.bends+' изгибов, длина '+(result.lengthUm/1000).toFixed(3)+' мм. Проверьте маршрут.');}
+      catch(e){setIssue(e instanceof WireError&&e.code==='NO_CHANGE'?'Дерево уже построено.':'NET_TREE_FAILED: '+String(e));}
+    }:undefined}
     onBuildNetRail={authoringRef.current&&tool==='select'?id=>{
       const a=authoringRef.current!;
       if(!window.confirm('Перестроить выбранную цепь в общую магистраль? Положения УГО и состав Net сохранятся, проводники и узлы этой цепи будут заменены.'))return;
