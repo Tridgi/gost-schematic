@@ -1425,3 +1425,50 @@ test('R26 tree rejects disconnected signed membership without modifying the docu
  assert.throws(()=>a.buildNetTree(a.newTransaction('incomplete'),net),/RAIL_UNCONNECTED_NET/);
  assert.deepEqual(a.file,doc);assert.equal(a.revision,0);
 });
+
+
+// Direct production planner regression: the visible bends at the physical
+// pin leads must count, not merely the internal visibility-grid edges.
+test('R27 signed leads remove three unnecessary bends without increasing length',async()=>{
+ const {planOrthogonalTree}=await import('./orthogonal-tree.ts');
+ const ports=[
+  {pin:[20000,50000],tip:[22000,50000]},
+  {pin:[70000,60000],tip:[70000,58000]},
+  {pin:[80000,30000],tip:[78000,30000]},
+ ];
+ const frame={minX:0,minY:0,maxX:100000,maxY:100000};
+ const before=structuredClone(ports),plan=planOrthogonalTree(ports,[],frame);
+ assert.ok(plan);
+ // R26 produced 98 mm and four bends on exactly these ports.
+ assert.equal(plan.lengthUm,90000);assert.equal(plan.bends,1);
+ assert.deepEqual(plan.nodes,[[70000,50000]]);
+ const seen=[];
+ for(const path of plan.paths){
+  for(const [idx,points] of [[path.startPin,path.points],[path.endPin,[...path.points].reverse()]]){
+   if(idx===null)continue;
+   seen.push(idx);
+   assert.deepEqual(points[0],ports[idx].pin);
+   const d=ports[idx].tip.map((v,i)=>v-ports[idx].pin[i]);
+   const next=points[1].map((v,i)=>v-points[0][i]);
+   const axis=d[0]!==0?0:1;
+   assert.equal(next[1-axis],0);
+   assert.ok(next[axis]*Math.sign(d[axis])>=Math.abs(d[axis]));
+  }
+ }
+ assert.deepEqual(seen.sort((a,b)=>a-b),[0,1,2]);
+ assert.deepEqual(ports,before);
+ assert.deepEqual(planOrthogonalTree(ports,[],frame),plan);
+});
+
+test('R27 terminal entry axis improves equal-length tree rather than adding a staircase',async()=>{
+ const {planOrthogonalTree}=await import('./orthogonal-tree.ts');
+ const ports=[
+  {pin:[30000,20000],tip:[32000,20000]},
+  {pin:[40000,70000],tip:[38000,70000]},
+  {pin:[10000,80000],tip:[10000,78000]},
+ ];
+ const plan=planOrthogonalTree(ports,[],{minX:0,minY:0,maxX:100000,maxY:100000});
+ assert.ok(plan);
+ // R26: 98 mm, 3 bends. R27: same length, 2 bends.
+ assert.equal(plan.lengthUm,98000);assert.equal(plan.bends,2);
+});

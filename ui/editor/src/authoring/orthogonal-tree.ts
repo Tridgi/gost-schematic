@@ -62,21 +62,33 @@ export function planOrthogonalTree(ports:TreePort[],obstacles:TreeBox[],frame:Tr
  for(const x of X)for(let y=1;y<Y.length;y++)join([x,Y[y-1]],[x,Y[y]],2);
  const terminals=ports.map(p=>node(p.tip));
  if(terminals.some(v=>v===undefined))return null;
+ const leadDir=new Map(terminals.map((v,i)=>[v!,ports[i].pin[0]===ports[i].tip[0]?2:1]));
+ const bendCost=5000;
+ const grow=(respectLeads:boolean):TreePlan|null=>{
  const remaining=new Set(terminals as number[]),root=terminals[0]!;
  const tree=new Set<number>([root]),adj=new Map<number,Set<number>>();
  remaining.delete(root);
  const link=(a:number,b:number)=>{const add=(x:number,y:number)=>{const s=adj.get(x)??new Set<number>();s.add(y);adj.set(x,s)};add(a,b);add(b,a)};
  while(remaining.size){
   const dist=new Float64Array(points.length*3).fill(Infinity),prev=new Int32Array(points.length*3).fill(-1),heap=new Heap();
-  for(const v of tree){dist[v*3]=0;heap.push({state:v*3,cost:0})}
-  let goal=-1;
+  // Only the initial isolated root has a mandatory incoming lead. Later
+  // attachments are junctions, so their previous axis is not prescribed.
+  for(const v of tree){const state=v*3+(respectLeads&&tree.size===1?leadDir.get(v)!:0);dist[state]=0;heap.push({state,cost:0})}
+  let goal=-1,bestGoal=Infinity;
   while(heap.size){
    const {state,cost}=heap.pop();if(cost!==dist[state])continue;
+   if(cost>=bestGoal)break;
    const v=Math.floor(state/3),dir=state%3;
-   if(remaining.has(v)){goal=state;break}
+   if(remaining.has(v)){
+    if(!respectLeads){goal=state;break}
+    const score=cost+(dir!==leadDir.get(v)?bendCost:0);
+    if(score<bestGoal){goal=state;bestGoal=score}
+    // Never pass through an unattached physical terminal to reach another.
+    continue;
+   }
    for(const e of edges[v]){
     if(tree.has(e.to))continue;
-    const next=e.to*3+e.dir,score=cost+e.length+(dir&&dir!==e.dir?5000:0);
+    const next=e.to*3+e.dir,score=cost+e.length+(dir&&dir!==e.dir?bendCost:0);
     if(score>=dist[next])continue;
     dist[next]=score;prev[next]=state;heap.push({state:next,cost:score});
    }
@@ -88,9 +100,10 @@ export function planOrthogonalTree(ports:TreePort[],obstacles:TreeBox[],frame:Tr
   }
  }
  // Add the actual signed pin leads as tree edges; they are never search nodes.
+ const routePoints=[...points];
  const pinIndex=new Map<number,number>();
  for(const [i,p] of ports.entries()){
-  const id=points.length;points.push(p.pin);pinIndex.set(id,i);link(id,terminals[i]!);
+  const id=routePoints.length;routePoints.push(p.pin);pinIndex.set(id,i);link(id,terminals[i]!);
  }
  const anchors=[...adj.keys()].filter(v=>pinIndex.has(v)||adj.get(v)!.size!==2);
  if(anchors.some(v=>!pinIndex.has(v)&&adj.get(v)!.size<3))return null;
@@ -99,9 +112,9 @@ export function planOrthogonalTree(ports:TreePort[],obstacles:TreeBox[],frame:Tr
  let lengthUm=0,bends=0;
  for(const start of anchors)for(const first of adj.get(start)!){
   if(used.has(edgeKey(start,first)))continue;
-  const route=[points[start]];let a=start,b=first;
+  const route=[routePoints[start]];let a=start,b=first;
   while(true){
-   used.add(edgeKey(a,b));route.push(points[b]);lengthUm+=length(points[a],points[b]);
+   used.add(edgeKey(a,b));route.push(routePoints[b]);lengthUm+=length(routePoints[a],routePoints[b]);
    if(anchorSet.has(b))break;
    const next=[...adj.get(b)!].find(v=>v!==a)!;a=b;b=next;
   }
@@ -114,5 +127,13 @@ export function planOrthogonalTree(ports:TreePort[],obstacles:TreeBox[],frame:Tr
   compact.push(route.at(-1)!);bends+=compact.length-2;
   paths.push({points:compact,startPin:pinIndex.get(start)??null,endPin:pinIndex.get(b)??null});
  }
- return {paths,nodes:anchors.filter(v=>!pinIndex.has(v)).map(v=>points[v]),lengthUm,bends};
+ return {paths,nodes:anchors.filter(v=>!pinIndex.has(v)).map(v=>routePoints[v]),lengthUm,bends};
+ };
+ const baseline=grow(false),candidate=grow(true);
+ if(!baseline)return candidate;
+ if(!candidate)return baseline;
+ const score=(p:TreePlan)=>p.lengthUm+bendCost*p.bends;
+ // Greedy tree growth is not globally optimal. Keep the old solution if
+ // the lead-aware candidate increases the number of bends or weighted cost.
+ return candidate.bends<=baseline.bends&&score(candidate)<=score(baseline)?candidate:baseline;
 }

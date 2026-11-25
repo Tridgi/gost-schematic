@@ -187,3 +187,25 @@ hazards or crossings. The user must review the resulting routes. This is a
 bounded heuristic, not an exact rectilinear Steiner optimum or complete
 maze solver. Unrouted declared Nets and frozen source projects remain
 outside the reconstruction command.
+
+
+## R27 — signed terminal lead bend accounting
+
+R26 charged 5 mm per internal visibility-grid turn but ignored the physical
+lead axis at the initial root and destination. In an unobstructed three-pin
+fixture this produced 98 mm / four bends rather than 90 mm / one bend.
+A second fixture preserved 98 mm while reducing three bends to two.
+
+R27 reuses the same bounded visibility graph for two deterministic greedy
+tree-growth strategies. The lead-aware strategy initializes the isolated root
+with its signed lead axis and includes the destination lead turn in goal
+selection; a reached terminal is not expanded. Existing-tree attachments
+remain free-axis junctions. Physical stub constraints are unchanged.
+The baseline is retained unless the candidate has no more bends and no
+greater length + 5000 um * bends cost. The visibility-grid envelope and
+comparison limits remain unchanged; tree growth may run twice.
+
+Regression tests exercise actual production planner, signed endpoint geometry,
+junction, unchanged input and deterministic repeated output.
+This remains a bounded heuristic for already-connected Nets; no global
+optimality, automatic creation of missing source routes, or GOST approval.
