@@ -468,3 +468,27 @@ revision-bound Apply, with exact Undo. Three regressions include
 staircase simplification, protection of unmarked routes, and actual
 15-Net TL494 refinement benchmark TL494_R32G_REFINEMENT.
 Full CI and improvement measurements pending.
+
+
+## R32h — functional peer-chain placement with full routing comparison
+
+The new explicitly confirmed combined preview prepares a wholly unrouted
+sheet, then establishes the hub-only baseline and attempts an extended
+functional placement on a detached copy. Up to two continuation layers
+follow actual two-member Nets from previously placed two-terminal
+anchors to another two-terminal component. Previously placed anchors
+remain fixed; the same pose, ink, clearance, signed lead and total
+Manhattan span checks from R32f apply. This detects such links as
+C4–R3–DA1 without inferring circuit function from reference labels.
+The controlled simultaneous router evaluates both placements (at most
+two routing previews / 160 single-Net attempts). When both candidates
+connect the same number of Nets, the expanded variant must strictly
+Pareto-improve actual crossing count, bends and routed length to win.
+Only a complete candidate may be applied, and the complete placement
+and routes form one revision-bound undoable transaction. An incomplete
+candidate is diagnostic only. The new benchmark TL494_R32H_FUNCTIONAL
+compares real routed metrics with the hub-only baseline, not solely
+the geometric span proxy. Three regression tests cover fixed peer
+anchors, complete atomic Apply/Undo and the frozen TL494 test copy.
+No source unlock, main merge, or claim of global functional clustering.
+CI and quantitative improvement pending.

@@ -40,6 +40,7 @@ export type GroupClipboard = {
 
 export type PlacementHint={origin:MutablePoint;from:MutablePoint;to:MutablePoint;target:PinRef;newPin:string};
 export type LayoutPreview={token:string|null;before:LayoutQuality;after:LayoutQuality;operations:string[];attempted:number;rejected:number;limited:boolean};
+export type FunctionalRoutingPreview={token:string|null;requested:number;routed:number;variant:'hub'|'functional';moved:string[];baseline:LayoutQuality;quality:LayoutQuality;attempted:number;outcomes:InitialBatchOutcome[]};
 export type HubPlacementPreview={token:string|null;moved:string[];beforeSpanUm:number;afterSpanUm:number;attempted:number};
 export type InitialBatchOutcome={id:string;name:string;pins:number;rejected?:string};
 export type InitialBatchPreview={token:string|null;requested:number;routed:number;attempted:number;order:string;outcomes:InitialBatchOutcome[];quality:LayoutQuality};
@@ -1601,7 +1602,7 @@ export class AuthoringSession {
   /** Read-only pre-placement of two-terminal satellites beside signed hub
    * pins on a wholly unrouted sheet. Span is a lower-bound proxy, not a
    * claim about actual routed length. No electrical membership changes. */
-  previewHubPlacement():HubPlacementPreview{
+  previewHubPlacement(peerAnchorIds:readonly string[]=[]):HubPlacementPreview{
     this.layoutPlan=null;
     const base=this.file,sh=base.project.sheets[indexOfSheet(base)];
     if(sh.instances.length>128)reject('LAYOUT_SIZE_LIMIT');
@@ -1613,6 +1614,9 @@ export class AuthoringSession {
       reject('LAYOUT_ANNOTATIONS_UNSUPPORTED');
     const defs=new Map(base.project.symbol_definitions.map(d=>[d.id,d]));
     const byComp=new Map(sh.instances.map(i=>[i.component_id,i]));
+    const peerAnchors=new Set(peerAnchorIds);
+    if(peerAnchors.size!==peerAnchorIds.length||peerAnchorIds.some(id=>!byComp.has(id)||
+      defs.get(byComp.get(id)!.symbol_id)?.pins.length!==2))reject('INVALID_PEER_ANCHORS');
     const localNets=base.project.nets.filter(n=>n.members.every(p=>byComp.has(p.component_id)));
     const rect=(a:PointUm,b:PointUm,pad=0):Bounds=>({minX:Math.min(a[0],b[0])-pad,minY:Math.min(a[1],b[1])-pad,maxX:Math.max(a[0],b[0])+pad,maxY:Math.max(a[1],b[1])+pad});
     const ink:Bounds[]=[];
@@ -1637,7 +1641,10 @@ export class AuthoringSession {
       for(const [leaf,hub] of [[net.members[0],net.members[1]],[net.members[1],net.members[0]]]){
         if(leaf.component_id===hub.component_id)continue;
         const a=byComp.get(leaf.component_id)!,b=byComp.get(hub.component_id)!;
-        if(defs.get(a.symbol_id)?.pins.length!==2||(defs.get(b.symbol_id)?.pins.length??0)<4)continue;
+        if(defs.get(a.symbol_id)?.pins.length!==2)continue;
+        if(peerAnchors.size){
+          if(!peerAnchors.has(hub.component_id)||peerAnchors.has(leaf.component_id))continue;
+        }else if((defs.get(b.symbol_id)?.pins.length??0)<4)continue;
         if(!sh.layers.some(l=>l.id===a.layer_id&&l.kind==='electrical'&&l.visible&&l.printable&&!l.locked))continue;
         if(base.project.nets.some(n=>n.members.some(p=>p.component_id===leaf.component_id)&&!localNets.includes(n)))continue;
         if(base.project.sheets.some(s=>s.id!==sh.id&&s.instances.some(i=>i.component_id===leaf.component_id)))continue;
@@ -1710,6 +1717,63 @@ export class AuthoringSession {
       this.layoutPlan={token,revision:this.clock,sheet:sh.id,next};
     }
     return {token,moved,beforeSpanUm,afterSpanUm:bestSpan,attempted};
+  }
+  /** Compare actual simultaneous routing with hub-only placement and a
+   * bounded continuation along dedicated two-member peer connections.
+   * The expanded placement wins only if the full routed candidate
+   * Pareto-dominates the full hub-only baseline (or connects more Nets).
+   * No intermediate placement or partial route is committed. */
+  previewFunctionalRouting():FunctionalRoutingPreview{
+    this.layoutPlan=null;
+    const base=this.file,sh=base.project.sheets[indexOfSheet(base)];
+    if(sh.wires.length||sh.junctions.length||sh.splices.length)reject('PREPARE_REQUIRES_UNROUTED_SHEET');
+    const local=new Set(sh.instances.map(i=>i.component_id));
+    const nets=base.project.nets.filter(n=>n.members.length>0&&n.members.some(p=>local.has(p.component_id)));
+    if(nets.some(n=>!n.members.every(p=>local.has(p.component_id))))reject('RAIL_CROSS_SHEET');
+    if(nets.length<1||nets.length>16)reject('BATCH_NET_COUNT');
+    const ids=nets.map(n=>n.id),prepared=new AuthoringSession(base);
+    try{prepared.prepareInitialRouting(prepared.newTransaction('functional-inset'))}
+    catch(e){if(!(e instanceof WireError)||e.code!=='NO_CHANGE')throw e}
+    const hub=prepared.previewHubPlacement();
+    if(hub.token)prepared.applyLayoutPreview(prepared.newTransaction('functional-hub'),hub.token);
+    const hubDoc=prepared.file;
+    const baseline=new AuthoringSession(hubDoc),first=baseline.previewInitialBatch(ids,true);
+    let attempted=first.attempted;
+    let chosen=baseline,report=first,variant:'hub'|'functional'='hub';
+    let moved=[...hub.moved];
+    // Two bounded layers extend the chains while freezing every previous
+    // anchor. Each pass remains subject to the same placement safety checks.
+    if(hub.moved.length){
+      const expanded=new AuthoringSession(hubDoc),anchors=[...hub.moved];
+      for(let pass=0;pass<2;pass++){
+        const next=expanded.previewHubPlacement(anchors);
+        if(!next.token)break;
+        expanded.applyLayoutPreview(expanded.newTransaction('functional-peer'),next.token);
+        anchors.push(...next.moved);
+      }
+      if(anchors.length>hub.moved.length){
+        const second=expanded.previewInitialBatch(ids,true);
+        attempted+=second.attempted;
+        const a=first.quality,b=second.quality;
+        const dominates=b.crossings<=a.crossings&&b.bends<=a.bends&&b.lengthUm<=a.lengthUm&&
+          (b.crossings<a.crossings||b.bends<a.bends||b.lengthUm<a.lengthUm);
+        if(second.routed>first.routed||(second.routed===first.routed&&dominates)){
+          chosen=expanded;report=second;variant='functional';moved=anchors;
+        }
+      }
+    }
+    const token=report.token?newId('functional-routing'):null;
+    if(token){
+      const next=chosen.layoutPreviewDocument(report.token!);
+      const trial=new AuthoringSession(next);
+      const before=assessLayout(base,this.engine),after=assessLayout(next,trial.engine);
+      if(sourceGuard(next)!==sourceGuard(base)||ids.some(id=>trial.engine.validateNet(id).pin_groups.length!==1)||
+        !before.quality.complete||!after.quality.complete||
+        after.overflowIds.some(id=>!before.overflowIds.includes(id))||
+        Object.keys(after.hazards).some(k=>after.hazards[k]>(before.hazards[k]??0)))reject('BATCH_TOPOLOGY_MISMATCH');
+      this.layoutPlan={token,revision:this.clock,sheet:sh.id,next};
+    }
+    return {token,requested:ids.length,routed:report.routed,variant,moved,baseline:first.quality,quality:report.quality,attempted,outcomes:report.outcomes};
   }
   /** Route an explicit batch of untouched Nets on an isolated draft.
    * All selected Nets must succeed; no intermediate edits/history are published.
