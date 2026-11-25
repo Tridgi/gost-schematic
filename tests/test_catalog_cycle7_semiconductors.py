@@ -311,8 +311,19 @@ def test_single_combined_gallery_exactly_matches_15_real_physical_roles(tmp_path
                 assert len(g.findall(f"./{SVG}circle")) == len(
                     item["physical_pin_role"]
                 ), "Every real physical PortRef must have a diagnostic marker"
-                assert len(g.findall(f"./{SVG}rect")) == 1, (
-                    "Missing the actual symbolic body keepout rectangle"
+                # Compare actual native overlay geometry, not an obsolete one-box count.
+                identifier = g.attrib["data-symbol-id"]
+                folder, name = identifier.split(".", 1)
+                relative = {"resistor": "resistors", "fuse": "fuses",
+                            **FOLDERS}[folder] + "/" + name.replace(".with_case", "_with_case") + ".json"
+                symbol = load_symbol(ROOT / "symbols" / relative)
+                native = ET.fromstring(render_symbol_svg(symbol, review_overlay=True))
+                expected = native.findall(f"./{SVG}rect")
+                actual = g.findall(f"./{SVG}rect")
+                assert len(actual) == 1 + len(symbol.routing_keepouts)
+                assert [r.attrib for r in actual] == [r.attrib for r in expected]
+                assert len(g.findall(f"./{SVG}rect[@data-kind='routing-keepout']")) == len(
+                    symbol.routing_keepouts
                 )
             else:
                 assert not g.findall(f"./{SVG}circle")
