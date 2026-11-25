@@ -1,6 +1,7 @@
 /** CHAT4 pointer-independent interaction state machine (one owner pointer).
  * Emits typed intentions; only #123 ManualWireEngine can mutate electrical topology.
  */
+import {noteLayout} from '../model/symbol-notes.mjs';
 import {screen,world,hitTest,snap,point,pinWorld} from './precision.mjs';
 import {captureSegmentDrag} from './wire-intents.mjs';
 const same=(a,b)=>a[0]===b[0]&&a[1]===b[1];
@@ -48,6 +49,10 @@ function containedSymbols(scene,camera,rect){
   };
   for(const p of s.pins)points.push(screen(pinWorld(s,p.physical_pin_number).at_um,camera));
   for(const stroke of s.strokes||[])points.push(transform(stroke.from_um),transform(stroke.to_um));
+  for(const n of s.notes||[]){
+   const at=transform(n.at_um),layout=noteLayout(n,[0,0]);
+   for(const b of layout.bounds)points.push({x:at.x+b[0]*camera.s,y:at.y+b[1]*camera.s});
+  }
   return points.every(inside);
  }).map(s=>s.instance_id);
 }
