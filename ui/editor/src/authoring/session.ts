@@ -36,6 +36,7 @@ export type GroupClipboard = {
   omittedNetCount:number;
 };
 
+export type PlacementHint={origin:MutablePoint;from:MutablePoint;to:MutablePoint;target:PinRef;newPin:string};
 type Tx = {project_id:string;revision:number;source_guard:string;command_id:string};
 const SOURCE_ZERO='0000000000000000000000000000000000000000';
 const clone=<T>(v:T):T=>structuredClone(v);
@@ -396,6 +397,61 @@ export class AuthoringSession {
       return draft;
     });
     return added;
+  }
+  /** Magnetic placement aligns a new physical pin with one facing existing pin.
+   * Read-only, no Net creation and no relocation of previously placed symbols.
+   * The same proposal is recomputed at commit (revision CAS remains authoritative). */
+  suggestAlignedPlacement(symbolId:string,origin:readonly number[]):PlacementHint|null {
+    const at=xy(origin),file=this.current,sheet=file.project.sheets[indexOfSheet(file)];
+    const defs=new Map(file.project.symbol_definitions.map(d=>[d.id,d]));
+    const symbol=defs.get(symbolId);
+    if(!symbol||symbol.status==='deprecated')return null;
+    if(sheet.instances.length>512||sheet.wires.reduce((n,w)=>n+w.segments.length,0)>8192)return null;
+    const dirs={left:[-1,0],right:[1,0],top:[0,-1],bottom:[0,1]} as const;
+    const transform=(i:SymbolInstance,p:PointUm,vector=false):MutablePoint=>{
+      const x=i.mirror_x?-p[0]:p[0],y=p[1];
+      const q=i.rotation_deg===0?[x,y]:i.rotation_deg===90?[-y,x]:i.rotation_deg===180?[-x,-y]:[y,-x];
+      return xy([q[0]+(vector?0:i.origin_um[0]),q[1]+(vector?0:i.origin_um[1])]);
+    };
+    const rect=(p:PointUm,q:PointUm):Bounds=>({minX:Math.min(p[0],q[0]),minY:Math.min(p[1],q[1]),maxX:Math.max(p[0],q[0]),maxY:Math.max(p[1],q[1])});
+    const obstacles=sheet.instances.map(i=>{
+      const d=defs.get(i.symbol_id);if(!d)reject('UNKNOWN_SYMBOL');
+      return {i,d,box:translateBounds(symbolBounds(d,i.rotation_deg,i.mirror_x),i.origin_um)};
+    });
+    const wireBoxes=sheet.wires.flatMap(w=>w.vertices.slice(1).map((v,i)=>rect(w.vertices[i].at_um,v.at_um)));
+    const nodes=[...sheet.junctions,...sheet.splices].map(n=>rect(n.at_um,n.at_um));
+    const occupied=[...obstacles.map(o=>o.box),...wireBoxes,...nodes];
+    const local=symbolBounds(symbol,0,false),margin=sheet.frame.margin_um;
+    const candidates:{hint:PlacementHint;correction:number;gap:number}[]=[];
+    for(const target of obstacles)for(const p of target.d.pins){
+      const fixed=transform(target.i,p.at_um),normal=transform(target.i,dirs[p.side],true);
+      for(const incoming of symbol.pins){
+        const n=dirs[incoming.side];
+        if(n[0]!==-normal[0]||n[1]!==-normal[1])continue;
+        const axis=normal[0]!==0?1:0,along=1-axis;
+        const moving:MutablePoint=[at[0]+incoming.at_um[0],at[1]+incoming.at_um[1]];
+        const delta=fixed[axis]-moving[axis],gap=(moving[along]-fixed[along])*normal[along];
+        if(Math.abs(delta)>5000||gap<4000||gap>80000)continue;
+        const position=xy([at[0]+(axis===0?delta:0),at[1]+(axis===1?delta:0)]);
+        const box=translateBounds(local,position);
+        if(box.minX<margin||box.minY<margin||box.maxX>sheet.frame.size_um[0]-margin||box.maxY>sheet.frame.size_um[1]-margin||
+          occupied.some(o=>!separated(box,o,1000)))continue;
+        const end:MutablePoint=[position[0]+incoming.at_um[0],position[1]+incoming.at_um[1]],corridor=rect(fixed,end);
+        // No suggestion if a direct path would pass through an unrelated symbol, wire or node.
+        if(obstacles.some(o=>o.i.id!==target.i.id&&!separated(corridor,o.box,1000))||
+          [...wireBoxes,...nodes].some(o=>!separated(corridor,o,1000)))continue;
+        candidates.push({correction:Math.abs(delta),gap,hint:{origin:position,from:fixed,to:end,
+          target:{component_id:target.i.component_id,physical_pin_number:p.physical_pin_number},
+          newPin:incoming.physical_pin_number}});
+      }
+    }
+    candidates.sort((a,b)=>a.correction-b.correction||a.gap-b.gap);
+    if(!candidates.length)return null;
+    const best=candidates[0];
+    // If equally plausible targets imply different poses, leave the requested position alone.
+    if(candidates.some(c=>Math.abs(c.correction-best.correction)<=500&&Math.abs(c.gap-best.gap)<=2000&&
+      (c.hint.origin[0]!==best.hint.origin[0]||c.hint.origin[1]!==best.hint.origin[1])))return null;
+    return best.hint;
   }
   place(tx:Tx,symbolId:string,origin:readonly number[]):string {
     const position=xy(origin);
