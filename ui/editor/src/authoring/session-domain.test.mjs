@@ -989,3 +989,66 @@ test('R20 fixed conflicting endpoints and disconnected selection reject without 
  assert.throws(()=>s.alignSeries(s.newTransaction('disconnected'),[ids[0],ids[2],x]),/SERIES_NOT_SIMPLE_PATH/);
  assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
 });
+
+test('R20b equal distribution uses physical pin gaps across mixed-size UGO, not centers',()=>{
+ const s=newSession();
+ const ids=[
+  s.place(s.newTransaction('first'),'symbol/resistor.fixed',[60000,100000]),
+  s.place(s.newTransaction('middle'),'symbol/inductor.air_core',[100000,100000]),
+  s.place(s.newTransaction('last'),'symbol/resistor.fixed',[210001,100000])
+ ];
+ const [a,b,c]=s.file.project.components;
+ s.connect(s.newTransaction('first-wire'),pin(a.id,'2'),pin(b.id,'1'));
+ s.connect(s.newTransaction('second-wire'),pin(b.id,'2'),pin(c.id,'1'));
+ const before=s.file,sh0=before.project.sheets[0];
+ const oldGaps=sh0.wires.map(w=>w.vertices.at(-1).at_um[0]-w.vertices[0].at_um[0]);
+ const result=s.alignSeries(s.newTransaction('distribute'),ids,true);
+ assert.equal(result.moved,1);
+ const after=s.file,sh=after.project.sheets[0],gaps=sh.wires.map(w=>w.vertices.at(-1).at_um[0]-w.vertices[0].at_um[0]);
+ assert.equal(gaps.reduce((a,b)=>a+b,0),oldGaps.reduce((a,b)=>a+b,0));
+ assert.ok(Math.abs(gaps[0]-gaps[1])<=1);
+ assert.deepEqual(sh.instances[0],sh0.instances[0]);assert.deepEqual(sh.instances[2],sh0.instances[2]);
+ assert.ok(sh.wires.every(w=>w.vertices.length===2));
+ assert.deepEqual(after.project.nets.map(n=>[n.id,n.members]),before.project.nets.map(n=>[n.id,n.members]));
+ assert.throws(()=>s.alignSeries(s.newTransaction('again'),ids,true),/NO_CHANGE/);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);assert.deepEqual(s.file,after);
+});
+test('R20b fixed intermediate component cannot be moved to equalize pin gaps',()=>{
+ const {s,ids,components}=seriesFixture([[60000,100000],[100000,100000],[210000,100000]]);
+ // A locked middle UGO can participate in alignment, but must stay stationary.
+ const doc=s.file,sh=doc.project.sheets[0];
+ sh.layers.push({...sh.layers[0],id:'locked-middle',locked:true});
+ sh.instances[1].layer_id='locked-middle';
+ const locked=new AuthoringSession(doc),before=locked.file,rev=locked.revision;
+ assert.throws(()=>locked.alignSeries(locked.newTransaction('fixed-spacing'),ids,true),/SERIES_FIXED_SPACING_CONFLICT/);
+ assert.deepEqual(locked.file,before);assert.equal(locked.revision,rev);
+});
+
+test('R20 actual offset pins align each conductor rather than imposing equal symbol centers',()=>{
+ const s=newSession();
+ const ids=[
+  s.place(s.newTransaction('r1'),'symbol/resistor.fixed',[60000,90000]),
+  s.place(s.newTransaction('vt'),'symbol/transistor.bjt_npn',[120000,110000]),
+  s.place(s.newTransaction('r2'),'symbol/resistor.fixed',[180000,100000])
+ ];
+ const [r1,vt,r2]=s.file.project.components;
+ s.connect(s.newTransaction('first'),pin(r1.id,'2'),pin(vt.id,'1'));
+ s.connect(s.newTransaction('second'),pin(vt.id,'2'),pin(r2.id,'1'));
+ const before=s.file;
+ s.alignSeries(s.newTransaction('offset-pins'),ids);
+ const sh=s.file.project.sheets[0];
+ assert.ok(sh.wires.every(w=>w.vertices.length===2&&w.vertices[0].at_um[1]===w.vertices[1].at_um[1]));
+ assert.deepEqual(sh.instances.map(i=>i.origin_um),[[60000,110000],[120000,110000],[180000,100000]]);
+ assert.deepEqual(s.file.project.nets.map(n=>n.members),before.project.nets.map(n=>n.members));
+});
+test('R20 blocked fixed axis rejects entire chain layout without moving any UGO',()=>{
+ const {s,ids,components}=seriesFixture([[60000,90000],[120000,110000],[180000,100000]]);
+ s.place(s.newTransaction('outer'),'symbol/resistor.fixed',[30000,90000]);
+ const outer=s.file.project.components.at(-1).id;
+ s.connect(s.newTransaction('outer-wire'),pin(outer,'2'),pin(components[0],'1'));
+ s.place(s.newTransaction('blocker'),'symbol/resistor.fixed',[120000,90000]);
+ const before=s.file,rev=s.revision;
+ assert.throws(()=>s.alignSeries(s.newTransaction('blocked'),ids),/SERIES_NO_SAFE_LAYOUT/);
+ assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
+});

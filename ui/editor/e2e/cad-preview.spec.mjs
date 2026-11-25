@@ -1348,3 +1348,40 @@ test('R20 selected chain becomes straight without altering Net membership, and U
  await page.getByRole('button',{name:'Повторить'}).click();
  expect((await saved()).project).toEqual(after.project);
 });
+
+test('R20b equal pin gaps in actual editor keep the end poses and preserve Undo',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ for(const x of [.2,.36,.8]){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*.4);
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const placed=await saved(),[a,b,c]=placed.project.components;
+ await page.getByTestId('tool-wire').click();
+ for(const [x,y] of [[a,b],[b,c]]){
+  await page.getByTestId('signed-pin-'+x.id+'-2').click();
+  await page.getByTestId('signed-pin-'+y.id+'-1').click();
+ }
+ await page.getByTestId('tool-select').click();
+ const before=await saved(),sh0=before.project.sheets[0];
+ await page.mouse.move(paper.x+paper.width*.12,paper.y+paper.height*.29);
+ await page.mouse.down();await page.mouse.move(paper.x+paper.width*.88,paper.y+paper.height*.51,{steps:6});await page.mouse.up();
+ await expect(page.getByTestId('group-selection-summary')).toContainText('3');
+ page.once('dialog',d=>d.accept());
+ await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByTestId('distribute-series').click();
+ const after=await saved(),sh=after.project.sheets[0];
+ expect(sh.instances[0]).toEqual(sh0.instances[0]);expect(sh.instances[2]).toEqual(sh0.instances[2]);
+ expect(sh.instances[1].origin_um).not.toEqual(sh0.instances[1].origin_um);
+ const gaps=sh.wires.map(w=>w.vertices.at(-1).at_um[0]-w.vertices[0].at_um[0]);
+ expect(Math.abs(gaps[0]-gaps[1])).toBeLessThanOrEqual(1);
+ expect(after.project.nets.map(n=>[n.id,n.members])).toEqual(before.project.nets.map(n=>[n.id,n.members]));
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(before.project);
+});
