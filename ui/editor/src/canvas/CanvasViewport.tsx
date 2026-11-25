@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent, type MouseEvent as ReactMouseEvent } from 'react';
+import {noteLayout} from '../model/symbol-notes.mjs';
 import { createPortal } from 'react-dom';
 import type { ProjectFileV2 } from '../model/contract';
 import type { WiringSnapshot } from '../wires/manual-wire';
@@ -49,6 +50,13 @@ function SymbolInk({symbol,camera}:{symbol:CanvasSymbol;camera:Camera}){
    const a=localStroke(symbol,curve.points_um[0],camera),b=localStroke(symbol,curve.points_um[2],camera);
    const sweep=symbol.mirror_x?1-curve.sweep:curve.sweep;
    return <path key={i} data-ugo-curve="semicircle" d={`M ${a.x} ${a.y} A ${radius} ${radius} 0 0 ${sweep} ${b.x} ${b.y}`} strokeWidth={width}/>;
+  })}
+  {symbol.notes.map(n=>{
+   const at=localStroke(symbol,n.at_um,camera);
+   const h=n.height_um*camera.s,y=at.y+(n.vertical==='top'?h:n.vertical==='center'?Math.round(n.height_um/3)*camera.s:0);
+   return <text key={n.key} data-symbol-note={n.key} data-electrical="false" x={at.x} y={y}
+     textAnchor={noteLayout(n,n.at_um).anchor} fontSize={Math.max(6,h)} fontFamily="sans-serif"
+     fill="#24384b" stroke="none">{n.text}</text>;
   })}
  </>;
 }
