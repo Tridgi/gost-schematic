@@ -1,0 +1,219 @@
+{
+  "schema_version": 1,
+  "id": "magnetic_amplifier.general",
+  "revision": 1,
+  "status": "draft",
+  "standard_refs": [
+    "ГОСТ 2.723-68, таблица 2, поз. 37а, форма II; https://rosgosts.ru/file/gost/01/080/gost_2.723-68.pdf",
+    "EDITORIAL_ASSUMPTION: general triangular amplifier; three schematic ports; internal magnetic glyph decorative, no explicit conductive paths between ports; project dimensions and terminal extensions; abstract pin numbering; DRAFT."
+  ],
+  "line_width_mm": 0.3,
+  "body_keepout_mm": [
+    -6.4,
+    -7.4,
+    7.4,
+    7.4
+  ],
+  "routing_keepouts_mm": [
+    [
+      -6.6,
+      -7.6,
+      7.6,
+      7.6
+    ]
+  ],
+  "geometry": {
+    "lines": [
+      [
+        [
+          -12,
+          0
+        ],
+        [
+          -6,
+          0
+        ]
+      ],
+      [
+        [
+          7,
+          0
+        ],
+        [
+          13,
+          0
+        ]
+      ],
+      [
+        [
+          0.5,
+          3.5
+        ],
+        [
+          0.5,
+          13
+        ]
+      ],
+      [
+        [
+          -6,
+          -7
+        ],
+        [
+          -6,
+          7
+        ]
+      ],
+      [
+        [
+          -6,
+          -7
+        ],
+        [
+          7,
+          0
+        ]
+      ],
+      [
+        [
+          -6,
+          7
+        ],
+        [
+          7,
+          0
+        ]
+      ],
+      [
+        [
+          -2,
+          -3
+        ],
+        [
+          -0.5,
+          -3
+        ]
+      ],
+      [
+        [
+          -0.5,
+          -3
+        ],
+        [
+          -0.5,
+          3
+        ]
+      ],
+      [
+        [
+          -0.5,
+          3
+        ],
+        [
+          -2,
+          3
+        ]
+      ]
+    ],
+    "circles": [],
+    "semicircles": [
+      {
+        "center_mm": [
+          -2,
+          0
+        ],
+        "radius_mm": 2,
+        "bulge": "top"
+      }
+    ],
+    "styled_lines": []
+  },
+  "pins": [
+    {
+      "number": "1",
+      "at_mm": [
+        -12,
+        0
+      ],
+      "side": "left",
+      "label": "INPUT"
+    },
+    {
+      "number": "2",
+      "at_mm": [
+        13,
+        0
+      ],
+      "side": "right",
+      "label": "OUTPUT"
+    },
+    {
+      "number": "3",
+      "at_mm": [
+        0.5,
+        13
+      ],
+      "side": "bottom",
+      "label": "CONTROL"
+    }
+  ],
+  "annotations": [
+    {
+      "key": "refdes",
+      "role": "refdes",
+      "required": true,
+      "candidates": [
+        {
+          "at_mm": [
+            -16,
+            -16
+          ],
+          "horizontal": "right",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            16,
+            -16
+          ],
+          "horizontal": "left",
+          "vertical": "bottom"
+        }
+      ]
+    },
+    {
+      "key": "value",
+      "role": "value",
+      "required": false,
+      "candidates": [
+        {
+          "at_mm": [
+            16,
+            16
+          ],
+          "horizontal": "left",
+          "vertical": "top"
+        }
+      ]
+    }
+  ],
+  "conductor_topology": {
+    "indices": [
+      0,
+      1,
+      2
+    ],
+    "junctions_mm": [],
+    "pin_groups": [
+      [
+        "1"
+      ],
+      [
+        "2"
+      ],
+      [
+        "3"
+      ]
+    ]
+  }
+}

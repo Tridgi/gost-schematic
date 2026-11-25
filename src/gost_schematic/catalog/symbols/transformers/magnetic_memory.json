@@ -1,0 +1,200 @@
+{
+  "schema_version": 1,
+  "id": "transformer.magnetic_memory",
+  "revision": 1,
+  "status": "draft",
+  "standard_refs": [
+    "ГОСТ 2.723-68, таблица 2, поз. 44, форма II; https://rosgosts.ru/file/gost/01/080/gost_2.723-68.pdf",
+    "EDITORIAL_ASSUMPTION: ferromagnetic memory element, two single-lobe windings separated by a core; no storage-state simulation; project dimensions and terminal extensions; abstract pin numbering; DRAFT."
+  ],
+  "line_width_mm": 0.3,
+  "body_keepout_mm": [
+    -4.4,
+    -2.6,
+    4.4,
+    2.6
+  ],
+  "routing_keepouts_mm": [
+    [
+      -4.6,
+      -2.8,
+      4.6,
+      2.8
+    ]
+  ],
+  "geometry": {
+    "lines": [
+      [
+        [
+          -10,
+          -2
+        ],
+        [
+          -4,
+          -2
+        ]
+      ],
+      [
+        [
+          -4,
+          2
+        ],
+        [
+          -10,
+          2
+        ]
+      ],
+      [
+        [
+          10,
+          -2
+        ],
+        [
+          4,
+          -2
+        ]
+      ],
+      [
+        [
+          4,
+          2
+        ],
+        [
+          10,
+          2
+        ]
+      ]
+    ],
+    "circles": [],
+    "semicircles": [
+      {
+        "center_mm": [
+          -4,
+          0
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          4,
+          0
+        ],
+        "radius_mm": 2,
+        "bulge": "left"
+      }
+    ],
+    "styled_lines": [
+      {
+        "start_mm": [
+          0,
+          -2.4
+        ],
+        "end_mm": [
+          0,
+          2.4
+        ],
+        "stroke_width_mm": 0.3
+      }
+    ]
+  },
+  "pins": [
+    {
+      "number": "1",
+      "at_mm": [
+        -10,
+        -2
+      ],
+      "side": "left",
+      "label": "W1_START"
+    },
+    {
+      "number": "2",
+      "at_mm": [
+        -10,
+        2
+      ],
+      "side": "left",
+      "label": "W1_END"
+    },
+    {
+      "number": "3",
+      "at_mm": [
+        10,
+        -2
+      ],
+      "side": "right",
+      "label": "W2_START"
+    },
+    {
+      "number": "4",
+      "at_mm": [
+        10,
+        2
+      ],
+      "side": "right",
+      "label": "W2_END"
+    }
+  ],
+  "annotations": [
+    {
+      "key": "refdes",
+      "role": "refdes",
+      "required": true,
+      "candidates": [
+        {
+          "at_mm": [
+            -16,
+            -16
+          ],
+          "horizontal": "right",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            16,
+            -16
+          ],
+          "horizontal": "left",
+          "vertical": "bottom"
+        }
+      ]
+    },
+    {
+      "key": "value",
+      "role": "value",
+      "required": false,
+      "candidates": [
+        {
+          "at_mm": [
+            16,
+            16
+          ],
+          "horizontal": "left",
+          "vertical": "top"
+        }
+      ]
+    }
+  ],
+  "conductor_topology": {
+    "indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "junctions_mm": [],
+    "pin_groups": [
+      [
+        "1",
+        "2"
+      ],
+      [
+        "3",
+        "4"
+      ]
+    ]
+  }
+}
