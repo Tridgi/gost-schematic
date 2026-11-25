@@ -989,3 +989,38 @@ test('R20 fixed conflicting endpoints and disconnected selection reject without 
  assert.throws(()=>s.alignSeries(s.newTransaction('disconnected'),[ids[0],ids[2],x]),/SERIES_NOT_SIMPLE_PATH/);
  assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
 });
+
+test('R20b equal distribution uses physical pin gaps across mixed-size UGO, not centers',()=>{
+ const s=newSession();
+ const ids=[
+  s.place(s.newTransaction('first'),'symbol/resistor.fixed',[60000,100000]),
+  s.place(s.newTransaction('middle'),'symbol/inductor.air_core',[100000,100000]),
+  s.place(s.newTransaction('last'),'symbol/resistor.fixed',[210001,100000])
+ ];
+ const [a,b,c]=s.file.project.components;
+ s.connect(s.newTransaction('first-wire'),pin(a.id,'2'),pin(b.id,'1'));
+ s.connect(s.newTransaction('second-wire'),pin(b.id,'2'),pin(c.id,'1'));
+ const before=s.file,sh0=before.project.sheets[0];
+ const oldGaps=sh0.wires.map(w=>w.vertices.at(-1).at_um[0]-w.vertices[0].at_um[0]);
+ const result=s.alignSeries(s.newTransaction('distribute'),ids,true);
+ assert.equal(result.moved,1);
+ const after=s.file,sh=after.project.sheets[0],gaps=sh.wires.map(w=>w.vertices.at(-1).at_um[0]-w.vertices[0].at_um[0]);
+ assert.equal(gaps.reduce((a,b)=>a+b,0),oldGaps.reduce((a,b)=>a+b,0));
+ assert.ok(Math.abs(gaps[0]-gaps[1])<=1);
+ assert.deepEqual(sh.instances[0],sh0.instances[0]);assert.deepEqual(sh.instances[2],sh0.instances[2]);
+ assert.ok(sh.wires.every(w=>w.vertices.length===2));
+ assert.deepEqual(after.project.nets.map(n=>[n.id,n.members]),before.project.nets.map(n=>[n.id,n.members]));
+ assert.throws(()=>s.alignSeries(s.newTransaction('again'),ids,true),/NO_CHANGE/);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);assert.deepEqual(s.file,after);
+});
+test('R20b fixed intermediate component cannot be moved to equalize pin gaps',()=>{
+ const {s,ids,components}=seriesFixture([[60000,100000],[100000,100000],[210000,100000]]);
+ // A locked middle UGO can participate in alignment, but must stay stationary.
+ const doc=s.file,sh=doc.project.sheets[0];
+ sh.layers.push({...sh.layers[0],id:'locked-middle',locked:true});
+ sh.instances[1].layer_id='locked-middle';
+ const locked=new AuthoringSession(doc),before=locked.file,rev=locked.revision;
+ assert.throws(()=>locked.alignSeries(locked.newTransaction('fixed-spacing'),ids,true),/SERIES_FIXED_SPACING_CONFLICT/);
+ assert.deepEqual(locked.file,before);assert.equal(locked.revision,rev);
+});
