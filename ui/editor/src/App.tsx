@@ -18,6 +18,7 @@ import {traceNativeClose} from './native/close-trace';
 import {parseProjectJsonStrict} from './authoring/strict-json';
 import { loadProjectWires } from './wires/project-v2-adapter';
 import { projectToCanvasScene } from './canvas/scene-projection.mjs';
+import {analyzeDiagnostics} from './authoring/diagnostics.mjs';
 import { detectPaperOverflow } from './canvas/paper-bounds.mjs';
 import { renderProjectPreviewSVG, renderPreviewPng300 } from './export/browser-export';
 
@@ -190,6 +191,12 @@ export default function App() {
       thumbnail:<CataloguePreview symbol={symbol}/>
     }));
   },[document]);
+  const diagnosticReport=useMemo(()=>{
+    if(!document||!snapshot||!activeSheet)return null;
+    const scene=projectToCanvasScene(document,activeSheet.id);
+    const statuses=Object.fromEntries(snapshot.nets.map(n=>[n.id,engineRef.current?.validateNet(n.id).status??'unknown']));
+    return analyzeDiagnostics(document,scene,snapshot,statuses);
+  },[document,snapshot,activeSheet?.id]);
   const tree=useMemo<TreeItem[]>(()=>{
     if(!document||!activeSheet)return [];
     return [
@@ -713,10 +720,8 @@ export default function App() {
     projectToCanvasScene(document,activeSheet.id),snapshot,activeSheet.frame.size_um);
   const diagnostics:DiagnosticItem[]=[
     {id:'integration',severity:'info',message:issue},
-    {id:'routed',severity:'warning',message:'Исходных Nets: '+document.project.nets.length+
-      '; сейчас без маршрута: '+snapshot.nets.filter(n=>
-        engineRef.current?.validateNet(n.id).status==='unrouted').length+
-      '. Отсутствие ошибок ERC не доказано.'}
+    ...(diagnosticReport?.items??[]),
+    {id:'routed',severity:'info',message:'Проверка активного листа. Цепей в проекте: '+document.project.nets.length+'. Отсутствие замечаний не доказывает соответствие ГОСТ.'}
   ];
   if(overflow.total>0)diagnostics.push({id:'paper-overflow',severity:'warning',
     message:'За пределами физического листа: '+overflow.symbols.length+' УГО, '+
@@ -733,6 +738,7 @@ export default function App() {
       catch(e){setIssue('CATALOG_UPGRADE_FAILED: '+String(e));}
     }:undefined}
     selected={selected} groupSelectionIds={groupIds} diagnostics={diagnostics}
+    diagnosticCounts={diagnosticReport?{...diagnosticReport.counts,warning:diagnosticReport.counts.warning+(overflow.total>0?1:0),info:diagnosticReport.counts.info+2}:undefined}
     clipboardSummary={clipboard?.kind==='group'?`Буфер: ${clipboard.template.components.length} УГО · ${clipboard.template.nets.length} внутренних цепей · ${clipboard.template.omittedNetCount} внешних исключено`:clipboard?.kind==='single'?'Буфер: 1 УГО без связей':undefined}
     canvas={<div className="gscad-canvas-wrapper">
       <input ref={fileInputRef} type="file" accept=".json,.gscad" data-testid="project-file-input"

@@ -15,7 +15,10 @@ on:
       - 'ui/editor/package-lock.json'
       - 'ui/desktop/**'
       - 'ui/integration/**'
-      - 'contracts/project-v2.schema.json'
+      - 'ui/contracts/project-v2.schema.json'
+      - 'src/gost_schematic/catalog/**'
+      - 'src/gost_schematic/core/**'
+      - 'src/gost_schematic/model/**'
 permissions:
   contents: read
 concurrency:

@@ -26,7 +26,7 @@ export type SelectedInstance = {
   id: string; refdes: string; value: string; originUm: readonly [number,number];
   rotationDeg: 0|90|180|270; physicalPins: readonly { number:string; netName:string|null }[];
 };
-export type DiagnosticItem = {id:string; severity:'error'|'warning'|'info'; message:string};
+export type DiagnosticItem = {id:string; severity:'error'|'warning'|'info'; message:string;code?:string;instanceId?:string};
 export type InspectorProposal =
   | {kind:'propose-origin-axis';instanceId:string;axis:'x'|'y';um:number;baseRevision:string}
   | {kind:'propose-refdes';instanceId:string;refdes:string;baseRevision:string}
@@ -38,7 +38,7 @@ export type EditorShellProps = {
   sheets:readonly {id:string;title:string}[];activeSheetId:string;
   catalog:readonly CatalogSymbol[];tree:readonly TreeItem[];
   catalogMissingCount?:number;onCatalogUpgrade?:()=>void;
-  selected:SelectedInstance|null;groupSelectionIds?:readonly string[];diagnostics:readonly DiagnosticItem[];
+  selected:SelectedInstance|null;groupSelectionIds?:readonly string[];diagnostics:readonly DiagnosticItem[];diagnosticCounts?:{error:number;warning:number;info:number};
   clipboardSummary?:string;
   canvas:ReactNode;tool:ToolMode;gridVisible:boolean;snapEnabled:boolean;
   cursorUm?:readonly [number,number];zoomPercent?:number;onZoomPercent?:(percent:50|100|200)=>void;
@@ -160,6 +160,9 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
   const [right,setRight]=useState(()=>typeof window==='undefined'||window.innerWidth>=960);
   const [settings,setSettings]=useState(false),[exportDialog,setExportDialog]=useState(false);
   const [commandDialog,setCommandDialog]=useState(false),[diagnostics,setDiagnostics]=useState(false);
+  const [diagnosticFilter,setDiagnosticFilter]=useState<'all'|'error'|'warning'|'info'>('all');
+  const diagnosticCounts=props.diagnosticCounts??{error:props.diagnostics.filter(d=>d.severity==='error').length,warning:props.diagnostics.filter(d=>d.severity==='warning').length,info:props.diagnostics.filter(d=>d.severity==='info').length};
+  const diagnosticItems=props.diagnostics.filter(d=>diagnosticFilter==='all'||d.severity===diagnosticFilter);
   const [query,setQuery]=useState(''),[commandQuery,setCommandQuery]=useState('');
   const [format,setFormat]=useState<'svg'|'png300'>('svg');
   const [split,setSplit]=useState(()=>normalizeDockLayout(sizes).inspectorPercent??48);
@@ -293,12 +296,22 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
             <Magnet size={18}/></ActionIcon></Tooltip>
           <div className="gscad-toolbar-spacer"/>
           <Button size="compact-sm" variant="subtle" leftSection={<AlertTriangle size={15}/>}
-            onClick={()=>setDiagnostics(v=>!v)}>ERC/DRC {props.diagnostics.length}</Button>
+            onClick={()=>setDiagnostics(v=>!v)}>ERC/DRC · {diagnosticCounts.error} ошибок / {diagnosticCounts.warning} предупреждений</Button>
         </Group>
-        {diagnostics&&<ScrollArea h={120} className="gscad-diagnostics" aria-label="Журнал диагностики">
-          {props.diagnostics.length===0?<Text size="sm" p="sm">Сообщений нет. Это не доказывает корректность схемы.</Text>:
-            props.diagnostics.map(d=><Text key={d.id} size="xs" p="xs">[{d.severity}] {d.message}</Text>)}
-        </ScrollArea>}
+        {diagnostics&&<div className="gscad-diagnostics" aria-label="Журнал диагностики" data-testid="diagnostics-panel">
+          <Group gap={4} p={4}>
+            {(['all','error','warning','info'] as const).map(f=><Button key={f} size="compact-xs"
+              variant={diagnosticFilter===f?'filled':'subtle'} data-testid={'diagnostic-filter-'+f}
+              onClick={()=>setDiagnosticFilter(f)}>{f==='all'?'Все':(f==='error'?'Ошибки':f==='warning'?'Предупреждения':'Информация')+' ('+diagnosticCounts[f]+')'}</Button>)}
+          </Group>
+          <ScrollArea h={120}>
+            {diagnosticItems.length===0?<Text size="sm" p="sm">Сообщений нет в этом фильтре. Это не доказывает корректность схемы.</Text>:
+              diagnosticItems.map(d=><Group key={d.id} gap={4} p={4} wrap="nowrap" align="start" data-diagnostic-code={d.code??d.id} data-severity={d.severity}>
+                <Text size="xs" c={d.severity==='error'?'red':d.severity==='warning'?'yellow':undefined} style={{flex:1}}>[{d.code??d.severity}] {d.message}</Text>
+                {d.instanceId&&<Button size="compact-xs" variant="subtle" onClick={()=>props.onSelectTreeItem(d.instanceId!)}>Выбрать УГО</Button>}
+              </Group>)}
+          </ScrollArea>
+        </div>}
       </div></AppShell.Main>
       <AppShell.Aside className="gscad-dock">
         <RightSplit percent={split} onChange={changeSplit}

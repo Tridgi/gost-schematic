@@ -1180,3 +1180,35 @@ test('R17e Cu note is upright in actual editor and stays separate from electrica
  await expect(page.getByTestId('signed-pin-'+comp.id+'-1')).toBeVisible();
  await expect(page.getByTestId('signed-pin-'+comp.id+'-2')).toBeVisible();
 });
+
+test('R18 live diagnostics counts, filters and select affected UGO do not mutate project',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+ await page.mouse.click(paper.x+paper.width*.3,paper.y+paper.height*.5);
+ await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+ await page.mouse.click(paper.x+paper.width*.65,paper.y+paper.height*.5);
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const before=await saved();
+ await page.getByRole('button',{name:/ERC\/DRC/}).click();
+ await expect(page.getByTestId('diagnostics-panel')).toBeVisible();
+ await page.getByTestId('diagnostic-filter-warning').click();
+ const warnings=page.locator('[data-diagnostic-code="ERC_UNASSIGNED_PIN"]');
+ await expect(warnings).toHaveCount(2);
+ await warnings.filter({hasText:'R1:'}).getByRole('button',{name:'Выбрать УГО'}).click();
+ await expect(page.getByTestId('symbol-R1')).toHaveAttribute('data-selected','true');
+ await page.getByTestId('diagnostic-filter-error').click();
+ await expect(page.locator('[data-severity="error"]')).toHaveCount(0);
+ expect((await saved()).project).toEqual(before.project);
+ await page.getByTestId('diagnostic-filter-warning').click();
+ // Deleting the selected disconnected resistor updates the report live.
+ await page.getByTestId('gscad-signed-svg-canvas').focus();await page.keyboard.press('Delete');
+ await expect(warnings).toHaveCount(1);
+ await page.getByRole('button',{name:'Отменить'}).click();
+ await expect(warnings).toHaveCount(2);
+});
