@@ -1472,3 +1472,61 @@ test('R27 terminal entry axis improves equal-length tree rather than adding a st
  // R26: 98 mm, 3 bends. R27: same length, 2 bends.
  assert.equal(plan.lengthUm,98000);assert.equal(plan.bends,2);
 });
+
+
+// R28 deliberately starts only with a fully declared, wholly unrouted Net.
+test('R28 initial routing joins four declared PinRefs, leaves foreign route and membership unchanged, and roundtrips Undo/Redo',async()=>{
+ const {s,net}=railFixture();
+ const ids=[];
+ for(const p of [[300000,200000],[360000,200000]]){
+  s.place(s.newTransaction('foreign'),'symbol/resistor.fixed',p);ids.push(s.file.project.components.at(-1).id);
+ }
+ s.connect(s.newTransaction('foreign-wire'),pin(ids[0],'2'),pin(ids[1],'1'));
+ const doc=s.file,sh=doc.project.sheets[0];
+ sh.wires=sh.wires.filter(w=>w.net_id!==net);
+ doc.project.nets.find(n=>n.id===net).route_status='unrouted';
+ const a=new AuthoringSession(doc),before=a.file;
+ const {topologyInventory}=await import('./topology-inventory.mjs');
+ assert.ok(topologyInventory(before,sh.id).unrouted.some(n=>n.id===net));
+ assert.equal(a.engine.validateNet(net).pin_groups.length,4);
+ const result=a.buildNetTree(a.newTransaction('initial'),net,true),after=a.file;
+ assert.equal(result.pins,4);assert.equal(a.revision,1);
+ assert.deepEqual(after.project.components,before.project.components);
+ assert.deepEqual(after.project.sheets[0].instances,sh.instances);
+ assert.deepEqual(after.project.nets.map(n=>[n.id,n.members]),before.project.nets.map(n=>[n.id,n.members]));
+ assert.deepEqual(after.project.sheets[0].wires.filter(w=>w.net_id!==net),sh.wires);
+ assert.deepEqual(after.project.nets.filter(n=>n.id!==net),before.project.nets.filter(n=>n.id!==net));
+ assert.equal(a.engine.validateNet(net).pin_groups.length,1);
+ assert.ok(after.project.sheets[0].wires.filter(w=>w.net_id===net).every(w=>w.needs_routing_review));
+ assert.ok(!topologyInventory(after,sh.id).unrouted.some(n=>n.id===net));
+ assert.throws(()=>a.buildNetTree(a.newTransaction('again'),net,true),/TREE_ALREADY_ROUTED/);
+ assert.deepEqual(a.file,after);assert.equal(a.revision,1);
+ assert.equal(a.undo(),true);assert.deepEqual(a.file,before);
+ assert.equal(a.redo(),true);assert.deepEqual(new AuthoringSession(a.file).file,after);
+});
+test('R28 two facing physical pins create a single straight route',()=>{
+ const s=newSession(),{r,c}=placePair(s);
+ s.connect(s.newTransaction('declare'),pin(r,'2'),pin(c,'1'));
+ const doc=s.file,net=doc.project.nets[0];doc.project.sheets[0].wires=[];net.route_status='unrouted';
+ const a=new AuthoringSession(doc);
+ const plan=a.buildNetTree(a.newTransaction('route'),net.id,true);
+ assert.equal(plan.pins,2);assert.equal(plan.wires,1);assert.equal(plan.junctions,0);assert.equal(plan.bends,0);
+ assert.equal(a.engine.validateNet(net.id).pin_groups.length,1);
+});
+test('R28 refuses partial/manual geometry, stale revision and locked layer without mutation',()=>{
+ const {s,net}=railFixture(),doc=s.file;
+ doc.project.sheets[0].wires.shift();
+ const partial=new AuthoringSession(doc);
+ assert.throws(()=>partial.buildNetTree(partial.newTransaction('partial'),net,true),/TREE_ALREADY_ROUTED/);
+ assert.deepEqual(partial.file,doc);assert.equal(partial.revision,0);
+ doc.project.sheets[0].wires=[];doc.project.nets[0].route_status='unrouted';
+ const a=new AuthoringSession(doc),stale=a.newTransaction('stale');
+ a.place(a.newTransaction('other'),'symbol/resistor.fixed',[320000,220000]);
+ const before=a.file;
+ assert.throws(()=>a.buildNetTree(stale,net,true),/STALE_REVISION/);
+ assert.deepEqual(a.file,before);
+ doc.project.sheets[0].layers.find(l=>l.kind==='electrical').locked=true;
+ const locked=new AuthoringSession(doc);
+ assert.throws(()=>locked.buildNetTree(locked.newTransaction('locked'),net,true),/TREE_ELECTRICAL_LAYER_AMBIGUOUS/);
+ assert.deepEqual(locked.file,doc);assert.equal(locked.revision,0);
+});
