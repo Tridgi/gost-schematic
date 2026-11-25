@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { EditorShell, type CatalogSymbol, type DiagnosticItem, type SelectedInstance,
   type ToolMode, type TreeItem, type InspectorProposal } from './components/EditorShell';
-import type { ProjectFileV2, SymbolDefinition } from './model/contract';
+import {worldPin as modelWorldPin,type ProjectFileV2,type SymbolDefinition} from './model/contract';
 import { ManualWireEngine, WireError, constructWire, type PinRef, type PointUm,
   type WiringSnapshot } from './wires/manual-wire';
 import { CanvasViewport } from './canvas/CanvasViewport';
@@ -10,7 +10,7 @@ import { commitSegmentDrag, captureSegmentDrag } from './canvas/wire-intents.mjs
 import {noteLayout} from './model/symbol-notes.mjs';
 import {curveGeometry} from './model/curves.mjs';
 import {catalogDisplay,catalogAdditions} from './authoring/catalog';
-import {AuthoringSession,newBlankProject,type ComponentClipboard,type GroupClipboard} from './authoring/session';
+import {AuthoringSession,newBlankProject,type ComponentClipboard,type GroupClipboard,type LayoutPreview} from './authoring/session';
 import {nativeDesktopAvailable,nativeOpenProject,nativeSaveProject,nativeSaveAsProject,nativeCloseProject,
   nativeExportProject,type NativeDocumentHandle} from './native/desktop';
 import {installNativeCloseGuard} from './native/close-guard';
@@ -47,6 +47,41 @@ function CataloguePreview({symbol}:{symbol:SymbolDefinition}) {
     })}
     {(symbol.constant_annotations??[]).map(n=>{const l=noteLayout(n,n.at_um);return <text key={n.key} x={umToMm(l.baseline[0])} y={umToMm(l.baseline[1])} textAnchor={l.anchor} fontSize={umToMm(n.height_um)} fill="currentColor" stroke="none">{n.text}</text>})}
   </svg>;
+}
+
+/** Render two detached models with one common physical viewBox.
+ * Images are SVG image resources, never executable markup in the editor. */
+function layoutComparisonImages(before:ProjectFileV2,after:ProjectFileV2):{beforeSrc:string;afterSrc:string}{
+  const sheetId=before.workspace.active_sheet_id;
+  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  const include=(p:readonly number[],pad=0)=>{
+    x0=Math.min(x0,p[0]-pad);y0=Math.min(y0,p[1]-pad);x1=Math.max(x1,p[0]+pad);y1=Math.max(y1,p[1]+pad);
+  };
+  for(const file of [before,after]){
+    const sh=file.project.sheets.find(s=>s.id===sheetId)!;
+    const defs=new Map(file.project.symbol_definitions.map(d=>[d.id,d]));
+    for(const inst of sh.instances){
+      const d=defs.get(inst.symbol_id);if(!d)continue;
+      include(inst.origin_um);
+      for(const p of d.pins)include(modelWorldPin(inst,p.at_um));
+      for(const g of d.graphics){
+        const points=g.kind==='circle'||g.kind==='semicircle'?curveGeometry(g.kind,g.points_um).bounds:g.points_um;
+        for(const p of points)include(modelWorldPin(inst,p),g.stroke_um/2);
+      }
+      for(const note of d.constant_annotations??[])for(const p of noteLayout(note,modelWorldPin(inst,note.at_um)).bounds)include(p);
+    }
+    for(const w of sh.wires)for(const v of w.vertices)include(v.at_um,150);
+    for(const n of sh.junctions)include(n.at_um,550);
+  }
+  if(!Number.isFinite(x0)){x0=0;y0=0;x1=420000;y1=297000;}
+  const cx=(x0+x1)/2,cy=(y0+y1)/2,w=Math.max(40000,x1-x0+20000),h=Math.max(40000,y1-y0+20000);
+  const view=[cx-w/2,cy-h/2,w,h].map(v=>v/1000).join(' ');
+  const src=(file:ProjectFileV2)=>{
+    const svg=renderProjectPreviewSVG(file,sheetId).replace(/width="[^"]+" height="[^"]+" viewBox="[^"]+"/,
+      'width="'+w/1000+'mm" height="'+h/1000+'mm" viewBox="'+view+'"');
+    return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+  };
+  return {beforeSrc:src(before),afterSrc:src(after)};
 }
 
 /** Preserve signed controller bend locations; reject illegal geometry at WireEngine boundary. */
@@ -111,6 +146,7 @@ export default function App() {
   const [grid,setGrid]=useState(true),[snap,setSnap]=useState(true);
   const [smartRouting,setSmartRouting]=useState(false);
   const [pinMagnet,setPinMagnet]=useState(false);
+  const [layoutPreview,setLayoutPreview]=useState<{plan:LayoutPreview;owner:AuthoringSession;sessionEpoch:number;contentEpoch:number;beforeSrc:string;afterSrc:string}|null>(null);
   const [zoom,setZoom]=useState(1);
   const [zoomRequest,setZoomRequest]=useState<{percent:50|100|200;token:number}|null>(null);
   const [fitRequest,setFitRequest]=useState(0);
@@ -846,24 +882,29 @@ export default function App() {
     onPaste={authoringRef.current&&clipboard&&tool==='select'?handlePaste:undefined}
     smartRouting={smartRouting} onToggleSmartRouting={authoringRef.current?setSmartRouting:undefined}
     pinMagnet={pinMagnet} onTogglePinMagnet={authoringRef.current?setPinMagnet:undefined}
+    layoutPreview={layoutPreview?{plan:layoutPreview.plan,beforeSrc:layoutPreview.beforeSrc,afterSrc:layoutPreview.afterSrc}:undefined}
+    onCancelLayoutPreview={()=>{
+      if(layoutPreview?.plan.token)layoutPreview.owner.discardLayoutPreview(layoutPreview.plan.token);
+      setLayoutPreview(null);
+    }}
+    onApplyLayoutPreview={()=>{
+      if(!layoutPreview?.plan.token)return;
+      const {owner,plan,sessionEpoch,contentEpoch}=layoutPreview;
+      setLayoutPreview(null);
+      try{
+        if(owner!==authoringRef.current||sessionEpoch!==sessionEpochRef.current||contentEpoch!==contentEpochRef.current)
+          throw new WireError('STALE_REVISION','Layout preview no longer belongs to the current document');
+        owner.applyLayoutPreview(owner.newTransaction('optimize-layout'),plan.token!);adoptAuthored();
+        setIssue('Компоновка оптимизирована: изгибы '+plan.before.bends+' → '+plan.after.bends+'. Проверьте маршруты.');
+      }catch(e){owner.discardLayoutPreview(plan.token!);setIssue('LAYOUT_OPTIMIZE_FAILED: '+String(e));}
+    }}
     onOptimizeLayout={authoringRef.current&&tool==='select'?()=>{
       const a=authoringRef.current!,ids=groupIds.length>1?groupIds:[];
       try{
         const p=a.previewLayout(ids);
         if(!p.token){setIssue('Без изменений: безопасного улучшения компоновки не найдено.'+(p.limited?' Поиск ограничен.':''));return;}
-        const summary=[
-          ids.length?'Оптимизация выделения':'Оптимизация активного листа',
-          'Изгибы: '+p.before.bends+' → '+p.after.bends,
-          'Длина: '+(p.before.lengthUm/1000).toFixed(3)+' → '+(p.after.lengthUm/1000).toFixed(3)+' мм',
-          'Пересечения: '+p.before.crossings+' → '+p.after.crossings,
-          'Операции: '+p.operations.join('; '),
-          'Проверено вариантов: '+p.attempted+'; отклонено: '+p.rejected,
-          p.limited?'Поиск ограничен.':'',
-          'Применить план? Состав цепей сохраняется; изменённые маршруты требуют проверки.'
-        ].filter(Boolean).join('\n');
-        if(!window.confirm(summary)){a.discardLayoutPreview(p.token);return;}
-        a.applyLayoutPreview(a.newTransaction('optimize-layout'),p.token);adoptAuthored();
-        setIssue('Компоновка оптимизирована: изгибы '+p.before.bends+' → '+p.after.bends+'. Проверьте маршруты.');
+        const images=layoutComparisonImages(a.file,a.layoutPreviewDocument(p.token));
+        setLayoutPreview({plan:p,owner:a,sessionEpoch:sessionEpochRef.current,contentEpoch:contentEpochRef.current,...images});
       }catch(e){setIssue('LAYOUT_OPTIMIZE_FAILED: '+String(e));}
     }:undefined}
     onSimplifyRoutes={authoringRef.current&&tool==='select'?()=>{

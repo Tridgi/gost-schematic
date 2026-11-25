@@ -10,6 +10,7 @@ import {
   Magnet, Menu as MenuIcon, MousePointer2, Save, Search, Settings2,
   Undo2, Redo2, Type as TypeIcon, Moon, Sun, CircleDot
 } from 'lucide-react';
+import type {LayoutPreview} from '../authoring/session';
 import { normalizeDockLayout, DOCK_LAYOUT_KEY, type DockLayout } from '../theme/layout';
 import { formatMillimetres, parseMillimetres } from './inspector-units';
 import { resolveShellShortcut } from './shortcuts';
@@ -54,6 +55,7 @@ export type EditorShellProps = {
   onCopy?:()=>void;onPaste?:()=>void;
   pinMagnet?:boolean;onTogglePinMagnet?:(enabled:boolean)=>void;
   smartRouting?:boolean;onToggleSmartRouting?:(enabled:boolean)=>void;onAlignConnectedPair?:()=>void;onSimplifyRoutes?:()=>void;onAlignSeries?:()=>void;onDistributeSeries?:()=>void;onBuildParallelRails?:()=>void;onDistributeParallel?:()=>void;onOptimizeLayout?:()=>void;
+  layoutPreview?:{plan:LayoutPreview;beforeSrc:string;afterSrc:string};onApplyLayoutPreview?:()=>void;onCancelLayoutPreview?:()=>void;
   onOpen?:()=>void;onNew?:()=>void;onAddSheet?:()=>void;
   onPaperChange?:(paper:'A4'|'A3'|'A2')=>void;activePaper?:'A4'|'A3'|'A2';
   onSaveAs?:()=>void;onExport?:(format:'svg'|'png300')=>void;
@@ -356,6 +358,32 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
         </Group>
       </AppShell.Footer>
     </AppShell>
+    <Modal opened={!!props.layoutPreview} onClose={()=>props.onCancelLayoutPreview?.()} title="Оптимизация компоновки — предварительный просмотр" centered size="xl">
+      {props.layoutPreview&&<Stack gap="sm" data-testid="layout-preview-dialog">
+        <Group grow align="start" wrap="wrap">
+          {([{title:'Исходная схема',src:props.layoutPreview.beforeSrc,testId:'layout-before'},
+             {title:'Предлагаемая схема',src:props.layoutPreview.afterSrc,testId:'layout-after'}]).map(item=>
+            <Stack key={item.testId} gap={4} style={{minWidth:220}}>
+              <Text fw={600} size="sm">{item.title}</Text>
+              <img data-testid={item.testId} src={item.src} alt={item.title}
+                style={{width:'100%',height:230,objectFit:'contain',background:'white',border:'1px solid var(--mantine-color-default-border)',borderRadius:4}}/>
+            </Stack>)}
+        </Group>
+        <Text size="xs" c="dimmed">Одинаковый масштаб и границы для обеих схем. Это геометрический предпросмотр, не утверждённый чертёж.</Text>
+        <Group grow wrap="wrap">
+          <Stack gap={2}><Text size="xs" c="dimmed">Изгибы</Text><Text fw={600} data-testid="layout-bends">{props.layoutPreview.plan.before.bends} → {props.layoutPreview.plan.after.bends}</Text></Stack>
+          <Stack gap={2}><Text size="xs" c="dimmed">Длина, мм</Text><Text fw={600} data-testid="layout-length">{(props.layoutPreview.plan.before.lengthUm/1000).toFixed(3)} → {(props.layoutPreview.plan.after.lengthUm/1000).toFixed(3)}</Text></Stack>
+          <Stack gap={2}><Text size="xs" c="dimmed">Пересечения</Text><Text fw={600}>{props.layoutPreview.plan.before.crossings} → {props.layoutPreview.plan.after.crossings}</Text></Stack>
+        </Group>
+        <Text size="sm">Операции: {props.layoutPreview.plan.operations.join('; ')}</Text>
+        <Text size="xs" c="dimmed">Вариантов проверено: {props.layoutPreview.plan.attempted}; отклонено: {props.layoutPreview.plan.rejected}.{props.layoutPreview.plan.limited?' Поиск ограничен.':''}</Text>
+        <Text size="sm" c="dimmed">Состав электрических цепей сохраняется. Изменённые маршруты требуют инженерной проверки.</Text>
+        <Group justify="flex-end">
+          <Button variant="default" data-testid="layout-cancel" onClick={props.onCancelLayoutPreview}>Отмена</Button>
+          <Button data-testid="layout-apply" onClick={props.onApplyLayoutPreview}>Применить</Button>
+        </Group>
+      </Stack>}
+    </Modal>
     <Modal opened={settings} onClose={()=>setSettings(false)} title="Настройки интерфейса" centered>
       <Stack><SegmentedControl value={props.scheme} onChange={v=>props.setScheme(v as 'dark'|'light')}
         data={[{label:'Тёмная',value:'dark'},{label:'Светлая',value:'light'}]} fullWidth/>

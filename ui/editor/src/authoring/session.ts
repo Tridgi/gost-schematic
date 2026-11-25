@@ -1215,6 +1215,8 @@ export class AuthoringSession {
     // Sheet-level annotation collision envelopes are not yet certified.
     // Fail closed instead of automatically moving through text or graphics.
     if(sh.texts.length||sh.labels.length||sh.graphics.length)reject('LAYOUT_ANNOTATIONS_UNSUPPORTED');
+    const layerIds=new Set([...sh.instances,...sh.wires,...sh.junctions,...sh.splices].map(o=>o.layer_id));
+    if(sh.layers.some(l=>layerIds.has(l.id)&&(!l.visible||!l.printable)))reject('LAYOUT_HIDDEN_LAYER_UNSUPPORTED');
     const before=assessLayout(base,this.engine);
     if(!before.quality.complete)reject('LAYOUT_CHECK_INCOMPLETE');
     let best=new AuthoringSession(base),assessment=before,attempted=0,rejected=0,limited=false;
@@ -1273,6 +1275,12 @@ export class AuthoringSession {
     const token=operations.length?newId('layout'):null;
     if(token)this.layoutPlan={token,revision:this.clock,sheet:sh.id,next:best.file};
     return {token,before:before.quality,after:assessment.quality,operations,attempted,rejected,limited};
+  }
+  layoutPreviewDocument(token:string):ProjectFileV2{
+    const plan=this.layoutPlan;
+    if(!plan||plan.token!==token)reject('LAYOUT_PLAN_UNKNOWN');
+    if(plan.revision!==this.clock||plan.sheet!==this.current.workspace.active_sheet_id)reject('STALE_REVISION');
+    return clone(plan.next);
   }
   applyLayoutPreview(tx:Tx,token:string):void{
     const plan=this.layoutPlan;

@@ -1196,3 +1196,26 @@ test('R22 automatic planning rejects sheets with unmodeled annotation envelopes'
  assert.throws(()=>a.previewLayout(),/LAYOUT_ANNOTATIONS_UNSUPPORTED/);
  assert.deepEqual(a.file,doc);
 });
+
+test('R22b preview document is detached and cannot change the committed candidate',()=>{
+ const {s}=seriesFixture([[60000,90000],[120000,110000],[180000,100000]]);
+ const before=s.file,plan=s.previewLayout();
+ assert.ok(plan.token);
+ const candidate=s.layoutPreviewDocument(plan.token),expected=structuredClone(candidate);
+ candidate.project.sheets[0].instances[0].origin_um=[1,1];
+ candidate.project.nets.length=0;
+ assert.deepEqual(s.layoutPreviewDocument(plan.token),expected);
+ assert.deepEqual(s.file,before);
+ s.applyLayoutPreview(s.newTransaction('apply'),plan.token);
+ assert.deepEqual(s.file,expected);
+ assert.throws(()=>s.layoutPreviewDocument(plan.token),/LAYOUT_PLAN_UNKNOWN/);
+});
+test('R22b hidden or nonprintable used layers reject automatic preview, with no change',()=>{
+ const {s}=seriesFixture([[60000,90000],[120000,110000],[180000,100000]]);
+ for(const flag of ['visible','printable']){
+  const doc=s.file;doc.project.sheets[0].layers[0][flag]=false;
+  const a=new AuthoringSession(doc),before=a.file;
+  assert.throws(()=>a.previewLayout(),/LAYOUT_HIDDEN_LAYER_UNSUPPORTED/);
+  assert.deepEqual(a.file,before);assert.equal(a.revision,0);
+ }
+});
