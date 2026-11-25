@@ -1156,3 +1156,27 @@ test('R17d real winding symbols render analytic arcs and signed tap contacts',as
  await page.keyboard.press('r');
  await expect(symbol.locator('path[data-ugo-curve="semicircle"]').first()).toBeVisible();
 });
+
+test('R17e Cu note is upright in actual editor and stays separate from electrical contacts',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ await page.getByTestId('catalog-search').fill('медным');
+ await page.getByTestId('catalog-item-symbol/inductor.trim_copper').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await page.mouse.click(paper.x+paper.width*.4,paper.y+paper.height*.5);
+ const symbol=page.getByTestId('symbol-L1'),note=symbol.locator('[data-symbol-note="core_material"]');
+ await expect(note).toHaveText('Cu');await expect(note).toHaveAttribute('data-electrical','false');
+ const x=await note.getAttribute('x');
+ await page.getByTestId('gscad-signed-svg-canvas').focus();await page.keyboard.press('r');
+ await expect(note).toHaveText('Cu');await expect(note).not.toHaveAttribute('x',x);
+ expect(await note.getAttribute('transform')).toBeNull();
+ const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+ const doc=JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ expect(doc.project.symbol_definitions.length).toBe(36);
+ expect(doc.project.nets).toEqual([]);
+ expect(doc.project.sheets[0].instances[0].rotation_deg).toBe(90);
+ const comp=doc.project.components[0];
+ await expect(page.getByTestId('signed-pin-'+comp.id+'-1')).toBeVisible();
+ await expect(page.getByTestId('signed-pin-'+comp.id+'-2')).toBeVisible();
+});
