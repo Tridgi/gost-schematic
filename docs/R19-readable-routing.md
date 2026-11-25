@@ -16,3 +16,34 @@
 5. Simplify existing direct pin-to-pin routes: no symbol moves; no new crossings; never increase length or direction changes. Skip locked layers and branched/dangling wires. Atomic Undo/Redo.
 
 The 1 mm conservative bounding-box clearance, 2 mm preferred lead, 5 mm magnet range and bounded search limits are project heuristics, not certified GOST dimensions. No automatic global layout, no whole-net bus/trunk optimizer, no text/label collision certificate; the existing DRC and review workflow remain required. Existing frozen source stays immutable. No third-party implementation code was copied.
+
+
+## R20 — selected chain layout
+
+A selected simple geometric path of 3–32 components is built from existing
+direct signed pin-to-pin wire endpoints (not proximity, nor inferred circuits).
+This is a geometric chain operation, not proof that components form an electrical
+series circuit. Each direct connection must use opposing pin normals on a common
+axis and preserve its forward order. Mixed pin heights are handled using
+relative transverse physical pin offsets instead of symbol centers.
+
+- Align: solve the offsets along the path, minimize total absolute transverse
+  displacement with a median common shift; try remaining existing candidate
+  axes if obstacles prevent the median. External connections and locked
+  components pin the transverse axis; contradictory fixed constraints reject.
+- Distribute: optionally equalize longitudinal gaps between facing physical
+  pins, preserving the longitudinal positions of the two end components.
+  Integer rounding differs by at most 1 µm between gaps. Nonmonotonic chains,
+  fixed intermediate poses that cannot satisfy spacing, and gaps below 4 mm
+  are rejected.
+- Trial: do not move external conductors; check changed component envelopes
+  against existing symbols, wires, explicit nodes and print margins. Remove
+  internal wires only in a cloned trial, require every new route to be straight
+  and crossing-free, then commit once. Undo restores the whole previous file.
+  Net IDs/members, rotations, original wire IDs and signed terminal identities
+  remain unchanged. Changed wires require routing review.
+
+The search is bounded and conservative; it is not a complete global placement
+solver. The 4 mm minimum gap and 1 mm obstacle envelope are draft heuristics,
+not normative GOST dimensions. General parallel rail/branch layout, full
+annotation collision checking and multi-net topology optimization remain open.
