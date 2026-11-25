@@ -1807,3 +1807,52 @@ test('R32c whole-sheet TL494 multi-order simultaneous routing diagnostic',t=>{
  t.diagnostic('TL494_R32C_MULTINET '+JSON.stringify({...report,token:!!report.token}));
  assert.deepEqual(source,original);
 });
+
+
+test('R32d crossing graph spans foreign keepout only at strict interior, never with an anchor',async()=>{
+ const {planOrthogonalTree}=await import('./orthogonal-tree.ts');
+ const frame={minX:0,minY:0,maxX:100000,maxY:100000};
+ const ports=[{pin:[10000,50000],tip:[12000,50000]},{pin:[90000,50000],tip:[88000,50000]}];
+ const foreign={a:[50000,0],b:[50000,100000],clearance:1000};
+ assert.equal(planOrthogonalTree(ports,[{minX:49000,maxX:51000,minY:-1000,maxY:101000}],frame),null);
+ const p=planOrthogonalTree(ports,[],frame,[foreign]);
+ assert.ok(p);assert.equal(p.bends,0);assert.equal(p.nodes.length,0);
+ assert.deepEqual(p.paths[0].points,[[10000,50000],[90000,50000]]);
+ // A physical lead ending inside foreign keepout is never a crossing.
+ const blocked=[ports[0],{pin:[52000,50000],tip:[50000,50000]}];
+ assert.equal(planOrthogonalTree(blocked,[],frame,[foreign]),null);
+ // A perpendicular edge cannot cross inside an explicit junction obstacle.
+ const full=[{minX:49000,maxX:51000,minY:0,maxY:100000}];
+ assert.equal(planOrthogonalTree(ports,full,frame,[foreign]),null);
+});
+test('R32d controlled whole-sheet preview preserves existing strict success and atomicity',()=>{
+ const {session:s,ids,doc}=batchRouteFixture();
+ const p=s.previewInitialBatch(ids,true);
+ assert.equal(p.routed,2);assert.ok(p.token);assert.equal(p.quality.crossings,0);
+ assert.deepEqual(s.file,doc);assert.equal(s.revision,0);
+ s.applyLayoutPreview(s.newTransaction('apply'),p.token);
+ for(const id of ids)assert.equal(s.engine.validateNet(id).pin_groups.length,1);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,doc);
+});
+test('R32d actual TL494 reserved-lead and controlled crossing diagnostic',t=>{
+ const source=JSON.parse(readFileSync(new URL('../../../fixtures/tl494-source-e695-v2.gscad.json',import.meta.url),'utf8'));
+ const original=structuredClone(source),doc=structuredClone(source),p=doc.project,sh=p.sheets[0];
+ p.provenance={...p.provenance,status:'synthetic',source_sha:'0'.repeat(40),source_path:'test-only/TL494-controlled-crossing',
+  expected_counts:{...p.provenance.expected_counts,da1_pins:0,b_graphics:0}};
+ const s=new AuthoringSession(doc);
+ s.prepareInitialRouting(s.newTransaction('prepare'));
+ const prepared=s.file,rev=s.revision;
+ const report=s.previewInitialBatch(p.nets.map(n=>n.id),true);
+ assert.equal(report.requested,15);assert.ok(report.attempted<=45);
+ assert.equal(report.outcomes.reduce((a,o)=>a+o.pins,0),62);
+ assert.equal(report.quality.errors,0);assert.equal(report.quality.geometryWarnings,0);
+ assert.deepEqual(s.file,prepared);assert.equal(s.revision,rev);
+ if(report.token){
+  s.applyLayoutPreview(s.newTransaction('apply'),report.token);
+  for(const n of p.nets)assert.equal(s.engine.validateNet(n.id).pin_groups.length,1);
+  assert.deepEqual(s.file.project.nets.map(n=>[n.id,n.members]),p.nets.map(n=>[n.id,n.members]));
+  assert.deepEqual(s.file.project.sheets[0].graphics,sh.graphics);assert.deepEqual(s.file.project.sheets[0].labels,sh.labels);
+ }else assert.ok(report.routed<15);
+ t.diagnostic('TL494_R32D_CONTROLLED '+JSON.stringify({...report,token:!!report.token}));
+ assert.deepEqual(source,original);
+});

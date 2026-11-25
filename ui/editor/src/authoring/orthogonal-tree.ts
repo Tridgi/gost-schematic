@@ -8,7 +8,8 @@ export type TreeBox={minX:number;minY:number;maxX:number;maxY:number};
 export type TreePort={pin:TreePoint;tip:TreePoint};
 export type TreePath={points:TreePoint[];startPin:number|null;endPin:number|null};
 export type TreePlan={paths:TreePath[];nodes:TreePoint[];lengthUm:number;bends:number};
-type Edge={to:number;length:number;dir:1|2};
+export type TreeCrossable={a:TreePoint;b:TreePoint;clearance:number};
+type Edge={to:number;length:number;dir:1|2;crossings:number};
 const key=(p:TreePoint)=>p.join(',');
 const eq=(a:TreePoint,b:TreePoint)=>a[0]===b[0]&&a[1]===b[1];
 const box=(a:TreePoint,b:TreePoint):TreeBox=>({minX:Math.min(a[0],b[0]),maxX:Math.max(a[0],b[0]),minY:Math.min(a[1],b[1]),maxY:Math.max(a[1],b[1])});
@@ -20,16 +21,35 @@ class Heap{
  pop(){const a=this.a,first=a[0],last=a.pop();if(!last||!a.length)return first;let i=0;while(i*2+1<a.length){let c=i*2+1;if(c+1<a.length&&a[c+1].cost<a[c].cost)c++;if(a[c].cost>=last.cost)break;a[i]=a[c];i=c}a[i]=last;return first}
  get size(){return this.a.length}
 }
-export function planOrthogonalTree(ports:TreePort[],obstacles:TreeBox[],frame:TreeBox):TreePlan|null{
- if(ports.length<2||ports.length>32||obstacles.length>640)return null;
+export function planOrthogonalTree(ports:TreePort[],obstacles:TreeBox[],frame:TreeBox,crossable:TreeCrossable[]=[]):TreePlan|null{
+ if(ports.length<2||ports.length>32||obstacles.length+crossable.length>640)return null;
  const inside=(p:TreePoint)=>p[0]>=frame.minX&&p[0]<=frame.maxX&&p[1]>=frame.minY&&p[1]<=frame.maxY;
  const stubs=ports.map(p=>box(p.pin,p.tip));
  if(ports.some(p=>!inside(p.tip)||!inside(p.pin)||eq(p.pin,p.tip)||(p.pin[0]!==p.tip[0]&&p.pin[1]!==p.tip[1])))return null;
  if(stubs.some((b,i)=>stubs.slice(i+1).some(c=>overlaps(b,c))))return null;
+ const crossBoxes=crossable.map(w=>{
+  const b=box(w.a,w.b),p=w.clearance;
+  if(!Number.isSafeInteger(p)||p<1||eq(w.a,w.b)||(w.a[0]!==w.b[0]&&w.a[1]!==w.b[1]))throw Error('TREE_INVALID_CROSSABLE');
+  return {w,b:{minX:b.minX-p,minY:b.minY-p,maxX:b.maxX+p,maxY:b.maxY+p}};
+ });
  let comparisons=0;
  const clear=(a:TreePoint,b:TreePoint)=>{
   const segment=box(a,b);
   for(const o of obstacles){if(++comparisons>3000000)throw Error('TREE_SEARCH_LIMIT');if(overlaps(segment,o))return false}
+  for(const {w,b:obstacle} of crossBoxes){
+   if(++comparisons>3000000)throw Error('TREE_SEARCH_LIMIT');
+   if(!overlaps(segment,obstacle))continue;
+   // No search vertex, bend, branch or terminal inside the foreign
+   // keepout. Only a perpendicular edge spanning its full width may pass.
+   if(eq(a,b))return false;
+   const horizontal=a[1]===b[1],other=w.a[1]===w.b[1];
+   if(horizontal===other)return false;
+   const fixed=horizontal?1:0,variable=1-fixed,at=a[fixed];
+   if(at<=Math.min(w.a[fixed],w.b[fixed])+w.clearance||
+      at>=Math.max(w.a[fixed],w.b[fixed])-w.clearance)return false;
+   const low=variable===0?obstacle.minX:obstacle.minY,high=variable===0?obstacle.maxX:obstacle.maxY;
+   if(Math.min(a[variable],b[variable])>=low||Math.max(a[variable],b[variable])<=high)return false;
+  }
   for(const [i,s] of stubs.entries()){
    if(++comparisons>3000000)throw Error('TREE_SEARCH_LIMIT');
    if(!overlaps(segment,s))continue;
@@ -41,7 +61,7 @@ export function planOrthogonalTree(ports:TreePort[],obstacles:TreeBox[],frame:Tr
  };
  const xs=new Set([frame.minX,frame.maxX]),ys=new Set([frame.minY,frame.maxY]);
  for(const {tip} of ports){xs.add(tip[0]);ys.add(tip[1])}
- for(const b of [...obstacles,...stubs]){
+ for(const b of [...obstacles,...crossBoxes.map(v=>v.b),...stubs]){
   xs.add(Math.floor(b.minX)-1);xs.add(Math.ceil(b.maxX)+1);
   ys.add(Math.floor(b.minY)-1);ys.add(Math.ceil(b.maxY)+1);
  }
@@ -56,14 +76,28 @@ export function planOrthogonalTree(ports:TreePort[],obstacles:TreeBox[],frame:Tr
  }
  const join=(a:TreePoint,b:TreePoint,dir:1|2)=>{
   const i=node(a),j=node(b);if(i===undefined||j===undefined||!clear(a,b))return;
-  const len=length(a,b);edges[i].push({to:j,length:len,dir});edges[j].push({to:i,length:len,dir});
+  const len=length(a,b),crossings=crossBoxes.filter(v=>overlaps(box(a,b),v.b)).length;
+  edges[i].push({to:j,length:len,dir,crossings});edges[j].push({to:i,length:len,dir,crossings});
  };
- for(const y of Y)for(let x=1;x<X.length;x++)join([X[x-1],y],[X[x],y],1);
- for(const x of X)for(let y=1;y<Y.length;y++)join([x,Y[y-1]],[x,Y[y]],2);
+ // Join consecutive available vertices, skipping blocked grid points only
+ // if the entire segment passes the same obstacle/lead/crossing checks.
+ if(!crossable.length){
+  for(const y of Y)for(let x=1;x<X.length;x++)join([X[x-1],y],[X[x],y],1);
+  for(const x of X)for(let y=1;y<Y.length;y++)join([x,Y[y-1]],[x,Y[y]],2);
+ }else{
+ for(const y of Y){let prev:TreePoint|undefined;for(const x of X){
+  const p:TreePoint=[x,y];if(node(p)===undefined)continue;
+  if(prev)join(prev,p,1);prev=p;
+ }}
+ for(const x of X){let prev:TreePoint|undefined;for(const y of Y){
+  const p:TreePoint=[x,y];if(node(p)===undefined)continue;
+  if(prev)join(prev,p,2);prev=p;
+ }}
+ }
  const terminals=ports.map(p=>node(p.tip));
  if(terminals.some(v=>v===undefined))return null;
  const leadDir=new Map(terminals.map((v,i)=>[v!,ports[i].pin[0]===ports[i].tip[0]?2:1]));
- const bendCost=5000;
+ const bendCost=5000,crossingCost=20000;
  const grow=(respectLeads:boolean):TreePlan|null=>{
  const remaining=new Set(terminals as number[]),root=terminals[0]!;
  const tree=new Set<number>([root]),adj=new Map<number,Set<number>>();
@@ -88,7 +122,7 @@ export function planOrthogonalTree(ports:TreePort[],obstacles:TreeBox[],frame:Tr
    }
    for(const e of edges[v]){
     if(tree.has(e.to))continue;
-    const next=e.to*3+e.dir,score=cost+e.length+(dir&&dir!==e.dir?bendCost:0);
+    const next=e.to*3+e.dir,score=cost+e.length+e.crossings*crossingCost+(dir&&dir!==e.dir?bendCost:0);
     if(score>=dist[next])continue;
     dist[next]=score;prev[next]=state;heap.push({state:next,cost:score});
    }
@@ -132,7 +166,8 @@ export function planOrthogonalTree(ports:TreePort[],obstacles:TreeBox[],frame:Tr
  const baseline=grow(false),candidate=grow(true);
  if(!baseline)return candidate;
  if(!candidate)return baseline;
- const score=(p:TreePlan)=>p.lengthUm+bendCost*p.bends;
+ const score=(p:TreePlan)=>p.lengthUm+bendCost*p.bends+crossingCost*p.paths.reduce((n,path)=>
+  n+path.points.slice(1).reduce((k,v,i)=>k+crossBoxes.filter(c=>overlaps(box(path.points[i],v),c.b)).length,0),0);
  // Greedy tree growth is not globally optimal. Keep the old solution if
  // the lead-aware candidate increases the number of bends or weighted cost.
  return candidate.bends<=baseline.bends&&score(candidate)<=score(baseline)?candidate:baseline;

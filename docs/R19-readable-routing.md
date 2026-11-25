@@ -381,3 +381,27 @@ foreign X crossings in this mode. Existing 8-Net atomic operation unchanged.
 Three tests verify complete and partial previews and emit TL494_R32C_MULTINET
 for the prepared detached source copy with all 15 Nets. The source fixture,
 annotations and electrical membership remain unchanged; no source unlocking.
+
+
+## R32d — future terminal reservations and opt-in X crossings
+
+R32c CI confirmed 6/15 simultaneous TL494 Nets (small-first, 29 bends,
+2469.673 mm, zero crossings/errors/geometry warnings). Every remaining
+Net was rejected TREE_BLOCKED_PIN_LEAD. This exposes an ordering issue:
+an earlier route can occupy the mandatory outward lead of a later pin.
+
+The separately confirmed controlled preview reserves conservative 1 mm
+envelopes around outward leads of untouched local declared Nets.
+Previously routed wires remain obstacles for the first attempt. Only if
+no strict path is found may a visibility edge cross a foreign straight
+wire perpendicularly, spanning its entire keepout and staying more than
+1 mm from each end. No vertex, bend, branch, pin or explicit junction may
+occur inside that keepout. Parallel overlap, T/endpoint contact, symbol
+ink and annotations remain forbidden. Each crossing costs 20 mm in the
+search score; whole-sheet ranking prefers fewer crossings before bends
+and length. The quality gate permits only new strict interior crossings
+between the current target Net and another Net; connectivity, hazards
+and overflow protections are unchanged. Strict mode remains the default.
+Bounded search/grid limits remain, and no completeness or GOST approval
+is claimed. Three regression tests include TL494_R32D_CONTROLLED.
+Full CI and actual controlled routing counts are pending.

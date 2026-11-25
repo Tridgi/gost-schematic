@@ -36,7 +36,7 @@ export type InspectorProposal =
 
 /** The host owns all electrical topology, source PinRefs, command validation and actual persistence. */
 export type EditorShellProps = {
-  projectName:string;dirty:boolean;baseRevision:string;topology?:TopologyInventory;onBuildNetRail?:(netId:string)=>void;onBuildNetTree?:(netId:string)=>void;onRouteInitialNet?:(netId:string)=>void;onRouteInitialBatch?:(netIds:readonly string[])=>void;onPrepareInitialRouting?:()=>void;onPreviewInitialBatch?:(netIds:readonly string[])=>void;
+  projectName:string;dirty:boolean;baseRevision:string;topology?:TopologyInventory;onBuildNetRail?:(netId:string)=>void;onBuildNetTree?:(netId:string)=>void;onRouteInitialNet?:(netId:string)=>void;onRouteInitialBatch?:(netIds:readonly string[])=>void;onPrepareInitialRouting?:()=>void;onPreviewInitialBatch?:(netIds:readonly string[],controlled?:boolean)=>void;
   sheets:readonly {id:string;title:string}[];activeSheetId:string;
   catalog:readonly CatalogSymbol[];tree:readonly TreeItem[];
   catalogMissingCount?:number;onCatalogUpgrade?:()=>void;
@@ -413,6 +413,11 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
               <Button size="xs" variant="light" data-testid="preview-initial-batch"
                 onClick={()=>{setTopologyDialog(false);props.onPreviewInitialBatch?.(props.topology!.unrouted.map(n=>n.id))}}>
                 Проверить совместную разводку ({props.topology.unrouted.length} цепей)
+              </Button>}
+            {props.onPreviewInitialBatch&&props.topology.unrouted.length>1&&props.topology.unrouted.length<=16&&
+              <Button size="xs" variant="light" data-testid="preview-initial-controlled"
+                onClick={()=>{setTopologyDialog(false);props.onPreviewInitialBatch?.(props.topology!.unrouted.map(n=>n.id),true)}}>
+                Совместная разводка с защитой выводов и X-пересечениями
               </Button>}
             {props.onRouteInitialBatch&&props.topology.unrouted.length>1&&
               <Button size="xs" data-testid="route-initial-batch"

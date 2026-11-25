@@ -8,7 +8,7 @@ export type LayoutQuality={
   bends:number;lengthUm:number;crossings:number;wireCount:number;straightWires:number;
   errors:number;geometryWarnings:number;overflow:number;complete:boolean;
 };
-export type LayoutAssessment={quality:LayoutQuality;hazards:Record<string,number>;connectivity:string;overflowIds:string[]};
+export type LayoutAssessment={quality:LayoutQuality;hazards:Record<string,number>;connectivity:string;overflowIds:string[];crossingKeys?:string[]};
 const direction=(a:PointUm,b:PointUm)=>[Math.sign(b[0]-a[0]),Math.sign(b[1]-a[1])];
 const pinKey=(p:{component_id:string;physical_pin_number:string})=>JSON.stringify([p.component_id,p.physical_pin_number]);
 export function assessLayout(file:ProjectFileV2,engine:ManualWireEngine,changingNetId?:string):LayoutAssessment{
@@ -70,14 +70,19 @@ export function assessLayout(file:ProjectFileV2,engine:ManualWireEngine,changing
   ...overflow.graphics.map(x=>'graphic:'+x),...overflow.junctions.map(x=>'junction:'+x),...overflow.splices.map(x=>'splice:'+x)].sort();
  return {quality:{bends,lengthUm,crossings:intersections.size,wireCount:sh.wires.length,straightWires,
   errors:report.counts.error,geometryWarnings,overflow:overflow.total,complete},
-  hazards,connectivity:JSON.stringify(groups.sort()),overflowIds};
+  hazards,connectivity:JSON.stringify(groups.sort()),overflowIds,crossingKeys:[...intersections]};
 }
 /** Common safety gate for automatic and explicitly requested geometry edits. */
-export function preservesLayoutSafety(a:LayoutAssessment,b:LayoutAssessment):boolean{
+export function preservesLayoutSafety(a:LayoutAssessment,b:LayoutAssessment,permittedCrossingNetId?:string):boolean{
  return a.quality.complete&&b.quality.complete&&a.connectivity===b.connectivity&&
   !b.overflowIds.some(id=>!a.overflowIds.includes(id))&&
   !Object.keys(b.hazards).some(k=>b.hazards[k]>(a.hazards[k]??0))&&
-  b.quality.crossings<=a.quality.crossings;
+  (permittedCrossingNetId?
+    !!a.crossingKeys&&!!b.crossingKeys&&b.crossingKeys.every(k=>{
+      if(a.crossingKeys!.includes(k))return true;
+      const [x,y]=JSON.parse(k) as [string,string,number,number];
+      return x!==y&&(x===permittedCrossingNetId||y===permittedCrossingNetId);
+    }):b.quality.crossings<=a.quality.crossings);
 }
 /** Strict Pareto improvement: no extra length, turns or ordinary crossings.
  * Explicit review warnings are intentionally excluded from geometry hazards. */
