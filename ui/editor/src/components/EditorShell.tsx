@@ -36,7 +36,7 @@ export type InspectorProposal =
 
 /** The host owns all electrical topology, source PinRefs, command validation and actual persistence. */
 export type EditorShellProps = {
-  projectName:string;dirty:boolean;baseRevision:string;topology?:TopologyInventory;onBuildNetRail?:(netId:string)=>void;onBuildNetTree?:(netId:string)=>void;onRouteInitialNet?:(netId:string)=>void;onRouteInitialBatch?:(netIds:readonly string[])=>void;onPrepareInitialRouting?:()=>void;onPreviewHubPlacement?:()=>void;onPreviewInitialBatch?:(netIds:readonly string[],controlled?:boolean)=>void;
+  projectName:string;dirty:boolean;baseRevision:string;topology?:TopologyInventory;onBuildNetRail?:(netId:string)=>void;onBuildNetTree?:(netId:string)=>void;onRouteInitialNet?:(netId:string)=>void;onRouteInitialBatch?:(netIds:readonly string[])=>void;onPrepareInitialRouting?:()=>void;onPreviewHubPlacement?:()=>void;onPreviewRouteRefinement?:()=>void;onPreviewInitialBatch?:(netIds:readonly string[],controlled?:boolean)=>void;
   sheets:readonly {id:string;title:string}[];activeSheetId:string;
   catalog:readonly CatalogSymbol[];tree:readonly TreeItem[];
   catalogMissingCount?:number;onCatalogUpgrade?:()=>void;
@@ -432,6 +432,8 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
             </Group>)}
             <Divider/>
           </>}
+          {props.onPreviewRouteRefinement&&<Button size="xs" variant="light" data-testid="preview-route-refinement"
+            onClick={()=>{setTopologyDialog(false);props.onPreviewRouteRefinement?.()}}>Упростить построенные маршруты</Button>}
           <Text fw={600} size="sm">Общие цепи (не менее 3 УГО на листе)</Text>
           {props.topology.shared.map(n=><Stack key={n.id} gap={2}>
             <Group justify="space-between"><Text size="sm">{n.name} — {n.pins} выводов, {n.devices} УГО</Text>

@@ -1933,3 +1933,72 @@ test('R32f TL494 topology-based preplacement and controlled multinet feasibility
  t.diagnostic('TL494_R32F_PREPLACEMENT '+JSON.stringify({placement:{...placement,token:!!placement.token,moved:placement.moved.map(id=>p.components.find(c=>c.id===id)?.refdes??id)},routing:{...report,token:!!report.token}}));
  assert.deepEqual(source,original);
 });
+
+
+test('R32g review-marked staircase refinement preserves foreign geometry and all signed membership',()=>{
+ const s=newSession(),{r,c}=placePair(s);
+ s.move(s.newTransaction('offset'),c,[155000,120000]);
+ s.connect(s.newTransaction('stairs'),pin(r,'2'),pin(c,'1'),[
+  [119000,103000],[128000,110000],[137000,117000]
+ ]);
+ const foreignA=s.place(s.newTransaction('foreign-a'),'symbol/resistor.fixed',[80000,180000]);
+ const foreignB=s.place(s.newTransaction('foreign-b'),'symbol/resistor.fixed',[180000,180000]);
+ const doc=s.file,sh=doc.project.sheets[0],target=doc.project.nets[0].id;
+ const a=sh.instances.find(i=>i.id===foreignA).component_id,b=sh.instances.find(i=>i.id===foreignB).component_id;
+ s.connect(s.newTransaction('foreign-wire'),pin(a,'2'),pin(b,'1'));
+ const ready=s.file,rs=ready.project.sheets[0];
+ rs.wires.find(w=>w.net_id===target).needs_routing_review=true;
+ rs.wires.find(w=>w.net_id!==target).needs_routing_review=false;
+ const session=new AuthoringSession(ready),p=session.previewRouteRefinement();
+ assert.ok(p.token);assert.ok(p.after.bends<p.before.bends);
+ assert.ok(p.after.lengthUm<=p.before.lengthUm);assert.ok(p.after.crossings<=p.before.crossings);
+ assert.deepEqual(session.file,ready);assert.equal(session.revision,0);
+ const next=session.layoutPreviewDocument(p.token),ns=next.project.sheets[0];
+ assert.deepEqual(ns.instances,rs.instances);
+ assert.deepEqual(ns.wires.filter(w=>w.net_id!==target),rs.wires.filter(w=>w.net_id!==target));
+ assert.deepEqual(next.project.nets.map(n=>[n.id,n.members]),ready.project.nets.map(n=>[n.id,n.members]));
+ session.applyLayoutPreview(session.newTransaction('apply'),p.token);
+ for(const n of ready.project.nets)assert.equal(session.engine.validateNet(n.id).pin_groups.length,1);
+ assert.equal(session.undo(),true);assert.deepEqual(session.file,ready);
+ assert.equal(session.redo(),true);assert.deepEqual(session.file,next);
+});
+test('R32g unmarked or already straight routes cannot be replaced by refinement',()=>{
+ const s=newSession(),{r,c}=placePair(s);
+ s.connect(s.newTransaction('straight'),pin(r,'2'),pin(c,'1'));
+ const doc=s.file,net=doc.project.nets[0].id;
+ doc.project.sheets[0].wires[0].needs_routing_review=false;
+ const a=new AuthoringSession(doc);
+ assert.throws(()=>a.buildNetTree(a.newTransaction('unmarked'),net,false,true),/REFINE_REVIEW_REQUIRED/);
+ assert.equal(a.previewRouteRefinement().token,null);
+ assert.deepEqual(a.file,doc);assert.equal(a.revision,0);
+ doc.project.sheets[0].wires[0].needs_routing_review=true;
+ const b=new AuthoringSession(doc);
+ assert.equal(b.previewRouteRefinement().token,null);
+ assert.deepEqual(b.file,doc);assert.equal(b.revision,0);
+});
+test('R32g actual TL494 full-connectivity refinement benchmark',t=>{
+ const source=JSON.parse(readFileSync(new URL('../../../fixtures/tl494-source-e695-v2.gscad.json',import.meta.url),'utf8'));
+ const original=structuredClone(source),doc=structuredClone(source),p=doc.project,sh=p.sheets[0];
+ p.provenance={...p.provenance,status:'synthetic',source_sha:'0'.repeat(40),source_path:'test-only/TL494-route-refinement',
+  expected_counts:{...p.provenance.expected_counts,da1_pins:0,b_graphics:0}};
+ const s=new AuthoringSession(doc);s.prepareInitialRouting(s.newTransaction('prepare'));
+ const placement=s.previewHubPlacement();
+ if(placement.token)s.applyLayoutPreview(s.newTransaction('place'),placement.token);
+ const route=s.previewInitialBatch(p.nets.map(n=>n.id),true);
+ assert.equal(route.routed,15);assert.ok(route.token);
+ s.applyLayoutPreview(s.newTransaction('route'),route.token);
+ const before=s.file,rev=s.revision,refine=s.previewRouteRefinement();
+ assert.ok(refine.attempted<=32);
+ assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
+ assert.ok(refine.after.bends<=refine.before.bends);
+ assert.ok(refine.after.lengthUm<=refine.before.lengthUm);
+ assert.ok(refine.after.crossings<=refine.before.crossings);
+ assert.equal(refine.after.errors,0);assert.equal(refine.after.geometryWarnings,0);assert.equal(refine.after.overflow,0);
+ if(refine.token)s.applyLayoutPreview(s.newTransaction('refine'),refine.token);
+ for(const n of p.nets)assert.equal(s.engine.validateNet(n.id).pin_groups.length,1);
+ assert.deepEqual(s.file.project.nets.map(n=>[n.id,n.members]),p.nets.map(n=>[n.id,n.members]));
+ assert.deepEqual(s.file.project.sheets[0].instances,before.project.sheets[0].instances);
+ assert.deepEqual(s.file.project.sheets[0].graphics,sh.graphics);assert.deepEqual(s.file.project.sheets[0].labels,sh.labels);
+ t.diagnostic('TL494_R32G_REFINEMENT '+JSON.stringify({...refine,token:!!refine.token}));
+ assert.deepEqual(source,original);
+});
