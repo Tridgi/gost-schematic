@@ -146,3 +146,23 @@ trial budget. Its stricter quality gate may reject a longer trunk. No
 automatic power assignment, arbitrary mixed-axis branch routing, or source
 fixture mutation is implied. Text/label/graphic obstacles are still excluded
 rather than guessed. Limits and clearances are draft engineering heuristics.
+
+
+## R25 — mixed-axis individual Net rails
+
+For mixed signed pin normals the single-Net rail planner tries horizontal
+and vertical trunk orientations (at most 32 candidate channels per axis).
+Pins facing the trunk retain straight perpendicular leads. Pins parallel to
+the trunk leave their own signed terminal outward and make one right-angle
+turn; up to 24 obstacle-derived tap candidates are considered for each.
+Branches cannot cross or overlap one another; two opposite-side branches
+may meet only at their common explicit tap. Distinct taps require at least
+1 mm separation. All branch segments and the full trunk are checked against
+unrelated wires, nodes, symbol bounds and print margins. Candidate geometry
+is ranked by lead bends first, then Manhattan length. The search uses
+500,000 geometric comparisons at most and fails closed at that limit.
+
+The procedure is greedy, not a complete maze/Steiner solver. It may reject
+a routable Net that needs two or more lead bends, moving symbols, or multiple
+trunk sections. Same-axis R24 behavior, immutable signed membership,
+no-new-hazard/crossing gate, route review flags and one-step Undo remain.

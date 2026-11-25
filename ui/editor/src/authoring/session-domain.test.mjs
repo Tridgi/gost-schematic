@@ -1339,7 +1339,7 @@ test('R24 opposed leads share taps only as explicit junctions, not geometrical i
  }
  assert.equal(s.engine.validateNet(net).pin_groups.length,1);
 });
-test('R24 foreign obstruction, incomplete Net and mixed pin axes reject without mutation',()=>{
+test('R24 foreign obstruction and incomplete Net reject without mutation',()=>{
  const {s,net}=railFixture();
  s.place(s.newTransaction('obstruction'),'symbol/resistor.fixed',[130000,80000]);
  const before=s.file,rev=s.revision;
@@ -1350,13 +1350,46 @@ test('R24 foreign obstruction, incomplete Net and mixed pin axes reject without 
  const incomplete=new AuthoringSession(doc);
  assert.throws(()=>incomplete.buildNetRail(incomplete.newTransaction('incomplete'),f.net),/RAIL_UNCONNECTED_NET/);
  assert.deepEqual(incomplete.file,doc);
- const m=newSession();
- for(const p of [[80000,70000],[160000,100000],[240000,130000]])m.place(m.newTransaction('p'),'symbol/resistor.fixed',p);
- const [a,b,c]=m.file.project.components.map(c=>c.id);
- m.rotate(m.newTransaction('r'),b);
- m.connect(m.newTransaction('ab'),pin(a,'1'),pin(b,'1'));
- m.connect(m.newTransaction('bc'),pin(b,'1'),pin(c,'1'));
- const original=m.file;
- assert.throws(()=>m.buildNetRail(m.newTransaction('mixed'),original.project.nets[0].id),/RAIL_MIXED_PIN_AXES/);
- assert.deepEqual(m.file,original);
 });
+function mixedRailFixture(){
+ const s=newSession();
+ for(const p of [[80000,70000],[160000,100000],[240000,130000]])s.place(s.newTransaction('p'),'symbol/resistor.fixed',p);
+ const [a,b,c]=s.file.project.components.map(c=>c.id);
+ s.rotate(s.newTransaction('r'),b);
+ s.connect(s.newTransaction('ab'),pin(a,'1'),pin(b,'1'));
+ s.connect(s.newTransaction('bc'),pin(b,'1'),pin(c,'1'));
+ return {s,net:s.file.project.nets[0].id};
+}
+test('R25 mixed-axis Net uses a direct trunk and one L-shaped lead while preserving the signed model',()=>{
+ const {s,net}=mixedRailFixture(),before=s.file,rev=s.revision;
+ const result=s.buildNetRail(s.newTransaction('mixed'),net);
+ assert.equal(result.axis,'vertical');assert.equal(result.pins,3);
+ const after=s.file,sh=after.project.sheets[0];
+ assert.deepEqual(sh.instances,before.project.sheets[0].instances);
+ assert.deepEqual(after.project.nets.map(n=>[n.id,n.members]),before.project.nets.map(n=>[n.id,n.members]));
+ assert.equal(sh.wires.filter(w=>w.vertices.length===3).length,1);
+ assert.ok(sh.wires.every(w=>w.vertices.length<=3));
+ assert.equal(s.engine.validateNet(net).pin_groups.length,1);
+ for(const w of sh.wires){
+  const v=w.vertices[0];if(v.anchor.kind!=='pin')continue;
+  const p=s.beginWire(v.anchor),q=w.vertices[1].at_um;
+  assert.deepEqual([Math.sign(q[0]-v.at_um[0]),Math.sign(q[1]-v.at_um[1])],p.normal);
+ }
+ assert.equal(s.revision,rev+1);
+ assert.throws(()=>s.buildNetRail(s.newTransaction('repeat'),net),/NO_CHANGE/);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);assert.deepEqual(new AuthoringSession(s.file).file,after);
+});
+test('R25 selected common trunk keeps unrelated Net geometry byte-for-byte',()=>{
+ const {s,net}=mixedRailFixture();
+ const ids=[];
+ for(const p of [[300000,200000],[360000,200000]]){
+  s.place(s.newTransaction('other'),'symbol/resistor.fixed',p);ids.push(s.file.project.components.at(-1).id);
+ }
+ s.connect(s.newTransaction('other-wire'),pin(ids[0],'2'),pin(ids[1],'1'));
+ const before=s.file,other=before.project.nets.at(-1);
+ s.buildNetRail(s.newTransaction('mixed'),net);
+ assert.deepEqual(s.file.project.sheets[0].wires.filter(w=>w.net_id===other.id),before.project.sheets[0].wires.filter(w=>w.net_id===other.id));
+ assert.deepEqual(s.file.project.nets.at(-1),other);
+});
+
