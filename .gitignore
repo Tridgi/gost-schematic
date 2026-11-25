@@ -12,3 +12,5 @@ dist/
 .env
 output/
 /artifacts/ai-mcp/
+
+/ui/editor/src/authoring/windings.generated.json
