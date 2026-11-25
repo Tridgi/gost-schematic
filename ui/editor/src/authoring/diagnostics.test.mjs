@@ -79,3 +79,31 @@ test('R18 report cap keeps a critical overlap ahead of many unassigned pins',()=
  assert.equal(report.omitted,21);
  assert.ok(codes(report).includes('CHECK_LIMIT'));
 });
+
+test('R18b exact signed pin exit is allowed, but wire along inward symbol ink is diagnosed',()=>{
+ const s=shape('R1',[10000,10000]);
+ s.inkStrokes=[{from_um:[-1000,0],to_um:[0,0],stroke_um:300}];
+ const out=wire('a','A',[[10000,10000],[15000,10000]],p('R1','1'),free('out'));
+ const inward=wire('b','A',[[10000,10000],[5000,10000]],p('R1','1'),free('in'));
+ const nets=[net('A',[pin('R1','1')])];
+ assert.ok(!codes(inspect(fixture([s],[out],nets))).includes('DRC_WIRE_SYMBOL_INK'));
+ assert.ok(codes(inspect(fixture([s],[inward],nets))).includes('DRC_WIRE_SYMBOL_INK'));
+});
+test('R18b diagonal rational crossing and analytic circle/semicircle ink are detected without false lower-half arc',()=>{
+ const s=shape('R1',[20000,20000]);
+ s.pins=[];s.inkStrokes=[{from_um:[-1000,-1000],to_um:[1000,999],stroke_um:300}];
+ const diagonal=wire('a','A',[[17000,20000],[23000,20000]]);
+ assert.ok(codes(inspect(fixture([s],[diagonal],[net('A')]))).includes('DRC_WIRE_SYMBOL_INK'));
+ s.inkStrokes=[];
+ s.curves=[{kind:'semicircle',center:[0,0],radius:2000,stroke_um:300,points_um:[[-2000,0],[0,-2000],[2000,0]],bounds:[[-2000,0],[0,-2000],[2000,0]],sweep:1}];
+ const top=wire('top','A',[[17000,19000],[23000,19000]]);
+ const bottom=wire('bottom','A',[[17000,21000],[23000,21000]]);
+ assert.ok(codes(inspect(fixture([s],[top],[net('A')]))).includes('DRC_WIRE_SYMBOL_INK'));
+ assert.ok(!codes(inspect(fixture([s],[bottom],[net('A')]))).includes('DRC_WIRE_SYMBOL_INK'));
+ s.rotation_deg=180;
+ assert.ok(!codes(inspect(fixture([s],[top],[net('A')]))).includes('DRC_WIRE_SYMBOL_INK'));
+ assert.ok(codes(inspect(fixture([s],[bottom],[net('A')]))).includes('DRC_WIRE_SYMBOL_INK'));
+ s.curves=[{kind:'circle',center:[0,0],radius:2000,stroke_um:300,points_um:[[0,0],[2000,0]],bounds:[[-2000,-2000],[2000,2000]],sweep:0}];
+ const tangent=wire('tangent','A',[[17000,22000],[23000,22000]]);
+ assert.ok(codes(inspect(fixture([s],[tangent],[net('A')]))).includes('DRC_WIRE_SYMBOL_INK'));
+});
