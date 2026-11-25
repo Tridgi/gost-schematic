@@ -313,3 +313,28 @@ non-electrical graphics. No dynamic refdes/value label rendering or
 font metric verification is introduced here. Wire width in DRC and
 non-cardinal curves are still outside this increment. Frozen E695
 and catalogue approval are unchanged.
+
+
+## R32a — actual TL494 routing preflight, not source editing
+
+Initial tree routing now accepts bounded visual-only labels and sheet
+line/polyline/source-b ink as conservative closed routing obstacles.
+Stroke width and a 1 mm routing allowance are included; the visual label
+uses the upright browser export baseline and a conservative 3.5 mm text
+envelope. Free text, Net annotations, excessive counts and unsupported
+geometry still fail closed. Existing geometry reconstruction is unchanged.
+The new regression checks a real detour around graphical ink and exact
+preservation of annotations.
+
+A diagnostic test reads the frozen TL494 fixture, verifies that the
+normal authoring session rejects its source provenance, and constructs
+an isolated, explicitly synthetic test-only copy with unchanged physical
+membership, poses, UGO, two b graphics and visual label. Each of the 15
+declared Nets is independently attempted from the same starting copy.
+Successful routes must preserve all 62 PinRefs, reach one connected group
+and retain review flags; failures must preserve the entire copy.
+The test emits TL494_R32A_PREFLIGHT with each Net's result and metrics
+or explicit rejection reason. No minimum successful count is asserted:
+this is a diagnostic baseline, not simultaneous routing acceptance.
+No source unlock, saved candidate, native validation or change to the
+canonical source fixture is authorized by this test.
