@@ -1,9 +1,12 @@
 name: Visual CAD R9 real native Windows project persistence
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [ui/r32l-native-label-parity]
+    types: [opened, synchronize, reopened]
   push:
     # R11 and main must not silently bypass the installed Windows regression.
-    branches: [ui/visual-cad-mvp, main, 'fix/r11-*', ui/r15-group-clipboard', ui/r19-route-cleanup, ui/r23-topology-inventory, 'ui/r33-*']
+    branches: [ui/visual-cad-mvp, main, 'fix/r11-*', ui/r15-group-clipboard', ui/r19-route-cleanup, ui/r23-topology-inventory]
     paths:
       - '.github/workflows/visual-cad-r9-native-persist.yml'
       - '.github/tools/r9-native-*'
@@ -28,16 +31,19 @@ concurrency:
   cancel-in-progress: true
 jobs:
   native-persist:
+    if: github.event_name != 'pull_request' || startsWith(github.head_ref, 'ui/r33-')
     name: Current-SHA Tauri / WebView2 / native picker / Python ProjectV2
     runs-on: windows-2022
     timeout-minutes: 100
     env:
       RUST_BACKTRACE: '1'
       CARGO_BUILD_JOBS: '2'
-      GSCAD_R9_BINARY_SOURCE_SHA: ${{ github.sha }}
-      GSCAD_R33_ACCEPT_FULL: ${{ startsWith(github.ref_name, 'ui/r33-') && '1' || '0' }}
+      GSCAD_R9_BINARY_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      GSCAD_R33_ACCEPT_FULL: ${{ startsWith(github.head_ref || github.ref_name, 'ui/r33-') && '1' || '0' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
