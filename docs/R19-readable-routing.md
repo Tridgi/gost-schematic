@@ -47,3 +47,30 @@ The search is bounded and conservative; it is not a complete global placement
 solver. The 4 mm minimum gap and 1 mm obstacle envelope are draft heuristics,
 not normative GOST dimensions. General parallel rail/branch layout, full
 annotation collision checking and multi-net topology optimization remain open.
+
+
+## R21 — closed parallel branch layout
+
+Select 3–24 existing two-terminal components whose physical pins belong
+to exactly two complete, already connected Nets. Both Nets must be wholly
+within the selection and active sheet, with no free ends and one unlocked
+electrical layer per Net. No membership inference from proximity or labels.
+
+- Rail-only mode leaves all component poses untouched. Two straight rails
+  run outside the selected symbol bounds, with orthogonal branch leads.
+  Extreme taps have invisible degree-2 splices, intermediate taps explicit
+  degree-3 junctions. Finite 5/10/15/20/30 mm rail offsets are tried.
+- Symmetry mode requires equal physical pin spans and opposed normals.
+  It preserves extreme lateral coordinates, distributes physical contacts
+  evenly to within 1 µm, and aligns both pin rows using a median or fixed
+  locked-row constraint. No external Net member may be moved.
+- Unrelated wires, nodes, symbols and printable margins are checked
+  conservatively. Text/label anchors are obstacles, not complete text
+  outlines. Changed wire and junction IDs are intentionally regenerated
+  with explicit user consent. Net IDs and physical membership never change.
+  Equivalent repeated geometry is rejected as NO_CHANGE.
+- The whole edit is one CAS transaction, with exact Undo/Redo and validation
+  of signed connectivity. New routes require review.
+
+This is not a general power/ground bus or arbitrary branched Net solver.
+Rail offsets, minimum gap and bounding clearance are DRAFT heuristics.
