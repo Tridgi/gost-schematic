@@ -488,3 +488,14 @@ test('R14 stationary splice remains electrically explicit after both adjacent co
  assert.equal(e.validateNet('N1').status,'partial');
  assert.equal(e.validateNet('N1').pin_groups.length,1);
 });
+
+test('R19 minimizes bends, balances Z routes and respects outward normals',()=>{
+ assert.deepEqual(routeManhattan([0,0],[14000,0],[1,0],[-1,0]),[[0,0],[14000,0]]);
+ assert.deepEqual(routeManhattan([0,0],[14000,8000],[1,0],[0,-1]),[[0,0],[14000,0],[14000,8000]]);
+ assert.deepEqual(routeManhattan([0,0],[14000,8000],[1,0],[-1,0]),[[0,0],[7000,0],[7000,8000],[14000,8000]]);
+ assert.deepEqual(routeManhattan([0,0],[8000,14000],[0,1],[0,-1]),[[0,0],[0,7000],[8000,7000],[8000,14000]]);
+ const path=routeManhattan([0,0],[14000,0],[-1,0],[1,0]);
+ assert.ok(path.length>=4);assert.ok(path[1][0]<0);assert.ok(path.at(-2)[0]>14000);
+ assert.deepEqual(path,routeManhattan([0,0],[14000,0],[-1,0],[1,0]));
+ err(()=>routeManhattan([0,0],[14000,0],[1,0],[-1,0],2000,{accept:()=>false}),'REROUTE_REQUIRED');
+});

@@ -784,3 +784,58 @@ test('R17e Cu constant annotation is source-backed, upright and non-electrical a
  assert.throws(()=>new AuthoringSession(corrupt),/INVALID_CONSTANT_ANNOTATION/);
  assert.deepEqual(new AuthoringSession(doc).file,doc);
 });
+
+test('R19 clean route avoids an intervening component and does not change electrical membership',()=>{
+ const s=newSession();
+ s.place(s.newTransaction('left'),'symbol/resistor.fixed',[60000,100000]);
+ s.place(s.newTransaction('right'),'symbol/resistor.fixed',[160000,100000]);
+ s.place(s.newTransaction('obstacle'),'symbol/resistor.fixed',[110000,100000]);
+ const [a,b,c]=s.file.project.components;
+ const before=s.file;
+ s.connect(s.newTransaction('smart'),pin(a.id,'2'),pin(b.id,'1'),[],true);
+ const after=s.file,w=after.project.sheets[0].wires[0];
+ assert.equal(w.vertices.length,6);
+ assert.deepEqual(w.vertices[0].at_um,[68000,100000]);
+ assert.deepEqual(w.vertices.at(-1).at_um,[152000,100000]);
+ assert.ok(w.vertices.some(v=>Math.abs(v.at_um[1]-100000)>=3150));
+ assert.deepEqual(after.project.nets[0].members,[pin(a.id,'2'),pin(b.id,'1')]);
+ assert.ok(!after.project.nets[0].members.some(p=>p.component_id===c.id));
+ assert.deepEqual(after.project.sheets[0].instances,before.project.sheets[0].instances);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);assert.deepEqual(s.file,after);
+});
+test('R19 physical-pin alignment changes only one pose and one route with atomic undo',()=>{
+ const s=newSession();
+ const ia=s.place(s.newTransaction('left'),'symbol/resistor.fixed',[60000,100000]);
+ const ib=s.place(s.newTransaction('right'),'symbol/resistor.fixed',[160000,120000]);
+ const [a,b]=s.file.project.components;
+ s.connect(s.newTransaction('connect'),pin(a.id,'2'),pin(b.id,'1'),[],true);
+ const before=s.file,rev=s.revision,old=before.project.sheets[0].wires[0];
+ assert.equal(old.vertices.length,4);
+ const result=s.alignConnectedPair(s.newTransaction('align'),[ia,ib]);
+ assert.equal(result.moved,ib);assert.deepEqual(result.delta,[0,-20000]);assert.equal(result.beforeBends,2);
+ const after=s.file,w=after.project.sheets[0].wires[0];
+ assert.equal(s.revision,rev+1);assert.equal(w.id,old.id);assert.equal(w.net_id,old.net_id);
+ assert.equal(w.vertices.length,2);assert.deepEqual(w.vertices.map(v=>v.at_um),[[68000,100000],[152000,100000]]);
+ assert.deepEqual(w.vertices.map(v=>v.anchor),[old.vertices[0].anchor,old.vertices.at(-1).anchor]);
+ assert.deepEqual(w.vertices.map(v=>v.id),[old.vertices[0].id,old.vertices.at(-1).id]);
+ assert.deepEqual(after.project.nets.map(n=>[n.id,n.members]),before.project.nets.map(n=>[n.id,n.members]));
+ assert.equal(w.needs_routing_review,true);
+ assert.throws(()=>s.alignConnectedPair(s.newTransaction('again'),[ia,ib]),/NO_CHANGE/);
+ assert.deepEqual(s.file,after);assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);assert.deepEqual(new AuthoringSession(s.file).file,after);
+});
+test('R19 alignment refuses moving both candidates with other attached routes',()=>{
+ const s=newSession();
+ const ia=s.place(s.newTransaction('left'),'symbol/resistor.fixed',[60000,100000]);
+ const ib=s.place(s.newTransaction('right'),'symbol/resistor.fixed',[160000,120000]);
+ s.place(s.newTransaction('left-outer'),'symbol/resistor.fixed',[30000,100000]);
+ s.place(s.newTransaction('right-outer'),'symbol/resistor.fixed',[200000,120000]);
+ const [a,b,c,d]=s.file.project.components;
+ s.connect(s.newTransaction('pair'),pin(a.id,'2'),pin(b.id,'1'));
+ s.connect(s.newTransaction('left'),pin(c.id,'2'),pin(a.id,'1'));
+ s.connect(s.newTransaction('right'),pin(b.id,'2'),pin(d.id,'1'));
+ const before=s.file,rev=s.revision;
+ assert.throws(()=>s.alignConnectedPair(s.newTransaction('align'),[ia,ib]),/ALIGN_NO_SAFE_STRAIGHT_ROUTE/);
+ assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
+});

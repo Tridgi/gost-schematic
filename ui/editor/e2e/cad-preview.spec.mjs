@@ -1212,3 +1212,41 @@ test('R18 live diagnostics counts, filters and select affected UGO do not mutate
  await page.getByRole('button',{name:'Отменить'}).click();
  await expect(warnings).toHaveCount(2);
 });
+
+test('R19 smart routing and aligned connected pins reduce a Z route to one segment',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ for(const [x,y] of [[.28,.38],[.68,.55]]){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*y);
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const placed=await saved(),[a,b]=placed.project.components;
+ await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByTestId('smart-routing').click();
+ await page.getByTestId('tool-wire').click();
+ await page.getByTestId('signed-pin-'+a.id+'-2').click();
+ await page.getByTestId('signed-pin-'+b.id+'-1').click();
+ await page.getByTestId('tool-select').click();
+ const before=await saved();
+ expect(before.project.sheets[0].wires[0].vertices).toHaveLength(4);
+ await page.mouse.move(paper.x+paper.width*.15,paper.y+paper.height*.26);
+ await page.mouse.down();await page.mouse.move(paper.x+paper.width*.82,paper.y+paper.height*.68,{steps:6});await page.mouse.up();
+ await expect(page.getByTestId('group-selection-summary')).toContainText('2');
+ page.once('dialog',d=>d.accept());
+ await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByTestId('align-connected-pair').click();
+ const after=await saved(),w=after.project.sheets[0].wires[0];
+ expect(w.vertices).toHaveLength(2);expect(w.vertices[0].at_um[1]).toBe(w.vertices[1].at_um[1]);
+ expect(after.project.nets.map(n=>[n.id,n.members])).toEqual(before.project.nets.map(n=>[n.id,n.members]));
+ expect(w.id).toBe(before.project.sheets[0].wires[0].id);
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ expect((await saved()).project).toEqual(after.project);
+});

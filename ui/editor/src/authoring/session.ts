@@ -14,7 +14,7 @@ import type {
   Component, SymbolDefinition, Net, WireEndpoint, WirePolyline, Junction, Splice
 } from '../model/contract';
 import {
-  ManualWireEngine, WireError, constructWire, type WiringSnapshot,
+  ManualWireEngine, WireError, constructWire, routeManhattan, type WiringSnapshot,
   type PointUm as MutablePoint, type PinRef as MutablePin
 } from '../wires/manual-wire';
 import {loadProjectWires} from '../wires/project-v2-adapter';
@@ -101,6 +101,59 @@ function translateBounds(b:Bounds,p:readonly number[]):Bounds {
 function separated(a:Bounds,b:Bounds,clearance:number):boolean {
   return a.maxX+clearance<=b.minX||b.maxX+clearance<=a.minX||
     a.maxY+clearance<=b.minY||b.maxY+clearance<=a.minY;
+}
+/** Sheet-aware bounded orthogonal route. Keep other symbols/wires clear;
+ * endpoint symbol boxes may only be traversed by their own outward lead.
+ * Ordinary interior X crossings are a fallback, never implicit connections. */
+function cleanRoute(file:ProjectFileV2,start:PinRef,end:PinRef,a:WorldPin,b:WorldPin,netId:string,ignoreWire?:string):MutablePoint[]{
+ const sheet=file.project.sheets[indexOfSheet(file)],margin=sheet.frame.margin_um;
+ const defs=new Map(file.project.symbol_definitions.map(d=>[d.id,d]));
+ const obstacles=sheet.instances.map(i=>{
+   const def=defs.get(i.symbol_id);if(!def)reject('UNKNOWN_SYMBOL');
+   const box=translateBounds(symbolBounds(def,i.rotation_deg,i.mirror_x),i.origin_um);
+   return {id:i.component_id,box};
+ });
+ const clearance=1000;
+ const rect=(p:readonly number[],q:readonly number[]):Bounds=>({minX:Math.min(p[0],q[0]),minY:Math.min(p[1],q[1]),maxX:Math.max(p[0],q[0]),maxY:Math.max(p[1],q[1])});
+ const hit=(p:Bounds,q:Bounds)=>p.minX<=q.maxX&&q.minX<=p.maxX&&p.minY<=q.maxY&&q.minY<=p.maxY;
+ const eq=(p:readonly number[],q:readonly number[])=>p[0]===q[0]&&p[1]===q[1];
+ const channelsX:number[]=[],channelsY:number[]=[];
+ const channel=(box:Bounds)=>{
+   channelsX.push(Math.floor(box.minX)-clearance,Math.ceil(box.maxX)+clearance);
+   channelsY.push(Math.floor(box.minY)-clearance,Math.ceil(box.maxY)+clearance);
+ };
+ obstacles.forEach(o=>channel(o.box));
+ const wires=sheet.wires.filter(w=>w.id!==ignoreWire).flatMap(w=>w.vertices.slice(1).map((v,i)=>({w,a:w.vertices[i],b:v,box:rect(w.vertices[i].at_um,v.at_um)})));
+ wires.forEach(w=>channel(w.box));
+ const nodePoints=[...sheet.junctions,...sheet.splices].map(n=>n.at_um);
+ const isShared=(p:readonly number[],w:typeof wires[number])=>w.w.net_id===netId&&
+   [w.a,w.b].some(v=>eq(v.at_um,p)&&v.anchor.kind==='pin'&&
+    ((eq(p,a.at_um)&&pinKey(v.anchor)===pinKey(start))||(eq(p,b.at_um)&&pinKey(v.anchor)===pinKey(end))));
+ const accept=(path:MutablePoint[],allowCrossing:boolean)=>{
+   if(path.some(p=>p[0]<margin||p[1]<margin||p[0]>sheet.frame.size_um[0]-margin||p[1]>sheet.frame.size_um[1]-margin))return false;
+   for(let i=1;i<path.length;i++){
+     const p=path[i-1],q=path[i],box=rect(p,q);
+     for(const o of obstacles){
+       if((i===1&&o.id===start.component_id)||(i===path.length-1&&o.id===end.component_id))continue;
+       if(!separated(box,o.box,clearance))return false;
+     }
+     if(nodePoints.some(n=>hit(box,rect(n,n))))return false;
+     for(const w of wires){
+       if(!hit(box,w.box))continue;
+       const overlap= {minX:Math.max(box.minX,w.box.minX),maxX:Math.min(box.maxX,w.box.maxX),minY:Math.max(box.minY,w.box.minY),maxY:Math.min(box.maxY,w.box.maxY)};
+       if(overlap.minX!==overlap.maxX||overlap.minY!==overlap.maxY)return false;
+       const at=[overlap.minX,overlap.minY];
+       if((eq(at,p)||eq(at,q))&&isShared(at,w))continue;
+       const cross=(p[0]===q[0])!==(w.a.at_um[0]===w.b.at_um[0]);
+       if(!allowCrossing||!cross||eq(at,p)||eq(at,q)||eq(at,w.a.at_um)||eq(at,w.b.at_um))return false;
+     }
+   }
+   return true;
+ };
+ const opts={channelsX,channelsY};
+ try{return routeManhattan(xy(a.at_um),xy(b.at_um),xy(a.normal),xy(b.normal),2000,{...opts,accept:p=>accept(p,false)});}
+ catch(e){if(!(e instanceof WireError)||e.code!=='REROUTE_REQUIRED')throw e;}
+ return routeManhattan(xy(a.at_um),xy(b.at_um),xy(a.normal),xy(b.normal),2000,{...opts,accept:p=>accept(p,true)});
 }
 function expectedCounts(file:ProjectFileV2):void {
   const p=file.project;
@@ -671,7 +724,7 @@ export class AuthoringSession {
     return {at_um:[local[0]+comp.origin_um[0],local[1]+comp.origin_um[1]],normal,
       net_id:net?.id??null};
   }
-  connect(tx:Tx,start:PinRef,end:PinRef,bends:readonly PointUm[]=[]):void{
+  connect(tx:Tx,start:PinRef,end:PinRef,bends:readonly PointUm[]=[],smart=false):void{
     this.edit(tx,draft=>{
       const a=this.beginWire(start),b=this.beginWire(end);
       if(pinKey(start)===pinKey(end))reject('SAME_PIN');
@@ -693,7 +746,7 @@ export class AuthoringSession {
       const {subset,session}=localSession(draft,this.clock);
       const wpA=session.engine.beginWire(start),wpB=session.engine.beginWire(end);
       const from:WorldPin={...wpA,net_id:netId},to:WorldPin={...wpB,net_id:netId};
-      const points=bends.length?addRouteBends(from,to,bends):
+      const points=bends.length?addRouteBends(from,to,bends):smart?cleanRoute(draft,start,end,from,to,netId):
         session.engine.previewRoute({kind:'pin',...start},{kind:'pin',...end});
       let num=1;
       while(session.engine.snapshot.wires.some(w=>w.id==='manual-'+num))num++;
@@ -704,6 +757,71 @@ export class AuthoringSession {
       session.engine.commitWire(session.engine.newTransaction('connect-pin'),wire);
       return materialize(draft,subset,session);
     });
+  }
+  /** Align the actual connected pins, not symbol centers. Move one component
+   * only if it has no other attached wire; never rewrite shared junctions.
+   * The selected direct wire must become a safe, straight conductor. */
+  alignConnectedPair(tx:Tx,instanceIds:readonly string[]):{moved:string;delta:MutablePoint;beforeBends:number}{
+    let result:{moved:string;delta:MutablePoint;beforeBends:number}|null=null;
+    this.edit(tx,draft=>{
+      if(instanceIds.length!==2||new Set(instanceIds).size!==2)reject('INVALID_GROUP');
+      const sheet=draft.project.sheets[indexOfSheet(draft)];
+      const pair=instanceIds.map(id=>sheet.instances.find(i=>i.id===id));
+      if(pair.some(i=>!i))reject('UNKNOWN_INSTANCE');
+      const ids=new Set(pair.map(i=>i!.component_id));
+      const direct=sheet.wires.filter(w=>{
+        const a=w.vertices[0].anchor,b=w.vertices.at(-1)!.anchor;
+        return a.kind==='pin'&&b.kind==='pin'&&a.component_id!==b.component_id&&ids.has(a.component_id)&&ids.has(b.component_id);
+      });
+      if(direct.length!==1)reject('ALIGN_REQUIRES_ONE_DIRECT_WIRE');
+      const wire=direct[0],first=wire.vertices[0].anchor,last=wire.vertices.at(-1)!.anchor;
+      if(first.kind!=='pin'||last.kind!=='pin')reject('INVALID_PIN');
+      if(sheet.layers.find(l=>l.id===wire.layer_id)?.locked)reject('LAYER_LOCKED');
+      const a=this.beginWire(first),b=this.beginWire(last);
+      if(a.normal[0]!==-b.normal[0]||a.normal[1]!==-b.normal[1])reject('ALIGN_REQUIRES_FACING_PINS');
+      const axis=a.normal[0]!==0?1:0;
+      if(a.at_um[axis]===b.at_um[axis]&&wire.vertices.length===2)reject('NO_CHANGE');
+      const defs=new Map(draft.project.symbol_definitions.map(d=>[d.id,d]));
+      const bounds=(i:SymbolInstance)=>{const d=defs.get(i.symbol_id);if(!d)reject('UNKNOWN_SYMBOL');
+        return translateBounds(symbolBounds(d,i.rotation_deg,i.mirror_x),i.origin_um)};
+      const candidates=[{pin:last,delta:a.at_um[axis]-b.at_um[axis]},{pin:first,delta:b.at_um[axis]-a.at_um[axis]}];
+      for(const option of candidates){
+        const trial=clone(draft),sh=trial.project.sheets[indexOfSheet(trial)];
+        const moving=sh.instances.find(i=>i.component_id===option.pin.component_id)!;
+        if(sh.layers.find(l=>l.id===moving.layer_id)?.locked)continue;
+        if(trial.project.sheets.some(other=>other.id!==sh.id&&other.instances.some(i=>i.component_id===moving.component_id)))continue;
+        if(sh.wires.some(w=>w.id!==wire.id&&w.vertices.some(v=>v.anchor.kind==='pin'&&v.anchor.component_id===moving.component_id)))continue;
+        const delta:MutablePoint=axis===0?[option.delta,0]:[0,option.delta];
+        moving.origin_um=xy([moving.origin_um[0]+delta[0],moving.origin_um[1]+delta[1]]);
+        const box=bounds(moving),margin=sh.frame.margin_um;
+        if(box.minX<margin||box.minY<margin||box.maxX>sh.frame.size_um[0]-margin||box.maxY>sh.frame.size_um[1]-margin)continue;
+        if(sh.instances.some(i=>i.id!==moving.id&&!separated(box,bounds(i),1000)))continue;
+        if(sh.wires.some(w=>w.id!==wire.id&&w.vertices.slice(1).some((v,i)=>{
+          const p=w.vertices[i].at_um,q=v.at_um;
+          return !separated(box,{minX:Math.min(p[0],q[0]),minY:Math.min(p[1],q[1]),maxX:Math.max(p[0],q[0]),maxY:Math.max(p[1],q[1])},1000);
+        })))continue;
+        if([...sh.junctions,...sh.splices].some(n=>!separated(box,{minX:n.at_um[0],maxX:n.at_um[0],minY:n.at_um[1],maxY:n.at_um[1]},1000)))continue;
+        const shift=(p:WorldPin,ref:PinRef):WorldPin=>ref.component_id===moving.component_id?
+          {...p,at_um:xy([p.at_um[0]+delta[0],p.at_um[1]+delta[1]])}:p;
+        let points:MutablePoint[];
+        try{points=cleanRoute(trial,first,last,shift(a,first),shift(b,last),wire.net_id,wire.id)}
+        catch(e){if(e instanceof WireError&&e.code==='REROUTE_REQUIRED')continue;throw e;}
+        if(points.length!==2)continue;
+        const old=sh.wires.find(w=>w.id===wire.id)!;
+        // Preserve both terminal vertex identities, wire ID, Net and layer.
+        const vertices=[{...old.vertices[0],at_um:points[0]},{...old.vertices.at(-1)!,at_um:points[1]}];
+        const beforeBends=old.vertices.length-2;
+        old.vertices=vertices;
+        old.segments=[{id:newId('segment'),from_vertex_id:vertices[0].id,to_vertex_id:vertices[1].id}];
+        old.needs_routing_review=true;
+        const {subset,session}=localSession(trial,this.clock);
+        result={moved:moving.id,delta,beforeBends};
+        return materialize(trial,subset,session);
+      }
+      reject('ALIGN_NO_SAFE_STRAIGHT_ROUTE');
+    });
+    if(!result)reject('ALIGN_NO_SAFE_STRAIGHT_ROUTE');
+    return result;
   }
   moveSegment(tx:Tx,wireId:string,segmentId:string,deltaUm:number):void{
     this.wireEdit(tx,eng=>eng.moveSegmentById(eng.newTransaction('move-segment'),

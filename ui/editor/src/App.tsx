@@ -109,6 +109,7 @@ export default function App() {
   const [clipboard,setClipboard]=useState<({kind:'single';template:ComponentClipboard}|{kind:'group';template:GroupClipboard})&{anchor:ComponentClipboard['origin_um']}|null>(null);
   const [,setPending]=useState<PinRef|null>(null);
   const [grid,setGrid]=useState(true),[snap,setSnap]=useState(true);
+  const [smartRouting,setSmartRouting]=useState(false);
   const [zoom,setZoom]=useState(1);
   const [zoomRequest,setZoomRequest]=useState<{percent:50|100|200;token:number}|null>(null);
   const [fitRequest,setFitRequest]=useState(0);
@@ -563,7 +564,7 @@ export default function App() {
         if(intent.kind==='commitWire'){
           if(intent.target.kind!=='pin')throw Error('UNBOUND_FREE_NOT_ALLOWED');
           authored.connect(authored.newTransaction('connect-physical-pins'),
-            intent.source,intent.target.pin,intent.bend_points_um);
+            intent.source,intent.target.pin,intent.bend_points_um,smartRouting);
           adoptAuthored();setPending(null);
           setIssue('Выводы соединены: электрический Net назначен транзакционно.');
           return true;
@@ -840,6 +841,14 @@ export default function App() {
     onUndo={handleUndo} onRedo={handleRedo}
     onCopy={authoringRef.current&&(selectedInst||groupIds.length>1)&&tool==='select'?handleCopy:undefined}
     onPaste={authoringRef.current&&clipboard&&tool==='select'?handlePaste:undefined}
+    smartRouting={smartRouting} onToggleSmartRouting={authoringRef.current?setSmartRouting:undefined}
+    onAlignConnectedPair={authoringRef.current&&groupIds.length===2&&tool==='select'?()=>{
+      const a=authoringRef.current!;
+      if(!window.confirm('Выровнять соединённые физические выводы, переместив один из двух элементов? Остальные связи сохраняются.'))return;
+      try{const result=a.alignConnectedPair(a.newTransaction('align-connected-pair'),groupIds);adoptAuthored();
+        setIssue('Выводы выровнены: '+result.beforeBends+' изгибов → 0. Проверьте маршрут.');}
+      catch(e){setIssue('ALIGN_FAILED: '+String(e));}
+    }:undefined}
     onNew={handleNew}
     activePaper={activeSheet.frame.paper.split(' ')[0] as 'A4'|'A3'|'A2'}
     onPaperChange={authoringRef.current?paper=>{
