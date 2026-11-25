@@ -5,6 +5,7 @@ potential clashes, not proven pixel/curve intersections or GOST compliance.
 """
 from dataclasses import dataclass
 from importlib.resources import files
+from math import isqrt
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -162,7 +163,7 @@ def _example_nominal(part: PartDefinition) -> Quantity | None:
 def build_catalog_review_scene(
     catalog_root: Path | None = None,
     *,
-    columns: int = 4,
+    columns: int | None = None,
 ) -> ReviewScene:
     """Fit all discovered DRAFT UGO in content-sized cells, no fixed catalog count.
 
@@ -170,9 +171,12 @@ def build_catalog_review_scene(
     strokes, body keepouts and terminal-escape corridors. Padding reserves
     space for labels, but any unplaceable text remains a diagnostic failure.
     """
+    entries = discover_catalog_entries(catalog_root)
+    if columns is None:
+        # Keep an expanding review catalog approximately square without scaling UGO.
+        columns = max(4, isqrt(len(entries) - 1) + 1)
     if type(columns) is not int or columns < 1:
         raise ValueError("columns must be a positive integer")
-    entries = discover_catalog_entries(catalog_root)
     symbols = {entry.part.identifier: entry.symbol for entry in entries}
 
     references: set[str] = set()

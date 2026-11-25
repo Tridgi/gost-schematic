@@ -1,0 +1,40 @@
+name: Native catalog reference renders
+on:
+  push:
+    branches: ["catalog/resistor-reference-batch01"]
+  pull_request:
+    paths:
+      - "src/gost_schematic/catalog/**"
+      - "examples/review_resistor_batch*.py"
+      - ".github/workflows/reference-catalog-render.yml"
+permissions:
+  contents: read
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ".[dev]"
+      - name: Render actual installed catalog
+        run: |
+          python examples/review_resistor_batch01.py
+          python examples/review_resistor_batch02.py
+      - name: Rasterize native galleries
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+          for gallery in output/resistor-batch*/gallery-*.svg; do
+            rsvg-convert --background-color white --width 2400 -o "${gallery%.svg}.png" "$gallery"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-reference-catalog-svg-png
+          path: output/resistor-batch*/
+          if-no-files-found: error
+      - name: Check catalog structural integrity and focused regressions
+        run: |
+          python scripts/audit_symbol_catalog.py --output output/catalog-integrity-audit.json
+          pytest -q tests/test_resistor_batch01.py tests/test_resistor_batch02.py
