@@ -88,6 +88,24 @@ function curvedContact(segment,symbol,curve){
  }
  return result;
 }
+/** Minimum distance for a disjoint axis-aligned conductor and a cardinal
+ * circular arc: endpoints, radial projections and normal extrema suffice.
+ * Uses the visible semicircle only, never the invisible complementary half. */
+function curvedNear(segment,symbol,curve){
+ const pad=curve.stroke_um/2;if(!(pad>0))return false;
+ const c=world(symbol,curve.center),r=curve.radius;
+ const p=segment.a.at_um,q=segment.b.at_um;
+ const apex=curve.kind==='semicircle'?world(symbol,curve.points_um[1]):null;
+ const visible=v=>!apex||(v[0]-c[0])*(apex[0]-c[0])+(v[1]-c[1])*(apex[1]-c[1])>=0;
+ let distance2=Infinity;
+ for(const v of [p,q]){
+  const dx=v[0]-c[0],dy=v[1]-c[1],d=Math.hypot(dx,dy);
+  if(visible(v))distance2=Math.min(distance2,(d-r)**2);
+ }
+ const extrema=[[c[0]-r,c[1]],[c[0]+r,c[1]],[c[0],c[1]-r],[c[0],c[1]+r]];
+ for(const v of extrema)if(visible(v))distance2=Math.min(distance2,pointSegmentDistance2(v,p,q));
+ return distance2<=pad*pad;
+}
 export function analyzeDiagnostics(file,scene,snapshot,routeStatuses={},options={}){
  const maxItems=options.maxItems??200,maxComparisons=options.maxComparisons??150000;
  const buckets={error:[],warning:[],info:[]},seen=new Set(),counts={error:0,warning:0,info:0};
@@ -198,7 +216,8 @@ export function analyzeDiagnostics(file,scene,snapshot,routeStatuses={},options=
    }
    if(!collision)for(const curve of s.curves??[]){
     if(!budget())break outer;
-    if(curvedContact(seg,s,curve).some(hit=>!allowed(hit))){collision=true;break}
+    const hits=curvedContact(seg,s,curve);
+    if(hits.some(hit=>!allowed(hit))||(!hits.length&&curvedNear(seg,s,curve))){collision=true;break}
    }
    // Text is upright sheet ink; use the same conservative envelope as
    // the placement/print geometry rather than treating it as a conductor.
