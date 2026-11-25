@@ -853,6 +853,13 @@ export default function App() {
         setIssue('Оптимизировано '+result.changed+' из '+result.checked+' проводников; устранено изгибов: '+result.removedBends+'; сокращено '+(result.removedLengthUm/1000).toFixed(3)+' мм. Проверьте маршруты.');}
       catch(e){setIssue(e instanceof WireError&&e.code==='NO_CHANGE'?'Без изменений: безопасного улучшения не найдено.':'ROUTE_CLEANUP_FAILED: '+String(e));}
     }:undefined}
+    onDistributeParallel={authoringRef.current&&groupIds.length>=3&&tool==='select'?()=>{
+      const a=authoringRef.current!;
+      if(!window.confirm('Выровнять и равномерно распределить параллельные УГО, затем перестроить обе магистрали? Состав цепей сохранится.'))return;
+      try{const result=a.buildParallelRails(a.newTransaction('parallel-distribution'),groupIds,true);adoptAuthored();
+        setIssue('Распределены параллельные ветви: '+result.branches+', построены магистрали и явные узлы. Проверьте маршруты.');}
+      catch(e){setIssue(e instanceof WireError&&e.code==='NO_CHANGE'?'Параллельные ветви уже распределены.':'PARALLEL_LAYOUT_FAILED: '+String(e));}
+    }:undefined}
     onBuildParallelRails={authoringRef.current&&groupIds.length>=3&&tool==='select'?()=>{
       const a=authoringRef.current!;
       if(!window.confirm('Перестроить две замкнутые параллельные цепи в общие магистрали? УГО и состав Nets сохранятся, проводники и узлы этих двух цепей будут заменены.'))return;
