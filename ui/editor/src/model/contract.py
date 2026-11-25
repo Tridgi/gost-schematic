@@ -176,6 +176,7 @@ def _semantic(project: dict) -> None:
             if symbol_id not in symbols or symbols[symbol_id]['part_id'] != part['id']:
                 raise ContractError('PART_SYMBOL_MISMATCH', part['id'])
     for sym in symbols.values():
+        _unique([a['key'] for a in sym.get('constant_annotations', [])], sym['id']+' constant annotations')
         # Circle = center and cardinal rim point; semicircle = start, apex, end.
         # All values remain integer µm, and D4 transforms preserve this contract.
         for g in sym['graphics']:
