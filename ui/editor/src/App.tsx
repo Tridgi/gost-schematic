@@ -18,6 +18,7 @@ import {traceNativeClose} from './native/close-trace';
 import {parseProjectJsonStrict} from './authoring/strict-json';
 import { loadProjectWires } from './wires/project-v2-adapter';
 import { projectToCanvasScene } from './canvas/scene-projection.mjs';
+import {topologyInventory} from './authoring/topology-inventory.mjs';
 import {analyzeDiagnostics} from './authoring/diagnostics.mjs';
 import { detectPaperOverflow } from './canvas/paper-bounds.mjs';
 import { renderProjectPreviewSVG, renderPreviewPng300 } from './export/browser-export';
@@ -229,6 +230,7 @@ export default function App() {
       thumbnail:<CataloguePreview symbol={symbol}/>
     }));
   },[document]);
+  const topology=useMemo(()=>document&&activeSheet?topologyInventory(document,activeSheet.id):undefined,[document,activeSheet?.id]);
   const diagnosticReport=useMemo(()=>{
     if(!document||!snapshot||!activeSheet)return null;
     const scene=projectToCanvasScene(document,activeSheet.id);
@@ -769,7 +771,7 @@ export default function App() {
   return <EditorShell
     projectName={document.project.title+(authoringRef.current?' · R3 AUTHORING':' · R2 PREVIEW')} dirty={dirty}
     baseRevision={String(snapshot.revision)} sheets={document.project.sheets.map(s=>({id:s.id,title:s.name}))}
-    activeSheetId={activeSheet.id} catalog={catalog} tree={tree}
+    activeSheetId={activeSheet.id} catalog={catalog} tree={tree} topology={topology}
     catalogMissingCount={authoringRef.current?catalogAdditions(document.project.part_definitions,document.project.symbol_definitions).length:0}
     onCatalogUpgrade={authoringRef.current?()=>{
       try{const a=authoringRef.current!;const added=a.upgradeCatalog(a.newTransaction('upgrade-catalog'));
