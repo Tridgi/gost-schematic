@@ -110,6 +110,7 @@ export default function App() {
   const [,setPending]=useState<PinRef|null>(null);
   const [grid,setGrid]=useState(true),[snap,setSnap]=useState(true);
   const [smartRouting,setSmartRouting]=useState(false);
+  const [pinMagnet,setPinMagnet]=useState(false);
   const [zoom,setZoom]=useState(1);
   const [zoomRequest,setZoomRequest]=useState<{percent:50|100|200;token:number}|null>(null);
   const [fitRequest,setFitRequest]=useState(0);
@@ -521,11 +522,12 @@ export default function App() {
         if(intent.kind==='placeSymbol'){
           if(intent.base_revision!==authored.revision)throw Error('STALE_REVISION');
           if(!placementSymbol)throw Error('NO_SELECTED_CATALOG_SYMBOL');
+          const hint=pinMagnet?authored.suggestAlignedPlacement(placementSymbol,intent.at_um):null;
           const id=authored.place(authored.newTransaction('place-component'),
-            placementSymbol,intent.at_um);
+            placementSymbol,hint?.origin??intent.at_um);
           adoptAuthored();setGroupIds([]);setSelectedId(id);
           setTool('select');setPlacementSymbol(null);
-          setIssue('УГО размещено из DRAFT-каталога. Физические выводы сохранены.');
+          setIssue(hint?'Выводы выровнены по одной оси. Электрическая цепь не создана.':'УГО размещено из DRAFT-каталога. Физические выводы сохранены.');
           return true;
         }
         if(intent.kind==='moveInstance'||intent.kind==='rotateInstance'){
@@ -753,6 +755,7 @@ export default function App() {
         zoomRequest={zoomRequest??undefined} fitRequest={fitRequest}
         onIntent={onCanvasIntent} onZoomPercent={percent=>setZoom(percent/100)}
         canEdit={!!authoringRef.current}
+        placementHint={pinMagnet&&tool==='place'&&placementSymbol&&authoringRef.current?at=>authoringRef.current?.suggestAlignedPlacement(placementSymbol,at)??null:undefined}
         onCopy={authoringRef.current&&(selectedInst||groupIds.length>1)&&tool==='select'?handleCopy:undefined}
         onPaste={authoringRef.current&&clipboard&&tool==='select'?handlePaste:undefined}
         onFitPage={()=>setFitRequest(n=>n+1)}/>
@@ -842,6 +845,7 @@ export default function App() {
     onCopy={authoringRef.current&&(selectedInst||groupIds.length>1)&&tool==='select'?handleCopy:undefined}
     onPaste={authoringRef.current&&clipboard&&tool==='select'?handlePaste:undefined}
     smartRouting={smartRouting} onToggleSmartRouting={authoringRef.current?setSmartRouting:undefined}
+    pinMagnet={pinMagnet} onTogglePinMagnet={authoringRef.current?setPinMagnet:undefined}
     onAlignConnectedPair={authoringRef.current&&groupIds.length===2&&tool==='select'?()=>{
       const a=authoringRef.current!;
       if(!window.confirm('Выровнять соединённые физические выводы, переместив один из двух элементов? Остальные связи сохраняются.'))return;

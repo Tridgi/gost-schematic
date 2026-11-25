@@ -839,3 +839,49 @@ test('R19 alignment refuses moving both candidates with other attached routes',(
  assert.throws(()=>s.alignConnectedPair(s.newTransaction('align'),[ia,ib]),/ALIGN_NO_SAFE_STRAIGHT_ROUTE/);
  assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
 });
+
+test('R19b magnet aligns actual facing pin axes without creating Net or moving prior components',()=>{
+ const s=newSession();
+ s.place(s.newTransaction('reference'),'symbol/resistor.fixed',[100000,100000]);
+ const before=s.file,rev=s.revision,ref=before.project.components[0];
+ const hint=s.suggestAlignedPlacement('symbol/resistor.fixed',[155000,103000]);
+ assert.ok(hint);assert.deepEqual(hint.origin,[155000,100000]);
+ assert.deepEqual(hint.from,[108000,100000]);assert.deepEqual(hint.to,[147000,100000]);
+ assert.deepEqual(hint.target,pin(ref.id,'2'));assert.equal(hint.newPin,'1');
+ assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
+ s.place(s.newTransaction('placed'),'symbol/resistor.fixed',hint.origin);
+ assert.deepEqual(s.file.project.sheets[0].instances[0],before.project.sheets[0].instances[0]);
+ assert.deepEqual(s.file.project.nets,[]);assert.deepEqual(s.snapshot.wires,[]);
+});
+test('R19b placement respects rotated pin normals and exact vertical alignment',()=>{
+ const s=newSession();
+ const id=s.place(s.newTransaction('reference'),'symbol/resistor.fixed',[100000,100000]);
+ const ref=s.file.project.sheets[0].instances.find(i=>i.id===id).component_id;
+ s.rotate(s.newTransaction('rotate'),ref);
+ const definition=s.file.project.symbol_definitions.find(d=>d.id==='symbol/inductor.tapped');
+ const tap=definition.pins.find(p=>p.side==='top');
+ assert.ok(tap);
+ const hint=s.suggestAlignedPlacement(definition.id,[103000-tap.at_um[0],150000]);
+ assert.ok(hint);
+ assert.equal(hint.from[0],hint.to[0]);
+ assert.equal(hint.target.component_id,ref);
+ assert.equal(hint.target.physical_pin_number,'2');
+ assert.equal(hint.newPin,tap.physical_pin_number);
+ assert.equal(hint.origin[0],100000-tap.at_um[0]);
+ assert.equal(s.suggestAlignedPlacement('symbol/resistor.fixed',[100000,145000]),null);
+ assert.equal(s.file.project.nets.length,0);
+});
+test('R19b magnet skips blocked, distant and ambiguous suggestions',()=>{
+ const s=newSession();
+ s.place(s.newTransaction('reference'),'symbol/resistor.fixed',[100000,100000]);
+ assert.equal(s.suggestAlignedPlacement('symbol/resistor.fixed',[155000,107000]),null);
+ assert.equal(s.suggestAlignedPlacement('symbol/resistor.fixed',[250000,103000]),null);
+ s.place(s.newTransaction('block'),'symbol/resistor.fixed',[127000,100000]);
+ // The blocker may itself be the valid nearest target; no proposal may cross it.
+ const hint=s.suggestAlignedPlacement('symbol/resistor.fixed',[155000,103000]);
+ assert.ok(hint);assert.equal(hint.target.component_id,s.file.project.components[1].id);
+ const amb=newSession();
+ amb.place(amb.newTransaction('upper'),'symbol/resistor.fixed',[100000,97000]);
+ amb.place(amb.newTransaction('lower'),'symbol/resistor.fixed',[100000,103000]);
+ assert.equal(amb.suggestAlignedPlacement('symbol/resistor.fixed',[155000,100000]),null);
+});
