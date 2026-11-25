@@ -755,3 +755,32 @@ test('R17d all generated winding variants retain true arcs, actual core widths a
  assert.equal(actual.net_id,null);assert.deepEqual(actual.normal,[1,0]);
  assert.equal(s.file.project.nets.length,0);
 });
+
+test('R17e Cu constant annotation is source-backed, upright and non-electrical across all poses',()=>{
+ const s=newSession();
+ const id=s.place(s.newTransaction('copper'),'symbol/inductor.trim_copper',[100000,100000]);
+ const doc=s.file,inst=doc.project.sheets[0].instances.find(i=>i.id===id);
+ const sym=doc.project.symbol_definitions.find(x=>x.id===inst.symbol_id);
+ const note=sym.constant_annotations[0];
+ assert.equal(note.key,'core_material');assert.equal(note.text,'Cu');
+ assert.deepEqual([note.horizontal,note.vertical,note.height_um],['left','center',3500]);
+ assert.equal(sym.pins.length,2);
+ assert.equal(doc.project.nets.length,0);
+ const py=spawnSync('python',['-c',
+  'import json,sys;sys.path.insert(0,"../..");sys.path.insert(0,"../../src");from gost_schematic.catalog.inductors import load_inductor;from ui.editor.src.model.contract import validate,digest,pin_world;from ui.bridge.export.project_v2 import render_v2_source;import xml.etree.ElementTree as E;d=json.loads(sys.stdin.buffer.read().decode("utf-8"));i=d["project"]["sheets"][0]["instances"][0];ns={"s":"http://www.w3.org/2000/svg"};source=load_inductor("../../src/gost_schematic/catalog/inductors/inductor.trim_copper.json").symbol;slot=next(s for s in source.annotation_slots if s.key=="core_material");p=slot.candidates[0].at;out=[]\nfor r in (0,90,180,270):\n for m in (False,True):\n  i["rotation_deg"]=r;i["mirror_x"]=m;validate(d);root=E.fromstring(render_v2_source(d,"sheet-1",expected_project_sha256=digest(d)));note=root.find(".//s:text[@data-symbol-note=\'core_material\']",ns);out.append([note.text,note.get("data-electrical"),note.get("transform"),note.get("x"),note.get("y"),pin_world(i,[p.x,p.y])])\nprint(json.dumps({"source":[p.x,p.y],"poses":out}))'
+ ],{input:JSON.stringify(doc),encoding:'utf8',timeout:30000});
+ assert.equal(py.status,0,py.stderr);
+ const result=JSON.parse(py.stdout);
+ assert.deepEqual(note.at_um,result.source);
+ assert.equal(result.poses.length,8);
+ for(const [text,electrical,transform,x,y,at] of result.poses){
+  assert.equal(text,'Cu');assert.equal(electrical,'false');assert.equal(transform,null);
+  assert.equal(Math.round(Number(x)*1000),at[0]);
+  assert.equal(Math.round(Number(y)*1000),at[1]+1167);
+ }
+ const corrupt=structuredClone(doc);
+ const c=corrupt.project.symbol_definitions.find(x=>x.id===inst.symbol_id);
+ c.constant_annotations.push({...c.constant_annotations[0]});
+ assert.throws(()=>new AuthoringSession(corrupt),/INVALID_CONSTANT_ANNOTATION/);
+ assert.deepEqual(new AuthoringSession(doc).file,doc);
+});
