@@ -954,7 +954,7 @@ export class AuthoringSession {
       for(const common of shifts){
         const trial=clone(draft),sheet=trial.project.sheets[indexOfSheet(trial)];
         const deltas=new Map([...offsets].map(([id,v])=>[id,v+common]));
-        const moved=group.filter(i=>deltas.get(i.component_id)!!==0);
+        const moved=group.filter(i=>(deltas.get(i.component_id)??0)!==0);
         for(const inst of sheet.instances){
           const delta=deltas.get(inst.component_id);if(!delta)continue;
           const position=xy(inst.origin_um);position[transverse]+=delta;inst.origin_um=xy(position);
