@@ -1390,7 +1390,7 @@ export class AuthoringSession {
   }
   /** Reconstruct a connected Net as a bounded obstacle-aware rectilinear
    * tree. Signed pin membership, component poses and other Nets are fixed. */
-  buildNetTree(tx:Tx,netId:string,initial=false):{pins:number;wires:number;junctions:number;lengthUm:number;bends:number}{
+  buildNetTree(tx:Tx,netId:string,initial=false,controlled=false):{pins:number;wires:number;junctions:number;lengthUm:number;bends:number}{
     let result:{pins:number;wires:number;junctions:number;lengthUm:number;bends:number}|undefined;
     this.edit(tx,draft=>{
       const sh=draft.project.sheets[indexOfSheet(draft)];
@@ -1443,24 +1443,50 @@ export class AuthoringSession {
       }
       if(annotations.length>128)reject('LAYOUT_ANNOTATIONS_UNSUPPORTED');
       const outside=sh.wires.filter(w=>w.net_id!==netId);
-      const foreign=[...annotations,...outside.flatMap(w=>w.vertices.slice(1).map((v,i)=>inflate(rect(w.vertices[i].at_um,v.at_um)))),
+      const crossingMode=initial&&controlled;
+      const foreignSegments=outside.flatMap(w=>w.vertices.slice(1).map((v,i)=>({a:xy(w.vertices[i].at_um),b:xy(v.at_um),clearance:1000})));
+      const wireBoxes=foreignSegments.map(w=>inflate(rect(w.a,w.b)));
+      const fixed=[...annotations,
         ...[...sh.junctions,...sh.splices].filter(n=>n.net_id!==netId).map(n=>inflate(rect(n.at_um,n.at_um)))];
       const pins=net.members.map(ref=>({ref,p:this.beginWire(ref)}));
-      const ports=pins.map(({ref,p})=>{
+      const makePort=({ref,p}:{ref:PinRef;p:WorldPin})=>{
         const own=boxes.find(b=>b.id===ref.component_id)!.box;
         const axis:0|1=p.normal[0]!==0?0:1,sign=p.normal[axis],tip=xy(p.at_um);
         const edge=axis===0?(sign>0?own.maxX:own.minX):(sign>0?own.maxY:own.minY);
         tip[axis]=sign>0?Math.max(edge+1,tip[axis]+2000):Math.min(edge-1,tip[axis]-2000);
         const m=sh.frame.margin_um,[w,h]=sh.frame.size_um;
         if([p.at_um,tip].some(v=>v[0]<m||v[1]<m||v[0]>w-m||v[1]>h-m))reject('TREE_PIN_LEAD_OUTSIDE_FRAME');
-        const lead=rect(p.at_um,tip);
+        return {pin:p.at_um,tip};
+      };
+      // Reserve the outward leads of future local declared terminals.
+      // No routing path may use their space, even in crossing mode.
+      const reservations:Bounds[]=[];
+      if(crossingMode)for(const n of draft.project.nets){
+        if(n.id===netId||!n.members.every(p=>byComp.has(p.component_id))||
+          this.engine.validateNet(n.id).status!=='unrouted')continue;
+        for(const ref of n.members){
+          try{
+            const port=makePort({ref,p:this.beginWire(ref)});
+            reservations.push(inflate(rect(port.pin,port.tip)));
+          }catch(e){
+            if(!(e instanceof WireError)||e.code!=='TREE_PIN_LEAD_OUTSIDE_FRAME')throw e;
+          }
+        }
+      }
+      const foreign=[...fixed,...reservations,...wireBoxes];
+      const ports=pins.map(({ref,p})=>{
+        const port=makePort({ref,p}),lead=rect(port.pin,port.tip);
         if(boxes.some(o=>o.id!==ref.component_id&&!separated(lead,o.box,0))||
           foreign.some(o=>!separated(lead,o,0)))reject('TREE_BLOCKED_PIN_LEAD');
-        return {pin:p.at_um,tip};
+        return port;
       });
-      const m=sh.frame.margin_um;
+      const m=sh.frame.margin_um,frame={minX:m,minY:m,maxX:sh.frame.size_um[0]-m,maxY:sh.frame.size_um[1]-m};
       let plan:ReturnType<typeof planOrthogonalTree>;
-      try{plan=planOrthogonalTree(ports,[...boxes.map(o=>o.box),...foreign],{minX:m,minY:m,maxX:sh.frame.size_um[0]-m,maxY:sh.frame.size_um[1]-m});}
+      try{
+        plan=planOrthogonalTree(ports,[...boxes.map(o=>o.box),...foreign],frame);
+        if(!plan&&crossingMode&&foreignSegments.length)
+          plan=planOrthogonalTree(ports,[...boxes.map(o=>o.box),...fixed,...reservations],frame,foreignSegments);
+      }
       catch(e){if(e instanceof Error&&['TREE_SEARCH_LIMIT','TREE_GRID_LIMIT'].includes(e.message))reject(e.message);throw e}
       if(!plan)reject('TREE_NO_SAFE_ROUTE');
       const junctions:Junction[]=plan.nodes.map(at_um=>({id:newId('junction'),net_id:netId,layer_id:layer,at_um}));
@@ -1489,7 +1515,7 @@ export class AuthoringSession {
       const otherStatuses=new Map(draft.project.nets.filter(n=>n.id!==netId).map(n=>[n.id,n.route_status]));
       const next=materialize(draft,subset,session);
       if(initial)for(const n of next.project.nets)if(otherStatuses.has(n.id))n.route_status=otherStatuses.get(n.id)!;
-      if(!preservesLayoutSafety(prior,assessLayout(next,session.engine,initial?netId:undefined)))reject('TREE_UNSAFE_DIAGNOSTICS');
+      if(!preservesLayoutSafety(prior,assessLayout(next,session.engine,initial?netId:undefined),crossingMode?netId:undefined))reject('TREE_UNSAFE_DIAGNOSTICS');
       result={pins:pins.length,wires:wires.length,junctions:junctions.length,lengthUm:plan.lengthUm,bends:plan.bends};
       return next;
     });
@@ -1592,7 +1618,7 @@ export class AuthoringSession {
   /** Evaluate bounded whole-sheet initial routing orders on detached copies.
    * Failed Nets are skipped for diagnosis, never partially committed. Only
    * a candidate connecting every requested Net receives an Apply token. */
-  previewInitialBatch(netIds:readonly string[]):InitialBatchPreview{
+  previewInitialBatch(netIds:readonly string[],controlled=false):InitialBatchPreview{
     this.layoutPlan=null;
     const base=this.file,sh=base.project.sheets[indexOfSheet(base)];
     if(netIds.length<1||netIds.length>16)reject('BATCH_NET_COUNT');
@@ -1628,7 +1654,7 @@ export class AuthoringSession {
         attempted++;
         const n=byId.get(id)!;
         const item:InitialBatchOutcome={id,name:n.name,pins:n.members.length};
-        try{session.buildNetTree(session.newTransaction('preview-batch-net'),id,true);routed++}
+        try{session.buildNetTree(session.newTransaction('preview-batch-net'),id,true,controlled);routed++}
         catch(e){if(!(e instanceof WireError))throw e;item.rejected=e.code}
         outcomes.push(item);
       }
@@ -1636,7 +1662,7 @@ export class AuthoringSession {
       if(!quality.complete||sourceGuard(session.file)!==sourceGuard(base)||
         outcomes.some(o=>!o.rejected&&session.engine.validateNet(o.id).pin_groups.length!==1))reject('BATCH_TOPOLOGY_MISMATCH');
       if(!best||routed>best.routed||(routed===best.routed&&
-        (quality.bends<best.quality.bends||(quality.bends===best.quality.bends&&quality.lengthUm<best.quality.lengthUm))))
+        (quality.crossings<best.quality.crossings||(quality.crossings===best.quality.crossings&&(quality.bends<best.quality.bends||(quality.bends===best.quality.bends&&quality.lengthUm<best.quality.lengthUm))))))
         best={session,order:order.name,routed,outcomes,quality};
     }
     if(!best)reject('BATCH_NO_SAFE_ROUTE');
