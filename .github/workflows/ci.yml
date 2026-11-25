@@ -195,3 +195,14 @@ jobs:
           name: draft-resistor-annotation-review
           path: output/resistor-annotations-*.svg
           if-no-files-found: warn
+
+      - name: Render resistor batch 01 from installed catalog
+        if: matrix.python-version == '3.12'
+        run: python examples/review_resistor_batch01.py
+      - name: Upload native resistor batch 01
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: resistor-batch01-native
+          path: output/resistor-batch01/*.svg
+          if-no-files-found: error
