@@ -858,13 +858,16 @@ test('R19b placement respects rotated pin normals and exact vertical alignment',
  const id=s.place(s.newTransaction('reference'),'symbol/resistor.fixed',[100000,100000]);
  const ref=s.file.project.sheets[0].instances.find(i=>i.id===id).component_id;
  s.rotate(s.newTransaction('rotate'),ref);
- const hint=s.suggestAlignedPlacement('symbol/transistor.bjt_npn',[103000,140000]);
- // BJT vertical physical pin mapping depends on the actual imported catalogue.
- if(hint){
-  assert.equal(hint.from[0],hint.to[0]);
-  assert.equal(hint.target.component_id,ref);
-  assert.equal(hint.target.physical_pin_number,'2');
- }
+ const definition=s.file.project.symbol_definitions.find(d=>d.id==='symbol/inductor.tapped');
+ const tap=definition.pins.find(p=>p.side==='top');
+ assert.ok(tap);
+ const hint=s.suggestAlignedPlacement(definition.id,[103000-tap.at_um[0],150000]);
+ assert.ok(hint);
+ assert.equal(hint.from[0],hint.to[0]);
+ assert.equal(hint.target.component_id,ref);
+ assert.equal(hint.target.physical_pin_number,'2');
+ assert.equal(hint.newPin,tap.physical_pin_number);
+ assert.equal(hint.origin[0],100000-tap.at_um[0]);
  assert.equal(s.suggestAlignedPlacement('symbol/resistor.fixed',[100000,145000]),null);
  assert.equal(s.file.project.nets.length,0);
 });
