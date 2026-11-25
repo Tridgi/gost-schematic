@@ -2,6 +2,7 @@
  * physical contacts count, not just its origin. Nets are never inferred from
  * geometric overlaps or the paper guide.
  */
+import {noteLayout} from '../model/symbol-notes.mjs';
 const at=(symbol,p)=>{
  const x=symbol.mirror_x?-p[0]:p[0],y=p[1];
  const r=symbol.rotation_deg;
@@ -16,7 +17,8 @@ export function detectPaperOverflow(scene,snapshot,sizeUm){
  const outside=p=>p[0]<0||p[1]<0||p[0]>sizeUm[0]||p[1]>sizeUm[1];
  const symbols=scene.symbols.filter(s=>outside(s.origin_um)||
    s.pins.some(p=>outside(at(s,p.at_um)))||
-   s.strokes.some(k=>outside(at(s,k.from_um))||outside(at(s,k.to_um))))
+   s.strokes.some(k=>outside(at(s,k.from_um))||outside(at(s,k.to_um)))||
+   (s.notes||[]).some(n=>noteLayout(n,at(s,n.at_um)).bounds.some(outside)))
    .map(s=>s.component_id);
  const graphics=scene.graphics.filter(g=>g.strokes.some(k=>
    outside(k.from_um)||outside(k.to_um))).map(g=>g.id);
