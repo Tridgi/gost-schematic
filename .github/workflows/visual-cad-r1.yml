@@ -133,6 +133,16 @@ jobs:
       - name: End-to-end real browser physical pin/wire and theme tests
         working-directory: ui/editor
         run: npm run test:e2e
+      - name: Install canonical Python raster export dependencies
+        run: python -m pip install -e '.[dev]' 'CairoSVG==2.9.1' 'Pillow>=12.3,<13'
+      - name: Compare complete TL494 browser and native label geometry
+        run: python ui/integration/verify_routed_export_parity.py --evidence ci-artifacts/tl494-routing-evidence --out ci-artifacts/tl494-native-export
+      - name: Publish native routed TL494 preview evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: tl494-native-export-parity
+          path: ci-artifacts/tl494-native-export/
+          if-no-files-found: error
       - name: Require complete TL494 visible reference inventory
         run: |
           node --input-type=module -e 'import assert from "node:assert/strict"; import {readFileSync} from "node:fs"; const report=JSON.parse(readFileSync("ci-artifacts/tl494-routing-evidence/report.json","utf8")); for(const stage of report.stages){assert.equal(stage.componentLabels.placed,23,stage.name+": "+JSON.stringify(stage.componentLabels.missing)); assert.equal(stage.componentLabels.unplaced,0);}'

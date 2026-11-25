@@ -19,6 +19,7 @@ from ui.bridge.export.canonical import (
     export,
     mm,
 )
+from ui.bridge.export.component_labels import STEP, H, plan_component_labels
 
 _S = "{http://www.w3.org/2000/svg}"
 ET.register_namespace("", "http://www.w3.org/2000/svg")
@@ -227,6 +228,28 @@ def _draw_validated(document: dict, sheet_id: str) -> bytes:
             label.text = item["text"]
             if item.get("role") == "net_annotation":
                 label.set("data-net",nets[item["net_id"]]["name"])
+
+    labels, unplaced = plan_component_labels(document, sheet)
+    root.set("data-component-label-count", str(len(labels)))
+    root.set("data-unplaced-label-count", str(len(unplaced)))
+    ET.SubElement(root, _S+"metadata", {
+        "data-kind": "unplaced-component-labels",
+    }).text = json.dumps(unplaced, ensure_ascii=False, separators=(",", ":"))
+    for item in labels:
+        extents.append(item.bounds)
+        group = ET.SubElement(root, _S+"g", {
+            "data-layer": "component-labels", "data-electrical": "false",
+            "data-instance-id": item.instance_id,
+        })
+        for role, value, y in (("reference", item.refdes, item.y),
+                               ("value", item.value, item.y+STEP)):
+            if value:
+                label = ET.SubElement(group, _S+"text", {
+                    "data-label-role": role, "x": mm(item.x), "y": mm(y),
+                    "text-anchor": "middle", "font-size": mm(H),
+                    "font-family": "monospace", "fill": "#000000", "stroke": "none",
+                })
+                label.text = value
 
     if not extents:
         extents.append((0,0,1000,1000))
