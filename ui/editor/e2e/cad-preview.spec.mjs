@@ -1250,3 +1250,26 @@ test('R19 smart routing and aligned connected pins reduce a Z route to one segme
  await page.getByRole('button',{name:'Повторить'}).click();
  expect((await saved()).project).toEqual(after.project);
 });
+
+test('R19b magnetic placement preview aligns pins without creating a wire',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByTestId('pin-magnet').click();
+ await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+ await page.mouse.click(paper.x+paper.width*.3,paper.y+paper.height*.4);
+ await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+ const x=paper.x+paper.width*.42,y=paper.y+paper.height*.4+paper.height*3/297;
+ await page.mouse.move(x,y);
+ await expect(page.getByTestId('pin-placement-guide')).toBeVisible();
+ await expect(page.getByTestId('pin-placement-guide')).toHaveAttribute('data-electrical','false');
+ await page.mouse.click(x,y);
+ await expect(page.getByTestId('pin-placement-guide')).toHaveCount(0);
+ const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+ const doc=JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ const [a,b]=doc.project.sheets[0].instances;
+ expect(a.origin_um[1]).toBe(b.origin_um[1]);expect(doc.project.nets).toEqual([]);
+ expect(doc.project.sheets[0].wires).toEqual([]);
+});
