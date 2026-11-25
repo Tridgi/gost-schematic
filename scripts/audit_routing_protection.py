@@ -6,6 +6,7 @@ unsafe route: the sheet router also reserves individual primitive bounds.
 """
 import argparse
 import json
+from itertools import pairwise
 from pathlib import Path
 
 from gost_schematic.agent_project.catalog import CatalogResolver
@@ -26,7 +27,7 @@ def covered(target: Box, boxes: tuple[Box, ...]) -> bool:
         x for b in boxes for x in (b.min_x, b.max_x)
         if target.min_x < x < target.max_x
     )})
-    for left, right in zip(xs, xs[1:], strict=False):
+    for left, right in pairwise(xs):
         intervals = sorted(
             (b.min_y, b.max_y) for b in boxes
             if b.min_x <= left and right <= b.max_x
@@ -131,6 +132,12 @@ def main() -> int:
               "total", "with_blue_zone", "with_uncovered_bounds",
               "with_blocked_escapes", "with_constant_notes",
           )))
+    # Emit actionable identifiers in the workflow log as well as the JSON.
+    for row in report["entries"]:
+        if row["uncovered_functional_bounds"] or row["blocked_cardinal_escapes"]:
+            indices = [item["index"] for item in row["uncovered_functional_bounds"]]
+            pins = [item["pin"] for item in row["blocked_cardinal_escapes"]]
+            print(f"PROTECTION_REVIEW {row['id']} uncovered={indices} blocked={pins}")
     return 0
 
 
