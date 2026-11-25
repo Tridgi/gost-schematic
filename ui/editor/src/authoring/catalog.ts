@@ -1,6 +1,5 @@
 /** Direct imports of canonical Python catalog JSON, no second hand-maintained geometry.
- * ProjectV2 supports line, rect and polyline only: circles use a bounded polygon
- * approximation explicitly marked DRAFT. Parametric winding arcs are not yet imported.
+ * Circles retain exact centers and radii; all source geometry remains DRAFT.
  */
 import type {PartDefinition, SymbolDefinition, PointUm, Primitive, ElectricalType} from '../model/contract';
 import resistors_fixedPart from '../../../../src/gost_schematic/catalog/parts/resistors/fixed.json';
@@ -105,17 +104,12 @@ function convert(entry:Entry):{part:PartDefinition;symbol:SymbolDefinition}{
  ];
  for(const circle of s.geometry.circles){
   const [x,y]=point(circle.center_mm),r=mm(circle.radius_mm);
-  // Sagitta <= 2 µm before coordinate rounding, closed polyline.
-  const n=Math.max(64,Math.ceil(Math.PI/Math.acos(1-Math.min(2/r,1))));
-  const points:PointUm[]=Array.from({length:n},(_,i)=>[
-    Math.round(x+r*Math.cos(i*2*Math.PI/n)),Math.round(y+r*Math.sin(i*2*Math.PI/n))]);
-  points.push(points[0]);
-  graphics.push({kind:'polyline',points_um:points,stroke_um:stroke});
+  graphics.push({kind:'circle',points_um:[[x,y],[x+r,y]],stroke_um:stroke});
  }
  return {
   part:{id:p.id,reference_prefix:p.reference_prefix,symbol_ids:[id],physical_pins:physical},
   symbol:{id,part_id:p.id,revision:s.revision,status:'draft',pins,graphics,
-   standard_refs:[...s.standard_refs,...(s.geometry.circles.length?['PROJECTV2_DRAFT: circle represented by closed polyline, sagitta <= 2 um before coordinate rounding.']:[])]}
+   standard_refs:[...s.standard_refs]}
  };
 }
 const converted=entries.map(convert);
