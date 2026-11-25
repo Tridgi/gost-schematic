@@ -1492,3 +1492,21 @@ test('R22 automatic layout previews metrics, cancel is harmless, confirm is one 
  await page.getByRole('button',{name:'Повторить'}).click();
  expect((await saved()).project).toEqual(after.project);
 });
+
+test('R23 source TL494 electrical structure is inspectable without authoring or inference',async({page})=>{
+ await page.goto('/');
+ await expect(page.getByTestId('symbol-DA1')).toBeVisible();
+ await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByTestId('topology-inventory').click();
+ const report=page.getByTestId('topology-report');
+ await expect(report).toBeVisible();
+ await expect(report).toContainText('УГО: 23; объявленных цепей: 15.');
+ await expect(report).toContainText('DA1 — 16 выводов, 9 цепей');
+ await expect(report).toContainText('OSCILLATOR_CT · C7');
+ await expect(report).toContainText('OSCILLATOR_RT · R7');
+ await expect(report).toContainText('COMMON — 14 выводов, 11 УГО');
+ await expect(report).toContainText('Нет явных типов выводов питания в каталоге.');
+ await report.getByRole('button',{name:'Выбрать УГО'}).click();
+ await expect(report).toHaveCount(0);
+ await expect(page.getByTestId('symbol-DA1')).toHaveAttribute('data-selected','true');
+});
