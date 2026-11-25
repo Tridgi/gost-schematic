@@ -71,13 +71,18 @@ export function assessLayout(file:ProjectFileV2,engine:ManualWireEngine):LayoutA
   errors:report.counts.error,geometryWarnings,overflow:overflow.total,complete},
   hazards,connectivity:JSON.stringify(groups.sort()),overflowIds};
 }
+/** Common safety gate for automatic and explicitly requested geometry edits. */
+export function preservesLayoutSafety(a:LayoutAssessment,b:LayoutAssessment):boolean{
+ return a.quality.complete&&b.quality.complete&&a.connectivity===b.connectivity&&
+  !b.overflowIds.some(id=>!a.overflowIds.includes(id))&&
+  !Object.keys(b.hazards).some(k=>b.hazards[k]>(a.hazards[k]??0))&&
+  b.quality.crossings<=a.quality.crossings;
+}
 /** Strict Pareto improvement: no extra length, turns or ordinary crossings.
  * Explicit review warnings are intentionally excluded from geometry hazards. */
 export function improvesLayout(a:LayoutAssessment,b:LayoutAssessment):boolean{
  const x=a.quality,y=b.quality;
- if(!x.complete||!y.complete||a.connectivity!==b.connectivity||
-  b.overflowIds.some(id=>!a.overflowIds.includes(id))||
-  Object.keys(b.hazards).some(k=>b.hazards[k]>(a.hazards[k]??0)))return false;
- return y.bends<=x.bends&&y.lengthUm<=x.lengthUm&&y.crossings<=x.crossings&&
+ if(!preservesLayoutSafety(a,b))return false;
+ return y.bends<=x.bends&&y.lengthUm<=x.lengthUm&&
   (y.bends<x.bends||y.lengthUm<x.lengthUm||y.crossings<x.crossings||y.geometryWarnings<x.geometryWarnings||y.errors<x.errors);
 }

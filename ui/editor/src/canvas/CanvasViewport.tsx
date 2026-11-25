@@ -65,7 +65,7 @@ function SymbolInk({symbol,camera}:{symbol:CanvasSymbol;camera:Camera}){
 /** Read-only SVG viewport. The canonical physical print/export belongs to #124. */
 export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapEnabled,onIntent,onZoomPercent,zoomRequest,fitRequest,selectedInstanceId:hostSelectedId,selectedGroupIds,selectionReset,canEdit,placementHint,onCopy,onPaste,onFitPage}:CanvasViewportProps){
   const svgRef=useRef<SVGSVGElement|null>(null);
-  const [size,setSize]=useState({width:960,height:640});
+  const [size,setSize]=useState({width:0,height:0});
   const [revision,setRevision]=useState(0);
   const [placementPointer,setPlacementPointer]=useState<ScreenPoint|null>(null);
   const [contextMenu,setContextMenu]=useState<{x:number;y:number;kind:'symbol'|'group'|'blank';revision:number}|null>(null);
@@ -105,6 +105,11 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     if(fittedRef.current===identity)return;
     const bounds=svgRef.current?.getBoundingClientRect();
     if(!bounds||bounds.width<100||bounds.height<100)return;
+    // The rendered viewBox must use the measured viewport before fitting.
+    // Default dimensions and a later ResizeObserver caused shifted clicks.
+    if(Math.abs(size.width-bounds.width)>0.5||Math.abs(size.height-bounds.height)>0.5){
+      setSize({width:bounds.width,height:bounds.height});return;
+    }
     const all:PointUm[]=[];
     // R10: fit the authoritative physical sheet, not just its populated ink.
     // A small populated circuit must not zoom so far that the A4/A3/A2 page
@@ -184,7 +189,10 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     catch{placementGuide=null;}
   }
   const local=useCallback((e:{clientX:number;clientY:number}):ScreenPoint=>{
-    const r=svgRef.current?.getBoundingClientRect();
+    const svg=svgRef.current,ctm=svg?.getScreenCTM();
+    if(svg&&ctm){const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;
+      const at=p.matrixTransform(ctm.inverse());return {x:at.x,y:at.y};}
+    const r=svg?.getBoundingClientRect();
     return {x:e.clientX-(r?.left??0),y:e.clientY-(r?.top??0)};
   },[]);
   const eventPoint=(e:ReactPointerEvent<SVGSVGElement>)=>({...local(e),pointerId:e.pointerId,button:e.button});
@@ -294,7 +302,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
   return <><svg ref={svgRef} className="gscad-drawing" role="img" tabIndex={0}
     data-camera-ready={fittedRef.current!==null?'true':'false'} data-tool={tool}
     data-testid="gscad-signed-svg-canvas" aria-label="Редактор электрической схемы, координаты в микрометрах"
-    viewBox={`0 0 ${g2(size.width)} ${g2(size.height)}`}
+    viewBox={`0 0 ${Math.max(1,g2(size.width))} ${Math.max(1,g2(size.height))}`}
     onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={()=>setPlacementPointer(null)}
     onPointerCancel={e=>{controller.key('Escape');if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);invalidate()}}
     onWheel={e=>{setPlacementPointer(null);wheel(e)}} onContextMenu={openContextMenu}

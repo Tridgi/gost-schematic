@@ -1301,3 +1301,62 @@ test('R23 inventory distinguishes declared power evidence from literal Net names
  assert.equal(r.hubs[0].pins.find(p=>p.number==='1').net,'not_a_supply_label');
  assert.equal(r.shared.length,0);
 });
+
+function railFixture(opposed=false){
+ const s=newSession();
+ const positions=opposed?[[80000,70000],[220000,70000],[80000,130000],[220000,130000]]:
+  [[70000,100000],[130000,115000],[190000,95000],[250000,110000]];
+ const ids=positions.map((p,i)=>s.place(s.newTransaction('rail-place'+i),'symbol/resistor.fixed',p));
+ const components=s.file.project.components.map(c=>c.id);
+ if(!opposed)for(const id of components)s.rotate(s.newTransaction('rail-rotate'),id);
+ const refs=components.map((id,i)=>pin(id,opposed?(i%2?'1':'2'):'1'));
+ for(let i=1;i<refs.length;i++)s.connect(s.newTransaction('rail-connect'+i),refs[i-1],refs[i]);
+ return {s,ids,components,refs,net:s.file.project.nets[0].id};
+}
+test('R24 reconstructs a single four-pin Net, leaves every symbol fixed and preserves exact signed connectivity',()=>{
+ const {s,net}=railFixture(),before=s.file,rev=s.revision;
+ const result=s.buildNetRail(s.newTransaction('rail'),net);
+ assert.equal(result.axis,'horizontal');assert.equal(result.pins,4);assert.equal(result.wires,7);assert.equal(result.junctions,2);
+ const after=s.file,sh=after.project.sheets[0];
+ assert.equal(s.revision,rev+1);assert.deepEqual(sh.instances,before.project.sheets[0].instances);
+ assert.deepEqual(after.project.nets.map(n=>[n.id,n.members]),before.project.nets.map(n=>[n.id,n.members]));
+ assert.equal(sh.splices.length,2);assert.ok(sh.wires.every(w=>w.vertices.length===2));
+ assert.equal(s.engine.validateNet(net).pin_groups.length,1);
+ assert.throws(()=>s.buildNetRail(s.newTransaction('repeat'),net),/NO_CHANGE/);
+ assert.deepEqual(s.file,after);assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);assert.deepEqual(new AuthoringSession(s.file).file,after);
+});
+test('R24 opposed leads share taps only as explicit junctions, not geometrical inference',()=>{
+ const {s,net}=railFixture(true),before=s.file;
+ const result=s.buildNetRail(s.newTransaction('opposed'),net);
+ assert.deepEqual({...result,lengthUm:0},{pins:4,wires:5,junctions:2,axis:'vertical',lengthUm:0});
+ const sh=s.file.project.sheets[0];assert.equal(sh.splices.length,0);
+ assert.deepEqual(sh.instances,before.project.sheets[0].instances);
+ assert.equal(new Set(sh.junctions.map(n=>n.at_um[0])).size,1);
+ for(const j of sh.junctions){
+  const ends=sh.wires.flatMap(w=>w.vertices.map(v=>v.anchor));
+  assert.equal(ends.filter(a=>a.kind==='junction'&&a.junction_id===j.id).length,3);
+ }
+ assert.equal(s.engine.validateNet(net).pin_groups.length,1);
+});
+test('R24 foreign obstruction, incomplete Net and mixed pin axes reject without mutation',()=>{
+ const {s,net}=railFixture();
+ s.place(s.newTransaction('obstruction'),'symbol/resistor.fixed',[130000,80000]);
+ const before=s.file,rev=s.revision;
+ assert.throws(()=>s.buildNetRail(s.newTransaction('blocked'),net),/RAIL_NO_SAFE_CHANNEL/);
+ assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
+ const f=railFixture(),doc=f.s.file;
+ doc.project.sheets[0].wires.shift();
+ const incomplete=new AuthoringSession(doc);
+ assert.throws(()=>incomplete.buildNetRail(incomplete.newTransaction('incomplete'),f.net),/RAIL_UNCONNECTED_NET/);
+ assert.deepEqual(incomplete.file,doc);
+ const m=newSession();
+ for(const p of [[80000,70000],[160000,100000],[240000,130000]])m.place(m.newTransaction('p'),'symbol/resistor.fixed',p);
+ const [a,b,c]=m.file.project.components.map(c=>c.id);
+ m.rotate(m.newTransaction('r'),b);
+ m.connect(m.newTransaction('ab'),pin(a,'1'),pin(b,'1'));
+ m.connect(m.newTransaction('bc'),pin(b,'1'),pin(c,'1'));
+ const original=m.file;
+ assert.throws(()=>m.buildNetRail(m.newTransaction('mixed'),original.project.nets[0].id),/RAIL_MIXED_PIN_AXES/);
+ assert.deepEqual(m.file,original);
+});

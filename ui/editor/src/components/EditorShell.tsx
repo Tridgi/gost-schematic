@@ -36,7 +36,7 @@ export type InspectorProposal =
 
 /** The host owns all electrical topology, source PinRefs, command validation and actual persistence. */
 export type EditorShellProps = {
-  projectName:string;dirty:boolean;baseRevision:string;topology?:TopologyInventory;
+  projectName:string;dirty:boolean;baseRevision:string;topology?:TopologyInventory;onBuildNetRail?:(netId:string)=>void;
   sheets:readonly {id:string;title:string}[];activeSheetId:string;
   catalog:readonly CatalogSymbol[];tree:readonly TreeItem[];
   catalogMissingCount?:number;onCatalogUpgrade?:()=>void;
@@ -407,7 +407,8 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
           </Stack>)}
           <Text fw={600} size="sm">Общие цепи (не менее 3 УГО на листе)</Text>
           {props.topology.shared.map(n=><Stack key={n.id} gap={2}>
-            <Text size="sm">{n.name} — {n.pins} выводов, {n.devices} УГО</Text>
+            <Group justify="space-between"><Text size="sm">{n.name} — {n.pins} выводов, {n.devices} УГО</Text>
+              {props.onBuildNetRail&&<Button size="xs" variant="light" data-testid={'net-rail-'+n.id} disabled={n.externalDevices>0||n.pins>32} onClick={()=>{setTopologyDialog(false);props.onBuildNetRail?.(n.id)}}>Построить магистраль</Button>}</Group>
             <Text size="xs" c="dimmed">{n.powerEvidence.length?'Типы power_input/power_output: '+n.powerEvidence.map(p=>p.refdes+'.'+p.pin).join(', '):'Нет явных типов выводов питания в каталоге.'}{n.externalDevices?' Вне листа: '+n.externalDevices:''}</Text>
           </Stack>)}
         </Stack>

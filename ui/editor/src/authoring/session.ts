@@ -19,7 +19,7 @@ import {
 } from '../wires/manual-wire';
 import {loadProjectWires} from '../wires/project-v2-adapter';
 import {validateNotes,noteLayout} from '../model/symbol-notes.mjs';
-import {assessLayout,improvesLayout,type LayoutQuality} from './layout-quality';
+import {assessLayout,improvesLayout,preservesLayoutSafety,type LayoutQuality} from './layout-quality';
 import {curveGeometry} from '../model/curves.mjs';
 import {projectToCanvasScene} from '../canvas/scene-projection.mjs';
 import {AUTHORING_PARTS, AUTHORING_SYMBOLS,catalogDefaultValue,catalogAdditions} from './catalog';
@@ -1203,6 +1203,121 @@ export class AuthoringSession {
     if(!result)reject('PARALLEL_NO_SAFE_RAIL');
     return result;
   }
+  /** Reconstruct ONE already connected Net as a straight shared trunk.
+   * Accept parallel or antiparallel signed pin normals, with branch leads
+   * perpendicular to the trunk. No component moves or inferred membership.
+   * A tap may have two opposite-side leads, but no overlapping same-side leads.
+   * Fail closed on incomplete topology, annotations, mixed layers or blockage. */
+  buildNetRail(tx:Tx,netId:string):{pins:number;wires:number;junctions:number;axis:'horizontal'|'vertical';lengthUm:number}{
+    let result:{pins:number;wires:number;junctions:number;axis:'horizontal'|'vertical';lengthUm:number}|undefined;
+    this.edit(tx,draft=>{
+      const sh=draft.project.sheets[indexOfSheet(draft)];
+      if(sh.instances.length>128||sh.wires.reduce((n,w)=>n+w.segments.length,0)>512)reject('LAYOUT_SIZE_LIMIT');
+      if(sh.texts.length||sh.labels.length||sh.graphics.length)reject('LAYOUT_ANNOTATIONS_UNSUPPORTED');
+      const net=draft.project.nets.find(n=>n.id===netId);
+      if(!net)reject('UNKNOWN_NET');
+      if(net.members.length<3||net.members.length>32)reject('RAIL_PIN_COUNT');
+      const byComp=new Map(sh.instances.map(i=>[i.component_id,i]));
+      if(net.members.some(p=>!byComp.has(p.component_id))||
+        draft.project.sheets.some(s=>s.id!==sh.id&&s.wires.some(w=>w.net_id===netId)))reject('RAIL_CROSS_SHEET');
+      if(this.engine.validateNet(netId).pin_groups.length!==1)reject('RAIL_UNCONNECTED_NET');
+      const prior=assessLayout(draft,this.engine);
+      if(!prior.quality.complete)reject('LAYOUT_CHECK_INCOMPLETE');
+      const old=sh.wires.filter(w=>w.net_id===netId);
+      if(old.some(w=>[w.vertices[0],w.vertices.at(-1)!].some(v=>v.anchor.kind==='free')))reject('RAIL_DANGLING');
+      const layers=new Set(old.map(w=>w.layer_id));
+      if(layers.size!==1)reject('RAIL_MIXED_LAYERS');
+      const layer=[...layers][0],layerDef=sh.layers.find(l=>l.id===layer);
+      if(!layerDef||layerDef.locked||!layerDef.visible||!layerDef.printable||layerDef.kind!=='electrical')reject('LAYER_LOCKED');
+      const pins=net.members.map(ref=>({ref,p:this.beginWire(ref)}));
+      const branchAxis:0|1=pins[0].p.normal[0]!==0?0:1,railAxis:0|1=branchAxis===0?1:0;
+      if(pins.some(({p})=>p.normal[branchAxis]===0))reject('RAIL_MIXED_PIN_AXES');
+      const defs=new Map(draft.project.symbol_definitions.map(d=>[d.id,d]));
+      const boxes=sh.instances.map(i=>{
+        const d=defs.get(i.symbol_id);if(!d)reject('UNKNOWN_SYMBOL');
+        return {id:i.component_id,box:translateBounds(symbolBounds(d,i.rotation_deg,i.mirror_x),i.origin_um)};
+      });
+      const rect=(p:PointUm,q:PointUm):Bounds=>({minX:Math.min(p[0],q[0]),minY:Math.min(p[1],q[1]),maxX:Math.max(p[0],q[0]),maxY:Math.max(p[1],q[1])});
+      const min=(b:Bounds)=>branchAxis===0?b.minX:b.minY,max=(b:Bounds)=>branchAxis===0?b.maxX:b.maxY;
+      const outside=sh.wires.filter(w=>w.net_id!==netId);
+      const obstacles=[...outside.flatMap(w=>w.vertices.slice(1).map((v,i)=>rect(w.vertices[i].at_um,v.at_um))),
+        ...[...sh.junctions,...sh.splices].filter(n=>n.net_id!==netId).map(n=>rect(n.at_um,n.at_um))];
+      const taps=new Map<number,typeof pins>();
+      for(const pin of pins){
+        const at=pin.p.at_um[railAxis],list=taps.get(at)??[];
+        if(list.some(v=>v.p.normal[branchAxis]===pin.p.normal[branchAxis]))reject('RAIL_OVERLAPPING_LEADS');
+        list.push(pin);taps.set(at,list);
+      }
+      const sorted=[...taps.keys()].sort((a,b)=>a-b);
+      if(sorted.length<2)reject('RAIL_NO_TRUNK');
+      const margin=sh.frame.margin_um;
+      const inside=(p:PointUm)=>p.every((v,i)=>v>=margin&&v<=sh.frame.size_um[i]-margin);
+      if(pins.some(({p})=>!inside(p.at_um)))reject('RAIL_OUTSIDE_FRAME');
+      let lo=margin,hi=sh.frame.size_um[branchAxis]-margin;
+      for(const {ref,p} of pins){
+        const own=boxes.find(b=>b.id===ref.component_id)!.box;
+        if(p.normal[branchAxis]>0)lo=Math.max(lo,Math.ceil(max(own))+5000,p.at_um[branchAxis]+5000);
+        else hi=Math.min(hi,Math.floor(min(own))-5000,p.at_um[branchAxis]-5000);
+      }
+      if(lo>hi)reject('RAIL_NO_COMMON_CHANNEL');
+      const at=(line:number,tap:number):MutablePoint=>branchAxis===0?[line,tap]:[tap,line];
+      const candidates=new Set([lo,hi,Math.floor((lo+hi)/2)]);
+      for(const b of [...boxes.map(v=>v.box),...obstacles]){
+        candidates.add(Math.floor(min(b))-1001);candidates.add(Math.ceil(max(b))+1001);
+      }
+      // Prefer shortest total conductor length; cap search work explicitly.
+      const length=(line:number)=>pins.reduce((n,{p})=>n+Math.abs(line-p.at_um[branchAxis]),sorted.at(-1)!-sorted[0]);
+      const lines=[...candidates].filter(v=>v>=lo&&v<=hi).sort((a,b)=>length(a)-length(b)||a-b).slice(0,64);
+      let chosen:number|undefined;
+      for(const line of lines){
+        const trunk=rect(at(line,sorted[0]),at(line,sorted.at(-1)!));
+        if(boxes.some(o=>!separated(trunk,o.box,1000))||obstacles.some(o=>!separated(trunk,o,1000)))continue;
+        if(pins.some(({ref,p})=>{
+          const lead=rect(p.at_um,at(line,p.at_um[railAxis]));
+          return boxes.some(o=>o.id!==ref.component_id&&!separated(lead,o.box,1000))||
+            obstacles.some(o=>!separated(lead,o,1000));
+        }))continue;
+        chosen=line;break;
+      }
+      if(chosen===undefined)reject('RAIL_NO_SAFE_CHANNEL');
+      const line=chosen;
+      const wires:WirePolyline[]=[],junctions:Junction[]=[],splices:Splice[]=[];
+      const anchors=sorted.map((tap,i)=>{
+        const degree=taps.get(tap)!.length+(i>0?1:0)+(i<sorted.length-1?1:0);
+        const id=newId(degree===2?'splice':'junction');
+        const node={id,net_id:netId,layer_id:layer,at_um:at(line,tap)};
+        if(degree===2){splices.push(node);return {kind:'splice' as const,splice_id:id}}
+        junctions.push(node);return {kind:'junction' as const,junction_id:id};
+      });
+      const add=(points:MutablePoint[],start:Parameters<typeof constructWire>[4],end:Parameters<typeof constructWire>[5])=>{
+        const w=constructWire(newId('wire'),netId,layer,points,start,end);
+        w.needs_routing_review=true;wires.push(w);
+      };
+      for(const [i,tap] of sorted.entries()){
+        for(const {ref,p} of taps.get(tap)!)add([p.at_um,at(line,tap)],{kind:'pin',...ref},anchors[i]);
+        if(i>0)add([at(line,sorted[i-1]),at(line,tap)],anchors[i-1],anchors[i]);
+      }
+      const signature=(w:WirePolyline)=>{
+        const vertices=w.vertices.map(v=>[v.at_um,v.anchor.kind,v.anchor.kind==='pin'?pinKey(v.anchor):null]);
+        const a=JSON.stringify(vertices),b=JSON.stringify([...vertices].reverse());
+        return JSON.stringify([w.net_id,w.layer_id,a<b?a:b]);
+      };
+      const nodes=(a:(Junction|Splice)[])=>JSON.stringify(a.map(n=>JSON.stringify([n.net_id,n.layer_id,n.at_um])).sort());
+      if(JSON.stringify(old.map(signature).sort())===JSON.stringify(wires.map(signature).sort())&&
+        nodes(sh.junctions.filter(n=>n.net_id===netId))===nodes(junctions)&&
+        nodes(sh.splices.filter(n=>n.net_id===netId))===nodes(splices))reject('NO_CHANGE');
+      sh.wires=[...outside,...wires];sh.junctions=[...sh.junctions.filter(n=>n.net_id!==netId),...junctions];
+      sh.splices=[...sh.splices.filter(n=>n.net_id!==netId),...splices];
+      const {subset,session}=localSession(draft,this.clock);
+      if(session.engine.validateNet(netId).pin_groups.length!==1)reject('RAIL_TOPOLOGY_MISMATCH');
+      result={pins:pins.length,wires:wires.length,junctions:junctions.length,axis:railAxis===0?'horizontal':'vertical',lengthUm:length(line)};
+      const next=materialize(draft,subset,session);
+      if(!preservesLayoutSafety(prior,assessLayout(next,session.engine)))reject('RAIL_UNSAFE_DIAGNOSTICS');
+      return next;
+    });
+    if(!result)reject('RAIL_NO_SAFE_CHANNEL');
+    return result;
+  }
   /** Read-only plan, using isolated AuthoringSessions and strict non-regression.
    * No edits or Undo history until applyLayoutPreview consumes the opaque token.
    * Bounded to 12 trials. Never infer an electrical connection from placement. */
@@ -1307,6 +1422,14 @@ export class AuthoringSession {
       }
       if(connected.length===2)tryEdit('Выравнивание пары',s=>s.alignConnectedPair(s.newTransaction('auto-pair'),connected));
       else if(connected.length>=3&&connected.length<=32)tryEdit('Выравнивание цепочки: '+connected.length,s=>s.alignSeries(s.newTransaction('auto-series'),connected));
+    }
+    // Try shared single-Net trunks only when every physical member belongs
+    // to the selected scope. The quality gate may reject longer rail routes.
+    const netCandidates=base.project.nets.filter(n=>n.members.length>=3&&n.members.length<=32&&
+      n.members.every(p=>byComp.has(p.component_id))).sort((a,b)=>b.members.length-a.members.length||a.id.localeCompare(b.id));
+    for(const n of netCandidates){
+      if(attempted>=11){limited=true;break}
+      tryEdit('Магистраль '+n.name,s=>s.buildNetRail(s.newTransaction('auto-net-rail'),n.id));
     }
     tryEdit('Упрощение проводников',s=>s.simplifyRoutes(s.newTransaction('auto-cleanup'),instanceIds));
     const token=operations.length?newId('layout'):null;

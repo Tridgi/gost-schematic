@@ -772,6 +772,13 @@ export default function App() {
     projectName={document.project.title+(authoringRef.current?' · R3 AUTHORING':' · R2 PREVIEW')} dirty={dirty}
     baseRevision={String(snapshot.revision)} sheets={document.project.sheets.map(s=>({id:s.id,title:s.name}))}
     activeSheetId={activeSheet.id} catalog={catalog} tree={tree} topology={topology}
+    onBuildNetRail={authoringRef.current&&tool==='select'?id=>{
+      const a=authoringRef.current!;
+      if(!window.confirm('Перестроить выбранную цепь в общую магистраль? Положения УГО и состав Net сохранятся, проводники и узлы этой цепи будут заменены.'))return;
+      try{const result=a.buildNetRail(a.newTransaction('build-net-rail'),id);adoptAuthored();
+        setIssue('Магистраль: '+result.pins+' выводов, '+result.junctions+' узлов, длина '+(result.lengthUm/1000).toFixed(3)+' мм. Проверьте маршрут.');}
+      catch(e){setIssue(e instanceof WireError&&e.code==='NO_CHANGE'?'Магистраль уже построена.':'NET_RAIL_FAILED: '+String(e));}
+    }:undefined}
     catalogMissingCount={authoringRef.current?catalogAdditions(document.project.part_definitions,document.project.symbol_definitions).length:0}
     onCatalogUpgrade={authoringRef.current?()=>{
       try{const a=authoringRef.current!;const added=a.upgradeCatalog(a.newTransaction('upgrade-catalog'));
