@@ -1648,8 +1648,16 @@ export class AuthoringSession {
     let attempted=0,best:{session:AuthoringSession;order:string;routed:number;outcomes:InitialBatchOutcome[];quality:LayoutQuality}|undefined;
     // Controlled mode retries the difficult Nets first on fresh copies.
     // Strict mode retains its original three orders and attempt bound.
-    for(let k=0;k<orders.length;k++){
+    for(let k=0;k<5;k++){
+      if(k===3){
+        if(!controlled||!best||best.routed===netIds.length)break;
+        const failed=best.outcomes.filter(o=>o.rejected).map(o=>o.id);
+        const done=best.outcomes.filter(o=>!o.rejected).map(o=>o.id);
+        orders.push({name:'blocked-first',ids:[...failed,...done]});
+        orders.push({name:'blocked-first-short-span',ids:[...failed].sort((a,b)=>span.get(a)!-span.get(b)!||a.localeCompare(b)).concat(done)});
+      }
       const order=orders[k];
+      if(!order)break;
       const signature=JSON.stringify(order.ids);if(tried.has(signature))continue;tried.add(signature);
       const session=new AuthoringSession(base),outcomes:InitialBatchOutcome[]=[];
       let routed=0;
@@ -1667,12 +1675,6 @@ export class AuthoringSession {
       if(!best||routed>best.routed||(routed===best.routed&&
         (quality.crossings<best.quality.crossings||(quality.crossings===best.quality.crossings&&(quality.bends<best.quality.bends||(quality.bends===best.quality.bends&&quality.lengthUm<best.quality.lengthUm))))))
         best={session,order:order.name,routed,outcomes,quality};
-      if(controlled&&k===2&&best&&best.routed<netIds.length){
-        const failed=best.outcomes.filter(o=>o.rejected).map(o=>o.id);
-        const done=best.outcomes.filter(o=>!o.rejected).map(o=>o.id);
-        orders.push({name:'blocked-first',ids:[...failed,...done]});
-        orders.push({name:'blocked-first-short-span',ids:[...failed].sort((a,b)=>span.get(a)!-span.get(b)!||a.localeCompare(b)).concat(done)});
-      }
       if(controlled&&best?.routed===netIds.length&&best.quality.crossings===0)break;
     }
     if(!best)reject('BATCH_NO_SAFE_ROUTE');
