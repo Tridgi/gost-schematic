@@ -138,3 +138,40 @@ def test_sheet_adapter_routes_around_optical_zone_and_measured_label():
     for a, b in zip(result.points, result.points[1:], strict=False):
         assert not any(segment_intersects_box(Line(a, b), box.expanded(550))
                        for box in (*photo.routing_boxes, text_box))
+
+
+@pytest.mark.parametrize("rotation", (0, 90, 180, 270))
+@pytest.mark.parametrize("mirror", (False, True))
+def test_foreign_wiper_stubs_outside_blue_zone_are_not_crossed(rotation, mirror):
+    catalog = CatalogResolver()
+    symbol = catalog.symbols["resistor.variable_side_wiper"]
+    transform = Transform(rotation, mirror)
+    # x=7 mm cuts the bent wiper and resistor terminal stub outside blue box,
+    # but is neither a physical contact nor a body keepout.
+    local_start, local_end = Point(7000, -22000), Point(7000, 22000)
+    start, end = transform.apply(local_start), transform.apply(local_end)
+    fixed = catalog.symbols["resistor.fixed"]
+    pin = next(p for p in fixed.pins if p.number == "1")
+    first = Transform(90)
+    last = Transform(270)
+    source, target = PinRef("R1", "1"), PinRef("R2", "1")
+    circuit = Circuit((
+        ComponentInstance("R1", "resistor.fixed", Point(start.x - first.apply(pin.at).x, start.y - first.apply(pin.at).y), first),
+        ComponentInstance("R2", "resistor.fixed", Point(end.x - last.apply(pin.at).x, end.y - last.apply(pin.at).y), last),
+        ComponentInstance("R3", "resistor.variable_side_wiper", Point(0, 0), transform),
+    ), (Net("LINK", (source, target)),))
+    hazards = tuple(transform.box(
+        primitive_stroked_bounds(g, symbol.line_width_um)
+    ).expanded(550) for g in symbol.graphics)
+    direct = Line(start, end)
+    assert any(segment_intersects_box(direct, b) for b in hazards)
+    assert not any(segment_intersects_box(direct, transform.box(b).expanded(550))
+                   for b in symbol.routing_boxes)
+    result = route_circuit_two_pins(
+        circuit, catalog.parts, catalog.symbols, source, target, net_name="LINK",
+    )
+    assert result.ok, result.diagnostics
+    assert result.points[0] == start and result.points[-1] == end
+    assert len(result.points) > 2
+    for a, b in zip(result.points, result.points[1:], strict=False):
+        assert not any(segment_intersects_box(Line(a, b), hazard) for hazard in hazards)
