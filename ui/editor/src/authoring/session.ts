@@ -1474,6 +1474,45 @@ export class AuthoringSession {
     });
     if(!result)reject('TREE_NO_SAFE_ROUTE');return result;
   }
+  /** Route an explicit batch of untouched Nets on an isolated draft.
+   * All selected Nets must succeed; no intermediate edits/history are published.
+   * Try larger Nets first, then the reverse order if the first pass is blocked.
+   * At most 8 Nets and 16 individual planning attempts per command. */
+  routeInitialNets(tx:Tx,netIds:readonly string[]):{nets:number;wires:number;junctions:number;bends:number;lengthUm:number;attempts:number}{
+    let result:{nets:number;wires:number;junctions:number;bends:number;lengthUm:number;attempts:number}|undefined;
+    this.edit(tx,draft=>{
+      if(netIds.length<1||netIds.length>8)reject('BATCH_NET_COUNT');
+      if(new Set(netIds).size!==netIds.length)reject('BATCH_DUPLICATE_NET');
+      const byId=new Map(draft.project.nets.map(n=>[n.id,n]));
+      if(netIds.some(id=>!byId.has(id)))reject('UNKNOWN_NET');
+      const ordered=[...netIds].sort((a,b)=>byId.get(b)!.members.length-byId.get(a)!.members.length);
+      const orders=ordered.length>1?[ordered,[...ordered].reverse()]:[ordered];
+      let attempts=0,lastFailure='';
+      for(const order of orders){
+        const trial=new AuthoringSession(draft);
+        const totals={nets:0,wires:0,junctions:0,bends:0,lengthUm:0};
+        let failed=false;
+        for(const id of order){
+          attempts++;
+          try{
+            const route=trial.buildNetTree(trial.newTransaction('batch-initial-route'),id,true);
+            totals.nets++;totals.wires+=route.wires;totals.junctions+=route.junctions;
+            totals.bends+=route.bends;totals.lengthUm+=route.lengthUm;
+          }catch(e){
+            if(!(e instanceof WireError))throw e;
+            lastFailure=byId.get(id)!.name+': '+e.code;failed=true;break;
+          }
+        }
+        if(failed)continue;
+        const next=trial.file;
+        if(sourceGuard(next)!==sourceGuard(draft)||netIds.some(id=>trial.engine.validateNet(id).pin_groups.length!==1))
+          reject('BATCH_TOPOLOGY_MISMATCH');
+        result={...totals,attempts};return next;
+      }
+      throw new WireError('BATCH_NO_SAFE_ROUTE','BATCH_NO_SAFE_ROUTE: '+lastFailure);
+    });
+    if(!result)reject('BATCH_NO_SAFE_ROUTE');return result;
+  }
   /** Read-only plan, using isolated AuthoringSessions and strict non-regression.
    * No edits or Undo history until applyLayoutPreview consumes the opaque token.
    * Bounded to 12 trials. Never infer an electrical connection from placement. */
