@@ -32,7 +32,7 @@ def test_general_amplifier_has_three_lobes_and_exact_triangle_contact():
     assert len(arcs) == 3
     assert all(g.bulge == Side.TOP for g in arcs)
     assert len([g for g in symbol.graphics if isinstance(g, StyledLine)]) == 3
-    assert Line(Point(500, 3250), Point(500, 13000)) in symbol.graphics
+    assert Line(Point(500, 2600), Point(500, 13000)) in symbol.graphics
     assert len(symbol.pins) == 3
 
 
