@@ -884,7 +884,7 @@ export class AuthoringSession {
    * routes. External connections and locked instances fix transverse poses.
    * Solve relative pin offsets, then choose a median shift (minimum L1 move).
    * Commit only if ALL internal conductors are straight and collision-free. */
-  alignSeries(tx:Tx,instanceIds:readonly string[]):{moved:number;wires:number;removedBends:number;axis:'horizontal'|'vertical'}{
+  alignSeries(tx:Tx,instanceIds:readonly string[],distribute=false):{moved:number;wires:number;removedBends:number;axis:'horizontal'|'vertical'}{
     let result:{moved:number;wires:number;removedBends:number;axis:'horizontal'|'vertical'}|undefined;
     this.edit(tx,draft=>{
       const sh=draft.project.sheets[indexOfSheet(draft)];
@@ -937,6 +937,32 @@ export class AuthoringSession {
       const fixed=new Set(group.filter(i=>sh.layers.find(l=>l.id===i.layer_id)?.locked||
         draft.project.sheets.some(other=>other.id!==sh.id&&other.instances.some(v=>v.component_id===i.component_id))).map(i=>i.component_id));
       for(const w of outside)for(const v of [w.vertices[0],w.vertices.at(-1)!])if(v.anchor.kind==='pin'&&ids.has(v.anchor.component_id))fixed.add(v.anchor.component_id);
+      // Optional equal spacing uses gaps BETWEEN real facing pins, not centers.
+      // Retain longitudinal end poses; any fixed intermediate component must
+      // already satisfy its proposed coordinate. Integer remainder is exact.
+      const along:0|1=transverse===0?1:0;
+      const longitudinal=new Map(group.map(i=>[i.component_id,0]));
+      if(distribute){
+        const ordered=[...offsets.keys()],gaps:number[]=[];
+        let direction:number|undefined;
+        for(let i=1;i<ordered.length;i++){
+          const prev=ordered[i-1],next=ordered[i];
+          const edge=edges.find(e=>e.first.component_id===prev&&e.last.component_id===next||
+            e.first.component_id===next&&e.last.component_id===prev)!;
+          const p=edge.first.component_id===prev?edge.a:edge.b,q=edge.first.component_id===prev?edge.b:edge.a;
+          const sign=p.normal[along];
+          if(direction!==undefined&&sign!==direction)reject('SERIES_NON_MONOTONIC');
+          direction=sign;gaps.push((q.at_um[along]-p.at_um[along])*sign);
+        }
+        const sum=gaps.reduce((a,b)=>a+b,0),base=Math.floor(sum/gaps.length),remainder=sum%gaps.length;
+        if(base<4000)reject('SERIES_GAP_TOO_SMALL');
+        let cumulative=0;
+        for(let i=1;i<ordered.length;i++){
+          cumulative+=(base+(i<=remainder?1:0)-gaps[i-1])*direction!;
+          longitudinal.set(ordered[i],cumulative);
+        }
+        if([...fixed].some(id=>longitudinal.get(id)!==0))reject('SERIES_FIXED_SPACING_CONFLICT');
+      }
       const required=[...new Set([...fixed].map(id=>-offsets.get(id)!))];
       if(required.length>1)reject('SERIES_FIXED_CONFLICT');
       const votes=[...offsets.values()].map(n=>-n).sort((a,b)=>a-b);
@@ -954,13 +980,13 @@ export class AuthoringSession {
       for(const common of shifts){
         const trial=clone(draft),sheet=trial.project.sheets[indexOfSheet(trial)];
         const deltas=new Map([...offsets].map(([id,v])=>[id,v+common]));
-        const moved=group.filter(i=>(deltas.get(i.component_id)??0)!==0);
+        const moved=group.filter(i=>(deltas.get(i.component_id)??0)!==0||(longitudinal.get(i.component_id)??0)!==0);
         for(const inst of sheet.instances){
-          const delta=deltas.get(inst.component_id);if(!delta)continue;
-          const position=xy(inst.origin_um);position[transverse]+=delta;inst.origin_um=xy(position);
+          const delta=deltas.get(inst.component_id)??0,advance=longitudinal.get(inst.component_id)??0;if(!delta&&!advance)continue;
+          const position=xy(inst.origin_um);position[transverse]+=delta;position[along]+=advance;inst.origin_um=xy(position);
         }
         const boxes=sheet.instances.map(i=>({i,box:boxFor(i)})),margin=sheet.frame.margin_um;
-        if(boxes.some(({i,box})=>deltas.get(i.component_id)&&(
+        if(boxes.some(({i,box})=>(deltas.get(i.component_id)||longitudinal.get(i.component_id))&&(
           box.minX<margin||box.minY<margin||box.maxX>sheet.frame.size_um[0]-margin||box.maxY>sheet.frame.size_um[1]-margin||
           boxes.some(o=>o.i.id!==i.id&&!separated(box,o.box,1000))||
           [...wireBoxes,...nodeBoxes].some(b=>!separated(box,b,1000)))))continue;
@@ -971,7 +997,7 @@ export class AuthoringSession {
         let valid=true,removedBends=0,changed=0;
         for(const edge of edges){
           const shift=(p:WorldPin,ref:PinRef):WorldPin=>{
-            const at=xy(p.at_um);at[transverse]+=deltas.get(ref.component_id)!;
+            const at=xy(p.at_um);at[transverse]+=deltas.get(ref.component_id)!;at[along]+=longitudinal.get(ref.component_id)!;
             return {...p,at_um:xy(at)};
           };
           let points:MutablePoint[];
