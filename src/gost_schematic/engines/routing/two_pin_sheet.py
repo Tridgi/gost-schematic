@@ -15,10 +15,12 @@ from gost_schematic.engines.routing.two_pin_orthogonal import (
     _fail,
     route_two_pins,
 )
+from gost_schematic.model.annotations import AnnotationPlacement
 from gost_schematic.model.circuit import Circuit, PinRef
 from gost_schematic.model.obstacles import WireObstacle
 from gost_schematic.model.part import PartDefinition
 from gost_schematic.model.symbol import SymbolDefinition
+from gost_schematic.validation.annotation_checks import annotation_obstacles
 from gost_schematic.validation.external_wire_checks import validate_external_wires
 
 
@@ -32,6 +34,7 @@ def route_circuit_two_pins(
     net_name: str,
     foreign_wires: tuple[WireObstacle, ...] = (),
     keepouts: tuple[Box, ...] = (),
+    annotations: tuple[AnnotationPlacement, ...] = (),
     grid_um: int = 1000,
     clearance_um: int = 400,
     stroke_um: int = 300,
@@ -45,8 +48,8 @@ def route_circuit_two_pins(
     including same-net branches: graph junction authoring is not implemented.
 
     Reserves the full foreign pin's outward 1.8mm escape corridor in addition
-    to its exact physical contact and the body's catalog keepout. Caller must
-    provide any text/annotation obstacles and all existing drawn wires with
+    to its exact physical contact and all catalog routing keepouts. Pass resolved
+    annotations to protect measured text, and all existing drawn wires with
     their actual printed `WireObstacle.stroke_um` as `foreign_wires`.
     This adapter is conservative; failure never leaves a partial connection.
     """
@@ -73,8 +76,13 @@ def route_circuit_two_pins(
     ):
         return _fail("ROUTE_OBSTACLE_INVALID", "Foreign wires need actual stroke metadata")
 
+    if not isinstance(annotations, tuple) or any(
+        not isinstance(item, AnnotationPlacement) for item in annotations
+    ):
+        return _fail("ROUTE_OBSTACLE_INVALID", "Expected resolved annotation placements")
+
     coordinates: dict[PinRef, Point] = {}
-    obstacles: list[Box] = list(keepouts)
+    obstacles: list[Box] = [*keepouts, *(item.box for item in annotation_obstacles(annotations))]
     references: set[str] = set()
     for component in circuit.components:
         if component.reference in references:

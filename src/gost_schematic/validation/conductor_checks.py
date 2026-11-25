@@ -1,6 +1,6 @@
 """Exact authored conductor graph for UGO primitives.
 
-Only explicitly selected Line/StyledLine/Semicircle objects are conducting.
+Only explicitly selected Line/StyledLine/Semicircle/Arc270 objects conduct.
 Geometric crossings never create implicit joins. All arithmetic uses integral
 micrometres: no floating-point tolerance and no assumptions from net names.
 """
@@ -8,7 +8,15 @@ micrometres: no floating-point tolerance and no assumptions from net names.
 from dataclasses import dataclass
 
 from gost_schematic.core.diagnostics import Diagnostic, Severity
-from gost_schematic.core.geometry import SIDE_VECTORS, Arc270, Line, Point, Semicircle, Side, StyledLine
+from gost_schematic.core.geometry import (
+    SIDE_VECTORS,
+    Arc270,
+    Line,
+    Point,
+    Semicircle,
+    Side,
+    StyledLine,
+)
 from gost_schematic.model.symbol import SymbolDefinition
 
 
