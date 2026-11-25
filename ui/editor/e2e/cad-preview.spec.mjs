@@ -1273,3 +1273,40 @@ test('R19b magnetic placement preview aligns pins without creating a wire',async
  expect(a.origin_um[1]).toBe(b.origin_um[1]);expect(doc.project.nets).toEqual([]);
  expect(doc.project.sheets[0].wires).toEqual([]);
 });
+
+test('R19c existing staircase becomes a clean two-bend wire and Undo restores original route',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ for(const [x,y] of [[.25,.35],[.7,.55]]){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*y);
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const placed=await saved(),[a,b]=placed.project.components;
+ await page.getByTestId('tool-wire').click();
+ await page.getByTestId('signed-pin-'+a.id+'-2').click();await page.getByTestId('signed-pin-'+b.id+'-1').click();
+ await page.getByTestId('tool-select').click();
+ const stairs=await saved(),w=stairs.project.sheets[0].wires[0],start=w.vertices[0],end=w.vertices.at(-1);
+ const [x0,y0]=start.at_um,[x1,y1]=end.at_um;
+ const xa=Math.round(x0+(x1-x0)*.25),xb=Math.round(x0+(x1-x0)*.5),xc=Math.round(x0+(x1-x0)*.75);
+ const ya=Math.round(y0+(y1-y0)/3),yb=Math.round(y0+2*(y1-y0)/3);
+ const bends=[[xa,y0],[xa,ya],[xb,ya],[xb,yb],[xc,yb],[xc,y1]];
+ w.vertices=[start,...bends.map((at_um,i)=>({id:'stairs-v'+i,at_um,anchor:{kind:'bend'}})),end];
+ w.segments=w.vertices.slice(1).map((v,i)=>({id:'stairs-s'+i,from_vertex_id:w.vertices[i].id,to_vertex_id:v.id}));
+ await page.getByTestId('project-file-input').setInputFiles({name:'stairs.gscad',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(stairs))});
+ await expect(page.locator('[data-wire-id="'+w.id+'"] [data-segment-id]')).toHaveCount(7);
+ page.once('dialog',d=>d.accept());
+ await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByTestId('simplify-routes').click();
+ await expect(page.locator('[data-wire-id="'+w.id+'"] [data-segment-id]')).toHaveCount(3);
+ const after=await saved();
+ expect(after.project.sheets[0].instances).toEqual(stairs.project.sheets[0].instances);
+ expect(after.project.nets.map(n=>[n.id,n.members])).toEqual(stairs.project.nets.map(n=>[n.id,n.members]));
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(stairs.project);
+});

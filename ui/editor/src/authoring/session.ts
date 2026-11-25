@@ -106,7 +106,7 @@ function separated(a:Bounds,b:Bounds,clearance:number):boolean {
 /** Sheet-aware bounded orthogonal route. Keep other symbols/wires clear;
  * endpoint symbol boxes may only be traversed by their own outward lead.
  * Ordinary interior X crossings are a fallback, never implicit connections. */
-function cleanRoute(file:ProjectFileV2,start:PinRef,end:PinRef,a:WorldPin,b:WorldPin,netId:string,ignoreWire?:string):MutablePoint[]{
+function cleanRoute(file:ProjectFileV2,start:PinRef,end:PinRef,a:WorldPin,b:WorldPin,netId:string,ignoreWire?:string,allowInteriorCrossings=true):MutablePoint[]{
  const sheet=file.project.sheets[indexOfSheet(file)],margin=sheet.frame.margin_um;
  const defs=new Map(file.project.symbol_definitions.map(d=>[d.id,d]));
  const obstacles=sheet.instances.map(i=>{
@@ -153,7 +153,7 @@ function cleanRoute(file:ProjectFileV2,start:PinRef,end:PinRef,a:WorldPin,b:Worl
  };
  const opts={channelsX,channelsY};
  try{return routeManhattan(xy(a.at_um),xy(b.at_um),xy(a.normal),xy(b.normal),2000,{...opts,accept:p=>accept(p,false)});}
- catch(e){if(!(e instanceof WireError)||e.code!=='REROUTE_REQUIRED')throw e;}
+ catch(e){if(!allowInteriorCrossings||!(e instanceof WireError)||e.code!=='REROUTE_REQUIRED')throw e;}
  return routeManhattan(xy(a.at_um),xy(b.at_um),xy(a.normal),xy(b.normal),2000,{...opts,accept:p=>accept(p,true)});
 }
 function expectedCounts(file:ProjectFileV2):void {
@@ -878,6 +878,67 @@ export class AuthoringSession {
     });
     if(!result)reject('ALIGN_NO_SAFE_STRAIGHT_ROUTE');
     return result;
+  }
+  /** Explicit post-processing: only existing signed pin-to-pin wires.
+   * Never increase length or turns, never introduce wire intersections, never
+   * change any component pose, Net membership, wire ID or terminal vertex ID.
+   * One transaction for the whole bounded scope, Undo restores the exact file. */
+  simplifyRoutes(tx:Tx,instanceIds:readonly string[]=[]):{checked:number;changed:number;removedBends:number;removedLengthUm:number}{
+    const stats={checked:0,changed:0,removedBends:0,removedLengthUm:0};
+    this.edit(tx,draft=>{
+      const sh=draft.project.sheets[indexOfSheet(draft)];
+      const selected=new Set(instanceIds);
+      if(selected.size!==instanceIds.length||instanceIds.some(id=>!sh.instances.some(i=>i.id===id)))reject('INVALID_GROUP');
+      if(sh.instances.length>256||sh.wires.reduce((n,w)=>n+w.segments.length,0)>2048)reject('LAYOUT_SIZE_LIMIT');
+      const comps=new Set(sh.instances.filter(i=>selected.has(i.id)).map(i=>i.component_id));
+      const eligible=sh.wires.filter(w=>{
+        const a=w.vertices[0].anchor,b=w.vertices.at(-1)!.anchor;
+        return a.kind==='pin'&&b.kind==='pin'&&(!selected.size||(comps.has(a.component_id)&&comps.has(b.component_id)))&&
+          !sh.layers.find(l=>l.id===w.layer_id)?.locked;
+      });
+      if(eligible.length>64)reject('LAYOUT_SIZE_LIMIT');
+      const metric=(points:readonly PointUm[])=>{
+        let turns=0,length=0;
+        let prior:MutablePoint|null=null;
+        const lens:number[]=[];
+        for(let i=1;i<points.length;i++){
+          const p=points[i-1],q=points[i];
+          const dx=q[0]-p[0],dy=q[1]-p[1],n:MutablePoint=[Math.sign(dx),Math.sign(dy)];
+          const l=Math.abs(dx)+Math.abs(dy);length+=l;
+          if(prior&&(n[0]!==prior[0]||n[1]!==prior[1]))turns++;
+          prior=n;lens.push(l);
+        }
+        const imbalance=turns===2&&points.length===4?Math.abs(lens[0]-lens[2]):0;
+        return {turns,length,imbalance};
+      };
+      // Re-evaluate obstacles after each accepted route, preserving deterministic order.
+      for(const w of eligible){
+        stats.checked++;
+        const start=w.vertices[0].anchor,end=w.vertices.at(-1)!.anchor;
+        if(start.kind!=='pin'||end.kind!=='pin')continue;
+        const a=this.beginWire(start),b=this.beginWire(end);
+        let points:MutablePoint[];
+        try{points=cleanRoute(draft,start,end,a,b,w.net_id,w.id,false);}
+        catch(e){if(e instanceof WireError&&e.code==='REROUTE_REQUIRED')continue;throw e;}
+        const oldPoints=w.vertices.map(v=>v.at_um),old=metric(oldPoints),next=metric(points);
+        if(next.turns>old.turns||next.length>old.length)continue;
+        const improved=next.turns<old.turns||next.length<old.length||points.length<oldPoints.length||
+          (next.turns===old.turns&&next.length===old.length&&points.length===oldPoints.length&&next.imbalance<old.imbalance);
+        if(!improved)continue;
+        const vertices:WirePolyline['vertices']=[
+          {...w.vertices[0],at_um:points[0]},
+          ...points.slice(1,-1).map(at_um=>({id:newId('vertex'),at_um,anchor:{kind:'bend'} as const})),
+          {...w.vertices.at(-1)!,at_um:points.at(-1)!}];
+        w.vertices=vertices;
+        w.segments=vertices.slice(1).map((v,i)=>({id:newId('segment'),from_vertex_id:vertices[i].id,to_vertex_id:v.id}));
+        w.needs_routing_review=true;
+        stats.changed++;stats.removedBends+=old.turns-next.turns;stats.removedLengthUm+=old.length-next.length;
+      }
+      if(!stats.changed)reject('NO_CHANGE');
+      const {subset,session}=localSession(draft,this.clock);
+      return materialize(draft,subset,session);
+    });
+    return stats;
   }
   moveSegment(tx:Tx,wireId:string,segmentId:string,deltaUm:number):void{
     this.wireEdit(tx,eng=>eng.moveSegmentById(eng.newTransaction('move-segment'),

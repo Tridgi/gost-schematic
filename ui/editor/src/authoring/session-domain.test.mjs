@@ -885,3 +885,43 @@ test('R19b magnet skips blocked, distant and ambiguous suggestions',()=>{
  amb.place(amb.newTransaction('lower'),'symbol/resistor.fixed',[100000,103000]);
  assert.equal(amb.suggestAlignedPlacement('symbol/resistor.fixed',[155000,100000]),null);
 });
+
+test('R19c removes manually drawn stairs in one transaction and preserves signed endpoint IDs',()=>{
+ const s=newSession(),{r,c}=placePair(s);
+ s.move(s.newTransaction('offset'),c,[155000,120000]);
+ s.connect(s.newTransaction('stairs'),pin(r,'2'),pin(c,'1'),[
+  [119000,103000],[128000,110000],[137000,117000]
+ ]);
+ const before=s.file,old=before.project.sheets[0].wires[0],rev=s.revision;
+ assert.ok(old.vertices.length>4);
+ const stats=s.simplifyRoutes(s.newTransaction('cleanup'));
+ const after=s.file,w=after.project.sheets[0].wires[0];
+ assert.equal(stats.checked,1);assert.equal(stats.changed,1);assert.ok(stats.removedBends>0);
+ assert.equal(w.vertices.length,4);assert.equal(w.id,old.id);
+ assert.equal(w.vertices[0].id,old.vertices[0].id);assert.equal(w.vertices.at(-1).id,old.vertices.at(-1).id);
+ assert.deepEqual(w.vertices[0].anchor,old.vertices[0].anchor);assert.deepEqual(w.vertices.at(-1).anchor,old.vertices.at(-1).anchor);
+ assert.equal(w.needs_routing_review,true);assert.equal(s.revision,rev+1);
+ assert.deepEqual(after.project.sheets[0].instances,before.project.sheets[0].instances);
+ assert.deepEqual(after.project.nets.map(n=>[n.id,n.members]),before.project.nets.map(n=>[n.id,n.members]));
+ assert.throws(()=>s.simplifyRoutes(s.newTransaction('again')),/NO_CHANGE/);
+ assert.deepEqual(s.file,after);assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);assert.deepEqual(new AuthoringSession(s.file).file,after);
+});
+test('R19c cleanup does not introduce crossings or alter explicit branch endpoints',()=>{
+ const s=newSession(),{r,c}=placePair(s);
+ s.connect(s.newTransaction('connect'),pin(r,'2'),pin(c,'1'));
+ const before=s.file;
+ assert.throws(()=>s.simplifyRoutes(s.newTransaction('straight')),/NO_CHANGE/);
+ assert.deepEqual(s.file,before);
+ const legacy=structuredClone(before),sh=legacy.project.sheets[0],w=sh.wires[0];
+ const a=w.vertices[0],b=w.vertices.at(-1),mid=[130000,100000];
+ const junction={id:'test-node',net_id:w.net_id,layer_id:w.layer_id,at_um:mid};
+ sh.junctions.push(junction);
+ const v1={id:'test-v1',at_um:mid,anchor:{kind:'junction',junction_id:junction.id}};
+ const v2={id:'test-v2',at_um:mid,anchor:{kind:'junction',junction_id:junction.id}};
+ sh.wires=[{...w,vertices:[a,v1],segments:[{id:'test-seg1',from_vertex_id:a.id,to_vertex_id:v1.id}]},
+ {...w,id:'test-w2',vertices:[v2,b],segments:[{id:'test-seg2',from_vertex_id:v2.id,to_vertex_id:b.id}]}];
+ const aSession=new AuthoringSession(legacy);
+ assert.throws(()=>aSession.simplifyRoutes(aSession.newTransaction('skip-branch')),/NO_CHANGE/);
+ assert.deepEqual(aSession.file,legacy);
+});
