@@ -79,3 +79,12 @@ test('frozen source TL494 23/15/62/16/2b renders as unrouted visual projection',
  assert.equal(s.graphics.filter(g=>g.kind==='source_b_continuation').length,2);
  assert.equal(p.nets.every(n=>n.route_status==='unrouted'),true);
 });
+
+
+test('R31b retains physical non-electric stroke width for print overflow checks',()=>{
+ const f=file(),g=f.project.sheets[0].graphics[0];g.stroke_um=350;
+ const before=JSON.stringify(f),scene=projectToCanvasScene(f,'sheet');
+ assert.equal(scene.graphics[0].strokes[0].stroke_um,350);
+ assert.equal(scene.graphics[0].electrical,false);
+ assert.equal(JSON.stringify(f),before);
+});
