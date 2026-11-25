@@ -1085,7 +1085,7 @@ test('R17: source library search and real semiconductor placement',async({page})
  await page.getByRole('button',{name:'Файл'}).click();
  await page.getByTestId('new-project').click();
  const search=page.getByTestId('catalog-search');
- await expect(page.locator('[data-testid^="catalog-item-"]')).toHaveCount(35);
+ await expect(page.locator('[data-testid^="catalog-item-"]')).toHaveCount(36);
  await search.fill('фотодиод');
  await expect(page.locator('[data-testid^="catalog-item-"]')).toHaveCount(1);
  const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
@@ -1120,9 +1120,9 @@ test('R17b: open legacy project, add catalog entries explicitly, undo and redo',
  legacy.project.symbol_definitions=legacy.project.symbol_definitions.filter(p=>keep.has(p.part_id));
  await page.getByTestId('project-file-input').setInputFiles({name:'legacy.gscad',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(legacy))});
  await expect(page.locator('[data-testid^="catalog-item-"]')).toHaveCount(2);
- await expect(page.getByTestId('upgrade-catalog')).toContainText('+33');
+ await expect(page.getByTestId('upgrade-catalog')).toContainText('+34');
  await page.getByTestId('upgrade-catalog').click();
- await expect(page.locator('[data-testid^="catalog-item-"]')).toHaveCount(35);
+ await expect(page.locator('[data-testid^="catalog-item-"]')).toHaveCount(36);
  await expect(page.getByTestId('upgrade-catalog')).toHaveCount(0);
  const upgraded=await saved();
  expect(upgraded.project.part_definitions.slice(0,2)).toEqual(legacy.project.part_definitions);
