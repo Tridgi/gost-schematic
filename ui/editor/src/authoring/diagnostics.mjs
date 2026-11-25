@@ -44,8 +44,8 @@ export function analyzeDiagnostics(file,scene,snapshot,routeStatuses={},options=
  const add=(code,severity,message,identities=[],instanceId)=>{
   const id=JSON.stringify([code,...identities]);
   if(seen.has(id))return;
-  // Keep bounded duplicate tracking as well as bounded rendering.
-  if(seen.size>=maxComparisons+maxItems){incomplete=true;return}
+  // Electrical counts are exact for the scanned entities; only geometry comparisons
+  // and rendered rows are capped. Do not silently drop known issue counts.
   seen.add(id);counts[severity]++;
   if(items.length<maxItems)items.push({id,code,severity,message,...(instanceId?{instanceId}:{})});
  };
@@ -54,7 +54,6 @@ export function analyzeDiagnostics(file,scene,snapshot,routeStatuses={},options=
  const byPart=new Map(project.part_definitions.map(p=>[p.id,p]));
  const byNet=new Map(project.nets.map(n=>[n.id,n]));
  const pinNet=new Map(project.nets.flatMap(n=>n.members.map(p=>[key(p),n.id])));
- const symbolByComp=new Map(scene.symbols.map(s=>[s.component_id,s]));
  const ref=id=>byComp.get(id)?.refdes??id,netName=id=>byNet.get(id)?.name??id;
  for(const s of scene.symbols){
   const missing=s.pins.filter(p=>!pinNet.has(key({component_id:s.component_id,physical_pin_number:p.physical_pin_number})));
