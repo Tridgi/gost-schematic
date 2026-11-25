@@ -20,7 +20,7 @@ const p=doc.project;
 assert.equal(p.components.length,23);assert.equal(p.nets.length,15);
 assert.equal(p.nets.reduce((n,v)=>n+v.members.length,0),62);
 p.provenance={...p.provenance,status:'synthetic',source_sha:'0'.repeat(40),
- source_path:'test-only/TL494-R33-native',expected_counts:{...p.provenance.expected_counts,da1_pins:0,b_graphics:0}};
+ source_path:'test-only/TL494-R33-native',expected_counts:{...p.provenance.expected_counts}};
 const temp=mkdtempSync(join(tmpdir(),'r33-model-'));
 try{
  const module=join(temp,'model.mjs');
