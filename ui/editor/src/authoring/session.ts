@@ -1513,6 +1513,87 @@ export class AuthoringSession {
     });
     if(!result)reject('BATCH_NO_SAFE_ROUTE');return result;
   }
+  /** Align a two-pin component with multiple direct signed neighbors,
+   * rebuilding all its incident routes on one detached candidate. */
+  alignMultiConnected(tx:Tx,instanceId:string,scopeIds:readonly string[]=[]):{moved:string;delta:MutablePoint;wires:number}{
+    let result:{moved:string;delta:MutablePoint;wires:number}|undefined;
+    this.edit(tx,draft=>{
+      const sh=draft.project.sheets[indexOfSheet(draft)];
+      if(sh.instances.length>128||sh.wires.reduce((n,w)=>n+w.segments.length,0)>512)reject('LAYOUT_SIZE_LIMIT');
+      if(sh.texts.length||sh.labels.length||sh.graphics.length)reject('LAYOUT_ANNOTATIONS_UNSUPPORTED');
+      const inst=sh.instances.find(i=>i.id===instanceId);
+      if(!inst)reject('UNKNOWN_INSTANCE');
+      const defs=new Map(draft.project.symbol_definitions.map(d=>[d.id,d]));
+      if(defs.get(inst.symbol_id)?.pins.length!==2)reject('MULTI_REQUIRES_TWO_PIN_SYMBOL');
+      const layerOK=(id:string)=>sh.layers.some(l=>l.id===id&&!l.locked&&l.visible&&l.printable&&l.kind==='electrical');
+      if(!layerOK(inst.layer_id))reject('LAYER_LOCKED');
+      const scopeSet=new Set(scopeIds);
+      if(scopeSet.size!==scopeIds.length||scopeIds.some(id=>!sh.instances.some(i=>i.id===id))||
+        (scopeSet.size&&!scopeSet.has(instanceId)))reject('INVALID_GROUP');
+      const allowed=new Set(sh.instances.filter(i=>!scopeSet.size||scopeSet.has(i.id)).map(i=>i.component_id));
+      const incident=sh.wires.filter(w=>[w.vertices[0],w.vertices.at(-1)!].some(v=>v.anchor.kind==='pin'&&v.anchor.component_id===inst.component_id));
+      if(incident.length<2||incident.length>8)reject('MULTI_WIRE_COUNT');
+      const xs=new Set<number>(),ys=new Set<number>();
+      const edges=incident.map(w=>{
+        const a=w.vertices[0].anchor,b=w.vertices.at(-1)!.anchor;
+        if(a.kind!=='pin'||b.kind!=='pin'||a.component_id===b.component_id||
+          !allowed.has(a.component_id)||!allowed.has(b.component_id))reject('MULTI_EXTERNAL_OR_BRANCH');
+        if(!layerOK(w.layer_id))reject('LAYER_LOCKED');
+        const net=draft.project.nets.find(n=>n.id===w.net_id)!;
+        if(net.members.some(p=>!allowed.has(p.component_id))||this.engine.validateNet(net.id).pin_groups.length!==1)
+          reject('MULTI_EXTERNAL_OR_BRANCH');
+        const moving=a.component_id===inst.component_id?a:b,other=moving===a?b:a;
+        const p=this.beginWire(moving),q=this.beginWire(other);
+        if(p.normal[0]===-q.normal[0]&&p.normal[1]===-q.normal[1]){
+          const axis=p.normal[0]!==0?0:1,t=1-axis;
+          if((q.at_um[axis]-p.at_um[axis])*p.normal[axis]>0){
+            const delta=q.at_um[t]-p.at_um[t];if(delta)(t===0?xs:ys).add(delta);
+          }
+        }
+        return {w,a,b};
+      });
+      const shifts:MutablePoint[]=[...[...xs].map(x=>[x,0] as MutablePoint),...[...ys].map(y=>[0,y] as MutablePoint)];
+      for(const x of xs)for(const y of ys)shifts.push([x,y]);
+      shifts.sort((a,b)=>Math.abs(a[0])+Math.abs(a[1])-Math.abs(b[0])-Math.abs(b[1])||a[0]-b[0]||a[1]-b[1]);
+      const before=assessLayout(draft,this.engine);
+      if(!before.quality.complete)reject('LAYOUT_CHECK_INCOMPLETE');
+      let best:ProjectFileV2|null=null,bestAssessment=before;
+      const incidentIds=new Set(incident.map(w=>w.id));
+      const bounds=(i:SymbolInstance)=>translateBounds(symbolBounds(defs.get(i.symbol_id)!,i.rotation_deg,i.mirror_x),i.origin_um);
+      for(const delta of shifts.slice(0,8)){
+        const trial=clone(draft),ts=trial.project.sheets[indexOfSheet(trial)],m=ts.instances.find(i=>i.id===instanceId)!;
+        m.origin_um=xy([m.origin_um[0]+delta[0],m.origin_um[1]+delta[1]]);
+        const box=bounds(m),margin=ts.frame.margin_um;
+        if(box.minX<margin||box.minY<margin||box.maxX>ts.frame.size_um[0]-margin||box.maxY>ts.frame.size_um[1]-margin)continue;
+        if(ts.instances.some(i=>i.id!==m.id&&!separated(box,bounds(i),1000)))continue;
+        ts.wires=ts.wires.filter(w=>!incidentIds.has(w.id));
+        const rect=(p:PointUm,q:PointUm):Bounds=>({minX:Math.min(p[0],q[0]),minY:Math.min(p[1],q[1]),maxX:Math.max(p[0],q[0]),maxY:Math.max(p[1],q[1])});
+        if(ts.wires.some(w=>w.vertices.slice(1).some((v,i)=>!separated(box,rect(w.vertices[i].at_um,v.at_um),1000)))||
+          [...ts.junctions,...ts.splices].some(n=>!separated(box,rect(n.at_um,n.at_um),1000)))continue;
+        const shift=(ref:PinRef):WorldPin=>{
+          const p=this.beginWire(ref);
+          return ref.component_id===m.component_id?{...p,at_um:xy([p.at_um[0]+delta[0],p.at_um[1]+delta[1]])}:p;
+        };
+        try{
+          for(const {w,a,b} of edges){
+            const points=cleanRoute(trial,a,b,shift(a),shift(b),w.net_id,undefined,false);
+            const vertices=points.map((p,i)=>i===0?{...w.vertices[0],at_um:p}:i===points.length-1?{...w.vertices.at(-1)!,at_um:p}:
+              {id:newId('vertex'),at_um:p,anchor:{kind:'bend' as const}});
+            ts.wires.push({...w,vertices,segments:vertices.slice(1).map((v,i)=>({id:newId('segment'),from_vertex_id:vertices[i].id,to_vertex_id:v.id})),needs_routing_review:true});
+          }
+          const order=new Map(sh.wires.map((w,i)=>[w.id,i]));
+          ts.wires.sort((a,b)=>order.get(a.id)!-order.get(b.id)!);
+          const {subset,session}=localSession(trial,this.clock);
+          const next=materialize(trial,subset,session);
+          const assessment=assessLayout(next,session.engine);
+          if(!improvesLayout(before,assessment)||!improvesLayout(bestAssessment,assessment))continue;
+          best=next;bestAssessment=assessment;result={moved:instanceId,delta,wires:incident.length};
+        }catch(e){if(!(e instanceof WireError))throw e}
+      }
+      if(!best)reject('MULTI_NO_SAFE_IMPROVEMENT');return best;
+    });
+    if(!result)reject('MULTI_NO_SAFE_IMPROVEMENT');return result;
+  }
   /** Read-only plan, using isolated AuthoringSessions and strict non-regression.
    * No edits or Undo history until applyLayoutPreview consumes the opaque token.
    * Bounded to 12 trials. Never infer an electrical connection from placement. */
@@ -1617,6 +1698,19 @@ export class AuthoringSession {
       }
       if(connected.length===2)tryEdit('Выравнивание пары',s=>s.alignConnectedPair(s.newTransaction('auto-pair'),connected));
       else if(connected.length>=3&&connected.length<=32)tryEdit('Выравнивание цепочки: '+connected.length,s=>s.alignSeries(s.newTransaction('auto-series'),connected));
+    }
+    // R30: a two-pin device with several incident wires can be shifted
+    // as a unit, even if the connected graph is not a simple series path.
+    const multiSheet=best.file.project.sheets[indexOfSheet(best.file)];
+    const degree=new Map<string,number>();
+    for(const w of multiSheet.wires)for(const v of [w.vertices[0],w.vertices.at(-1)!]){
+      if(v.anchor.kind==='pin')degree.set(v.anchor.component_id,(degree.get(v.anchor.component_id)??0)+1);
+    }
+    for(const i of group){
+      if(attempted>=11)break;
+      if(defs.get(i.symbol_id)?.pins.length!==2||(degree.get(i.component_id)??0)<2)continue;
+      tryEdit('Совместное выравнивание '+(base.project.components.find(c=>c.id===i.component_id)?.refdes??i.id),
+        s=>s.alignMultiConnected(s.newTransaction('auto-multi-align'),i.id,instanceIds));
     }
     // Try shared single-Net trunks only when every physical member belongs
     // to the selected scope. The quality gate may reject longer rail routes.
