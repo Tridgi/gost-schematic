@@ -81,6 +81,10 @@ export function planOrthogonalTree(ports:TreePort[],obstacles:TreeBox[],frame:Tr
  };
  // Join consecutive available vertices, skipping blocked grid points only
  // if the entire segment passes the same obstacle/lead/crossing checks.
+ if(!crossable.length){
+  for(const y of Y)for(let x=1;x<X.length;x++)join([X[x-1],y],[X[x],y],1);
+  for(const x of X)for(let y=1;y<Y.length;y++)join([x,Y[y-1]],[x,Y[y]],2);
+ }else{
  for(const y of Y){let prev:TreePoint|undefined;for(const x of X){
   const p:TreePoint=[x,y];if(node(p)===undefined)continue;
   if(prev)join(prev,p,1);prev=p;
@@ -89,6 +93,7 @@ export function planOrthogonalTree(ports:TreePort[],obstacles:TreeBox[],frame:Tr
   const p:TreePoint=[x,y];if(node(p)===undefined)continue;
   if(prev)join(prev,p,2);prev=p;
  }}
+ }
  const terminals=ports.map(p=>node(p.tip));
  if(terminals.some(v=>v===undefined))return null;
  const leadDir=new Map(terminals.map((v,i)=>[v!,ports[i].pin[0]===ports[i].tip[0]?2:1]));
