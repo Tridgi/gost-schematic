@@ -1310,3 +1310,41 @@ test('R19c existing staircase becomes a clean two-bend wire and Undo restores or
  await page.getByRole('button',{name:'Отменить'}).click();
  expect((await saved()).project).toEqual(stairs.project);
 });
+
+test('R20 selected chain becomes straight without altering Net membership, and Undo restores poses',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ for(const [x,y] of [[.22,.35],[.5,.49],[.78,.4]]){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*y);
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const placed=await saved(),[a,b,c]=placed.project.components;
+ await page.getByTestId('tool-wire').click();
+ for(const [x,y] of [[a,b],[b,c]]){
+  await page.getByTestId('signed-pin-'+x.id+'-2').click();
+  await page.getByTestId('signed-pin-'+y.id+'-1').click();
+ }
+ await page.getByTestId('tool-select').click();
+ const before=await saved();
+ expect(before.project.sheets[0].wires.map(w=>w.vertices.length)).toEqual([4,4]);
+ await page.mouse.move(paper.x+paper.width*.12,paper.y+paper.height*.24);
+ await page.mouse.down();await page.mouse.move(paper.x+paper.width*.88,paper.y+paper.height*.61,{steps:6});await page.mouse.up();
+ await expect(page.getByTestId('group-selection-summary')).toContainText('3');
+ page.once('dialog',d=>d.accept());
+ await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByTestId('align-series').click();
+ const after=await saved(),sh=after.project.sheets[0];
+ expect(new Set(sh.instances.map(i=>i.origin_um[1])).size).toBe(1);
+ expect(sh.wires.map(w=>w.vertices.length)).toEqual([2,2]);
+ expect(after.project.nets.map(n=>[n.id,n.members])).toEqual(before.project.nets.map(n=>[n.id,n.members]));
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ expect((await saved()).project).toEqual(after.project);
+});

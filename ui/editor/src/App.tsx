@@ -853,6 +853,13 @@ export default function App() {
         setIssue('Оптимизировано '+result.changed+' из '+result.checked+' проводников; устранено изгибов: '+result.removedBends+'; сокращено '+(result.removedLengthUm/1000).toFixed(3)+' мм. Проверьте маршруты.');}
       catch(e){setIssue(e instanceof WireError&&e.code==='NO_CHANGE'?'Без изменений: безопасного улучшения не найдено.':'ROUTE_CLEANUP_FAILED: '+String(e));}
     }:undefined}
+    onAlignSeries={authoringRef.current&&groupIds.length>=3&&tool==='select'?()=>{
+      const a=authoringRef.current!;
+      if(!window.confirm('Выровнять выделенную последовательную цепочку по физическим выводам? Внешние соединения и закреплённые УГО останутся на месте.'))return;
+      try{const result=a.alignSeries(a.newTransaction('align-series'),groupIds);adoptAuthored();
+        setIssue('Цепочка выровнена '+(result.axis==='horizontal'?'горизонтально':'вертикально')+': перемещено УГО '+result.moved+', перестроено проводников '+result.wires+', устранено изгибов '+result.removedBends+'. Проверьте маршруты.');}
+      catch(e){setIssue(e instanceof WireError&&e.code==='NO_CHANGE'?'Цепочка уже выровнена.':'SERIES_ALIGN_FAILED: '+String(e));}
+    }:undefined}
     onAlignConnectedPair={authoringRef.current&&groupIds.length===2&&tool==='select'?()=>{
       const a=authoringRef.current!;
       if(!window.confirm('Выровнять соединённые физические выводы, переместив один из двух элементов? Остальные связи сохраняются.'))return;

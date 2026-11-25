@@ -879,6 +879,127 @@ export class AuthoringSession {
     if(!result)reject('ALIGN_NO_SAFE_STRAIGHT_ROUTE');
     return result;
   }
+  /** Straighten a selected simple path of facing physical pins.
+   * Preserve longitudinal positions, rotations, Net membership and external
+   * routes. External connections and locked instances fix transverse poses.
+   * Solve relative pin offsets, then choose a median shift (minimum L1 move).
+   * Commit only if ALL internal conductors are straight and collision-free. */
+  alignSeries(tx:Tx,instanceIds:readonly string[]):{moved:number;wires:number;removedBends:number;axis:'horizontal'|'vertical'}{
+    let result:{moved:number;wires:number;removedBends:number;axis:'horizontal'|'vertical'}|undefined;
+    this.edit(tx,draft=>{
+      const sh=draft.project.sheets[indexOfSheet(draft)];
+      const selected=new Set(instanceIds);
+      if(selected.size<3||selected.size>32||selected.size!==instanceIds.length)reject('INVALID_SERIES_GROUP');
+      if(sh.instances.length>256||sh.wires.reduce((n,w)=>n+w.segments.length,0)>2048)reject('LAYOUT_SIZE_LIMIT');
+      const group=sh.instances.filter(i=>selected.has(i.id));
+      if(group.length!==selected.size)reject('UNKNOWN_INSTANCE');
+      const ids=new Set(group.map(i=>i.component_id));
+      if(ids.size!==group.length)reject('INVALID_SERIES_GROUP');
+      const edges:{wire:WirePolyline;first:PinRef;last:PinRef;a:WorldPin;b:WorldPin}[]=[];
+      const adjacency=new Map(group.map(i=>[i.component_id,[] as number[]]));
+      const internalIds=new Set<string>(),usedPins=new Set<string>();
+      let axis:0|1|undefined;
+      for(const wire of sh.wires){
+        const first=wire.vertices[0].anchor,last=wire.vertices.at(-1)!.anchor;
+        if(first.kind!=='pin'||last.kind!=='pin'||!ids.has(first.component_id)||!ids.has(last.component_id))continue;
+        if(first.component_id===last.component_id||usedPins.has(pinKey(first))||usedPins.has(pinKey(last)))reject('SERIES_NOT_SIMPLE_PATH');
+        if(sh.layers.find(l=>l.id===wire.layer_id)?.locked)reject('LAYER_LOCKED');
+        const a=this.beginWire(first),b=this.beginWire(last);
+        if(a.normal[0]!==-b.normal[0]||a.normal[1]!==-b.normal[1])reject('SERIES_REQUIRES_FACING_PINS');
+        const transverse:0|1=a.normal[0]!==0?1:0;
+        if(axis!==undefined&&axis!==transverse)reject('SERIES_MIXED_AXES');
+        axis=transverse;
+        const along=1-axis;
+        if((b.at_um[along]-a.at_um[along])*a.normal[along]<=0)reject('SERIES_REVERSED_ORDER');
+        adjacency.get(first.component_id)!.push(edges.length);adjacency.get(last.component_id)!.push(edges.length);
+        usedPins.add(pinKey(first));usedPins.add(pinKey(last));internalIds.add(wire.id);
+        edges.push({wire,first,last,a,b});
+      }
+      if(axis===undefined||edges.length!==group.length-1||[...adjacency.values()].some(v=>v.length<1||v.length>2))reject('SERIES_NOT_SIMPLE_PATH');
+      const transverse=axis;
+      const endpoint=group.find(i=>adjacency.get(i.component_id)!.length===1);
+      if(!endpoint)reject('SERIES_NOT_SIMPLE_PATH');
+      const offsets=new Map<string,number>([[endpoint.component_id,0]]);
+      let current=endpoint.component_id;
+      while(true){
+        const edgeIndex=adjacency.get(current)!.find(index=>{
+          const e=edges[index];return !offsets.has(e.first.component_id===current?e.last.component_id:e.first.component_id);
+        });
+        if(edgeIndex===undefined)break;
+        const e=edges[edgeIndex],forward=e.first.component_id===current;
+        const next=forward?e.last.component_id:e.first.component_id;
+        const p=forward?e.a:e.b,q=forward?e.b:e.a;
+        offsets.set(next,offsets.get(current)!+p.at_um[transverse]-q.at_um[transverse]);
+        current=next;
+      }
+      if(offsets.size!==group.length)reject('SERIES_NOT_SIMPLE_PATH');
+      const outside=sh.wires.filter(w=>!internalIds.has(w.id));
+      const fixed=new Set(group.filter(i=>sh.layers.find(l=>l.id===i.layer_id)?.locked||
+        draft.project.sheets.some(other=>other.id!==sh.id&&other.instances.some(v=>v.component_id===i.component_id))).map(i=>i.component_id));
+      for(const w of outside)for(const v of [w.vertices[0],w.vertices.at(-1)!])if(v.anchor.kind==='pin'&&ids.has(v.anchor.component_id))fixed.add(v.anchor.component_id);
+      const required=[...new Set([...fixed].map(id=>-offsets.get(id)!))];
+      if(required.length>1)reject('SERIES_FIXED_CONFLICT');
+      const votes=[...offsets.values()].map(n=>-n).sort((a,b)=>a-b);
+      const median=votes[Math.floor((votes.length-1)/2)];
+      const shifts=required.length?required:[...new Set([median,...votes])].sort((a,b)=>
+        votes.reduce((s,v)=>s+Math.abs(v-a)-Math.abs(v-b),0)||a-b);
+      const defs=new Map(draft.project.symbol_definitions.map(d=>[d.id,d]));
+      const boxFor=(i:SymbolInstance)=>{
+        const d=defs.get(i.symbol_id);if(!d)reject('UNKNOWN_SYMBOL');
+        return translateBounds(symbolBounds(d,i.rotation_deg,i.mirror_x),i.origin_um);
+      };
+      const rect=(p:PointUm,q:PointUm):Bounds=>({minX:Math.min(p[0],q[0]),maxX:Math.max(p[0],q[0]),minY:Math.min(p[1],q[1]),maxY:Math.max(p[1],q[1])});
+      const wireBoxes=outside.flatMap(w=>w.vertices.slice(1).map((v,i)=>rect(w.vertices[i].at_um,v.at_um)));
+      const nodeBoxes=[...sh.junctions,...sh.splices].map(n=>rect(n.at_um,n.at_um));
+      for(const common of shifts){
+        const trial=clone(draft),sheet=trial.project.sheets[indexOfSheet(trial)];
+        const deltas=new Map([...offsets].map(([id,v])=>[id,v+common]));
+        const moved=group.filter(i=>(deltas.get(i.component_id)??0)!==0);
+        for(const inst of sheet.instances){
+          const delta=deltas.get(inst.component_id);if(!delta)continue;
+          const position=xy(inst.origin_um);position[transverse]+=delta;inst.origin_um=xy(position);
+        }
+        const boxes=sheet.instances.map(i=>({i,box:boxFor(i)})),margin=sheet.frame.margin_um;
+        if(boxes.some(({i,box})=>deltas.get(i.component_id)&&(
+          box.minX<margin||box.minY<margin||box.maxX>sheet.frame.size_um[0]-margin||box.maxY>sheet.frame.size_um[1]-margin||
+          boxes.some(o=>o.i.id!==i.id&&!separated(box,o.box,1000))||
+          [...wireBoxes,...nodeBoxes].some(b=>!separated(box,b,1000)))))continue;
+        // Temporarily remove ALL internal wires from the planning copy, then
+        // validate each new straight route against already accepted routes.
+        const originalOrder=sheet.wires.map(w=>w.id);
+        sheet.wires=sheet.wires.filter(w=>!internalIds.has(w.id));
+        let valid=true,removedBends=0,changed=0;
+        for(const edge of edges){
+          const shift=(p:WorldPin,ref:PinRef):WorldPin=>{
+            const at=xy(p.at_um);at[transverse]+=deltas.get(ref.component_id)!;
+            return {...p,at_um:xy(at)};
+          };
+          let points:MutablePoint[];
+          try{points=cleanRoute(trial,edge.first,edge.last,shift(edge.a,edge.first),shift(edge.b,edge.last),edge.wire.net_id,undefined,false)}
+          catch(e){if(e instanceof WireError&&e.code==='REROUTE_REQUIRED'){valid=false;break}throw e}
+          if(points.length!==2){valid=false;break}
+          const old=edge.wire,w=clone(old);
+          const same=old.vertices.length===2&&old.vertices.every((v,i)=>v.at_um[0]===points[i][0]&&v.at_um[1]===points[i][1]);
+          if(!same){
+            removedBends+=old.vertices.length-2;changed++;
+            w.vertices=[{...old.vertices[0],at_um:points[0]},{...old.vertices.at(-1)!,at_um:points[1]}];
+            w.segments=[{id:newId('segment'),from_vertex_id:w.vertices[0].id,to_vertex_id:w.vertices[1].id}];
+            w.needs_routing_review=true;
+          }
+          sheet.wires.push(w);
+        }
+        if(!valid)continue;
+        if(!changed&&!moved.length)reject('NO_CHANGE');
+        sheet.wires.sort((a,b)=>originalOrder.indexOf(a.id)-originalOrder.indexOf(b.id));
+        const {subset,session}=localSession(trial,this.clock);
+        result={moved:moved.length,wires:changed,removedBends,axis:transverse===1?'horizontal':'vertical'};
+        return materialize(trial,subset,session);
+      }
+      reject('SERIES_NO_SAFE_LAYOUT');
+    });
+    if(!result)reject('SERIES_NO_SAFE_LAYOUT');
+    return result;
+  }
   /** Explicit post-processing: only existing signed pin-to-pin wires.
    * Never increase length or turns, never introduce wire intersections, never
    * change any component pose, Net membership, wire ID or terminal vertex ID.

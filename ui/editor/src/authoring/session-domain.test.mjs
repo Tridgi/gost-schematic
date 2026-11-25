@@ -925,3 +925,67 @@ test('R19c cleanup does not introduce crossings or alter explicit branch endpoin
  assert.throws(()=>aSession.simplifyRoutes(aSession.newTransaction('skip-branch')),/NO_CHANGE/);
  assert.deepEqual(aSession.file,legacy);
 });
+
+function seriesFixture(positions,vertical=false){
+ const s=newSession(),ids=positions.map((at,i)=>s.place(s.newTransaction('series-place-'+i),'symbol/resistor.fixed',at));
+ const components=s.file.project.components.map(c=>c.id);
+ if(vertical)for(const id of components)s.rotate(s.newTransaction('series-rotate'),id);
+ for(let i=1;i<components.length;i++)s.connect(s.newTransaction('series-wire-'+i),pin(components[i-1],'2'),pin(components[i],'1'));
+ return {s,ids,components};
+}
+test('R20 series layout minimizes transverse displacement and straightens all internal wires atomically',()=>{
+ const {s,ids}=seriesFixture([[60000,90000],[120000,110000],[180000,100000],[240000,140000]]);
+ const before=s.file,rev=s.revision,old=before.project.sheets[0];
+ const stale=s.newTransaction('stale');
+ const result=s.alignSeries(s.newTransaction('align'),ids);
+ assert.deepEqual(result,{moved:3,wires:3,removedBends:6,axis:'horizontal'});
+ const after=s.file,sh=after.project.sheets[0];
+ assert.equal(s.revision,rev+1);
+ assert.deepEqual(sh.instances.map(i=>i.origin_um),[[60000,100000],[120000,100000],[180000,100000],[240000,100000]]);
+ assert.deepEqual(after.project.components,before.project.components);
+ assert.deepEqual(after.project.nets.map(n=>[n.id,n.members]),before.project.nets.map(n=>[n.id,n.members]));
+ for(const [i,w] of sh.wires.entries()){
+  const prior=old.wires[i];
+  assert.equal(w.id,prior.id);assert.equal(w.net_id,prior.net_id);assert.equal(w.vertices.length,2);
+  assert.deepEqual(w.vertices.map(v=>v.anchor),[prior.vertices[0].anchor,prior.vertices.at(-1).anchor]);
+  assert.deepEqual(w.vertices.map(v=>v.id),[prior.vertices[0].id,prior.vertices.at(-1).id]);
+  assert.equal(w.vertices[0].at_um[1],w.vertices[1].at_um[1]);
+ }
+ assert.throws(()=>s.alignSeries(stale,ids),/STALE_REVISION/);
+ assert.throws(()=>s.alignSeries(s.newTransaction('again'),ids),/NO_CHANGE/);
+ assert.deepEqual(s.file,after);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);assert.deepEqual(new AuthoringSession(s.file).file,after);
+});
+test('R20 vertical chain uses rotated physical pin normals and preserves longitudinal coordinates',()=>{
+ const {s,ids}=seriesFixture([[90000,40000],[100000,100000],[120000,160000]],true);
+ assert.equal(s.alignSeries(s.newTransaction('vertical'),ids).axis,'vertical');
+ const sh=s.file.project.sheets[0];
+ assert.deepEqual(sh.instances.map(i=>i.origin_um),[[100000,40000],[100000,100000],[100000,160000]]);
+ assert.ok(sh.instances.every(i=>i.rotation_deg===90));
+ assert.ok(sh.wires.every(w=>w.vertices.length===2&&w.vertices[0].at_um[0]===w.vertices[1].at_um[0]));
+});
+test('R20 external connected component fixes the alignment axis and its wire is unchanged',()=>{
+ const {s,ids,components}=seriesFixture([[60000,90000],[120000,110000],[180000,100000]]);
+ s.place(s.newTransaction('outer'),'symbol/resistor.fixed',[30000,90000]);
+ const outer=s.file.project.components.at(-1).id;
+ s.connect(s.newTransaction('outer-wire'),pin(outer,'2'),pin(components[0],'1'));
+ const before=s.file;
+ assert.equal(s.alignSeries(s.newTransaction('align-fixed'),ids).moved,2);
+ const sh=s.file.project.sheets[0];
+ assert.deepEqual(sh.instances.slice(0,3).map(i=>i.origin_um),[[60000,90000],[120000,90000],[180000,90000]]);
+ assert.deepEqual(sh.wires.at(-1),before.project.sheets[0].wires.at(-1));
+ assert.deepEqual(sh.instances.at(-1),before.project.sheets[0].instances.at(-1));
+});
+test('R20 fixed conflicting endpoints and disconnected selection reject without mutation',()=>{
+ const {s,ids,components}=seriesFixture([[60000,90000],[120000,110000],[180000,100000]]);
+ const x=s.place(s.newTransaction('outer-left'),'symbol/resistor.fixed',[30000,90000]);
+ s.place(s.newTransaction('outer-right'),'symbol/resistor.fixed',[220000,100000]);
+ const [left,right]=s.file.project.components.slice(-2).map(c=>c.id);
+ s.connect(s.newTransaction('left'),pin(left,'2'),pin(components[0],'1'));
+ s.connect(s.newTransaction('right'),pin(components[2],'2'),pin(right,'1'));
+ const before=s.file,rev=s.revision;
+ assert.throws(()=>s.alignSeries(s.newTransaction('fixed-conflict'),ids),/SERIES_FIXED_CONFLICT/);
+ assert.throws(()=>s.alignSeries(s.newTransaction('disconnected'),[ids[0],ids[2],x]),/SERIES_NOT_SIMPLE_PATH/);
+ assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
+});
