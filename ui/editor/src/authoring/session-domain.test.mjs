@@ -2002,3 +2002,58 @@ test('R32g actual TL494 full-connectivity refinement benchmark',t=>{
  t.diagnostic('TL494_R32G_REFINEMENT '+JSON.stringify({...refine,token:!!refine.token}));
  assert.deepEqual(source,original);
 });
+
+
+test('R32h peer continuation anchors previously placed satellite and aligns its next two-pin neighbor',()=>{
+ const {s,b,external}=multiAlignFixture(),doc=s.file,sh=doc.project.sheets[0];
+ sh.wires=[];sh.junctions=[];sh.splices=[];
+ for(const n of doc.project.nets)n.route_status='unrouted';
+ const a=new AuthoringSession(doc);
+ assert.throws(()=>a.previewHubPlacement([b,b]),/INVALID_PEER_ANCHORS/);
+ const p=a.previewHubPlacement([b]);
+ assert.ok(p.token);assert.deepEqual(p.moved,[external]);
+ assert.ok(p.afterSpanUm<p.beforeSpanUm);
+ assert.deepEqual(a.file,doc);assert.equal(a.revision,0);
+ const next=a.layoutPreviewDocument(p.token),ns=next.project.sheets[0];
+ assert.deepEqual(ns.instances.filter(i=>i.component_id!==external),sh.instances.filter(i=>i.component_id!==external));
+ assert.deepEqual(next.project.nets,doc.project.nets);
+ a.applyLayoutPreview(a.newTransaction('peer'),p.token);
+ const x=a.beginWire(pin(b,'2')),y=a.beginWire(pin(external,'1'));
+ assert.equal(x.at_um[1],y.at_um[1]);assert.ok(y.at_um[0]>x.at_um[0]);
+ assert.equal(a.undo(),true);assert.deepEqual(a.file,doc);
+});
+test('R32h functional routing is atomic, complete and revision-bound even without hub candidates',()=>{
+ const {session:s,ids,doc}=batchRouteFixture();
+ const p=s.previewFunctionalRouting();
+ assert.equal(p.requested,2);assert.equal(p.routed,2);assert.ok(p.token);
+ assert.equal(p.variant,'hub');assert.equal(p.quality.bends,0);
+ assert.ok(p.attempted<=160);assert.deepEqual(s.file,doc);assert.equal(s.revision,0);
+ const next=s.layoutPreviewDocument(p.token);
+ s.applyLayoutPreview(s.newTransaction('apply'),p.token);
+ for(const id of ids)assert.equal(s.engine.validateNet(id).pin_groups.length,1);
+ assert.deepEqual(s.file,next);assert.equal(s.undo(),true);assert.deepEqual(s.file,doc);
+ assert.equal(s.redo(),true);assert.deepEqual(s.file,next);
+ assert.throws(()=>s.previewFunctionalRouting(),/PREPARE_REQUIRES_UNROUTED_SHEET/);
+});
+test('R32h actual TL494 compares hub-only with functional peer-chain routing',t=>{
+ const source=JSON.parse(readFileSync(new URL('../../../fixtures/tl494-source-e695-v2.gscad.json',import.meta.url),'utf8'));
+ const original=structuredClone(source),doc=structuredClone(source),p=doc.project,sh=p.sheets[0];
+ p.provenance={...p.provenance,status:'synthetic',source_sha:'0'.repeat(40),source_path:'test-only/TL494-functional-routing',
+  expected_counts:{...p.provenance.expected_counts,da1_pins:0,b_graphics:0}};
+ const s=new AuthoringSession(doc),report=s.previewFunctionalRouting();
+ assert.equal(report.requested,15);assert.equal(report.routed,15);assert.ok(report.token);
+ assert.ok(report.attempted<=150);
+ assert.deepEqual(s.file,doc);assert.equal(s.revision,0);
+ assert.ok(report.quality.bends<=report.baseline.bends);
+ assert.ok(report.quality.crossings<=report.baseline.crossings);
+ assert.ok(report.quality.lengthUm<=report.baseline.lengthUm);
+ assert.equal(report.quality.errors,0);assert.equal(report.quality.geometryWarnings,0);assert.equal(report.quality.overflow,0);
+ s.applyLayoutPreview(s.newTransaction('apply'),report.token);
+ for(const n of p.nets)assert.equal(s.engine.validateNet(n.id).pin_groups.length,1);
+ assert.deepEqual(s.file.project.nets.map(n=>[n.id,n.members]),p.nets.map(n=>[n.id,n.members]));
+ assert.deepEqual(s.file.project.components,p.components);
+ assert.deepEqual(s.file.project.sheets[0].graphics,sh.graphics);assert.deepEqual(s.file.project.sheets[0].labels,sh.labels);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,doc);
+ t.diagnostic('TL494_R32H_FUNCTIONAL '+JSON.stringify({...report,token:!!report.token,moved:report.moved.map(id=>p.components.find(c=>c.id===id)?.refdes??id)}));
+ assert.deepEqual(source,original);
+});
