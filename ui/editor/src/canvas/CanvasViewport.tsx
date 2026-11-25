@@ -36,6 +36,22 @@ function localStroke(symbol:CanvasSymbol,p:PointUm,camera:Camera):ScreenPoint {
     symbol.rotation_deg===180?[-x,-y]:[y,-x];
   return screen([symbol.origin_um[0]+xy[0],symbol.origin_um[1]+xy[1]],camera);
 }
+function SymbolInk({symbol,camera}:{symbol:CanvasSymbol;camera:Camera}){
+ return <>
+  {symbol.inkStrokes.map((stroke,i)=>{
+   const a=localStroke(symbol,stroke.from_um,camera),b=localStroke(symbol,stroke.to_um,camera);
+   return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} strokeWidth={Math.max(.65,stroke.stroke_um*camera.s)}/>;
+  })}
+  {symbol.curves.map((curve,i)=>{
+   const center=localStroke(symbol,curve.center,camera),radius=curve.radius*camera.s;
+   const width=Math.max(.65,curve.stroke_um*camera.s);
+   if(curve.kind==='circle')return <circle key={i} data-ugo-curve="circle" cx={center.x} cy={center.y} r={radius} strokeWidth={width}/>;
+   const a=localStroke(symbol,curve.points_um[0],camera),b=localStroke(symbol,curve.points_um[2],camera);
+   const sweep=symbol.mirror_x?1-curve.sweep:curve.sweep;
+   return <path key={i} data-ugo-curve="semicircle" d={`M ${a.x} ${a.y} A ${radius} ${radius} 0 0 ${sweep} ${b.x} ${b.y}`} strokeWidth={width}/>;
+  })}
+ </>;
+}
 /** Read-only SVG viewport. The canonical physical print/export belongs to #124. */
 export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapEnabled,onIntent,onZoomPercent,zoomRequest,fitRequest,selectedInstanceId:hostSelectedId,selectedGroupIds,selectionReset,canEdit,onCopy,onPaste,onFitPage}:CanvasViewportProps){
   const svgRef=useRef<SVGSVGElement|null>(null);
@@ -307,10 +323,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
         data-selected={String((selectedInstanceId===s.instance_id||selectedGroup.has(s.instance_id)))}
         data-testid={'symbol-'+(document.project.components.find(c=>c.id===s.component_id)?.refdes??s.component_id)}
         stroke={(selectedInstanceId===s.instance_id||selectedGroup.has(s.instance_id))?'#e29225':undefined}>
-        {s.strokes.map((stroke,i)=>{
-          const a=localStroke(s,stroke.from_um,camera),b=localStroke(s,stroke.to_um,camera);
-          return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y}/>;
-        })}
+        <SymbolInk symbol={s} camera={camera}/>
       </g>)}
     </g>
     <g className="electric-wires" fill="none" stroke="#22799e" strokeWidth={1.9} pointerEvents="none">
@@ -344,17 +357,11 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     {ghost&&<g data-testid="gscad-symbol-drag-preview" data-electrical="false"
       aria-label="Предпросмотр перемещения УГО" pointerEvents="none" fill="none" stroke="#d58c27"
       strokeWidth={1.8} strokeDasharray="5 3" opacity={.9}>
-      {ghost.strokes.map((stroke,i)=>{
-        const a=localStroke(ghost,stroke.from_um,camera),b=localStroke(ghost,stroke.to_um,camera);
-        return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y}/>;
-      })}
+      <SymbolInk symbol={ghost} camera={camera}/>
     </g>}
     {groupGhosts.length>0&&<g data-testid="gscad-group-drag-preview" data-electrical="false"
       pointerEvents="none" fill="none" stroke="#d58c27" strokeWidth={1.8} strokeDasharray="5 3">
-      {groupGhosts.map(s=><g key={s.instance_id}>{s.strokes.map((stroke,i)=>{
-        const a=localStroke(s,stroke.from_um,camera),b=localStroke(s,stroke.to_um,camera);
-        return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y}/>;
-      })}</g>)}
+      {groupGhosts.map(s=><g key={s.instance_id}><SymbolInk symbol={s} camera={camera}/></g>)}
     </g>}
     {marquee&&<rect data-testid="gscad-selection-marquee" data-electrical="false"
       {...marquee} fill="#2c82bd" fillOpacity={.12} stroke="#2c82bd" strokeWidth={1}

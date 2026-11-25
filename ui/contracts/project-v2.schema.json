@@ -180,7 +180,9 @@
           "enum": [
             "line",
             "rect",
-            "polyline"
+            "polyline",
+            "circle",
+            "semicircle"
           ]
         },
         "points_um": {
@@ -200,6 +202,42 @@
         "kind",
         "points_um",
         "stroke_um"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "circle"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "points_um": {
+                "minItems": 2,
+                "maxItems": 2
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "semicircle"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "points_um": {
+                "minItems": 3,
+                "maxItems": 3
+              }
+            }
+          }
+        }
       ]
     },
     "symbol_definition": {
@@ -269,7 +307,9 @@
                 "enum": [
                   "line",
                   "rect",
-                  "polyline"
+                  "polyline",
+                  "circle",
+                  "semicircle"
                 ]
               },
               "points_um": {
@@ -289,6 +329,42 @@
               "kind",
               "points_um",
               "stroke_um"
+            ],
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "const": "circle"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "points_um": {
+                      "minItems": 2,
+                      "maxItems": 2
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "const": "semicircle"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "points_um": {
+                      "minItems": 3,
+                      "maxItems": 3
+                    }
+                  }
+                }
+              }
             ]
           },
           "minItems": 1

@@ -7,6 +7,7 @@ import { ManualWireEngine, WireError, constructWire, type PinRef, type PointUm,
 import { CanvasViewport } from './canvas/CanvasViewport';
 import type { CanvasIntent } from './canvas/controller.mjs';
 import { commitSegmentDrag, captureSegmentDrag } from './canvas/wire-intents.mjs';
+import {curveGeometry} from './model/curves.mjs';
 import {catalogDisplay,catalogAdditions} from './authoring/catalog';
 import {AuthoringSession,newBlankProject,type ComponentClipboard,type GroupClipboard} from './authoring/session';
 import {nativeDesktopAvailable,nativeOpenProject,nativeSaveProject,nativeSaveAsProject,nativeCloseProject,
@@ -22,20 +23,25 @@ import { renderProjectPreviewSVG, renderPreviewPng300 } from './export/browser-e
 const umToMm = (value:number):number => value/1000;
 const asPoint = (point:readonly number[]):string => String(umToMm(point[0]))+' '+String(umToMm(point[1]));
 function CataloguePreview({symbol}:{symbol:SymbolDefinition}) {
-  const points=[...symbol.graphics.flatMap(g=>g.points_um),...symbol.pins.map(p=>p.at_um),[0,0]];
+  const points=[...symbol.graphics.flatMap(g=>g.kind==='circle'||g.kind==='semicircle'?curveGeometry(g.kind,g.points_um).bounds:g.points_um),...symbol.pins.map(p=>p.at_um),[0,0]];
   const minX=Math.min(...points.map(p=>p[0]))/1000-1,minY=Math.min(...points.map(p=>p[1]))/1000-1;
   const maxX=Math.max(...points.map(p=>p[0]))/1000+1,maxY=Math.max(...points.map(p=>p[1]))/1000+1;
   return <svg viewBox={`${minX} ${minY} ${maxX-minX} ${maxY-minY}`} fill="none" stroke="currentColor" strokeWidth={0.45}
     aria-hidden="true">
     {symbol.graphics.map((graphic,index)=>{
       const pts=graphic.points_um.map(p=>asPoint(p));
+      if(graphic.kind==='circle'||graphic.kind==='semicircle'){
+        const g=curveGeometry(graphic.kind,graphic.points_um),r=umToMm(g.radius);
+        if(graphic.kind==='circle')return <circle key={index} cx={umToMm(g.center[0])} cy={umToMm(g.center[1])} r={r} strokeWidth={umToMm(graphic.stroke_um)}/>;
+        return <path key={index} d={`M ${pts[0]} A ${r} ${r} 0 0 ${g.sweep} ${pts[2]}`} strokeWidth={umToMm(graphic.stroke_um)}/>;
+      }
       if(graphic.kind==='rect'){
         const a=graphic.points_um[0],b=graphic.points_um[1];
         return <rect key={index} x={umToMm(Math.min(a[0],b[0]))}
           y={umToMm(Math.min(a[1],b[1]))} width={umToMm(Math.abs(a[0]-b[0]))}
-          height={umToMm(Math.abs(a[1]-b[1]))}/>;
+          height={umToMm(Math.abs(a[1]-b[1]))} strokeWidth={umToMm(graphic.stroke_um)}/>;
       }
-      return <polyline key={index} points={pts.join(' ')} />;
+      return <polyline key={index} points={pts.join(' ')} strokeWidth={umToMm(graphic.stroke_um)} />;
     })}
   </svg>;
 }

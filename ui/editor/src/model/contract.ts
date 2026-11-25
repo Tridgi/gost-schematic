@@ -11,7 +11,7 @@ export type ElectricalType = 'passive' | 'input' | 'output' | 'bidirectional' |
 export interface PhysicalPin { number: string; name: string; electrical_type: ElectricalType }
 export interface PartDefinition { id: ID; reference_prefix: string; symbol_ids: ID[]; physical_pins: PhysicalPin[] }
 export interface SymbolPin { physical_pin_number: string; at_um: PointUm; side: 'left'|'right'|'top'|'bottom' }
-export interface Primitive { kind: 'line'|'rect'|'polyline'; points_um: PointUm[]; stroke_um: number }
+export interface Primitive { kind: 'line'|'rect'|'polyline'|'circle'|'semicircle'; points_um: PointUm[]; stroke_um: number }
 export interface SymbolDefinition { id: ID; part_id: ID; revision: number; status:'draft'|'approved'|'deprecated'; pins:SymbolPin[]; graphics:Primitive[]; standard_refs:string[] }
 export interface Component { id: ID; source_refdes: string; refdes: string; part_id: ID; value: string }
 export interface PinRef { component_id: ID; physical_pin_number: string }

@@ -4,6 +4,7 @@
  * Production-certified export remains the canonical Python exporter (#130).
  */
 import type { ProjectFileV2, PointUm, SymbolInstance, Primitive } from '../model/contract';
+import {curveGeometry} from '../model/curves.mjs';
 import { worldPin } from '../model/contract.ts';
 import { projectToCanvasScene } from '../canvas/scene-projection.mjs';
 
@@ -25,6 +26,12 @@ function stroke(a:PointUm,b:PointUm,width:number,attrs=''):string{
 }
 function primitiveInk(inst:SymbolInstance,primitive:Primitive):string{
   const points=primitive.points_um.map(p=>worldPin(inst,p));
+  if(primitive.kind==='circle'||primitive.kind==='semicircle'){
+    const curve=curveGeometry(primitive.kind,points),r=mm(curve.radius);
+    const style=' stroke="#000" stroke-width="'+mm(primitive.stroke_um)+'" fill="none"/>';
+    if(primitive.kind==='circle')return '<circle cx="'+mm(curve.center[0])+'" cy="'+mm(curve.center[1])+'" r="'+r+'"'+style;
+    return '<path d="M '+pos(points[0])+' A '+r+' '+r+' 0 0 '+curve.sweep+' '+pos(points[2])+'"'+style;
+  }
   if(primitive.kind==='rect'){
     if(points.length!==2)throw Error('INVALID_RECT');
     const [a,b]=points;const left=Math.min(a[0],b[0]),top=Math.min(a[1],b[1]);

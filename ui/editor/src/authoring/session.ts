@@ -18,6 +18,7 @@ import {
   type PointUm as MutablePoint, type PinRef as MutablePin
 } from '../wires/manual-wire';
 import {loadProjectWires} from '../wires/project-v2-adapter';
+import {curveGeometry} from '../model/curves.mjs';
 import {projectToCanvasScene} from '../canvas/scene-projection.mjs';
 import {AUTHORING_PARTS, AUTHORING_SYMBOLS,catalogDefaultValue,catalogAdditions} from './catalog';
 
@@ -79,7 +80,10 @@ function symbolBounds(symbol:SymbolDefinition,rotation:SymbolInstance['rotation_
     bounds.maxX=Math.max(bounds.maxX,u+pad);bounds.maxY=Math.max(bounds.maxY,v+pad);
   };
   for(const pin of symbol.pins)include(pin.at_um);
-  for(const g of symbol.graphics)for(const p of g.points_um)include(p,g.stroke_um/2);
+  for(const g of symbol.graphics){
+    const points=g.kind==='circle'||g.kind==='semicircle'?curveGeometry(g.kind,g.points_um).bounds:g.points_um;
+    for(const p of points)include(p,g.stroke_um/2);
+  }
   return bounds;
 }
 function translateBounds(b:Bounds,p:readonly number[]):Bounds {
@@ -161,6 +165,7 @@ function validateAuthoring(file:ProjectFileV2):void {
     if(!part)reject('UNKNOWN_PART');
     if(!Array.isArray(symbol.pins))reject('INVALID_SYMBOL_PINS');
     const numbers=new Set<string>();
+    for(const g of symbol.graphics)if(g.kind==='circle'||g.kind==='semicircle')curveGeometry(g.kind,g.points_um);
     for(const pin of symbol.pins){
       checkId(pin?.physical_pin_number,'INVALID_PINREF');
       if(numbers.has(pin.physical_pin_number))reject('DUPLICATE_SYMBOL_PIN');
