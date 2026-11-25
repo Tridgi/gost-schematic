@@ -1139,6 +1139,18 @@ export class AuthoringSession {
           if(i>0)add([plan.points[i-1],plan.points[i]],anchors[i-1],anchors[i]);
         }
       }
+      // Compare actual geometry and terminal semantics independent of UUIDs
+      // so repeating this command does not churn IDs or add a history entry.
+      const signature=(w:WirePolyline)=>{
+        const vertices=w.vertices.map(v=>[v.at_um,v.anchor.kind,v.anchor.kind==='pin'?pinKey(v.anchor):null]);
+        const forward=JSON.stringify(vertices),backward=JSON.stringify([...vertices].reverse());
+        return JSON.stringify([w.net_id,w.layer_id,forward<backward?forward:backward]);
+      };
+      const nodeSignature=(n:Junction|Splice)=>JSON.stringify([n.net_id,n.layer_id,n.at_um]);
+      const sameSet=(a:string[],b:string[])=>JSON.stringify(a.sort())===JSON.stringify(b.sort());
+      if(sameSet(old.map(signature),newWires.map(signature))&&
+        sameSet(sheet.junctions.filter(n=>netIds.has(n.net_id)).map(nodeSignature),newJunctions.map(nodeSignature))&&
+        sameSet(sheet.splices.filter(n=>netIds.has(n.net_id)).map(nodeSignature),newSplices.map(nodeSignature)))reject('NO_CHANGE');
       sheet.wires=[...outside,...newWires];
       sheet.junctions=[...sheet.junctions.filter(n=>!netIds.has(n.net_id)),...newJunctions];
       sheet.splices=[...sheet.splices.filter(n=>!netIds.has(n.net_id)),...newSplices];
