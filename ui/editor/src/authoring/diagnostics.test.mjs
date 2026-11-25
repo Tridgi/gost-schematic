@@ -107,3 +107,28 @@ test('R18b diagonal rational crossing and analytic circle/semicircle ink are det
  const tangent=wire('tangent','A',[[17000,22000],[23000,22000]]);
  assert.ok(codes(inspect(fixture([s],[tangent],[net('A')]))).includes('DRC_WIRE_SYMBOL_INK'));
 });
+
+
+test('R31 warns on straight stroke width even without centerline intersection',()=>{
+ const s=shape('R1',[20000,20000]);s.pins=[];
+ s.inkStrokes=[{from_um:[-2000,0],to_um:[2000,0],stroke_um:400}];
+ const near=wire('near','A',[[17000,20199],[23000,20199]]);
+ const clear=wire('clear','A',[[17000,20201],[23000,20201]]);
+ assert.ok(codes(inspect(fixture([s],[near],[net('A')]))).includes('DRC_WIRE_SYMBOL_INK'));
+ assert.ok(!codes(inspect(fixture([s],[clear],[net('A')]))).includes('DRC_WIRE_SYMBOL_INK'));
+ s.rotation_deg=90;
+ const vertical=wire('vertical','A',[[20199,17000],[20199,23000]]);
+ assert.ok(codes(inspect(fixture([s],[vertical],[net('A')]))).includes('DRC_WIRE_SYMBOL_INK'));
+});
+test('R31 checks rotated/mirrored upright annotation envelopes without changing Net membership',()=>{
+ const s=shape('R1',[20000,20000]);s.pins=[];s.inkStrokes=[];s.strokes=[];
+ s.notes=[{key:'polarity',text:'+',at_um:[4000,2000],height_um:1000,horizontal:'center',vertical:'center'}];
+ s.rotation_deg=90;s.mirror_x=true;
+ // transformed note anchor [18000,16000], text itself remains upright.
+ const crossing=wire('a','A',[[16000,16000],[20000,16000]]);
+ const clear=wire('b','A',[[16000,19000],[20000,19000]]);
+ const report=inspect(fixture([s],[crossing,clear],[net('A')]));
+ const notes=report.items.filter(d=>d.code==='DRC_WIRE_SYMBOL_TEXT');
+ assert.equal(notes.length,1);assert.equal(notes[0].instanceId,'I-R1');
+ assert.equal(notes[0].severity,'warning');assert.equal(report.counts.error,0);
+});
