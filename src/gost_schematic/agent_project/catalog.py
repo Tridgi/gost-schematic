@@ -12,6 +12,7 @@ from typing import Any
 from gost_schematic.catalog.inductors import load_inductor
 from gost_schematic.catalog.loader import load_symbol
 from gost_schematic.catalog.part_loader import load_part
+from gost_schematic.catalog.transformers import load_transformer
 
 
 class ProjectError(ValueError):
@@ -77,6 +78,13 @@ class CatalogResolver:
                 raise ProjectError("CATALOG_DUPLICATE", winding.part.identifier)
             self.parts[winding.part.identifier] = winding.part
             self.symbols[winding.symbol.identifier] = winding.symbol
+
+        for source in sorted(root.joinpath("transformers").glob("*.json")):
+            variant = load_transformer(source)
+            if variant.part.identifier in self.parts or variant.symbol.identifier in self.symbols:
+                raise ProjectError("CATALOG_DUPLICATE", variant.part.identifier)
+            self.parts[variant.part.identifier] = variant.part
+            self.symbols[variant.symbol.identifier] = variant.symbol
 
     def resolve(self, part_id: str) -> tuple[Any, Any]:
         part = self.parts.get(part_id)

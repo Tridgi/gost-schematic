@@ -5,7 +5,13 @@ import pytest
 
 from gost_schematic.agent_project.catalog import CatalogResolver
 from gost_schematic.catalog.inductors import CoreKind, InductorSpec, LeadStyle, build_inductor
-from gost_schematic.core.geometry import Point, Semicircle, Side, StyledLine, primitive_stroked_bounds
+from gost_schematic.core.geometry import (
+    Point,
+    Semicircle,
+    Side,
+    StyledLine,
+    primitive_stroked_bounds,
+)
 from gost_schematic.core.transforms import Transform
 from gost_schematic.validation.conductor_checks import inspect_conductor_topology
 from gost_schematic.validation.symbol_checks import validate_symbol

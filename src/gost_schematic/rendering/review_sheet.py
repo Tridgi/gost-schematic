@@ -12,6 +12,7 @@ from xml.etree import ElementTree as ET
 from gost_schematic.catalog.inductors import load_inductor
 from gost_schematic.catalog.loader import load_symbol
 from gost_schematic.catalog.part_loader import load_part
+from gost_schematic.catalog.transformers import load_transformer
 from gost_schematic.core.geometry import Box, Point, enclosing_box, primitive_stroked_bounds
 from gost_schematic.core.transforms import Transform
 from gost_schematic.core.units import format_mm, mm
@@ -90,6 +91,7 @@ def discover_catalog_entries(
     ] + [
         (item, True) for item in sorted((root / "inductors").glob("*.json"))
     ]
+    paths += [(item, True) for item in sorted((root / "transformers").glob("*.json"))]
     if not paths:
         raise CatalogReviewError(f"No versioned UGO sources in {root}")
 
@@ -100,7 +102,8 @@ def discover_catalog_entries(
         source = "catalog/" + path.relative_to(root).as_posix()
         try:
             if is_winding:
-                variant = load_inductor(path)
+                variant = (load_transformer(path) if path.parent.name == "transformers"
+                           else load_inductor(path))
                 symbol, part = variant.symbol, variant.part
             else:
                 symbol = load_symbol(path)
