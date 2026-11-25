@@ -1260,9 +1260,16 @@ test('R19b magnetic placement preview aligns pins without creating a wire',async
  await page.getByTestId('pin-magnet').click();
  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
  await page.mouse.click(paper.x+paper.width*.3,paper.y+paper.height*.4);
+ // Use actual signed contact screen position, not an approximate paper ratio.
+ const initialDownload=page.waitForEvent('download');await page.getByTestId('save-project').click();
+ const initial=JSON.parse(readFileSync(await (await initialDownload).path(),'utf8'));
+ const component=initial.project.components[0];
+ const contact=await page.getByTestId('signed-pin-'+component.id+'-2').boundingBox();
+ const frame=await page.getByTestId('gscad-paper-outline').boundingBox();
+ const scale=frame.width/initial.project.sheets[0].frame.size_um[0];
  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
- const x=paper.x+paper.width*.42,y=paper.y+paper.height*.4+paper.height*3/297;
- await page.mouse.move(x,y);
+ const x=contact.x+contact.width/2+42000*scale,y=contact.y+contact.height/2+3000*scale;
+ await page.mouse.move(x,y,{steps:5});
  await expect(page.getByTestId('pin-placement-guide')).toBeVisible();
  await expect(page.getByTestId('pin-placement-guide')).toHaveAttribute('data-electrical','false');
  await page.mouse.click(x,y);
@@ -1384,4 +1391,45 @@ test('R20b equal pin gaps in actual editor keep the end poses and preserve Undo'
  expect(after.project.nets.map(n=>[n.id,n.members])).toEqual(before.project.nets.map(n=>[n.id,n.members]));
  await page.getByRole('button',{name:'Отменить'}).click();
  expect((await saved()).project).toEqual(before.project);
+});
+
+test('R21 parallel rails replace routes with explicit junctions without changing component poses or Nets',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ for(const x of [.25,.5,.75]){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*.45);
+  await page.getByTestId('gscad-signed-svg-canvas').focus();
+  await page.keyboard.press('r');
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const placed=await saved(),comps=placed.project.components;
+ expect(placed.project.sheets[0].instances.every(i=>i.rotation_deg===90)).toBeTruthy();
+ await page.getByRole('button',{name:'Провод W'}).click();
+ for(const n of ['1','2'])for(let i=1;i<comps.length;i++){
+  await page.getByTestId('signed-pin-'+comps[i-1].id+'-'+n).click();
+  await page.getByTestId('signed-pin-'+comps[i].id+'-'+n).click();
+ }
+ await page.getByRole('button',{name:'Выбор V'}).click();
+ const before=await saved();
+ expect(before.project.nets).toHaveLength(2);
+ await page.mouse.move(paper.x+paper.width*.15,paper.y+paper.height*.32);
+ await page.mouse.down();await page.mouse.move(paper.x+paper.width*.85,paper.y+paper.height*.58,{steps:6});await page.mouse.up();
+ await expect(page.getByTestId('group-selection-summary')).toContainText('3');
+ page.once('dialog',d=>d.accept());
+ await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByTestId('parallel-rails').click();
+ const after=await saved(),sh=after.project.sheets[0];
+ expect(sh.wires).toHaveLength(10);expect(sh.junctions).toHaveLength(2);expect(sh.splices).toHaveLength(4);
+ expect(sh.instances).toEqual(before.project.sheets[0].instances);
+ expect(after.project.nets.map(n=>[n.id,n.members])).toEqual(before.project.nets.map(n=>[n.id,n.members]));
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ expect((await saved()).project).toEqual(after.project);
 });

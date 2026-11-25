@@ -1032,6 +1032,136 @@ export class AuthoringSession {
     if(!result)reject('SERIES_NO_SAFE_LAYOUT');
     return result;
   }
+  /** Rebuild two closed parallel Nets as explicit orthogonal rails.
+   * No component moves or inferred membership. All selected two-terminal
+   * components must already belong to exactly the same two complete Nets.
+   * End taps are invisible degree-2 splices; middle taps are degree-3 dots.
+   * Existing route IDs are replaced intentionally; Undo restores them. */
+  buildParallelRails(tx:Tx,instanceIds:readonly string[]):{branches:number;wires:number;junctions:number;axis:'horizontal'|'vertical'}{
+    let result:{branches:number;wires:number;junctions:number;axis:'horizontal'|'vertical'}|undefined;
+    this.edit(tx,draft=>{
+      const sheet=draft.project.sheets[indexOfSheet(draft)];
+      const selection=new Set(instanceIds);
+      if(selection.size<3||selection.size>24||selection.size!==instanceIds.length)reject('INVALID_PARALLEL_GROUP');
+      if(sheet.instances.length>256||sheet.wires.reduce((n,w)=>n+w.segments.length,0)>2048)reject('LAYOUT_SIZE_LIMIT');
+      const group=sheet.instances.filter(i=>selection.has(i.id));
+      if(group.length!==selection.size)reject('UNKNOWN_INSTANCE');
+      const comps=new Set(group.map(i=>i.component_id));
+      const defs=new Map(draft.project.symbol_definitions.map(d=>[d.id,d]));
+      const members=draft.project.nets.filter(n=>n.members.some(p=>comps.has(p.component_id)));
+      if(members.length!==2||members.some(n=>n.members.length!==group.length||
+        new Set(n.members.map(p=>p.component_id)).size!==group.length||n.members.some(p=>!comps.has(p.component_id))))reject('PARALLEL_REQUIRES_CLOSED_NETS');
+      const netIds=new Set(members.map(n=>n.id));
+      if(draft.project.sheets.some(s=>s.id!==sheet.id&&
+        (s.wires.some(w=>netIds.has(w.net_id))||[...s.junctions,...s.splices].some(n=>netIds.has(n.net_id)))))reject('PARALLEL_CROSS_SHEET');
+      // Require electrically connected input; don't silently repair an incomplete circuit.
+      if(members.some(n=>this.engine.validateNet(n.id).pin_groups.length!==1))reject('PARALLEL_UNCONNECTED_NET');
+      const old=sheet.wires.filter(w=>netIds.has(w.net_id));
+      if(old.some(w=>[w.vertices[0],w.vertices.at(-1)!].some(v=>v.anchor.kind==='free')))reject('PARALLEL_DANGLING');
+      const layers=new Map<string,string>();
+      for(const n of members){
+        const layerIds=new Set(old.filter(w=>w.net_id===n.id).map(w=>w.layer_id));
+        if(layerIds.size!==1)reject('PARALLEL_MIXED_LAYERS');
+        const layerId=[...layerIds][0];
+        const layer=sheet.layers.find(l=>l.id===layerId);
+        if(!layer||layer.locked||layer.kind!=='electrical')reject('LAYER_LOCKED');
+        layers.set(n.id,layerId);
+      }
+      const rails=members.map(n=>({net:n,pins:n.members.map(ref=>({ref,p:this.beginWire(ref)}))}));
+      const normal=rails[0].pins[0].p.normal;
+      const branchAxis:0|1=normal[0]!==0?0:1,railAxis:0|1=branchAxis===0?1:0;
+      for(const i of group){
+        const def=defs.get(i.symbol_id);
+        if(!def||def.pins.length!==2)reject('PARALLEL_REQUIRES_TWO_TERMINALS');
+        const a=rails[0].pins.find(p=>p.ref.component_id===i.component_id)!.p;
+        const b=rails[1].pins.find(p=>p.ref.component_id===i.component_id)!.p;
+        if(a.normal[0]!==normal[0]||a.normal[1]!==normal[1]||
+          b.normal[0]!==-normal[0]||b.normal[1]!==-normal[1]||
+          a.at_um[railAxis]!==b.at_um[railAxis]||
+          (a.at_um[branchAxis]-b.at_um[branchAxis])*normal[branchAxis]<=0)reject('PARALLEL_REQUIRES_OPPOSED_ALIGNED_PINS');
+      }
+      const positions=rails[0].pins.map(p=>p.p.at_um[railAxis]).sort((a,b)=>a-b);
+      if(positions.some((v,i)=>i>0&&v-positions[i-1]<4000))reject('PARALLEL_GAP_TOO_SMALL');
+      const boxes=sheet.instances.map(i=>{
+        const d=defs.get(i.symbol_id);if(!d)reject('UNKNOWN_SYMBOL');
+        return {id:i.component_id,box:translateBounds(symbolBounds(d,i.rotation_deg,i.mirror_x),i.origin_um)};
+      });
+      const selectedBoxes=boxes.filter(o=>comps.has(o.id));
+      if(selectedBoxes.some((o,i)=>selectedBoxes.slice(i+1).some(p=>!separated(o.box,p.box,1000))))reject('PARALLEL_SYMBOL_OVERLAP');
+      const rect=(p:PointUm,q:PointUm):Bounds=>({minX:Math.min(p[0],q[0]),maxX:Math.max(p[0],q[0]),minY:Math.min(p[1],q[1]),maxY:Math.max(p[1],q[1])});
+      const outside=sheet.wires.filter(w=>!netIds.has(w.net_id));
+      const externalBoxes=[...outside.flatMap(w=>w.vertices.slice(1).map((v,i)=>rect(w.vertices[i].at_um,v.at_um))),
+        ...[...sheet.junctions,...sheet.splices].filter(n=>!netIds.has(n.net_id)).map(n=>rect(n.at_um,n.at_um)),
+        ...sheet.graphics.flatMap(g=>g.points_um.slice(1).map((v,i)=>rect(g.points_um[i],v))),
+        ...sheet.labels.map(l=>rect(l.at_um,l.at_um)),...sheet.texts.map(t=>rect(t.at_um,t.at_um))];
+      const margin=sheet.frame.margin_um;
+      const inside=(p:PointUm)=>p.every((v,i)=>v>=margin&&v<=sheet.frame.size_um[i]-margin);
+      const plans:{net:string;layer:string;points:MutablePoint[];pins:PinRef[]}[]=[];
+      for(const rail of rails){
+        const sign=rail.pins[0].p.normal[branchAxis];
+        const limits=selectedBoxes.map(({box})=>branchAxis===0?(sign<0?box.minX:box.maxX):(sign<0?box.minY:box.maxY));
+        const edge=sign<0?Math.floor(Math.min(...limits)):Math.ceil(Math.max(...limits));
+        const sorted=[...rail.pins].sort((a,b)=>a.p.at_um[railAxis]-b.p.at_um[railAxis]);
+        let plan:typeof plans[number]|undefined;
+        for(const gap of [5000,10000,15000,20000,30000]){
+          const line=edge+sign*gap;
+          const taps=sorted.map(({p})=>{const at=xy(p.at_um);at[branchAxis]=line;return at});
+          if(taps.some(p=>!inside(p))||sorted.some(p=>!inside(p.p.at_um)))continue;
+          const trunk=rect(taps[0],taps.at(-1)!);
+          if(boxes.some(o=>!separated(trunk,o.box,1000))||externalBoxes.some(b=>!separated(trunk,b,1000)))continue;
+          if(sorted.some(({p,ref},i)=>{
+            const branch=rect(p.at_um,taps[i]);
+            return boxes.some(o=>o.id!==ref.component_id&&!separated(branch,o.box,1000))||
+              externalBoxes.some(b=>!separated(branch,b,1000));
+          }))continue;
+          plan={net:rail.net.id,layer:layers.get(rail.net.id)!,points:taps,pins:sorted.map(p=>p.ref)};break;
+        }
+        if(!plan)reject('PARALLEL_NO_SAFE_RAIL');
+        plans.push(plan);
+      }
+      // Validate all geometry together before committing; no visual intersection
+      // between the opposite rails, whose taps are outside the selected bounds.
+      const newWires:WirePolyline[]=[],newJunctions:Junction[]=[],newSplices:Splice[]=[];
+      for(const plan of plans){
+        const anchors=plan.points.map((at_um,i)=>{
+          const end=i===0||i===plan.points.length-1;
+          const id=newId(end?'splice':'junction');
+          const node={id,net_id:plan.net,layer_id:plan.layer,at_um};
+          if(end){newSplices.push(node);return {kind:'splice' as const,splice_id:id}}
+          newJunctions.push(node);return {kind:'junction' as const,junction_id:id};
+        });
+        const add=(points:MutablePoint[],start:Parameters<typeof constructWire>[4],end:Parameters<typeof constructWire>[5])=>{
+          const w=constructWire(newId('wire'),plan.net,plan.layer,points,start,end);
+          w.needs_routing_review=true;newWires.push(w);
+        };
+        for(const [i,ref] of plan.pins.entries()){
+          add([this.beginWire(ref).at_um,plan.points[i]],{kind:'pin',...ref},anchors[i]);
+          if(i>0)add([plan.points[i-1],plan.points[i]],anchors[i-1],anchors[i]);
+        }
+      }
+      // Compare actual geometry and terminal semantics independent of UUIDs
+      // so repeating this command does not churn IDs or add a history entry.
+      const signature=(w:WirePolyline)=>{
+        const vertices=w.vertices.map(v=>[v.at_um,v.anchor.kind,v.anchor.kind==='pin'?pinKey(v.anchor):null]);
+        const forward=JSON.stringify(vertices),backward=JSON.stringify([...vertices].reverse());
+        return JSON.stringify([w.net_id,w.layer_id,forward<backward?forward:backward]);
+      };
+      const nodeSignature=(n:Junction|Splice)=>JSON.stringify([n.net_id,n.layer_id,n.at_um]);
+      const sameSet=(a:string[],b:string[])=>JSON.stringify(a.sort())===JSON.stringify(b.sort());
+      if(sameSet(old.map(signature),newWires.map(signature))&&
+        sameSet(sheet.junctions.filter(n=>netIds.has(n.net_id)).map(nodeSignature),newJunctions.map(nodeSignature))&&
+        sameSet(sheet.splices.filter(n=>netIds.has(n.net_id)).map(nodeSignature),newSplices.map(nodeSignature)))reject('NO_CHANGE');
+      sheet.wires=[...outside,...newWires];
+      sheet.junctions=[...sheet.junctions.filter(n=>!netIds.has(n.net_id)),...newJunctions];
+      sheet.splices=[...sheet.splices.filter(n=>!netIds.has(n.net_id)),...newSplices];
+      const {subset,session}=localSession(draft,this.clock);
+      if(members.some(n=>session.engine.validateNet(n.id).pin_groups.length!==1))reject('PARALLEL_TOPOLOGY_MISMATCH');
+      result={branches:group.length,wires:newWires.length,junctions:newJunctions.length,axis:railAxis===0?'horizontal':'vertical'};
+      return materialize(draft,subset,session);
+    });
+    if(!result)reject('PARALLEL_NO_SAFE_RAIL');
+    return result;
+  }
   /** Explicit post-processing: only existing signed pin-to-pin wires.
    * Never increase length or turns, never introduce wire intersections, never
    * change any component pose, Net membership, wire ID or terminal vertex ID.

@@ -67,8 +67,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
   const svgRef=useRef<SVGSVGElement|null>(null);
   const [size,setSize]=useState({width:960,height:640});
   const [revision,setRevision]=useState(0);
-  const [placementGuide,setPlacementGuide]=useState<PlacementHint|null>(null);
-  useEffect(()=>{setPlacementGuide(null)},[tool,snapshot.revision,!!placementHint]);
+  const [placementPointer,setPlacementPointer]=useState<ScreenPoint|null>(null);
   const [contextMenu,setContextMenu]=useState<{x:number;y:number;kind:'symbol'|'group'|'blank';revision:number}|null>(null);
   const menuRef=useRef<HTMLDivElement|null>(null);
   const cameraRef=useRef<Camera>({...DEFAULT_CAMERA});
@@ -178,13 +177,19 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
   },[zoomRequest,controller,size.width,size.height,invalidate]);
   const camera=controller.getState().camera;
   cameraRef.current=camera;
+  // Derive guide from current tool, model and pointer; no post-render reset race.
+  let placementGuide:PlacementHint|null=null;
+  if(tool==='place'&&placementHint&&placementPointer){
+    try{placementGuide=placementHint(snap(world(placementPointer,camera),document.project.settings.grid_step_um,snapEnabled));}
+    catch{placementGuide=null;}
+  }
   const local=useCallback((e:{clientX:number;clientY:number}):ScreenPoint=>{
     const r=svgRef.current?.getBoundingClientRect();
     return {x:e.clientX-(r?.left??0),y:e.clientY-(r?.top??0)};
   },[]);
   const eventPoint=(e:ReactPointerEvent<SVGSVGElement>)=>({...local(e),pointerId:e.pointerId,button:e.button});
   const down=(e:ReactPointerEvent<SVGSVGElement>)=>{
-    setContextMenu(null);setPlacementGuide(null);
+    setContextMenu(null);setPlacementPointer(null);
     if(controller.down(eventPoint(e))){
       e.preventDefault();e.currentTarget.focus();
       if(!e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.setPointerCapture(e.pointerId);
@@ -193,10 +198,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
   };
   const move=(e:ReactPointerEvent<SVGSVGElement>)=>{
     controller.move(eventPoint(e));
-    if(tool==='place'&&placementHint){
-      const at=snap(world(local(e),controller.getState().camera),document.project.settings.grid_step_um,snapEnabled);
-      try{setPlacementGuide(placementHint(at));}catch{setPlacementGuide(null);}
-    }
+    setPlacementPointer(tool==='place'&&placementHint?local(e):null);
     invalidate();
   };
   const up=(e:ReactPointerEvent<SVGSVGElement>)=>{
@@ -292,9 +294,9 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
   return <><svg ref={svgRef} className="gscad-drawing" role="img" tabIndex={0}
     data-testid="gscad-signed-svg-canvas" aria-label="Редактор электрической схемы, координаты в микрометрах"
     viewBox={`0 0 ${g2(size.width)} ${g2(size.height)}`}
-    onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={()=>setPlacementGuide(null)}
+    onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={()=>setPlacementPointer(null)}
     onPointerCancel={e=>{controller.key('Escape');if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);invalidate()}}
-    onWheel={e=>{setPlacementGuide(null);wheel(e)}} onContextMenu={openContextMenu}
+    onWheel={e=>{setPlacementPointer(null);wheel(e)}} onContextMenu={openContextMenu}
     onKeyDown={e=>{
       // Never turn OS/browser shortcuts, held keys or IME composition into CAD edits.
       if(e.defaultPrevented||e.ctrlKey||e.metaKey||e.altKey||e.repeat||e.nativeEvent.isComposing)return;
