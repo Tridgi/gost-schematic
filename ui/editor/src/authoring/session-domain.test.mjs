@@ -1144,3 +1144,55 @@ test('R21b fixed conflicting pin rows and blocked new component poses roll back 
  assert.throws(()=>fixed.buildParallelRails(fixed.newTransaction('fixed'),ids,true),/PARALLEL_FIXED_CONFLICT/);
  assert.deepEqual(fixed.file,before);
 });
+
+test('R22 read-only preview combines detected chain layout and commits once with signed topology unchanged',()=>{
+ const {s,ids}=seriesFixture([[60000,90000],[120000,110000],[180000,100000]]);
+ const before=s.file,rev=s.revision;
+ const plan=s.previewLayout();
+ assert.ok(plan.token);assert.equal(plan.before.bends,4);assert.equal(plan.after.bends,0);
+ assert.ok(plan.after.lengthUm<plan.before.lengthUm);
+ assert.ok(plan.operations.some(n=>n.includes('цепочки')));
+ assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
+ s.applyLayoutPreview(s.newTransaction('apply'),plan.token);
+ const after=s.file;
+ assert.equal(s.revision,rev+1);
+ assert.deepEqual(after.project.nets.map(n=>[n.id,n.members]),before.project.nets.map(n=>[n.id,n.members]));
+ assert.ok(after.project.sheets[0].wires.every(w=>w.vertices.length===2));
+ assert.throws(()=>s.applyLayoutPreview(s.newTransaction('repeat'),plan.token),/LAYOUT_PLAN_UNKNOWN/);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);assert.deepEqual(s.file,after);
+});
+test('R22 canceled, overwritten and stale previews cannot modify the project',()=>{
+ const {s,ids}=seriesFixture([[60000,90000],[120000,110000],[180000,100000]]);
+ const before=s.file;
+ const a=s.previewLayout(ids);s.discardLayoutPreview(a.token);
+ assert.throws(()=>s.applyLayoutPreview(s.newTransaction('discarded'),a.token),/LAYOUT_PLAN_UNKNOWN/);
+ assert.deepEqual(s.file,before);
+ const b=s.previewLayout(ids),c=s.previewLayout(ids);
+ assert.throws(()=>s.applyLayoutPreview(s.newTransaction('superseded'),b.token),/LAYOUT_PLAN_UNKNOWN/);
+ s.undo();
+ const next=s.file;
+ assert.throws(()=>s.applyLayoutPreview(s.newTransaction('stale'),c.token),/STALE_REVISION/);
+ assert.deepEqual(s.file,next);
+});
+test('R22 already clean circuit yields no mutation or plan; selected subset leaves other instances unchanged',()=>{
+ const f=seriesFixture([[60000,100000],[120000,100000],[180000,100000]]);
+ const before=f.s.file,rev=f.s.revision;
+ const p=f.s.previewLayout();
+ assert.equal(p.token,null);assert.deepEqual(p.before,p.after);
+ assert.deepEqual(f.s.file,before);assert.equal(f.s.revision,rev);
+ const g=seriesFixture([[60000,90000],[120000,110000],[180000,100000]]);
+ g.s.place(g.s.newTransaction('unrelated'),'symbol/resistor.fixed',[250000,160000]);
+ const outer=g.s.file.project.sheets[0].instances.at(-1);
+ const selected=g.s.previewLayout(g.ids);
+ assert.ok(selected.token);g.s.applyLayoutPreview(g.s.newTransaction('selected'),selected.token);
+ assert.deepEqual(g.s.file.project.sheets[0].instances.at(-1),outer);
+});
+test('R22 automatic planning rejects sheets with unmodeled annotation envelopes',()=>{
+ const {s}=seriesFixture([[60000,90000],[120000,110000],[180000,100000]]);
+ const doc=s.file,sh=doc.project.sheets[0];
+ sh.texts.push({id:'note',layer_id:sh.layers[0].id,text:'test',at_um:[100000,100000],rotation_deg:0,height_um:3500});
+ const a=new AuthoringSession(doc);
+ assert.throws(()=>a.previewLayout(),/LAYOUT_ANNOTATIONS_UNSUPPORTED/);
+ assert.deepEqual(a.file,doc);
+});
