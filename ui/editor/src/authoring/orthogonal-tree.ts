@@ -25,6 +25,7 @@ class Heap{
  * channels by splitting the largest remaining coordinate gap. Geometry
  * predicates still test every obstacle, so thinning cannot permit a collision. */
 function thinAxis(all:number[],mandatory:Set<number>,limit:number):number[]{
+ if(all.length<=limit)return all;
  const selected=new Set(all.filter(v=>mandatory.has(v)));
  if(selected.size>limit)throw Error('TREE_GRID_LIMIT');
  while(selected.size<limit&&selected.size<all.length){
