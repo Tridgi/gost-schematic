@@ -1116,3 +1116,31 @@ test('R21 refuses shared external Net, incomplete geometry and blocked branch wi
  assert.throws(()=>b.s.buildParallelRails(b.s.newTransaction('blocked'),b.ids),/PARALLEL_NO_SAFE_RAIL/);
  assert.deepEqual(b.s.file,blocked);
 });
+
+test('R21b symmetric parallel layout aligns both pin rows and distributes lateral physical contacts',()=>{
+ const {s,ids}=parallelFixture();
+ const beforeMove=s.file;
+ // Shift the middle component and its attached route geometry using the
+ // authoritative editor move rather than manually altering pin coordinates.
+ const mid=beforeMove.project.components[1].id;
+ s.move(s.newTransaction('unequal-spacing'),mid,[110000,105000],true);
+ const before=s.file,rev=s.revision;
+ const result=s.buildParallelRails(s.newTransaction('symmetry'),ids,true);
+ const after=s.file,sh=after.project.sheets[0];
+ assert.equal(result.branches,3);assert.equal(s.revision,rev+1);
+ assert.deepEqual(sh.instances.map(i=>i.origin_um),[[70000,100000],[130000,100000],[190000,100000]]);
+ assert.deepEqual(after.project.nets.map(n=>[n.id,n.members]),before.project.nets.map(n=>[n.id,n.members]));
+ assert.ok(sh.wires.every(w=>w.vertices.length===2));
+ assert.throws(()=>s.buildParallelRails(s.newTransaction('repeat'),ids,true),/NO_CHANGE/);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);assert.deepEqual(s.file,after);
+});
+test('R21b fixed conflicting pin rows and blocked new component poses roll back atomically',()=>{
+ const {s,ids}=parallelFixture();
+ const doc=s.file,sh=doc.project.sheets[0];
+ sh.layers.push({...sh.layers[0],id:'parallel-fixed',locked:true});
+ sh.instances[0].layer_id='parallel-fixed';sh.instances[1].layer_id='parallel-fixed';
+ const fixed=new AuthoringSession(doc),before=fixed.file;
+ assert.throws(()=>fixed.buildParallelRails(fixed.newTransaction('fixed'),ids,true),/PARALLEL_FIXED_CONFLICT/);
+ assert.deepEqual(fixed.file,before);
+});
