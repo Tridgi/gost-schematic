@@ -1134,3 +1134,25 @@ test('R17b: open legacy project, add catalog entries explicitly, undo and redo',
  await page.getByRole('button',{name:'Повторить'}).click();
  expect((await saved()).project).toEqual(upgraded.project);
 });
+
+test('R17d real winding symbols render analytic arcs and signed tap contacts',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ await page.getByTestId('catalog-search').fill('двумя отводами');
+ await page.getByTestId('catalog-item-symbol/inductor.double_tapped').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await page.mouse.click(paper.x+paper.width*.4,paper.y+paper.height*.5);
+ const symbol=page.getByTestId('symbol-L1');
+ await expect(symbol.locator('path[data-ugo-curve="semicircle"]').first()).toBeVisible();
+ const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+ const doc=JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ const comp=doc.project.components[0];
+ const def=doc.project.symbol_definitions.find(s=>s.part_id===comp.part_id);
+ await expect(symbol.locator('path[data-ugo-curve="semicircle"]')).toHaveCount(def.graphics.filter(g=>g.kind==='semicircle').length);
+ for(const n of ['1','2','3','4'])await expect(page.getByTestId('signed-pin-'+comp.id+'-'+n)).toBeVisible();
+ expect(doc.project.nets).toEqual([]);
+ await page.getByTestId('gscad-signed-svg-canvas').focus();
+ await page.keyboard.press('r');
+ await expect(symbol.locator('path[data-ugo-curve="semicircle"]').first()).toBeVisible();
+});
