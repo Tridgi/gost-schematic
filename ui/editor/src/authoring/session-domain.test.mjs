@@ -2235,3 +2235,86 @@ test('R38 local trunk shortcut retains exact junctions, splices and wire termina
  assert.equal(a.undo(),true);assert.deepEqual(a.file,doc);
  assert.equal(a.redo(),true);assert.deepEqual(a.file,next);
 });
+
+
+test('R39 equal-length Z channel can remove a foreign X without adding bends',async()=>{
+ const {crossingChannelShortcuts,pathMetric,localCrossingCount}=await import('./detour-shortcuts.ts');
+ const points=[[0,0],[10000,0],[10000,30000],[40000,30000]];
+ const foreign=[{a:[5000,15000],b:[20000,15000],net:'other'}];
+ const original=structuredClone(points);
+ assert.equal(localCrossingCount(points,foreign),1);
+ const choices=crossingChannelShortcuts(points,foreign,false,false);
+ assert.ok(choices.length>0&&choices.length<=12);
+ const metric=pathMetric(points);
+ assert.equal(pathMetric(choices[0]).length,metric.length);
+ assert.ok(pathMetric(choices[0]).bends<=metric.bends);
+ assert.ok(choices.some(p=>pathMetric(p).bends===metric.bends&&pathMetric(p).length===metric.length&&localCrossingCount(p,foreign)===0));
+ assert.equal(localCrossingCount(choices[0],foreign),0);
+ assert.deepEqual(choices[0][0],points[0]);assert.deepEqual(choices[0].at(-1),points.at(-1));
+ assert.deepEqual(crossingChannelShortcuts(points,foreign,false,false),choices);
+ assert.deepEqual(crossingChannelShortcuts(points,foreign,true,true),[]);
+ assert.deepEqual(points,original);
+});
+test('R39 inner Z channel can shift while both physical leads remain fixed',async()=>{
+ const {crossingChannelShortcuts,pathMetric,localCrossingCount}=await import('./detour-shortcuts.ts');
+ const points=[[0,0],[10000,0],[10000,10000],[20000,10000],[20000,30000],[40000,30000],[40000,40000]];
+ const foreign=[{a:[15000,20000],b:[25000,20000],net:'other'}];
+ const choices=crossingChannelShortcuts(points,foreign,true,true);
+ assert.equal(localCrossingCount(points,foreign),1);
+ assert.ok(choices.length>0);
+ assert.ok(choices.some(p=>pathMetric(p).bends===pathMetric(points).bends&&
+  JSON.stringify(p.slice(0,2))===JSON.stringify(points.slice(0,2))&&
+  JSON.stringify(p.slice(-2))===JSON.stringify(points.slice(-2))));
+ for(const p of choices){
+  assert.deepEqual(p[0],points[0]);assert.deepEqual(p.at(-1),points.at(-1));
+  assert.equal(p[1][1],0);assert.ok(p[1][0]>=10000);
+  assert.equal(p.at(-2)[0],40000);assert.ok(p.at(-2)[1]<=30000);
+  assert.equal(pathMetric(p).length,pathMetric(points).length);
+  assert.ok(pathMetric(p).bends<=pathMetric(points).bends);
+  assert.equal(localCrossingCount(p,foreign),0);
+ }
+});
+test('R39 empty crossing search is atomic for already straight independent routes',()=>{
+ const {session:s,ids,doc}=batchRouteFixture();
+ const p=s.previewFunctionalAlternatives();
+ assert.ok(p.token);s.applyLayoutPreview(s.newTransaction('initial'),p.token);
+ const before=s.file,rev=s.revision,q=s.previewDetourRefinement(true);
+ assert.equal(q.token,null);assert.equal(q.attempted,0);assert.equal(q.before.crossings,0);
+ assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
+ for(const id of ids)assert.equal(s.engine.validateNet(id).pin_groups.length,1);
+});
+
+
+test('R39 real two-Net crossing preview preserves foreign geometry and atomically removes X',()=>{
+ const s=newSession();
+ for(const p of [[50000,50000],[200000,130000],[97000,105000],[153000,105000]])
+  s.place(s.newTransaction('cross-place'),'symbol/resistor.fixed',p);
+ const [a,b,c,d]=s.file.project.components.map(c=>c.id);
+ s.connect(s.newTransaction('cross-a'),pin(a,'2'),pin(b,'1'));
+ s.connect(s.newTransaction('cross-b'),pin(c,'2'),pin(d,'1'));
+ const doc=s.file,sh=doc.project.sheets[0];
+ const [target,foreign]=doc.project.nets.map(n=>n.id);
+ const w=sh.wires.find(w=>w.net_id===target),other=sh.wires.find(w=>w.net_id===foreign);
+ assert.ok(w&&other);
+ const setPath=(wire,points,first,last)=>{
+  wire.vertices=points.map((at_um,i)=>({id:wire.id+':v'+i,at_um,
+   anchor:i===0?{kind:'pin',...first}:i===points.length-1?{kind:'pin',...last}:{kind:'bend'}}));
+  wire.segments=wire.vertices.slice(1).map((v,i)=>({id:wire.id+':s'+i,from_vertex_id:wire.vertices[i].id,to_vertex_id:v.id}));
+ };
+ setPath(w,[[58000,50000],[80000,50000],[80000,80000],[120000,80000],[120000,130000],[192000,130000]],pin(a,'2'),pin(b,'1'));
+ setPath(other,[[105000,105000],[145000,105000]],pin(c,'2'),pin(d,'1'));
+ w.needs_routing_review=true;other.needs_routing_review=false;
+ const session=new AuthoringSession(doc),p=session.previewDetourRefinement(true);
+ assert.equal(p.before.crossings,1);assert.ok(p.token);
+ assert.equal(p.after.crossings,0);assert.ok(p.after.bends<=p.before.bends);assert.ok(p.after.lengthUm<=p.before.lengthUm);
+ assert.deepEqual(session.file,doc);assert.equal(session.revision,0);
+ const next=session.layoutPreviewDocument(p.token),ns=next.project.sheets[0],nw=ns.wires.find(v=>v.id===w.id);
+ assert.deepEqual(ns.wires.find(v=>v.id===other.id),other);
+ assert.deepEqual(nw.vertices[0],w.vertices[0]);assert.deepEqual(nw.vertices.at(-1),w.vertices.at(-1));
+ assert.deepEqual(ns.instances,sh.instances);assert.deepEqual(ns.junctions,sh.junctions);assert.deepEqual(ns.splices,sh.splices);
+ assert.deepEqual(next.project.nets.map(n=>[n.id,n.members]),doc.project.nets.map(n=>[n.id,n.members]));
+ session.applyLayoutPreview(session.newTransaction('remove-crossing'),p.token);
+ for(const id of [target,foreign])assert.equal(session.engine.validateNet(id).pin_groups.length,1);
+ assert.equal(session.undo(),true);assert.deepEqual(session.file,doc);
+ assert.equal(session.redo(),true);assert.deepEqual(session.file,next);
+});

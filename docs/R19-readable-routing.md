@@ -744,3 +744,32 @@ exercise the final route. No actual numerical improvement claimed
 until CI. The search is a conservative bounded heuristic; 1 mm is
 a chosen engineering clearance, not normative approval. Main and
 frozen E695 untouched.
+
+
+## R39 — crossing-channel refinement
+
+R38 exact f2b3b65c141e5d07094cc1ce99d7122f5cfdc3c4 passed all three
+workflows. The new protected measured TL494 baseline is 77 bends,
+38 crossings and 5282207 um, with 15 connected Nets, 62 PinRefs,
+23 labels and no geometry diagnostics. R37 compact placement and
+the accepted R38 TRANSFER shortcut yielded the improvement.
+
+R39 adds an explicit mode of the local preview. It prioritizes wires
+with different-Net crossings and tries alternate L corners and
+monotone Z channels. Candidates sample endpoint-relative channels
+and foreign segment boundaries +/-1001 um. Local ranking requires
+a reduction of unique foreign Net/position crossings without extra
+length or bends. Existing physical lead direction and length are
+preserved, as are wire IDs, terminal IDs, symbol poses and node
+coordinates. The existing R38 geometric clearance and independent
+engine validation remain active; the full assessment must confirm a
+strict reduction of total crossings, no increase in bends or length,
+and no lost visible label identities. Search caps: 192 scored
+candidate paths per wire, 12 selected paths per wire, 96 full trials
+per preview. This is a conservative heuristic, not exhaustive.
+The eighth evidence stage checks the measured R38 floor and
+monotonic improvement, actual Python/browser label parity and native
+Windows persistence. Two regression tests exercise equal-length Z
+channel improvement, signed lead retention and atomic no-op.
+R39 numerical improvement and CI results pending. Main and frozen
+E695 unchanged.
