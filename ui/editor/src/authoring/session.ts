@@ -41,6 +41,8 @@ export type GroupClipboard = {
 
 export type PlacementHint={origin:MutablePoint;from:MutablePoint;to:MutablePoint;target:PinRef;newPin:string};
 export type LayoutPreview={token:string|null;before:LayoutQuality;after:LayoutQuality;operations:string[];attempted:number;rejected:number;limited:boolean};
+export type PlacementProfile='default'|'compact'|'spacious';
+export type PlacementSearchPreview=FunctionalRoutingPreview&{profile:PlacementProfile;profilesTried:number;refinementAttempts:number};
 export type FunctionalRoutingPreview={token:string|null;requested:number;routed:number;variant:'hub'|'functional';moved:string[];baseline:LayoutQuality;quality:LayoutQuality;attempted:number;outcomes:InitialBatchOutcome[]};
 export type HubPlacementPreview={token:string|null;moved:string[];beforeSpanUm:number;afterSpanUm:number;attempted:number};
 export type InitialBatchOutcome={id:string;name:string;pins:number;rejected?:string};
@@ -1658,7 +1660,7 @@ export class AuthoringSession {
   /** Read-only pre-placement of two-terminal satellites beside signed hub
    * pins on a wholly unrouted sheet. Span is a lower-bound proxy, not a
    * claim about actual routed length. No electrical membership changes. */
-  previewHubPlacement(peerAnchorIds:readonly string[]=[]):HubPlacementPreview{
+  previewHubPlacement(peerAnchorIds:readonly string[]=[],profile:PlacementProfile='default'):HubPlacementPreview{
     this.layoutPlan=null;
     const base=this.file,sh=base.project.sheets[indexOfSheet(base)];
     if(sh.instances.length>128)reject('LAYOUT_SIZE_LIMIT');
@@ -1670,6 +1672,8 @@ export class AuthoringSession {
       reject('LAYOUT_ANNOTATIONS_UNSUPPORTED');
     const defs=new Map(base.project.symbol_definitions.map(d=>[d.id,d]));
     const byComp=new Map(sh.instances.map(i=>[i.component_id,i]));
+    if(!['default','compact','spacious'].includes(profile))reject('INVALID_PLACEMENT_PROFILE');
+    const gaps=profile==='compact'?[8000,12000,16000,24000]:profile==='spacious'?[20000,30000,45000,60000]:[12000,20000,30000,40000];
     const peerAnchors=new Set(peerAnchorIds);
     if(peerAnchors.size!==peerAnchorIds.length||peerAnchorIds.some(id=>!byComp.has(id)||
       defs.get(byComp.get(id)!.symbol_id)?.pins.length!==2))reject('INVALID_PEER_ANCHORS');
@@ -1728,7 +1732,7 @@ export class AuthoringSession {
         const normal=transform(pose,xy(dirs[pin.side]));
         if(normal[0]!==-anchor.normal[0]||normal[1]!==-anchor.normal[1])continue;
         const offset=transform(pose,pin.at_um);
-        for(const gap of [12000,20000,30000,40000]){
+        for(const gap of gaps){
           if(attempted>=48)break;
           attempted++;
           if(gap>=oldPairSpan)continue;
@@ -1779,7 +1783,7 @@ export class AuthoringSession {
    * The expanded placement wins only if the full routed candidate
    * Pareto-dominates the full hub-only baseline (or connects more Nets).
    * No intermediate placement or partial route is committed. */
-  previewFunctionalRouting():FunctionalRoutingPreview{
+  previewFunctionalRouting(profile:PlacementProfile='default'):FunctionalRoutingPreview{
     this.layoutPlan=null;
     const base=this.file,sh=base.project.sheets[indexOfSheet(base)];
     if(sh.wires.length||sh.junctions.length||sh.splices.length)reject('PREPARE_REQUIRES_UNROUTED_SHEET');
@@ -1790,7 +1794,7 @@ export class AuthoringSession {
     const ids=nets.map(n=>n.id),prepared=new AuthoringSession(base);
     try{prepared.prepareInitialRouting(prepared.newTransaction('functional-inset'))}
     catch(e){if(!(e instanceof WireError)||e.code!=='NO_CHANGE')throw e}
-    const hub=prepared.previewHubPlacement();
+    const hub=prepared.previewHubPlacement([],profile);
     if(hub.token)prepared.applyLayoutPreview(prepared.newTransaction('functional-hub'),hub.token);
     const hubDoc=prepared.file;
     const baseline=new AuthoringSession(hubDoc),first=baseline.previewInitialBatch(ids,true);
@@ -1802,7 +1806,7 @@ export class AuthoringSession {
     if(hub.moved.length){
       const expanded=new AuthoringSession(hubDoc),anchors=[...hub.moved];
       for(let pass=0;pass<2;pass++){
-        const next=expanded.previewHubPlacement(anchors);
+        const next=expanded.previewHubPlacement(anchors,profile);
         if(!next.token)break;
         expanded.applyLayoutPreview(expanded.newTransaction('functional-peer'),next.token);
         anchors.push(...next.moved);
@@ -1941,6 +1945,52 @@ export class AuthoringSession {
    * The entire accepted sequence is a single revision-bound proposal. */
   /** Explicit review-only shared trunk proposals. No symbol moves or edits
    * to the live document before revision-bound Apply. */
+  previewFunctionalAlternatives():PlacementSearchPreview{
+    this.layoutPlan=null;
+    const base=this.file,sh=base.project.sheets[indexOfSheet(base)];
+    if(sh.wires.length||sh.junctions.length||sh.splices.length)reject('PREPARE_REQUIRES_UNROUTED_SHEET');
+    // Keep the entire established R36 candidate, including refinements,
+    // as a fallback. Only full, validated alternative layouts can replace it.
+    type Candidate={session:AuthoringSession;report:FunctionalRoutingPreview;
+      assessment:ReturnType<typeof assessLayout>;labels:Set<string>;profile:PlacementProfile};
+    let attempted=0,refinementAttempts=0,profilesTried=0;
+    let chosen:Candidate|undefined,baseline:LayoutQuality|undefined;
+    let partial:FunctionalRoutingPreview|undefined;
+    const profiles:PlacementProfile[]=['default','compact','spacious'];
+    for(const profile of profiles){
+      profilesTried++;
+      const trial=new AuthoringSession(base);
+      let report:FunctionalRoutingPreview;
+      try{report=trial.previewFunctionalRouting(profile)}
+      catch(e){if(!(e instanceof WireError))throw e;if(profile==='default')throw e;continue}
+      attempted+=report.attempted;
+      if(!partial||report.routed>partial.routed)partial=report;
+      if(!report.token){if(profile==='default')baseline=report.quality;continue}
+      trial.applyLayoutPreview(trial.newTransaction('placement-profile'),report.token);
+      // Default is precisely the old pipeline. Alternatives get the same
+      // baseline, extended and trunk search, each with existing hard caps.
+      for(const refine of [()=>trial.previewRouteRefinement(),()=>trial.previewRouteRefinement(true),()=>trial.previewRailRefinement()]){
+        const proposal=refine();
+        refinementAttempts+=proposal.attempted;
+        if(proposal.token)trial.applyLayoutPreview(trial.newTransaction('placement-refine'),proposal.token);
+      }
+      const file=trial.file,assessment=assessLayout(file,trial.engine);
+      const labels=new Set(planComponentLabels(file,sh.id).labels.map(l=>l.instanceId));
+      if(profile==='default')baseline=assessment.quality;
+      if(sourceGuard(file)!==sourceGuard(base)||!assessment.quality.complete||
+        file.project.nets.filter(n=>n.members.some(m=>sh.instances.some(i=>i.component_id===m.component_id)))
+          .some(n=>trial.engine.validateNet(n.id).pin_groups.length!==1))reject('BATCH_TOPOLOGY_MISMATCH');
+      const candidate={session:trial,report,assessment,labels,profile};
+      if(!chosen||(improvesLayout(chosen.assessment,assessment)&&[...chosen.labels].every(id=>labels.has(id))))chosen=candidate;
+    }
+    if(!partial)reject('BATCH_NET_COUNT');
+    const report=chosen?.report??partial;
+    const token=chosen?newId('functional-alternatives'):null;
+    if(token&&chosen)this.layoutPlan={token,revision:this.clock,sheet:sh.id,next:chosen.session.file};
+    return {...report,token,profile:chosen?.profile??'default',profilesTried,attempted,refinementAttempts,
+      baseline:baseline??report.quality,quality:chosen?.assessment.quality??report.quality};
+  }
+
   previewRailRefinement():LayoutPreview{
     this.layoutPlan=null;
     const base=this.file,sh=base.project.sheets[indexOfSheet(base)];
