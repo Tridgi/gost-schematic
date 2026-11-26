@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {projectToCanvasScene} from './scene-projection.mjs';
+import {projectToCanvasScene,projectPlacementSymbol} from './scene-projection.mjs';
 import {readFileSync,existsSync} from 'node:fs';
 
 const file=()=>({
@@ -87,4 +87,21 @@ test('R31b retains physical non-electric stroke width for print overflow checks'
  assert.equal(scene.graphics[0].strokes[0].stroke_um,350);
  assert.equal(scene.graphics[0].electrical,false);
  assert.equal(JSON.stringify(f),before);
+});
+
+
+test('RC1 placement preview projects exact catalog geometry without adding electrical anchors',()=>{
+ const f=file(),sheet=f.project.sheets[0];
+ sheet.layers=[{id:'electrical',kind:'electrical'}];
+ const before=JSON.stringify(f),real=projectToCanvasScene(f,'sheet').symbols[0];
+ const preview=projectPlacementSymbol(f,'sheet','symbol');
+ assert.ok(preview);
+ for(const key of ['pins','strokes','inkStrokes','curves','notes','status','layer_id'])
+  assert.deepEqual(preview[key],real[key]);
+ assert.deepEqual(preview.origin_um,[0,0]);assert.equal(preview.rotation_deg,0);assert.equal(preview.mirror_x,false);
+ assert.equal(JSON.stringify(f),before);
+ assert.equal(projectToCanvasScene(f,'sheet').symbols.length,1);
+ assert.equal(projectPlacementSymbol(f,'sheet','missing'),null);
+ f.project.symbol_definitions[0].status='deprecated';
+ assert.equal(projectPlacementSymbol(f,'sheet','symbol'),null);
 });
