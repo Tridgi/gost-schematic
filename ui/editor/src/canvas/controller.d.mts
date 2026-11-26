@@ -9,6 +9,7 @@ export type CanvasIntent =
  | {kind:'commitWire';source:PinRef;target:{kind:'pin';pin:PinRef}|{kind:'free';at_um:PointUm}|{kind:'segment';wire_id:string;segment_id:string;at_um:PointUm};bend_points_um:PointUm[];base_revision?:number}
  | {kind:'cancelWire';source:PinRef}
  | {kind:'placeSymbol';at_um:PointUm;base_revision:number}
+ | {kind:'placeText';at_um:PointUm;base_revision:number}
  | {kind:'deleteSymbol';component_id:string;instance_id:string;base_revision:number}
  | {kind:'deleteWire';wire_id:string;base_revision:number}
  | {kind:'moveSegment';token:SegmentDragToken;delta_um:number}
@@ -24,7 +25,7 @@ export type CanvasContext={
  tool:'select'|'wire'|'pan'|'text'|'junction'|'place';gridUm:number;snapEnabled:boolean;canTap?:boolean;
  onIntent:(intent:CanvasIntent)=>void|boolean;
 };
-export type PointerPoint=ScreenPoint & {pointerId:number;button:number};
+export type PointerPoint=ScreenPoint & {pointerId:number;button:number;ctrlKey?:boolean;shiftKey?:boolean};
 export type CanvasControllerState={
  camera:Camera;draft:null|{source:PinRef;from_um:PointUm;bends_um:PointUm[];cursor_um:PointUm};
  drag:null|{kind:'pan'|'segment'|'symbol'|'marquee'|'group';pointerId:number};
