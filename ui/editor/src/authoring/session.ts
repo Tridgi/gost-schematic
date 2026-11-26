@@ -20,6 +20,7 @@ import {
 import {loadProjectWires} from '../wires/project-v2-adapter';
 import {validateNotes,noteLayout} from '../model/symbol-notes.mjs';
 import {planOrthogonalTree,type TreeStrategy} from './orthogonal-tree';
+import {detourShortcuts,pathMetric} from './detour-shortcuts';
 import {assessLayout,improvesLayout,preservesLayoutSafety,type LayoutQuality} from './layout-quality';
 import {curveGeometry} from '../model/curves.mjs';
 import {planComponentLabels} from '../canvas/component-labels';
@@ -1945,6 +1946,112 @@ export class AuthoringSession {
    * The entire accepted sequence is a single revision-bound proposal. */
   /** Explicit review-only shared trunk proposals. No symbol moves or edits
    * to the live document before revision-bound Apply. */
+  /** Shorten only individual review-marked polylines. Physical terminals,
+   * explicit junction/splice positions, and all other geometry stay fixed. */
+  previewDetourRefinement():LayoutPreview{
+    this.layoutPlan=null;
+    const base=this.file,sh=base.project.sheets[indexOfSheet(base)];
+    if(sh.instances.length>128||sh.wires.reduce((n,w)=>n+w.segments.length,0)>512)reject('LAYOUT_SIZE_LIMIT');
+    if(sh.texts.length||sh.labels.length+sh.graphics.length>32||
+      sh.labels.some(l=>l.role!=='visual'||l.net_id!==null||typeof l.text!=='string'||l.text.length>64)||
+      sh.graphics.some(g=>!['line','polyline','source_b_continuation'].includes(g.kind)||
+        g.points_um.length<2||g.points_um.length>64||!Number.isSafeInteger(g.stroke_um)||g.stroke_um<=0||g.stroke_um>10000))
+      reject('LAYOUT_ANNOTATIONS_UNSUPPORTED');
+    const before=assessLayout(base,this.engine);
+    if(!before.quality.complete)reject('LAYOUT_CHECK_INCOMPLETE');
+    const rect=(a:PointUm,b:PointUm,pad=0):Bounds=>({minX:Math.min(a[0],b[0])-pad,minY:Math.min(a[1],b[1])-pad,
+      maxX:Math.max(a[0],b[0])+pad,maxY:Math.max(a[1],b[1])+pad});
+    const same=(a:PointUm,b:PointUm)=>a[0]===b[0]&&a[1]===b[1];
+    const hit=(a:Bounds,b:Bounds)=>a.minX<=b.maxX&&b.minX<=a.maxX&&a.minY<=b.maxY&&b.minY<=a.maxY;
+    const defs=new Map(base.project.symbol_definitions.map(d=>[d.id,d]));
+    const boxes=sh.instances.map(i=>({id:i.component_id,box:translateBounds(symbolBounds(defs.get(i.symbol_id)!,i.rotation_deg,i.mirror_x),i.origin_um)}));
+    const ink:Bounds[]=[];
+    for(const g of sh.graphics)for(let k=1;k<g.points_um.length;k++)ink.push(rect(g.points_um[k-1],g.points_um[k],g.stroke_um/2));
+    for(const l of sh.labels){
+      const p=xy(l.at_um),[a,b]=noteLayout({key:l.id,text:l.text,at_um:p,height_um:3500,horizontal:'left',vertical:'bottom'},p).bounds;
+      ink.push(rect(a,b));
+    }
+    if(ink.length>128)reject('LAYOUT_ANNOTATIONS_UNSUPPORTED');
+    let best=new AuthoringSession(base),assessment=before,attempted=0,rejected=0;
+    let visible=new Set(planComponentLabels(base,sh.id).labels.map(l=>l.instanceId));
+    const operations:string[]=[];
+    const eligible=sh.wires.filter(w=>{
+      const a=w.vertices[0].anchor,b=w.vertices.at(-1)!.anchor;
+      return w.needs_routing_review&&w.vertices.length>=3&&w.vertices.length<=24&&
+        [a,b].every(v=>['pin','junction','splice'].includes(v.kind))&&
+        sh.layers.some(l=>l.id===w.layer_id&&l.kind==='electrical'&&l.visible&&l.printable&&!l.locked)&&
+        this.engine.validateNet(w.net_id).pin_groups.length===1;
+    }).sort((a,b)=>{const x=pathMetric(a.vertices.map(v=>v.at_um)),y=pathMetric(b.vertices.map(v=>v.at_um));
+      return y.bends-x.bends||y.length-x.length||a.id.localeCompare(b.id)});
+    const m=sh.frame.margin_um,[width,height]=sh.frame.size_um;
+    for(const entry of eligible){
+      if(attempted>=64)break;
+      const doc=best.file,sheet=doc.project.sheets[indexOfSheet(doc)],w=sheet.wires.find(w=>w.id===entry.id)!;
+      const start=w.vertices[0],end=w.vertices.at(-1)!;
+      const candidates=detourShortcuts(w.vertices.map(v=>v.at_um),start.anchor.kind==='pin',end.anchor.kind==='pin');
+      const foreign=sheet.wires.filter(v=>v.id!==w.id).flatMap(v=>v.vertices.slice(1).map((b,i)=>({a:v.vertices[i],b,net:v.net_id,box:rect(v.vertices[i].at_um,b.at_um)})));
+      const nodes=[...sheet.junctions.map(n=>({anchor:{kind:'junction' as const,junction_id:n.id},at_um:n.at_um})),
+        ...sheet.splices.map(n=>({anchor:{kind:'splice' as const,splice_id:n.id},at_um:n.at_um}))];
+      const sameAnchor=(a:WirePolyline['vertices'][number]['anchor'],b:WirePolyline['vertices'][number]['anchor'])=>{
+        if(a.kind!==b.kind)return false;
+        // Anchor properties are semantically keyed; imported JSON ordering
+        // is not a connection identity.
+        if(a.kind==='pin'&&b.kind==='pin')return pinKey(a)===pinKey(b);
+        return a.kind==='junction'&&b.kind==='junction'&&a.junction_id===b.junction_id||a.kind==='splice'&&b.kind==='splice'&&a.splice_id===b.splice_id;
+      };
+      const safe=(p:PointUm[])=>{
+        if(p.some(v=>v[0]<m||v[0]>width-m||v[1]<m||v[1]>height-m))return false;
+        for(let i=1;i<p.length;i++){
+          const a=p[i-1],b=p[i],bounds=rect(a,b);
+          const endpoint=(v:PointUm)=>i===1&&same(v,start.at_um)?start:i===p.length-1&&same(v,end.at_um)?end:undefined;
+          for(const o of boxes){
+            if(i===1&&start.anchor.kind==='pin'&&start.anchor.component_id===o.id)continue;
+            if(i===p.length-1&&end.anchor.kind==='pin'&&end.anchor.component_id===o.id)continue;
+            if(!separated(bounds,o.box,1000))return false;
+          }
+          if(ink.some(o=>!separated(bounds,o,1000)))return false;
+          for(const n of nodes){
+            if(!hit(bounds,rect(n.at_um,n.at_um)))continue;
+            const terminal=endpoint(n.at_um);
+            if(!terminal||!sameAnchor(terminal.anchor,n.anchor))return false;
+          }
+          for(const v of foreign){
+            if(!hit(bounds,v.box))continue;
+            const lo=rect([Math.max(bounds.minX,v.box.minX),Math.max(bounds.minY,v.box.minY)],
+              [Math.min(bounds.maxX,v.box.maxX),Math.min(bounds.maxY,v.box.maxY)]);
+            if(lo.minX!==lo.maxX||lo.minY!==lo.maxY)return false;
+            const at:PointUm=[lo.minX,lo.minY],terminal=endpoint(at);
+            if(terminal&&v.net===w.net_id&&[v.a,v.b].some(q=>same(q.at_um,at)&&sameAnchor(q.anchor,terminal.anchor)))continue;
+            // Do not turn a crossing into a tap or allow same-Net contact.
+            const h=a[1]===b[1],vh=v.a.at_um[1]===v.b.at_um[1];
+            if(v.net===w.net_id||h===vh||[a,b,v.a.at_um,v.b.at_um].some(q=>same(q,at)))return false;
+          }
+        }
+        return true;
+      };
+      for(const points of candidates){
+        if(attempted>=64)break;
+        attempted++;
+        if(!safe(points)){rejected++;continue}
+        const next=clone(doc),ns=next.project.sheets[indexOfSheet(next)],nw=ns.wires.find(v=>v.id===w.id)!;
+        nw.vertices=[clone(start),...points.slice(1,-1).map(at_um=>({id:newId('vertex'),at_um,anchor:{kind:'bend'} as const})),clone(end)];
+        nw.segments=nw.vertices.slice(1).map((v,i)=>({id:newId('segment'),from_vertex_id:nw.vertices[i].id,to_vertex_id:v.id}));
+        let trial:AuthoringSession;
+        try{trial=new AuthoringSession(next)}catch(e){if(!(e instanceof WireError))throw e;rejected++;continue}
+        const after=assessLayout(next,trial.engine);
+        if(sourceGuard(next)!==sourceGuard(base)||!improvesLayout(assessment,after)){rejected++;continue}
+        const labels=new Set(planComponentLabels(next,sh.id).labels.map(l=>l.instanceId));
+        if([...visible].some(id=>!labels.has(id))){rejected++;continue}
+        best=trial;assessment=after;visible=labels;
+        operations.push('Устранение обхода '+(base.project.nets.find(n=>n.id===w.net_id)?.name??w.net_id));
+        break;
+      }
+    }
+    const token=operations.length?newId('detour-refinement'):null;
+    if(token)this.layoutPlan={token,revision:this.clock,sheet:sh.id,next:best.file};
+    return {token,before:before.quality,after:assessment.quality,operations,attempted,rejected,limited:attempted>=64};
+  }
+
   previewFunctionalAlternatives():PlacementSearchPreview{
     this.layoutPlan=null;
     const base=this.file,sh=base.project.sheets[indexOfSheet(base)];
