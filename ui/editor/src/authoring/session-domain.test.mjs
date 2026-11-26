@@ -2235,3 +2235,29 @@ test('R38 local trunk shortcut retains exact junctions, splices and wire termina
  assert.equal(a.undo(),true);assert.deepEqual(a.file,doc);
  assert.equal(a.redo(),true);assert.deepEqual(a.file,next);
 });
+
+
+test('R39 equal-length Z channel can remove a foreign X without adding bends',async()=>{
+ const {crossingChannelShortcuts,pathMetric,localCrossingCount}=await import('./detour-shortcuts.ts');
+ const points=[[0,0],[10000,0],[10000,30000],[40000,30000]];
+ const foreign=[{a:[5000,15000],b:[20000,15000],net:'other'}];
+ const original=structuredClone(points);
+ assert.equal(localCrossingCount(points,foreign),1);
+ const choices=crossingChannelShortcuts(points,foreign,false,false);
+ assert.ok(choices.length>0&&choices.length<=12);
+ assert.deepEqual(pathMetric(choices[0]),pathMetric(points));
+ assert.equal(localCrossingCount(choices[0],foreign),0);
+ assert.deepEqual(choices[0][0],points[0]);assert.deepEqual(choices[0].at(-1),points.at(-1));
+ assert.deepEqual(crossingChannelShortcuts(points,foreign,false,false),choices);
+ assert.deepEqual(crossingChannelShortcuts(points,foreign,true,true),[]);
+ assert.deepEqual(points,original);
+});
+test('R39 empty crossing search is atomic for already straight independent routes',()=>{
+ const {session:s,ids,doc}=batchRouteFixture();
+ const p=s.previewFunctionalAlternatives();
+ assert.ok(p.token);s.applyLayoutPreview(s.newTransaction('initial'),p.token);
+ const before=s.file,rev=s.revision,q=s.previewDetourRefinement(true);
+ assert.equal(q.token,null);assert.equal(q.attempted,0);assert.equal(q.before.crossings,0);
+ assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
+ for(const id of ids)assert.equal(s.engine.validateNet(id).pin_groups.length,1);
+});
