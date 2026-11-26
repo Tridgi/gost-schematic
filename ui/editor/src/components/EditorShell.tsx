@@ -54,6 +54,9 @@ export type EditorShellProps = {
   onSelectSheet:(id:string)=>void;onInspectorProposal:(edit:InspectorProposal)=>void;
   onUndo:()=>void;onRedo:()=>void;onSave:()=>void;
   onCopy?:()=>void;onPaste?:()=>void;
+  propertiesRequest?:number;onSelectAll?:()=>void;
+  textRequest?:{at:readonly [number,number] }|null;
+  onCancelText?:()=>void;onAddText?:(value:string,height:number)=>boolean;
   pinMagnet?:boolean;onTogglePinMagnet?:(enabled:boolean)=>void;
   smartRouting?:boolean;onToggleSmartRouting?:(enabled:boolean)=>void;onAlignConnectedPair?:()=>void;onSimplifyRoutes?:()=>void;onAlignSeries?:()=>void;onDistributeSeries?:()=>void;onBuildParallelRails?:()=>void;onDistributeParallel?:()=>void;onOptimizeLayout?:()=>void;
   layoutPreview?:{plan:LayoutPreview;beforeSrc:string;afterSrc:string};onApplyLayoutPreview?:()=>void;onCancelLayoutPreview?:()=>void;
@@ -164,6 +167,17 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
   const [left,setLeft]=useState(()=>typeof window==='undefined'||window.innerWidth>=960);
   const [right,setRight]=useState(()=>typeof window==='undefined'||window.innerWidth>=960);
   const [topologyDialog,setTopologyDialog]=useState(false);
+  const [propertiesOpen,setPropertiesOpen]=useState(false);
+  const propertiesSeen=useRef(0);
+  const [textValue,setTextValue]=useState(''),[textHeight,setTextHeight]=useState('3500'),[textError,setTextError]=useState(false);
+  const catalogSearch=useRef<HTMLInputElement>(null);
+  useEffect(()=>{
+    if(props.propertiesRequest&&props.propertiesRequest!==propertiesSeen.current){
+      propertiesSeen.current=props.propertiesRequest;setPropertiesOpen(true);
+    }
+  },[props.propertiesRequest]);
+  useEffect(()=>{if(!props.selected)setPropertiesOpen(false);},[props.selected?.id]);
+  useEffect(()=>{if(props.textRequest){setTextValue('');setTextHeight('3500');setTextError(false);}},[props.textRequest]);
   const [settings,setSettings]=useState(false),[exportDialog,setExportDialog]=useState(false);
   const [commandDialog,setCommandDialog]=useState(false),[diagnostics,setDiagnostics]=useState(false);
   const [diagnosticFilter,setDiagnosticFilter]=useState<'all'|'error'|'warning'|'info'>('all');
@@ -192,7 +206,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
       const editable=!!(e.target as HTMLElement)?.closest('input,textarea,select,[contenteditable="true"],[role="textbox"]');
       // The browser Save-as dialog would incorrectly capture an uncommitted inspector draft.
       if(editable&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();return;}
-      const action=resolveShellShortcut(e,{editable,dialogOpen:settings||exportDialog||commandDialog});
+      const action=resolveShellShortcut(e,{editable,dialogOpen:settings||exportDialog||commandDialog||topologyDialog||propertiesOpen||!!props.textRequest||!!props.layoutPreview});
       if(!action)return;
       if(action==='save'&&!props.canSave || action==='undo'&&!props.canUndo || action==='redo'&&!props.canRedo)return;
       if(action==='copy'&&!props.onCopy || action==='paste'&&!props.onPaste)return;
@@ -204,10 +218,16 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
       else if(action==='redo')props.onRedo();
       else if(action==='copy')props.onCopy?.();
       else if(action==='paste')props.onPaste?.();
+      else if(action==='saveAs')props.onSaveAs?.();
+      else if(action==='newProject')props.onNew?.();
+      else if(action==='openProject')props.onOpen?.();
+      else if(action==='selectAll')props.onSelectAll?.();
+      else if(action==='findCatalog'){setLeft(true);requestAnimationFrame(()=>catalogSearch.current?.focus());}
+      else if(action==='properties'){if(props.selected)setPropertiesOpen(true);}
       else props.onToolChange(action);
     };
     window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey);
-  },[props.onToolChange,props.onSave,props.onUndo,props.onRedo,props.canSave,props.canUndo,props.canRedo,props.onCopy,props.onPaste,settings,exportDialog,commandDialog]);
+  },[props.onToolChange,props.onSave,props.onUndo,props.onRedo,props.canSave,props.canUndo,props.canRedo,props.onCopy,props.onPaste,props.onSaveAs,props.onNew,props.onOpen,props.onSelectAll,props.selected,props.textRequest,props.layoutPreview,settings,exportDialog,commandDialog,topologyDialog,propertiesOpen]);
   const commands=[
     {label:'Сохранить',ok:props.canSave,run:props.onSave},
     {label:'Экспорт',ok:true,run:()=>setExportDialog(true)},
@@ -278,7 +298,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
         <Stack gap="xs" p="sm" h="100%" style={{minHeight:0}}>
           <Text size="sm" fw={600}>Библиотека УГО · {props.catalog.length}</Text>
           {!!props.catalogMissingCount&&<Button size="compact-xs" variant="light" data-testid="upgrade-catalog" onClick={props.onCatalogUpgrade}>Добавить УГО (+{props.catalogMissingCount})</Button>}
-          <TextInput size="xs" aria-label="Поиск УГО" leftSection={<Search size={14}/>}
+          <TextInput ref={catalogSearch} size="xs" aria-label="Поиск УГО" leftSection={<Search size={14}/>}
             placeholder="Поиск по каталогу" value={query} onChange={e=>setQuery(e.currentTarget.value)} data-testid="catalog-search"/>
           <ScrollArea className="gscad-catalog-scroll" type="auto" offsetScrollbars scrollbarSize={9} style={{flex:1,minHeight:0}}><Stack gap={6}>
             {categories.map(category=><section key={category.name} className="gscad-catalog-category">
@@ -347,7 +367,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
               pl={12+(n.indent??0)*16} active={n.kind==='instance'&&(n.id===props.selected?.id||props.groupSelectionIds?.includes(n.id))} onClick={()=>props.onSelectTreeItem(n.id)}
               leftSection={<FolderTree size={14}/>} />)}</ScrollArea></>}
           bottom={<><Text fw={600} size="sm" p="sm">Свойства</Text>
-            <ScrollArea h="calc(100% - 44px)">{(props.groupSelectionIds?.length??0)>1?<Text size="sm" p="sm" data-testid="group-selection-summary">Выбрано УГО: {props.groupSelectionIds?.length}. Групповое изменение свойств пока недоступно.{props.onAlignConnectedPair&&<Button fullWidth size="xs" mt="xs" data-testid="align-connected-pair-inspector" onClick={props.onAlignConnectedPair}>Выровнять выводы</Button>}{props.onAlignSeries&&<Button fullWidth size="xs" mt="xs" data-testid="align-series-inspector" onClick={props.onAlignSeries}>Выровнять цепочку</Button>}</Text>:<Inspector selected={props.selected}
+            <ScrollArea h="calc(100% - 44px)">{(props.groupSelectionIds?.length??0)>1?<Text size="sm" p="sm" data-testid="group-selection-summary">Выбрано УГО: {props.groupSelectionIds?.length}. Групповое изменение свойств пока недоступно.{props.onAlignConnectedPair&&<Button fullWidth size="xs" mt="xs" data-testid="align-connected-pair-inspector" onClick={props.onAlignConnectedPair}>Выровнять выводы</Button>}{props.onAlignSeries&&<Button fullWidth size="xs" mt="xs" data-testid="align-series-inspector" onClick={props.onAlignSeries}>Выровнять цепочку</Button>}</Text>:<Inspector selected={propertiesOpen?null:props.selected}
               revision={props.baseRevision} send={props.onInspectorProposal} hostError={props.inspectorError}/>}</ScrollArea></>}/>
       </AppShell.Aside>
       <AppShell.Footer className="gscad-status" data-testid="status-bar">
@@ -371,6 +391,23 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
         </Group>
       </AppShell.Footer>
     </AppShell>
+    <Modal opened={propertiesOpen&&!!props.selected} onClose={()=>setPropertiesOpen(false)}
+      title={'Свойства элемента '+(props.selected?.refdes??'')} centered size="md">
+      <Inspector selected={props.selected} revision={props.baseRevision} send={props.onInspectorProposal} hostError={props.inspectorError}/>
+      <Group justify="flex-end" mt="sm"><Button onClick={()=>setPropertiesOpen(false)}>Закрыть</Button></Group>
+    </Modal>
+    <Modal opened={!!props.textRequest} onClose={()=>props.onCancelText?.()} title="Добавить надпись" centered size="md">
+      <Stack gap="sm">
+        <TextInput autoFocus label="Текст" data-testid="sheet-text-input" maxLength={128} value={textValue}
+          onChange={e=>{setTextValue(e.currentTarget.value);setTextError(false);}}/>
+        <Text size="xs" c="dimmed">Высота букв, мм</Text>
+        <SegmentedControl fullWidth value={textHeight} onChange={setTextHeight} data={['2500','3500','5000','7000','10000'].map(v=>({value:v,label:String(Number(v)/1000).replace('.',',')}))}/>
+        <Text size="xs" c="dimmed">OpenGost Type A при наличии; нормативный шрифт пока не подтверждён.</Text>
+        {textError&&<Text size="xs" c="red">Не удалось добавить надпись. Проверьте текст, положение и границы листа.</Text>}
+        <Group justify="flex-end"><Button variant="default" onClick={()=>props.onCancelText?.()}>Отмена</Button>
+          <Button data-testid="add-sheet-text" disabled={!textValue.trim()} onClick={()=>setTextError(props.onAddText?.(textValue,Number(textHeight))!==true)}>Добавить</Button></Group>
+      </Stack>
+    </Modal>
     <Modal opened={!!props.layoutPreview} onClose={()=>props.onCancelLayoutPreview?.()} title="Оптимизация компоновки — предварительный просмотр" centered size="xl">
       {props.layoutPreview&&<Stack gap="sm" data-testid="layout-preview-dialog">
         <Group grow align="start" wrap="wrap">
