@@ -2318,3 +2318,40 @@ test('R39 real two-Net crossing preview preserves foreign geometry and atomicall
  assert.equal(session.undo(),true);assert.deepEqual(session.file,doc);
  assert.equal(session.redo(),true);assert.deepEqual(session.file,next);
 });
+
+
+test('RC1 pin-to-line creates one explicit T junction, extends existing Net and is one undoable edit',()=>{
+ const s=newSession();
+ for(const p of [[80000,80000],[220000,80000],[130000,160000],[230000,160000]])
+  s.place(s.newTransaction('tap-place'),'symbol/resistor.fixed',p);
+ const [a,b,c,d]=s.file.project.components.map(c=>c.id);
+ s.connect(s.newTransaction('main-line'),pin(a,'2'),pin(b,'1'));
+ s.connect(s.newTransaction('foreign'),pin(c,'2'),pin(d,'1'));
+ const before=s.file,rev=s.revision,[n,foreign]=before.project.nets;
+ const [w,other]=before.project.sheets[0].wires;
+ assert.throws(()=>s.connectToSegment(s.newTransaction('foreign-short'),pin(c,'2'),w.id,w.segments[0].id,[150000,80000]),/NET_CONFLICT/);
+ assert.throws(()=>s.connectToSegment(s.newTransaction('endpoint'),pin(c,'1'),w.id,w.segments[0].id,w.vertices[0].at_um),/SPLIT_POINT/);
+ assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
+ s.connectToSegment(s.newTransaction('tap'),pin(c,'1'),w.id,w.segments[0].id,[120000,80000]);
+ const after=s.file,sh=after.project.sheets[0];
+ assert.equal(s.revision,rev+1);assert.equal(sh.junctions.length,1);assert.equal(sh.wires.length,4);
+ assert.deepEqual(sh.junctions[0].at_um,[120000,80000]);assert.equal(sh.junctions[0].net_id,n.id);
+ assert.deepEqual(after.project.nets.find(v=>v.id===n.id).members,[...n.members,pin(c,'1')]);
+ assert.deepEqual(after.project.nets.find(v=>v.id===foreign.id),foreign);
+ assert.deepEqual(sh.wires.find(v=>v.id===other.id),other);
+ assert.equal(s.engine.validateNet(n.id).pin_groups.length,1);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);assert.deepEqual(new AuthoringSession(s.file).file,after);
+});
+test('RC1 text placement persists non-electrical annotation without changing Nets',()=>{
+ const s=newSession(),before=s.file;
+ s.addText(s.newTransaction('text'),'Питание 24 В',[50000,50000],3500);
+ const after=s.file,sh=after.project.sheets[0];
+ assert.equal(sh.texts.length,1);assert.equal(sh.texts[0].text,'Питание 24 В');
+ assert.equal(sh.layers.find(l=>l.id===sh.texts[0].layer_id).kind,'annotation');
+ assert.deepEqual(after.project.nets,before.project.nets);
+ assert.throws(()=>s.addText(s.newTransaction('bad'),'',[50000,50000],3500),/INVALID_TEXT/);
+ assert.throws(()=>s.addText(s.newTransaction('bad'),'Питание',[419000,50000],3500),/TEXT_OUTSIDE_FRAME/);
+ assert.deepEqual(s.file,after);assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);assert.deepEqual(new AuthoringSession(s.file).file,after);
+});
