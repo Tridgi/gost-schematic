@@ -170,6 +170,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
   const diagnosticCounts=props.diagnosticCounts??{error:props.diagnostics.filter(d=>d.severity==='error').length,warning:props.diagnostics.filter(d=>d.severity==='warning').length,info:props.diagnostics.filter(d=>d.severity==='info').length};
   const diagnosticItems=props.diagnostics.filter(d=>diagnosticFilter==='all'||d.severity===diagnosticFilter);
   const [query,setQuery]=useState(''),[commandQuery,setCommandQuery]=useState('');
+  const [collapsedCategories,setCollapsedCategories]=useState<string[]>([]);
   const [format,setFormat]=useState<'svg'|'png300'>('svg');
   const [split,setSplit]=useState(()=>normalizeDockLayout(sizes).inspectorPercent??48);
   // Mantine useLocalStorage reads existing preferences in an effect; restore after hydration.
@@ -185,6 +186,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
   function resetLayout(){resize.resetAll();setSizes({});setSplit(48);const wide=typeof window==='undefined'||window.innerWidth>=960;setLeft(wide);setRight(wide);}
   function changeSplit(p:number){setSplit(p);setSizes({...sizes,inspectorPercent:p});}
   const filtered=props.catalog.filter(x=>(x.name+' '+x.category+' '+x.id).toLocaleLowerCase('ru-RU').includes(query.toLocaleLowerCase('ru-RU')));
+  const categories=[...new Set(filtered.map(s=>s.category))].map(name=>({name,items:filtered.filter(s=>s.category===name)}));
   useEffect(()=>{
     const onKey=(e:globalThis.KeyboardEvent)=>{
       const editable=!!(e.target as HTMLElement)?.closest('input,textarea,select,[contenteditable="true"],[role="textbox"]');
@@ -273,17 +275,25 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
         </Group>
       </AppShell.Header>
       <AppShell.Navbar className="gscad-dock">
-        <Stack gap="xs" p="sm" h="100%">
+        <Stack gap="xs" p="sm" h="100%" style={{minHeight:0}}>
           <Text size="sm" fw={600}>Библиотека УГО · {props.catalog.length}</Text>
           {!!props.catalogMissingCount&&<Button size="compact-xs" variant="light" data-testid="upgrade-catalog" onClick={props.onCatalogUpgrade}>Добавить УГО (+{props.catalogMissingCount})</Button>}
           <TextInput size="xs" aria-label="Поиск УГО" leftSection={<Search size={14}/>}
             placeholder="Поиск по каталогу" value={query} onChange={e=>setQuery(e.currentTarget.value)} data-testid="catalog-search"/>
-          <ScrollArea h="100%" type="hover"><Stack gap={4}>
-            {filtered.map(s=><Button key={s.id} size="compact-lg" variant="subtle" className="gscad-catalog-item" data-testid={'catalog-item-'+s.id}
-              aria-label={'Выбрать УГО '+s.name+', '+s.approval} title={s.id} onClick={()=>props.onPlaceSymbol(s.id)}>
+          <ScrollArea className="gscad-catalog-scroll" type="auto" offsetScrollbars scrollbarSize={9} style={{flex:1,minHeight:0}}><Stack gap={6}>
+            {categories.map(category=><section key={category.name} className="gscad-catalog-category">
+              <button type="button" className="gscad-category-heading" aria-expanded={!!query||!collapsedCategories.includes(category.name)}
+                onClick={()=>setCollapsedCategories(old=>old.includes(category.name)?old.filter(n=>n!==category.name):[...old,category.name])}>
+                <span>{query||!collapsedCategories.includes(category.name)?'▾':'▸'} {category.name}</span><small>{category.items.length}</small>
+              </button>
+              {(query||!collapsedCategories.includes(category.name))&&<Stack gap={3}>
+            {category.items.map(s=><Button key={s.id} size="compact-lg" variant="subtle" className="gscad-catalog-item" data-testid={'catalog-item-'+s.id}
+              aria-label={'Выбрать УГО '+s.name+', '+s.approval} title={s.name+' · '+s.id} onClick={()=>props.onPlaceSymbol(s.id)}>
               <span className="gscad-symbol-preview" aria-hidden="true">{s.thumbnail??'Нет эскиза'}</span>
-              <span className="gscad-symbol-info"><span>{s.name}</span><small>{s.category} · {s.approval}</small></span>
+              <span className="gscad-symbol-info"><span>{s.name}</span><small>{s.approval==='draft'?'Черновое УГО':s.approval==='approved'?'Проверено':'Заблокировано'}</small></span>
             </Button>)}
+            </Stack>}
+            </section>)}
             {filtered.length===0&&<Text size="sm" c="dimmed">Совпадений нет</Text>}
           </Stack></ScrollArea>
         </Stack>
