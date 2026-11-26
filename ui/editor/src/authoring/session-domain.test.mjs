@@ -2200,3 +2200,38 @@ test('R37 rejects unknown placement profile without mutation',()=>{
  assert.throws(()=>s.previewFunctionalRouting('invalid'),/INVALID_PLACEMENT_PROFILE/);
  assert.deepEqual(s.file,doc);assert.equal(s.revision,0);
 });
+
+
+test('R38 local shortcut preserves signed physical leads and removes a redundant U-detour',async()=>{
+ const {detourShortcuts,pathMetric}=await import('./detour-shortcuts.ts');
+ const points=[[0,0],[10000,0],[10000,10000],[30000,10000],[30000,0],[40000,0]];
+ const original=structuredClone(points),candidates=detourShortcuts(points,true,true);
+ assert.deepEqual(candidates[0],[[0,0],[40000,0]]);
+ assert.deepEqual(pathMetric(candidates[0]),{length:40000,bends:0});
+ assert.deepEqual(points,original);
+ assert.deepEqual(detourShortcuts(points,true,true),candidates);
+});
+test('R38 local trunk shortcut retains exact junctions, splices and wire terminal identities',()=>{
+ const {s,net}=railFixture();
+ s.buildNetRail(s.newTransaction('baseline'),net);
+ const doc=s.file,sh=doc.project.sheets[0];
+ const trunk=sh.wires.find(w=>w.vertices.every(v=>v.anchor.kind!=='pin')&&w.vertices.length===2);
+ assert.ok(trunk);
+ const [first,last]=trunk.vertices,[x,y]=first.at_um,[z,y2]=last.at_um;
+ assert.equal(y,y2);assert.ok(z-x>=20000);
+ const points=[[x,y],[x+5000,y],[x+5000,y-10000],[z-5000,y-10000],[z-5000,y],[z,y]];
+ trunk.vertices=points.map((at_um,i)=>({id:i===0?first.id:i===points.length-1?last.id:trunk.id+':detour'+i,at_um,anchor:i===0?first.anchor:i===points.length-1?last.anchor:{kind:'bend'}}));
+ trunk.segments=trunk.vertices.slice(1).map((v,i)=>({id:trunk.id+':s'+i,from_vertex_id:trunk.vertices[i].id,to_vertex_id:v.id}));
+ const a=new AuthoringSession(doc),p=a.previewDetourRefinement();
+ assert.ok(p.token);assert.ok(p.after.bends<p.before.bends);assert.ok(p.after.lengthUm<p.before.lengthUm);
+ assert.deepEqual(a.file,doc);assert.equal(a.revision,0);
+ const next=a.layoutPreviewDocument(p.token),ns=next.project.sheets[0];
+ assert.deepEqual(ns.junctions,sh.junctions);assert.deepEqual(ns.splices,sh.splices);assert.deepEqual(ns.instances,sh.instances);
+ assert.deepEqual(ns.wires.filter(w=>w.id!==trunk.id),sh.wires.filter(w=>w.id!==trunk.id));
+ const out=ns.wires.find(w=>w.id===trunk.id);
+ assert.deepEqual(out.vertices[0],first);assert.deepEqual(out.vertices.at(-1),last);
+ a.applyLayoutPreview(a.newTransaction('apply'),p.token);
+ assert.equal(a.engine.validateNet(net).pin_groups.length,1);
+ assert.equal(a.undo(),true);assert.deepEqual(a.file,doc);
+ assert.equal(a.redo(),true);assert.deepEqual(a.file,next);
+});
