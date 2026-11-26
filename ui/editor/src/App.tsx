@@ -926,7 +926,10 @@ export default function App() {
         За пределами листа: {overflow.symbols.length} УГО, {overflow.wires.length} проводников,
         {overflow.graphics.length} графических объектов. Проверьте расположение и экспорт.
       </div>}
-      {/(?:NET_CONFLICT|SOURCE_LOCKED|STALE_|UNKNOWN_|REROUTE_|MISMATCH|NOT_READY|ERROR|FAILED|DUPLICATE_|INVALID_|NO_SAFE_PASTE)/.test(issue)
+      {issue.startsWith('REROUTE_REVIEW_REQUIRED:')?<div className="gscad-notice-warning" role="status" data-testid="reroute-warning">
+        <span>⚠</span><span>Связи перестроены. Электрическая модель сохранена; проверьте маршруты.</span>
+        <button type="button" aria-label="Закрыть уведомление" onClick={()=>setIssue('Маршруты доступны для проверки в диагностике.')}>×</button>
+      </div>:!issue.startsWith('REROUTE_CANCELLED:')&&/(?:NET_CONFLICT|SOURCE_LOCKED|STALE_|UNKNOWN_|REROUTE_|MISMATCH|NOT_READY|ERROR|FAILED|DUPLICATE_|INVALID_|NO_SAFE_PASTE)/.test(issue)
         && <div className="gscad-error-banner" role="alert">{issue}</div>}
     </div>}
     tool={tool} gridVisible={grid} snapEnabled={snap} zoomPercent={Math.round(zoom*100)}
