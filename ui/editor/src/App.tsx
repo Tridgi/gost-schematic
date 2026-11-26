@@ -772,6 +772,18 @@ export default function App() {
     projectName={document.project.title+(authoringRef.current?' · R3 AUTHORING':' · R2 PREVIEW')} dirty={dirty}
     baseRevision={String(snapshot.revision)} sheets={document.project.sheets.map(s=>({id:s.id,title:s.name}))}
     activeSheetId={activeSheet.id} catalog={catalog} tree={tree} topology={topology}
+    onPreviewDetourRefinement={authoringRef.current&&tool==='select'&&activeSheet.wires.some(w=>w.needs_routing_review&&w.vertices.length>=3)?()=>{
+      const a=authoringRef.current!;
+      try{
+        const p=a.previewDetourRefinement();
+        if(!p.token){setIssue('Безопасные сокращения отдельных проводников не найдены.');return;}
+        if(!window.confirm('Сократить '+p.operations.length+' проводников без переноса выводов и узлов? Изгибы: '+p.before.bends+' → '+p.after.bends+', пересечения: '+p.before.crossings+' → '+p.after.crossings+', длина: '+(p.before.lengthUm/1000).toFixed(3)+' → '+(p.after.lengthUm/1000).toFixed(3)+' мм. Применить?')){
+          a.discardLayoutPreview(p.token);return;
+        }
+        a.applyLayoutPreview(a.newTransaction('apply-detour-refinement'),p.token);adoptAuthored();
+        setIssue('Локальные обходы сокращены. Проверьте результат.');
+      }catch(e){setIssue('DETOUR_REFINEMENT_FAILED: '+String(e));}
+    }:undefined}
     onPreviewRailRefinement={authoringRef.current&&tool==='select'&&activeSheet.wires.some(w=>w.needs_routing_review)?()=>{
       const a=authoringRef.current!;
       if(!window.confirm('Проверить общие магистрали цепей, отмеченных для проверки? Допускаются только безопасные улучшения без потери обозначений.'))return;
