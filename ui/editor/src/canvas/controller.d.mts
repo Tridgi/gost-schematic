@@ -35,6 +35,8 @@ export type CanvasControllerState={
 };
 export type CanvasController={
  getState():CanvasControllerState;
+ tapPreview():null|{kind:'segment';wire_id:string;segment_id:string;at_um:PointUm};
+ clearTapPreview():void;
  symbolDragPreview():null|{instance_id:string;component_id:string;delta_um:PointUm};
  marqueePreview():null|{x:number;y:number;width:number;height:number};
  groupDragPreview():null|{instance_ids:string[];delta_um:PointUm};
