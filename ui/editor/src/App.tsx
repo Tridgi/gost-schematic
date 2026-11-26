@@ -978,7 +978,7 @@ export default function App() {
       setZoomRequest(old=>({percent,token:(old?.token??0)+1}));}}
     onFitPage={()=>setFitRequest(n=>n+1)}
     canUndo={history.undo>0} canRedo={history.redo>0} canSave={true} exportReady={true}
-    inspectorError={null}
+    inspectorError={issue.startsWith('INSPECTOR_REJECTED:')?issue:null}
     onToolChange={mode=>{setTool(mode);setPending(null);if(mode!=='place')setPlacementSymbol(null);if(mode!=='select')setGroupIds([]);}}
     onToggleGrid={value=>{
       if(value!==grid){contentEpochRef.current++;setDirty(true);}
