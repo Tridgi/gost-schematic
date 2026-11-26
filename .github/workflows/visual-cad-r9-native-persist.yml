@@ -2,28 +2,11 @@ name: Visual CAD R9 real native Windows project persistence
 on:
   workflow_dispatch:
   pull_request:
-    branches: [ui/r32l-native-label-parity, ui/r33-native-tl494, ui/r34-label-safe-refinement, ui/r35-alternate-routing, ui/r36-safe-common-trunk, ui/r37-placement-alternatives, ui/r38-local-detour-refinement]
+    branches: [main, ui/r39-crossing-channel-refinement, ui/r32l-native-label-parity, ui/r33-native-tl494, ui/r34-label-safe-refinement, ui/r35-alternate-routing, ui/r36-safe-common-trunk, ui/r37-placement-alternatives, ui/r38-local-detour-refinement]
     types: [opened, synchronize, reopened]
   push:
     # R11 and main must not silently bypass the installed Windows regression.
     branches: [ui/visual-cad-mvp, main, 'fix/r11-*', ui/r15-group-clipboard', ui/r19-route-cleanup, ui/r23-topology-inventory]
-    paths:
-      - '.github/workflows/visual-cad-r9-native-persist.yml'
-      - '.github/tools/r9-native-*'
-      - '.github/tools/r33-*'
-      - 'ui/bridge/export/**'
-      # Every native-facing editor change must re-run the installed-app R9
-      # scenario. Restricting this to session.ts hid Canvas / paper regressions.
-      - 'ui/editor/src/**'
-      - 'ui/editor/e2e/**'
-      - 'ui/editor/package.json'
-      - 'ui/editor/package-lock.json'
-      - 'ui/desktop/**'
-      - 'ui/integration/**'
-      - 'ui/contracts/project-v2.schema.json'
-      - 'src/gost_schematic/catalog/**'
-      - 'src/gost_schematic/core/**'
-      - 'src/gost_schematic/model/**'
 permissions:
   contents: read
 concurrency:
@@ -31,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   native-persist:
-    if: github.event_name != 'pull_request' || (startsWith(github.head_ref, 'ui/r33-') || startsWith(github.head_ref, 'ui/r34-') || startsWith(github.head_ref, 'ui/r35-') || startsWith(github.head_ref, 'ui/r36-') || startsWith(github.head_ref, 'ui/r37-') || startsWith(github.head_ref, 'ui/r38-') || startsWith(github.head_ref, 'ui/r39-'))
+    if: github.event_name != 'pull_request' || github.base_ref == 'main' || (startsWith(github.head_ref, 'ui/r40-') || startsWith(github.head_ref, 'ui/r33-') || startsWith(github.head_ref, 'ui/r34-') || startsWith(github.head_ref, 'ui/r35-') || startsWith(github.head_ref, 'ui/r36-') || startsWith(github.head_ref, 'ui/r37-') || startsWith(github.head_ref, 'ui/r38-') || startsWith(github.head_ref, 'ui/r39-'))
     name: Current-SHA Tauri / WebView2 / native picker / Python ProjectV2
     runs-on: windows-2022
     timeout-minutes: 100
@@ -39,16 +22,28 @@ jobs:
       RUST_BACKTRACE: '1'
       CARGO_BUILD_JOBS: '2'
       GSCAD_R9_BINARY_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      GSCAD_R33_ACCEPT_FULL: ${{ (startsWith(github.head_ref || github.ref_name, 'ui/r33-') || startsWith(github.head_ref || github.ref_name, 'ui/r34-') || startsWith(github.head_ref || github.ref_name, 'ui/r35-') || startsWith(github.head_ref || github.ref_name, 'ui/r36-') || startsWith(github.head_ref || github.ref_name, 'ui/r37-') || startsWith(github.head_ref || github.ref_name, 'ui/r38-') || startsWith(github.head_ref || github.ref_name, 'ui/r39-')) && '1' || '0' }}
-      GSCAD_R35_EXTENDED: ${{ (startsWith(github.head_ref || github.ref_name, 'ui/r35-') || startsWith(github.head_ref || github.ref_name, 'ui/r36-') || startsWith(github.head_ref || github.ref_name, 'ui/r37-') || startsWith(github.head_ref || github.ref_name, 'ui/r38-') || startsWith(github.head_ref || github.ref_name, 'ui/r39-')) && '1' || '0' }}
-      GSCAD_R36_TRUNKS: ${{ (startsWith(github.head_ref || github.ref_name, 'ui/r36-') || startsWith(github.head_ref || github.ref_name, 'ui/r37-') || startsWith(github.head_ref || github.ref_name, 'ui/r38-') || startsWith(github.head_ref || github.ref_name, 'ui/r39-')) && '1' || '0' }}
-      GSCAD_R37_PLACEMENT: ${{ (startsWith(github.head_ref || github.ref_name, 'ui/r37-') || startsWith(github.head_ref || github.ref_name, 'ui/r38-') || startsWith(github.head_ref || github.ref_name, 'ui/r39-')) && '1' || '0' }}
-      GSCAD_R38_DETOURS: ${{ (startsWith(github.head_ref || github.ref_name, 'ui/r38-') || startsWith(github.head_ref || github.ref_name, 'ui/r39-')) && '1' || '0' }}
-      GSCAD_R39_CROSSINGS: ${{ startsWith(github.head_ref || github.ref_name, 'ui/r39-') && '1' || '0' }}
+      GSCAD_R33_ACCEPT_FULL: ${{ (github.base_ref == 'main' || github.ref_name == 'main' || startsWith(github.head_ref || github.ref_name, 'ui/r40-') || (startsWith(github.head_ref || github.ref_name, 'ui/r33-') || startsWith(github.head_ref || github.ref_name, 'ui/r34-') || startsWith(github.head_ref || github.ref_name, 'ui/r35-') || startsWith(github.head_ref || github.ref_name, 'ui/r36-') || startsWith(github.head_ref || github.ref_name, 'ui/r37-') || startsWith(github.head_ref || github.ref_name, 'ui/r38-') || startsWith(github.head_ref || github.ref_name, 'ui/r39-'))) && '1' || '0' }}
+      GSCAD_R35_EXTENDED: ${{ (github.base_ref == 'main' || github.ref_name == 'main' || startsWith(github.head_ref || github.ref_name, 'ui/r40-') || (startsWith(github.head_ref || github.ref_name, 'ui/r35-') || startsWith(github.head_ref || github.ref_name, 'ui/r36-') || startsWith(github.head_ref || github.ref_name, 'ui/r37-') || startsWith(github.head_ref || github.ref_name, 'ui/r38-') || startsWith(github.head_ref || github.ref_name, 'ui/r39-'))) && '1' || '0' }}
+      GSCAD_R36_TRUNKS: ${{ (github.base_ref == 'main' || github.ref_name == 'main' || startsWith(github.head_ref || github.ref_name, 'ui/r40-') || (startsWith(github.head_ref || github.ref_name, 'ui/r36-') || startsWith(github.head_ref || github.ref_name, 'ui/r37-') || startsWith(github.head_ref || github.ref_name, 'ui/r38-') || startsWith(github.head_ref || github.ref_name, 'ui/r39-'))) && '1' || '0' }}
+      GSCAD_R37_PLACEMENT: ${{ (github.base_ref == 'main' || github.ref_name == 'main' || startsWith(github.head_ref || github.ref_name, 'ui/r40-') || (startsWith(github.head_ref || github.ref_name, 'ui/r37-') || startsWith(github.head_ref || github.ref_name, 'ui/r38-') || startsWith(github.head_ref || github.ref_name, 'ui/r39-'))) && '1' || '0' }}
+      GSCAD_R38_DETOURS: ${{ (github.base_ref == 'main' || github.ref_name == 'main' || startsWith(github.head_ref || github.ref_name, 'ui/r40-') || (startsWith(github.head_ref || github.ref_name, 'ui/r38-') || startsWith(github.head_ref || github.ref_name, 'ui/r39-'))) && '1' || '0' }}
+      GSCAD_R39_CROSSINGS: ${{ (github.base_ref == 'main' || github.ref_name == 'main' || startsWith(github.head_ref || github.ref_name, 'ui/r40-') || startsWith(github.head_ref || github.ref_name, 'ui/r39-')) && '1' || '0' }}
+      GSCAD_R40_RELEASE_GATE: ${{ (github.base_ref == 'main' || github.ref_name == 'main' || startsWith(github.head_ref || github.ref_name, 'ui/r40-')) && '1' || '0' }}
+      GSCAD_R40_PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Require exact candidate checkout and current main ancestry
+        shell: pwsh
+        run: |
+          $actual = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $actual -ne $env:GSCAD_R9_BINARY_SOURCE_SHA) { throw 'R40_CHECKOUT_SHA_MISMATCH' }
+          if ($env:GSCAD_R40_RELEASE_GATE -eq '1' -and $env:GSCAD_R40_PR_BASE_SHA) {
+            git merge-base --is-ancestor $env:GSCAD_R40_PR_BASE_SHA HEAD
+            if ($LASTEXITCODE -ne 0) { throw 'R40_BASE_NOT_ANCESTOR_UPDATE_CANDIDATE_FIRST' }
+          }
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -135,9 +130,53 @@ jobs:
           $installer = @(Get-ChildItem 'ui/desktop/src-tauri/target/release/bundle/nsis' -Filter '*setup.exe' -File)
           if ($installer.Count -ne 1) { throw ('R9_NSIS_SETUP_COUNT_' + $installer.Count) }
           Copy-Item -LiteralPath $installer[0].FullName -Destination (Join-Path $staging $installer[0].Name)
+          $testedInstaller = Join-Path $staging $installer[0].Name
+          $beforeHash = (Get-FileHash -LiteralPath $testedInstaller -Algorithm SHA256).Hash.ToLowerInvariant()
           Write-Host ('R9_CURRENT_SOURCE_SHA=' + $env:GSCAD_R9_BINARY_SOURCE_SHA)
           & .\.github\tools\r9-native-project.ps1 -ArtifactRoot $staging
           if (!$?) { throw 'R9_REAL_NATIVE_PERSISTENCE_FAILED' }
+          $afterHash = (Get-FileHash -LiteralPath $testedInstaller -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($beforeHash -ne $afterHash) { throw 'R40_TESTED_INSTALLER_CHANGED' }
+          if ($env:GSCAD_R40_RELEASE_GATE -eq '1') {
+            if ($env:GSCAD_R33_ACCEPT_FULL -ne '1' -or $env:GSCAD_R39_CROSSINGS -ne '1') {
+              throw 'R40_FULL_ACCEPTANCE_NOT_ENABLED'
+            }
+            $evidence = @(Get-ChildItem -LiteralPath (Join-Path $staging 'r33-evidence') -File)
+            if ($evidence.Count -ne 6) { throw ('R40_FULL_EVIDENCE_FILE_COUNT_' + $evidence.Count) }
+            $release = Join-Path $staging 'verified-installer'
+            New-Item -ItemType Directory -Path $release -Force | Out-Null
+            $published = Join-Path $release $installer[0].Name
+            Copy-Item -LiteralPath $testedInstaller -Destination $published
+            if ((Get-FileHash -LiteralPath $published -Algorithm SHA256).Hash.ToLowerInvariant() -ne $beforeHash) {
+              throw 'R40_INSTALLER_COPY_SHA_MISMATCH'
+            }
+            $tree = (git rev-parse 'HEAD^{tree}').Trim()
+            if ($LASTEXITCODE -ne 0 -or $tree -notmatch '^[a-f0-9]{40}
+      - name: Publish actual full TL494 native acceptance evidence
+        if: always() && env.GSCAD_R33_ACCEPT_FULL == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: r33-full-tl494-installed-windows
+          path: ${{ runner.temp }}/gscad-r9-current-commit/r33-evidence/
+          if-no-files-found: ignore
+) { throw 'R40_SOURCE_TREE_UNKNOWN' }
+            $manifest = [ordered]@{
+              schema = 1
+              source_sha = $env:GSCAD_R9_BINARY_SOURCE_SHA
+              source_tree = $tree
+              base_sha = $env:GSCAD_R40_PR_BASE_SHA
+              run_id = $env:GITHUB_RUN_ID
+              run_attempt = $env:GITHUB_RUN_ATTEMPT
+              installer = $installer[0].Name
+              sha256 = $beforeHash
+              size_bytes = (Get-Item -LiteralPath $published).Length
+              native_acceptance = 'PASS'
+              full_tl494 = 'PASS'
+              normative_font = 'unverified-preview'
+            }
+            $manifest | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $release 'manifest.json') -Encoding utf8
+            Write-Host ('R40_VERIFIED_INSTALLER_SHA256=' + $beforeHash)
+          }
       - name: Publish actual full TL494 native acceptance evidence
         if: always() && (startsWith(github.head_ref || github.ref_name, 'ui/r33-') || startsWith(github.head_ref || github.ref_name, 'ui/r34-') || startsWith(github.head_ref || github.ref_name, 'ui/r35-') || startsWith(github.head_ref || github.ref_name, 'ui/r36-') || startsWith(github.head_ref || github.ref_name, 'ui/r37-') || startsWith(github.head_ref || github.ref_name, 'ui/r38-') || startsWith(github.head_ref || github.ref_name, 'ui/r39-'))
         uses: actions/upload-artifact@v4
@@ -145,3 +184,11 @@ jobs:
           name: r33-full-tl494-installed-windows
           path: ${{ runner.temp }}/gscad-r9-current-commit/r33-evidence/
           if-no-files-found: ignore
+      - name: Publish only the exact installer that passed full native acceptance
+        if: success() && env.GSCAD_R40_RELEASE_GATE == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gscad-verified-windows-installer-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/gscad-r9-current-commit/verified-installer/
+          if-no-files-found: error
+          retention-days: 30
