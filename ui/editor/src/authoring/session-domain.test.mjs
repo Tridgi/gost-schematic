@@ -2074,3 +2074,67 @@ test('R32l synthetic source copy retains canonical DA1 and b inventory through r
  assert.throws(()=>new AuthoringSession(corrupt),/SOURCE_COUNT_MISMATCH/);
  assert.equal(s.undo(),true);assert.deepEqual(s.file,doc);
 });
+
+
+test('R35 alternate root and costs preserve original physical terminal indices and deterministic signed leads',async()=>{
+ const {planOrthogonalTree}=await import('./orthogonal-tree.ts');
+ const frame={minX:0,minY:0,maxX:100000,maxY:100000};
+ const ports=[{pin:[20000,50000],tip:[22000,50000]},
+  {pin:[70000,60000],tip:[70000,58000]},
+  {pin:[80000,30000],tip:[78000,30000]}];
+ const original=structuredClone(ports);
+ for(const strategy of ['default','crossing-first','bend-first','peripheral-root']){
+  const p=planOrthogonalTree(ports,[],frame,[],true,strategy);
+  assert.ok(p,strategy);
+  assert.deepEqual(planOrthogonalTree(ports,[],frame,[],true,strategy),p);
+  const seen=[];
+  for(const path of p.paths){
+   for(const [index,points] of [[path.startPin,path.points],[path.endPin,[...path.points].reverse()]]){
+    if(index===null)continue;
+    seen.push(index);
+    const port=ports[index],a=points[0],b=points[1],delta=[b[0]-a[0],b[1]-a[1]];
+    assert.deepEqual(a,port.pin);
+    const lead=[port.tip[0]-port.pin[0],port.tip[1]-port.pin[1]],axis=lead[0]!==0?0:1;
+    assert.equal(delta[1-axis],0);
+    assert.ok(delta[axis]*Math.sign(lead[axis])>=Math.abs(lead[axis]));
+   }
+  }
+  assert.deepEqual(seen.sort(),[0,1,2]);
+ }
+ assert.deepEqual(ports,original);
+});
+
+test('R35 TL494 extended search preserves R34 baseline, all labels and exact physical membership',t=>{
+ const source=JSON.parse(readFileSync(new URL('../../../fixtures/tl494-source-e695-v2.gscad.json',import.meta.url),'utf8'));
+ const original=structuredClone(source),doc=structuredClone(source),p=doc.project;
+ p.provenance={...p.provenance,status:'synthetic',source_sha:'0'.repeat(40),source_path:'test-only/TL494-R35-alternatives'};
+ const s=new AuthoringSession(doc),initial=s.previewFunctionalRouting();
+ assert.equal(initial.routed,15);assert.ok(initial.token);
+ s.applyLayoutPreview(s.newTransaction('initial'),initial.token);
+ const baseline=s.previewRouteRefinement();
+ if(baseline.token)s.applyLayoutPreview(s.newTransaction('baseline'),baseline.token);
+ const before=s.file,rev=s.revision;
+ const next=s.previewRouteRefinement(true);
+ assert.ok(next.attempted>=45&&next.attempted<=80);
+ assert.equal(next.attempted,next.rejected+next.operations.length);
+ assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
+ assert.ok(next.after.bends<=baseline.after.bends);
+ assert.ok(next.after.crossings<=baseline.after.crossings);
+ assert.ok(next.after.lengthUm<=baseline.after.lengthUm);
+ assert.equal(next.after.errors,0);assert.equal(next.after.geometryWarnings,0);assert.equal(next.after.overflow,0);
+ if(next.token){
+  const planned=s.layoutPreviewDocument(next.token);
+  s.applyLayoutPreview(s.newTransaction('extended'),next.token);
+  assert.deepEqual(s.file,planned);
+  assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
+  assert.equal(s.redo(),true);assert.deepEqual(s.file,planned);
+ }
+ for(const n of p.nets)assert.equal(s.engine.validateNet(n.id).pin_groups.length,1);
+ assert.deepEqual(s.file.project.nets.map(n=>[n.id,n.members]),p.nets.map(n=>[n.id,n.members]));
+ assert.deepEqual(s.file.project.components,p.components);
+ assert.deepEqual(s.file.project.sheets[0].instances,before.project.sheets[0].instances);
+ assert.deepEqual(s.file.project.sheets[0].graphics,before.project.sheets[0].graphics);
+ assert.deepEqual(s.file.project.provenance.expected_counts,{components:23,nets:15,memberships:62,da1_pins:16,b_graphics:2});
+ assert.deepEqual(source,original);
+ t.diagnostic('TL494_R35_EXTENDED '+JSON.stringify({...next,token:!!next.token}));
+});
