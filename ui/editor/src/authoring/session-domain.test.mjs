@@ -2177,3 +2177,26 @@ test('R36 review-only common trunk refuses unmarked existing geometry atomically
  assert.equal(a.previewRailRefinement().token,null);
  assert.deepEqual(a.file,doc);assert.equal(a.revision,0);
 });
+
+
+test('R37 compares three complete placement profiles atomically and preserves physical source inventory',()=>{
+ const {session:s,ids,doc}=batchRouteFixture();
+ const p=s.previewFunctionalAlternatives();
+ assert.equal(p.profilesTried,3);assert.equal(p.requested,2);assert.equal(p.routed,2);
+ assert.ok(p.token);assert.ok(p.attempted<=450);assert.ok(p.refinementAttempts<=384);
+ assert.deepEqual(s.file,doc);assert.equal(s.revision,0);
+ for(const k of ['bends','crossings','lengthUm'])assert.ok(p.quality[k]<=p.baseline[k]);
+ const next=s.layoutPreviewDocument(p.token);
+ s.applyLayoutPreview(s.newTransaction('apply'),p.token);
+ for(const id of ids)assert.equal(s.engine.validateNet(id).pin_groups.length,1);
+ assert.deepEqual(s.file.project.nets.map(n=>[n.id,n.members]),doc.project.nets.map(n=>[n.id,n.members]));
+ assert.deepEqual(s.file.project.components,doc.project.components);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,doc);
+ assert.equal(s.redo(),true);assert.deepEqual(s.file,next);
+ assert.throws(()=>s.previewFunctionalAlternatives(),/PREPARE_REQUIRES_UNROUTED_SHEET/);
+});
+test('R37 rejects unknown placement profile without mutation',()=>{
+ const {session:s,doc}=batchRouteFixture();
+ assert.throws(()=>s.previewFunctionalRouting('invalid'),/INVALID_PLACEMENT_PROFILE/);
+ assert.deepEqual(s.file,doc);assert.equal(s.revision,0);
+});

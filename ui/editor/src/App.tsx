@@ -798,11 +798,12 @@ export default function App() {
         setIssue('Маршруты упрощены. Проверьте результат.');
       }catch(e){setIssue('ROUTE_REFINEMENT_FAILED: '+String(e));}
     }:undefined}
-    onPreviewFunctionalRouting={authoringRef.current&&tool==='select'&&!activeSheet.wires.length&&!activeSheet.junctions.length&&!activeSheet.splices.length?()=>{
+    onPreviewFunctionalRouting={authoringRef.current&&tool==='select'&&!activeSheet.wires.length&&!activeSheet.junctions.length&&!activeSheet.splices.length?(extended=false)=>{
       const a=authoringRef.current!;
+      if(extended&&!window.confirm('Сравнить три варианта компоновки с полной трассировкой? Поиск может занять больше времени.'))return;
       if(!window.confirm('Проверить компоновку функциональных связей и совместную разводку? Возможны перемещения, повороты УГО и пересечения крестом без электрического соединения. До подтверждения проект не изменится.'))return;
       try{
-        const p=a.previewFunctionalRouting();
+        const p=extended?a.previewFunctionalAlternatives():a.previewFunctionalRouting();
         if(!p.token){setIssue('Компоновка: '+p.routed+'/'+p.requested+' цепей; проект не изменён. '+p.outcomes.filter(o=>o.rejected).map(o=>o.name+': '+o.rejected).join('; '));return;}
         if(!window.confirm('Найдена полная разводка '+p.routed+'/'+p.requested+' цепей. Вариант: '+(p.variant==='functional'?'функциональные связи':'около микросхем')+'. Изгибов: '+p.quality.bends+', пересечений: '+p.quality.crossings+', длина '+(p.quality.lengthUm/1000).toFixed(3)+' мм. Применить компоновку и маршруты одним действием?')){
           a.discardLayoutPreview(p.token);return;

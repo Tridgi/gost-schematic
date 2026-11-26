@@ -2,7 +2,7 @@ name: Visual CAD R9 real native Windows project persistence
 on:
   workflow_dispatch:
   pull_request:
-    branches: [ui/r32l-native-label-parity, ui/r33-native-tl494, ui/r34-label-safe-refinement, ui/r35-alternate-routing]
+    branches: [ui/r32l-native-label-parity, ui/r33-native-tl494, ui/r34-label-safe-refinement, ui/r35-alternate-routing, ui/r36-safe-common-trunk]
     types: [opened, synchronize, reopened]
   push:
     # R11 and main must not silently bypass the installed Windows regression.
@@ -31,7 +31,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   native-persist:
-    if: github.event_name != 'pull_request' || (startsWith(github.head_ref, 'ui/r33-') || startsWith(github.head_ref, 'ui/r34-') || startsWith(github.head_ref, 'ui/r35-') || startsWith(github.head_ref, 'ui/r36-'))
+    if: github.event_name != 'pull_request' || (startsWith(github.head_ref, 'ui/r33-') || startsWith(github.head_ref, 'ui/r34-') || startsWith(github.head_ref, 'ui/r35-') || startsWith(github.head_ref, 'ui/r36-') || startsWith(github.head_ref, 'ui/r37-'))
     name: Current-SHA Tauri / WebView2 / native picker / Python ProjectV2
     runs-on: windows-2022
     timeout-minutes: 100
@@ -39,9 +39,10 @@ jobs:
       RUST_BACKTRACE: '1'
       CARGO_BUILD_JOBS: '2'
       GSCAD_R9_BINARY_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      GSCAD_R33_ACCEPT_FULL: ${{ (startsWith(github.head_ref || github.ref_name, 'ui/r33-') || startsWith(github.head_ref || github.ref_name, 'ui/r34-') || startsWith(github.head_ref || github.ref_name, 'ui/r35-') || startsWith(github.head_ref || github.ref_name, 'ui/r36-')) && '1' || '0' }}
-      GSCAD_R35_EXTENDED: ${{ (startsWith(github.head_ref || github.ref_name, 'ui/r35-') || startsWith(github.head_ref || github.ref_name, 'ui/r36-')) && '1' || '0' }}
-      GSCAD_R36_TRUNKS: ${{ startsWith(github.head_ref || github.ref_name, 'ui/r36-') && '1' || '0' }}
+      GSCAD_R33_ACCEPT_FULL: ${{ (startsWith(github.head_ref || github.ref_name, 'ui/r33-') || startsWith(github.head_ref || github.ref_name, 'ui/r34-') || startsWith(github.head_ref || github.ref_name, 'ui/r35-') || startsWith(github.head_ref || github.ref_name, 'ui/r36-') || startsWith(github.head_ref || github.ref_name, 'ui/r37-')) && '1' || '0' }}
+      GSCAD_R35_EXTENDED: ${{ (startsWith(github.head_ref || github.ref_name, 'ui/r35-') || startsWith(github.head_ref || github.ref_name, 'ui/r36-') || startsWith(github.head_ref || github.ref_name, 'ui/r37-')) && '1' || '0' }}
+      GSCAD_R36_TRUNKS: ${{ (startsWith(github.head_ref || github.ref_name, 'ui/r36-') || startsWith(github.head_ref || github.ref_name, 'ui/r37-')) && '1' || '0' }}
+      GSCAD_R37_PLACEMENT: ${{ startsWith(github.head_ref || github.ref_name, 'ui/r37-') && '1' || '0' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -136,7 +137,7 @@ jobs:
           & .\.github\tools\r9-native-project.ps1 -ArtifactRoot $staging
           if (!$?) { throw 'R9_REAL_NATIVE_PERSISTENCE_FAILED' }
       - name: Publish actual full TL494 native acceptance evidence
-        if: always() && (startsWith(github.head_ref || github.ref_name, 'ui/r33-') || startsWith(github.head_ref || github.ref_name, 'ui/r34-') || startsWith(github.head_ref || github.ref_name, 'ui/r35-') || startsWith(github.head_ref || github.ref_name, 'ui/r36-'))
+        if: always() && (startsWith(github.head_ref || github.ref_name, 'ui/r33-') || startsWith(github.head_ref || github.ref_name, 'ui/r34-') || startsWith(github.head_ref || github.ref_name, 'ui/r35-') || startsWith(github.head_ref || github.ref_name, 'ui/r36-') || startsWith(github.head_ref || github.ref_name, 'ui/r37-'))
         uses: actions/upload-artifact@v4
         with:
           name: r33-full-tl494-installed-windows

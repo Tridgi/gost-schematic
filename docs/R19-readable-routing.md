@@ -677,3 +677,38 @@ refinement results, not a hardcoded wire count. Prior R35 exact head
 2fa62783 passed frontend typecheck/unit and generated four evidence
 stages while E2E and native acceptance were still running. No claim
 of numerical R36 improvement before CI. Main/frozen fixture untouched.
+
+
+## R37 — compare functional placement profiles before routing
+
+R35 exact 2fa62783 passed main CI and Visual CAD (160 unit, 52
+browser tests and four-stage Python label geometry parity).
+All 60 actual TL494 refinement attempts were rejected, leaving the
+81 bends / 38 crossings / 5340345 um baseline unchanged. R36
+compiled, passed its domain checks and generated five-stage evidence;
+final R36 and R35 Windows results were still pending when this branch
+was prepared.
+
+An explicit placement comparison command on an entirely unwired sheet
+now evaluates default, compact and spacious functional placement.
+The existing deterministic gap sets (12/20/30/40 mm) remain the
+default; additional profiles use 8/12/16/24 and 20/30/45/60 mm.
+These are heuristic pin-to-pin gaps, not normative GOST dimensions.
+Each profile uses the existing signed terminal, symbol/ink clearance,
+placement and whole-Net routing checks. Complete candidates receive
+the same normal refinement, extended refinement and common trunk
+refinement as the established R36 pipeline. Selection compares actual
+complete route metrics, not estimated placement spans, and requires
+strict Pareto improvement and retention of visible label identities.
+Default complete layout is the fallback. No live document changes
+until revision-bound Apply; Undo/Redo restores the entire operation.
+Maximum three profiles, each subject to existing per-stage search
+caps; up to 384 refinement attempts. This is an explicit synchronous
+search and may be slower; no global-optimality guarantee.
+
+Two domain regressions cover atomic full candidate selection and invalid
+profile refusal. CI adds 06-placement-profiles to comparative SVG,
+PNG300, ProjectV2 and Python parity, with non-regression against stage
+05-common-trunks; installed Windows exercises the chosen project.
+No claim of numeric improvement or Windows PASS before logs. Main
+and frozen E695 unchanged.
