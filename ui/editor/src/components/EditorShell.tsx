@@ -36,7 +36,7 @@ export type InspectorProposal =
 
 /** The host owns all electrical topology, source PinRefs, command validation and actual persistence. */
 export type EditorShellProps = {
-  projectName:string;dirty:boolean;baseRevision:string;topology?:TopologyInventory;onBuildNetRail?:(netId:string)=>void;onBuildNetTree?:(netId:string)=>void;onRouteInitialNet?:(netId:string)=>void;onRouteInitialBatch?:(netIds:readonly string[])=>void;onPrepareInitialRouting?:()=>void;onPreviewHubPlacement?:()=>void;onPreviewFunctionalRouting?:()=>void;onPreviewRouteRefinement?:(extended?:boolean)=>void;onPreviewInitialBatch?:(netIds:readonly string[],controlled?:boolean)=>void;
+  projectName:string;dirty:boolean;baseRevision:string;topology?:TopologyInventory;onBuildNetRail?:(netId:string)=>void;onBuildNetTree?:(netId:string)=>void;onRouteInitialNet?:(netId:string)=>void;onRouteInitialBatch?:(netIds:readonly string[])=>void;onPrepareInitialRouting?:()=>void;onPreviewHubPlacement?:()=>void;onPreviewFunctionalRouting?:()=>void;onPreviewRouteRefinement?:(extended?:boolean)=>void;onPreviewRailRefinement?:()=>void;onPreviewInitialBatch?:(netIds:readonly string[],controlled?:boolean)=>void;
   sheets:readonly {id:string;title:string}[];activeSheetId:string;
   catalog:readonly CatalogSymbol[];tree:readonly TreeItem[];
   catalogMissingCount?:number;onCatalogUpgrade?:()=>void;
@@ -440,6 +440,8 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
             <Button size="xs" variant="outline" data-testid="preview-route-refinement-extended"
               onClick={()=>{setTopologyDialog(false);props.onPreviewRouteRefinement?.(true)}}>Расширенный поиск маршрутов</Button>
           </Group>}
+          {props.onPreviewRailRefinement&&<Button size="xs" variant="light" data-testid="preview-rail-refinement"
+            onClick={()=>{setTopologyDialog(false);props.onPreviewRailRefinement?.()}}>Оптимизировать общие магистрали</Button>}
           <Text fw={600} size="sm">Общие цепи (не менее 3 УГО на листе)</Text>
           {props.topology.shared.map(n=><Stack key={n.id} gap={2}>
             <Group justify="space-between"><Text size="sm">{n.name} — {n.pins} выводов, {n.devices} УГО</Text>

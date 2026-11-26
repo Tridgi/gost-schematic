@@ -772,6 +772,19 @@ export default function App() {
     projectName={document.project.title+(authoringRef.current?' · R3 AUTHORING':' · R2 PREVIEW')} dirty={dirty}
     baseRevision={String(snapshot.revision)} sheets={document.project.sheets.map(s=>({id:s.id,title:s.name}))}
     activeSheetId={activeSheet.id} catalog={catalog} tree={tree} topology={topology}
+    onPreviewRailRefinement={authoringRef.current&&tool==='select'&&activeSheet.wires.some(w=>w.needs_routing_review)?()=>{
+      const a=authoringRef.current!;
+      if(!window.confirm('Проверить общие магистрали цепей, отмеченных для проверки? Допускаются только безопасные улучшения без потери обозначений.'))return;
+      try{
+        const p=a.previewRailRefinement();
+        if(!p.token){setIssue('Безопасное улучшение общих магистралей не найдено.');return;}
+        if(!window.confirm('Упростить '+p.operations.length+' цепей? Изгибы: '+p.before.bends+' → '+p.after.bends+', пересечения: '+p.before.crossings+' → '+p.after.crossings+', длина: '+(p.before.lengthUm/1000).toFixed(3)+' → '+(p.after.lengthUm/1000).toFixed(3)+' мм. Применить?')){
+          a.discardLayoutPreview(p.token);return;
+        }
+        a.applyLayoutPreview(a.newTransaction('apply-rail-refinement'),p.token);adoptAuthored();
+        setIssue('Общие магистрали перестроены. Проверьте результат.');
+      }catch(e){setIssue('RAIL_REFINEMENT_FAILED: '+String(e));}
+    }:undefined}
     onPreviewRouteRefinement={authoringRef.current&&tool==='select'&&activeSheet.wires.some(w=>w.needs_routing_review)?(extended=false)=>{
       const a=authoringRef.current!;
       if(extended&&!window.confirm('Расширенный поиск проверяет до 48 дополнительных вариантов маршрутов. Запустить?'))return;

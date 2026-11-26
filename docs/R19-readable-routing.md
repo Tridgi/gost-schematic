@@ -649,3 +649,31 @@ asserts no baseline regression, and checks its actual persisted wire
 inventory and SVG count instead of imposing a fixed 78-wire count.
 Previous R33/R34 fixed baseline checks remain. No edits to main or the
 frozen E695 source, and no new improvement claimed before CI.
+
+
+## R36 — review-only common trunk refinement
+
+The existing single-Net rail command remains conservative by default.
+The new explicit refinement mode also handles bounded visual labels
+and non-electrical graphics as hard obstacles. Foreign wire segments
+are traversable only at a perpendicular strictly interior X crossing,
+more than 1000 um from both segment endpoints, with all junctions,
+splices, symbol envelopes and annotations protected. Each final trunk
+interval is checked separately: a crossing at a newly introduced tap
+cannot become a false connection. Candidate trunks prefer fewer
+crossings, then bends, then length. Only strict improvements in actual
+layout assessment are accepted, with identical signed connectivity,
+foreign geometry and visible label identities; manual/unmarked routes
+are not eligible. The 500000 comparison cap remains per search.
+
+The new explicit preview tries at most 16 eligible local Nets with
+3–32 pins, prioritized by existing crossings and pin count. The live
+project stays unchanged until a revision-bound Apply, with Undo/Redo.
+Two regression tests cover an artificial detour on an annotated
+four-pin trunk and refusal of unmarked routes. Evidence adds stage
+05-common-trunks, checks monotonic metrics, and requires native Python
+export parity. R36 Windows acceptance uses the extended and trunk
+refinement results, not a hardcoded wire count. Prior R35 exact head
+2fa62783 passed frontend typecheck/unit and generated four evidence
+stages while E2E and native acceptance were still running. No claim
+of numerical R36 improvement before CI. Main/frozen fixture untouched.

@@ -55,6 +55,13 @@ try{
  stages.push({name:'04-extended-routing',file:optimized.file,quality:assessLayout(optimized.file,optimized.engine).quality});
  for(const k of ['bends','lengthUm','crossings'])assert.ok(stages[3].quality[k]<=stages[2].quality[k],k);
  assert.deepEqual(stages[3].file.project.sheets[0].instances,stages[2].file.project.sheets[0].instances);
+ const rails=optimized.previewRailRefinement();
+ assert.ok(rails.attempted<=16);
+ if(rails.token)optimized.applyLayoutPreview(optimized.newTransaction('trunks'),rails.token);
+ stages.push({name:'05-common-trunks',file:optimized.file,quality:assessLayout(optimized.file,optimized.engine).quality});
+ for(const k of ['bends','lengthUm','crossings'])assert.ok(stages[4].quality[k]<=stages[3].quality[k],k);
+ assert.deepEqual(stages[4].file.project.sheets[0].instances,stages[3].file.project.sheets[0].instances);
+ console.log('TL494_R36_TRUNKS '+JSON.stringify({...rails,token:!!rails.token}));
  for(const stage of stages)assert.equal(planComponentLabels(stage.file,stage.file.project.sheets[0].id).labels.length,23);
  // Export through the same browser raster function used in the editor.
  const raster=await build({entryPoints:[join(editor,'src/export/browser-export.ts')],bundle:true,platform:'browser',format:'iife',globalName:'GSCADPreview',write:false,logLevel:'silent'});
@@ -62,7 +69,7 @@ try{
  const page=await browser.newPage();
  await page.addScriptTag({content:raster.outputFiles[0].text});
  mkdirSync(output,{recursive:true});
- const report={schema:1,sourceFile:'ui/fixtures/tl494-source-e695-v2.gscad.json',sourceFileSha256:hash(raw),sourceRevision:p.provenance.source_sha,sourceApproval:'unchanged; detached synthetic test-only copies',fontStatus:'unverified-preview',scope:'browser preview SVG/PNG300, not normative print or native Windows acceptance',counts:{components:23,nets:15,pinrefs:62,da1Pins:16,bGraphics:2},variant:functional.variant,refinementOperations:refinement.operations,extendedOperations:extended.operations,extendedAttempts:extended.attempted,stages:[]};
+ const report={schema:1,sourceFile:'ui/fixtures/tl494-source-e695-v2.gscad.json',sourceFileSha256:hash(raw),sourceRevision:p.provenance.source_sha,sourceApproval:'unchanged; detached synthetic test-only copies',fontStatus:'unverified-preview',scope:'browser preview SVG/PNG300, not normative print or native Windows acceptance',counts:{components:23,nets:15,pinrefs:62,da1Pins:16,bGraphics:2},variant:functional.variant,refinementOperations:refinement.operations,extendedOperations:extended.operations,extendedAttempts:extended.attempted,trunkOperations:rails.operations,trunkAttempts:rails.attempted,stages:[]};
  for(const stage of stages){
   const {file,quality,name}=stage;
   const session=new AuthoringSession(file),sheet=file.project.sheets[0];
