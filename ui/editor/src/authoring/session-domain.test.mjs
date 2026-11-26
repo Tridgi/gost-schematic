@@ -2245,12 +2245,31 @@ test('R39 equal-length Z channel can remove a foreign X without adding bends',as
  assert.equal(localCrossingCount(points,foreign),1);
  const choices=crossingChannelShortcuts(points,foreign,false,false);
  assert.ok(choices.length>0&&choices.length<=12);
- assert.deepEqual(pathMetric(choices[0]),pathMetric(points));
+ const metric=pathMetric(points);
+ assert.equal(pathMetric(choices[0]).length,metric.length);
+ assert.ok(pathMetric(choices[0]).bends<=metric.bends);
+ assert.ok(choices.some(p=>pathMetric(p).bends===metric.bends&&pathMetric(p).length===metric.length&&localCrossingCount(p,foreign)===0));
  assert.equal(localCrossingCount(choices[0],foreign),0);
  assert.deepEqual(choices[0][0],points[0]);assert.deepEqual(choices[0].at(-1),points.at(-1));
  assert.deepEqual(crossingChannelShortcuts(points,foreign,false,false),choices);
  assert.deepEqual(crossingChannelShortcuts(points,foreign,true,true),[]);
  assert.deepEqual(points,original);
+});
+test('R39 inner Z channel can shift while both physical leads remain fixed',async()=>{
+ const {crossingChannelShortcuts,pathMetric,localCrossingCount}=await import('./detour-shortcuts.ts');
+ const points=[[0,0],[10000,0],[10000,10000],[20000,10000],[20000,30000],[40000,30000],[40000,40000]];
+ const foreign=[{a:[15000,20000],b:[25000,20000],net:'other'}];
+ const choices=crossingChannelShortcuts(points,foreign,true,true);
+ assert.equal(localCrossingCount(points,foreign),1);
+ assert.ok(choices.length>0);
+ assert.ok(choices.some(p=>pathMetric(p).bends===pathMetric(points).bends));
+ for(const p of choices){
+  assert.deepEqual(p.slice(0,2),points.slice(0,2));
+  assert.deepEqual(p.slice(-2),points.slice(-2));
+  assert.equal(pathMetric(p).length,pathMetric(points).length);
+  assert.ok(pathMetric(p).bends<=pathMetric(points).bends);
+  assert.equal(localCrossingCount(p,foreign),0);
+ }
 });
 test('R39 empty crossing search is atomic for already straight independent routes',()=>{
  const {session:s,ids,doc}=batchRouteFixture();
