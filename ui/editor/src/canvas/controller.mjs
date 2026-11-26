@@ -61,6 +61,16 @@ export function createCanvasController(initial){
  let context=initial,active=null,draft=null,hover=null,selected=null,selectedGroup=[];
  const emit=i=>{if(typeof context.onIntent!=='function')throw Error('MISSING_COMMAND_DISPATCH');return context.onIntent(i)};
  const toWorld=p=>snap(world(p,context.camera),context.gridUm,context.snapEnabled);
+ const tapPoint=(hit,p)=>{
+   if(hit?.kind!=='segment')return null;
+   const w=context.wireSnapshot.wires.find(w=>w.id===hit.wire_id);
+   const i=w?.segments.findIndex(s=>s.id===hit.segment_id)??-1;
+   if(!w||i<0)return null;
+   const a=w.vertices[i].at_um,b=w.vertices[i+1].at_um,raw=toWorld(p),axis=a[0]===b[0]?1:0;
+   if(raw[axis]<=Math.min(a[axis],b[axis])||raw[axis]>=Math.max(a[axis],b[axis]))return null;
+   const at=[...a];at[axis]=raw[axis];
+   return {kind:'segment',wire_id:w.id,segment_id:hit.segment_id,at_um:point(at)};
+ };
  const owner=p=>!active||active.pointerId===p.pointerId;
  const symbolDelta=(drag,p)=>{
    const a=world(drag.point,context.camera),b=world(p,context.camera);
@@ -158,7 +168,13 @@ export function createCanvasController(initial){
       return false;
      draft=null;return true;
     }
-    if(hit?.kind==='ambiguous-pin'||hit?.kind==='ambiguous-segment')return false;
+    if(hit?.kind==='segment'&&context.canTap){
+     const target=tapPoint(hit,p);
+     if(!target)return false;
+     if(emit({kind:'commitWire',source:draft.source,target,bend_points_um:draft.bends_um,base_revision:context.wireSnapshot.revision})===false)return false;
+     draft=null;return true;
+    }
+    if(hit?.kind==='ambiguous-pin'||hit?.kind==='ambiguous-segment'||hit?.kind==='junction')return false;
     const at=toWorld(p),prev=draft.bends_um.at(-1)||draft.from_um;
     if(!same(at,prev))draft={...draft,bends_um:[...draft.bends_um,at],cursor_um:at};
     return true;
@@ -207,7 +223,7 @@ export function createCanvasController(initial){
     active.point={x:p.x,y:p.y};return true;
    }
    if(['symbol','marquee','group'].includes(active?.kind)){active.cursor={x:p.x,y:p.y};return true;}
-   if(draft){draft={...draft,cursor_um:toWorld(p)};return true}
+   if(draft){hover=hitTest(context.scene,context.camera,p);const tap=context.canTap?tapPoint(hover,p):null;draft={...draft,cursor_um:tap?.at_um??toWorld(p)};return true}
    hover=hitTest(context.scene,context.camera,p);return false;
   },
   up(p){
