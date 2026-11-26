@@ -138,8 +138,8 @@ jobs:
           $afterHash = (Get-FileHash -LiteralPath $testedInstaller -Algorithm SHA256).Hash.ToLowerInvariant()
           if ($beforeHash -ne $afterHash) { throw 'R40_TESTED_INSTALLER_CHANGED' }
           if ($env:GSCAD_R40_RELEASE_GATE -eq '1') {
-            if ($env:GSCAD_R33_ACCEPT_FULL -ne '1' -or $env:GSCAD_R39_CROSSINGS -ne '1') {
-              throw 'R40_FULL_ACCEPTANCE_NOT_ENABLED'
+            foreach ($flag in @('GSCAD_R33_ACCEPT_FULL','GSCAD_R35_EXTENDED','GSCAD_R36_TRUNKS','GSCAD_R37_PLACEMENT','GSCAD_R38_DETOURS','GSCAD_R39_CROSSINGS')) {
+              if ([Environment]::GetEnvironmentVariable($flag) -ne '1') { throw ('R40_FULL_ACCEPTANCE_NOT_ENABLED_' + $flag) }
             }
             $evidence = @(Get-ChildItem -LiteralPath (Join-Path $staging 'r33-evidence') -File)
             if ($evidence.Count -ne 6) { throw ('R40_FULL_EVIDENCE_FILE_COUNT_' + $evidence.Count) }
@@ -167,6 +167,7 @@ jobs:
               normative_font = 'unverified-preview'
             }
             $manifest | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $release 'manifest.json') -Encoding utf8
+            [IO.File]::WriteAllText((Join-Path $release 'SHA256SUMS.txt'), ($beforeHash + '  ' + $installer[0].Name + [Environment]::NewLine))
             Write-Host ('R40_VERIFIED_INSTALLER_SHA256=' + $beforeHash)
           }
       - name: Publish actual full TL494 native acceptance evidence
