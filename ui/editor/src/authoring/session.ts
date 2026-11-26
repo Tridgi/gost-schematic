@@ -20,7 +20,7 @@ import {
 import {loadProjectWires} from '../wires/project-v2-adapter';
 import {validateNotes,noteLayout} from '../model/symbol-notes.mjs';
 import {planOrthogonalTree,type TreeStrategy} from './orthogonal-tree';
-import {detourShortcuts,pathMetric} from './detour-shortcuts';
+import {detourShortcuts,pathMetric,crossingChannelShortcuts,localCrossingCount} from './detour-shortcuts';
 import {assessLayout,improvesLayout,preservesLayoutSafety,type LayoutQuality} from './layout-quality';
 import {curveGeometry} from '../model/curves.mjs';
 import {planComponentLabels} from '../canvas/component-labels';
@@ -1948,7 +1948,7 @@ export class AuthoringSession {
    * to the live document before revision-bound Apply. */
   /** Shorten only individual review-marked polylines. Physical terminals,
    * explicit junction/splice positions, and all other geometry stay fixed. */
-  previewDetourRefinement():LayoutPreview{
+  previewDetourRefinement(crossingOnly=false):LayoutPreview{
     this.layoutPlan=null;
     const base=this.file,sh=base.project.sheets[indexOfSheet(base)];
     if(sh.instances.length>128||sh.wires.reduce((n,w)=>n+w.segments.length,0)>512)reject('LAYOUT_SIZE_LIMIT');
@@ -1975,6 +1975,12 @@ export class AuthoringSession {
     let best=new AuthoringSession(base),assessment=before,attempted=0,rejected=0;
     let visible=new Set(planComponentLabels(base,sh.id).labels.map(l=>l.instanceId));
     const operations:string[]=[];
+    const cap=crossingOnly?96:64;
+    const crossingPriority=new Map<string,number>();
+    if(crossingOnly){
+      const segments=sh.wires.flatMap(w=>w.vertices.slice(1).map((v,i)=>({a:w.vertices[i].at_um,b:v.at_um,net:w.net_id})));
+      for(const w of sh.wires)crossingPriority.set(w.id,localCrossingCount(w.vertices.map(v=>v.at_um),segments.filter(s=>s.net!==w.net_id)));
+    }
     const eligible=sh.wires.filter(w=>{
       const a=w.vertices[0].anchor,b=w.vertices.at(-1)!.anchor;
       return w.needs_routing_review&&w.vertices.length>=3&&w.vertices.length<=24&&
@@ -1982,14 +1988,15 @@ export class AuthoringSession {
         sh.layers.some(l=>l.id===w.layer_id&&l.kind==='electrical'&&l.visible&&l.printable&&!l.locked)&&
         this.engine.validateNet(w.net_id).pin_groups.length===1;
     }).sort((a,b)=>{const x=pathMetric(a.vertices.map(v=>v.at_um)),y=pathMetric(b.vertices.map(v=>v.at_um));
-      return y.bends-x.bends||y.length-x.length||a.id.localeCompare(b.id)});
+      return (crossingOnly?(crossingPriority.get(b.id)??0)-(crossingPriority.get(a.id)??0):0)||y.bends-x.bends||y.length-x.length||(crossingOnly?0:a.id.localeCompare(b.id))});
     const m=sh.frame.margin_um,[width,height]=sh.frame.size_um;
     for(const entry of eligible){
-      if(attempted>=64)break;
+      if(attempted>=cap)break;
       const doc=best.file,sheet=doc.project.sheets[indexOfSheet(doc)],w=sheet.wires.find(w=>w.id===entry.id)!;
       const start=w.vertices[0],end=w.vertices.at(-1)!;
-      const candidates=detourShortcuts(w.vertices.map(v=>v.at_um),start.anchor.kind==='pin',end.anchor.kind==='pin');
       const foreign=sheet.wires.filter(v=>v.id!==w.id).flatMap(v=>v.vertices.slice(1).map((b,i)=>({a:v.vertices[i],b,net:v.net_id,box:rect(v.vertices[i].at_um,b.at_um)})));
+      const points=w.vertices.map(v=>v.at_um),startPin=start.anchor.kind==='pin',endPin=end.anchor.kind==='pin';
+      const candidates=crossingOnly?crossingChannelShortcuts(points,foreign.filter(v=>v.net!==w.net_id).map(v=>({a:v.a.at_um,b:v.b.at_um,net:v.net})),startPin,endPin):detourShortcuts(points,startPin,endPin);
       const nodes=[...sheet.junctions.map(n=>({anchor:{kind:'junction' as const,junction_id:n.id},at_um:n.at_um})),
         ...sheet.splices.map(n=>({anchor:{kind:'splice' as const,splice_id:n.id},at_um:n.at_um}))];
       const sameAnchor=(a:WirePolyline['vertices'][number]['anchor'],b:WirePolyline['vertices'][number]['anchor'])=>{
@@ -2030,7 +2037,7 @@ export class AuthoringSession {
         return true;
       };
       for(const points of candidates){
-        if(attempted>=64)break;
+        if(attempted>=cap)break;
         attempted++;
         if(!safe(points)){rejected++;continue}
         const next=clone(doc),ns=next.project.sheets[indexOfSheet(next)],nw=ns.wires.find(v=>v.id===w.id)!;
@@ -2039,17 +2046,17 @@ export class AuthoringSession {
         let trial:AuthoringSession;
         try{trial=new AuthoringSession(next)}catch(e){if(!(e instanceof WireError))throw e;rejected++;continue}
         const after=assessLayout(next,trial.engine);
-        if(sourceGuard(next)!==sourceGuard(base)||!improvesLayout(assessment,after)){rejected++;continue}
+        if(sourceGuard(next)!==sourceGuard(base)||!improvesLayout(assessment,after)||crossingOnly&&after.quality.crossings>=assessment.quality.crossings){rejected++;continue}
         const labels=new Set(planComponentLabels(next,sh.id).labels.map(l=>l.instanceId));
         if([...visible].some(id=>!labels.has(id))){rejected++;continue}
         best=trial;assessment=after;visible=labels;
-        operations.push('Устранение обхода '+(base.project.nets.find(n=>n.id===w.net_id)?.name??w.net_id));
+        operations.push((crossingOnly?'Устранение пересечения ':'Устранение обхода ')+(base.project.nets.find(n=>n.id===w.net_id)?.name??w.net_id));
         break;
       }
     }
     const token=operations.length?newId('detour-refinement'):null;
     if(token)this.layoutPlan={token,revision:this.clock,sheet:sh.id,next:best.file};
-    return {token,before:before.quality,after:assessment.quality,operations,attempted,rejected,limited:attempted>=64};
+    return {token,before:before.quality,after:assessment.quality,operations,attempted,rejected,limited:attempted>=cap};
   }
 
   previewFunctionalAlternatives():PlacementSearchPreview{
