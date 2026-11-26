@@ -62,7 +62,17 @@ try{
   if(proposal.token)s.applyLayoutPreview(s.newTransaction('detours'),proposal.token);
   console.log('R38_NATIVE_DETOURS '+JSON.stringify({...proposal,token:!!proposal.token}));
  }
+ const beforeChannels=assessLayout(s.file,s.engine).quality;
+ if(process.env.GSCAD_R39_CROSSINGS==='1'){
+  for(const [key,limit] of Object.entries({bends:77,crossings:38,lengthUm:5282207}))assert.ok(beforeChannels[key]<=limit,key);
+  const proposal=s.previewDetourRefinement(true);
+  assert.ok(proposal.attempted<=96);
+  if(proposal.token)s.applyLayoutPreview(s.newTransaction('crossing-channels'),proposal.token);
+  if(proposal.token)assert.ok(proposal.after.crossings<proposal.before.crossings);
+  console.log('R39_NATIVE_CROSSINGS '+JSON.stringify({...proposal,token:!!proposal.token}));
+ }
  const next=s.file,sh=next.project.sheets[0],quality=assessLayout(next,s.engine).quality;
+ for(const k of ['bends','crossings','lengthUm'])assert.ok(quality[k]<=beforeChannels[k],k);
  for(const k of ['bends','crossings','lengthUm'])assert.ok(quality[k]<=beforeDetours[k],k);
  for(const k of ['bends','crossings','lengthUm'])assert.ok(quality[k]<=beforePlacement[k],k);
  for(const k of ['bends','crossings','lengthUm'])assert.ok(quality[k]<=beforeTrunks[k],k);
