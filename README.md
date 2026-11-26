@@ -1,5 +1,8 @@
 # GOST Schematic Engine
 
+**Founded and originally developed by [Tridgi](https://github.com/Tridgi).**  
+Official project: [Tridgi/gost-schematic](https://github.com/Tridgi/gost-schematic).
+
 A deterministic, standards-aware foundation for generating electrical schematic diagrams with a reviewable symbol catalog.
 
 > **Status: experimental — architecture stage 0.** No symbol, exported drawing, or document is claimed to be GOST/ESKD-compliant until its applicable rules and geometry have been verified and approved. The initial resistor is deliberately marked **draft**.
@@ -161,6 +164,28 @@ Net names such as `GND` or `+12V` are never guessed to be voltages.
 
 See [Polarity ERC](docs/architecture/polarity-erc.md) and
 [ADR-0007](docs/decisions/0007-physical-pin-polarity.md).
+
+
+## Authorship and attribution
+
+GOST Schematic Engine (Схематик) was founded and originally developed by
+[Tridgi](https://github.com/Tridgi). Contributions by other authors are acknowledged;
+existing copyright notices and third-party license terms remain intact.
+
+Under the MIT license, copies or substantial portions of the software must
+retain the copyright and permission notices in [LICENSE](LICENSE), including
+the founder's profile URL in the updated notice.
+
+For forks, derivative products, publications and presentations, please also
+credit the original project visibly and link to its founder and official repository:
+
+> Based on GOST Schematic Engine (Схематик), founded and originally developed by
+> [Tridgi](https://github.com/Tridgi). Original project:
+> [github.com/Tridgi/gost-schematic](https://github.com/Tridgi/gost-schematic).
+
+This visible-credit request is a courtesy, not an additional MIT license condition.
+Do not imply endorsement or official affiliation where none exists. MIT permits
+commercial use and redistribution; ordinary use does not require public attribution.
 
 ## License
 
