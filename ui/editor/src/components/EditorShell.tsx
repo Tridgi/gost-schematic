@@ -36,7 +36,7 @@ export type InspectorProposal =
 
 /** The host owns all electrical topology, source PinRefs, command validation and actual persistence. */
 export type EditorShellProps = {
-  projectName:string;dirty:boolean;baseRevision:string;topology?:TopologyInventory;onBuildNetRail?:(netId:string)=>void;onBuildNetTree?:(netId:string)=>void;onRouteInitialNet?:(netId:string)=>void;onRouteInitialBatch?:(netIds:readonly string[])=>void;onPrepareInitialRouting?:()=>void;onPreviewHubPlacement?:()=>void;onPreviewFunctionalRouting?:()=>void;onPreviewRouteRefinement?:(extended?:boolean)=>void;onPreviewRailRefinement?:()=>void;onPreviewInitialBatch?:(netIds:readonly string[],controlled?:boolean)=>void;
+  projectName:string;dirty:boolean;baseRevision:string;topology?:TopologyInventory;onBuildNetRail?:(netId:string)=>void;onBuildNetTree?:(netId:string)=>void;onRouteInitialNet?:(netId:string)=>void;onRouteInitialBatch?:(netIds:readonly string[])=>void;onPrepareInitialRouting?:()=>void;onPreviewHubPlacement?:()=>void;onPreviewFunctionalRouting?:(extended?:boolean)=>void;onPreviewRouteRefinement?:(extended?:boolean)=>void;onPreviewRailRefinement?:()=>void;onPreviewInitialBatch?:(netIds:readonly string[],controlled?:boolean)=>void;
   sheets:readonly {id:string;title:string}[];activeSheetId:string;
   catalog:readonly CatalogSymbol[];tree:readonly TreeItem[];
   catalogMissingCount?:number;onCatalogUpgrade?:()=>void;
@@ -411,6 +411,8 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
               onClick={()=>{setTopologyDialog(false);props.onPrepareInitialRouting?.()}}>Освободить выходы выводов у полей</Button>}
             {props.onPreviewFunctionalRouting&&props.topology.unrouted.length<=16&&<Button size="xs" data-testid="preview-functional-routing"
               onClick={()=>{setTopologyDialog(false);props.onPreviewFunctionalRouting?.()}}>Компоновка и совместная трассировка</Button>}
+            {props.onPreviewFunctionalRouting&&props.topology.unrouted.length<=16&&<Button size="xs" variant="outline" data-testid="preview-functional-alternatives"
+              onClick={()=>{setTopologyDialog(false);props.onPreviewFunctionalRouting?.(true)}}>Сравнить варианты компоновки</Button>}
             {props.onPreviewHubPlacement&&<Button size="xs" variant="light" data-testid="preview-hub-placement"
               onClick={()=>{setTopologyDialog(false);props.onPreviewHubPlacement?.()}}>Приблизить двухвыводные элементы к выводам микросхем</Button>}
             {props.onPreviewInitialBatch&&props.topology.unrouted.length>1&&props.topology.unrouted.length<=16&&
