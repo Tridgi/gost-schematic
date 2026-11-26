@@ -235,6 +235,23 @@ try{
       }catch(err){console.log('R9_OPEN_DIAG_UI_UNAVAILABLE '+String(err));}
       throw error;
     }
+    // The initial frozen preview also contains DA1 and 23 symbols.
+    // Wait for the opened document's exact wire identities, not just a
+    // symbol that may already exist before the asynchronous native Open.
+    const expectedWireIds=original.project.sheets[0].wires.map(w=>w.id).sort();
+    try {
+      await page.waitForFunction(ids=>{
+        const actual=Array.from(document.querySelectorAll('.electric-wires > g[data-wire-id][data-net-id]'),
+          el=>el.getAttribute('data-wire-id')).sort();
+        return actual.length===ids.length&&actual.every((id,i)=>id===ids[i]);
+      },expectedWireIds,{timeout:30000});
+    }catch(error){
+      console.log('R9_OPEN_WIRE_DIAG='+JSON.stringify(await page.evaluate(()=>({
+        ids:Array.from(document.querySelectorAll('.electric-wires > g[data-wire-id]'),el=>el.getAttribute('data-wire-id')),
+        ui:document.body.innerText.slice(-2500)
+      }))));
+      throw error;
+    }
     assert.equal(await page.locator('[data-testid^="symbol-"]').count(),full?23:3);
     assert.equal(await page.locator('.electric-wires > g[data-net-id]').count(),full?78:1);
     if(full){
