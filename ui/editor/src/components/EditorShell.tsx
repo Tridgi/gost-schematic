@@ -54,7 +54,7 @@ export type EditorShellProps = {
   onSelectSheet:(id:string)=>void;onInspectorProposal:(edit:InspectorProposal)=>void;
   onUndo:()=>void;onRedo:()=>void;onSave:()=>void;
   onCopy?:()=>void;onPaste?:()=>void;
-  propertiesRequest?:number;onSelectAll?:()=>void;
+  propertiesRequest?:number;onSelectAll?:()=>void;onDuplicate?:()=>void;
   textRequest?:{at:readonly [number,number] }|null;
   onCancelText?:()=>void;onAddText?:(value:string,height:number)=>boolean;
   pinMagnet?:boolean;onTogglePinMagnet?:(enabled:boolean)=>void;
@@ -222,12 +222,13 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
       else if(action==='newProject')props.onNew?.();
       else if(action==='openProject')props.onOpen?.();
       else if(action==='selectAll')props.onSelectAll?.();
+      else if(action==='duplicate')props.onDuplicate?.();
       else if(action==='findCatalog'){setLeft(true);requestAnimationFrame(()=>catalogSearch.current?.focus());}
       else if(action==='properties'){if(props.selected)setPropertiesOpen(true);}
       else props.onToolChange(action);
     };
     window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey);
-  },[props.onToolChange,props.onSave,props.onUndo,props.onRedo,props.canSave,props.canUndo,props.canRedo,props.onCopy,props.onPaste,props.onSaveAs,props.onNew,props.onOpen,props.onSelectAll,props.selected,props.textRequest,props.layoutPreview,settings,exportDialog,commandDialog,topologyDialog,propertiesOpen]);
+  },[props.onToolChange,props.onSave,props.onUndo,props.onRedo,props.canSave,props.canUndo,props.canRedo,props.onCopy,props.onPaste,props.onSaveAs,props.onNew,props.onOpen,props.onSelectAll,props.onDuplicate,props.selected,props.textRequest,props.layoutPreview,settings,exportDialog,commandDialog,topologyDialog,propertiesOpen]);
   const commands=[
     {label:'Сохранить',ok:props.canSave,run:props.onSave},
     {label:'Экспорт',ok:true,run:()=>setExportDialog(true)},
@@ -264,6 +265,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
             </Menu>
             <Menu position="bottom-start" transitionProps={{duration:0}}><Menu.Target><Button variant="subtle" size="compact-sm">Правка</Button></Menu.Target>
               <Menu.Dropdown>
+                <Menu.Item data-testid="duplicate-component" onClick={props.onDuplicate} disabled={!props.onDuplicate}>Дублировать выделенное · Ctrl+D</Menu.Item>
                 <Menu.Item data-testid="copy-component" onClick={props.onCopy} disabled={!props.onCopy}>Копировать выделенное · Ctrl+C</Menu.Item>
                 <Menu.Item data-testid="smart-routing" disabled={!props.onToggleSmartRouting} onClick={()=>props.onToggleSmartRouting?.(!props.smartRouting)}>Умная трассировка: {props.smartRouting?'вкл.':'выкл.'}</Menu.Item>
                 <Menu.Item data-testid="pin-magnet" disabled={!props.onTogglePinMagnet} onClick={()=>props.onTogglePinMagnet?.(!props.pinMagnet)}>Привязка выводов: {props.pinMagnet?'вкл.':'выкл.'}</Menu.Item>
