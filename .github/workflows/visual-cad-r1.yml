@@ -1,11 +1,10 @@
 name: Visual CAD R1 source gate
 on:
   push:
-    branches: [ui/visual-cad-mvp]
-    paths: ['src/gost_schematic/catalog/**', 'src/gost_schematic/core/**', 'src/gost_schematic/model/**', 'ui/editor/**', 'ui/integration/**', 'ui/experiments/r0/**', 'ui/contracts/**', 'ui/editor/src/model/**', 'ui/editor/src/wires/**', 'ui/editor/src/canvas/**', 'ui/fixtures/**', 'ui/qa/chat3-canvas/**', '.github/workflows/visual-cad-r1.yml']
+    branches: [main, ui/visual-cad-mvp]
+  # Release readiness must never depend on a filename filter. Every PR
+  # and every main push exercises the complete source/Chromium/export gate.
   pull_request:
-    # Authoring, UI and browser-only changes must also run the full source gate.
-    paths: ['src/gost_schematic/catalog/**', 'src/gost_schematic/core/**', 'src/gost_schematic/model/**', 'ui/editor/**', 'ui/integration/**', 'ui/experiments/r0/**', 'ui/contracts/**', 'ui/editor/src/model/**', 'ui/editor/src/wires/**', 'ui/editor/src/canvas/**', 'ui/fixtures/**', 'ui/qa/chat3-canvas/**', '.github/workflows/visual-cad-r1.yml']
   workflow_dispatch:
 jobs:
   candidate-v2:
