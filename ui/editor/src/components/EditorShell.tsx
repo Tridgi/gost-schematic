@@ -439,7 +439,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
               onClick={()=>{setTopologyDialog(false);props.onPreviewRouteRefinement?.()}}>Упростить построенные маршруты</Button>
             <Button size="xs" variant="outline" data-testid="preview-route-refinement-extended"
               onClick={()=>{setTopologyDialog(false);props.onPreviewRouteRefinement?.(true)}}>Расширенный поиск маршрутов</Button>
-          </Group>
+          </Group>}
           <Text fw={600} size="sm">Общие цепи (не менее 3 УГО на листе)</Text>
           {props.topology.shared.map(n=><Stack key={n.id} gap={2}>
             <Group justify="space-between"><Text size="sm">{n.name} — {n.pins} выводов, {n.devices} УГО</Text>
