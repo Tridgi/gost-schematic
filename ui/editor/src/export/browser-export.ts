@@ -120,7 +120,7 @@ export function renderProjectPreviewSVG(file:ProjectFileV2,sheetId:string):strin
   for(const item of [...sh.texts,...sh.labels])if(printable.has(item.layer_id)&&item.text){
     out.push('<text data-layer="annotations" x="'+mm(item.at_um[0])+
       '" y="'+mm(item.at_um[1])+'" font-size="'+mm('height_um' in item?item.height_um:3500)+
-      '" font-family="sans-serif" fill="#000">'+esc(item.text)+'</text>');
+      '" font-family="OpenGost Type A, sans-serif" fill="#000"'+('rotation_deg' in item&&item.rotation_deg?' transform="rotate('+item.rotation_deg+' '+mm(item.at_um[0])+' '+mm(item.at_um[1])+')"':'')+'>'+esc(item.text)+'</text>');
   }
   out.push('<metadata data-kind="unplaced-component-labels">'+esc(JSON.stringify(labelPlan.unplaced))+'</metadata>');
   for(const l of labelPlan.labels){
