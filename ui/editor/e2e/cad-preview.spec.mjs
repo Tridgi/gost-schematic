@@ -1264,6 +1264,45 @@ test('R19 smart routing and aligned connected pins reduce a Z route to one segme
  expect((await saved()).project).toEqual(after.project);
 });
 
+test('RC1 selected UGO is visible under cursor without magnet, cancel is read-only and click matches preview',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas'),ghost=page.getByTestId('gscad-placement-preview');
+ await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ const resistor=page.getByTestId('catalog-item-symbol/resistor.fixed'),cap=page.getByTestId('catalog-item-symbol/capacitor.fixed');
+ const x=paper.x+paper.width*.4,y=paper.y+paper.height*.4;
+ const saved=async()=>{const d=page.waitForEvent('download');await page.getByTestId('save-project').click();return JSON.parse(readFileSync(await (await d).path(),'utf8'));};
+ const initial=await saved();
+ await resistor.click();await expect(canvas).toHaveAttribute('data-tool','place');
+ await assertCanvasReceivesPointer(page,x,y);
+ await page.mouse.move(x,y);
+ await expect(ghost).toBeVisible();
+ await expect(ghost).toHaveAttribute('data-symbol-id','symbol/resistor.fixed');
+ await expect(ghost).toHaveAttribute('data-electrical','false');
+ await expect(ghost.locator('line').first()).toBeVisible();
+ await expect(ghost.locator('[data-preview-pin]')).toHaveCount(2);
+ await expect(page.getByTestId('pin-placement-guide')).toHaveCount(0);
+ await expect(page.locator('[data-testid^="symbol-"]')).toHaveCount(0);
+ await page.mouse.move(x+50,y+25);
+ await expect(ghost).toBeVisible();
+ await resistor.hover();await expect(ghost).toHaveCount(0);
+ await page.mouse.move(x,y);await expect(ghost).toBeVisible();
+ await page.keyboard.press('Escape');
+ await expect(ghost).toHaveCount(0);await expect(canvas).toHaveAttribute('data-tool','select');
+ expect((await saved()).project).toEqual(initial.project);
+ await cap.click();await expect(canvas).toHaveAttribute('data-tool','place');
+ await page.mouse.move(x,y);await expect(ghost).toBeVisible();
+ await expect(ghost).toHaveAttribute('data-symbol-id','symbol/capacitor.fixed');
+ const previewOrigin=[Number(await ghost.getAttribute('data-origin-x-um')),Number(await ghost.getAttribute('data-origin-y-um'))];
+ await page.mouse.click(x,y);
+ await expect(page.getByTestId('symbol-C1')).toBeVisible();await expect(ghost).toHaveCount(0);
+ const doc=await saved();expect(doc.project.components).toHaveLength(1);
+ expect(doc.project.sheets[0].instances[0].origin_um).toEqual(previewOrigin);
+ expect(doc.project.nets).toEqual([]);expect(doc.project.sheets[0].wires).toEqual([]);
+});
+
 test('R19b magnetic placement preview aligns pins without creating a wire',async({page})=>{
  await page.goto('/');
  await page.getByRole('button',{name:'Файл'}).click();
@@ -1291,13 +1330,16 @@ test('R19b magnetic placement preview aligns pins without creating a wire',async
  await page.mouse.move(x,y,{steps:5});
  await expect(page.getByTestId('pin-placement-guide')).toBeVisible();
  await expect(page.getByTestId('pin-placement-guide')).toHaveAttribute('data-electrical','false');
+ const ghost=page.getByTestId('gscad-placement-preview');
+ await expect(ghost).toBeVisible();
+ const previewOrigin=[Number(await ghost.getAttribute('data-origin-x-um')),Number(await ghost.getAttribute('data-origin-y-um'))];
  await page.mouse.click(x,y);
  await expect(page.getByTestId('symbol-R2')).toBeVisible();
  await expect(page.getByTestId('pin-placement-guide')).toHaveCount(0);
  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
  const doc=JSON.parse(readFileSync(await (await d).path(),'utf8'));
  const [a,b]=doc.project.sheets[0].instances;
- expect(a.origin_um[1]).toBe(b.origin_um[1]);expect(doc.project.nets).toEqual([]);
+ expect(a.origin_um[1]).toBe(b.origin_um[1]);expect(b.origin_um).toEqual(previewOrigin);expect(doc.project.nets).toEqual([]);
  expect(doc.project.sheets[0].wires).toEqual([]);
 });
 
