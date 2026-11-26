@@ -6,7 +6,7 @@ import type { Camera,PointUm,VisualHit,ScreenPoint } from './precision.mjs';
 import type { SegmentDragToken } from './wire-intents.mjs';
 export type CanvasIntent =
  | {kind:'beginWire';pin:PinRef}
- | {kind:'commitWire';source:PinRef;target:{kind:'pin';pin:PinRef}|{kind:'free';at_um:PointUm};bend_points_um:PointUm[]}
+ | {kind:'commitWire';source:PinRef;target:{kind:'pin';pin:PinRef}|{kind:'free';at_um:PointUm}|{kind:'segment';wire_id:string;segment_id:string;at_um:PointUm};bend_points_um:PointUm[];base_revision?:number}
  | {kind:'cancelWire';source:PinRef}
  | {kind:'placeSymbol';at_um:PointUm;base_revision:number}
  | {kind:'deleteSymbol';component_id:string;instance_id:string;base_revision:number}
@@ -21,7 +21,7 @@ export type CanvasIntent =
  | {kind:'select';target:VisualHit|{kind:'symbol';instance_id:string;component_id:string;distance_px:number}|{kind:'ambiguous-symbol';candidates:string[]}|null};
 export type CanvasContext={
  scene:CanvasScene;wireSnapshot:WiringSnapshot;camera:Camera;
- tool:'select'|'wire'|'pan'|'text'|'junction'|'place';gridUm:number;snapEnabled:boolean;
+ tool:'select'|'wire'|'pan'|'text'|'junction'|'place';gridUm:number;snapEnabled:boolean;canTap?:boolean;
  onIntent:(intent:CanvasIntent)=>void|boolean;
 };
 export type PointerPoint=ScreenPoint & {pointerId:number;button:number};
