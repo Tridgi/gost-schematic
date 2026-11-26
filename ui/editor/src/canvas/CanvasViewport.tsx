@@ -299,6 +299,8 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
   const groupDrag=controller.groupDragPreview();
   const groupGhosts:CanvasSymbol[]=groupDrag?visibleScene.symbols.filter(s=>groupDrag.instance_ids.includes(s.instance_id)).map((s):CanvasSymbol=>({...s,origin_um:[s.origin_um[0]+groupDrag.delta_um[0],s.origin_um[1]+groupDrag.delta_um[1]]})):[];
   const marquee=controller.marqueePreview();
+  const tap=controller.tapPreview();
+  const tapScreen=tap?screen(tap.at_um,camera):null;
   const selectedGroup=new Set(controller.getState().selectedGroup);
   const selectedSymbol=controller.getState().selected;
   const selectedInstanceId=selectedSymbol?.kind==='symbol'?selectedSymbol.instance_id:null;
@@ -325,7 +327,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     data-testid="gscad-signed-svg-canvas" aria-label="Редактор электрической схемы, координаты в микрометрах"
     viewBox={`0 0 ${Math.max(1,g2(size.width))} ${Math.max(1,g2(size.height))}`}
     onPointerDown={down} onPointerMove={move} onPointerUp={up}
-    onPointerEnter={e=>{if(tool==='place')setPlacementPointer(local(e));}} onPointerLeave={()=>setPlacementPointer(null)}
+    onPointerEnter={e=>{if(tool==='place')setPlacementPointer(local(e));}} onPointerLeave={()=>{setPlacementPointer(null);controller.clearTapPreview();invalidate();}}
     onPointerCancel={e=>{setPlacementPointer(null);controller.key('Escape');if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);invalidate()}}
     onWheel={e=>{setPlacementPointer(tool==='place'?local(e):null);wheel(e)}} onContextMenu={openContextMenu}
     onDoubleClick={e=>{if(tool==='select'&&controller.contextSelect(local(e))==='symbol'){invalidate();onOpenProperties?.();}}}
@@ -456,6 +458,10 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     {groupGhosts.length>0&&<g data-testid="gscad-group-drag-preview" data-electrical="false"
       pointerEvents="none" fill="none" stroke="#d58c27" strokeWidth={1.8} strokeDasharray="5 3">
       {groupGhosts.map(s=><g key={s.instance_id}><SymbolInk symbol={s} camera={camera}/></g>)}
+    </g>}
+    {tapScreen&&<g data-testid="wire-tap-preview" data-electrical="false" pointerEvents="none">
+      <circle cx={tapScreen.x} cy={tapScreen.y} r={6} fill="white" fillOpacity={.85} stroke="#168051" strokeWidth={1.6}/>
+      <circle cx={tapScreen.x} cy={tapScreen.y} r={2.6} fill="#168051"/>
     </g>}
     {marquee&&<rect data-testid="gscad-selection-marquee" data-electrical="false"
       {...marquee} fill="#2c82bd" fillOpacity={.12} stroke="#2c82bd" strokeWidth={1}
