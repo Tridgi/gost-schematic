@@ -132,6 +132,9 @@ try{
     const canvas=page.getByTestId('gscad-signed-svg-canvas');
     const narrow=await page.evaluate(()=>window.innerWidth<960);
     console.log('R9_NATIVE_VIEWPORT_NARROW='+narrow);
+    const font=await page.evaluate(async()=>{const f=await document.fonts.load('14px "GSCAD Technical"','Питание R1');return f.some(x=>x.status==='loaded')});
+    assert.equal(font,true,'RC1_OPENGOST_FONT_NOT_LOADED_IN_INSTALLED_WEBVIEW');
+    console.log('RC1_NATIVE_OPENGOST_FACE_LOADED');
     // Native Tauri starts at 900px. On that width the UGO library and
     // inspector are intentionally collapsed; exercise the real toggle UI.
     const place=async(symbol,xUm,yUm,refdes)=>{
