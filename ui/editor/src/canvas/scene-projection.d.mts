@@ -43,3 +43,6 @@ export type CanvasScene = {
 };
 /** Rejects unknown version/part/symbol/pin/graphic; never mutates its input. */
 export declare function projectToCanvasScene(file:ProjectFileV2,sheetId:string):CanvasScene;
+
+/** Detached catalog ink for cursor placement; never a live electrical anchor. */
+export declare function projectPlacementSymbol(file:ProjectFileV2,sheetId:string,symbolId:string):CanvasSymbol|null;
