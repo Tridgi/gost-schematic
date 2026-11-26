@@ -400,6 +400,18 @@ export class AuthoringSession {
       return materialize(draft,subset,session);
     });
   }
+  addText(tx:Tx,text:string,at:PointUm,heightUm:number):void{
+    this.edit(tx,draft=>{
+      const value=text.trim(),p=xy(at),sh=draft.project.sheets[indexOfSheet(draft)];
+      if(!value||value.length>128||/[\u0000-\u001f\u007f]/.test(value)||![2500,3500,5000,7000,10000].includes(heightUm))reject('INVALID_TEXT');
+      const [w,h]=sh.frame.size_um,m=sh.frame.margin_um;
+      if(p[0]<m||p[1]-heightUm<m||p[0]+value.length*heightUm>w-m||p[1]>h-m)reject('TEXT_OUTSIDE_FRAME');
+      let layer=sh.layers.find(l=>l.kind==='annotation'&&l.visible&&l.printable&&!l.locked);
+      if(!layer){layer={id:newId('annotation-layer'),name:'Надписи',kind:'annotation',visible:true,printable:true,locked:false};sh.layers.push(layer);}
+      sh.texts.push({id:newId('text'),layer_id:layer.id,text:value,at_um:p,height_um:heightUm,rotation_deg:0});
+      return draft;
+    });
+  }
   upgradeCatalog(tx:Tx):number {
     let added=0;
     this.edit(tx,draft=>{
