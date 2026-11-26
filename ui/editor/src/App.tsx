@@ -908,6 +908,8 @@ export default function App() {
         zoomRequest={zoomRequest??undefined} fitRequest={fitRequest}
         onIntent={onCanvasIntent} onZoomPercent={percent=>setZoom(percent/100)}
         canEdit={!!authoringRef.current}
+        placementSymbolId={tool==='place'?placementSymbol:null}
+        onCancelPlacement={()=>{setTool('select');setPlacementSymbol(null);setPending(null);setIssue('Размещение УГО отменено.');}}
         placementHint={pinMagnet&&tool==='place'&&placementSymbol&&authoringRef.current?at=>authoringRef.current?.suggestAlignedPlacement(placementSymbol,at)??null:undefined}
         onCopy={authoringRef.current&&(selectedInst||groupIds.length>1)&&tool==='select'?handleCopy:undefined}
         onPaste={authoringRef.current&&clipboard&&tool==='select'?handlePaste:undefined}
@@ -926,7 +928,7 @@ export default function App() {
     onFitPage={()=>setFitRequest(n=>n+1)}
     canUndo={history.undo>0} canRedo={history.redo>0} canSave={true} exportReady={true}
     inspectorError={null}
-    onToolChange={mode=>{setTool(mode);setPending(null);if(mode!=='select')setGroupIds([]);}}
+    onToolChange={mode=>{setTool(mode);setPending(null);if(mode!=='place')setPlacementSymbol(null);if(mode!=='select')setGroupIds([]);}}
     onToggleGrid={value=>{
       if(value!==grid){contentEpochRef.current++;setDirty(true);}
       setGrid(value);
