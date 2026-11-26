@@ -139,6 +139,8 @@ export default function App() {
   const [snapshot,setSnapshot]=useState<WiringSnapshot|null>(null);
   const [tool,setTool]=useState<ToolMode>('select');
   const [placementSymbol,setPlacementSymbol]=useState<string|null>(null);
+  const [propertiesRequest,setPropertiesRequest]=useState(0);
+  const [textRequest,setTextRequest]=useState<{at:PointUm;revision:number;epoch:number}|null>(null);
   const [selectedId,setSelectedId]=useState<string|null>(null);
   const [selectionReset,setSelectionReset]=useState(0);
   const [groupIds,setGroupIds]=useState<string[]>([]);
@@ -544,7 +546,7 @@ export default function App() {
       try{
         if(intent.kind==='beginWire'){
           authored.beginWire(intent.pin);
-          setPending(intent.pin);setIssue('Выбран первый физический вывод; укажите второй.');
+          setPending(intent.pin);setIssue('Выбран вывод: укажите другой вывод или участок проводника.');
           return true;
         }
         if(intent.kind==='cancelWire'){setPending(null);return true;}
@@ -556,6 +558,10 @@ export default function App() {
             setSelectedId(inst?.id??null);
           }else setSelectedId(null);
           return true;
+        }
+        if(intent.kind==='placeText'){
+          if(intent.base_revision!==authored.revision)throw Error('STALE_REVISION');
+          setTextRequest({at:intent.at_um,revision:authored.revision,epoch:sessionEpochRef.current});return true;
         }
         if(intent.kind==='placeSymbol'){
           if(intent.base_revision!==authored.revision)throw Error('STALE_REVISION');
@@ -779,6 +785,19 @@ export default function App() {
     projectName={document.project.title+(authoringRef.current?' · R3 AUTHORING':' · R2 PREVIEW')} dirty={dirty}
     baseRevision={String(snapshot.revision)} sheets={document.project.sheets.map(s=>({id:s.id,title:s.name}))}
     activeSheetId={activeSheet.id} catalog={catalog} tree={tree} topology={topology}
+    propertiesRequest={propertiesRequest}
+    textRequest={textRequest}
+    onCancelText={()=>setTextRequest(null)}
+    onAddText={(value,height)=>{
+      try{
+        const a=authoringRef.current;
+        if(!a||!textRequest||a.revision!==textRequest.revision||sessionEpochRef.current!==textRequest.epoch)throw Error('STALE_REVISION');
+        a.addText(a.newTransaction('add-text'),value,textRequest.at,height);
+        adoptAuthored();setTextRequest(null);setTool('select');setIssue('Надпись добавлена. Шрифт в режиме предпросмотра.');
+      }catch(e){setIssue('TEXT_FAILED: '+String(e));return false;}
+      return true;
+    }}
+    onSelectAll={tool==='select'?()=>{setGroupIds(instances.length>1?instances.map(i=>i.id):[]);setSelectedId(instances.length===1?instances[0].id:null);}:undefined}
     onPreviewDetourRefinement={authoringRef.current&&tool==='select'&&activeSheet.wires.some(w=>w.needs_routing_review&&w.vertices.length>=3)?(crossingOnly=false)=>{
       const a=authoringRef.current!;
       try{
@@ -916,6 +935,7 @@ export default function App() {
         onIntent={onCanvasIntent} onZoomPercent={percent=>setZoom(percent/100)}
         canEdit={!!authoringRef.current}
         placementSymbolId={tool==='place'?placementSymbol:null}
+        onOpenProperties={()=>setPropertiesRequest(n=>n+1)}
         onCancelPlacement={()=>{setTool('select');setPlacementSymbol(null);setPending(null);setIssue('Размещение УГО отменено.');}}
         placementHint={pinMagnet&&tool==='place'&&placementSymbol&&authoringRef.current?at=>authoringRef.current?.suggestAlignedPlacement(placementSymbol,at)??null:undefined}
         onCopy={authoringRef.current&&(selectedInst||groupIds.length>1)&&tool==='select'?handleCopy:undefined}
