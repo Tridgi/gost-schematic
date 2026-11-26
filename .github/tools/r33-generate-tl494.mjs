@@ -39,7 +39,15 @@ try{
   if(extended.token)s.applyLayoutPreview(s.newTransaction('extended'),extended.token);
   console.log('R35_NATIVE_EXTENDED '+JSON.stringify({...extended,token:!!extended.token}));
  }
+ const beforeTrunks=assessLayout(s.file,s.engine).quality;
+ if(process.env.GSCAD_R36_TRUNKS==='1'){
+  const rails=s.previewRailRefinement();
+  assert.ok(rails.attempted<=16);
+  if(rails.token)s.applyLayoutPreview(s.newTransaction('trunks'),rails.token);
+  console.log('R36_NATIVE_TRUNKS '+JSON.stringify({...rails,token:!!rails.token}));
+ }
  const next=s.file,sh=next.project.sheets[0],quality=assessLayout(next,s.engine).quality;
+ for(const k of ['bends','crossings','lengthUm'])assert.ok(quality[k]<=beforeTrunks[k],k);
  for(const k of ['bends','crossings','lengthUm'])assert.ok(quality[k]<=baseline[k],k);
  for(const [key,limit] of Object.entries({bends:81,crossings:38,lengthUm:5340345}))assert.ok(quality[key]<=limit,key);
  assert.ok(quality.complete);assert.equal(quality.errors,0);assert.equal(quality.geometryWarnings,0);assert.equal(quality.overflow,0);
