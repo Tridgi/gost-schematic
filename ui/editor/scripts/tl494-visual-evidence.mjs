@@ -46,6 +46,10 @@ try{
  if(refinement.token)optimized.applyLayoutPreview(optimized.newTransaction('refine'),refinement.token);
  stages.push({name:'03-refined-routing',file:optimized.file,quality:assessLayout(optimized.file,optimized.engine).quality});
  for(const k of ['bends','lengthUm','crossings'])assert.ok(stages[2].quality[k]<=stages[1].quality[k],k);
+ // R33 verified reference baseline: never trade readability for a new route.
+ for(const [key,limit] of Object.entries({bends:81,crossings:38,lengthUm:5340345}))
+  assert.ok(stages[2].quality[key]<=limit,`R34 baseline regression: ${key}`);
+ for(const stage of stages)assert.equal(planComponentLabels(stage.file,stage.file.project.sheets[0].id).labels.length,23);
  // Export through the same browser raster function used in the editor.
  const raster=await build({entryPoints:[join(editor,'src/export/browser-export.ts')],bundle:true,platform:'browser',format:'iife',globalName:'GSCADPreview',write:false,logLevel:'silent'});
  browser=await chromium.launch({headless:true});
