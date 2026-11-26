@@ -247,7 +247,7 @@ def _draw_validated(document: dict, sheet_id: str) -> bytes:
                 label = ET.SubElement(group, _S+"text", {
                     "data-label-role": role, "x": mm(item.x), "y": mm(y),
                     "text-anchor": "middle", "font-size": mm(H),
-                    "font-family": "monospace", "fill": "#000000", "stroke": "none",
+                    "font-family": "OpenGost Type A, monospace", "fill": "#000000", "stroke": "none",
                 })
                 label.text = value
 
