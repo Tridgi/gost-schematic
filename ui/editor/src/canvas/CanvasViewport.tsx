@@ -96,13 +96,13 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
   if(!controllerRef.current){
     controllerRef.current=createCanvasController({
       scene:visibleScene,wireSnapshot:snapshot,camera:cameraRef.current,tool,
-      gridUm:document.project.settings.grid_step_um,snapEnabled,
+      gridUm:document.project.settings.grid_step_um,snapEnabled,canTap:!!canEdit,
       onIntent:intent=>callbackRef.current(intent)
     });
   }
   const controller=controllerRef.current;
   controller.setContext({
-    scene:visibleScene,wireSnapshot:snapshot,tool,snapEnabled,
+    scene:visibleScene,wireSnapshot:snapshot,tool,snapEnabled,canTap:!!canEdit,
     gridUm:document.project.settings.grid_step_um,onIntent:intent=>callbackRef.current(intent)
   });
   const selectionResetRef=useRef(selectionReset);
