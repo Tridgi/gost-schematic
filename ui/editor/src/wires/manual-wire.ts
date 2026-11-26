@@ -356,6 +356,35 @@ export class ManualWireEngine {
     d.wires.splice(d.wires.indexOf(w),1,a,b);
     return [a.id,b.id];
   }
+  /** Explicit pin-to-segment tap: split and branch in ONE validated edit.
+   * The pin must already belong to this Net in the supplied snapshot. */
+  connectPinToSegment(tx:Transaction,pin:PinRef,wireId:string,segmentId:string,at:PointUm,points:PointUm[]):WiringSnapshot {
+    return this.transaction(tx,d=>{
+      point(at);
+      const w=d.wires.find(w=>w.id===wireId);
+      if(!w)fail('UNKNOWN_WIRE','Selected conductor does not exist');
+      const i=w.segments.findIndex(s=>s.id===segmentId);
+      if(i<0)fail('UNKNOWN_SEGMENT','Selected segment no longer exists');
+      const a=w.vertices[i].at_um,b=w.vertices[i+1].at_um;
+      if(!onSegment(at,a,b)||same(at,a)||same(at,b))fail('SPLIT_POINT','Choose the interior of a conductor segment');
+      const net=d.nets.find(n=>n.id===w.net_id);
+      if(!net?.members.some(p=>pinKey(p)===pinKey(pin)))fail('NET_CONFLICT','Pin must belong to selected Net');
+      if(d.junctions.some(n=>same(n.at_um,at))||d.splices.some(n=>same(n.at_um,at)))fail('NODE_CONFLICT','Choose a new tap point');
+      if(d.wires.some(v=>v.id!==w.id&&v.vertices.slice(1).some((q,j)=>onSegment(at,v.vertices[j].at_um,q.at_um))))
+        fail('AMBIGUOUS_SEGMENT','Tap overlaps another conductor');
+      if(points.length<2||!same(points.at(-1)!,at))fail('ANCHOR_MISMATCH','Branch must end at selected tap');
+      const previous=points.at(-2)!;
+      if((a[0]===b[0]&&previous[1]!==at[1])||(a[1]===b[1]&&previous[0]!==at[0]))
+        fail('WIRE_GEOMETRY','Branch must enter the trunk perpendicularly');
+      const nodeId=serialId('manual-junction-',d),branchId=serialId('manual-branch-',d);
+      d.junctions.push({id:nodeId,net_id:w.net_id,layer_id:w.layer_id,at_um:copy(at)});
+      const anchor:TerminalAnchor={kind:'junction',junction_id:nodeId};
+      const review=w.needs_routing_review;
+      const parts=this.cutWire(d,w,at,anchor);
+      for(const v of d.wires)if(parts.includes(v.id)&&review)v.needs_routing_review=true;
+      d.wires.push(wireFromPoints(branchId,w.net_id,w.layer_id,points,{kind:'pin',...pin},anchor));
+    });
+  }
   splitWire(tx:Transaction,wireId:string,at:PointUm,spliceId:string):WiringSnapshot {
     return this.transaction(tx,d=>{
       point(at);id(spliceId,'Splice ID');
