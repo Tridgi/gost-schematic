@@ -85,7 +85,7 @@ export function renderProjectPreviewSVG(file:ProjectFileV2,sheetId:string):strin
     for(const prim of s.graphics)out.push(primitiveInk(inst,prim));
     for(const n of s.constant_annotations??[]){
       const layout=noteLayout(n,worldPin(inst,n.at_um));
-      out.push('<text data-symbol-note="'+esc(n.key)+'" data-electrical="false" x="'+mm(layout.baseline[0])+'" y="'+mm(layout.baseline[1])+'" text-anchor="'+layout.anchor+'" font-size="'+mm(n.height_um)+'" font-family="sans-serif" fill="#000" stroke="none">'+esc(n.text)+'</text>');
+      out.push('<text data-symbol-note="'+esc(n.key)+'" data-electrical="false" x="'+mm(layout.baseline[0])+'" y="'+mm(layout.baseline[1])+'" text-anchor="'+layout.anchor+'" font-size="'+mm(n.height_um)+'" font-family="OpenGost Type A, sans-serif" fill="#000" stroke="none">'+esc(n.text)+'</text>');
     }
     out.push('</g>');
   }
@@ -125,7 +125,7 @@ export function renderProjectPreviewSVG(file:ProjectFileV2,sheetId:string):strin
   out.push('<metadata data-kind="unplaced-component-labels">'+esc(JSON.stringify(labelPlan.unplaced))+'</metadata>');
   for(const l of labelPlan.labels){
     out.push('<g data-layer="component-labels" data-electrical="false" data-instance-id="'+esc(l.instanceId)+'">');
-    const line=(value:string,y:number,role:string)=>'<text data-label-role="'+role+'" x="'+mm(l.x)+'" y="'+mm(y)+'" text-anchor="middle" font-family="monospace" font-size="'+mm(l.heightUm)+'" fill="#000" stroke="none">'+esc(value)+'</text>';
+    const line=(value:string,y:number,role:string)=>'<text data-label-role="'+role+'" x="'+mm(l.x)+'" y="'+mm(y)+'" text-anchor="middle" font-family="OpenGost Type A, monospace" font-size="'+mm(l.heightUm)+'" fill="#000" stroke="none">'+esc(value)+'</text>';
     out.push(line(l.refdes,l.y,'reference'));
     if(l.value)out.push(line(l.value,l.y+l.lineStepUm,'value'));
     out.push('</g>');
