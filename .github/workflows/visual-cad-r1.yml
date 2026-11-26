@@ -121,6 +121,16 @@ jobs:
       - name: Compile signed wire engine for browser test oracle
         working-directory: ui/editor
         run: ./node_modules/.bin/tsc -p src/wires/tsconfig.json
+      - name: Exclude unrelated Microsoft package feed from browser dependency install
+        shell: bash
+        run: |
+          # Chromium uses signed Ubuntu packages, not Microsoft's extra runner feed.
+          # Keep signature verification enabled; disable only the known unrelated feed.
+          for f in /etc/apt/sources.list.d/microsoft-prod.list /etc/apt/sources.list.d/microsoft-prod.sources; do
+            if [ -f "$f" ] && grep -q 'packages.microsoft.com/ubuntu/' "$f"; then
+              sudo mv "$f" "${f}.gscad-disabled"
+            fi
+          done
       - name: Install real Chromium and dependencies
         working-directory: ui/editor
         run: npx playwright install --with-deps chromium
