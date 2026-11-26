@@ -1848,7 +1848,11 @@ test('RC1 text placement and double-click component properties persist through m
  await expect(dialog).toBeVisible();
  await dialog.getByTestId('inspector-nominal').fill('4,7к');await dialog.getByTestId('inspector-nominal').press('Enter');
  await dialog.getByRole('button',{name:'Закрыть',exact:true}).click();
- await canvas.focus();await canvas.press('t');
+ // Wait for the modal exit/focus trap to finish before sending a canvas shortcut.
+ await expect(dialog).toBeHidden();
+ await canvas.focus();await expect(canvas).toBeFocused();
+ await canvas.press('t');
+ await expect(canvas).toHaveAttribute('data-tool','text');
  await page.mouse.click(paper.x+paper.width*.3,paper.y+paper.height*.6);
  await page.getByTestId('sheet-text-input').fill('Питание 24 В');
  await page.getByTestId('add-sheet-text').click();
