@@ -78,7 +78,8 @@ function assertModel(doc){
     assert.equal(doc.project.nets.length,15);
     assert.equal(doc.project.nets.reduce((n,v)=>n+v.members.length,0),62);
     assert.equal(sh.graphics.filter(g=>g.kind==='source_b_continuation').length,2);
-    assert.equal(sh.wires.length,78);
+    if(process.env.GSCAD_R35_EXTENDED==='1')assert.ok(sh.wires.length>0&&sh.wires.length<=512);
+    else assert.equal(sh.wires.length,78);
     assert.deepStrictEqual(sh.frame.size_um,[420000,297000]);
     const da=doc.project.components.find(c=>c.refdes==='DA1');
     assert.equal(new Set(doc.project.nets.flatMap(n=>n.members.filter(m=>m.component_id===da.id).map(m=>m.physical_pin_number))).size,16);
@@ -253,7 +254,7 @@ try{
       throw error;
     }
     assert.equal(await page.locator('[data-testid^="symbol-"]').count(),full?23:3);
-    assert.equal(await page.locator('.electric-wires > g[data-net-id]').count(),full?78:1);
+    assert.equal(await page.locator('.electric-wires > g[data-net-id]').count(),full?original.project.sheets[0].wires.length:1);
     if(full){
       assert.equal(await page.locator('.component-labels [data-label-role="reference"]').count(),23);
       assert.equal(await page.locator('.component-labels').getAttribute('data-unplaced-label-count'),'0');
@@ -364,7 +365,7 @@ try{
       assert.match(svg,/data-component-label-count="23"/);
       assert.match(svg,/data-unplaced-label-count="0"/);
       assert.equal((svg.match(/data-label-role="reference"/g)??[]).length,23);
-      assert.equal((svg.match(/data-layer="wires"/g)??[]).length,78);
+      assert.equal((svg.match(/data-layer="wires"/g)??[]).length,original.project.sheets[0].wires.length);
       assert.match(svg,/data-source-net-count="15"/);
     }
     console.log('R9_REAL_NATIVE_SVG_PASS');

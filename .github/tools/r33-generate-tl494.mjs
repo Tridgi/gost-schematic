@@ -32,7 +32,16 @@ try{
  s.applyLayoutPreview(s.newTransaction('functional'),proposal.token);
  const refinement=s.previewRouteRefinement();
  if(refinement.token)s.applyLayoutPreview(s.newTransaction('refinement'),refinement.token);
+ const baseline=assessLayout(s.file,s.engine).quality;
+ if(process.env.GSCAD_R35_EXTENDED==='1'){
+  const extended=s.previewRouteRefinement(true);
+  assert.ok(extended.attempted<=80);
+  if(extended.token)s.applyLayoutPreview(s.newTransaction('extended'),extended.token);
+  console.log('R35_NATIVE_EXTENDED '+JSON.stringify({...extended,token:!!extended.token}));
+ }
  const next=s.file,sh=next.project.sheets[0],quality=assessLayout(next,s.engine).quality;
+ for(const k of ['bends','crossings','lengthUm'])assert.ok(quality[k]<=baseline[k],k);
+ for(const [key,limit] of Object.entries({bends:81,crossings:38,lengthUm:5340345}))assert.ok(quality[key]<=limit,key);
  assert.ok(quality.complete);assert.equal(quality.errors,0);assert.equal(quality.geometryWarnings,0);assert.equal(quality.overflow,0);
  for(const n of p.nets)assert.equal(s.engine.validateNet(n.id).pin_groups.length,1);
  assert.deepEqual(next.project.nets.map(n=>[n.id,n.members]),source.project.nets.map(n=>[n.id,n.members]));

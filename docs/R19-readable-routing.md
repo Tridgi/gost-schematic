@@ -615,3 +615,37 @@ The original source fixture and main remain untouched. The R33 branch
 push enables the existing Windows workflow; its full acceptance mode
 is deliberately limited to R33 branches. No actual Windows PASS is
 claimed until the installed-app job completes.
+
+
+## R35 — bounded alternative tree search
+
+R34's exact head (9e08b09ecf7d0515b567bc507dfd9da34113130b) passed
+main CI, Visual CAD and installed Windows. Its measured baseline is
+15 connected Nets, 23 labels, 81 bends, 38 crossings and 5340345 um.
+
+The existing refinement command retains its default two-pass / 32
+trial behavior. An explicit extended command adds at most 48 trials,
+with three deterministic alternatives: crossing penalty 60000 um
+instead of 20000, bend penalty 15000 um instead of 5000 with a central
+root terminal, and a peripheral root selected by total Manhattan
+distance. Terminal indices, signed leads, obstacle envelopes and
+planner search bounds remain unchanged. The objective weights are
+heuristics, not normative dimensions. For each prioritized Net,
+all alternatives are evaluated on the same detached snapshot.
+A candidate must pass the real geometry and connectivity Pareto gate
+and preserve all already-visible label identities. Winners are ranked
+by actual crossings, then bends, then length. The entire result uses
+the existing revision-bound Apply/Undo; the live model does not change
+during the preview. At most 80 total rebuild attempts; no claim of
+global optimality, and the explicit extended command is synchronous.
+
+Two regression tests cover alternative terminal mapping and signed
+lead preservation, determinism, the actual TL494 baseline comparison,
+complete physical membership, unchanged symbol positions and atomic
+Undo/Redo. The browser evidence gains stage 04-extended-routing and
+canonical Python checks its actual SVG label geometry and PNG300.
+R35 installed Windows CI also uses the extended generated project,
+asserts no baseline regression, and checks its actual persisted wire
+inventory and SVG count instead of imposing a fixed 78-wire count.
+Previous R33/R34 fixed baseline checks remain. No edits to main or the
+frozen E695 source, and no new improvement claimed before CI.

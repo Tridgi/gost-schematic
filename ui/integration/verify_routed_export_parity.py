@@ -101,7 +101,10 @@ def main():
                                  "png_pixels": list(exported.pixels), "dpi": 300,
                                  "svg_sha256": sha(exported.svg), "png_sha256": sha(exported.png),
                                  "warnings": list(exported.warnings)})
-    assert len(report["stages"]) == 3
+    assert [s["name"] for s in report["stages"]] == [
+        "01-inset-routing", "02-functional-routing", "03-refined-routing",
+        "04-extended-routing",
+    ]
     (args.out / "report.json").write_text(json.dumps(report, indent=2)+"\n", encoding="utf-8")
     print("TL494_R32L_NATIVE_PARITY "+json.dumps(report))
 

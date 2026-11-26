@@ -49,6 +49,12 @@ try{
  // R33 verified reference baseline: never trade readability for a new route.
  for(const [key,limit] of Object.entries({bends:81,crossings:38,lengthUm:5340345}))
   assert.ok(stages[2].quality[key]<=limit,`R34 baseline regression: ${key}`);
+ const extended=optimized.previewRouteRefinement(true);
+ assert.ok(extended.attempted<=80);
+ if(extended.token)optimized.applyLayoutPreview(optimized.newTransaction('extended'),extended.token);
+ stages.push({name:'04-extended-routing',file:optimized.file,quality:assessLayout(optimized.file,optimized.engine).quality});
+ for(const k of ['bends','lengthUm','crossings'])assert.ok(stages[3].quality[k]<=stages[2].quality[k],k);
+ assert.deepEqual(stages[3].file.project.sheets[0].instances,stages[2].file.project.sheets[0].instances);
  for(const stage of stages)assert.equal(planComponentLabels(stage.file,stage.file.project.sheets[0].id).labels.length,23);
  // Export through the same browser raster function used in the editor.
  const raster=await build({entryPoints:[join(editor,'src/export/browser-export.ts')],bundle:true,platform:'browser',format:'iife',globalName:'GSCADPreview',write:false,logLevel:'silent'});
@@ -56,7 +62,7 @@ try{
  const page=await browser.newPage();
  await page.addScriptTag({content:raster.outputFiles[0].text});
  mkdirSync(output,{recursive:true});
- const report={schema:1,sourceFile:'ui/fixtures/tl494-source-e695-v2.gscad.json',sourceFileSha256:hash(raw),sourceRevision:p.provenance.source_sha,sourceApproval:'unchanged; detached synthetic test-only copies',fontStatus:'unverified-preview',scope:'browser preview SVG/PNG300, not normative print or native Windows acceptance',counts:{components:23,nets:15,pinrefs:62,da1Pins:16,bGraphics:2},variant:functional.variant,refinementOperations:refinement.operations,stages:[]};
+ const report={schema:1,sourceFile:'ui/fixtures/tl494-source-e695-v2.gscad.json',sourceFileSha256:hash(raw),sourceRevision:p.provenance.source_sha,sourceApproval:'unchanged; detached synthetic test-only copies',fontStatus:'unverified-preview',scope:'browser preview SVG/PNG300, not normative print or native Windows acceptance',counts:{components:23,nets:15,pinrefs:62,da1Pins:16,bGraphics:2},variant:functional.variant,refinementOperations:refinement.operations,extendedOperations:extended.operations,extendedAttempts:extended.attempted,stages:[]};
  for(const stage of stages){
   const {file,quality,name}=stage;
   const session=new AuthoringSession(file),sheet=file.project.sheets[0];

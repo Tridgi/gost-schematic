@@ -772,10 +772,11 @@ export default function App() {
     projectName={document.project.title+(authoringRef.current?' · R3 AUTHORING':' · R2 PREVIEW')} dirty={dirty}
     baseRevision={String(snapshot.revision)} sheets={document.project.sheets.map(s=>({id:s.id,title:s.name}))}
     activeSheetId={activeSheet.id} catalog={catalog} tree={tree} topology={topology}
-    onPreviewRouteRefinement={authoringRef.current&&tool==='select'&&activeSheet.wires.some(w=>w.needs_routing_review)?()=>{
+    onPreviewRouteRefinement={authoringRef.current&&tool==='select'&&activeSheet.wires.some(w=>w.needs_routing_review)?(extended=false)=>{
       const a=authoringRef.current!;
+      if(extended&&!window.confirm('Расширенный поиск проверяет до 48 дополнительных вариантов маршрутов. Запустить?'))return;
       try{
-        const p=a.previewRouteRefinement();
+        const p=a.previewRouteRefinement(extended);
         if(!p.token){setIssue('Не найдено безопасное улучшение маршрутов.');return;}
         if(!window.confirm('Перестроить '+p.operations.length+' маршрутов, отмеченных для проверки? Изгибы: '+p.before.bends+' → '+p.after.bends+', пересечения: '+p.before.crossings+' → '+p.after.crossings+', длина: '+(p.before.lengthUm/1000).toFixed(3)+' → '+(p.after.lengthUm/1000).toFixed(3)+' мм. Применить?')){
           a.discardLayoutPreview(p.token);return;
