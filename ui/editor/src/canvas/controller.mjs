@@ -140,6 +140,9 @@ export function createCanvasController(initial){
     return emit({kind:'placeSymbol',at_um:toWorld(p),
       base_revision:context.wireSnapshot.revision})!==false;
    }
+   if(context.tool==='text'&&p.button===0&&context.canTap){
+    return emit({kind:'placeText',at_um:toWorld(p),base_revision:context.wireSnapshot.revision})!==false;
+   }
    if(context.tool==='junction'&&p.button===0){
     if(hit?.kind!=='ambiguous-segment'||hit.candidates.length<2){
       emit({kind:'rejectJunction',reason:'JUNCTION_SELECTION_REQUIRED'});
@@ -184,6 +187,15 @@ export function createCanvasController(initial){
    }
    if(context.tool==='select'&&p.button===0){
     const id=hit?.kind==='symbol'?hit.instance_id:hit?.kind==='pin'?context.scene.symbols.find(s=>s.component_id===hit.pin.component_id)?.instance_id:null;
+    if(id&&(p.ctrlKey||p.shiftKey)){
+     const prior=selectedGroup.length?[...selectedGroup]:selected?.kind==='symbol'?[selected.instance_id]:[];
+     const ids=prior.includes(id)?prior.filter(v=>v!==id):[...prior,id];
+     if(emit({kind:'selectGroup',instance_ids:ids,base_revision:context.wireSnapshot.revision})===false)return false;
+     selectedGroup=ids.length>1?ids:[];
+     const one=ids.length===1?context.scene.symbols.find(s=>s.instance_id===ids[0]):null;
+     selected=one?{kind:'symbol',instance_id:one.instance_id,component_id:one.component_id,distance_px:0}:null;
+     return true;
+    }
     if(id&&selectedGroup.includes(id)){
      active={kind:'group',pointerId:p.pointerId,point:{x:p.x,y:p.y},cursor:{x:p.x,y:p.y},ids:[...selectedGroup],baseRevision:context.wireSnapshot.revision};
      return true;
