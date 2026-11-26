@@ -303,6 +303,23 @@ export default function App() {
       setIssue('УГО вставлено с новым обозначением и без электрических связей.');
     }catch(e){setIssue('PASTE_FAILED: '+String(e));}
   };
+  const handleDuplicate=()=>{
+    const a=authoringRef.current;
+    if(!a||tool!=='select')return;
+    try{
+      if(groupIds.length>1){
+        const t=a.copyGroup(groupIds),origin=a.suggestGroupPasteOrigin(t,t.anchor,snap);
+        const ids=a.pasteGroup(a.newTransaction('duplicate-group'),t,origin);
+        adoptAuthored();setSelectedId(null);setGroupIds(ids);
+        setIssue('Группа продублирована. Внешние цепи не копируются.');
+      }else if(selectedInst){
+        const t=a.copyComponent(selectedInst.id),origin=a.suggestPasteOrigin(t,t.origin_um,snap);
+        const id=a.pasteComponent(a.newTransaction('duplicate-component'),t,origin);
+        adoptAuthored();setGroupIds([]);setSelectedId(id);
+        setIssue('Создана независимая копия УГО.');
+      }
+    }catch(e){setIssue('DUPLICATE_FAILED: '+String(e));}
+  };
   const handleNew=()=>{
     if(nativeDesktopAvailable()&&nativeSaveBusyRef.current){
       setIssue('NATIVE_FILE_BUSY: завершите сохранение перед созданием проекта.');return;
@@ -797,6 +814,7 @@ export default function App() {
       }catch(e){setIssue('TEXT_FAILED: '+String(e));return false;}
       return true;
     }}
+    onDuplicate={authoringRef.current&&(selectedInst||groupIds.length>1)&&tool==='select'?handleDuplicate:undefined}
     onSelectAll={tool==='select'?()=>{setGroupIds(instances.length>1?instances.map(i=>i.id):[]);setSelectedId(instances.length===1?instances[0].id:null);}:undefined}
     onPreviewDetourRefinement={authoringRef.current&&tool==='select'&&activeSheet.wires.some(w=>w.needs_routing_review&&w.vertices.length>=3)?(crossingOnly=false)=>{
       const a=authoringRef.current!;
@@ -946,10 +964,13 @@ export default function App() {
         За пределами листа: {overflow.symbols.length} УГО, {overflow.wires.length} проводников,
         {overflow.graphics.length} графических объектов. Проверьте расположение и экспорт.
       </div>}
-      {issue.startsWith('REROUTE_REVIEW_REQUIRED:')?<div className="gscad-notice-warning" role="status" data-testid="reroute-warning">
+      {issue.startsWith('REROUTE_CANCELLED:')?<div className="gscad-notice-warning" role="status" data-testid="reroute-cancelled">
+        <span>Перемещение отменено. Схема не изменена.</span>
+        <button type="button" aria-label="Закрыть уведомление" onClick={()=>setIssue('Изменение отменено.')}>×</button>
+      </div>:issue.startsWith('REROUTE_REVIEW_REQUIRED:')?<div className="gscad-notice-warning" role="status" data-testid="reroute-warning">
         <span>⚠</span><span>Связи перестроены. Электрическая модель сохранена; проверьте маршруты.</span>
         <button type="button" aria-label="Закрыть уведомление" onClick={()=>setIssue('Маршруты доступны для проверки в диагностике.')}>×</button>
-      </div>:!issue.startsWith('REROUTE_CANCELLED:')&&/(?:NET_CONFLICT|SOURCE_LOCKED|STALE_|UNKNOWN_|REROUTE_|MISMATCH|NOT_READY|ERROR|FAILED|DUPLICATE_|INVALID_|NO_SAFE_PASTE)/.test(issue)
+      </div>:/(?:NET_CONFLICT|SOURCE_LOCKED|STALE_|UNKNOWN_|REROUTE_|MISMATCH|NOT_READY|ERROR|FAILED|DUPLICATE_|INVALID_|NO_SAFE_PASTE)/.test(issue)
         && <div className="gscad-error-banner" role="alert">{issue}</div>}
     </div>}
     tool={tool} gridVisible={grid} snapEnabled={snap} zoomPercent={Math.round(zoom*100)}
