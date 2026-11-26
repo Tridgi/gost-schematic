@@ -66,4 +66,19 @@ function projectToCanvasScene(file,sheetId){
  const clone=v=>JSON.parse(JSON.stringify(v));
  return {symbols:sourceSymbols,wires:clone(sheet.wires),junctions:clone(sheet.junctions),splices:clone(sheet.splices),graphics:visualGraphics};
 }
-export {projectToCanvasScene};
+/** Pure preview projection of the exact selected catalog symbol. The detached
+ * scene is never inserted into the controller, electrical model or export. */
+function projectPlacementSymbol(file,sheetId,symbolId){
+ const p=file.project,sheet=p.sheets.find(s=>s.id===sheetId);
+ const symbol=p.symbol_definitions.find(s=>s.id===symbolId);
+ const part=p.part_definitions.find(p=>p.id===symbol?.part_id);
+ const layer=sheet?.layers.find(l=>l.kind==='electrical');
+ if(!sheet||!symbol||!part||!layer||symbol.status==='deprecated')return null;
+ const component={id:'placement-preview-component',part_id:part.id};
+ const instance={id:'placement-preview-instance',component_id:component.id,
+  symbol_id:symbol.id,origin_um:[0,0],rotation_deg:0,mirror_x:false,layer_id:layer.id};
+ const detached={...file,project:{...p,components:[component],nets:[],
+  sheets:[{...sheet,instances:[instance],wires:[],junctions:[],splices:[],graphics:[]}]}};
+ return projectToCanvasScene(detached,sheetId).symbols[0];
+}
+export {projectToCanvasScene,projectPlacementSymbol};
