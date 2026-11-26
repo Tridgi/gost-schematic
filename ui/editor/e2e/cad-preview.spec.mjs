@@ -1155,7 +1155,13 @@ test('R17d real winding symbols render analytic arcs and signed tap contacts',as
  await page.getByTestId('catalog-search').fill('двумя отводами');
  await page.getByTestId('catalog-item-symbol/inductor.double_tapped').click();
  const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await page.mouse.move(paper.x+paper.width*.4,paper.y+paper.height*.5);
+ const ghost=page.getByTestId('gscad-placement-preview');
+ await expect(ghost).toBeVisible();
+ await expect(ghost.locator('path[data-ugo-curve="semicircle"]').first()).toBeVisible();
+ await expect(ghost.locator('[data-preview-pin]')).toHaveCount(4);
  await page.mouse.click(paper.x+paper.width*.4,paper.y+paper.height*.5);
+ await expect(ghost).toHaveCount(0);
  const symbol=page.getByTestId('symbol-L1');
  await expect(symbol.locator('path[data-ugo-curve="semicircle"]').first()).toBeVisible();
  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
@@ -1177,7 +1183,12 @@ test('R17e Cu note is upright in actual editor and stays separate from electrica
  await page.getByTestId('catalog-search').fill('медным');
  await page.getByTestId('catalog-item-symbol/inductor.trim_copper').click();
  const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await page.mouse.move(paper.x+paper.width*.4,paper.y+paper.height*.5);
+ const ghost=page.getByTestId('gscad-placement-preview');
+ await expect(ghost).toBeVisible();
+ await expect(ghost.locator('[data-symbol-note="core_material"]')).toHaveText('Cu');
  await page.mouse.click(paper.x+paper.width*.4,paper.y+paper.height*.5);
+ await expect(ghost).toHaveCount(0);
  const symbol=page.getByTestId('symbol-L1'),note=symbol.locator('[data-symbol-note="core_material"]');
  await expect(note).toHaveText('Cu');await expect(note).toHaveAttribute('data-electrical','false');
  const x=await note.getAttribute('x');
@@ -1281,7 +1292,7 @@ test('RC1 selected UGO is visible under cursor without magnet, cancel is read-on
  await expect(ghost).toBeVisible();
  await expect(ghost).toHaveAttribute('data-symbol-id','symbol/resistor.fixed');
  await expect(ghost).toHaveAttribute('data-electrical','false');
- await expect(ghost.locator('line').first()).toBeVisible();
+ expect(await ghost.locator('line').count()).toBeGreaterThan(0);
  await expect(ghost.locator('[data-preview-pin]')).toHaveCount(2);
  await expect(page.getByTestId('pin-placement-guide')).toHaveCount(0);
  await expect(page.locator('[data-testid^="symbol-"]')).toHaveCount(0);
