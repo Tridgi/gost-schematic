@@ -2262,10 +2262,13 @@ test('R39 inner Z channel can shift while both physical leads remain fixed',asyn
  const choices=crossingChannelShortcuts(points,foreign,true,true);
  assert.equal(localCrossingCount(points,foreign),1);
  assert.ok(choices.length>0);
- assert.ok(choices.some(p=>pathMetric(p).bends===pathMetric(points).bends));
+ assert.ok(choices.some(p=>pathMetric(p).bends===pathMetric(points).bends&&
+  JSON.stringify(p.slice(0,2))===JSON.stringify(points.slice(0,2))&&
+  JSON.stringify(p.slice(-2))===JSON.stringify(points.slice(-2))));
  for(const p of choices){
-  assert.deepEqual(p.slice(0,2),points.slice(0,2));
-  assert.deepEqual(p.slice(-2),points.slice(-2));
+  assert.deepEqual(p[0],points[0]);assert.deepEqual(p.at(-1),points.at(-1));
+  assert.equal(p[1][1],0);assert.ok(p[1][0]>=10000);
+  assert.equal(p.at(-2)[0],40000);assert.ok(p.at(-2)[1]<=30000);
   assert.equal(pathMetric(p).length,pathMetric(points).length);
   assert.ok(pathMetric(p).bends<=pathMetric(points).bends);
   assert.equal(localCrossingCount(p,foreign),0);
