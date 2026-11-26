@@ -103,7 +103,7 @@ def main():
                                  "warnings": list(exported.warnings)})
     assert [s["name"] for s in report["stages"]] == [
         "01-inset-routing", "02-functional-routing", "03-refined-routing",
-        "04-extended-routing", "05-common-trunks",
+        "04-extended-routing", "05-common-trunks", "06-placement-profiles",
     ]
     (args.out / "report.json").write_text(json.dumps(report, indent=2)+"\n", encoding="utf-8")
     print("TL494_R32L_NATIVE_PARITY "+json.dumps(report))
