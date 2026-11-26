@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import type { PlacementHint } from '../authoring/session';
 import type { ProjectFileV2 } from '../model/contract';
 import type { WiringSnapshot } from '../wires/manual-wire';
-import { projectToCanvasScene, type CanvasScene, type CanvasSymbol } from './scene-projection.mjs';
+import { projectToCanvasScene, projectPlacementSymbol, type CanvasScene, type CanvasSymbol } from './scene-projection.mjs';
 import { pinWorld, screen, zoom, world, snap, type Camera, type PointUm, type ScreenPoint } from './precision.mjs';
 import { createCanvasController, type CanvasController, type CanvasIntent, type CanvasContext } from './controller.mjs';
 
@@ -26,6 +26,8 @@ export type CanvasViewportProps = {
   selectionReset:number;
   canEdit?:boolean;
   placementHint?:(origin:readonly number[])=>PlacementHint|null;
+  placementSymbolId?:string|null;
+  onCancelPlacement?:()=>void;
   onCopy?:()=>void;
   onPaste?:()=>void;
   onFitPage?:()=>void;
@@ -64,11 +66,23 @@ function SymbolInk({symbol,camera}:{symbol:CanvasSymbol;camera:Camera}){
  </>;
 }
 /** Read-only SVG viewport. The canonical physical print/export belongs to #124. */
-export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapEnabled,onIntent,onZoomPercent,zoomRequest,fitRequest,selectedInstanceId:hostSelectedId,selectedGroupIds,selectionReset,canEdit,placementHint,onCopy,onPaste,onFitPage}:CanvasViewportProps){
+export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapEnabled,onIntent,onZoomPercent,zoomRequest,fitRequest,selectedInstanceId:hostSelectedId,selectedGroupIds,selectionReset,canEdit,placementHint,placementSymbolId,onCancelPlacement,onCopy,onPaste,onFitPage}:CanvasViewportProps){
   const svgRef=useRef<SVGSVGElement|null>(null);
   const [size,setSize]=useState({width:0,height:0});
   const [revision,setRevision]=useState(0);
   const [placementPointer,setPlacementPointer]=useState<ScreenPoint|null>(null);
+  const placementTemplate=useMemo(()=>tool==='place'&&placementSymbolId?projectPlacementSymbol(document,sheetId,placementSymbolId):null,
+    [document,sheetId,tool,placementSymbolId]);
+  useEffect(()=>{
+    if(tool!=='place'){setPlacementPointer(null);return;}
+    const cancel=(e:KeyboardEvent)=>{
+      if(e.key==='Escape'&&!e.defaultPrevented&&!e.isComposing&&!e.ctrlKey&&!e.metaKey&&!e.altKey){
+        e.preventDefault();setPlacementPointer(null);onCancelPlacement?.();
+      }
+    };
+    window.addEventListener('keydown',cancel,true);
+    return ()=>window.removeEventListener('keydown',cancel,true);
+  },[tool,onCancelPlacement]);
   const [contextMenu,setContextMenu]=useState<{x:number;y:number;kind:'symbol'|'group'|'blank';revision:number}|null>(null);
   const menuRef=useRef<HTMLDivElement|null>(null);
   const cameraRef=useRef<Camera>({...DEFAULT_CAMERA});
@@ -186,10 +200,13 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
   cameraRef.current=camera;
   // Derive guide from current tool, model and pointer; no post-render reset race.
   let placementGuide:PlacementHint|null=null;
-  if(tool==='place'&&placementHint&&placementPointer){
-    try{placementGuide=placementHint(snap(world(placementPointer,camera),document.project.settings.grid_step_um,snapEnabled));}
+  const placementOrigin=tool==='place'&&placementPointer?snap(world(placementPointer,camera),document.project.settings.grid_step_um,snapEnabled):null;
+  if(placementOrigin&&placementHint){
+    try{placementGuide=placementHint(placementOrigin);}
     catch{placementGuide=null;}
   }
+  const placementGhost:CanvasSymbol|null=placementTemplate&&placementOrigin?
+    {...placementTemplate,origin_um:placementGuide?[...placementGuide.origin]:[...placementOrigin]}:null;
   const local=useCallback((e:{clientX:number;clientY:number}):ScreenPoint=>{
     const svg=svgRef.current,ctm=svg?.getScreenCTM();
     if(svg&&ctm){const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;
@@ -199,7 +216,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
   },[]);
   const eventPoint=(e:ReactPointerEvent<SVGSVGElement>)=>({...local(e),pointerId:e.pointerId,button:e.button});
   const down=(e:ReactPointerEvent<SVGSVGElement>)=>{
-    setContextMenu(null);setPlacementPointer(null);
+    setContextMenu(null);setPlacementPointer(tool==='place'?local(e):null);
     if(controller.down(eventPoint(e))){
       e.preventDefault();e.currentTarget.focus();
       if(!e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.setPointerCapture(e.pointerId);
@@ -208,7 +225,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
   };
   const move=(e:ReactPointerEvent<SVGSVGElement>)=>{
     controller.move(eventPoint(e));
-    setPlacementPointer(tool==='place'&&placementHint?local(e):null);
+    setPlacementPointer(tool==='place'?local(e):null);
     invalidate();
   };
   const up=(e:ReactPointerEvent<SVGSVGElement>)=>{
@@ -305,9 +322,10 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     data-camera-ready={fittedRef.current!==null?'true':'false'} data-tool={tool}
     data-testid="gscad-signed-svg-canvas" aria-label="Редактор электрической схемы, координаты в микрометрах"
     viewBox={`0 0 ${Math.max(1,g2(size.width))} ${Math.max(1,g2(size.height))}`}
-    onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={()=>setPlacementPointer(null)}
-    onPointerCancel={e=>{controller.key('Escape');if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);invalidate()}}
-    onWheel={e=>{setPlacementPointer(null);wheel(e)}} onContextMenu={openContextMenu}
+    onPointerDown={down} onPointerMove={move} onPointerUp={up}
+    onPointerEnter={e=>{if(tool==='place')setPlacementPointer(local(e));}} onPointerLeave={()=>setPlacementPointer(null)}
+    onPointerCancel={e=>{setPlacementPointer(null);controller.key('Escape');if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);invalidate()}}
+    onWheel={e=>{setPlacementPointer(tool==='place'?local(e):null);wheel(e)}} onContextMenu={openContextMenu}
     onKeyDown={e=>{
       // Never turn OS/browser shortcuts, held keys or IME composition into CAD edits.
       if(e.defaultPrevented||e.ctrlKey||e.metaKey||e.altKey||e.repeat||e.nativeEvent.isComposing)return;
@@ -409,6 +427,16 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
       <circle cx={screen(placementGuide.origin,camera).x} cy={screen(placementGuide.origin,camera).y} r={2.5} fill="#29976a"/>
       <text x={screen(placementGuide.to,camera).x+7} y={screen(placementGuide.to,camera).y-7}
         fill="#16754f" fontSize={11}>Выравнивание вывода {placementGuide.newPin}</text>
+    </g>}
+    {placementGhost&&<g data-testid="gscad-placement-preview" data-electrical="false"
+      data-symbol-id={placementSymbolId} data-origin-x-um={placementGhost.origin_um[0]} data-origin-y-um={placementGhost.origin_um[1]}
+      aria-label="Предпросмотр размещения УГО" pointerEvents="none" fill="none" stroke="#1469a8" opacity={.95}>
+      <SymbolInk symbol={placementGhost} camera={camera}/>
+      {placementGhost.pins.map(pin=>{
+        const p=screen(pinWorld(placementGhost,pin.physical_pin_number).at_um,camera);
+        return <circle key={pin.physical_pin_number} data-preview-pin={pin.physical_pin_number} cx={p.x} cy={p.y} r={3}
+          fill="#fff" stroke="#1469a8" strokeWidth={1.5}/>;
+      })}
     </g>}
     {ghost&&<g data-testid="gscad-symbol-drag-preview" data-electrical="false"
       aria-label="Предпросмотр перемещения УГО" pointerEvents="none" fill="none" stroke="#d58c27"
