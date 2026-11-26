@@ -2283,3 +2283,38 @@ test('R39 empty crossing search is atomic for already straight independent route
  assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
  for(const id of ids)assert.equal(s.engine.validateNet(id).pin_groups.length,1);
 });
+
+
+test('R39 real two-Net crossing preview preserves foreign geometry and atomically removes X',()=>{
+ const s=newSession();
+ for(const p of [[50000,50000],[200000,130000],[97000,105000],[153000,105000]])
+  s.place(s.newTransaction('cross-place'),'symbol/resistor.fixed',p);
+ const [a,b,c,d]=s.file.project.components.map(c=>c.id);
+ s.connect(s.newTransaction('cross-a'),pin(a,'2'),pin(b,'1'));
+ s.connect(s.newTransaction('cross-b'),pin(c,'2'),pin(d,'1'));
+ const doc=s.file,sh=doc.project.sheets[0];
+ const [target,foreign]=doc.project.nets.map(n=>n.id);
+ const w=sh.wires.find(w=>w.net_id===target),other=sh.wires.find(w=>w.net_id===foreign);
+ assert.ok(w&&other);
+ const setPath=(wire,points,first,last)=>{
+  wire.vertices=points.map((at_um,i)=>({id:wire.id+':v'+i,at_um,
+   anchor:i===0?{kind:'pin',...first}:i===points.length-1?{kind:'pin',...last}:{kind:'bend'}}));
+  wire.segments=wire.vertices.slice(1).map((v,i)=>({id:wire.id+':s'+i,from_vertex_id:wire.vertices[i].id,to_vertex_id:v.id}));
+ };
+ setPath(w,[[58000,50000],[80000,50000],[80000,80000],[120000,80000],[120000,130000],[192000,130000]],pin(a,'2'),pin(b,'1'));
+ setPath(other,[[105000,105000],[145000,105000]],pin(c,'2'),pin(d,'1'));
+ w.needs_routing_review=true;other.needs_routing_review=false;
+ const session=new AuthoringSession(doc),p=session.previewDetourRefinement(true);
+ assert.equal(p.before.crossings,1);assert.ok(p.token);
+ assert.equal(p.after.crossings,0);assert.ok(p.after.bends<=p.before.bends);assert.ok(p.after.lengthUm<=p.before.lengthUm);
+ assert.deepEqual(session.file,doc);assert.equal(session.revision,0);
+ const next=session.layoutPreviewDocument(p.token),ns=next.project.sheets[0],nw=ns.wires.find(v=>v.id===w.id);
+ assert.deepEqual(ns.wires.find(v=>v.id===other.id),other);
+ assert.deepEqual(nw.vertices[0],w.vertices[0]);assert.deepEqual(nw.vertices.at(-1),w.vertices.at(-1));
+ assert.deepEqual(ns.instances,sh.instances);assert.deepEqual(ns.junctions,sh.junctions);assert.deepEqual(ns.splices,sh.splices);
+ assert.deepEqual(next.project.nets.map(n=>[n.id,n.members]),doc.project.nets.map(n=>[n.id,n.members]));
+ session.applyLayoutPreview(session.newTransaction('remove-crossing'),p.token);
+ for(const id of [target,foreign])assert.equal(session.engine.validateNet(id).pin_groups.length,1);
+ assert.equal(session.undo(),true);assert.deepEqual(session.file,doc);
+ assert.equal(session.redo(),true);assert.deepEqual(session.file,next);
+});
