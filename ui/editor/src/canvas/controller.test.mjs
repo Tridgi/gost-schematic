@@ -306,3 +306,28 @@ test('R16 context target rejects ambiguous overlap instead of picking an arbitra
  assert.equal(c.contextSelect(loc([10000,10000])),null);
  assert.equal(c.getState().selected,null);assert.deepEqual(events,[]);
 });
+
+
+test('RC1 pointer snaps only along selected segment and rejects stale wire drafts',()=>{
+ const w={id:'W',net_id:'N',vertices:[{id:'a',at_um:[20000,20000]},{id:'b',at_um:[50000,20000]}],segments:[{id:'s',from_vertex_id:'a',to_vertex_id:'b'}]};
+ const scene={symbols,wires:[w],junctions:[]},snapshot={project_id:'toy',source_topology_hash:'locked',revision:2,wires:[w]};
+ const events=[],c=make('wire',i=>{events.push(i);return true;},scene,snapshot);
+ c.setContext({canTap:true});c.down(loc([10000,10000]));
+ c.move(loc([30300,20300]));
+ assert.deepEqual(c.tapPreview(),{kind:'segment',wire_id:'W',segment_id:'s',at_um:[30000,20000]});
+ c.down(loc([30300,20300]));
+ assert.equal(events.at(-1).kind,'commitWire');assert.deepEqual(events.at(-1).target.at_um,[30000,20000]);
+ assert.equal(c.tapPreview(),null);
+ c.down(loc([10000,10000]));c.setContext({wireSnapshot:{...snapshot,revision:3}});
+ assert.equal(c.getState().draft,null);
+});
+test('RC1 Ctrl and Shift click toggle selection without starting a drag',()=>{
+ const shape=(id,x)=>({instance_id:'S-'+id,component_id:id,origin_um:[x,10000],rotation_deg:0,mirror_x:false,pins:[],strokes:[{from_um:[-2000,0],to_um:[2000,0]}]});
+ const scene={symbols:[shape('R1',10000),shape('R2',20000)],wires:[],junctions:[]},events=[];
+ const c=make('select',i=>{events.push(i);return true;},scene);
+ c.down(loc([10000,10000]));c.up(loc([10000,10000]));
+ c.down({...loc([20000,10000]),ctrlKey:true});
+ assert.deepEqual(c.getState().selectedGroup,['S-R1','S-R2']);assert.equal(c.getState().drag,null);
+ c.down({...loc([10000,10000]),shiftKey:true});
+ assert.equal(c.getState().selected.instance_id,'S-R2');assert.deepEqual(c.getState().selectedGroup,[]);
+});
