@@ -58,7 +58,7 @@ function containedSymbols(scene,camera,rect){
 }
 function orthogonal(from,to){point(from);point(to);if(same(from,to))return [from];const corner=[to[0],from[1]];return [from,corner,to].filter((p,i,a)=>i===0||!same(p,a[i-1]))}
 export function createCanvasController(initial){
- let context=initial,active=null,draft=null,hover=null,selected=null,selectedGroup=[];
+ let context=initial,active=null,draft=null,hover=null,selected=null,selectedGroup=[],tapTarget=null;
  const emit=i=>{if(typeof context.onIntent!=='function')throw Error('MISSING_COMMAND_DISPATCH');return context.onIntent(i)};
  const toWorld=p=>snap(world(p,context.camera),context.gridUm,context.snapEnabled);
  const tapPoint=(hit,p)=>{
@@ -86,6 +86,8 @@ export function createCanvasController(initial){
  const getState=()=>({camera:{...context.camera},draft:draft?{...draft,bends_um:draft.bends_um.map(p=>[...p])}:null,drag:active?{kind:active.kind,pointerId:active.pointerId}:null,hover,selected,selectedGroup:[...selectedGroup]});
  return {
   getState,
+  tapPreview(){return draft&&tapTarget?{...tapTarget,at_um:[...tapTarget.at_um]}:null;},
+  clearTapPreview(){tapTarget=null;},
   symbolDragPreview,
   marqueePreview(){return active?.kind==='marquee'?selectionRect(active.point,active.cursor):null;},
   groupDragPreview(){
@@ -94,9 +96,10 @@ export function createCanvasController(initial){
    return delta.some(Boolean)?{instance_ids:[...active.ids],delta_um:delta}:null;
   },
   setContext(next){
+    if(next.wireSnapshot&&next.wireSnapshot.revision!==context.wireSnapshot.revision){draft=null;tapTarget=null;}
     if(next.tool!==undefined&&next.tool!==context.tool){
       active=null;
-      if(next.tool!=='wire')draft=null;
+      if(next.tool!=='wire'){draft=null;tapTarget=null;}
     }
     context={...context,...next};
     selectedGroup=selectedGroup.filter(id=>context.scene.symbols.some(s=>s.instance_id===id));
@@ -235,7 +238,7 @@ export function createCanvasController(initial){
     active.point={x:p.x,y:p.y};return true;
    }
    if(['symbol','marquee','group'].includes(active?.kind)){active.cursor={x:p.x,y:p.y};return true;}
-   if(draft){hover=hitTest(context.scene,context.camera,p);const tap=context.canTap?tapPoint(hover,p):null;draft={...draft,cursor_um:tap?.at_um??toWorld(p)};return true}
+   if(draft){hover=hitTest(context.scene,context.camera,p);tapTarget=context.canTap?tapPoint(hover,p):null;draft={...draft,cursor_um:tapTarget?.at_um??toWorld(p)};return true}
    hover=hitTest(context.scene,context.camera,p);return false;
   },
   up(p){
@@ -297,7 +300,7 @@ export function createCanvasController(initial){
    if(k==='Escape'){
     if(draft)emit({kind:'cancelWire',source:draft.source});
     else if(!active&&context.tool==='select'&&(selected||selectedGroup.length)){selected=null;selectedGroup=[];emit({kind:'select',target:null});}
-    draft=null;active=null;return true;
+    draft=null;tapTarget=null;active=null;return true;
    }
    if(k==='Enter'&&draft){
     const prev=draft.bends_um.at(-1)||draft.from_um;
