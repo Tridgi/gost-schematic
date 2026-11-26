@@ -867,11 +867,35 @@ export class AuthoringSession {
       const segments=sh.wires.flatMap(w=>w.vertices.slice(1).map((v,i)=>({w,i,a:w.vertices[i],b:v,box:box(w.vertices[i].at_um,v.at_um)})));
       if(segments.length>512||obstacles.length>128)reject('LAYOUT_SIZE_LIMIT');
       const margin=sh.frame.margin_um,[width,height]=sh.frame.size_um;
+      const annotations:Bounds[]=[];
+      for(const g of sh.graphics)for(let k=1;k<g.points_um.length;k++){
+        const b=box(g.points_um[k-1],g.points_um[k]),pad=g.stroke_um/2;
+        annotations.push({minX:b.minX-pad,minY:b.minY-pad,maxX:b.maxX+pad,maxY:b.maxY+pad});
+      }
+      for(const l of [...sh.texts,...sh.labels]){
+        const h='height_um' in l?l.height_um:3500;
+        const p=xy(l.at_um),span=(l.text.length+1)*h;
+        if('rotation_deg' in l&&l.rotation_deg!==0){
+          annotations.push({minX:p[0]-span,minY:p[1]-span,maxX:p[0]+span,maxY:p[1]+span});
+        }else annotations.push({minX:p[0],minY:p[1]-2*h,maxX:p[0]+span,maxY:p[1]+h});
+      }
+      if(annotations.length>128||bends.length>64)reject('LAYOUT_SIZE_LIMIT');
+      const intersects=(a:Bounds,b:Bounds)=>a.minX<=b.maxX&&b.minX<=a.maxX&&a.minY<=b.maxY&&b.minY<=a.maxY;
       const accept=(path:MutablePoint[])=>{
+        if(path.length>256)return false;
+        for(let i=1;i<path.length;i++){
+          if(eq(path[i-1],path[i])||path[i-1][0]!==path[i][0]&&path[i-1][1]!==path[i][1])return false;
+          for(let j=i+2;j<path.length;j++)if(intersects(box(path[i-1],path[i]),box(path[j-1],path[j])))return false;
+          if(i>=2){
+            const [a,b,c]=path.slice(i-2,i+1);
+            if(a[0]===b[0]&&b[0]===c[0]&&(b[1]-a[1])*(c[1]-b[1])<0||
+               a[1]===b[1]&&b[1]===c[1]&&(b[0]-a[0])*(c[0]-b[0])<0)return false;
+          }
+        }
         if(path.some(v=>v[0]<margin||v[0]>width-margin||v[1]<margin||v[1]>height-margin))return false;
         for(let i=1;i<path.length;i++){
           const u=path[i-1],v=path[i],b=box(u,v);
-          if(obstacles.some(o=>!(i===1&&o.id===start.component_id)&&!separated(b,o.box,0)))return false;
+          if(obstacles.some(o=>!(i===1&&o.id===start.component_id)&&intersects(b,o.box))||annotations.some(o=>intersects(b,o)))return false;
           if([...sh.junctions,...sh.splices].some(o=>inside(o.at_um,b)))return false;
           for(const seg of segments){
             if(separated(b,seg.box,0)&&!(b.minX<=seg.box.maxX&&seg.box.minX<=b.maxX&&b.minY<=seg.box.maxY&&seg.box.minY<=b.maxY))continue;
