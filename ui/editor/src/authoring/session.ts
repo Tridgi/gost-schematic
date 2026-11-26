@@ -2016,7 +2016,7 @@ export class AuthoringSession {
             if(!terminal||!sameAnchor(terminal.anchor,n.anchor))return false;
           }
           for(const v of foreign){
-            if(!hit(bounds,v.box))continue;
+            if(!hit(bounds,v.box)){if(!separated(bounds,v.box,1000))return false;continue}
             const lo=rect([Math.max(bounds.minX,v.box.minX),Math.max(bounds.minY,v.box.minY)],
               [Math.min(bounds.maxX,v.box.maxX),Math.min(bounds.maxY,v.box.maxY)]);
             if(lo.minX!==lo.maxX||lo.minY!==lo.maxY)return false;
@@ -2024,7 +2024,7 @@ export class AuthoringSession {
             if(terminal&&v.net===w.net_id&&[v.a,v.b].some(q=>same(q.at_um,at)&&sameAnchor(q.anchor,terminal.anchor)))continue;
             // Do not turn a crossing into a tap or allow same-Net contact.
             const h=a[1]===b[1],vh=v.a.at_um[1]===v.b.at_um[1];
-            if(v.net===w.net_id||h===vh||[a,b,v.a.at_um,v.b.at_um].some(q=>same(q,at)))return false;
+            if(v.net===w.net_id||h===vh||[a,b,v.a.at_um,v.b.at_um].some(q=>Math.abs(q[0]-at[0])+Math.abs(q[1]-at[1])<=1000))return false;
           }
         }
         return true;
