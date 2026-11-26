@@ -40,6 +40,7 @@ jobs:
       CARGO_BUILD_JOBS: '2'
       GSCAD_R9_BINARY_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       GSCAD_R33_ACCEPT_FULL: ${{ (startsWith(github.head_ref || github.ref_name, 'ui/r33-') || startsWith(github.head_ref || github.ref_name, 'ui/r34-') || startsWith(github.head_ref || github.ref_name, 'ui/r35-')) && '1' || '0' }}
+      GSCAD_R35_EXTENDED: ${{ startsWith(github.head_ref || github.ref_name, 'ui/r35-') && '1' || '0' }}
     steps:
       - uses: actions/checkout@v4
         with:
