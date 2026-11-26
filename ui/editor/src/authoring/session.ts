@@ -19,7 +19,7 @@ import {
 } from '../wires/manual-wire';
 import {loadProjectWires} from '../wires/project-v2-adapter';
 import {validateNotes,noteLayout} from '../model/symbol-notes.mjs';
-import {planOrthogonalTree} from './orthogonal-tree';
+import {planOrthogonalTree,type TreeStrategy} from './orthogonal-tree';
 import {assessLayout,improvesLayout,preservesLayoutSafety,type LayoutQuality} from './layout-quality';
 import {curveGeometry} from '../model/curves.mjs';
 import {planComponentLabels} from '../canvas/component-labels';
@@ -1396,12 +1396,13 @@ export class AuthoringSession {
   }
   /** Reconstruct a connected Net as a bounded obstacle-aware rectilinear
    * tree. Signed pin membership, component poses and other Nets are fixed. */
-  buildNetTree(tx:Tx,netId:string,initial=false,controlled=false):{pins:number;wires:number;junctions:number;lengthUm:number;bends:number}{
+  buildNetTree(tx:Tx,netId:string,initial=false,controlled=false,strategy:TreeStrategy='default'):{pins:number;wires:number;junctions:number;lengthUm:number;bends:number}{
     let result:{pins:number;wires:number;junctions:number;lengthUm:number;bends:number}|undefined;
     this.edit(tx,draft=>{
       const sh=draft.project.sheets[indexOfSheet(draft)];
       if(sh.instances.length>128||sh.wires.reduce((n,w)=>n+w.segments.length,0)>512)reject('LAYOUT_SIZE_LIMIT');
       const refinement=!initial&&controlled;
+      if(strategy!=='default'&&(!refinement||!['crossing-first','bend-first','peripheral-root'].includes(strategy)))reject('TREE_STRATEGY_UNSUPPORTED');
       // Explicit controlled refinement can protect the same bounded visual
       // annotations as initial routing. Ordinary geometry edits fail closed.
       if(sh.texts.length||(!initial&&!refinement&&(sh.labels.length||sh.graphics.length))||
@@ -1496,8 +1497,8 @@ export class AuthoringSession {
       try{
         // For a route already connected, compare the weighted crossing-aware
         // path against actual existing geometry via the full Pareto gate.
-        if(refinement&&foreignSegments.length)
-          plan=planOrthogonalTree(ports,[...boxes.map(o=>o.box),...fixed,...reservations],frame,foreignSegments,true);
+        if(refinement)
+          plan=planOrthogonalTree(ports,[...boxes.map(o=>o.box),...fixed,...reservations],frame,foreignSegments,true,strategy);
         else{
           plan=planOrthogonalTree(ports,[...boxes.map(o=>o.box),...foreign],frame,[],crossingMode);
           if(!plan&&crossingMode&&foreignSegments.length)
@@ -1887,7 +1888,7 @@ export class AuthoringSession {
   }
   /** Bounded read-only refinement of connected routes marked for review.
    * The entire accepted sequence is a single revision-bound proposal. */
-  previewRouteRefinement():LayoutPreview{
+  previewRouteRefinement(extended=false):LayoutPreview{
     this.layoutPlan=null;
     const base=this.file,sh=base.project.sheets[indexOfSheet(base)];
     if(sh.instances.length>128||sh.wires.reduce((n,w)=>n+w.segments.length,0)>512)reject('LAYOUT_SIZE_LIMIT');
@@ -1902,35 +1903,68 @@ export class AuthoringSession {
       return n.members.length>=2&&n.members.length<=32&&n.members.every(p=>local.has(p.component_id))&&
         wires.length>0&&wires.every(w=>w.needs_routing_review)&&this.engine.validateNet(n.id).pin_groups.length===1;
     });
-    for(let pass=0;pass<2&&attempted<32;pass++){
-      let changed=0;
+    const rank=()=>{
       const counts=new Map<string,number>();
       for(const k of assessment.crossingKeys??[]){
         const [a,b]=JSON.parse(k) as [string,string,number,number];
         counts.set(a,(counts.get(a)??0)+1);if(a!==b)counts.set(b,(counts.get(b)??0)+1);
       }
-      const current=best.file.project.sheets[indexOfSheet(best.file)];
+      const doc=best.file,current=doc.project.sheets[indexOfSheet(doc)];
       const length=(id:string)=>current.wires.filter(w=>w.net_id===id).reduce((sum,w)=>
         sum+w.vertices.slice(1).reduce((n,v,i)=>n+Math.abs(v.at_um[0]-w.vertices[i].at_um[0])+Math.abs(v.at_um[1]-w.vertices[i].at_um[1]),0),0);
-      const ordered=[...eligible].sort((a,b)=>(counts.get(b.id)??0)-(counts.get(a.id)??0)||length(b.id)-length(a.id)||a.id.localeCompare(b.id));
-      for(const n of ordered){
+      return [...eligible].sort((a,b)=>(counts.get(b.id)??0)-(counts.get(a.id)??0)||length(b.id)-length(a.id)||a.id.localeCompare(b.id));
+    };
+    type Candidate={session:AuthoringSession;after:ReturnType<typeof assessLayout>;labels:Set<string>;strategy:TreeStrategy};
+    const evaluate=(n:Net,strategy:TreeStrategy):Candidate|undefined=>{
+      attempted++;
+      const trial=new AuthoringSession(best.file);
+      try{trial.buildNetTree(trial.newTransaction('refine-review-net'),n.id,false,true,strategy)}
+      catch(e){if(!(e instanceof WireError))throw e;rejected++;return}
+      const file=trial.file,after=assessLayout(file,trial.engine);
+      if(sourceGuard(file)!==sourceGuard(base)||!improvesLayout(assessment,after)){rejected++;return}
+      const labels=new Set(planComponentLabels(file,sh.id).labels.map(l=>l.instanceId));
+      if([...visibleLabels].some(id=>!labels.has(id))){rejected++;return}
+      return {session:trial,after,labels,strategy};
+    };
+    const accept=(n:Net,candidate:Candidate)=>{
+      best=candidate.session;assessment=candidate.after;visibleLabels=candidate.labels;
+      operations.push('Перестроение '+n.name+(candidate.strategy==='default'?'':' ('+candidate.strategy+')'));
+    };
+    // Preserve the established two-pass baseline and its acceptance order.
+    for(let pass=0;pass<2&&attempted<32;pass++){
+      let changed=0;
+      for(const n of rank()){
         if(attempted>=32)break;
-        attempted++;
-        const trial=new AuthoringSession(best.file);
-        try{trial.buildNetTree(trial.newTransaction('refine-review-net'),n.id,false,true)}
-        catch(e){if(!(e instanceof WireError))throw e;rejected++;continue}
-        const after=assessLayout(trial.file,trial.engine);
-        if(sourceGuard(trial.file)!==sourceGuard(base)||!improvesLayout(assessment,after)){rejected++;continue}
-        const nextLabels=new Set(planComponentLabels(trial.file,sh.id).labels.map(l=>l.instanceId));
-        if([...visibleLabels].some(id=>!nextLabels.has(id))){rejected++;continue}
-        visibleLabels=nextLabels;
-        best=trial;assessment=after;changed++;operations.push('Перестроение '+n.name);
+        const candidate=evaluate(n,'default');
+        if(candidate){accept(n,candidate);changed++}
       }
       if(!changed)break;
     }
+    const baselineLimited=attempted>=32;
+    let alternatives=0;
+    if(extended){
+      // Try different route objectives and root terminals against the same
+      // current snapshot. Never apply a merely weighted-score improvement.
+      const strategies:TreeStrategy[]=['crossing-first','bend-first','peripheral-root'];
+      const compare=(a:Candidate,b:Candidate)=>a.after.quality.crossings-b.after.quality.crossings||
+        a.after.quality.bends-b.after.quality.bends||a.after.quality.lengthUm-b.after.quality.lengthUm;
+      for(const n of rank()){
+        if(alternatives>=48)break;
+        let winner:Candidate|undefined;
+        for(const strategy of strategies){
+          if(alternatives>=48)break;
+          alternatives++;
+          const candidate=evaluate(n,strategy);
+          if(!candidate)continue;
+          if(!winner||compare(candidate,winner)<0){if(winner)rejected++;winner=candidate}
+          else rejected++;
+        }
+        if(winner)accept(n,winner);
+      }
+    }
     const token=operations.length?newId('route-refinement'):null;
     if(token)this.layoutPlan={token,revision:this.clock,sheet:sh.id,next:best.file};
-    return {token,before:before.quality,after:assessment.quality,operations,attempted,rejected,limited:attempted>=32};
+    return {token,before:before.quality,after:assessment.quality,operations,attempted,rejected,limited:baselineLimited||alternatives>=48};
   }
   /** Align a two-pin component with multiple direct signed neighbors,
    * rebuilding all its incident routes on one detached candidate. */
