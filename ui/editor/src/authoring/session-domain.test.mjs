@@ -2138,3 +2138,42 @@ test('R35 TL494 extended search preserves R34 baseline, all labels and exact phy
  assert.deepEqual(source,original);
  t.diagnostic('TL494_R35_EXTENDED '+JSON.stringify({...next,token:!!next.token}));
 });
+
+
+test('R36 annotated common trunk removes a safe artificial detour without changing pins or other graphics',()=>{
+ const {s,net}=railFixture();
+ s.buildNetRail(s.newTransaction('baseline'),net);
+ const doc=s.file,sh=doc.project.sheets[0];
+ const trunk=sh.wires.find(w=>w.vertices.every(v=>v.anchor.kind!=='pin')&&w.vertices.length===2);
+ assert.ok(trunk);
+ const [first,last]=trunk.vertices,[x,y]=first.at_um,[z,y2]=last.at_um;
+ assert.equal(y,y2);assert.ok(z-x>=20000);assert.ok(y-10000>sh.frame.margin_um);
+ const points=[[x,y],[x+5000,y],[x+5000,y-10000],[z-5000,y-10000],[z-5000,y],[z,y]];
+ trunk.vertices=points.map((at_um,i)=>({id:trunk.id+':v'+i,at_um,anchor:i===0?first.anchor:i===points.length-1?last.anchor:{kind:'bend'}}));
+ trunk.segments=trunk.vertices.slice(1).map((v,i)=>({id:trunk.id+':s'+i,from_vertex_id:trunk.vertices[i].id,to_vertex_id:v.id}));
+ sh.layers.push({id:'layer-r36-draw',name:'Drawing',kind:'drawing',visible:true,printable:true,locked:false});
+ sh.graphics.push({id:'r36-line',layer_id:'layer-r36-draw',kind:'line',points_um:[[300000,240000],[320000,240000]],stroke_um:300});
+ sh.labels.push({id:'r36-visual',layer_id:'layer-r36-draw',text:'b',at_um:[325000,240000],role:'visual',net_id:null});
+ const a=new AuthoringSession(doc),p=a.previewRailRefinement();
+ assert.ok(p.token);assert.equal(p.attempted,1);
+ assert.ok(p.after.bends<p.before.bends);assert.ok(p.after.lengthUm<p.before.lengthUm);
+ assert.ok(p.after.crossings<=p.before.crossings);
+ assert.deepEqual(a.file,doc);assert.equal(a.revision,0);
+ const next=a.layoutPreviewDocument(p.token);
+ assert.deepEqual(next.project.sheets[0].graphics,sh.graphics);
+ assert.deepEqual(next.project.sheets[0].labels,sh.labels);
+ assert.deepEqual(next.project.sheets[0].instances,sh.instances);
+ assert.deepEqual(next.project.nets.map(n=>[n.id,n.members]),doc.project.nets.map(n=>[n.id,n.members]));
+ a.applyLayoutPreview(a.newTransaction('apply'),p.token);
+ assert.equal(a.engine.validateNet(net).pin_groups.length,1);
+ assert.equal(a.undo(),true);assert.deepEqual(a.file,doc);
+ assert.equal(a.redo(),true);assert.deepEqual(a.file,next);
+});
+test('R36 review-only common trunk refuses unmarked existing geometry atomically',()=>{
+ const {s,net}=railFixture(),doc=s.file;
+ for(const w of doc.project.sheets[0].wires)w.needs_routing_review=false;
+ const a=new AuthoringSession(doc);
+ assert.throws(()=>a.buildNetRail(a.newTransaction('manual'),net,true),/REFINE_REVIEW_REQUIRED/);
+ assert.equal(a.previewRailRefinement().token,null);
+ assert.deepEqual(a.file,doc);assert.equal(a.revision,0);
+});
