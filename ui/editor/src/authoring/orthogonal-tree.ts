@@ -8,6 +8,8 @@ export type TreeBox={minX:number;minY:number;maxX:number;maxY:number};
 export type TreePort={pin:TreePoint;tip:TreePoint};
 export type TreePath={points:TreePoint[];startPin:number|null;endPin:number|null};
 export type TreePlan={paths:TreePath[];nodes:TreePoint[];lengthUm:number;bends:number};
+/** Finite deterministic alternatives; default preserves the established route. */
+export type TreeStrategy='default'|'crossing-first'|'bend-first'|'peripheral-root';
 export type TreeCrossable={a:TreePoint;b:TreePoint;clearance:number};
 type Edge={to:number;length:number;dir:1|2;crossings:number};
 const key=(p:TreePoint)=>p.join(',');
@@ -41,7 +43,7 @@ function thinAxis(all:number[],mandatory:Set<number>,limit:number):number[]{
  }
  return [...selected].sort((a,b)=>a-b);
 }
-export function planOrthogonalTree(ports:TreePort[],obstacles:TreeBox[],frame:TreeBox,crossable:TreeCrossable[]=[],adaptiveGrid=false):TreePlan|null{
+export function planOrthogonalTree(ports:TreePort[],obstacles:TreeBox[],frame:TreeBox,crossable:TreeCrossable[]=[],adaptiveGrid=false,strategy:TreeStrategy='default'):TreePlan|null{
  if(ports.length<2||ports.length>32||obstacles.length+crossable.length>640)return null;
  const inside=(p:TreePoint)=>p[0]>=frame.minX&&p[0]<=frame.maxX&&p[1]>=frame.minY&&p[1]<=frame.maxY;
  const stubs=ports.map(p=>box(p.pin,p.tip));
@@ -131,9 +133,19 @@ export function planOrthogonalTree(ports:TreePort[],obstacles:TreeBox[],frame:Tr
  const terminals=ports.map(p=>node(p.tip));
  if(terminals.some(v=>v===undefined))return null;
  const leadDir=new Map(terminals.map((v,i)=>[v!,ports[i].pin[0]===ports[i].tip[0]?2:1]));
- const bendCost=5000,crossingCost=20000;
+ // Different objectives and a different first terminal expose distinct
+ // greedy trees without modifying the physical port order or keepouts.
+ const bendCost=strategy==='bend-first'?15000:5000;
+ const crossingCost=strategy==='crossing-first'?60000:20000;
+ let rootIndex=0;
+ if(strategy==='bend-first'||strategy==='peripheral-root'){
+  const spans=ports.map(p=>ports.reduce((n,q)=>n+length(p.tip,q.tip),0));
+  for(let i=1;i<ports.length;i++){
+   if(strategy==='bend-first'?spans[i]<spans[rootIndex]:spans[i]>spans[rootIndex])rootIndex=i;
+  }
+ }
  const grow=(respectLeads:boolean):TreePlan|null=>{
- const remaining=new Set(terminals as number[]),root=terminals[0]!;
+ const remaining=new Set(terminals as number[]),root=terminals[rootIndex]!;
  const tree=new Set<number>([root]),adj=new Map<number,Set<number>>();
  remaining.delete(root);
  const link=(a:number,b:number)=>{const add=(x:number,y:number)=>{const s=adj.get(x)??new Set<number>();s.add(y);adj.set(x,s)};add(a,b);add(b,a)};
