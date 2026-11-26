@@ -77,6 +77,41 @@ try {
         }
     }
     Write-Host 'R9_REAL_NATIVE_PROJECT_ROUNDTRIP_AND_EXPORT_PASS'
+    # Keep the original small native authoring test intact. The R33 branch
+    # also exercises a full generated, isolated 23-component candidate.
+    if ($env:GSCAD_R33_ACCEPT_FULL -eq '1') {
+        $fullProject = Join-Path $projectDir 'Полная TL494.gscad.json'
+        & node .github/tools/r33-generate-tl494.mjs $fullProject
+        if ($LASTEXITCODE -ne 0) { throw 'R33_FULL_GENERATION_FAILED' }
+        $env:GSCAD_R33_FULL_TL494 = '1'
+        $fullEvidence = Join-Path $artifact 'r33-evidence'
+        New-Item -ItemType Directory -Path $fullEvidence -Force | Out-Null
+        foreach ($round in @(1,2)) {
+            $fullCopy = Join-Path $projectDir ("Полная копия TL494 " + $round + ".gscad.json")
+            $fullSvg = Join-Path $projectDir ("Полная TL494 " + $round + ".svg")
+            $fullPng = Join-Path $projectDir ("Полная TL494 " + $round + ".png")
+            $digest = & python -c 'import json,sys;from ui.editor.src.model.contract import validate,digest;d=json.load(open(sys.argv[1],encoding="utf-8"));validate(d);print(digest(d))' $fullProject
+            if ($LASTEXITCODE -ne 0 -or $digest -notmatch '^[a-f0-9]{64}$') { throw 'R33_FULL_DIGEST_FAILED' }
+            [IO.File]::WriteAllText(($fullProject + '.r9digest'), ($digest + [Environment]::NewLine))
+            $app = Start-Process -FilePath $exe -WorkingDirectory $installDir -PassThru
+            Write-Host ("R33_FULL_NATIVE_LAUNCH round=$round pid=" + $app.Id)
+            & node .github/tools/r9-native-project.mjs reopen $app.Id 19443 $fullProject $fullCopy $fullSvg $fullPng
+            if ($LASTEXITCODE -ne 0) { throw ('R33_FULL_NATIVE_ROUND_FAILED_' + $round) }
+            $app.Refresh()
+            if (!$app.HasExited) {
+                if (!$app.CloseMainWindow()) { throw 'R33_FULL_WINDOW_CLOSE_REJECTED' }
+                if (!$app.WaitForExit(30000)) { throw 'R33_FULL_WINDOW_CLOSE_TIMEOUT' }
+            }
+            $app.Dispose()
+            $app = $null
+            foreach ($file in @($fullCopy,$fullSvg,$fullPng)) {
+                Copy-Item -LiteralPath $file -Destination $fullEvidence
+            }
+            $fullProject = $fullCopy
+            Start-Sleep -Seconds 2
+        }
+        Write-Host 'R33_FULL_TL494_REAL_NATIVE_RESTART_AND_EXPORT_PASS'
+    }
 } finally {
     if ($app) {
         try {

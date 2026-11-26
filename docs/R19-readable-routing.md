@@ -590,3 +590,28 @@ required to match because rendering/font fallback may differ. The
 independent implementations need CI parity checks to detect drift.
 Actual installed Windows/WebView2, print typography, and normative
 approval remain separate acceptance stages. R32l CI pending.
+
+
+## R33 — full TL494 installed Windows acceptance
+
+The R32l initial CI failed at Ruff UP035/I001 import checks; these were
+fixed on the same branch without changing geometry (4c5e2dc). Its
+native parity run still requires a successful final result.
+
+The R33 branch extends the existing installed NSIS/WebView2 R9
+harness, not a mocked browser-only workflow. A CI-only generator
+constructs a detached complete TL494 using the production functional
+routing and refinement modules and checks 15 connected Nets, 62
+PinRefs, 23 labels and frozen-source invariants. After the original
+three-component native regression, the same current-SHA installer
+opens the complete generated project through the actual OS picker,
+checks visible component/label/wire inventory and Python reachability,
+saves to the existing path, saves a Unicode-path copy, and exports
+SVG and PNG300 through the real native dialogs. It closes the app and
+repeats the scenario with the saved copy. Both rounds require unchanged
+canonical digest, 23 visible SVG references, 15 Nets, and 300 DPI PNG.
+Successful round files are copied to the isolated CI artifact folder.
+The original source fixture and main remain untouched. The R33 branch
+push enables the existing Windows workflow; its full acceptance mode
+is deliberately limited to R33 branches. No actual Windows PASS is
+claimed until the installed-app job completes.

@@ -12,6 +12,7 @@ const {chromium}=require('@playwright/test');
 const [phase,pidText,portText,projectPath,copyPath,svgPath,pngPath]=process.argv.slice(2);
 const pid=Number(pidText), port=Number(portText);
 const root=process.env.RUNNER_TEMP;
+const full=process.env.GSCAD_R33_FULL_TL494==='1';
 if(process.env.GITHUB_ACTIONS!=='true'||!root||!pid||!port||!['create','reopen'].includes(phase))
   throw Error('R9_CI_ARGS_INVALID');
 for(const p of [projectPath,copyPath,svgPath,pngPath]){
@@ -71,6 +72,18 @@ function assertModel(doc){
   assert.equal(doc.format,'gscad-project');
   assert.equal(doc.format_version,2);
   assert.equal(doc.project.provenance.status,'synthetic');
+  if(full){
+    const sh=doc.project.sheets[0];
+    assert.equal(doc.project.components.length,23);
+    assert.equal(doc.project.nets.length,15);
+    assert.equal(doc.project.nets.reduce((n,v)=>n+v.members.length,0),62);
+    assert.equal(sh.graphics.filter(g=>g.kind==='source_b_continuation').length,2);
+    assert.equal(sh.wires.length,78);
+    assert.deepStrictEqual(sh.frame.size_um,[420000,297000]);
+    const da=doc.project.components.find(c=>c.refdes==='DA1');
+    assert.equal(new Set(doc.project.nets.flatMap(n=>n.members.filter(m=>m.component_id===da.id).map(m=>m.physical_pin_number))).size,16);
+    return;
+  }
   assert.equal(doc.project.components.length,3);
   assert.deepStrictEqual(doc.project.components.map(x=>x.refdes).sort(),['C9','R1','R2']);
   assert.equal(doc.project.components.find(x=>x.refdes==='C9').value,'220н');
@@ -212,7 +225,7 @@ try{
       await page.getByText('Открыть…',{exact:true}).click();
     });
     try {
-      await page.getByTestId('symbol-C9').waitFor({state:'visible',timeout:15000});
+      await page.getByTestId(full?'symbol-DA1':'symbol-C9').waitFor({state:'visible',timeout:15000});
     }catch(error){
       console.log('R9_OPEN_DIAG_FILE_EXISTS='+fs.existsSync(projectPath));
       console.log('R9_OPEN_DIAG_DIGEST='+digest(projectPath));
@@ -222,19 +235,50 @@ try{
       }catch(err){console.log('R9_OPEN_DIAG_UI_UNAVAILABLE '+String(err));}
       throw error;
     }
-    assert.equal(await page.locator('[data-testid^="symbol-"]').count(),3);
-    assert.equal(await page.locator('[data-net-id]').count(),1);
+    // The initial frozen preview also contains DA1 and 23 symbols.
+    // Wait for the opened document's exact wire identities, not just a
+    // symbol that may already exist before the asynchronous native Open.
+    const expectedWireIds=original.project.sheets[0].wires.map(w=>w.id).sort();
+    try {
+      await page.waitForFunction(ids=>{
+        const actual=Array.from(document.querySelectorAll('.electric-wires > g[data-wire-id][data-net-id]'),
+          el=>el.getAttribute('data-wire-id')).sort();
+        return actual.length===ids.length&&actual.every((id,i)=>id===ids[i]);
+      },expectedWireIds,{timeout:30000});
+    }catch(error){
+      console.log('R9_OPEN_WIRE_DIAG='+JSON.stringify(await page.evaluate(()=>({
+        ids:Array.from(document.querySelectorAll('.electric-wires > g[data-wire-id]'),el=>el.getAttribute('data-wire-id')),
+        ui:document.body.innerText.slice(-2500)
+      }))));
+      throw error;
+    }
+    assert.equal(await page.locator('[data-testid^="symbol-"]').count(),full?23:3);
+    assert.equal(await page.locator('.electric-wires > g[data-net-id]').count(),full?78:1);
+    if(full){
+      assert.equal(await page.locator('.component-labels [data-label-role="reference"]').count(),23);
+      assert.equal(await page.locator('.component-labels').getAttribute('data-unplaced-label-count'),'0');
+      const reach=execFileSync('python',['-c',
+        'import json,sys;from ui.editor.src.model.contract import validate,route_is_complete;d=json.load(open(sys.argv[1],encoding="utf-8"));validate(d);p=d["project"];assert all(route_is_complete(p,n) for n in p["nets"]);print("15/15")',
+        projectPath],{encoding:'utf8',timeout:30000}).trim();
+      assert.equal(reach,'15/15');
+      console.log('R33_FULL_NATIVE_OPEN_23_15_62_LABELS_PASS');
+    }else{
     // A 900px desktop reopens with its inspector collapsed by design.
     // Select C9 through the authoritative project-tree item.
     const narrowReopen=await page.evaluate(()=>window.innerWidth<960);
     if(narrowReopen)
       await page.getByRole('button',{name:'Показать инспектор'}).click();
-    await page.getByText('C9',{exact:true}).first().click();
+    // C9 is now also a visible non-interactive SVG label. Select the
+    // authoritative tree instance, not an ambiguous text match.
+    const c9=original.project.components.find(c=>c.refdes==='C9');
+    const instance=original.project.sheets[0].instances.find(i=>i.component_id===c9.id);
+    await page.getByTestId('tree-item-'+instance.id).click();
     assert.equal(await page.getByTestId('inspector-nominal').inputValue(),'220н');
     // At Tauri's 900px width the responsive inspector is a floating overlay;
     // close it after reading C9 or it intercepts controls behind the aside.
     if(narrowReopen)
       await page.getByRole('button',{name:'Показать инспектор'}).click();
+    }
     console.log('R9_REAL_NATIVE_REOPEN_GUI_PASS');
     // Existing handle: Save must not open a picker and must preserve the exact model.
     // Reapply the same grid setting so the canonical document stays byte-for-byte
@@ -316,6 +360,13 @@ try{
     assert.match(svg,/<svg|<\?xml/);
     assert.match(svg,/420mm/);
     assert(!svg.includes('data-selected='));
+    if(full){
+      assert.match(svg,/data-component-label-count="23"/);
+      assert.match(svg,/data-unplaced-label-count="0"/);
+      assert.equal((svg.match(/data-label-role="reference"/g)??[]).length,23);
+      assert.equal((svg.match(/data-layer="wires"/g)??[]).length,78);
+      assert.match(svg,/data-source-net-count="15"/);
+    }
     console.log('R9_REAL_NATIVE_SVG_PASS');
     await runDialog('save',pngPath,async()=>{
       await page.getByRole('button',{name:'Экспорт',exact:true}).click();
@@ -334,5 +385,6 @@ try{
     assert.equal(png[phys+12],1);
     console.log('R9_REAL_NATIVE_PNG300_PASS');
     console.log('R9_REAL_NATIVE_PROJECT_PERSISTENCE_ACCEPTED digest='+beforeDigest);
+    if(full)console.log('R33_FULL_NATIVE_PERSISTENCE_EXPORT_PASS digest='+beforeDigest);
   }
 }finally{try{await browser?.close();}catch{/* Tauri process stays owned by PowerShell */}}

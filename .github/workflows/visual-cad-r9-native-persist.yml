@@ -1,12 +1,17 @@
 name: Visual CAD R9 real native Windows project persistence
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [ui/r32l-native-label-parity]
+    types: [opened, synchronize, reopened]
   push:
     # R11 and main must not silently bypass the installed Windows regression.
     branches: [ui/visual-cad-mvp, main, 'fix/r11-*', ui/r15-group-clipboard', ui/r19-route-cleanup, ui/r23-topology-inventory]
     paths:
       - '.github/workflows/visual-cad-r9-native-persist.yml'
       - '.github/tools/r9-native-*'
+      - '.github/tools/r33-*'
+      - 'ui/bridge/export/**'
       # Every native-facing editor change must re-run the installed-app R9
       # scenario. Restricting this to session.ts hid Canvas / paper regressions.
       - 'ui/editor/src/**'
@@ -26,15 +31,19 @@ concurrency:
   cancel-in-progress: true
 jobs:
   native-persist:
+    if: github.event_name != 'pull_request' || startsWith(github.head_ref, 'ui/r33-')
     name: Current-SHA Tauri / WebView2 / native picker / Python ProjectV2
     runs-on: windows-2022
     timeout-minutes: 100
     env:
       RUST_BACKTRACE: '1'
       CARGO_BUILD_JOBS: '2'
-      GSCAD_R9_BINARY_SOURCE_SHA: ${{ github.sha }}
+      GSCAD_R9_BINARY_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      GSCAD_R33_ACCEPT_FULL: ${{ startsWith(github.head_ref || github.ref_name, 'ui/r33-') && '1' || '0' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -54,6 +63,8 @@ jobs:
           }
           node --check .github/tools/r9-native-project.mjs
           if ($LASTEXITCODE -ne 0) { throw 'R9_NODE_HARNESS_SYNTAX_INVALID' }
+          node --check .github/tools/r33-generate-tl494.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'R33_GENERATOR_SYNTAX_INVALID' }
           node --check .github/tools/r9-native-sidecar-probe.mjs
           if ($LASTEXITCODE -ne 0) { throw 'R9_SIDECAR_PROBE_SYNTAX_INVALID' }
       - uses: actions/setup-python@v5
@@ -122,3 +133,10 @@ jobs:
           Write-Host ('R9_CURRENT_SOURCE_SHA=' + $env:GSCAD_R9_BINARY_SOURCE_SHA)
           & .\.github\tools\r9-native-project.ps1 -ArtifactRoot $staging
           if (!$?) { throw 'R9_REAL_NATIVE_PERSISTENCE_FAILED' }
+      - name: Publish actual full TL494 native acceptance evidence
+        if: always() && startsWith(github.head_ref || github.ref_name, 'ui/r33-')
+        uses: actions/upload-artifact@v4
+        with:
+          name: r33-full-tl494-installed-windows
+          path: ${{ runner.temp }}/gscad-r9-current-commit/r33-evidence/
+          if-no-files-found: ignore
