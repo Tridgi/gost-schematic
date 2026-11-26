@@ -1217,25 +1217,32 @@ export class AuthoringSession {
    * perpendicular to the trunk. No component moves or inferred membership.
    * A tap may have two opposite-side leads, but no overlapping same-side leads.
    * Fail closed on incomplete topology, annotations, mixed layers or blockage. */
-  buildNetRail(tx:Tx,netId:string):{pins:number;wires:number;junctions:number;axis:'horizontal'|'vertical';lengthUm:number}{
+  buildNetRail(tx:Tx,netId:string,refinement=false):{pins:number;wires:number;junctions:number;axis:'horizontal'|'vertical';lengthUm:number}{
     let result:{pins:number;wires:number;junctions:number;axis:'horizontal'|'vertical';lengthUm:number}|undefined;
     this.edit(tx,draft=>{
       const sh=draft.project.sheets[indexOfSheet(draft)];
       if(sh.instances.length>128||sh.wires.reduce((n,w)=>n+w.segments.length,0)>512)reject('LAYOUT_SIZE_LIMIT');
-      if(sh.texts.length||sh.labels.length||sh.graphics.length)reject('LAYOUT_ANNOTATIONS_UNSUPPORTED');
+      if(sh.texts.length||(!refinement&&(sh.labels.length||sh.graphics.length))||
+        sh.labels.length+sh.graphics.length>32||
+        sh.labels.some(l=>l.role!=='visual'||l.net_id!==null||typeof l.text!=='string'||l.text.length>64)||
+        sh.graphics.some(g=>!['line','polyline','source_b_continuation'].includes(g.kind)||
+          g.points_um.length<2||g.points_um.length>64||!Number.isSafeInteger(g.stroke_um)||g.stroke_um<=0||g.stroke_um>10000))
+        reject('LAYOUT_ANNOTATIONS_UNSUPPORTED');
       const net=draft.project.nets.find(n=>n.id===netId);
       if(!net)reject('UNKNOWN_NET');
       if(net.members.length<3||net.members.length>32)reject('RAIL_PIN_COUNT');
       const byComp=new Map(sh.instances.map(i=>[i.component_id,i]));
       if(net.members.some(p=>!byComp.has(p.component_id))||
-        draft.project.sheets.some(s=>s.id!==sh.id&&s.wires.some(w=>w.net_id===netId)))reject('RAIL_CROSS_SHEET');
+        draft.project.sheets.some(s=>s.id!==sh.id&&[...s.wires,...s.junctions,...s.splices].some(w=>w.net_id===netId)))reject('RAIL_CROSS_SHEET');
       if(this.engine.validateNet(netId).pin_groups.length!==1)reject('RAIL_UNCONNECTED_NET');
       const prior=assessLayout(draft,this.engine);
       if(!prior.quality.complete)reject('LAYOUT_CHECK_INCOMPLETE');
       const old=sh.wires.filter(w=>w.net_id===netId);
       if(old.some(w=>[w.vertices[0],w.vertices.at(-1)!].some(v=>v.anchor.kind==='free')))reject('RAIL_DANGLING');
+      if(refinement&&(!old.length||old.some(w=>!w.needs_routing_review)))reject('REFINE_REVIEW_REQUIRED');
+      const labelsBefore=refinement?new Set(planComponentLabels(draft,sh.id).labels.map(l=>l.instanceId)):null;
       const layers=new Set(old.map(w=>w.layer_id));
-      if(layers.size!==1)reject('RAIL_MIXED_LAYERS');
+      if(layers.size!==1||refinement&&[...sh.junctions,...sh.splices].some(n=>n.net_id===netId&&!layers.has(n.layer_id)))reject('RAIL_MIXED_LAYERS');
       const layer=[...layers][0],layerDef=sh.layers.find(l=>l.id===layer);
       if(!layerDef||layerDef.locked||!layerDef.visible||!layerDef.printable||layerDef.kind!=='electrical')reject('LAYER_LOCKED');
       const pins=net.members.map(ref=>({ref,p:this.beginWire(ref)}));
@@ -1247,16 +1254,40 @@ export class AuthoringSession {
       });
       const rect=(p:PointUm,q:PointUm):Bounds=>({minX:Math.min(p[0],q[0]),minY:Math.min(p[1],q[1]),maxX:Math.max(p[0],q[0]),maxY:Math.max(p[1],q[1])});
       const outside=sh.wires.filter(w=>w.net_id!==netId);
-      const obstacles=[...outside.flatMap(w=>w.vertices.slice(1).map((v,i)=>rect(w.vertices[i].at_um,v.at_um))),
-        ...[...sh.junctions,...sh.splices].filter(n=>n.net_id!==netId).map(n=>rect(n.at_um,n.at_um))];
+      const foreign=outside.flatMap(w=>w.vertices.slice(1).map((v,i)=>rect(w.vertices[i].at_um,v.at_um)));
+      const fixed=[...sh.junctions,...sh.splices].filter(n=>n.net_id!==netId).map(n=>rect(n.at_um,n.at_um));
+      if(refinement){
+        for(const g of sh.graphics)for(let k=1;k<g.points_um.length;k++){
+          const b=rect(g.points_um[k-1],g.points_um[k]),pad=g.stroke_um/2;
+          fixed.push({minX:Math.floor(b.minX-pad),minY:Math.floor(b.minY-pad),maxX:Math.ceil(b.maxX+pad),maxY:Math.ceil(b.maxY+pad)});
+        }
+        for(const l of sh.labels){
+          const p=xy(l.at_um),[lo,hi]=noteLayout({key:l.id,text:l.text,at_um:p,height_um:3500,horizontal:'left',vertical:'bottom'},p).bounds;
+          fixed.push(rect(lo,hi));
+        }
+      }
+      if(refinement&&fixed.length>640)reject('RAIL_SEARCH_LIMIT');
+      const obstacles=[...foreign,...fixed];
       const margin=sh.frame.margin_um;
       const inside=(p:PointUm)=>p.every((v,i)=>v>=margin&&v<=sh.frame.size_um[i]-margin);
       if(pins.some(({p})=>!inside(p.at_um)))reject('RAIL_OUTSIDE_FRAME');
       type Lead={ref:PinRef;points:MutablePoint[];tap:number;approach:number};
-      type Plan={branchAxis:0|1;line:number;leads:Lead[];length:number;bends:number};
+      type Plan={branchAxis:0|1;line:number;leads:Lead[];length:number;bends:number;crossings:number};
       let best:Plan|undefined,feasible=false,comparisons=0;
       const budget=()=>{if(++comparisons>500000)reject('RAIL_SEARCH_LIMIT')};
       const clear=(a:Bounds,b:Bounds)=>{budget();return separated(a,b,1000)};
+      // Only a perpendicular, strictly interior X crossing is allowed,
+      // with more than 1 mm clearance from both segments' endpoints.
+      // No overlap, touch, bend, tap, junction or splice may be crossed.
+      const properX=(a:Bounds,b:Bounds)=>{
+        const ah=a.minY===a.maxY&&a.minX<a.maxX,bh=b.minY===b.maxY&&b.minX<b.maxX;
+        const av=a.minX===a.maxX&&a.minY<a.maxY,bv=b.minX===b.maxX&&b.minY<b.maxY;
+        const h=ah&&bv?a:bh&&av?b:null,v=ah&&bv?b:bh&&av?a:null;
+        return !!h&&!!v&&v.minX>h.minX+1000&&v.minX<h.maxX-1000&&h.minY>v.minY+1000&&h.minY<v.maxY-1000;
+      };
+      const clearForeign=(a:Bounds)=>fixed.every(o=>clear(a,o))&&
+        foreign.every(o=>clear(a,o)||(refinement&&properX(a,o)));
+      const crossingCount=(a:Bounds)=>foreign.reduce((n,b)=>{budget();return n+(properX(a,b)?1:0)},0);
       const axes: (0|1)[]=mixed?[0,1]:[pins[0].p.normal[0]!==0?0:1];
       for(const branchAxis of axes){
         const railAxis:0|1=branchAxis===0?1:0;
@@ -1295,7 +1326,7 @@ export class AuthoringSession {
             const segments=segs(points);
             for(const [i,s] of segments.entries()){
               if(boxes.some(o=>!(i===0&&o.id===ref.component_id)&&!clear(s.box,o.box))||
-                obstacles.some(o=>!clear(s.box,o)))return false;
+                !clearForeign(s.box))return false;
               for(const other of leads)for(const t of segs(other.points)){
                 if(!collision(s.box,t.box))continue;
                 const shared=at(line,tap);
@@ -1309,7 +1340,7 @@ export class AuthoringSession {
             // Prevent a lead ending on a trunk that would run through ink.
             const positions=[...leads.map(l=>l.tap),tap];
             const trunk=rect(at(line,Math.min(...positions)),at(line,Math.max(...positions)));
-            return !boxes.some(o=>!clear(trunk,o.box))&&!obstacles.some(o=>!clear(trunk,o));
+            return !boxes.some(o=>!clear(trunk,o.box))&&clearForeign(trunk);
           };
           let valid=true;
           for(const {ref,p} of direct){
@@ -1346,9 +1377,15 @@ export class AuthoringSession {
           if(!valid)continue;
           const positions=[...new Set(leads.map(l=>l.tap))].sort((a,b)=>a-b);
           if(positions.length<2)continue;
+          // Recheck EACH final trunk interval, not just its full span:
+          // an X at a newly introduced tap is never an ordinary crossing.
+          const trunkParts=positions.slice(1).map((tap,k)=>rect(at(line,positions[k]),at(line,tap)));
+          if(refinement&&trunkParts.some(b=>!clearForeign(b)))continue;
           const length=leads.reduce((n,l)=>n+pathLength(l.points),positions.at(-1)!-positions[0]);
           const bends=leads.reduce((n,l)=>n+l.points.length-2,0);
-          if(!best||bends<best.bends||bends===best.bends&&length<best.length)best={branchAxis,line,leads,length,bends};
+          const crossings=refinement?[...trunkParts,...leads.flatMap(l=>segs(l.points).map(s=>s.box))].reduce((n,b)=>n+crossingCount(b),0):0;
+          if(!best||crossings<best.crossings||crossings===best.crossings&&(bends<best.bends||bends===best.bends&&length<best.length))
+            best={branchAxis,line,leads,length,bends,crossings};
         }
       }
       if(!best)reject(!feasible?'RAIL_NO_COMMON_CHANNEL':'RAIL_NO_SAFE_CHANNEL');
@@ -1387,8 +1424,20 @@ export class AuthoringSession {
       const {subset,session}=localSession(draft,this.clock);
       if(session.engine.validateNet(netId).pin_groups.length!==1)reject('RAIL_TOPOLOGY_MISMATCH');
       result={pins:pins.length,wires:wires.length,junctions:junctions.length,axis:railAxis===0?'horizontal':'vertical',lengthUm:best.length};
+      const otherStatuses=new Map(draft.project.nets.filter(n=>n.id!==netId).map(n=>[n.id,n.route_status]));
       const next=materialize(draft,subset,session);
-      if(!preservesLayoutSafety(prior,assessLayout(next,session.engine)))reject('RAIL_UNSAFE_DIAGNOSTICS');
+      if(refinement)for(const n of next.project.nets)if(otherStatuses.has(n.id))n.route_status=otherStatuses.get(n.id)!;
+      const after=assessLayout(next,session.engine);
+      if(!preservesLayoutSafety(prior,after))reject('RAIL_UNSAFE_DIAGNOSTICS');
+      if(refinement){
+        if(!improvesLayout(prior,after))reject('REFINE_NO_IMPROVEMENT');
+        const ns=next.project.sheets[indexOfSheet(next)];
+        if(JSON.stringify(ns.wires.filter(w=>w.net_id!==netId))!==JSON.stringify(outside)||
+          JSON.stringify(ns.junctions.filter(n=>n.net_id!==netId))!==JSON.stringify(sh.junctions.filter(n=>n.net_id!==netId))||
+          JSON.stringify(ns.splices.filter(n=>n.net_id!==netId))!==JSON.stringify(sh.splices.filter(n=>n.net_id!==netId)))reject('REFINE_FOREIGN_GEOMETRY');
+        const nextLabels=new Set(planComponentLabels(next,ns.id).labels.map(l=>l.instanceId));
+        if([...labelsBefore!].some(id=>!nextLabels.has(id)))reject('REFINE_LABEL_LOSS');
+      }
       return next;
     });
     if(!result)reject('RAIL_NO_SAFE_CHANNEL');
