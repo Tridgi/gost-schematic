@@ -1,5 +1,5 @@
 /** Safe shortcuts for a native CAD shell. Never interpret typing as a tool command. */
-export type ShortcutAction = 'palette'|'export'|'save'|'saveAs'|'newProject'|'openProject'|'selectAll'|'findCatalog'|'properties'|'undo'|'redo'|'copy'|'paste'|'select'|'wire'|'pan'|'text'|'junction';
+export type ShortcutAction = 'palette'|'export'|'save'|'saveAs'|'newProject'|'openProject'|'selectAll'|'duplicate'|'findCatalog'|'properties'|'undo'|'redo'|'copy'|'paste'|'select'|'wire'|'pan'|'text'|'junction';
 export type KeyLike = {
   key:string;ctrlKey?:boolean;metaKey?:boolean;altKey?:boolean;shiftKey?:boolean;
   repeat?:boolean;isComposing?:boolean;defaultPrevented?:boolean;
@@ -17,6 +17,7 @@ export function resolveShellShortcut(e:KeyLike,{editable=false,dialogOpen=false}
     if(key==='n'&&!e.shiftKey)return 'newProject';
     if(key==='o'&&!e.shiftKey)return 'openProject';
     if(key==='a'&&!e.shiftKey)return 'selectAll';
+    if(key==='d'&&!e.shiftKey)return 'duplicate';
     if(key==='f'&&!e.shiftKey)return 'findCatalog';
     if(key==='1'&&!e.shiftKey)return 'select';
     if(key==='3'&&!e.shiftKey)return 'wire';
