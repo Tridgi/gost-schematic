@@ -151,15 +151,7 @@ jobs:
               throw 'R40_INSTALLER_COPY_SHA_MISMATCH'
             }
             $tree = (git rev-parse 'HEAD^{tree}').Trim()
-            if ($LASTEXITCODE -ne 0 -or $tree -notmatch '^[a-f0-9]{40}
-      - name: Publish actual full TL494 native acceptance evidence
-        if: always() && env.GSCAD_R33_ACCEPT_FULL == '1'
-        uses: actions/upload-artifact@v4
-        with:
-          name: r33-full-tl494-installed-windows
-          path: ${{ runner.temp }}/gscad-r9-current-commit/r33-evidence/
-          if-no-files-found: ignore
-) { throw 'R40_SOURCE_TREE_UNKNOWN' }
+            if ($LASTEXITCODE -ne 0 -or $tree -notmatch '^[a-f0-9]{40}$') { throw 'R40_SOURCE_TREE_UNKNOWN' }
             $manifest = [ordered]@{
               schema = 1
               source_sha = $env:GSCAD_R9_BINARY_SOURCE_SHA
@@ -178,7 +170,7 @@ jobs:
             Write-Host ('R40_VERIFIED_INSTALLER_SHA256=' + $beforeHash)
           }
       - name: Publish actual full TL494 native acceptance evidence
-        if: always() && (startsWith(github.head_ref || github.ref_name, 'ui/r33-') || startsWith(github.head_ref || github.ref_name, 'ui/r34-') || startsWith(github.head_ref || github.ref_name, 'ui/r35-') || startsWith(github.head_ref || github.ref_name, 'ui/r36-') || startsWith(github.head_ref || github.ref_name, 'ui/r37-') || startsWith(github.head_ref || github.ref_name, 'ui/r38-') || startsWith(github.head_ref || github.ref_name, 'ui/r39-'))
+        if: always() && env.GSCAD_R33_ACCEPT_FULL == '1'
         uses: actions/upload-artifact@v4
         with:
           name: r33-full-tl494-installed-windows
