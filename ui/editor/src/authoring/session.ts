@@ -1254,6 +1254,8 @@ export class AuthoringSession {
       });
       const rect=(p:PointUm,q:PointUm):Bounds=>({minX:Math.min(p[0],q[0]),minY:Math.min(p[1],q[1]),maxX:Math.max(p[0],q[0]),maxY:Math.max(p[1],q[1])});
       const outside=sh.wires.filter(w=>w.net_id!==netId);
+      const foreignNodes=JSON.stringify(sh.junctions.filter(n=>n.net_id!==netId));
+      const foreignSplices=JSON.stringify(sh.splices.filter(n=>n.net_id!==netId));
       const foreign=outside.flatMap(w=>w.vertices.slice(1).map((v,i)=>rect(w.vertices[i].at_um,v.at_um)));
       const fixed=[...sh.junctions,...sh.splices].filter(n=>n.net_id!==netId).map(n=>rect(n.at_um,n.at_um));
       if(refinement){
@@ -1433,8 +1435,8 @@ export class AuthoringSession {
         if(!improvesLayout(prior,after))reject('REFINE_NO_IMPROVEMENT');
         const ns=next.project.sheets[indexOfSheet(next)];
         if(JSON.stringify(ns.wires.filter(w=>w.net_id!==netId))!==JSON.stringify(outside)||
-          JSON.stringify(ns.junctions.filter(n=>n.net_id!==netId))!==JSON.stringify(sh.junctions.filter(n=>n.net_id!==netId))||
-          JSON.stringify(ns.splices.filter(n=>n.net_id!==netId))!==JSON.stringify(sh.splices.filter(n=>n.net_id!==netId)))reject('REFINE_FOREIGN_GEOMETRY');
+          JSON.stringify(ns.junctions.filter(n=>n.net_id!==netId))!==foreignNodes||
+          JSON.stringify(ns.splices.filter(n=>n.net_id!==netId))!==foreignSplices)reject('REFINE_FOREIGN_GEOMETRY');
         const nextLabels=new Set(planComponentLabels(next,ns.id).labels.map(l=>l.instanceId));
         if([...labelsBefore!].some(id=>!nextLabels.has(id)))reject('REFINE_LABEL_LOSS');
       }
@@ -1937,6 +1939,40 @@ export class AuthoringSession {
   }
   /** Bounded read-only refinement of connected routes marked for review.
    * The entire accepted sequence is a single revision-bound proposal. */
+  /** Explicit review-only shared trunk proposals. No symbol moves or edits
+   * to the live document before revision-bound Apply. */
+  previewRailRefinement():LayoutPreview{
+    this.layoutPlan=null;
+    const base=this.file,sh=base.project.sheets[indexOfSheet(base)];
+    if(sh.instances.length>128||sh.wires.reduce((n,w)=>n+w.segments.length,0)>512)reject('LAYOUT_SIZE_LIMIT');
+    const before=assessLayout(base,this.engine);
+    if(!before.quality.complete)reject('LAYOUT_CHECK_INCOMPLETE');
+    let best=new AuthoringSession(base),assessment=before,attempted=0,rejected=0;
+    const operations:string[]=[];
+    const local=new Set(sh.instances.map(i=>i.component_id));
+    const counts=new Map<string,number>();
+    for(const k of before.crossingKeys??[]){
+      const [a,b]=JSON.parse(k) as [string,string,number,number];
+      counts.set(a,(counts.get(a)??0)+1);if(a!==b)counts.set(b,(counts.get(b)??0)+1);
+    }
+    const eligible=base.project.nets.filter(n=>{
+      const wires=sh.wires.filter(w=>w.net_id===n.id);
+      return n.members.length>=3&&n.members.length<=32&&n.members.every(p=>local.has(p.component_id))&&
+        wires.length>0&&wires.every(w=>w.needs_routing_review)&&this.engine.validateNet(n.id).pin_groups.length===1;
+    }).sort((a,b)=>(counts.get(b.id)??0)-(counts.get(a.id)??0)||b.members.length-a.members.length||a.id.localeCompare(b.id));
+    for(const n of eligible.slice(0,16)){
+      attempted++;
+      const trial=new AuthoringSession(best.file);
+      try{trial.buildNetRail(trial.newTransaction('refine-review-trunk'),n.id,true)}
+      catch(e){if(!(e instanceof WireError))throw e;rejected++;continue}
+      const after=assessLayout(trial.file,trial.engine);
+      if(sourceGuard(trial.file)!==sourceGuard(base)||!improvesLayout(assessment,after)){rejected++;continue}
+      best=trial;assessment=after;operations.push('Общая магистраль '+n.name);
+    }
+    const token=operations.length?newId('rail-refinement'):null;
+    if(token)this.layoutPlan={token,revision:this.clock,sheet:sh.id,next:best.file};
+    return {token,before:before.quality,after:assessment.quality,operations,attempted,rejected,limited:eligible.length>16};
+  }
   previewRouteRefinement(extended=false):LayoutPreview{
     this.layoutPlan=null;
     const base=this.file,sh=base.project.sheets[indexOfSheet(base)];
