@@ -148,8 +148,17 @@ try{
       const top=box.y+(box.height-heightUm*scale)/2;
       assert(xUm>=20000&&xUm<=widthUm-20000);
       assert(yUm>=20000&&yUm<=heightUm-20000);
-      await page.mouse.click(left+xUm*scale,top+yUm*scale);
+      const x=left+xUm*scale,y=top+yUm*scale;
+      await page.mouse.move(x,y);
+      const ghost=page.getByTestId('gscad-placement-preview');
+      await ghost.waitFor({state:'visible',timeout:5000});
+      assert.equal(await ghost.getAttribute('data-symbol-id'),'symbol/'+symbol);
+      assert.equal(await ghost.getAttribute('data-electrical'),'false');
+      assert.equal(await ghost.locator('[data-preview-pin]').count(),2);
+      await page.mouse.click(x,y);
       await page.getByTestId('symbol-'+refdes).waitFor({state:'visible',timeout:5000});
+      await ghost.waitFor({state:'detached',timeout:5000});
+      console.log('RC1_NATIVE_PLACEMENT_PREVIEW_PASS '+refdes);
     };
     await place('resistor.fixed',90000,90000,'R1');
     await place('capacitor.fixed',250000,90000,'C1');
