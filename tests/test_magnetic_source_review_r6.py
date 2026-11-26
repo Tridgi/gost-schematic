@@ -18,7 +18,7 @@ IDS = (
 @pytest.mark.parametrize("identifier", IDS)
 def test_reviewed_profiles_keep_pins_and_protect_all_functional_ink(identifier):
     part, symbol = CatalogResolver().resolve(identifier)
-    assert symbol.revision == 2
+    assert symbol.revision == (3 if identifier == "magnetic_amplifier.general" else 2)
     assert len(part.pins) == len(symbol.pins)
     assert inspect_conductor_topology(symbol).valid
     row = audit_symbol(symbol)
@@ -31,14 +31,24 @@ def test_general_amplifier_has_three_lobes_and_exact_triangle_contact():
     arcs = [g for g in symbol.graphics if isinstance(g, Semicircle)]
     assert len(arcs) == 3
     assert all(g.bulge == Side.TOP for g in arcs)
+    assert [g.center for g in arcs] == [Point(-4600, 0), Point(-2400, 0), Point(-200, 0)]
+    assert all(g.radius == 1100 for g in arcs)
     steps = [g for g in symbol.graphics if isinstance(g, StyledLine)]
     assert len(steps) == 3
+    assert [(g.start, g.end) for g in steps] == [
+        (Point(-2400, -2100), Point(-900, -2100)),
+        (Point(-2400, -2100), Point(-2400, 2100)),
+        (Point(-3900, 2100), Point(-2400, 2100)),
+    ]
     # Inner magnetic strokes must not touch either triangular edge.
     # Triangle edges are y = +/- 0.4*(7000-x), reserve 0.4 mm vertical gap.
     for step in steps:
         for point in (step.start, step.end):
             assert 5 * abs(point.y) + 2000 <= 2 * (7000 - point.x)
-    assert Line(Point(500, 2600), Point(500, 13000)) in symbol.graphics
+    assert Line(Point(-500, 3000), Point(-500, 8000)) in symbol.graphics
+    assert symbol.pins[2].at == Point(-500, 8000)
+    assert symbol.pins[2].side == Side.BOTTOM
+    assert inspect_conductor_topology(symbol).pin_islands == (("1",), ("2",), ("3",))
     assert len(symbol.pins) == 3
 
 
