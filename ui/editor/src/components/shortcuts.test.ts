@@ -38,3 +38,11 @@ test('CAD clipboard shortcuts never steal native text or dialog clipboard action
   assert.equal(k({key,ctrlKey:true,shiftKey:true}),null);
  }
 });
+
+ test('Visio and Office aliases never intercept text editing',()=>{
+ for(const [key,action] of [['1','select'],['3','wire'],['a','selectAll'],['d','duplicate'],['f','findCatalog'],['n','newProject'],['o','openProject']] as const){
+ assert.equal(k({key,ctrlKey:true}),action);assert.equal(k({key,ctrlKey:true},{editable:true}),null);
+ }
+ assert.equal(k({key:'s',ctrlKey:true,shiftKey:true}),'saveAs');
+ assert.equal(k({key:'F2'}),'properties');assert.equal(k({key:'F2'},{editable:true}),null);
+ });
