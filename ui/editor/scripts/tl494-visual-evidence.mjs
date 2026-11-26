@@ -77,6 +77,16 @@ try{
  for(const k of ['bends','lengthUm','crossings'])assert.ok(stages[6].quality[k]<=stages[5].quality[k],k);
  for(const k of ['instances','junctions','splices'])assert.deepEqual(stages[6].file.project.sheets[0][k],stages[5].file.project.sheets[0][k]);
  console.log('TL494_R38_DETOURS '+JSON.stringify({...detours,token:!!detours.token}));
+ for(const [key,limit] of Object.entries({bends:77,crossings:38,lengthUm:5282207}))
+  assert.ok(stages[6].quality[key]<=limit,`R38 baseline regression: ${key}`);
+ const crossingChannels=placementSearch.previewDetourRefinement(true);
+ assert.ok(crossingChannels.attempted<=96);
+ if(crossingChannels.token)placementSearch.applyLayoutPreview(placementSearch.newTransaction('crossing-channels'),crossingChannels.token);
+ stages.push({name:'08-crossing-channels',file:placementSearch.file,quality:assessLayout(placementSearch.file,placementSearch.engine).quality});
+ for(const k of ['bends','lengthUm','crossings'])assert.ok(stages[7].quality[k]<=stages[6].quality[k],k);
+ if(crossingChannels.token)assert.ok(stages[7].quality.crossings<stages[6].quality.crossings);
+ for(const k of ['instances','junctions','splices'])assert.deepEqual(stages[7].file.project.sheets[0][k],stages[6].file.project.sheets[0][k]);
+ console.log('TL494_R39_CROSSINGS '+JSON.stringify({...crossingChannels,token:!!crossingChannels.token}));
  for(const stage of stages)assert.equal(planComponentLabels(stage.file,stage.file.project.sheets[0].id).labels.length,23);
  // Export through the same browser raster function used in the editor.
  const raster=await build({entryPoints:[join(editor,'src/export/browser-export.ts')],bundle:true,platform:'browser',format:'iife',globalName:'GSCADPreview',write:false,logLevel:'silent'});
@@ -84,7 +94,7 @@ try{
  const page=await browser.newPage();
  await page.addScriptTag({content:raster.outputFiles[0].text});
  mkdirSync(output,{recursive:true});
- const report={schema:1,sourceFile:'ui/fixtures/tl494-source-e695-v2.gscad.json',sourceFileSha256:hash(raw),sourceRevision:p.provenance.source_sha,sourceApproval:'unchanged; detached synthetic test-only copies',fontStatus:'unverified-preview',scope:'browser preview SVG/PNG300, not normative print or native Windows acceptance',counts:{components:23,nets:15,pinrefs:62,da1Pins:16,bGraphics:2},variant:functional.variant,refinementOperations:refinement.operations,extendedOperations:extended.operations,extendedAttempts:extended.attempted,trunkOperations:rails.operations,trunkAttempts:rails.attempted,placementProfile:placement.profile,placementProfilesTried:placement.profilesTried,detourOperations:detours.operations,detourAttempts:detours.attempted,stages:[]};
+ const report={schema:1,sourceFile:'ui/fixtures/tl494-source-e695-v2.gscad.json',sourceFileSha256:hash(raw),sourceRevision:p.provenance.source_sha,sourceApproval:'unchanged; detached synthetic test-only copies',fontStatus:'unverified-preview',scope:'browser preview SVG/PNG300, not normative print or native Windows acceptance',counts:{components:23,nets:15,pinrefs:62,da1Pins:16,bGraphics:2},variant:functional.variant,refinementOperations:refinement.operations,extendedOperations:extended.operations,extendedAttempts:extended.attempted,trunkOperations:rails.operations,trunkAttempts:rails.attempted,placementProfile:placement.profile,placementProfilesTried:placement.profilesTried,detourOperations:detours.operations,detourAttempts:detours.attempted,crossingOperations:crossingChannels.operations,crossingAttempts:crossingChannels.attempted,stages:[]};
  for(const stage of stages){
   const {file,quality,name}=stage;
   const session=new AuthoringSession(file),sheet=file.project.sheets[0];
