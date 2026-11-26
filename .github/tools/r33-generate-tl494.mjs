@@ -27,7 +27,8 @@ try{
  await build({stdin:{contents:"export {AuthoringSession} from './src/authoring/session.ts'; export {assessLayout} from './src/authoring/layout-quality.ts'; export {planComponentLabels} from './src/canvas/component-labels.ts';",resolveDir:editor,sourcefile:'r33-entry.ts'},
   outfile:module,bundle:true,platform:'node',format:'esm',target:'node22',logLevel:'silent'});
  const {AuthoringSession,assessLayout,planComponentLabels}=await import(pathToFileURL(module).href);
- const s=new AuthoringSession(doc),proposal=s.previewFunctionalRouting();
+ let s=new AuthoringSession(doc);
+ const proposal=s.previewFunctionalRouting();
  assert.equal(proposal.routed,15);assert.ok(proposal.token);
  s.applyLayoutPreview(s.newTransaction('functional'),proposal.token);
  const refinement=s.previewRouteRefinement();
@@ -46,7 +47,16 @@ try{
   if(rails.token)s.applyLayoutPreview(s.newTransaction('trunks'),rails.token);
   console.log('R36_NATIVE_TRUNKS '+JSON.stringify({...rails,token:!!rails.token}));
  }
+ const beforePlacement=assessLayout(s.file,s.engine).quality;
+ if(process.env.GSCAD_R37_PLACEMENT==='1'){
+  const alternate=new AuthoringSession(doc),p=alternate.previewFunctionalAlternatives();
+  assert.equal(p.routed,15);assert.ok(p.token);
+  alternate.applyLayoutPreview(alternate.newTransaction('placement-profiles'),p.token);
+  s=alternate;
+  console.log('R37_NATIVE_PLACEMENT '+JSON.stringify({...p,token:!!p.token}));
+ }
  const next=s.file,sh=next.project.sheets[0],quality=assessLayout(next,s.engine).quality;
+ for(const k of ['bends','crossings','lengthUm'])assert.ok(quality[k]<=beforePlacement[k],k);
  for(const k of ['bends','crossings','lengthUm'])assert.ok(quality[k]<=beforeTrunks[k],k);
  for(const k of ['bends','crossings','lengthUm'])assert.ok(quality[k]<=baseline[k],k);
  for(const [key,limit] of Object.entries({bends:81,crossings:38,lengthUm:5340345}))assert.ok(quality[key]<=limit,key);
