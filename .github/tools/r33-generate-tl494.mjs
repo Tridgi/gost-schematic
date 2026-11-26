@@ -55,7 +55,15 @@ try{
   s=alternate;
   console.log('R37_NATIVE_PLACEMENT '+JSON.stringify({...p,token:!!p.token}));
  }
+ const beforeDetours=assessLayout(s.file,s.engine).quality;
+ if(process.env.GSCAD_R38_DETOURS==='1'){
+  const proposal=s.previewDetourRefinement();
+  assert.ok(proposal.attempted<=64);
+  if(proposal.token)s.applyLayoutPreview(s.newTransaction('detours'),proposal.token);
+  console.log('R38_NATIVE_DETOURS '+JSON.stringify({...proposal,token:!!proposal.token}));
+ }
  const next=s.file,sh=next.project.sheets[0],quality=assessLayout(next,s.engine).quality;
+ for(const k of ['bends','crossings','lengthUm'])assert.ok(quality[k]<=beforeDetours[k],k);
  for(const k of ['bends','crossings','lengthUm'])assert.ok(quality[k]<=beforePlacement[k],k);
  for(const k of ['bends','crossings','lengthUm'])assert.ok(quality[k]<=beforeTrunks[k],k);
  for(const k of ['bends','crossings','lengthUm'])assert.ok(quality[k]<=baseline[k],k);

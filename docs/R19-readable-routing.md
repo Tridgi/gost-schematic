@@ -712,3 +712,35 @@ PNG300, ProjectV2 and Python parity, with non-regression against stage
 05-common-trunks; installed Windows exercises the chosen project.
 No claim of numeric improvement or Windows PASS before logs. Main
 and frozen E695 unchanged.
+
+
+## R38 — local shortcuts without moving terminals or nodes
+
+R36 main CI and Visual CAD passed (162 unit, 52 browser tests).
+All 11 TL494 common-trunk trials were rejected, leaving the R34
+geometry unchanged. R37 built successfully and generated its sixth
+comparison stage; its full CI and native acceptance were still
+running when R38 was prepared.
+
+R38 adds an explicit review-only local shortcut preview, independent
+of whole-Net rerouting and placement. For each eligible 3–24 vertex
+wire, try replacing a short subpath (up to six segments) with a
+straight segment or one orthogonal corner, compacting collinear
+segments and rejecting reversals. The existing physical pin lead
+direction and length cannot decrease; explicit junction and splice
+coordinates, endpoint identity, wire ID, all other wires and all
+component poses remain unchanged. Candidate paths must remain inside
+the print frame, clear symbols and annotation ink by 1 mm, avoid
+foreign overlaps and endpoint contact except exact shared explicit
+anchors, and allow only proper different-Net X crossings more than
+1 mm from endpoints. Independent engine validation, strict real
+Pareto improvement, and retention of visible label identities are
+required. Maximum 12 candidates per wire and 64 trials per preview.
+Revision-bound Apply and Undo/Redo remain atomic. Two regressions
+cover deterministic physical-lead shortcuts and a detoured common
+trunk with fixed endpoints and foreign geometry. The seventh evidence
+stage and Python parity plus exact-head installed Windows acceptance
+exercise the final route. No actual numerical improvement claimed
+until CI. The search is a conservative bounded heuristic; 1 mm is
+a chosen engineering clearance, not normative approval. Main and
+frozen E695 untouched.
