@@ -14,3 +14,7 @@ output/
 /artifacts/ai-mcp/
 
 /ui/editor/src/authoring/windings.generated.json
+
+# Pinned font is downloaded and verified during release CI, not vendored.
+/ui/editor/public/fonts/*.ttf
+/ui/editor/public/fonts/*.otf
