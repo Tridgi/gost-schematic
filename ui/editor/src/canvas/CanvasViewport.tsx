@@ -28,6 +28,7 @@ export type CanvasViewportProps = {
   placementHint?:(origin:readonly number[])=>PlacementHint|null;
   placementSymbolId?:string|null;
   onCancelPlacement?:()=>void;
+  onOpenProperties?:()=>void;
   onCopy?:()=>void;
   onPaste?:()=>void;
   onFitPage?:()=>void;
@@ -66,7 +67,7 @@ function SymbolInk({symbol,camera}:{symbol:CanvasSymbol;camera:Camera}){
  </>;
 }
 /** Read-only SVG viewport. The canonical physical print/export belongs to #124. */
-export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapEnabled,onIntent,onZoomPercent,zoomRequest,fitRequest,selectedInstanceId:hostSelectedId,selectedGroupIds,selectionReset,canEdit,placementHint,placementSymbolId,onCancelPlacement,onCopy,onPaste,onFitPage}:CanvasViewportProps){
+export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapEnabled,onIntent,onZoomPercent,zoomRequest,fitRequest,selectedInstanceId:hostSelectedId,selectedGroupIds,selectionReset,canEdit,placementHint,placementSymbolId,onCancelPlacement,onOpenProperties,onCopy,onPaste,onFitPage}:CanvasViewportProps){
   const svgRef=useRef<SVGSVGElement|null>(null);
   const [size,setSize]=useState({width:0,height:0});
   const [revision,setRevision]=useState(0);
@@ -214,7 +215,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     const r=svg?.getBoundingClientRect();
     return {x:e.clientX-(r?.left??0),y:e.clientY-(r?.top??0)};
   },[]);
-  const eventPoint=(e:ReactPointerEvent<SVGSVGElement>)=>({...local(e),pointerId:e.pointerId,button:e.button});
+  const eventPoint=(e:ReactPointerEvent<SVGSVGElement>)=>({...local(e),pointerId:e.pointerId,button:e.button,ctrlKey:e.ctrlKey||e.metaKey,shiftKey:e.shiftKey});
   const down=(e:ReactPointerEvent<SVGSVGElement>)=>{
     setContextMenu(null);setPlacementPointer(tool==='place'?local(e):null);
     if(controller.down(eventPoint(e))){
@@ -283,6 +284,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     dismissMenu(true);action();invalidate();
   };
   const menuCommands=contextMenu?[
+    {label:'Свойства элемента',key:'properties',enabled:contextMenu.kind==='symbol'&&!!onOpenProperties,run:()=>onOpenProperties?.()},
     {label:'Копировать',key:'copy',enabled:contextMenu.kind!=='blank'&&!!onCopy,run:()=>onCopy?.()},
     {label:'Вставить',key:'paste',enabled:!!onPaste,run:()=>onPaste?.()},
     {label:'Повернуть на 90°',key:'rotate',enabled:contextMenu.kind==='symbol'&&!!canEdit,run:()=>controller.key('r')},
@@ -326,6 +328,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     onPointerEnter={e=>{if(tool==='place')setPlacementPointer(local(e));}} onPointerLeave={()=>setPlacementPointer(null)}
     onPointerCancel={e=>{setPlacementPointer(null);controller.key('Escape');if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);invalidate()}}
     onWheel={e=>{setPlacementPointer(tool==='place'?local(e):null);wheel(e)}} onContextMenu={openContextMenu}
+    onDoubleClick={e=>{if(tool==='select'&&controller.contextSelect(local(e))==='symbol'){invalidate();onOpenProperties?.();}}}
     onKeyDown={e=>{
       // Never turn OS/browser shortcuts, held keys or IME composition into CAD edits.
       if(e.defaultPrevented||e.ctrlKey||e.metaKey||e.altKey||e.repeat||e.nativeEvent.isComposing)return;
@@ -394,6 +397,13 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
       {snapshot.junctions.map(j=>{
         const p=screen(j.at_um,camera);
         return <circle key={j.id} data-junction-id={j.id} cx={p.x} cy={p.y} r={3.1}/>;
+      })}
+    </g>
+    <g className="sheet-annotations" data-electrical="false" pointerEvents="none" fill="#24384b" stroke="none">
+      {document.project.sheets.find(s=>s.id===sheetId)?.texts.filter(t=>document.project.sheets.find(s=>s.id===sheetId)?.layers.some(l=>l.id===t.layer_id&&l.visible)).map(t=>{
+        const p=screen(t.at_um,camera);
+        return <text key={t.id} data-testid={'sheet-text-'+t.id} x={p.x} y={p.y} fontSize={t.height_um*camera.s}
+          fontFamily="'OpenGost Type A', sans-serif" transform={t.rotation_deg?'rotate('+t.rotation_deg+' '+p.x+' '+p.y+')':undefined}>{t.text}</text>;
       })}
     </g>
     <g className="component-labels" data-electrical="false" pointerEvents="none"
