@@ -602,6 +602,13 @@ export default function App() {
           return true;
         }
         if(intent.kind==='commitWire'){
+          if(intent.target.kind==='segment'){
+            if(intent.base_revision!==authored.revision)throw Error('STALE_REVISION');
+            authored.connectToSegment(authored.newTransaction('tap-wire'),intent.source,
+              intent.target.wire_id,intent.target.segment_id,intent.target.at_um,intent.bend_points_um);
+            adoptAuthored();setPending(null);setIssue('Ответвление создано. Узел и электрическая цепь сохранены.');
+            return true;
+          }
           if(intent.target.kind!=='pin')throw Error('UNBOUND_FREE_NOT_ALLOWED');
           authored.connect(authored.newTransaction('connect-physical-pins'),
             intent.source,intent.target.pin,intent.bend_points_um,smartRouting);
