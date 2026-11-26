@@ -61,7 +61,7 @@ function SymbolInk({symbol,camera}:{symbol:CanvasSymbol;camera:Camera}){
    const at=localStroke(symbol,n.at_um,camera);
    const h=n.height_um*camera.s,y=at.y+(n.vertical==='top'?h:n.vertical==='center'?Math.round(n.height_um/3)*camera.s:0);
    return <text key={n.key} data-symbol-note={n.key} data-electrical="false" x={at.x} y={y}
-     textAnchor={noteLayout(n,n.at_um).anchor} fontSize={Math.max(6,h)} fontFamily="sans-serif"
+     textAnchor={noteLayout(n,n.at_um).anchor} fontSize={Math.max(6,h)} fontFamily="GSCAD Technical, OpenGost Type A, sans-serif"
      fill="#24384b" stroke="none">{n.text}</text>;
   })}
  </>;
@@ -403,7 +403,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
       {document.project.sheets.find(s=>s.id===sheetId)?.texts.filter(t=>document.project.sheets.find(s=>s.id===sheetId)?.layers.some(l=>l.id===t.layer_id&&l.visible)).map(t=>{
         const p=screen(t.at_um,camera);
         return <text key={t.id} data-testid={'sheet-text-'+t.id} x={p.x} y={p.y} fontSize={t.height_um*camera.s}
-          fontFamily="'OpenGost Type A', sans-serif" transform={t.rotation_deg?'rotate('+t.rotation_deg+' '+p.x+' '+p.y+')':undefined}>{t.text}</text>;
+          fontFamily="GSCAD Technical, OpenGost Type A, sans-serif" transform={t.rotation_deg?'rotate('+t.rotation_deg+' '+p.x+' '+p.y+')':undefined}>{t.text}</text>;
       })}
     </g>
     <g className="component-labels" data-electrical="false" pointerEvents="none"
@@ -411,7 +411,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
       {componentLabels.labels.map(l=>{
         const p=screen([l.x,l.y],camera);
         return <g key={l.instanceId} data-instance-id={l.instanceId} fill="#24384b" stroke="none"
-          fontFamily="monospace" fontSize={l.heightUm*camera.s} textAnchor="middle">
+          fontFamily="GSCAD Technical, OpenGost Type A, monospace" fontSize={l.heightUm*camera.s} textAnchor="middle">
           <text data-label-role="reference" x={p.x} y={p.y}>{l.refdes}</text>
           {l.value&&<text data-label-role="value" x={p.x} y={p.y+l.lineStepUm*camera.s}>{l.value}</text>}
         </g>;
