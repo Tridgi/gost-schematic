@@ -22,6 +22,7 @@ import {validateNotes,noteLayout} from '../model/symbol-notes.mjs';
 import {planOrthogonalTree} from './orthogonal-tree';
 import {assessLayout,improvesLayout,preservesLayoutSafety,type LayoutQuality} from './layout-quality';
 import {curveGeometry} from '../model/curves.mjs';
+import {planComponentLabels} from '../canvas/component-labels';
 import {projectToCanvasScene} from '../canvas/scene-projection.mjs';
 import {AUTHORING_PARTS, AUTHORING_SYMBOLS,catalogDefaultValue,catalogAdditions} from './catalog';
 
@@ -1894,6 +1895,7 @@ export class AuthoringSession {
     if(!before.quality.complete)reject('LAYOUT_CHECK_INCOMPLETE');
     let best=new AuthoringSession(base),assessment=before,attempted=0,rejected=0;
     const operations:string[]=[];
+    let visibleLabels=new Set(planComponentLabels(base,sh.id).labels.map(l=>l.instanceId));
     const local=new Set(sh.instances.map(i=>i.component_id));
     const eligible=base.project.nets.filter(n=>{
       const wires=sh.wires.filter(w=>w.net_id===n.id);
@@ -1919,6 +1921,9 @@ export class AuthoringSession {
         catch(e){if(!(e instanceof WireError))throw e;rejected++;continue}
         const after=assessLayout(trial.file,trial.engine);
         if(sourceGuard(trial.file)!==sourceGuard(base)||!improvesLayout(assessment,after)){rejected++;continue}
+        const nextLabels=new Set(planComponentLabels(trial.file,sh.id).labels.map(l=>l.instanceId));
+        if([...visibleLabels].some(id=>!nextLabels.has(id))){rejected++;continue}
+        visibleLabels=nextLabels;
         best=trial;assessment=after;changed++;operations.push('Перестроение '+n.name);
       }
       if(!changed)break;
