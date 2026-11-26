@@ -1825,7 +1825,7 @@ test('RC1 pin to existing conductor creates a real T junction and Undo restores 
   const p=pt.matrixTransform(el.getScreenCTM());return {x:p.x,y:p.y};
  });
  await page.getByTestId('tool-wire').click();await page.getByTestId('signed-pin-'+c.id+'-1').click();
- await page.mouse.move(mid.x,mid.y);await page.mouse.click(mid.x,mid.y);
+ await page.mouse.move(mid.x,mid.y);await expect(page.getByTestId('wire-tap-preview')).toBeVisible();await page.mouse.click(mid.x,mid.y);
  await expect(page.locator('[data-junction-id]')).toHaveCount(1);await expect(page.locator('.electric-wires > g')).toHaveCount(3);
  await page.getByTestId('tool-select').click();
  const after=await saved();expect(after.project.nets).toHaveLength(1);expect(after.project.nets[0].members).toHaveLength(3);
@@ -1837,6 +1837,8 @@ test('RC1 pin to existing conductor creates a real T junction and Undo restores 
 test('RC1 text placement and double-click component properties persist through model save',async({page})=>{
  await page.goto('/');await page.getByRole('button',{name:'Файл'}).click();await page.getByTestId('new-project').click();
  const canvas=page.getByTestId('gscad-signed-svg-canvas');await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ const font=await page.evaluate(async()=>{const f=await document.fonts.load('14px "GSCAD Technical"','Питание R1');return f.some(x=>x.status==='loaded')});
+ expect(font).toBe(true);
  const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
  await page.mouse.click(paper.x+paper.width*.4,paper.y+paper.height*.4);
