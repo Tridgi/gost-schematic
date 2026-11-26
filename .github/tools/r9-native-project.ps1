@@ -91,31 +91,7 @@ try {
             $fullSvg = Join-Path $projectDir ("Полная TL494 " + $round + ".svg")
             $fullPng = Join-Path $projectDir ("Полная TL494 " + $round + ".png")
             $digest = & python -c 'import json,sys;from ui.editor.src.model.contract import validate,digest;d=json.load(open(sys.argv[1],encoding="utf-8"));validate(d);print(digest(d))' $fullProject
-            if ($LASTEXITCODE -ne 0 -or $digest -notmatch '^[a-f0-9]{64}} finally {
-    if ($app) {
-        try {
-            $app.Refresh()
-            if (!$app.HasExited) { $app.Kill(); $app.WaitForExit(10000) | Out-Null }
-        } catch { Write-Warning ('R9 CI-only process cleanup: ' + $_.Exception.Message) }
-        $app.Dispose()
-    }
-    if ($installed -and (Test-Path -LiteralPath $uninstaller -PathType Leaf)) {
-        try {
-            $un = Start-Process -FilePath $uninstaller -ArgumentList @('/S') -Wait -PassThru
-            try { if ($un.ExitCode -ne 0) { Write-Warning ('R9 uninstall exit code ' + $un.ExitCode) } }
-            finally { $un.Dispose() }
-        } catch { Write-Warning ('R9 CI-only NSIS cleanup: ' + $_.Exception.Message) }
-    }
-    Remove-Item Env:GSCAD_R33_FULL_TL494 -ErrorAction SilentlyContinue
-    Remove-Item Env:GSCAD_R9_SIDECAR_EXE -ErrorAction SilentlyContinue
-    Remove-Item Env:GSCAD_R6_TRACE_WINDOW -ErrorAction SilentlyContinue
-    Remove-Item Env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS -ErrorAction SilentlyContinue
-    Remove-Item Env:WEBVIEW2_USER_DATA_FOLDER -ErrorAction SilentlyContinue
-    if ($root.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)) {
-        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
-    }
-}
-) { throw 'R33_FULL_DIGEST_FAILED' }
+            if ($LASTEXITCODE -ne 0 -or $digest -notmatch '^[a-f0-9]{64}$') { throw 'R33_FULL_DIGEST_FAILED' }
             [IO.File]::WriteAllText(($fullProject + '.r9digest'), ($digest + [Environment]::NewLine))
             $app = Start-Process -FilePath $exe -WorkingDirectory $installDir -PassThru
             Write-Host ("R33_FULL_NATIVE_LAUNCH round=$round pid=" + $app.Id)
