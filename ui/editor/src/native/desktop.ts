@@ -72,7 +72,7 @@ export async function nativeOpenProjectLink(link:ProjectLink):Promise<void>{
   return invoke('native_open_project_link',{link});
 }
 
-export type SignedUpdateStatus={kind:'idle'}|{kind:'downloading';received:number;total:number|null}|{kind:'ready';version:string;token:string}|{kind:'installing'};
+export type SignedUpdateStatus={kind:'idle'}|{kind:'downloading';received:number;total:number|null;id?:string;cancelling?:boolean}|{kind:'ready';version:string;token:string}|{kind:'installing'};
 async function invokeUpdate<T>(command:string,args?:Record<string,unknown>):Promise<T>{
   const invoke=host();if(!invoke)throw Error('NATIVE_HOST_UNAVAILABLE');
   return invoke<T>(command,args);
@@ -80,5 +80,6 @@ async function invokeUpdate<T>(command:string,args?:Record<string,unknown>):Prom
 export const nativeSignedUpdateEnabled=()=>invokeUpdate<boolean>('native_signed_update_enabled');
 export const nativeSignedUpdateStatus=()=>invokeUpdate<SignedUpdateStatus>('native_signed_update_status');
 export const nativePrepareSignedUpdate=(version:string)=>invokeUpdate<void>('native_prepare_signed_update',{version});
+export const nativeCancelSignedDownload=(id:string)=>invokeUpdate<void>('native_cancel_signed_download',{id});
 export const nativeDiscardSignedUpdate=()=>invokeUpdate<void>('native_discard_signed_update');
 export const nativeInstallSignedUpdate=(token:string,projectSafe:boolean)=>invokeUpdate<void>('native_install_signed_update',{token,projectSafe});
