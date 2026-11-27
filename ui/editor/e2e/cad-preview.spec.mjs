@@ -1886,3 +1886,29 @@ test('RC1 library categories and reserved scrollbar fit long Russian names in bo
   if(i===0)await page.getByTestId('toggle-theme').click();
  }
 });
+
+
+test('R41 About is accessible in both themes and does not change the document',async({page})=>{
+  await page.goto('/');
+  const canvas=page.getByTestId('gscad-signed-svg-canvas');
+  await expect(canvas).toBeVisible();
+  const original=await page.locator('[data-testid^="symbol-"]').count();
+  const dirty=await page.getByText('Не сохранено',{exact:true}).count();
+  for(let i=0;i<2;i++){
+    await page.getByTestId('help-menu').click();
+    await page.getByTestId('open-about').click();
+    const dialog=page.getByRole('dialog',{name:'О программе'});
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText('Мирослав Лихачёв',{exact:false})).toBeVisible();
+    await expect(dialog.getByTestId('about-version')).toContainText('0.1.0');
+    await expect(dialog.getByTestId('check-updates')).toBeDisabled();
+    await dialog.getByRole('button',{name:'Показать MIT License'}).click();
+    await expect(dialog.getByText(/Permission is hereby granted/)).toBeVisible();
+    await dialog.getByRole('button',{name:'Скрыть MIT License'}).click();
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+    await expect(page.locator('[data-testid^="symbol-"]')).toHaveCount(original);
+    await expect(page.getByText('Не сохранено',{exact:true})).toHaveCount(dirty);
+    if(i===0)await page.getByTestId('toggle-theme').click();
+  }
+});
