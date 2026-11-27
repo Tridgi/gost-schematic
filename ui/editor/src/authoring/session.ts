@@ -433,6 +433,14 @@ export class AuthoringSession {
       Object.assign(old,fields);return draft;
     });
   }
+  moveText(tx:Tx,id:string,at:PointUm):void{
+    this.edit(tx,draft=>{
+      const sh=draft.project.sheets[indexOfSheet(draft)],old=this.editableText(sh,id);
+      const fields=this.textFields(sh,old.text,at,old.height_um,old.rotation_deg);
+      if(old.at_um[0]===fields.at_um[0]&&old.at_um[1]===fields.at_um[1])reject('NO_CHANGE');
+      old.at_um=fields.at_um;return draft;
+    });
+  }
   deleteText(tx:Tx,id:string):void{
     this.edit(tx,draft=>{
       const sh=draft.project.sheets[indexOfSheet(draft)],old=this.editableText(sh,id);

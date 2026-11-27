@@ -3,7 +3,7 @@ import {noteLayout} from '../model/symbol-notes.mjs';
 import {planComponentLabels} from './component-labels';
 import { createPortal } from 'react-dom';
 import type { PlacementHint } from '../authoring/session';
-import type { ProjectFileV2 } from '../model/contract';
+import type { ProjectFileV2, SheetText } from '../model/contract';
 import type { WiringSnapshot } from '../wires/manual-wire';
 import { projectToCanvasScene, projectPlacementSymbol, type CanvasScene, type CanvasSymbol } from './scene-projection.mjs';
 import { pinWorld, screen, zoom, world, snap, type Camera, type PointUm, type ScreenPoint } from './precision.mjs';
@@ -35,6 +35,11 @@ export type CanvasViewportProps = {
   onFitPage?:()=>void;
 };
 
+type TextDrag={
+  id:string;pointerId:number;revision:number;projectId:string;sheetId:string;
+  start:ScreenPoint;origin:PointUm;camera:Camera;gridUm:number;snapEnabled:boolean;
+  capture:SVGTextElement;moved:boolean;
+};
 const DEFAULT_CAMERA:Camera={s:.004,x:24,y:24};
 const asCoords=(p:ScreenPoint)=>({x:p.x,y:p.y});
 const g2=(n:number)=>Number.isFinite(n)?n:0;
@@ -73,6 +78,25 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
   const [size,setSize]=useState({width:0,height:0});
   const [revision,setRevision]=useState(0);
   const [placementPointer,setPlacementPointer]=useState<ScreenPoint|null>(null);
+  const textDragRef=useRef<TextDrag|null>(null);
+  const [textGhost,setTextGhost]=useState<{id:string;at:PointUm}|null>(null);
+  const cancelTextDrag=useCallback(()=>{
+    const d=textDragRef.current;textDragRef.current=null;setTextGhost(null);
+    try{if(d?.capture.hasPointerCapture(d.pointerId))d.capture.releasePointerCapture(d.pointerId);}catch{/* pointer already released */}
+  },[]);
+  useEffect(()=>{
+    // Layout/revision/tool changes invalidate the preview, never commit it.
+    cancelTextDrag();
+  },[snapshot.revision,document.project.id,sheetId,tool,canEdit,snapEnabled,document.project.settings.grid_step_um,fitRequest,zoomRequest?.token,selectionReset,cancelTextDrag]);
+  useEffect(()=>{
+    const blur=()=>cancelTextDrag();
+    const escape=(e:KeyboardEvent)=>{
+      if(e.key==='Escape'&&textDragRef.current){e.preventDefault();e.stopPropagation();cancelTextDrag();}
+    };
+    window.addEventListener('blur',blur);
+    window.addEventListener('keydown',escape,true);
+    return()=>{window.removeEventListener('blur',blur);window.removeEventListener('keydown',escape,true);};
+  },[cancelTextDrag]);
   const placementTemplate=useMemo(()=>tool==='place'&&placementSymbolId?projectPlacementSymbol(document,sheetId,placementSymbolId):null,
     [document,sheetId,tool,placementSymbolId]);
   useEffect(()=>{
@@ -216,8 +240,28 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     const r=svg?.getBoundingClientRect();
     return {x:e.clientX-(r?.left??0),y:e.clientY-(r?.top??0)};
   },[]);
+  const startTextDrag=(e:ReactPointerEvent<SVGTextElement>,t:SheetText)=>{
+    if(e.button!==0)return;
+    e.stopPropagation();
+    if(!canEdit||tool!=='select'||textDragRef.current||controller.getState().drag||controller.getState().draft||e.ctrlKey||e.metaKey||e.shiftKey)return;
+    const origin:PointUm=[t.at_um[0],t.at_um[1]],capture=e.currentTarget;
+    const d:TextDrag={id:t.id,pointerId:e.pointerId,revision:snapshot.revision,projectId:document.project.id,sheetId,
+      start:local(e),origin,camera:{...camera},gridUm:document.project.settings.grid_step_um,snapEnabled,capture,moved:false};
+    try{capture.setPointerCapture(e.pointerId);}catch{return;}
+    setContextMenu(null);controller.syncSymbolSelection(null,true,[]);onIntent({kind:'select',target:null});textDragRef.current=d;
+  };
+  const dragTextAt=(d:TextDrag,p:ScreenPoint):PointUm|null=>{
+    if(d.revision!==snapshot.revision||d.projectId!==document.project.id||d.sheetId!==sheetId||!canEdit||tool!=='select'||
+      d.camera.s!==camera.s||d.camera.x!==camera.x||d.camera.y!==camera.y)return null;
+    try{
+      const a=world(d.start,d.camera),b=world(p,d.camera);
+      const raw:PointUm=[d.origin[0]+b[0]-a[0],d.origin[1]+b[1]-a[1]];
+      return snap(raw,d.gridUm,d.snapEnabled);
+    }catch{return null;}
+  };
   const eventPoint=(e:ReactPointerEvent<SVGSVGElement>)=>({...local(e),pointerId:e.pointerId,button:e.button,ctrlKey:e.ctrlKey||e.metaKey,shiftKey:e.shiftKey});
   const down=(e:ReactPointerEvent<SVGSVGElement>)=>{
+    if(textDragRef.current)return;
     setContextMenu(null);setPlacementPointer(tool==='place'?local(e):null);
     if(controller.down(eventPoint(e))){
       e.preventDefault();e.currentTarget.focus();
@@ -226,11 +270,32 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     }
   };
   const move=(e:ReactPointerEvent<SVGSVGElement>)=>{
+    const d=textDragRef.current;
+    if(d){
+      if(e.pointerId!==d.pointerId)return;
+      const p=local(e);
+      if(!d.moved&&Math.hypot(p.x-d.start.x,p.y-d.start.y)<4)return;
+      d.moved=true;
+      const at=dragTextAt(d,p);
+      if(!at){cancelTextDrag();return;}
+      e.preventDefault();svgRef.current?.focus();setTextGhost({id:d.id,at});return;
+    }
     controller.move(eventPoint(e));
     setPlacementPointer(tool==='place'?local(e):null);
     invalidate();
   };
   const up=(e:ReactPointerEvent<SVGSVGElement>)=>{
+    const d=textDragRef.current;
+    if(d){
+      if(e.pointerId!==d.pointerId)return;
+      const at=d.moved?dragTextAt(d,local(e)):null;
+      cancelTextDrag();
+      if(at&&(at[0]!==d.origin[0]||at[1]!==d.origin[1])){
+        e.preventDefault();
+        onIntent({kind:'moveText',text_id:d.id,at_um:at,base_revision:d.revision});
+      }
+      return;
+    }
     controller.up(eventPoint(e));
     if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
     invalidate();
@@ -238,7 +303,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
   const wheel=(e:ReactWheelEvent<SVGSVGElement>)=>{
     setContextMenu(null);
     e.preventDefault();
-    if(controller.getState().drag)return;
+    if(controller.getState().drag||textDragRef.current)return;
     controller.setContext({camera:zoom(controller.getState().camera,local(e),e.deltaY<0?1.15:.85)});
     const p=Math.round(controller.getState().camera.s/DEFAULT_CAMERA.s*100);
     appliedZoomRef.current=p;onZoomPercent?.(p);
@@ -329,7 +394,8 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     viewBox={`0 0 ${Math.max(1,g2(size.width))} ${Math.max(1,g2(size.height))}`}
     onPointerDown={down} onPointerMove={move} onPointerUp={up}
     onPointerEnter={e=>{if(tool==='place')setPlacementPointer(local(e));}} onPointerLeave={()=>{setPlacementPointer(null);controller.clearTapPreview();invalidate();}}
-    onPointerCancel={e=>{setPlacementPointer(null);controller.key('Escape');if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);invalidate()}}
+    onLostPointerCapture={e=>{if(textDragRef.current?.pointerId===e.pointerId)cancelTextDrag();}}
+    onPointerCancel={e=>{if(textDragRef.current){if(textDragRef.current.pointerId===e.pointerId)cancelTextDrag();return;}setPlacementPointer(null);controller.key('Escape');if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);invalidate()}}
     onWheel={e=>{setPlacementPointer(tool==='place'?local(e):null);wheel(e)}} onContextMenu={openContextMenu}
     onDoubleClick={e=>{if(tool==='select'&&controller.contextSelect(local(e))==='symbol'){invalidate();onOpenProperties?.();}}}
     onKeyDown={e=>{
@@ -407,14 +473,23 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
         const p=screen(t.at_um,camera);
         const editable=canEdit&&tool==='select'&&!!onEditText&&document.project.sheets.find(s=>s.id===sheetId)?.layers.some(l=>l.id===t.layer_id&&l.kind==='annotation'&&!l.locked&&l.visible);
         return <text key={t.id} data-testid={'sheet-text-'+t.id} x={p.x} y={p.y} fontSize={t.height_um*camera.s}
-          pointerEvents={editable?'visiblePainted':'none'} style={editable?{cursor:'text'}:undefined}
-          onPointerDown={editable?e=>{if(e.button===0)e.stopPropagation();}:undefined}
-          onPointerUp={editable?e=>{if(e.button===0)e.stopPropagation();}:undefined}
+          pointerEvents={editable?'visiblePainted':'none'} opacity={textGhost?.id===t.id?0.35:1} style={editable?{cursor:'move',userSelect:'none'}:undefined}
+          onPointerDown={editable?e=>startTextDrag(e,t):undefined}
           onDoubleClick={editable?e=>{e.stopPropagation();onEditText?.(t.id,snapshot.revision);}:undefined}
           onContextMenu={editable?e=>{e.preventDefault();e.stopPropagation();onEditText?.(t.id,snapshot.revision);}:undefined}
           fontFamily="GSCAD Technical, OpenGost Type A, sans-serif" transform={t.rotation_deg?'rotate('+t.rotation_deg+' '+p.x+' '+p.y+')':undefined}>{t.text}</text>;
       })}
     </g>
+    {textGhost&&(()=>{
+      const t=document.project.sheets.find(s=>s.id===sheetId)?.texts.find(t=>t.id===textGhost.id);
+      if(!t)return null;
+      const p=screen(textGhost.at,camera);
+      return <g data-testid="sheet-text-drag-preview" data-electrical="false" pointerEvents="none">
+        <text x={p.x} y={p.y} fontSize={t.height_um*camera.s} fill="#167d86" stroke="none"
+          fontFamily="GSCAD Technical, OpenGost Type A, sans-serif" transform={t.rotation_deg?'rotate('+t.rotation_deg+' '+p.x+' '+p.y+')':undefined}>{t.text}</text>
+        <circle cx={p.x} cy={p.y} r={3} fill="none" stroke="#167d86"/>
+      </g>;
+    })()}
     <g className="component-labels" data-electrical="false" pointerEvents="none"
       data-unplaced-label-count={componentLabels.unplaced.length}>
       {componentLabels.labels.map(l=>{

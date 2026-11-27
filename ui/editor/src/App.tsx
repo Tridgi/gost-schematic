@@ -590,6 +590,11 @@ export default function App() {
           }else setSelectedId(null);
           return true;
         }
+        if(intent.kind==='moveText'){
+          if(intent.base_revision!==authored.revision)throw Error('STALE_REVISION');
+          authored.moveText(authored.newTransaction('drag-sheet-text'),intent.text_id,intent.at_um);
+          adoptAuthored();setIssue('Надпись перемещена. Электрическая модель сохранена.');return true;
+        }
         if(intent.kind==='placeText'){
           if(intent.base_revision!==authored.revision)throw Error('STALE_REVISION');
           setTextRequest({at:intent.at_um,revision:authored.revision,epoch:sessionEpochRef.current});return true;

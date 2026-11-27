@@ -2472,3 +2472,35 @@ test('R45 annotation edit, rotate, move and delete preserve electrical model and
  assert.equal(s.undo(),true);assert.deepEqual(s.file,after);
  assert.equal(s.redo(),true);assert.deepEqual(s.file,deleted);
 });
+
+
+test('R46 move rotated annotation atomically, rejects stale, locked and out-of-frame changes',()=>{
+ const s=newSession();
+ s.place(s.newTransaction('left'),'symbol/resistor.fixed',[80000,80000]);
+ s.place(s.newTransaction('right'),'symbol/resistor.fixed',[220000,80000]);
+ const [a,b]=s.file.project.components.map(c=>c.id);
+ s.connect(s.newTransaction('wire'),pin(a,'2'),pin(b,'1'));
+ s.addText(s.newTransaction('add'),'Цепь 24 В',[50000,150000],3500);
+ const id=s.file.project.sheets[0].texts[0].id;
+ s.editText(s.newTransaction('rotate'),id,'Цепь 24 В',[50000,150000],3500,90);
+ const before=s.file,rev=s.revision,t=before.project.sheets[0].texts[0];
+ assert.throws(()=>s.moveText(s.newTransaction('outside'),id,[50000,295000]),/TEXT_OUTSIDE_FRAME/);
+ assert.throws(()=>s.moveText(s.newTransaction('same'),id,t.at_um),/NO_CHANGE/);
+ assert.throws(()=>s.moveText(s.newTransaction('missing'),'missing',[65000,140000]),/UNKNOWN_TEXT/);
+ assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
+ const stale=s.newTransaction('stale');
+ s.moveText(s.newTransaction('drag'),id,[65000,140000]);
+ const after=s.file;
+ const expected=structuredClone(before);expected.project.sheets[0].texts[0].at_um=[65000,140000];
+ assert.deepEqual(after,expected);assert.equal(s.revision,rev+1);
+ assert.throws(()=>s.moveText(stale,id,[70000,140000]),/STALE_REVISION/);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);assert.deepEqual(new AuthoringSession(s.file).file,after);
+ for(const mode of ['locked','hidden']){
+  const blocked=structuredClone(before),layer=blocked.project.sheets[0].layers.find(l=>l.id===t.layer_id);
+  if(mode==='locked')layer.locked=true;else layer.visible=false;
+  const session=new AuthoringSession(blocked);
+  assert.throws(()=>session.moveText(session.newTransaction(mode),id,[65000,140000]),/LAYER_LOCKED/);
+  assert.equal(session.revision,0);assert.deepEqual(session.file,blocked);
+ }
+});
