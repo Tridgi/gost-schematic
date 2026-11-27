@@ -22,7 +22,7 @@ export function AboutDialog({opened,onClose}:{opened:boolean;onClose:()=>void}){
   const checkedAtStart=useRef(false);
   useEffect(()=>{
     let active=true;
-    if(native)nativeAppVersion().then(v=>{if(active)setVersion(v);}).catch(()=>{if(active)setState({kind:'error'});});
+    if(native)nativeAppVersion().then(v=>{if(typeof v!=='string'||!v.trim())throw Error('INVALID_NATIVE_VERSION');if(active)setVersion(v);}).catch(()=>{if(active)setState({kind:'error'});});
     return()=>{active=false;};
   },[native]);
   useEffect(()=>()=>request.current?.abort(),[]);
