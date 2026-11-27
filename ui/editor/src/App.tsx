@@ -800,6 +800,7 @@ export default function App() {
       (overflow.junctions.length+overflow.splices.length)+' узлов. Экспорт должен быть проверен.'});
   return <EditorShell
     projectName={document.project.title+(authoringRef.current?' · R3 AUTHORING':' · R2 PREVIEW')} dirty={dirty}
+    canInstallUpdate={()=>!dirtyRef.current&&!nativeSaveBusyRef.current&&!textRequest&&!layoutPreview&&(!authoringRef.current||nativeHandle!==null)}
     baseRevision={String(snapshot.revision)} sheets={document.project.sheets.map(s=>({id:s.id,title:s.name}))}
     activeSheetId={activeSheet.id} catalog={catalog} tree={tree} topology={topology}
     propertiesRequest={propertiesRequest}
