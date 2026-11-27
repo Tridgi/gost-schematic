@@ -176,6 +176,27 @@ fn native_close_trace(stage: String, dirty: bool, busy: bool) -> Result<(), Stri
     Ok(())
 }
 
+#[tauri::command]
+fn native_app_version(app: tauri::AppHandle) -> String {
+    app.package_info().version.to_string()
+}
+
+fn project_link(link: &str) -> Option<&'static str> {
+    match link {
+        "founder" => Some("https://github.com/Tridgi"),
+        "repository" => Some("https://github.com/Tridgi/gost-schematic"),
+        "releases" => Some("https://github.com/Tridgi/gost-schematic/releases"),
+        _ => None,
+    }
+}
+
+#[tauri::command]
+#[allow(deprecated)]
+fn native_open_project_link(app: tauri::AppHandle, link: String) -> Result<(), String> {
+    let url = project_link(&link).ok_or("INVALID_PROJECT_LINK")?;
+    app.shell().open(url, None).map_err(|_| "OPEN_LINK_FAILED".into())
+}
+
 pub fn run() {
     tauri::Builder::default()
         .manage(BridgeState::default())
@@ -194,6 +215,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             engine_request, cancel_engine_request, native_close_trace,
+            native_app_version, native_open_project_link,
             native_files::native_open_project, native_files::native_save_project,
             native_files::native_save_as_project, native_files::native_close_project,
             native_files::native_export_project
@@ -211,6 +233,13 @@ mod tests {
         assert!(valid_close_trace_stage("browser_beforeunload"));
         for bad in ["", "document", "filename=C:\\test", "guard_received\nsecret"] {
             assert!(!valid_close_trace_stage(bad));
+        }
+    }
+    #[test]
+    fn project_links_are_fixed() {
+        assert_eq!(project_link("releases"), Some("https://github.com/Tridgi/gost-schematic/releases"));
+        for bad in ["https://evil.example", "file:///C:/Windows", "javascript:alert(1)", ""] {
+            assert!(project_link(bad).is_none());
         }
     }
     #[test]
