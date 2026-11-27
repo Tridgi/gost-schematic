@@ -992,7 +992,7 @@ export default function App() {
           const f=a.file,sh=f.project.sheets.find(s=>s.id===f.workspace.active_sheet_id),t=sh?.texts.find(t=>t.id===id);
           const layer=sh?.layers.find(l=>l.id===t?.layer_id);
           if(!t||!layer||layer.kind!=='annotation'||layer.locked||!layer.visible){setIssue('TEXT_FAILED: надпись недоступна для изменения.');return;}
-          setTextRequest({at:t.at_um,revision:a.revision,epoch:sessionEpochRef.current,edit:{id:t.id,value:t.text,height:t.height_um,rotation:t.rotation_deg}});
+          setTextRequest({at:[t.at_um[0],t.at_um[1]],revision:a.revision,epoch:sessionEpochRef.current,edit:{id:t.id,value:t.text,height:t.height_um,rotation:t.rotation_deg}});
         }:undefined}
         onCancelPlacement={()=>{setTool('select');setPlacementSymbol(null);setPending(null);setIssue('Размещение УГО отменено.');}}
         placementHint={pinMagnet&&tool==='place'&&placementSymbol&&authoringRef.current?at=>authoringRef.current?.suggestAlignedPlacement(placementSymbol,at)??null:undefined}
