@@ -2431,3 +2431,44 @@ test('R44 start at explicit Junction and connect a physical pin atomically',()=>
   assert.equal(session.revision,0);assert.deepEqual(session.file,blocked);
  }
 });
+
+
+test('R45 annotation edit, rotate, move and delete preserve electrical model and stable ID',()=>{
+ const s=newSession();
+ s.place(s.newTransaction('left'),'symbol/resistor.fixed',[80000,80000]);
+ s.place(s.newTransaction('right'),'symbol/resistor.fixed',[220000,80000]);
+ const [a,b]=s.file.project.components.map(c=>c.id);
+ s.connect(s.newTransaction('wire'),pin(a,'2'),pin(b,'1'));
+ s.addText(s.newTransaction('add'),'Питание 24 В',[50000,150000],3500);
+ const before=s.file,rev=s.revision,sh=before.project.sheets[0],t=sh.texts[0],stale=s.newTransaction('stale');
+ assert.throws(()=>s.editText(s.newTransaction('outside'),t.id,'Питание',[50000,290000],5000,90),/TEXT_OUTSIDE_FRAME/);
+ assert.throws(()=>s.editText(s.newTransaction('empty'),t.id,'',[50000,150000],3500,0),/INVALID_TEXT/);
+ assert.throws(()=>s.editText(s.newTransaction('same'),t.id,t.text,t.at_um,t.height_um,t.rotation_deg),/NO_CHANGE/);
+ assert.throws(()=>s.deleteText(s.newTransaction('missing'),'not-found'),/UNKNOWN_TEXT/);
+ assert.equal(s.revision,rev);assert.deepEqual(s.file,before);
+ for(const mode of ['locked','hidden']){
+  const blocked=structuredClone(before),layer=blocked.project.sheets[0].layers.find(l=>l.id===t.layer_id);
+  if(mode==='locked')layer.locked=true;else layer.visible=false;
+  const session=new AuthoringSession(blocked);
+  assert.throws(()=>session.editText(session.newTransaction(mode),t.id,'Иное',[60000,150000],5000,90),/LAYER_LOCKED/);
+  assert.throws(()=>session.deleteText(session.newTransaction(mode),t.id),/LAYER_LOCKED/);
+  assert.equal(session.revision,0);assert.deepEqual(session.file,blocked);
+ }
+ s.editText(s.newTransaction('edit'),t.id,'Цепь 24 В',[65000,140000],5000,90);
+ const after=s.file,next=after.project.sheets[0];
+ assert.deepEqual(next.texts,[{...t,text:'Цепь 24 В',at_um:[65000,140000],height_um:5000,rotation_deg:90}]);
+ assert.deepEqual(after.project.nets,before.project.nets);
+ assert.deepEqual(after.project.components,before.project.components);
+ assert.deepEqual(next.wires,sh.wires);assert.deepEqual(next.junctions,sh.junctions);
+ assert.deepEqual(next.instances,sh.instances);
+ assert.throws(()=>s.deleteText(stale,t.id),/STALE_REVISION/);
+ assert.deepEqual(new AuthoringSession(s.file).file,after);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);assert.deepEqual(s.file,after);
+ s.deleteText(s.newTransaction('delete'),t.id);
+ const deleted=s.file;assert.deepEqual(deleted.project.sheets[0].texts,[]);
+ assert.deepEqual(deleted.project.nets,before.project.nets);
+ assert.deepEqual(deleted.project.sheets[0].wires,sh.wires);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,after);
+ assert.equal(s.redo(),true);assert.deepEqual(s.file,deleted);
+});

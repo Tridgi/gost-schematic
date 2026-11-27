@@ -1973,3 +1973,40 @@ test('R44 start at Junction, reject free endpoint, cancel and connect physical p
  await page.getByRole('button',{name:'Отменить'}).click();expect((await saved()).project).toEqual(before.project);
  await page.getByRole('button',{name:'Повторить'}).click();expect((await saved()).project).toEqual(after.project);
 });
+
+
+test('R45 edit text via double click, exact coordinates, rotate, delete and Undo/Redo',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Файл',exact:true}).click();await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await canvas.focus();await canvas.press('t');
+ await page.mouse.click(paper.x+paper.width*.25,paper.y+paper.height*.5);
+ await page.getByTestId('sheet-text-input').fill('Питание 24 В');
+ await page.getByTestId('add-sheet-text').click();await expect(page.getByTestId('sheet-text-input')).toBeHidden();
+ const annotation=canvas.locator('text[data-testid^="sheet-text-"]');
+ await expect(annotation).toHaveCount(1);
+ const saved=async()=>{const d=page.waitForEvent('download');await page.getByTestId('save-project').click();return JSON.parse(readFileSync(await (await d).path(),'utf8'));};
+ const before=await saved(),t=before.project.sheets[0].texts[0];
+ await annotation.dblclick();
+ const dialog=page.getByRole('dialog',{name:'Свойства надписи'});
+ await expect(dialog).toBeVisible();
+ await expect(dialog.getByTestId('sheet-text-input')).toHaveValue('Питание 24 В');
+ await dialog.getByTestId('sheet-text-input').fill('Цепь 24 В');
+ await dialog.getByTestId('sheet-text-x').fill('65,125');
+ await dialog.getByTestId('sheet-text-y').fill('140');
+ await dialog.getByText('5',{exact:true}).click();
+ await dialog.getByText('90',{exact:true}).click();
+ await dialog.getByTestId('add-sheet-text').click();
+ await expect(dialog).toBeHidden();await expect(annotation).toHaveText('Цепь 24 В');
+ const after=await saved();
+ expect(after.project.sheets[0].texts).toEqual([{...t,text:'Цепь 24 В',at_um:[65125,140000],height_um:5000,rotation_deg:90}]);
+ expect(after.project.nets).toEqual(before.project.nets);
+ await page.getByRole('button',{name:'Отменить'}).click();expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();expect((await saved()).project).toEqual(after.project);
+ await annotation.click({button:'right'});await expect(dialog).toBeVisible();
+ page.once('dialog',d=>d.dismiss());await dialog.getByTestId('delete-sheet-text').click();await expect(dialog).toBeVisible();
+ page.once('dialog',d=>d.accept());await dialog.getByTestId('delete-sheet-text').click();await expect(dialog).toBeHidden();
+ await expect(annotation).toHaveCount(0);const deleted=await saved();expect(deleted.project.sheets[0].texts).toEqual([]);
+ await page.getByRole('button',{name:'Отменить'}).click();expect((await saved()).project).toEqual(after.project);
+ await page.getByRole('button',{name:'Повторить'}).click();expect((await saved()).project).toEqual(deleted.project);
+});
