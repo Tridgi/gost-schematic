@@ -7,6 +7,8 @@ use std::time::Duration;
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_updater::{Update, UpdaterExt};
 use uuid::Uuid;
+use tokio::sync::oneshot;
+use reqwest::{redirect, Url};
 
 const FEED: &str = "https://github.com/Tridgi/gost-schematic/releases/latest/download/latest.json";
 const MAX_INSTALLER_BYTES: usize = 1024 * 1024 * 1024;
@@ -92,7 +94,7 @@ struct Prepared { update: Update, bytes: Vec<u8>, token: String }
 enum Stage {
     #[default]
     Idle,
-    Downloading { received: u64, total: Option<u64> },
+    Downloading { received: u64, total: Option<u64>, id: String, cancel: Option<oneshot::Sender<()>> },
     Ready(Prepared),
     Installing,
 }
@@ -103,7 +105,7 @@ pub struct UpdateStore(Mutex<Stage>);
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum UpdateStatus {
     Idle,
-    Downloading { received: u64, total: Option<u64> },
+    Downloading { received: u64, total: Option<u64>, id: String, cancelling: bool },
     Ready { version: String, token: String },
     Installing,
 }
@@ -118,10 +120,91 @@ pub fn native_signed_update_status(state: State<'_, UpdateStore>) -> Result<Upda
     let stage = state.0.lock().map_err(|_| "UPDATE_LOCK_FAILED")?;
     Ok(match &*stage {
         Stage::Idle => UpdateStatus::Idle,
-        Stage::Downloading { received, total } => UpdateStatus::Downloading { received: *received, total: *total },
+        Stage::Downloading { received, total, id, cancel } => UpdateStatus::Downloading { received: *received, total: *total, id: id.clone(), cancelling: cancel.is_none() },
         Stage::Ready(prepared) => UpdateStatus::Ready { version: prepared.update.version.clone(), token: prepared.token.clone() },
         Stage::Installing => UpdateStatus::Installing,
     })
+}
+
+// GitHub Releases can redirect to a dedicated asset CDN. Never follow an
+// HTTP, credential-bearing, nonstandard-port or unrelated-host redirect.
+fn trusted_download_url(url: &Url) -> bool {
+    url.scheme() == "https" && url.port_or_known_default() == Some(443)
+        && url.username().is_empty() && url.password().is_none()
+        && url.fragment().is_none()
+        && match url.host_str() {
+            Some("github.com") => url.path().starts_with("/Tridgi/gost-schematic/releases/"),
+            Some("release-assets.githubusercontent.com" | "objects.githubusercontent.com") => true,
+            _ => false,
+        }
+}
+fn release_redirect_policy() -> redirect::Policy {
+    redirect::Policy::custom(|attempt| {
+        if attempt.previous().len() >= 8 || !trusted_download_url(attempt.url()) {
+            attempt.error("UNTRUSTED_UPDATE_REDIRECT")
+        } else { attempt.follow() }
+    })
+}
+
+// Limit actual bytes, including chunked/unknown-length HTTP responses. The
+// previous plugin download buffered the entire response before the size check.
+fn append_bounded(buffer: &mut Vec<u8>, chunk: &[u8], limit: usize) -> Result<(), &'static str> {
+    let next = buffer.len().checked_add(chunk.len()).filter(|n| *n <= limit)
+        .ok_or("UPDATE_SIZE_REJECTED")?;
+    if next > buffer.capacity() {
+        let target = buffer.capacity().saturating_mul(2).max(next).min(limit);
+        buffer.try_reserve_exact(target - buffer.len()).map_err(|_| "UPDATE_MEMORY_LIMIT")?;
+    }
+    buffer.extend_from_slice(chunk);
+    Ok(())
+}
+async fn download_bounded(update: &Update, state: &UpdateStore) -> Result<Vec<u8>, &'static str> {
+    if !trusted_download_url(&update.download_url) { return Err("UPDATE_MANIFEST_MISMATCH"); }
+    let client = reqwest::Client::builder().https_only(true)
+        .redirect(release_redirect_policy()).timeout(Duration::from_secs(300))
+        .connect_timeout(Duration::from_secs(15))
+        .user_agent("GOST-Schematic-Updater")
+        .build().map_err(|_| "UPDATE_CLIENT_FAILED")?;
+    let mut response = client.get(update.download_url.clone())
+        .header(reqwest::header::ACCEPT, "application/octet-stream")
+        .header(reqwest::header::ACCEPT_ENCODING, "identity")
+        .send().await.map_err(|_| "UPDATE_DOWNLOAD_FAILED")?;
+    if response.status() != reqwest::StatusCode::OK || !trusted_download_url(response.url()) {
+        return Err("UPDATE_HTTP_REJECTED");
+    }
+    let length = response.content_length();
+    if length.is_some_and(|n| n == 0 || n > MAX_INSTALLER_BYTES as u64) {
+        return Err("UPDATE_SIZE_REJECTED");
+    }
+    let mut bytes = Vec::new();
+    while let Some(chunk) = response.chunk().await.map_err(|_| "UPDATE_DOWNLOAD_FAILED")? {
+        append_bounded(&mut bytes, &chunk, MAX_INSTALLER_BYTES)?;
+        let mut stage = state.0.lock().map_err(|_| "UPDATE_LOCK_FAILED")?;
+        if let Stage::Downloading { received, total, cancel, .. } = &mut *stage {
+            if cancel.is_none() { return Err("UPDATE_DOWNLOAD_CANCELLED"); }
+            *received = bytes.len() as u64;
+            *total = length;
+        } else { return Err("UPDATE_DOWNLOAD_CANCELLED"); }
+    }
+    if bytes.is_empty() || length.is_some_and(|n| n != bytes.len() as u64) {
+        return Err("UPDATE_LENGTH_MISMATCH");
+    }
+    // Official Tauri 2.14.1 checks the actual bytes and signed version here
+    // and again inside install(). No alternative unsigned installation.
+    update.verify(&bytes).map_err(|_| "UPDATE_SIGNATURE_FAILED")?;
+    Ok(bytes)
+}
+
+#[tauri::command]
+pub fn native_cancel_signed_download(state: State<'_, UpdateStore>, id: String) -> Result<(), String> {
+    let mut stage = state.0.lock().map_err(|_| "UPDATE_LOCK_FAILED")?;
+    match &mut *stage {
+        Stage::Downloading { id: active, cancel, .. } if *active == id => {
+            if let Some(sender) = cancel.take() { let _ = sender.send(()); }
+            Ok(())
+        }
+        _ => Err("STALE_UPDATE_DOWNLOAD".into()),
+    }
 }
 
 #[tauri::command]
@@ -133,13 +216,15 @@ pub async fn native_prepare_signed_update(
     if stable_version(&version).is_none_or(|v| v <= current) {
         return Err("UPDATE_VERSION_NOT_NEWER".into());
     }
+    let (cancel, mut cancelled) = oneshot::channel();
     {
         let mut stage = state.0.lock().map_err(|_| "UPDATE_LOCK_FAILED")?;
         if !matches!(&*stage, Stage::Idle) { return Err("UPDATE_BUSY_OR_PREPARED".into()); }
-        *stage = Stage::Downloading { received: 0, total: None };
+        *stage = Stage::Downloading { received: 0, total: None, id: Uuid::new_v4().simple().to_string(), cancel: Some(cancel) };
     }
-    let result = async {
+    let work = async {
         let updater = app.updater_builder()
+            .configure_client(|client| client.https_only(true).redirect(release_redirect_policy()))
             .timeout(Duration::from_secs(300))
             .build().map_err(|_| "UPDATE_CONFIGURATION_FAILED")?;
         let update = updater.check().await.map_err(|_| "UPDATE_CHECK_FAILED")?
@@ -147,19 +232,19 @@ pub async fn native_prepare_signed_update(
         if update.version != version || asset_url(&version).as_deref() != Some(update.download_url.as_str()) {
             return Err("UPDATE_MANIFEST_MISMATCH");
         }
-        let bytes = update.download(|chunk, total| {
-            if let Ok(mut stage) = state.0.lock() {
-                if let Stage::Downloading { received, total: current_total } = &mut *stage {
-                    *received = received.saturating_add(chunk as u64);
-                    *current_total = total;
-                }
-            }
-        }, || {}).await.map_err(|_| "UPDATE_DOWNLOAD_OR_SIGNATURE_FAILED")?;
-        if bytes.is_empty() || bytes.len() > MAX_INSTALLER_BYTES { return Err("UPDATE_SIZE_REJECTED"); }
-        update.verify(&bytes).map_err(|_| "UPDATE_SIGNATURE_FAILED")?;
+        let bytes = download_bounded(&update, &state).await?;
         Ok(Prepared { update, bytes, token: Uuid::new_v4().simple().to_string() })
-    }.await;
+    };
+    let result = tokio::select! {
+        biased;
+        _ = &mut cancelled => Err("UPDATE_DOWNLOAD_CANCELLED"),
+        outcome = work => outcome,
+    };
     let mut stage = state.0.lock().map_err(|_| "UPDATE_LOCK_FAILED")?;
+    if matches!(&*stage, Stage::Downloading { cancel: None, .. }) {
+        *stage = Stage::Idle;
+        return Err("UPDATE_DOWNLOAD_CANCELLED".into());
+    }
     match result {
         Ok(prepared) => { *stage = Stage::Ready(prepared); Ok(()) }
         Err(error) => { *stage = Stage::Idle; Err(error.into()) }
@@ -224,6 +309,23 @@ mod tests {
         for (field, value) in [("allowDowngrades", Value::Bool(true)), ("requireSignedVersion", Value::Bool(false)), ("dangerousAcceptInvalidCerts", Value::Bool(true)), ("endpoints", serde_json::json!(["https://example.invalid"]))] {
             let mut bad = policy.clone(); bad[field] = value;
             assert!(!secure_policy(&bad));
+        }
+    }
+    #[test]
+    fn download_rejects_unknown_length_overflow_before_append() {
+        let mut bytes = Vec::new();
+        append_bounded(&mut bytes, b"abc", 5).unwrap();
+        append_bounded(&mut bytes, b"de", 5).unwrap();
+        assert_eq!(append_bounded(&mut bytes, b"x", 5), Err("UPDATE_SIZE_REJECTED"));
+        assert_eq!(bytes, b"abcde");
+    }
+    #[test]
+    fn redirect_policy_only_allows_https_release_hosts() {
+        for good in [FEED, "https://release-assets.githubusercontent.com/a?token=test", "https://objects.githubusercontent.com/a"] {
+            assert!(trusted_download_url(&Url::parse(good).unwrap()));
+        }
+        for bad in ["http://github.com/Tridgi/gost-schematic/releases/latest", "https://evil.example/Tridgi/gost-schematic/releases/a", "https://github.com.evil.example/a", "https://github.com:444/Tridgi/gost-schematic/releases/a", "https://user@github.com/Tridgi/gost-schematic/releases/a", "https://github.com/other/repo/releases/a", "https://github.com/Tridgi/gost-schematic/releases/a#fragment"] {
+            assert!(!trusted_download_url(&Url::parse(bad).unwrap()));
         }
     }
     #[test]

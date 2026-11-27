@@ -1,7 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {Alert,Button,Divider,Group,Modal,Progress,Stack,Switch,Text} from '@mantine/core';
 import {useLocalStorage} from '@mantine/hooks';
-import {nativeDesktopAvailable,nativeAppVersion,nativeOpenProjectLink,type ProjectLink,nativeSignedUpdateEnabled,nativeSignedUpdateStatus,nativePrepareSignedUpdate,nativeDiscardSignedUpdate,nativeInstallSignedUpdate,type SignedUpdateStatus} from '../native/desktop';
+import {nativeDesktopAvailable,nativeAppVersion,nativeOpenProjectLink,type ProjectLink,nativeSignedUpdateEnabled,nativeSignedUpdateStatus,nativePrepareSignedUpdate,nativeCancelSignedDownload,nativeDiscardSignedUpdate,nativeInstallSignedUpdate,type SignedUpdateStatus} from '../native/desktop';
 import {checkLatestRelease,type ReleaseStatus} from '../native/release-check';
 import pkg from '../../package.json';
 
@@ -41,8 +41,15 @@ export function AboutDialog({opened,onClose,onAvailable,canInstallUpdate}:{opene
       setSigned({kind:'downloading',received:0,total:null});
       await nativePrepareSignedUpdate(rawVersion.replace(/^v/,''));
       setSigned(await nativeSignedUpdateStatus());
-    }catch{setSigned({kind:'idle'});setSignedError('Не удалось скачать или проверить подпись обновления. Установка не выполнялась.');}
+    }catch(error){setSigned({kind:'idle'});setSignedError(String(error).includes('UPDATE_DOWNLOAD_CANCELLED')?'Загрузка отменена. Установка не выполнялась.':'Не удалось скачать или проверить подпись обновления. Установка не выполнялась.');}
     finally{operation.current=false;}
+  }
+  async function cancelDownload(){
+    if(signed.kind!=='downloading'||!signed.id||signed.cancelling)return;
+    const id=signed.id;
+    setSignedError('');
+    try{await nativeCancelSignedDownload(id);setSigned(await nativeSignedUpdateStatus());}
+    catch{setSignedError('Не удалось отменить загрузку: операция уже завершилась или изменилась.');}
   }
   async function discardUpdate(){
     if(operation.current)return;
@@ -116,7 +123,8 @@ export function AboutDialog({opened,onClose,onAvailable,canInstallUpdate}:{opene
       {signedEnabled&&state.kind==='available'&&state.version&&signed.kind==='idle'&&<Button data-testid="download-signed-update" onClick={()=>void prepareUpdate(state.version!)}>Скачать и проверить обновление</Button>}
       {signedEnabled&&signed.kind==='downloading'&&<Stack gap={4}>
         <Text size="sm">Получено {(signed.received/1048576).toFixed(1)} МБ{signed.total?' из '+(signed.total/1048576).toFixed(1)+' МБ':''}</Text>
-        <Progress animated value={signed.total?Math.min(100,signed.received/signed.total*100):100}/>
+        <Progress animated={!signed.cancelling} value={signed.total?Math.min(100,signed.received/signed.total*100):0}/>
+        <Button data-testid="cancel-signed-download" variant="default" disabled={!signed.id||signed.cancelling} onClick={()=>void cancelDownload()}>{signed.cancelling?'Отмена…':'Отменить загрузку'}</Button>
         <Text size="xs" c="dimmed">После загрузки будет проверена цифровая подпись. Установка не начнётся автоматически.</Text>
       </Stack>}
       {signedEnabled&&signed.kind==='ready'&&<Stack gap="xs">

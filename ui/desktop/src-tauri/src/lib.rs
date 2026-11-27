@@ -227,7 +227,7 @@ pub fn run() {
             native_app_version, native_open_project_link,
             signed_updates::native_signed_update_enabled, signed_updates::native_signed_update_status,
             signed_updates::native_prepare_signed_update, signed_updates::native_discard_signed_update,
-            signed_updates::native_install_signed_update,
+            signed_updates::native_install_signed_update, signed_updates::native_cancel_signed_download,
             native_files::native_open_project, native_files::native_save_project,
             native_files::native_save_as_project, native_files::native_close_project,
             native_files::native_export_project
