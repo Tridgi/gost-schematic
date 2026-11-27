@@ -2010,3 +2010,35 @@ test('R45 edit text via double click, exact coordinates, rotate, delete and Undo
  await page.getByRole('button',{name:'Отменить'}).click();expect((await saved()).project).toEqual(after.project);
  await page.getByRole('button',{name:'Повторить'}).click();expect((await saved()).project).toEqual(deleted.project);
 });
+
+
+test('R46 drag annotation with grid preview, Escape and one Undo/Redo transaction',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Файл',exact:true}).click();await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await canvas.focus();await canvas.press('t');await page.mouse.click(paper.x+paper.width*.25,paper.y+paper.height*.5);
+ await page.getByTestId('sheet-text-input').fill('Питание 24 В');
+ await page.getByTestId('add-sheet-text').click();await expect(page.getByTestId('sheet-text-input')).toBeHidden();
+ const annotation=canvas.locator('text[data-testid^="sheet-text-"]');
+ await expect(annotation).toHaveCount(1);
+ const saved=async()=>{const d=page.waitForEvent('download');await page.getByTestId('save-project').click();return JSON.parse(readFileSync(await (await d).path(),'utf8'));};
+ const before=await saved(),t=before.project.sheets[0].texts[0],grid=before.project.settings.grid_step_um;
+ const p=await annotation.boundingBox(),x=p.x+p.width/2,y=p.y+p.height/2;
+ const dx=paper.width*.13,dy=-paper.height*.1;
+ await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+dx,y+dy,{steps:8});
+ await expect(page.getByTestId('sheet-text-drag-preview')).toBeVisible();
+ await canvas.press('Escape');await expect(page.getByTestId('sheet-text-drag-preview')).toHaveCount(0);
+ await page.mouse.up();expect((await saved()).project).toEqual(before.project);
+ await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+dx,y+dy,{steps:8});
+ await expect(page.getByTestId('sheet-text-drag-preview')).toBeVisible();
+ await page.mouse.up();await expect(page.getByTestId('sheet-text-drag-preview')).toHaveCount(0);
+ const after=await saved(),moved=after.project.sheets[0].texts[0];
+ expect(moved.id).toBe(t.id);expect(moved.at_um).not.toEqual(t.at_um);
+ expect(moved.at_um.map(n=>n%grid)).toEqual([0,0]);
+ expect(moved.at_um[0]).toBeGreaterThan(t.at_um[0]);expect(moved.at_um[1]).toBeLessThan(t.at_um[1]);
+ const expected=structuredClone(before.project);expected.sheets[0].texts[0].at_um=moved.at_um;
+ expect(after.project).toEqual(expected);
+ await page.getByRole('button',{name:'Отменить'}).click();expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();expect((await saved()).project).toEqual(after.project);
+ await annotation.dblclick();await expect(page.getByRole('dialog',{name:'Свойства надписи'})).toBeVisible();
+});

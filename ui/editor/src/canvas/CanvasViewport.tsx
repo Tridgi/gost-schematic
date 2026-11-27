@@ -82,7 +82,7 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
   const [textGhost,setTextGhost]=useState<{id:string;at:PointUm}|null>(null);
   const cancelTextDrag=useCallback(()=>{
     const d=textDragRef.current;textDragRef.current=null;setTextGhost(null);
-    if(d?.capture.hasPointerCapture(d.pointerId))d.capture.releasePointerCapture(d.pointerId);
+    try{if(d?.capture.hasPointerCapture(d.pointerId))d.capture.releasePointerCapture(d.pointerId);}catch{/* pointer already released */}
   },[]);
   useEffect(()=>{
     // Layout/revision/tool changes invalidate the preview, never commit it.
@@ -248,14 +248,16 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     const d:TextDrag={id:t.id,pointerId:e.pointerId,revision:snapshot.revision,projectId:document.project.id,sheetId,
       start:local(e),origin,camera:{...camera},gridUm:document.project.settings.grid_step_um,snapEnabled,capture,moved:false};
     try{capture.setPointerCapture(e.pointerId);}catch{return;}
-    setContextMenu(null);textDragRef.current=d;
+    setContextMenu(null);controller.syncSymbolSelection(null,true,[]);onIntent({kind:'select',target:null});textDragRef.current=d;
   };
   const dragTextAt=(d:TextDrag,p:ScreenPoint):PointUm|null=>{
     if(d.revision!==snapshot.revision||d.projectId!==document.project.id||d.sheetId!==sheetId||!canEdit||tool!=='select'||
       d.camera.s!==camera.s||d.camera.x!==camera.x||d.camera.y!==camera.y)return null;
-    const a=world(d.start,d.camera),b=world(p,d.camera);
-    const raw:PointUm=[d.origin[0]+b[0]-a[0],d.origin[1]+b[1]-a[1]];
-    try{return snap(raw,d.gridUm,d.snapEnabled);}catch{return null;}
+    try{
+      const a=world(d.start,d.camera),b=world(p,d.camera);
+      const raw:PointUm=[d.origin[0]+b[0]-a[0],d.origin[1]+b[1]-a[1]];
+      return snap(raw,d.gridUm,d.snapEnabled);
+    }catch{return null;}
   };
   const eventPoint=(e:ReactPointerEvent<SVGSVGElement>)=>({...local(e),pointerId:e.pointerId,button:e.button,ctrlKey:e.ctrlKey||e.metaKey,shiftKey:e.shiftKey});
   const down=(e:ReactPointerEvent<SVGSVGElement>)=>{
