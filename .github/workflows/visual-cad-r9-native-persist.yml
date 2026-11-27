@@ -6,11 +6,11 @@ on:
     types: [opened, synchronize, reopened]
   push:
     # R11 and main must not silently bypass the installed Windows regression.
-    branches: [ui/visual-cad-mvp, main, 'fix/r11-*', ui/r15-group-clipboard', ui/r19-route-cleanup, ui/r23-topology-inventory]
+    branches: [ui/visual-cad-mvp, main, ui/r41-about-updates, 'fix/r11-*', ui/r15-group-clipboard', ui/r19-route-cleanup, ui/r23-topology-inventory]
 permissions:
   contents: read
 concurrency:
-  group: visual-cad-r9-persist-${{ github.ref }}
+  group: visual-cad-r9-persist-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 jobs:
   native-persist:
