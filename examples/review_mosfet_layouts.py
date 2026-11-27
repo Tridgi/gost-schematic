@@ -3,6 +3,7 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 from gost_schematic.catalog.transistors import (
+    mosfet_body_diode_variants,
     mosfet_extended_variants,
     mosfet_review_variants,
 )
@@ -12,19 +13,26 @@ SVG = "{http://www.w3.org/2000/svg}"
 ET.register_namespace("", SVG[1:-1])
 
 
-def generate(output: Path, *, depletion: bool = False, separate_body: bool = False) -> int:
+def generate(output: Path, *, depletion: bool = False, separate_body: bool = False,
+             body_diode: bool = False) -> int:
     output.mkdir(parents=True, exist_ok=True)
     variants = mosfet_extended_variants(depletion=depletion, separate_body=separate_body)
     if not depletion and not separate_body:
         variants = mosfet_review_variants()
-    mode = 'depletion' if depletion else 'enhancement'
+    if body_diode:
+        if depletion or separate_body:
+            raise ValueError('Body diode gallery requires three-pin enhancement mode')
+        variants = mosfet_body_diode_variants()
+    mode = 'body diode' if body_diode else ('depletion' if depletion else 'enhancement')
+    columns = 2 if body_diode else 4
+    width = 46 * columns
     terminals = '4 pins' if separate_body else '3 pins'
     for view in ("clean", "diagnostic", "protection"):
         root = ET.Element(SVG + "svg", {
-            "width": "184mm", "height": "177mm", "viewBox": "0 0 184 177",
+            "width": f"{width}mm", "height": "177mm", "viewBox": f"0 0 {width} 177",
         })
         ET.SubElement(root, SVG + "rect", {
-            "width": "184", "height": "177", "fill": "white",
+            "width": str(width), "height": "177", "fill": "white",
         })
 
         def text(parent, x, y, value, size="2.6"):
@@ -33,12 +41,13 @@ def generate(output: Path, *, depletion: bool = False, separate_body: bool = Fal
                 "font-family": "sans-serif", "text-anchor": "middle",
             }).text = value
 
-        text(root, 92, 7, f"MOSFET {mode} / {terminals} / {view} / DRAFT", "3.6")
-        for i, name in enumerate(("N case", "P case", "N bare", "P bare")):
+        text(root, width / 2, 7, f"MOSFET {mode} / {terminals} / {view} / DRAFT", "3.6")
+        names = ("N bare", "P bare") if body_diode else ("N case", "P case", "N bare", "P bare")
+        for i, name in enumerate(names):
             text(root, 23 + 46 * i, 15, name)
         for i, variant in enumerate(variants):
             symbol = variant.symbol
-            x, y = 23 + (i % 4) * 46, 34 + (i // 4) * 40
+            x, y = 23 + (i % columns) * 46, 34 + (i // columns) * 40
             group = ET.SubElement(root, SVG + "g", {
                 "transform": f"translate({x} {y})",
                 "data-symbol-id": symbol.identifier, "data-view": view,
@@ -70,3 +79,6 @@ if __name__ == "__main__":
         output = Path("output/mosfet-layouts") / mode
         count = generate(output, depletion=depletion, separate_body=separate)
         print(f"Rendered {count} MOSFET review variants: {mode}")
+
+    count = generate(Path("output/mosfet-layouts/diode3"), body_diode=True)
+    print(f"Rendered {count} MOSFET review variants: diode3")

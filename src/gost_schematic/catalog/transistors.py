@@ -179,6 +179,7 @@ class MosfetSpec:
     with_case: bool = False
     depletion: bool = False
     separate_body: bool = False
+    body_diode: bool = False
 
     def __post_init__(self) -> None:
         if not isinstance(self.channel, ChannelKind):
@@ -187,17 +188,20 @@ class MosfetSpec:
             self.source_exit, TerminalExit
         ):
             raise TypeError("TerminalExit required")
-        for name in ("with_case", "depletion", "separate_body"):
+        for name in ("with_case", "depletion", "separate_body", "body_diode"):
             if type(getattr(self, name)) is not bool:
                 raise TypeError(f"{name} must be boolean")
+        if self.body_diode and (self.separate_body or self.with_case or self.depletion):
+            raise ValueError("Explicit diode review supports bare three-pin enhancement MOSFETs")
 
     @property
     def identifier(self) -> str:
         case = "case" if self.with_case else "bare"
         mode = "dep" if self.depletion else "enh"
         body = ".body4" if self.separate_body else ""
+        diode = ".body_diode" if self.body_diode else ""
         return (
-            f"transistor.mosfet_{self.channel.value}_{mode}{body}.layout_"
+            f"transistor.mosfet_{self.channel.value}_{mode}{body}{diode}.layout_"
             f"{self.drain_exit.value}{self.source_exit.value}.{case}"
         )
 
@@ -267,6 +271,40 @@ def build_mosfet(spec: MosfetSpec) -> MosfetDefinition:
         circle = Circle(Point(0, 0), 5000)
         graphics.append(circle)
         internal.append(circle)
+    junctions: tuple[Point, ...] = ()
+    if spec.body_diode:
+        # Draw the intrinsic p-n diode, not a Zener or a Schottky mark.
+        # N: anode S, cathode D; P: anode D, cathode S.
+        x = 8000
+        upper = Point(4000, -3000)
+        lower = Point(4000, 3000)
+        leads = (
+            Line(upper, Point(x, -3000)),
+            Line(Point(x, -3000), Point(x, -1200)),
+            Line(lower, Point(x, 3000)),
+            Line(Point(x, 3000), Point(x, 1200)),
+        )
+        first = len(graphics)
+        graphics.extend(leads)
+        internal.extend(leads)
+        conductor_indices += tuple(range(first, first + len(leads)))
+        cathode_y = -1200 if spec.channel == ChannelKind.N else 1200
+        anode_y = -cathode_y
+        left = Point(x - 1500, anode_y)
+        right = Point(x + 1500, anode_y)
+        apex = Point(x, cathode_y)
+        diode_marks = (
+            Line(left, right),
+            Line(left, apex),
+            Line(right, apex),
+            Line(Point(x - 1800, cathode_y), Point(x + 1800, cathode_y)),
+            Line(Point(x, anode_y), apex),
+            Circle(upper, 300),
+            Circle(lower, 300),
+        )
+        graphics.extend(diode_marks)
+        internal.extend(diode_marks)
+        junctions = (upper, lower)
     body = enclosing_box(tuple(primitive_stroked_bounds(g, 300) for g in internal))
     slots = (
         AnnotationSlot("refdes", AnnotationRole.REFDES, (
@@ -291,10 +329,13 @@ def build_mosfet(spec: MosfetSpec) -> MosfetDefinition:
             ("EDITORIAL_ADAPTATION: user photos 13–18; channel and body "
              "options derived from table 1 and table 8 items 3–5; "
              "combined variants and CAD extensions are project choices. DRAFT."),
+            *(("Infineon Designing with power MOSFETs, 2022, section 8; "
+               "explicit p-n body diode is an editorial composite, not an exact GOST plate.",)
+              if spec.body_diode else ()),
         ),
         annotation_slots=slots,
         conductor_topology=ConductorTopology(
-            conductor_indices=conductor_indices, junctions=(),
+            conductor_indices=conductor_indices, junctions=junctions,
             pin_groups=tuple((pin.number,) for pin in pins),
         ),
         routing_keepouts=(body.expanded(200),),
@@ -326,5 +367,14 @@ def mosfet_extended_variants(
         ))
         for drain, source in product(TerminalExit, repeat=2)
         for with_case in (True, False)
+        for channel in ChannelKind
+    )
+
+
+def mosfet_body_diode_variants() -> tuple[MosfetDefinition, ...]:
+    """Eight layouts matching the explicit-diode review family."""
+    return tuple(
+        build_mosfet(MosfetSpec(channel, drain, source, body_diode=True))
+        for drain, source in product(TerminalExit, repeat=2)
         for channel in ChannelKind
     )
