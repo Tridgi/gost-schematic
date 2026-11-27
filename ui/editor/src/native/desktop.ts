@@ -63,11 +63,11 @@ export async function nativeExportProject(
 }
 
 export type ProjectLink='founder'|'repository'|'releases';
-export function nativeAppVersion():Promise<string>{
+export async function nativeAppVersion():Promise<string>{
   const invoke=host();if(!invoke)throw Error('NATIVE_HOST_UNAVAILABLE');
   return invoke('native_app_version');
 }
-export function nativeOpenProjectLink(link:ProjectLink):Promise<void>{
+export async function nativeOpenProjectLink(link:ProjectLink):Promise<void>{
   const invoke=host();if(!invoke)throw Error('NATIVE_HOST_UNAVAILABLE');
   return invoke('native_open_project_link',{link});
 }
