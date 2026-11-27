@@ -33,6 +33,7 @@ CATEGORIES = {
     "reactor": "Реакторы",
     "diode": "Диоды",
     "rectifier": "Выпрямители",
+    "thyristor": "Тиристоры",
     "transistor": "Транзисторы",
     "fuse": "Предохранители",
     "arrester": "Разрядники",

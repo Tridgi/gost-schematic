@@ -1,0 +1,220 @@
+{
+  "schema_version": 1,
+  "revision": 1,
+  "status": "draft",
+  "line_width_mm": 0.3,
+  "body_keepout_mm": [
+    -3,
+    -3.8,
+    9.7,
+    8.4
+  ],
+  "geometry": {
+    "rectangles": [],
+    "lines": [
+      [
+        [
+          -12,
+          0
+        ],
+        [
+          -2.5,
+          0
+        ]
+      ],
+      [
+        [
+          2.5,
+          0
+        ],
+        [
+          12,
+          0
+        ]
+      ],
+      [
+        [
+          8,
+          6
+        ],
+        [
+          8,
+          12
+        ]
+      ],
+      [
+        [
+          2.5,
+          2.5
+        ],
+        [
+          8,
+          6
+        ]
+      ],
+      [
+        [
+          -2.5,
+          -3
+        ],
+        [
+          -2.5,
+          3
+        ]
+      ],
+      [
+        [
+          -2.5,
+          -3
+        ],
+        [
+          2.5,
+          0
+        ]
+      ],
+      [
+        [
+          -2.5,
+          3
+        ],
+        [
+          2.5,
+          0
+        ]
+      ],
+      [
+        [
+          2.5,
+          -3.3
+        ],
+        [
+          2.5,
+          3.3
+        ]
+      ],
+      [
+        [
+          -2.5,
+          0
+        ],
+        [
+          2.5,
+          0
+        ]
+      ],
+      [
+        [
+          6.6,
+          8
+        ],
+        [
+          9.4,
+          8
+        ]
+      ]
+    ],
+    "circles": []
+  },
+  "pins": [
+    {
+      "number": "1",
+      "at_mm": [
+        -12,
+        0
+      ],
+      "side": "left",
+      "label": "A"
+    },
+    {
+      "number": "2",
+      "at_mm": [
+        12,
+        0
+      ],
+      "side": "right",
+      "label": "K"
+    },
+    {
+      "number": "3",
+      "at_mm": [
+        8,
+        12
+      ],
+      "side": "bottom",
+      "label": "G"
+    }
+  ],
+  "annotations": [
+    {
+      "key": "refdes",
+      "role": "refdes",
+      "required": true,
+      "candidates": [
+        {
+          "at_mm": [
+            0,
+            -7
+          ],
+          "horizontal": "center",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            -6.2,
+            -7
+          ],
+          "horizontal": "right",
+          "vertical": "bottom"
+        }
+      ]
+    },
+    {
+      "key": "value",
+      "role": "value",
+      "required": false,
+      "candidates": [
+        {
+          "at_mm": [
+            12.9,
+            11.6
+          ],
+          "horizontal": "left",
+          "vertical": "top"
+        }
+      ]
+    }
+  ],
+  "conductor_topology": {
+    "indices": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "junctions_mm": [],
+    "pin_groups": [
+      [
+        "1"
+      ],
+      [
+        "2"
+      ],
+      [
+        "3"
+      ]
+    ]
+  },
+  "id": "thyristor.gto_cathode_gate",
+  "standard_refs": [
+    "ГОСТ 2.730-73, таблица 6, поз. 6, выключаемый, управление по катоду, PDF p.7; https://files.stroyinf.ru/Data2/1/4294848/4294848038.pdf#page=7",
+    "EDITORIAL_ASSUMPTION: transverse gate turn-off mark with a terminal extension beyond it for CAD attachment; dimensions and clearance are project choices; DRAFT."
+  ],
+  "routing_keepouts_mm": [
+    [
+      -3.2,
+      -4,
+      9.9,
+      8.6
+    ]
+  ]
+}
