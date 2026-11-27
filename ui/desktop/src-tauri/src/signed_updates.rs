@@ -33,7 +33,7 @@ fn secure_policy(config: &Value) -> bool {
         .is_some_and(|text| {
             let lines: Vec<_> = text.lines().collect();
             lines.len() == 2 && lines[0].starts_with("untrusted comment:")
-                && STANDARD.decode(lines[1]).is_ok_and(|key| key.len() == 42 && &key[..2] == b"Ed")
+                && STANDARD.decode(lines[1]).is_ok_and(|key| key.len() == 42 && &key[..2] == b"Ed" && key[10..].iter().any(|b| *b != 0))
         });
     public_key_ok
         && config.get("requireSignedVersion").and_then(Value::as_bool) == Some(true)
@@ -218,7 +218,7 @@ mod tests {
         let mut policy = serde_json::json!({"pubkey":"", "endpoints":[FEED], "requireSignedVersion":true, "allowDowngrades":false});
         assert!(!secure_policy(&policy));
         // Structural test key only, not a production verification identity.
-        let mut key = vec![0u8; 42]; key[..2].copy_from_slice(b"Ed");
+        let mut key = vec![1u8; 42]; key[..2].copy_from_slice(b"Ed");
         policy["pubkey"] = Value::String(STANDARD.encode(format!("untrusted comment: test only\n{}", STANDARD.encode(key))));
         assert!(secure_policy(&policy));
         for (field, value) in [("allowDowngrades", Value::Bool(true)), ("requireSignedVersion", Value::Bool(false)), ("dangerousAcceptInvalidCerts", Value::Bool(true)), ("endpoints", serde_json::json!(["https://example.invalid"]))] {
