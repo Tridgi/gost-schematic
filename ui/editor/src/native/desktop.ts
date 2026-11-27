@@ -61,3 +61,13 @@ export async function nativeExportProject(
   const invoke=host();if(!invoke)throw Error('NATIVE_HOST_UNAVAILABLE');
   return invoke('native_export_project',{document,sheetId,format});
 }
+
+export type ProjectLink='founder'|'repository'|'releases';
+export function nativeAppVersion():Promise<string>{
+  const invoke=host();if(!invoke)throw Error('NATIVE_HOST_UNAVAILABLE');
+  return invoke('native_app_version');
+}
+export function nativeOpenProjectLink(link:ProjectLink):Promise<void>{
+  const invoke=host();if(!invoke)throw Error('NATIVE_HOST_UNAVAILABLE');
+  return invoke('native_open_project_link',{link});
+}
