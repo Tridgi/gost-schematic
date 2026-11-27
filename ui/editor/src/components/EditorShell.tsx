@@ -37,6 +37,7 @@ export type InspectorProposal =
 
 /** The host owns all electrical topology, source PinRefs, command validation and actual persistence. */
 export type EditorShellProps = {
+  canInstallUpdate?:()=>boolean;
   projectName:string;dirty:boolean;baseRevision:string;topology?:TopologyInventory;onBuildNetRail?:(netId:string)=>void;onBuildNetTree?:(netId:string)=>void;onRouteInitialNet?:(netId:string)=>void;onRouteInitialBatch?:(netIds:readonly string[])=>void;onPrepareInitialRouting?:()=>void;onPreviewHubPlacement?:()=>void;onPreviewFunctionalRouting?:(extended?:boolean)=>void;onPreviewRouteRefinement?:(extended?:boolean)=>void;onPreviewRailRefinement?:()=>void;onPreviewDetourRefinement?:(crossingOnly?:boolean)=>void;onPreviewInitialBatch?:(netIds:readonly string[],controlled?:boolean)=>void;
   sheets:readonly {id:string;title:string}[];activeSheetId:string;
   catalog:readonly CatalogSymbol[];tree:readonly TreeItem[];
@@ -400,7 +401,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
         </Group>
       </AppShell.Footer>
     </AppShell>
-    <AboutDialog opened={aboutOpen} onClose={()=>setAboutOpen(false)} onAvailable={setAvailableUpdate}/>
+    <AboutDialog opened={aboutOpen} onClose={()=>setAboutOpen(false)} onAvailable={setAvailableUpdate} canInstallUpdate={props.canInstallUpdate}/>
     <Modal opened={propertiesOpen&&!!props.selected} onClose={()=>setPropertiesOpen(false)}
       title={'Свойства элемента '+(props.selected?.refdes??'')} centered size="md">
       <Inspector selected={props.selected} revision={props.baseRevision} send={props.onInspectorProposal} hostError={props.inspectorError}/>
