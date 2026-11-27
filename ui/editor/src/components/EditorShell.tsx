@@ -180,6 +180,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
   useEffect(()=>{if(!props.selected)setPropertiesOpen(false);},[props.selected?.id]);
   useEffect(()=>{if(props.textRequest){setTextValue('');setTextHeight('3500');setTextError(false);}},[props.textRequest]);
   const [aboutOpen,setAboutOpen]=useState(false);
+  const [availableUpdate,setAvailableUpdate]=useState<string|null>(null);
   const [settings,setSettings]=useState(false),[exportDialog,setExportDialog]=useState(false);
   const [commandDialog,setCommandDialog]=useState(false),[diagnostics,setDiagnostics]=useState(false);
   const [diagnosticFilter,setDiagnosticFilter]=useState<'all'|'error'|'warning'|'info'>('all');
@@ -284,7 +285,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
                 <Menu.Item data-testid="paste-component" onClick={props.onPaste} disabled={!props.onPaste}>Вставить независимую копию · Ctrl+V</Menu.Item>
               </Menu.Dropdown>
             </Menu>
-            <Menu position="bottom-start" transitionProps={{duration:0}}><Menu.Target><Button variant="subtle" size="compact-sm" data-testid="help-menu">Справка</Button></Menu.Target>
+            <Menu position="bottom-start" transitionProps={{duration:0}}><Menu.Target><Button variant="subtle" size="compact-sm" data-testid="help-menu">Справка{availableUpdate&&<Badge size="xs" color="blue" ml={4} data-testid="update-available-badge" title={`Доступна версия ${availableUpdate}`}>1</Badge>}</Button></Menu.Target>
               <Menu.Dropdown><Menu.Item data-testid="open-about" onClick={()=>setAboutOpen(true)}>О программе и обновления</Menu.Item></Menu.Dropdown>
             </Menu>
             <Text size="sm" fw={600} truncate className="gscad-project-label">{props.projectName}</Text>
@@ -399,7 +400,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
         </Group>
       </AppShell.Footer>
     </AppShell>
-    <AboutDialog opened={aboutOpen} onClose={()=>setAboutOpen(false)}/>
+    <AboutDialog opened={aboutOpen} onClose={()=>setAboutOpen(false)} onAvailable={setAvailableUpdate}/>
     <Modal opened={propertiesOpen&&!!props.selected} onClose={()=>setPropertiesOpen(false)}
       title={'Свойства элемента '+(props.selected?.refdes??'')} centered size="md">
       <Inspector selected={props.selected} revision={props.baseRevision} send={props.onInspectorProposal} hostError={props.inspectorError}/>
