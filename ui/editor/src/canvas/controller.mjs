@@ -62,6 +62,10 @@ export function createCanvasController(initial){
  const emit=i=>{if(typeof context.onIntent!=='function')throw Error('MISSING_COMMAND_DISPATCH');return context.onIntent(i)};
  const toWorld=p=>snap(world(p,context.camera),context.gridUm,context.snapEnabled);
  const tapPoint=(hit,p)=>{
+   if(hit?.kind==='junction'){
+    const node=context.wireSnapshot.junctions.find(j=>j.id===hit.junction_id);
+    return node?{kind:'junction',junction_id:node.id,at_um:point(node.at_um)}:null;
+   }
    if(hit?.kind!=='segment')return null;
    const w=context.wireSnapshot.wires.find(w=>w.id===hit.wire_id);
    const i=w?.segments.findIndex(s=>s.id===hit.segment_id)??-1;
@@ -174,13 +178,13 @@ export function createCanvasController(initial){
       return false;
      draft=null;return true;
     }
-    if(hit?.kind==='segment'&&context.canTap){
+    if((hit?.kind==='segment'||hit?.kind==='junction')&&context.canTap){
      const target=tapPoint(hit,p);
      if(!target)return false;
      if(emit({kind:'commitWire',source:draft.source,target,bend_points_um:draft.bends_um,base_revision:context.wireSnapshot.revision})===false)return false;
      draft=null;return true;
     }
-    if(hit?.kind==='ambiguous-pin'||hit?.kind==='ambiguous-segment'||hit?.kind==='junction')return false;
+    if(hit?.kind==='ambiguous-pin'||hit?.kind==='ambiguous-segment'||hit?.kind==='ambiguous-junction'||hit?.kind==='junction')return false;
     const at=toWorld(p),prev=draft.bends_um.at(-1)||draft.from_um;
     if(!same(at,prev))draft={...draft,bends_um:[...draft.bends_um,at],cursor_um:at};
     return true;

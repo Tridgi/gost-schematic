@@ -2355,3 +2355,41 @@ test('RC1 text placement persists non-electrical annotation without changing Net
  assert.deepEqual(s.file,after);assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
  assert.equal(s.redo(),true);assert.deepEqual(new AuthoringSession(s.file).file,after);
 });
+
+
+test('R43 fourth pin joins existing junction without splitting old wires or merging Nets',()=>{
+ const s=newSession();
+ for(const p of [[80000,80000],[220000,80000],[130000,160000],[140000,40000],[230000,160000]])
+  s.place(s.newTransaction('place'),'symbol/resistor.fixed',p);
+ const [a,b,c,d,e]=s.file.project.components.map(c=>c.id);
+ s.connect(s.newTransaction('trunk'),pin(a,'2'),pin(b,'1'));
+ s.connect(s.newTransaction('foreign'),pin(c,'2'),pin(e,'1'));
+ const trunk=s.file.project.sheets[0].wires[0];
+ s.connectToSegment(s.newTransaction('tap'),pin(c,'1'),trunk.id,trunk.segments[0].id,[120000,80000]);
+ const before=s.file,rev=s.revision,sh=before.project.sheets[0],node=sh.junctions[0],net=before.project.nets.find(n=>n.id===node.net_id);
+ assert.throws(()=>s.connectToJunction(s.newTransaction('foreign'),pin(e,'1'),node.id,node.at_um),/NET_CONFLICT/);
+ assert.throws(()=>s.connectToJunction(s.newTransaction('missing'),pin(d,'1'),'missing',node.at_um),/UNKNOWN_NODE/);
+ assert.throws(()=>s.connectToJunction(s.newTransaction('wrong-coordinate'),pin(d,'1'),node.id,[120001,80000]),/ANCHOR_MISMATCH/);
+ assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
+ for(const mode of ['locked','hidden']){
+  const blocked=structuredClone(before),layer=blocked.project.sheets[0].layers.find(l=>l.id===node.layer_id);
+  if(mode==='locked')layer.locked=true;else layer.visible=false;
+  const session=new AuthoringSession(blocked),snapshot=session.file;
+  assert.throws(()=>session.connectToJunction(session.newTransaction(mode),pin(d,'1'),node.id,node.at_um),/LAYER_LOCKED/);
+  assert.deepEqual(session.file,snapshot);assert.equal(session.revision,0);
+ }
+ const stale=s.newTransaction('stale');
+ s.connectToJunction(s.newTransaction('attach'),pin(d,'1'),node.id,node.at_um);
+ const after=s.file,next=after.project.sheets[0];
+ assert.equal(s.revision,rev+1);
+ assert.deepEqual(next.junctions,sh.junctions);
+ assert.equal(next.wires.length,sh.wires.length+1);
+ for(const w of sh.wires)assert.deepEqual(next.wires.find(v=>v.id===w.id),w);
+ assert.deepEqual(after.project.nets.find(n=>n.id===net.id).members,[...net.members,pin(d,'1')]);
+ assert.deepEqual(after.project.nets.filter(n=>n.id!==net.id),before.project.nets.filter(n=>n.id!==net.id));
+ assert.equal(s.engine.validateNet(net.id).pin_groups.length,1);
+ assert.throws(()=>s.connectToJunction(stale,pin(d,'2'),node.id,node.at_um),/STALE_REVISION/);
+ assert.deepEqual(s.file,after);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);assert.deepEqual(new AuthoringSession(s.file).file,after);
+});
