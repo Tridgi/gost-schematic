@@ -126,7 +126,48 @@ try{
   if(phase==='create'){
     for(const file of [projectPath,copyPath,svgPath,pngPath])
       assert(!fs.existsSync(file),'R9_TEMP_FILE_PREEXISTS');
-    await page.getByRole('button',{name:'Файл'}).click();
+    // Real installed WebView and actual native IPC; no mocked updater or download.
+    const expectedVersion=JSON.parse(fs.readFileSync('ui/desktop/src-tauri/tauri.conf.json','utf8')).version;
+    const updater=await page.evaluate(async()=>{
+      const invoke=window.__TAURI__.core.invoke;
+      const reject=async(command,args)=>{
+        try{await invoke(command,args);return null;}catch(error){return String(error);}
+      };
+      return {version:await invoke('native_app_version'),
+        enabled:await invoke('native_signed_update_enabled'),
+        status:await invoke('native_signed_update_status'),
+        badLink:await reject('native_open_project_link',{link:'https://example.invalid'}),
+        prepare:await reject('native_prepare_signed_update',{version:'9999.0.0'}),
+        install:await reject('native_install_signed_update',{token:'unverified',projectSafe:true})};
+    });
+    assert.equal(updater.version,expectedVersion,'R41_NATIVE_PACKAGE_VERSION_MISMATCH');
+    assert.equal(updater.enabled,false,'R41_UNSIGNED_PREVIEW_MUST_NOT_ENABLE_UPDATER');
+    assert.deepEqual(updater.status,{kind:'idle'});
+    assert.match(updater.badLink??'',/INVALID_PROJECT_LINK/);
+    assert.match(updater.prepare??'',/SIGNED_UPDATE_NOT_CONFIGURED/);
+    assert.match(updater.install??'',/SIGNED_UPDATE_NOT_CONFIGURED/);
+    const originalSymbols=await page.locator('[data-testid^="symbol-"]').count();
+    const dirtyBefore=await page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true}).count();
+    for(let i=0;i<2;i++){
+      await page.getByTestId('help-menu').click();
+      await page.getByTestId('open-about').click();
+      const about=page.getByRole('dialog',{name:'О программе'});
+      await about.waitFor({state:'visible'});
+      await page.waitForFunction(v=>document.querySelector('[data-testid="about-version"]')?.textContent==='Версия: '+v,expectedVersion);
+      await about.getByText('Мирослав Лихачёв',{exact:false}).waitFor({state:'visible'});
+      await about.getByRole('button',{name:'Показать MIT License'}).click();
+      await about.getByText(/Permission is hereby granted/).waitFor({state:'visible'});
+      await about.getByRole('button',{name:'Скрыть MIT License'}).click();
+      assert.equal(await about.getByTestId('download-signed-update').count(),0);
+      assert.equal(await about.getByTestId('install-signed-update').count(),0);
+      await page.keyboard.press('Escape');
+      await about.waitFor({state:'hidden'});
+      assert.equal(await page.locator('[data-testid^="symbol-"]').count(),originalSymbols);
+      assert.equal(await page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true}).count(),dirtyBefore);
+      await page.getByTestId('toggle-theme').click();
+    }
+    console.log('R41_NATIVE_ABOUT_AND_UNSIGNED_UPDATE_REFUSAL_PASS version='+expectedVersion);
+    await page.getByRole('button',{name:'Файл',exact:true}).click();
     await page.getByTestId('new-project').click();
     await page.getByText(/R3 AUTHORING/).first().waitFor({state:'visible'});
     const canvas=page.getByTestId('gscad-signed-svg-canvas');
