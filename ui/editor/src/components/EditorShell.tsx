@@ -55,8 +55,8 @@ export type EditorShellProps = {
   onUndo:()=>void;onRedo:()=>void;onSave:()=>void;
   onCopy?:()=>void;onPaste?:()=>void;
   propertiesRequest?:number;onSelectAll?:()=>void;onDuplicate?:()=>void;
-  textRequest?:{at:readonly [number,number] }|null;
-  onCancelText?:()=>void;onAddText?:(value:string,height:number)=>boolean;
+  textRequest?:{at:readonly [number,number];edit?:{id:string;value:string;height:number;rotation:0|90|180|270}}|null;
+  onCancelText?:()=>void;onAddText?:(value:string,height:number,at:readonly [number,number],rotation:0|90|180|270)=>boolean;onDeleteText?:()=>boolean;
   pinMagnet?:boolean;onTogglePinMagnet?:(enabled:boolean)=>void;
   smartRouting?:boolean;onToggleSmartRouting?:(enabled:boolean)=>void;onAlignConnectedPair?:()=>void;onSimplifyRoutes?:()=>void;onAlignSeries?:()=>void;onDistributeSeries?:()=>void;onBuildParallelRails?:()=>void;onDistributeParallel?:()=>void;onOptimizeLayout?:()=>void;
   layoutPreview?:{plan:LayoutPreview;beforeSrc:string;afterSrc:string};onApplyLayoutPreview?:()=>void;onCancelLayoutPreview?:()=>void;
@@ -170,6 +170,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
   const [propertiesOpen,setPropertiesOpen]=useState(false);
   const propertiesSeen=useRef(0);
   const [textValue,setTextValue]=useState(''),[textHeight,setTextHeight]=useState('3500'),[textError,setTextError]=useState(false);
+  const [textX,setTextX]=useState(''),[textY,setTextY]=useState(''),[textRotation,setTextRotation]=useState('0');
   const catalogSearch=useRef<HTMLInputElement>(null);
   useEffect(()=>{
     if(props.propertiesRequest&&props.propertiesRequest!==propertiesSeen.current){
@@ -177,7 +178,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
     }
   },[props.propertiesRequest]);
   useEffect(()=>{if(!props.selected)setPropertiesOpen(false);},[props.selected?.id]);
-  useEffect(()=>{if(props.textRequest){setTextValue('');setTextHeight('3500');setTextError(false);}},[props.textRequest]);
+  useEffect(()=>{if(props.textRequest){const r=props.textRequest;setTextValue(r.edit?.value??'');setTextHeight(String(r.edit?.height??3500));setTextRotation(String(r.edit?.rotation??0));setTextX(formatMillimetres(r.at[0]));setTextY(formatMillimetres(r.at[1]));setTextError(false);}},[props.textRequest]);
   const [settings,setSettings]=useState(false),[exportDialog,setExportDialog]=useState(false);
   const [commandDialog,setCommandDialog]=useState(false),[diagnostics,setDiagnostics]=useState(false);
   const [diagnosticFilter,setDiagnosticFilter]=useState<'all'|'error'|'warning'|'info'>('all');
@@ -398,16 +399,30 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
       <Inspector selected={props.selected} revision={props.baseRevision} send={props.onInspectorProposal} hostError={props.inspectorError}/>
       <Group justify="flex-end" mt="sm"><Button onClick={()=>setPropertiesOpen(false)}>Закрыть</Button></Group>
     </Modal>
-    <Modal opened={!!props.textRequest} onClose={()=>props.onCancelText?.()} title="Добавить надпись" centered size="md">
+    <Modal opened={!!props.textRequest} onClose={()=>props.onCancelText?.()} title={props.textRequest?.edit?"Свойства надписи":"Добавить надпись"} centered size="md">
       <Stack gap="sm">
         <TextInput autoFocus label="Текст" data-testid="sheet-text-input" maxLength={128} value={textValue}
           onChange={e=>{setTextValue(e.currentTarget.value);setTextError(false);}}/>
         <Text size="xs" c="dimmed">Высота букв, мм</Text>
         <SegmentedControl fullWidth value={textHeight} onChange={setTextHeight} data={['2500','3500','5000','7000','10000'].map(v=>({value:v,label:String(Number(v)/1000).replace('.',',')}))}/>
+        {props.textRequest?.edit&&<>
+          <Group grow>
+            <TextInput label="X, мм" data-testid="sheet-text-x" value={textX} onChange={e=>{setTextX(e.currentTarget.value);setTextError(false);}}/>
+            <TextInput label="Y, мм" data-testid="sheet-text-y" value={textY} onChange={e=>{setTextY(e.currentTarget.value);setTextError(false);}}/>
+          </Group>
+          <Text size="xs" c="dimmed">Поворот, градусы</Text>
+          <SegmentedControl fullWidth value={textRotation} onChange={setTextRotation} data={['0','90','180','270']}/>
+        </>}
         <Text size="xs" c="dimmed">OpenGost Type A при наличии; нормативный шрифт пока не подтверждён.</Text>
-        {textError&&<Text size="xs" c="red">Не удалось добавить надпись. Проверьте текст, положение и границы листа.</Text>}
-        <Group justify="flex-end"><Button variant="default" onClick={()=>props.onCancelText?.()}>Отмена</Button>
-          <Button data-testid="add-sheet-text" disabled={!textValue.trim()} onClick={()=>setTextError(props.onAddText?.(textValue,Number(textHeight))!==true)}>Добавить</Button></Group>
+        {textError&&<Text size="xs" c="red">Не удалось изменить надпись. Проверьте текст, положение, границы листа и актуальность проекта.</Text>}
+        <Group justify="flex-end">
+          {props.textRequest?.edit&&<Button color="red" variant="subtle" data-testid="delete-sheet-text" onClick={()=>{if(window.confirm('Удалить надпись? Действие можно отменить.'))setTextError(props.onDeleteText?.()!==true);}}>Удалить</Button>}
+          <Button variant="default" onClick={()=>props.onCancelText?.()}>Отмена</Button>
+          <Button data-testid="add-sheet-text" disabled={!textValue.trim()} onClick={()=>{
+            const x=parseMillimetres(textX),y=parseMillimetres(textY);
+            if(!x.ok||!y.ok){setTextError(true);return;}
+            setTextError(props.onAddText?.(textValue,Number(textHeight),[x.um,y.um],Number(textRotation) as 0|90|180|270)!==true);
+          }}>{props.textRequest?.edit?'Применить':'Добавить'}</Button></Group>
       </Stack>
     </Modal>
     <Modal opened={!!props.layoutPreview} onClose={()=>props.onCancelLayoutPreview?.()} title="Оптимизация компоновки — предварительный просмотр" centered size="xl">
