@@ -8,6 +8,7 @@ export type VisualHit =
  | ({kind:'pin';pin:PinRef;at_um:PointUm;normal:string;distance_px:number})
  | ({kind:'ambiguous-pin';candidates:PinRef[]})
  | ({kind:'junction';junction_id:string})
+ | ({kind:'ambiguous-junction';candidates:string[]})
  | ({kind:'segment';wire_id:string;segment_id:string;distance_px:number;movable:boolean;axis:'h'|'v'})
  | ({kind:'ambiguous-segment';candidates:{wire_id:string;segment_id:string}[]});
 export declare function assertUm(value:number):number;

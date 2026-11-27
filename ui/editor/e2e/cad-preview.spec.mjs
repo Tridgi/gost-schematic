@@ -1251,7 +1251,7 @@ test('R19 smart routing and aligned connected pins reduce a Z route to one segme
   return JSON.parse(readFileSync(await (await d).path(),'utf8'));
  };
  const placed=await saved(),[a,b]=placed.project.components;
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('smart-routing').click();
  await page.getByTestId('tool-wire').click();
  await page.getByTestId('signed-pin-'+a.id+'-2').click();
@@ -1263,7 +1263,7 @@ test('R19 smart routing and aligned connected pins reduce a Z route to one segme
  await page.mouse.down();await page.mouse.move(paper.x+paper.width*.82,paper.y+paper.height*.68,{steps:6});await page.mouse.up();
  await expect(page.getByTestId('group-selection-summary')).toContainText('2');
  page.once('dialog',d=>d.accept());
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('align-connected-pair').click();
  const after=await saved(),w=after.project.sheets[0].wires[0];
  expect(w.vertices).toHaveLength(2);expect(w.vertices[0].at_um[1]).toBe(w.vertices[1].at_um[1]);
@@ -1321,7 +1321,7 @@ test('R19b magnetic placement preview aligns pins without creating a wire',async
  const canvas=page.getByTestId('gscad-signed-svg-canvas');
  await expect(canvas).toHaveAttribute('data-camera-ready','true');
  const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('pin-magnet').click();
  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
  await expect(canvas).toHaveAttribute('data-tool','place');
@@ -1381,7 +1381,7 @@ test('R19c existing staircase becomes a clean two-bend wire and Undo restores or
  await page.getByTestId('project-file-input').setInputFiles({name:'stairs.gscad',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(stairs))});
  await expect(page.locator('[data-wire-id="'+w.id+'"] [data-segment-id]')).toHaveCount(7);
  page.once('dialog',d=>d.accept());
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('simplify-routes').click();
  await expect(page.locator('[data-wire-id="'+w.id+'"] [data-segment-id]')).toHaveCount(3);
  const after=await saved();
@@ -1417,7 +1417,7 @@ test('R20 selected chain becomes straight without altering Net membership, and U
  await page.mouse.down();await page.mouse.move(paper.x+paper.width*.88,paper.y+paper.height*.61,{steps:6});await page.mouse.up();
  await expect(page.getByTestId('group-selection-summary')).toContainText('3');
  page.once('dialog',d=>d.accept());
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('align-series').click();
  const after=await saved(),sh=after.project.sheets[0];
  expect(new Set(sh.instances.map(i=>i.origin_um[1])).size).toBe(1);
@@ -1459,7 +1459,7 @@ test('R20b equal pin gaps in actual editor keep the end poses and preserve Undo'
  await page.mouse.down();await page.mouse.move(paper.x+paper.width*.88,paper.y+paper.height*.51,{steps:6});await page.mouse.up();
  await expect(page.getByTestId('group-selection-summary')).toContainText('3');
  page.once('dialog',d=>d.accept());
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('distribute-series').click();
  const after=await saved(),sh=after.project.sheets[0];
  expect(sh.instances[0]).toEqual(sh0.instances[0]);expect(sh.instances[2]).toEqual(sh0.instances[2]);
@@ -1500,7 +1500,7 @@ test('R21 parallel rails replace routes with explicit junctions without changing
  await page.mouse.down();await page.mouse.move(paper.x+paper.width*.85,paper.y+paper.height*.58,{steps:6});await page.mouse.up();
  await expect(page.getByTestId('group-selection-summary')).toContainText('3');
  page.once('dialog',d=>d.accept());
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('parallel-rails').click();
  const after=await saved(),sh=after.project.sheets[0];
  expect(sh.wires).toHaveLength(10);expect(sh.junctions).toHaveLength(2);expect(sh.splices).toHaveLength(4);
@@ -1535,7 +1535,7 @@ test('R22 automatic layout previews metrics, cancel is harmless, confirm is one 
  await page.getByTestId('tool-select').click();
  const before=await saved();
  const openPlan=async(accept)=>{
-  await page.getByRole('button',{name:'Правка'}).click();
+  await page.getByRole('button',{name:'Правка',exact:true}).click();
   await page.getByTestId('optimize-layout').click();
   await expect(page.getByTestId('layout-preview-dialog')).toBeVisible();
   await expect(page.getByTestId('layout-bends')).toHaveText('4 → 0');
@@ -1564,7 +1564,7 @@ test('R22 automatic layout previews metrics, cancel is harmless, confirm is one 
 test('R23 source TL494 electrical structure is inspectable without authoring or inference',async({page})=>{
  await page.goto('/');
  await expect(page.getByTestId('symbol-DA1')).toBeVisible();
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('topology-inventory').click();
  const report=page.getByTestId('topology-report');
  await expect(report).toBeVisible();
@@ -1607,7 +1607,7 @@ test('R24 single-Net rail through topology report preserves signed membership an
  await page.getByTestId('tool-select').click();
  const before=await saved(),net=before.project.nets[0];
  expect(net.members).toHaveLength(3);
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('topology-inventory').click();
  await expect(page.getByTestId('topology-report')).toBeVisible();
  page.once('dialog',d=>d.accept());
@@ -1651,7 +1651,7 @@ test('R25 mixed-axis Net rail keeps real signed pin directions and undoable geom
  await page.getByTestId('tool-select').click();
  const before=await saved(),net=before.project.nets[0];
  expect(net.members).toHaveLength(3);
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('topology-inventory').click();
  page.once('dialog',d=>d.accept());
  await page.getByTestId('net-rail-'+net.id).click();
@@ -1695,7 +1695,7 @@ test('R26 tree reconstruction from topology report bypasses a rail obstruction',
  await page.getByTestId('tool-select').click();
  const before=await saved(),net=before.project.nets[0];
  expect(net.members).toHaveLength(4);
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('topology-inventory').click();
  page.once('dialog',d=>d.accept());
  await page.getByTestId('net-tree-'+net.id).click();
@@ -1742,7 +1742,7 @@ test('R28 explicit first route for a saved declared two-pin Net, Undo and Redo',
  await page.getByTestId('project-file-input').setInputFiles({name:'unrouted.gscad',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(doc))});
  await expect(page.locator('[data-net-id]')).toHaveCount(0);
  const before=await saved();
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('topology-inventory').click();
  page.once('dialog',d=>d.accept());
  await page.getByTestId('net-initial-'+net.id).click();
@@ -1791,7 +1791,7 @@ test('R29 batch initial routing commits two declared Nets and one Undo restores 
  await page.getByTestId('project-file-input').setInputFiles({name:'batch-unrouted.gscad',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(doc))});
  await expect(page.locator('[data-net-id]')).toHaveCount(0);
  const before=await saved();
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('topology-inventory').click();
  page.once('dialog',d=>d.accept());
  await page.getByTestId('route-initial-batch').click();
@@ -1885,4 +1885,358 @@ test('RC1 library categories and reserved scrollbar fit long Russian names in bo
   await page.screenshot({path:testInfo.outputPath('library-theme-'+i+'.png')});
   if(i===0)await page.getByTestId('toggle-theme').click();
  }
+});
+
+
+test('R41 About is accessible in both themes and does not change the document',async({page})=>{
+  await page.goto('/');
+  const canvas=page.getByTestId('gscad-signed-svg-canvas');
+  await expect(canvas).toBeVisible();
+  const original=await page.locator('[data-testid^="symbol-"]').count();
+  const dirty=await page.getByText('Не сохранено',{exact:true}).count();
+  for(let i=0;i<2;i++){
+    await page.getByTestId('help-menu').click();
+    await page.getByTestId('open-about').click();
+    const dialog=page.getByRole('dialog',{name:'О программе'});
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText('Мирослав Лихачёв',{exact:false})).toBeVisible();
+    await expect(dialog.getByTestId('about-version')).toContainText('0.1.0');
+    await expect(dialog.getByTestId('check-updates')).toBeDisabled();
+    await dialog.getByRole('button',{name:'Показать MIT License'}).click();
+    await expect(dialog.getByText(/Permission is hereby granted/)).toBeVisible();
+    await dialog.getByRole('button',{name:'Скрыть MIT License'}).click();
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+    await expect(page.locator('[data-testid^="symbol-"]')).toHaveCount(original);
+    await expect(page.getByText('Не сохранено',{exact:true})).toHaveCount(dirty);
+    if(i===0)await page.getByTestId('toggle-theme').click();
+  }
+});
+
+
+test('R41 native release check uses actual version, displays update and leaves project unchanged',async({page})=>{
+  await page.addInitScript(()=>{
+    window.__TAURI__={core:{invoke:async(command)=>{
+      if(command==='native_app_version')return '0.1.0';
+      if(command==='native_close_trace')return;
+      throw Error('UNEXPECTED_NATIVE_COMMAND: '+command);
+    }},window:{getCurrentWindow:()=>({onCloseRequested:async()=>()=>{}})}};
+  });
+  let count=0;
+  await page.route('https://api.github.com/repos/Tridgi/gost-schematic/releases/latest',async route=>{
+    count++;
+    await route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({tag_name:'v0.2.0',draft:false,prerelease:false})});
+  });
+  await page.goto('/');
+  await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+  expect(count).toBe(0);
+  const dirty=page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true});
+  await expect(dirty).toHaveCount(0);
+  await page.getByTestId('help-menu').click();
+  await page.getByTestId('open-about').click();
+  const dialog=page.getByRole('dialog',{name:'О программе'});
+  await expect(dialog.getByTestId('about-version')).toHaveText('Версия: 0.1.0');
+  await dialog.getByTestId('check-updates').click();
+  await expect(dialog.getByTestId('update-result')).toContainText('v0.2.0');
+  expect(count).toBe(1);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(page.getByTestId('update-available-badge')).toBeVisible();
+  await expect(dirty).toHaveCount(0);
+  await page.getByTestId('help-menu').click();
+  await page.getByTestId('open-about').click();
+  await dialog.getByRole('switch',{name:'Проверять обновления при запуске'}).check();
+  await page.reload();
+  await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+  await expect(page.getByTestId('update-available-badge')).toBeVisible();
+  expect(count).toBeGreaterThanOrEqual(2);
+  await expect(dirty).toHaveCount(0);
+});
+
+
+test('R41 signed update does not install while project is dirty or confirmation is declined',async({page})=>{
+  await page.addInitScript(()=>{
+    window.__gscadMock={stage:{kind:'idle'},installs:[]};
+    window.__TAURI__={core:{invoke:async(command,args)=>{
+      const mock=window.__gscadMock;
+      if(command==='native_app_version')return '0.1.0';
+      if(command==='native_close_trace'||command==='native_close_project')return;
+      if(command==='native_signed_update_enabled')return true;
+      if(command==='native_signed_update_status')return mock.stage;
+      if(command==='native_prepare_signed_update'){
+        if(args.version!=='0.2.0')throw Error('VERSION_MISMATCH');
+        mock.stage={kind:'ready',version:'0.2.0',token:'verified-test-token'};return;
+      }
+      if(command==='native_install_signed_update'){
+        mock.installs.push(args);mock.stage={kind:'idle'};return;
+      }
+      if(command==='native_save_as_project')return {handle:'saved-test-handle',generation:0,
+        project_sha256:'a'.repeat(64),filename:'test.gscad.json',document:args.document};
+      throw Error('UNEXPECTED_NATIVE_COMMAND: '+command);
+    }},window:{getCurrentWindow:()=>({onCloseRequested:async()=>()=>{}})}};
+  });
+  await page.route('https://api.github.com/repos/Tridgi/gost-schematic/releases/latest',route=>route.fulfill({
+    status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},
+    body:JSON.stringify({tag_name:'v0.2.0',draft:false,prerelease:false})
+  }));
+  await page.goto('/');
+  await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+  await page.getByRole('button',{name:'Показать сетку'}).click();
+  const dirty=page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true});
+  await expect(dirty).toBeVisible();
+  const openAbout=async()=>{
+    await page.getByTestId('help-menu').click();await page.getByTestId('open-about').click();
+    await expect(page.getByRole('dialog',{name:'О программе'})).toBeVisible();
+  };
+  await openAbout();
+  const dialog=page.getByRole('dialog',{name:'О программе'});
+  await dialog.getByTestId('check-updates').click();
+  await dialog.getByTestId('download-signed-update').click();
+  await expect(dialog.getByTestId('install-signed-update')).toBeVisible();
+  await dialog.getByTestId('install-signed-update').click();
+  await expect(dialog.getByTestId('signed-update-error')).toContainText('Сначала сохраните проект');
+  expect(await page.evaluate(()=>window.__gscadMock.installs.length)).toBe(0);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await page.getByTestId('save-project').click();
+  await expect(dirty).toHaveCount(0);
+  await openAbout();
+  page.once('dialog',d=>d.dismiss());
+  await dialog.getByTestId('install-signed-update').click();
+  expect(await page.evaluate(()=>window.__gscadMock.installs.length)).toBe(0);
+  page.once('dialog',d=>d.accept());
+  await dialog.getByTestId('install-signed-update').click();
+  await expect.poll(()=>page.evaluate(()=>window.__gscadMock.installs)).toEqual([
+    {token:'verified-test-token',projectSafe:true}
+  ]);
+});
+
+
+test('R42 cancel pending signed download, keep project, retry without installing',async({page})=>{
+  await page.addInitScript(()=>{
+    window.__gscadMock={stage:{kind:'idle'},cancelled:[],installs:0,attempts:0};
+    window.__TAURI__={core:{invoke:async(command,args)=>{
+      const m=window.__gscadMock;
+      if(command==='native_app_version')return '0.1.0';
+      if(command==='native_close_trace')return;
+      if(command==='native_signed_update_enabled')return true;
+      if(command==='native_signed_update_status')return m.stage;
+      if(command==='native_prepare_signed_update'){
+        m.attempts++;
+        if(m.attempts===2){m.stage={kind:'ready',version:'0.2.0',token:'verified-retry'};return;}
+        m.stage={kind:'downloading',received:65536,total:null,id:'download-one',cancelling:false};
+        return new Promise((_,reject)=>{m.reject=reject;});
+      }
+      if(command==='native_cancel_signed_download'){
+        if(args.id!==m.stage.id)throw Error('STALE_UPDATE_DOWNLOAD');
+        m.cancelled.push(args.id);m.stage={kind:'idle'};m.reject('UPDATE_DOWNLOAD_CANCELLED');return;
+      }
+      if(command==='native_install_signed_update'){m.installs++;throw Error('UNEXPECTED_INSTALL');}
+      throw Error('UNEXPECTED_NATIVE_COMMAND: '+command);
+    }},window:{getCurrentWindow:()=>({onCloseRequested:async()=>()=>{}})}};
+  });
+  await page.route('https://api.github.com/repos/Tridgi/gost-schematic/releases/latest',route=>route.fulfill({
+    status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},
+    body:JSON.stringify({tag_name:'v0.2.0',draft:false,prerelease:false})
+  }));
+  await page.goto('/');
+  await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+  const dirty=page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true});
+  await expect(dirty).toHaveCount(0);
+  await page.getByTestId('help-menu').click();await page.getByTestId('open-about').click();
+  const dialog=page.getByRole('dialog',{name:'О программе'});
+  await dialog.getByTestId('check-updates').click();
+  await dialog.getByTestId('download-signed-update').click();
+  const cancel=dialog.getByTestId('cancel-signed-download');
+  await expect(cancel).toBeEnabled();
+  await cancel.click();
+  await expect(dialog.getByTestId('signed-update-error')).toContainText('Загрузка отменена');
+  await expect(dialog.getByTestId('install-signed-update')).toHaveCount(0);
+  await expect(dirty).toHaveCount(0);
+  await dialog.getByTestId('download-signed-update').click();
+  await expect(dialog.getByTestId('install-signed-update')).toBeVisible();
+  expect(await page.evaluate(()=>({cancelled:window.__gscadMock.cancelled,attempts:window.__gscadMock.attempts,installs:window.__gscadMock.installs}))).toEqual({cancelled:['download-one'],attempts:2,installs:0});
+  await expect(dirty).toHaveCount(0);
+});
+
+test('R43 fourth conductor snaps to an existing Junction, retains ID and supports Undo/Redo',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Файл',exact:true}).click();await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ for(const [x,y] of [[.23,.4],[.75,.4],[.5,.75],[.56,.17]]){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*y);
+ }
+ const saved=async()=>{const d=page.waitForEvent('download');await page.getByTestId('save-project').click();return JSON.parse(readFileSync(await (await d).path(),'utf8'));};
+ const doc=await saved(),[a,b,c,d]=doc.project.components;
+ await page.getByTestId('tool-wire').click();
+ await page.getByTestId('signed-pin-'+a.id+'-2').click();await page.getByTestId('signed-pin-'+b.id+'-1').click();
+ await page.getByTestId('tool-select').click();
+ const trunk=(await saved()).project.sheets[0].wires[0];
+ const mid=await page.locator('[data-segment-id="'+trunk.segments[0].id+'"]').evaluate(el=>{
+  const pt=el.ownerSVGElement.createSVGPoint();pt.x=(Number(el.getAttribute('x1'))+Number(el.getAttribute('x2')))/2;pt.y=(Number(el.getAttribute('y1'))+Number(el.getAttribute('y2')))/2;
+  const p=pt.matrixTransform(el.getScreenCTM());return {x:p.x,y:p.y};
+ });
+ await page.getByTestId('tool-wire').click();await page.getByTestId('signed-pin-'+c.id+'-1').click();
+ await page.mouse.click(mid.x,mid.y);await expect(page.locator('[data-junction-id]')).toHaveCount(1);
+ await page.getByTestId('tool-select').click();
+ const before=await saved(),node=before.project.sheets[0].junctions[0];
+ const at=await page.locator('[data-junction-id="'+node.id+'"]').evaluate(el=>{
+  const pt=el.ownerSVGElement.createSVGPoint();pt.x=Number(el.getAttribute('cx'));pt.y=Number(el.getAttribute('cy'));
+  const p=pt.matrixTransform(el.getScreenCTM());return {x:p.x,y:p.y};
+ });
+ await page.getByTestId('tool-wire').click();await page.getByTestId('signed-pin-'+d.id+'-1').click();
+ await page.mouse.move(at.x,at.y);await expect(page.getByTestId('wire-tap-preview')).toBeVisible();
+ await canvas.focus();await canvas.press('Escape');
+ await expect(page.locator('.electric-wires > g')).toHaveCount(3);
+ await page.getByTestId('tool-wire').click();await page.getByTestId('signed-pin-'+d.id+'-1').click();
+ await page.mouse.move(at.x,at.y);await expect(page.getByTestId('wire-tap-preview')).toBeVisible();
+ await page.mouse.click(at.x,at.y);
+ await expect(page.locator('.electric-wires > g')).toHaveCount(4);await expect(page.locator('[data-junction-id]')).toHaveCount(1);
+ await page.getByTestId('tool-select').click();
+ const after=await saved();expect(after.project.nets).toHaveLength(1);expect(after.project.nets[0].members).toHaveLength(4);
+ expect(after.project.sheets[0].junctions).toEqual(before.project.sheets[0].junctions);
+ for(const wire of before.project.sheets[0].wires)expect(after.project.sheets[0].wires.find(w=>w.id===wire.id)).toEqual(wire);
+ await page.getByRole('button',{name:'Отменить'}).click();expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();expect((await saved()).project).toEqual(after.project);
+});
+
+
+test('R44 start at Junction, reject free endpoint, cancel and connect physical pin',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Файл',exact:true}).click();await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ for(const [x,y] of [[.23,.4],[.75,.4],[.5,.75],[.56,.17]]){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*y);
+ }
+ const saved=async()=>{const d=page.waitForEvent('download');await page.getByTestId('save-project').click();return JSON.parse(readFileSync(await (await d).path(),'utf8'));};
+ const doc=await saved(),[a,b,c,d]=doc.project.components;
+ await page.getByTestId('tool-wire').click();
+ await page.getByTestId('signed-pin-'+a.id+'-2').click();await page.getByTestId('signed-pin-'+b.id+'-1').click();
+ await page.getByTestId('tool-select').click();
+ const trunk=(await saved()).project.sheets[0].wires[0];
+ const mid=await page.locator('[data-segment-id="'+trunk.segments[0].id+'"]').evaluate(el=>{
+  const pt=el.ownerSVGElement.createSVGPoint();pt.x=(Number(el.getAttribute('x1'))+Number(el.getAttribute('x2')))/2;pt.y=(Number(el.getAttribute('y1'))+Number(el.getAttribute('y2')))/2;
+  const p=pt.matrixTransform(el.getScreenCTM());return {x:p.x,y:p.y};
+ });
+ await page.getByTestId('tool-wire').click();await page.getByTestId('signed-pin-'+c.id+'-1').click();
+ await page.mouse.click(mid.x,mid.y);await expect(page.locator('[data-junction-id]')).toHaveCount(1);
+ await page.getByTestId('tool-select').click();
+ const before=await saved(),node=before.project.sheets[0].junctions[0];
+ const at=await page.locator('[data-junction-id="'+node.id+'"]').evaluate(el=>{
+  const pt=el.ownerSVGElement.createSVGPoint();pt.x=Number(el.getAttribute('cx'));pt.y=Number(el.getAttribute('cy'));
+  const p=pt.matrixTransform(el.getScreenCTM());return {x:p.x,y:p.y};
+ });
+ await page.getByTestId('tool-wire').click();await page.mouse.click(at.x,at.y);
+ await page.mouse.move(paper.x+paper.width*.5,paper.y+paper.height*.2);
+ await canvas.focus();await canvas.press('Enter');
+ await expect(page.locator('.electric-wires > g')).toHaveCount(3);
+ await canvas.press('Escape');
+ await expect(page.locator('.electric-wires > g')).toHaveCount(3);
+ await page.getByTestId('tool-wire').click();await page.mouse.click(at.x,at.y);
+ await page.getByTestId('signed-pin-'+d.id+'-1').click();
+ await expect(page.locator('.electric-wires > g')).toHaveCount(4);await expect(page.locator('[data-junction-id]')).toHaveCount(1);
+ await page.getByTestId('tool-select').click();
+ const after=await saved();expect(after.project.nets).toHaveLength(1);expect(after.project.nets[0].members).toHaveLength(4);
+ expect(after.project.sheets[0].junctions).toEqual(before.project.sheets[0].junctions);
+ for(const wire of before.project.sheets[0].wires)expect(after.project.sheets[0].wires.find(w=>w.id===wire.id)).toEqual(wire);
+ await page.getByRole('button',{name:'Отменить'}).click();expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();expect((await saved()).project).toEqual(after.project);
+});
+
+
+test('R45 edit text via double click, exact coordinates, rotate, delete and Undo/Redo',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Файл',exact:true}).click();await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await canvas.focus();await canvas.press('t');
+ await page.mouse.click(paper.x+paper.width*.25,paper.y+paper.height*.5);
+ await page.getByTestId('sheet-text-input').fill('Питание 24 В');
+ await page.getByTestId('add-sheet-text').click();await expect(page.getByTestId('sheet-text-input')).toBeHidden();
+ const annotation=canvas.locator('text[data-testid^="sheet-text-"]');
+ await expect(annotation).toHaveCount(1);
+ const saved=async()=>{const d=page.waitForEvent('download');await page.getByTestId('save-project').click();return JSON.parse(readFileSync(await (await d).path(),'utf8'));};
+ const before=await saved(),t=before.project.sheets[0].texts[0];
+ await annotation.dblclick();
+ const dialog=page.getByRole('dialog',{name:'Свойства надписи'});
+ await expect(dialog).toBeVisible();
+ await expect(dialog.getByTestId('sheet-text-input')).toHaveValue('Питание 24 В');
+ await dialog.getByTestId('sheet-text-input').fill('Цепь 24 В');
+ await dialog.getByTestId('sheet-text-x').fill('65,125');
+ await dialog.getByTestId('sheet-text-y').fill('140');
+ await dialog.getByText('5',{exact:true}).click();
+ await dialog.getByText('90',{exact:true}).click();
+ await dialog.getByTestId('add-sheet-text').click();
+ await expect(dialog).toBeHidden();await expect(annotation).toHaveText('Цепь 24 В');
+ const after=await saved();
+ expect(after.project.sheets[0].texts).toEqual([{...t,text:'Цепь 24 В',at_um:[65125,140000],height_um:5000,rotation_deg:90}]);
+ expect(after.project.nets).toEqual(before.project.nets);
+ await page.getByRole('button',{name:'Отменить'}).click();expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();expect((await saved()).project).toEqual(after.project);
+ await annotation.click({button:'right'});await expect(dialog).toBeVisible();
+ page.once('dialog',d=>d.dismiss());await dialog.getByTestId('delete-sheet-text').click();await expect(dialog).toBeVisible();
+ page.once('dialog',d=>d.accept());await dialog.getByTestId('delete-sheet-text').click();await expect(dialog).toBeHidden();
+ await expect(annotation).toHaveCount(0);const deleted=await saved();expect(deleted.project.sheets[0].texts).toEqual([]);
+ await page.getByRole('button',{name:'Отменить'}).click();expect((await saved()).project).toEqual(after.project);
+ await page.getByRole('button',{name:'Повторить'}).click();expect((await saved()).project).toEqual(deleted.project);
+});
+
+
+test('R46 drag annotation with grid preview, Escape and one Undo/Redo transaction',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Файл',exact:true}).click();await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await canvas.focus();await canvas.press('t');await page.mouse.click(paper.x+paper.width*.25,paper.y+paper.height*.5);
+ await page.getByTestId('sheet-text-input').fill('Питание 24 В');
+ await page.getByTestId('add-sheet-text').click();await expect(page.getByTestId('sheet-text-input')).toBeHidden();
+ const annotation=canvas.locator('text[data-testid^="sheet-text-"]');
+ await expect(annotation).toHaveCount(1);
+ const saved=async()=>{const d=page.waitForEvent('download');await page.getByTestId('save-project').click();return JSON.parse(readFileSync(await (await d).path(),'utf8'));};
+ const before=await saved(),t=before.project.sheets[0].texts[0],grid=before.project.settings.grid_step_um;
+ const p=await annotation.boundingBox(),x=p.x+p.width/2,y=p.y+p.height/2;
+ const dx=paper.width*.13,dy=-paper.height*.1;
+ await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+dx,y+dy,{steps:8});
+ await expect(page.getByTestId('sheet-text-drag-preview')).toBeVisible();
+ await canvas.press('Escape');await expect(page.getByTestId('sheet-text-drag-preview')).toHaveCount(0);
+ await page.mouse.up();expect((await saved()).project).toEqual(before.project);
+ await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+dx,y+dy,{steps:8});
+ await expect(page.getByTestId('sheet-text-drag-preview')).toBeVisible();
+ await page.mouse.up();await expect(page.getByTestId('sheet-text-drag-preview')).toHaveCount(0);
+ const after=await saved(),moved=after.project.sheets[0].texts[0];
+ expect(moved.id).toBe(t.id);expect(moved.at_um).not.toEqual(t.at_um);
+ expect(moved.at_um.map(n=>n%grid)).toEqual([0,0]);
+ expect(moved.at_um[0]).toBeGreaterThan(t.at_um[0]);expect(moved.at_um[1]).toBeLessThan(t.at_um[1]);
+ const expected=structuredClone(before.project);expected.sheets[0].texts[0].at_um=moved.at_um;
+ expect(after.project).toEqual(expected);
+ await page.getByRole('button',{name:'Отменить'}).click();expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();expect((await saved()).project).toEqual(after.project);
+ await annotation.dblclick();await expect(page.getByRole('dialog',{name:'Свойства надписи'})).toBeVisible();
+});
+
+
+test('R47 annotation selection, arrow nudge, Shift, F2, Delete and Undo',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Файл',exact:true}).click();await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await canvas.focus();await canvas.press('t');await page.mouse.click(paper.x+paper.width*.25,paper.y+paper.height*.5);
+ await page.getByTestId('sheet-text-input').fill('Питание 24 В');
+ await page.getByTestId('add-sheet-text').click();await expect(page.getByTestId('sheet-text-input')).toBeHidden();
+ const annotation=canvas.locator('text[data-testid^="sheet-text-"]');
+ const saved=async()=>{const d=page.waitForEvent('download');await page.getByTestId('save-project').click();return JSON.parse(readFileSync(await (await d).path(),'utf8'));};
+ const before=await saved(),t=before.project.sheets[0].texts[0],grid=before.project.settings.grid_step_um;
+ await annotation.click();await expect(annotation).toHaveAttribute('data-text-selected','true');
+ await expect(page.getByTestId('sheet-text-selection')).toBeVisible();
+ await canvas.press('ArrowRight');await canvas.press('Shift+ArrowUp');
+ const moved=await saved(),expected=structuredClone(before.project);
+ expected.sheets[0].texts[0].at_um=[t.at_um[0]+grid,t.at_um[1]-10*grid];
+ expect(moved.project).toEqual(expected);
+ await canvas.press('F2');const dialog=page.getByRole('dialog',{name:'Свойства надписи'});await expect(dialog).toBeVisible();
+ await dialog.getByTestId('sheet-text-input').focus();await page.keyboard.press('Delete');await expect(annotation).toHaveCount(1);
+ await dialog.getByRole('button',{name:'Отмена',exact:true}).click();await expect(dialog).toBeHidden();
+ await annotation.click();await canvas.press('Escape');await expect(page.getByTestId('sheet-text-selection')).toHaveCount(0);
+ await canvas.press('Delete');expect((await saved()).project).toEqual(moved.project);
+ await annotation.click();await canvas.press('Delete');await expect(annotation).toHaveCount(0);
+ await page.getByRole('button',{name:'Отменить'}).click();expect((await saved()).project).toEqual(moved.project);
+ await page.getByRole('button',{name:'Повторить'}).click();await expect(annotation).toHaveCount(0);
 });
