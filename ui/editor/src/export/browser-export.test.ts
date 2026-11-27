@@ -150,3 +150,20 @@ test('R32k extended nearby channels place a label beyond blocked original slots 
  assert.deepEqual(planComponentLabels(doc,'sheet-1',projected),p);
  assert.deepEqual(projected,before);
 });
+
+
+test('R49 browser preserves exact quarter-turn text anchors and physical height',()=>{
+ for(const rotation of [0,90,180,270]){
+  const doc=structuredClone(source),sh=doc.project.sheets[0];
+  sh.layers.push({id:'qa-text-layer',name:'Text',kind:'annotation',visible:true,printable:true,locked:false});
+  sh.texts.push({id:'qa-text',layer_id:'qa-text-layer',text:'MMMMMM',at_um:[120125,120500],height_um:5000,rotation_deg:rotation});
+  const before=structuredClone(doc);
+  const svg=renderProjectPreviewSVG(doc,'sheet-1');
+  const tag=svg.match(/<text data-layer="annotations"[^>]*>MMMMMM<\/text>/)?.[0];
+  assert.ok(tag);
+  assert.match(tag,/x="120\.125" y="120\.5" font-size="5"/);
+  if(rotation)assert.ok(tag.includes('transform="rotate('+rotation+' 120.125 120.5)"'));
+  else assert.ok(!tag.includes('transform='));
+  assert.deepEqual(doc,before);
+ }
+});
