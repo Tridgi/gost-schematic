@@ -1952,3 +1952,61 @@ test('R41 native release check uses actual version, displays update and leaves p
   expect(count).toBeGreaterThanOrEqual(2);
   await expect(dirty).toHaveCount(0);
 });
+
+
+test('R41 signed update does not install while project is dirty or confirmation is declined',async({page})=>{
+  await page.addInitScript(()=>{
+    window.__gscadMock={stage:{kind:'idle'},installs:[]};
+    window.__TAURI__={core:{invoke:async(command,args)=>{
+      const mock=window.__gscadMock;
+      if(command==='native_app_version')return '0.1.0';
+      if(command==='native_close_trace'||command==='native_close_project')return;
+      if(command==='native_signed_update_enabled')return true;
+      if(command==='native_signed_update_status')return mock.stage;
+      if(command==='native_prepare_signed_update'){
+        if(args.version!=='0.2.0')throw Error('VERSION_MISMATCH');
+        mock.stage={kind:'ready',version:'0.2.0',token:'verified-test-token'};return;
+      }
+      if(command==='native_install_signed_update'){
+        mock.installs.push(args);mock.stage={kind:'idle'};return;
+      }
+      if(command==='native_save_as_project')return {handle:'saved-test-handle',generation:0,
+        project_sha256:'a'.repeat(64),filename:'test.gscad.json',document:args.document};
+      throw Error('UNEXPECTED_NATIVE_COMMAND: '+command);
+    }},window:{getCurrentWindow:()=>({onCloseRequested:async()=>()=>{}})}};
+  });
+  await page.route('https://api.github.com/repos/Tridgi/gost-schematic/releases/latest',route=>route.fulfill({
+    status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},
+    body:JSON.stringify({tag_name:'v0.2.0',draft:false,prerelease:false})
+  }));
+  await page.goto('/');
+  await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+  await page.getByRole('button',{name:'Показать сетку'}).click();
+  const dirty=page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true});
+  await expect(dirty).toBeVisible();
+  const openAbout=async()=>{
+    await page.getByTestId('help-menu').click();await page.getByTestId('open-about').click();
+    await expect(page.getByRole('dialog',{name:'О программе'})).toBeVisible();
+  };
+  await openAbout();
+  const dialog=page.getByRole('dialog',{name:'О программе'});
+  await dialog.getByTestId('check-updates').click();
+  await dialog.getByTestId('download-signed-update').click();
+  await expect(dialog.getByTestId('install-signed-update')).toBeVisible();
+  await dialog.getByTestId('install-signed-update').click();
+  await expect(dialog.getByTestId('signed-update-error')).toContainText('Сначала сохраните проект');
+  expect(await page.evaluate(()=>window.__gscadMock.installs.length)).toBe(0);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await page.getByTestId('save-project').click();
+  await expect(dirty).toHaveCount(0);
+  await openAbout();
+  page.once('dialog',d=>d.dismiss());
+  await dialog.getByTestId('install-signed-update').click();
+  expect(await page.evaluate(()=>window.__gscadMock.installs.length)).toBe(0);
+  page.once('dialog',d=>d.accept());
+  await dialog.getByTestId('install-signed-update').click();
+  await expect.poll(()=>page.evaluate(()=>window.__gscadMock.installs)).toEqual([
+    {token:'verified-test-token',projectSafe:true}
+  ]);
+});
