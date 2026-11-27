@@ -1251,7 +1251,7 @@ test('R19 smart routing and aligned connected pins reduce a Z route to one segme
   return JSON.parse(readFileSync(await (await d).path(),'utf8'));
  };
  const placed=await saved(),[a,b]=placed.project.components;
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('smart-routing').click();
  await page.getByTestId('tool-wire').click();
  await page.getByTestId('signed-pin-'+a.id+'-2').click();
@@ -1263,7 +1263,7 @@ test('R19 smart routing and aligned connected pins reduce a Z route to one segme
  await page.mouse.down();await page.mouse.move(paper.x+paper.width*.82,paper.y+paper.height*.68,{steps:6});await page.mouse.up();
  await expect(page.getByTestId('group-selection-summary')).toContainText('2');
  page.once('dialog',d=>d.accept());
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('align-connected-pair').click();
  const after=await saved(),w=after.project.sheets[0].wires[0];
  expect(w.vertices).toHaveLength(2);expect(w.vertices[0].at_um[1]).toBe(w.vertices[1].at_um[1]);
@@ -1321,7 +1321,7 @@ test('R19b magnetic placement preview aligns pins without creating a wire',async
  const canvas=page.getByTestId('gscad-signed-svg-canvas');
  await expect(canvas).toHaveAttribute('data-camera-ready','true');
  const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('pin-magnet').click();
  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
  await expect(canvas).toHaveAttribute('data-tool','place');
@@ -1381,7 +1381,7 @@ test('R19c existing staircase becomes a clean two-bend wire and Undo restores or
  await page.getByTestId('project-file-input').setInputFiles({name:'stairs.gscad',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(stairs))});
  await expect(page.locator('[data-wire-id="'+w.id+'"] [data-segment-id]')).toHaveCount(7);
  page.once('dialog',d=>d.accept());
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('simplify-routes').click();
  await expect(page.locator('[data-wire-id="'+w.id+'"] [data-segment-id]')).toHaveCount(3);
  const after=await saved();
@@ -1417,7 +1417,7 @@ test('R20 selected chain becomes straight without altering Net membership, and U
  await page.mouse.down();await page.mouse.move(paper.x+paper.width*.88,paper.y+paper.height*.61,{steps:6});await page.mouse.up();
  await expect(page.getByTestId('group-selection-summary')).toContainText('3');
  page.once('dialog',d=>d.accept());
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('align-series').click();
  const after=await saved(),sh=after.project.sheets[0];
  expect(new Set(sh.instances.map(i=>i.origin_um[1])).size).toBe(1);
@@ -1459,7 +1459,7 @@ test('R20b equal pin gaps in actual editor keep the end poses and preserve Undo'
  await page.mouse.down();await page.mouse.move(paper.x+paper.width*.88,paper.y+paper.height*.51,{steps:6});await page.mouse.up();
  await expect(page.getByTestId('group-selection-summary')).toContainText('3');
  page.once('dialog',d=>d.accept());
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('distribute-series').click();
  const after=await saved(),sh=after.project.sheets[0];
  expect(sh.instances[0]).toEqual(sh0.instances[0]);expect(sh.instances[2]).toEqual(sh0.instances[2]);
@@ -1500,7 +1500,7 @@ test('R21 parallel rails replace routes with explicit junctions without changing
  await page.mouse.down();await page.mouse.move(paper.x+paper.width*.85,paper.y+paper.height*.58,{steps:6});await page.mouse.up();
  await expect(page.getByTestId('group-selection-summary')).toContainText('3');
  page.once('dialog',d=>d.accept());
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('parallel-rails').click();
  const after=await saved(),sh=after.project.sheets[0];
  expect(sh.wires).toHaveLength(10);expect(sh.junctions).toHaveLength(2);expect(sh.splices).toHaveLength(4);
@@ -1535,7 +1535,7 @@ test('R22 automatic layout previews metrics, cancel is harmless, confirm is one 
  await page.getByTestId('tool-select').click();
  const before=await saved();
  const openPlan=async(accept)=>{
-  await page.getByRole('button',{name:'Правка'}).click();
+  await page.getByRole('button',{name:'Правка',exact:true}).click();
   await page.getByTestId('optimize-layout').click();
   await expect(page.getByTestId('layout-preview-dialog')).toBeVisible();
   await expect(page.getByTestId('layout-bends')).toHaveText('4 → 0');
@@ -1564,7 +1564,7 @@ test('R22 automatic layout previews metrics, cancel is harmless, confirm is one 
 test('R23 source TL494 electrical structure is inspectable without authoring or inference',async({page})=>{
  await page.goto('/');
  await expect(page.getByTestId('symbol-DA1')).toBeVisible();
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('topology-inventory').click();
  const report=page.getByTestId('topology-report');
  await expect(report).toBeVisible();
@@ -1607,7 +1607,7 @@ test('R24 single-Net rail through topology report preserves signed membership an
  await page.getByTestId('tool-select').click();
  const before=await saved(),net=before.project.nets[0];
  expect(net.members).toHaveLength(3);
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('topology-inventory').click();
  await expect(page.getByTestId('topology-report')).toBeVisible();
  page.once('dialog',d=>d.accept());
@@ -1651,7 +1651,7 @@ test('R25 mixed-axis Net rail keeps real signed pin directions and undoable geom
  await page.getByTestId('tool-select').click();
  const before=await saved(),net=before.project.nets[0];
  expect(net.members).toHaveLength(3);
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('topology-inventory').click();
  page.once('dialog',d=>d.accept());
  await page.getByTestId('net-rail-'+net.id).click();
@@ -1695,7 +1695,7 @@ test('R26 tree reconstruction from topology report bypasses a rail obstruction',
  await page.getByTestId('tool-select').click();
  const before=await saved(),net=before.project.nets[0];
  expect(net.members).toHaveLength(4);
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('topology-inventory').click();
  page.once('dialog',d=>d.accept());
  await page.getByTestId('net-tree-'+net.id).click();
@@ -1742,7 +1742,7 @@ test('R28 explicit first route for a saved declared two-pin Net, Undo and Redo',
  await page.getByTestId('project-file-input').setInputFiles({name:'unrouted.gscad',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(doc))});
  await expect(page.locator('[data-net-id]')).toHaveCount(0);
  const before=await saved();
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('topology-inventory').click();
  page.once('dialog',d=>d.accept());
  await page.getByTestId('net-initial-'+net.id).click();
@@ -1791,7 +1791,7 @@ test('R29 batch initial routing commits two declared Nets and one Undo restores 
  await page.getByTestId('project-file-input').setInputFiles({name:'batch-unrouted.gscad',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(doc))});
  await expect(page.locator('[data-net-id]')).toHaveCount(0);
  const before=await saved();
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('topology-inventory').click();
  page.once('dialog',d=>d.accept());
  await page.getByTestId('route-initial-batch').click();
