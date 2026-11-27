@@ -15,6 +15,7 @@ export type CanvasIntent =
  | {kind:'placeSymbol';at_um:PointUm;base_revision:number}
  | {kind:'placeText';at_um:PointUm;base_revision:number}
  | {kind:'moveText';text_id:string;at_um:PointUm;base_revision:number}
+ | {kind:'deleteText';text_id:string;base_revision:number}
  | {kind:'deleteSymbol';component_id:string;instance_id:string;base_revision:number}
  | {kind:'deleteWire';wire_id:string;base_revision:number}
  | {kind:'moveSegment';token:SegmentDragToken;delta_um:number}

@@ -2042,3 +2042,30 @@ test('R46 drag annotation with grid preview, Escape and one Undo/Redo transactio
  await page.getByRole('button',{name:'Повторить'}).click();expect((await saved()).project).toEqual(after.project);
  await annotation.dblclick();await expect(page.getByRole('dialog',{name:'Свойства надписи'})).toBeVisible();
 });
+
+
+test('R47 annotation selection, arrow nudge, Shift, F2, Delete and Undo',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Файл',exact:true}).click();await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await canvas.focus();await canvas.press('t');await page.mouse.click(paper.x+paper.width*.25,paper.y+paper.height*.5);
+ await page.getByTestId('sheet-text-input').fill('Питание 24 В');
+ await page.getByTestId('add-sheet-text').click();await expect(page.getByTestId('sheet-text-input')).toBeHidden();
+ const annotation=canvas.locator('text[data-testid^="sheet-text-"]');
+ const saved=async()=>{const d=page.waitForEvent('download');await page.getByTestId('save-project').click();return JSON.parse(readFileSync(await (await d).path(),'utf8'));};
+ const before=await saved(),t=before.project.sheets[0].texts[0],grid=before.project.settings.grid_step_um;
+ await annotation.click();await expect(annotation).toHaveAttribute('data-text-selected','true');
+ await expect(page.getByTestId('sheet-text-selection')).toBeVisible();
+ await canvas.press('ArrowRight');await canvas.press('Shift+ArrowUp');
+ const moved=await saved(),expected=structuredClone(before.project);
+ expected.sheets[0].texts[0].at_um=[t.at_um[0]+grid,t.at_um[1]-10*grid];
+ expect(moved.project).toEqual(expected);
+ await canvas.press('F2');const dialog=page.getByRole('dialog',{name:'Свойства надписи'});await expect(dialog).toBeVisible();
+ await dialog.getByTestId('sheet-text-input').focus();await page.keyboard.press('Delete');await expect(annotation).toHaveCount(1);
+ await dialog.getByRole('button',{name:'Отмена',exact:true}).click();await expect(dialog).toBeHidden();
+ await annotation.click();await canvas.press('Escape');await expect(page.getByTestId('sheet-text-selection')).toHaveCount(0);
+ await canvas.press('Delete');expect((await saved()).project).toEqual(moved.project);
+ await annotation.click();await canvas.press('Delete');await expect(annotation).toHaveCount(0);
+ await page.getByRole('button',{name:'Отменить'}).click();expect((await saved()).project).toEqual(moved.project);
+ await page.getByRole('button',{name:'Повторить'}).click();await expect(annotation).toHaveCount(0);
+});
