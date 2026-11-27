@@ -155,6 +155,37 @@ class ExportResult:
     # caller retains project's native gscad-project v2 file separately
 
 
+def annotation_bounds(x: int, y: int, h: int, length: int, rotation: int = 0) -> tuple[int, int, int, int]:
+    """Conservative annotation envelope, not exact glyph ink."""
+    if h <= 0 or rotation not in (0, 90, 180, 270):
+        raise ExportError("INVALID_ANNOTATION_GEOMETRY")
+    corners = [(-h, -2*h), ((length+1)*h, -2*h), (-h, h), ((length+1)*h, h)]
+    transformed = []
+    for u, v in corners:
+        a, b = {0: (u, v), 90: (-v, u), 180: (-u, -v), 270: (v, -u)}[rotation]
+        transformed.append((x+a, y+b))
+    return (min(p[0] for p in transformed), min(p[1] for p in transformed),
+            max(p[0] for p in transformed), max(p[1] for p in transformed))
+
+
+def _annotation_rotation(root: ET.Element, element: ET.Element) -> int:
+    """Only allow exact quarter-turn rotations of v2 sheet text, at its own anchor."""
+    value = element.get("transform")
+    if value is None:
+        return 0
+    if (root.get("data-source-model") != "gscad-project-v2"
+            or element.tag != S + "text" or element.get("data-layer") != "annotations"
+            or not element.get("data-id")):
+        raise ExportError("UNAPPROVED_ANNOTATION_TRANSFORM")
+    match = re.fullmatch(r"rotate\((90|180|270) ([^ ]+) ([^ ]+)\)", value)
+    if not match:
+        raise ExportError("UNAPPROVED_ANNOTATION_TRANSFORM")
+    x, y = _from_mm(element.get("x")), _from_mm(element.get("y"))
+    if match[2] != mm(x) or match[3] != mm(y):
+        raise ExportError("UNAPPROVED_ANNOTATION_TRANSFORM")
+    return int(match[1])
+
+
 def _check_source_ink_bounds(root: ET.Element, viewport: tuple[int, int, int, int]) -> None:
     """Reject SVG shapes outside their claimed viewBox, including painted strokes.
 
@@ -185,6 +216,14 @@ def _check_source_ink_bounds(root: ET.Element, viewport: tuple[int, int, int, in
 
     for item in root.iter():
         kind = item.tag.rsplit("}", 1)[-1]
+        if kind == "text" and item.get("transform") is not None:
+            rotation = _annotation_rotation(root, item)
+            x, y = _from_mm(item.get("x")), _from_mm(item.get("y"))
+            h = _from_mm(item.get("font-size"))
+            left, top, right, bottom = annotation_bounds(x, y, h, len(item.text or ""), rotation)
+            if not (vx <= left and top >= vy and right <= vx + vw and bottom <= vy + vh):
+                raise ExportError("SOURCE_VIEWBOX_CLIPS_INK: rotated annotation exceeds viewBox")
+            continue
         if kind == "line":
             xs = [_from_mm(item.attrib[k]) for k in ("x1", "x2")]
             ys = [_from_mm(item.attrib[k]) for k in ("y1", "y2")]
@@ -276,7 +315,9 @@ def _check_xml(
         if element.tag not in {S + x for x in _ALLOWED_TAGS}:
             raise ExportError("Unsafe or unsupported SVG element")
         for attr, value in element.attrib.items():
-            if attr not in _ALLOWED_ATTRS and not attr.startswith("data-"):
+            if attr == "transform":
+                _annotation_rotation(root, element)
+            elif attr not in _ALLOWED_ATTRS and not attr.startswith("data-"):
                 raise ExportError(f"Unsafe SVG attribute: {attr}")
             if any(bad in value.lower() for bad in ("url(", "javascript:", "data:")):
                 raise ExportError("External SVG resource/style reference forbidden")
