@@ -1,9 +1,9 @@
 """Offline release-preparation checks. Mock verification is not crypto acceptance."""
 import base64
 import json
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from r41_prepare_update import prepare, sha256, validate_acceptance, verify_signature
@@ -49,10 +49,9 @@ class PrepareUpdateTests(unittest.TestCase):
         for field, value in [("source_sha", "b"*40), ("app_version", "0.3.0"),
                              ("native_acceptance", "FAIL"), ("full_tl494", "FAIL"),
                              ("target", "windows-aarch64"), ("installer", "../x-setup.exe")]:
-            with self.subTest(field=field):
-                with self.assertRaises(ValueError):
-                    validate_acceptance({**self.manifest, field: value},
-                                        "a"*40, "0.2.0", "0.1.0")
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                validate_acceptance({**self.manifest, field: value},
+                                    "a"*40, "0.2.0", "0.1.0")
         with self.assertRaises(ValueError):
             validate_acceptance(self.manifest, "a"*40, "0.2.0", "0.2.0")
 
@@ -65,9 +64,11 @@ class PrepareUpdateTests(unittest.TestCase):
         self.assertFalse(self.output.exists())
 
     def test_invalid_signature_never_creates_feed(self):
-        with patch("r41_prepare_update.verify_signature", side_effect=ValueError("invalid signature")):
-            with self.assertRaises(ValueError):
-                self.run_prepare()
+        with (
+            patch("r41_prepare_update.verify_signature", side_effect=ValueError("invalid signature")),
+            self.assertRaises(ValueError),
+        ):
+            self.run_prepare()
         self.assertFalse(self.output.exists())
 
     def test_signed_version_required_after_verifier_success(self):
@@ -83,9 +84,8 @@ class PrepareUpdateTests(unittest.TestCase):
 
     def test_no_overwrite_existing_output(self):
         self.output.mkdir()
-        with patch("r41_prepare_update.verify_signature"):
-            with self.assertRaises(FileExistsError):
-                self.run_prepare()
+        with patch("r41_prepare_update.verify_signature"), self.assertRaises(FileExistsError):
+            self.run_prepare()
         self.assertFalse((self.output / "latest.json").exists())
 
 
