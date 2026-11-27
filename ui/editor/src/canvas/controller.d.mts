@@ -6,7 +6,7 @@ import type { Camera,PointUm,VisualHit,ScreenPoint } from './precision.mjs';
 import type { SegmentDragToken } from './wire-intents.mjs';
 export type CanvasIntent =
  | {kind:'beginWire';pin:PinRef}
- | {kind:'commitWire';source:PinRef;target:{kind:'pin';pin:PinRef}|{kind:'free';at_um:PointUm}|{kind:'segment';wire_id:string;segment_id:string;at_um:PointUm};bend_points_um:PointUm[];base_revision?:number}
+ | {kind:'commitWire';source:PinRef;target:{kind:'pin';pin:PinRef}|{kind:'free';at_um:PointUm}|{kind:'segment';wire_id:string;segment_id:string;at_um:PointUm}|{kind:'junction';junction_id:string;at_um:PointUm};bend_points_um:PointUm[];base_revision?:number}
  | {kind:'cancelWire';source:PinRef}
  | {kind:'placeSymbol';at_um:PointUm;base_revision:number}
  | {kind:'placeText';at_um:PointUm;base_revision:number}
@@ -35,7 +35,7 @@ export type CanvasControllerState={
 };
 export type CanvasController={
  getState():CanvasControllerState;
- tapPreview():null|{kind:'segment';wire_id:string;segment_id:string;at_um:PointUm};
+ tapPreview():null|{kind:'segment';wire_id:string;segment_id:string;at_um:PointUm}|{kind:'junction';junction_id:string;at_um:PointUm};
  clearTapPreview():void;
  symbolDragPreview():null|{instance_id:string;component_id:string;delta_um:PointUm};
  marqueePreview():null|{x:number;y:number;width:number;height:number};

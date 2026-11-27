@@ -37,7 +37,8 @@ function hitTest(scene,c,p,tolerance=8){
  }
  pins.sort((a,b)=>a.distance_px-b.distance_px);
  if(pins.length){const choices=pins.filter(x=>x.distance_px-pins[0].distance_px<=.75);return choices.length>1?{kind:"ambiguous-pin",candidates:choices.map(x=>x.pin)}:{kind:"pin",...pins[0]}}
- for(const j of scene.junctions||[]){const xy=screen(j.at_um,c);if(Math.hypot(p.x-xy.x,p.y-xy.y)<=tolerance)return {kind:"junction",junction_id:j.id}}
+ const nodes=(scene.junctions||[]).map(j=>{const xy=screen(j.at_um,c);return {j,d:Math.hypot(p.x-xy.x,p.y-xy.y)}}).filter(x=>x.d<=tolerance).sort((a,b)=>a.d-b.d);
+ if(nodes.length){const near=nodes.filter(x=>x.d-nodes[0].d<=.75);return near.length===1?{kind:"junction",junction_id:near[0].j.id}:{kind:"ambiguous-junction",candidates:near.map(x=>x.j.id)}}
  const hits=[];for(const w of scene.wires)for(let i=0;i<w.segments.length;i++){
   const segment=w.segments[i],a=w.vertices.find(v=>v.id===segment.from_vertex_id),b=w.vertices.find(v=>v.id===segment.to_vertex_id);
   if(!a||!b)throw Error("MISSING_VERTEX");

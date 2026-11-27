@@ -844,21 +844,43 @@ export class AuthoringSession {
   /** User-authorized T connection, not geometric inference. Membership,
    * split and branch commit or roll back together. No automatic Net merge. */
   connectToSegment(tx:Tx,start:PinRef,wireId:string,segmentId:string,at:PointUm,bends:readonly PointUm[]=[]):void{
+    this.connectToTarget(tx,start,{kind:'segment',wireId,segmentId,at},bends);
+  }
+  /** Explicit existing Junction: add one branch without splitting or replacing
+   * any existing conductor, and without inferring contact at a crossing. */
+  connectToJunction(tx:Tx,start:PinRef,junctionId:string,at:PointUm,bends:readonly PointUm[]=[]):void{
+    this.connectToTarget(tx,start,{kind:'junction',junctionId,at},bends);
+  }
+  private connectToTarget(tx:Tx,start:PinRef,request:
+    {kind:'segment';wireId:string;segmentId:string;at:PointUm}|
+    {kind:'junction';junctionId:string;at:PointUm},bends:readonly PointUm[]):void{
     this.edit(tx,draft=>{
-      const a=this.beginWire(start),sh=draft.project.sheets[indexOfSheet(draft)];
-      const target=sh.wires.find(w=>w.id===wireId);
-      if(!target)reject('UNKNOWN_WIRE');
-      const idx=target.segments.findIndex(s=>s.id===segmentId);
-      if(idx<0)reject('UNKNOWN_SEGMENT');
-      const p=target.vertices[idx].at_um,q=target.vertices[idx+1].at_um,t=xy(at);
+      const a=this.beginWire(start),sh=draft.project.sheets[indexOfSheet(draft)],t=xy(request.at);
       const eq=(x:readonly number[],y:readonly number[])=>x[0]===y[0]&&x[1]===y[1];
       const box=(x:readonly number[],y:readonly number[]):Bounds=>({minX:Math.min(x[0],y[0]),minY:Math.min(x[1],y[1]),maxX:Math.max(x[0],y[0]),maxY:Math.max(x[1],y[1])});
       const inside=(x:readonly number[],b:Bounds)=>x[0]>=b.minX&&x[0]<=b.maxX&&x[1]>=b.minY&&x[1]<=b.maxY;
-      if(!inside(t,box(p,q))||eq(t,p)||eq(t,q))reject('SPLIT_POINT');
-      if(a.net_id&&a.net_id!==target.net_id)reject('NET_CONFLICT');
-      const layer=sh.layers.find(l=>l.id===target.layer_id);
+      let wireId='',segmentId='',idx=-1,p:readonly number[]=t,q:readonly number[]=t;
+      let junction:Junction|undefined,netId:string,layerId:string;
+      if(request.kind==='segment'){
+        wireId=request.wireId;segmentId=request.segmentId;
+        const target=sh.wires.find(w=>w.id===wireId);
+        if(!target)reject('UNKNOWN_WIRE');
+        idx=target.segments.findIndex(s=>s.id===segmentId);
+        if(idx<0)reject('UNKNOWN_SEGMENT');
+        p=target.vertices[idx].at_um;q=target.vertices[idx+1].at_um;
+        if(!inside(t,box(p,q))||eq(t,p)||eq(t,q))reject('SPLIT_POINT');
+        netId=target.net_id;layerId=target.layer_id;
+      }else{
+        junction=sh.junctions.find(j=>j.id===request.junctionId);
+        if(!junction)reject('UNKNOWN_NODE');
+        if(!eq(junction.at_um,t))reject('ANCHOR_MISMATCH');
+        if(sh.junctions.some(j=>j.id!==junction!.id&&eq(j.at_um,t))||sh.splices.some(j=>eq(j.at_um,t)))reject('NODE_CONFLICT');
+        netId=junction.net_id;layerId=junction.layer_id;
+      }
+      if(a.net_id&&a.net_id!==netId)reject('NET_CONFLICT');
+      const layer=sh.layers.find(l=>l.id===layerId);
       if(!layer||layer.kind!=='electrical'||layer.locked||!layer.visible)reject('LAYER_LOCKED');
-      const n=draft.project.nets.find(n=>n.id===target.net_id);
+      const n=draft.project.nets.find(n=>n.id===netId);
       if(!n)reject('UNKNOWN_NET');
       if(!n.members.some(m=>pinKey(m)===pinKey(start)))n.members.push(clone(start));
       expectedCounts(draft);
@@ -896,29 +918,31 @@ export class AuthoringSession {
         for(let i=1;i<path.length;i++){
           const u=path[i-1],v=path[i],b=box(u,v);
           if(obstacles.some(o=>!(i===1&&o.id===start.component_id)&&intersects(b,o.box))||annotations.some(o=>intersects(b,o)))return false;
-          if([...sh.junctions,...sh.splices].some(o=>inside(o.at_um,b)))return false;
+          if([...sh.junctions,...sh.splices].some(o=>inside(o.at_um,b)&&!(junction&&o===junction&&i===path.length-1&&eq(v,t))))return false;
           for(const seg of segments){
             if(separated(b,seg.box,0)&&!(b.minX<=seg.box.maxX&&seg.box.minX<=b.maxX&&b.minY<=seg.box.maxY&&seg.box.minY<=b.maxY))continue;
             const x=Math.max(b.minX,seg.box.minX),y=Math.max(b.minY,seg.box.minY);
             if(x>Math.min(b.maxX,seg.box.maxX)||y>Math.min(b.maxY,seg.box.maxY))continue;
             if(x!==Math.min(b.maxX,seg.box.maxX)||y!==Math.min(b.maxY,seg.box.maxY))return false;
             const hit:MutablePoint=[x,y];
-            if(i===path.length-1&&seg.w.id===wireId&&seg.i===idx&&eq(hit,t)&&
+            if(junction&&i===path.length-1&&eq(hit,t)&&seg.w.net_id===netId&&seg.w.layer_id===layerId&&
+              [seg.a,seg.b].some(k=>k.anchor.kind==='junction'&&k.anchor.junction_id===junction!.id&&eq(k.at_um,t)))continue;
+            if(!junction&&i===path.length-1&&seg.w.id===wireId&&seg.i===idx&&eq(hit,t)&&
               (u[0]===v[0])!==(seg.a.at_um[0]===seg.b.at_um[0]))continue;
-            if(i===1&&eq(hit,a.at_um)&&seg.w.net_id===target.net_id&&[seg.a,seg.b].some(k=>k.anchor.kind==='pin'&&pinKey(k.anchor)===pinKey(start)&&eq(k.at_um,hit)))continue;
+            if(i===1&&eq(hit,a.at_um)&&seg.w.net_id===netId&&[seg.a,seg.b].some(k=>k.anchor.kind==='pin'&&pinKey(k.anchor)===pinKey(start)&&eq(k.at_um,hit)))continue;
             // Deliberate crossing only at both segment interiors, never a tap.
-            if(seg.w.net_id!==target.net_id&&(u[0]===v[0])!==(seg.a.at_um[0]===seg.b.at_um[0])&&
+            if(seg.w.net_id!==netId&&(u[0]===v[0])!==(seg.a.at_um[0]===seg.b.at_um[0])&&
               ![u,v,seg.a.at_um,seg.b.at_um].some(k=>eq(k,hit)))continue;
             return false;
           }
         }
         return true;
       };
-      const normals:MutablePoint[]=p[0]===q[0]?[[-1,0],[1,0]]:[[0,-1],[0,1]];
+      const normals:MutablePoint[]=junction?[[-1,0],[1,0],[0,-1],[0,1]]:p[0]===q[0]?[[-1,0],[1,0]]:[[0,-1],[0,1]];
       const choices:MutablePoint[][]=[];
       for(const normal of normals){
         try{
-          const path=bends.length?addRouteBends(a,{at_um:t,normal,net_id:target.net_id},bends):
+          const path=bends.length?addRouteBends(a,{at_um:t,normal,net_id:netId},bends):
             routeManhattan(a.at_um,t,a.normal,normal,2000,{accept});
           if(accept(path))choices.push(path);
         }catch(e){if(!(e instanceof WireError))throw e;}
@@ -926,7 +950,14 @@ export class AuthoringSession {
       choices.sort((x,y)=>x.length-y.length||pathMetric(x).length-pathMetric(y).length);
       if(!choices.length)reject('REROUTE_REQUIRED');
       const {subset,session}=localSession(draft,this.clock);
-      session.engine.connectPinToSegment(session.engine.newTransaction('tap-segment'),start,wireId,segmentId,t,choices[0]);
+      if(junction){
+        let num=1;
+        const state=session.engine.snapshot;
+        while([...state.wires,...state.junctions,...state.splices].some(w=>w.id==='manual-branch-'+num))num++;
+        const wire=constructWire('manual-branch-'+num,netId,layerId,choices[0],
+          {kind:'pin',...start},{kind:'junction',junction_id:junction.id});
+        session.engine.commitWire(session.engine.newTransaction('tap-junction'),wire);
+      }else session.engine.connectPinToSegment(session.engine.newTransaction('tap-segment'),start,wireId,segmentId,t,choices[0]);
       const next=materialize(draft,subset,session);
       return next;
     });
