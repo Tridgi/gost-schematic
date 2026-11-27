@@ -11,7 +11,7 @@ const urls:Record<ProjectLink,string>={
   releases:'https://github.com/Tridgi/gost-schematic/releases'
 };
 type State=ReleaseStatus|{kind:'idle'|'checking'|'error'};
-export function AboutDialog({opened,onClose}:{opened:boolean;onClose:()=>void}){
+export function AboutDialog({opened,onClose,onAvailable}:{opened:boolean;onClose:()=>void;onAvailable:(version:string|null)=>void}){
   const native=nativeDesktopAvailable();
   const [version,setVersion]=useState(native?'':pkg.version);
   const [state,setState]=useState<State>({kind:'idle'});
@@ -31,8 +31,8 @@ export function AboutDialog({opened,onClose}:{opened:boolean;onClose:()=>void}){
     const controller=new AbortController();request.current=controller;
     setState({kind:'checking'});
     const timer=setTimeout(()=>controller.abort(),10000);
-    try{setState(await checkLatestRelease(version,controller.signal));}
-    catch{if(request.current===controller)setState({kind:'error'});}
+    try{const result=await checkLatestRelease(version,controller.signal);setState(result);onAvailable(result.kind==='available'?result.version??null:null);}
+    catch{if(request.current===controller){setState({kind:'error'});onAvailable(null);}}
     finally{clearTimeout(timer);if(request.current===controller)request.current=null;}
   }
   useEffect(()=>{
