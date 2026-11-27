@@ -197,9 +197,12 @@ async fn download_bounded(update: &Update, state: &UpdateStore) -> Result<Vec<u8
 
 #[tauri::command]
 pub fn native_cancel_signed_download(state: State<'_, UpdateStore>, id: String) -> Result<(), String> {
+    cancel_download(&state, &id)
+}
+fn cancel_download(state: &UpdateStore, id: &str) -> Result<(), String> {
     let mut stage = state.0.lock().map_err(|_| "UPDATE_LOCK_FAILED")?;
     match &mut *stage {
-        Stage::Downloading { id: active, cancel, .. } if *active == id => {
+        Stage::Downloading { id: active, cancel, .. } if active.as_str() == id => {
             if let Some(sender) = cancel.take() { let _ = sender.send(()); }
             Ok(())
         }
@@ -327,6 +330,21 @@ mod tests {
         for bad in ["http://github.com/Tridgi/gost-schematic/releases/latest", "https://evil.example/Tridgi/gost-schematic/releases/a", "https://github.com.evil.example/a", "https://github.com:444/Tridgi/gost-schematic/releases/a", "https://user@github.com/Tridgi/gost-schematic/releases/a", "https://github.com/other/repo/releases/a", "https://github.com/Tridgi/gost-schematic/releases/a#fragment"] {
             assert!(!trusted_download_url(&Url::parse(bad).unwrap()));
         }
+    }
+    #[test]
+    fn cancellation_cannot_target_another_download() {
+        let (sender, mut receiver) = oneshot::channel();
+        let store = UpdateStore(Mutex::new(Stage::Downloading {
+            received: 0, total: None, id: "current".into(), cancel: Some(sender),
+        }));
+        assert!(cancel_download(&store, "old").is_err());
+        assert!(matches!(receiver.try_recv(), Err(oneshot::error::TryRecvError::Empty)));
+        cancel_download(&store, "current").unwrap();
+        assert_eq!(receiver.try_recv(), Ok(()));
+        assert!(matches!(&*store.0.lock().unwrap(), Stage::Downloading { cancel: None, .. }));
+        cancel_download(&store, "current").unwrap();
+        *store.0.lock().unwrap() = Stage::Idle;
+        assert!(cancel_download(&store, "current").is_err());
     }
     #[test]
     fn installation_and_file_operations_are_mutually_exclusive() {

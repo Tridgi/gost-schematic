@@ -2010,3 +2010,51 @@ test('R41 signed update does not install while project is dirty or confirmation 
     {token:'verified-test-token',projectSafe:true}
   ]);
 });
+
+
+test('R42 cancel pending signed download, keep project, retry without installing',async({page})=>{
+  await page.addInitScript(()=>{
+    window.__gscadMock={stage:{kind:'idle'},cancelled:[],installs:0,attempts:0};
+    window.__TAURI__={core:{invoke:async(command,args)=>{
+      const m=window.__gscadMock;
+      if(command==='native_app_version')return '0.1.0';
+      if(command==='native_close_trace')return;
+      if(command==='native_signed_update_enabled')return true;
+      if(command==='native_signed_update_status')return m.stage;
+      if(command==='native_prepare_signed_update'){
+        m.attempts++;
+        if(m.attempts===2){m.stage={kind:'ready',version:'0.2.0',token:'verified-retry'};return;}
+        m.stage={kind:'downloading',received:65536,total:null,id:'download-one',cancelling:false};
+        return new Promise((_,reject)=>{m.reject=reject;});
+      }
+      if(command==='native_cancel_signed_download'){
+        if(args.id!==m.stage.id)throw Error('STALE_UPDATE_DOWNLOAD');
+        m.cancelled.push(args.id);m.stage={kind:'idle'};m.reject('UPDATE_DOWNLOAD_CANCELLED');return;
+      }
+      if(command==='native_install_signed_update'){m.installs++;throw Error('UNEXPECTED_INSTALL');}
+      throw Error('UNEXPECTED_NATIVE_COMMAND: '+command);
+    }},window:{getCurrentWindow:()=>({onCloseRequested:async()=>()=>{}})}};
+  });
+  await page.route('https://api.github.com/repos/Tridgi/gost-schematic/releases/latest',route=>route.fulfill({
+    status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},
+    body:JSON.stringify({tag_name:'v0.2.0',draft:false,prerelease:false})
+  }));
+  await page.goto('/');
+  await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+  const dirty=page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true});
+  await expect(dirty).toHaveCount(0);
+  await page.getByTestId('help-menu').click();await page.getByTestId('open-about').click();
+  const dialog=page.getByRole('dialog',{name:'О программе'});
+  await dialog.getByTestId('check-updates').click();
+  await dialog.getByTestId('download-signed-update').click();
+  const cancel=dialog.getByTestId('cancel-signed-download');
+  await expect(cancel).toBeEnabled();
+  await cancel.click();
+  await expect(dialog.getByTestId('signed-update-error')).toContainText('Загрузка отменена');
+  await expect(dialog.getByTestId('install-signed-update')).toHaveCount(0);
+  await expect(dirty).toHaveCount(0);
+  await dialog.getByTestId('download-signed-update').click();
+  await expect(dialog.getByTestId('install-signed-update')).toBeVisible();
+  expect(await page.evaluate(()=>({cancelled:window.__gscadMock.cancelled,attempts:window.__gscadMock.attempts,installs:window.__gscadMock.installs}))).toEqual({cancelled:['download-one'],attempts:2,installs:0});
+  await expect(dirty).toHaveCount(0);
+});
