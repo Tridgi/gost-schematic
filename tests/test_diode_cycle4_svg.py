@@ -19,7 +19,7 @@ def test_diode_clean_and_diagnostic_svgs_draw_real_distinct_lines(tmp_path):
     assert manifest["symbols"]["diode.general"]["pin_roles"] == {
         "1": "A", "2": "K",
     }
-    for name, number_of_lines in (("diode.general", 6), ("diode.zener", 8)):
+    for name, number_of_lines in (("diode.general", 7), ("diode.zener", 8)):
         report = manifest["symbols"][name]
         assert report["graphic_strokes"] == number_of_lines
         assert report["pin_polarity"] == {"1": "none", "2": "none"}
