@@ -1856,13 +1856,16 @@ test('RC1 text placement and double-click component properties persist through m
  await page.mouse.click(paper.x+paper.width*.3,paper.y+paper.height*.6);
  await page.getByTestId('sheet-text-input').fill('Питание 24 В');
  await page.getByTestId('add-sheet-text').click();
- await expect(page.locator('[data-testid^="sheet-text-"]')).toHaveText('Питание 24 В');
+ await expect(page.getByTestId('sheet-text-input')).toBeHidden();
+ const annotation=canvas.locator('text[data-testid^="sheet-text-"]');
+ await expect(annotation).toHaveCount(1);
+ await expect(annotation).toHaveText('Питание 24 В');
  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
  const doc=JSON.parse(readFileSync(await (await d).path(),'utf8'));
  expect(doc.project.components[0].value).toBe('4,7к');expect(doc.project.nets).toEqual([]);
  expect(doc.project.sheets[0].texts[0].text).toBe('Питание 24 В');
  await page.getByRole('button',{name:'Отменить'}).click();
- await expect(page.locator('[data-testid^="sheet-text-"]')).toHaveCount(0);
+ await expect(annotation).toHaveCount(0);
 });
 
 test('RC1 library categories and reserved scrollbar fit long Russian names in both themes at 900px',async({page},testInfo)=>{
