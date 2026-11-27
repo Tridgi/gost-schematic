@@ -123,6 +123,11 @@ jobs:
         run: |
           cargo test --manifest-path ui/desktop/src-tauri/Cargo.toml
           if ($LASTEXITCODE -ne 0) { throw 'R9_RUST_NATIVE_TESTS_FAILED' }
+          $lock = 'ui/desktop/src-tauri/Cargo.lock'
+          if (!(Test-Path -LiteralPath $lock)) { throw 'R41_CARGO_LOCK_NOT_GENERATED' }
+          $digest = (Get-FileHash -LiteralPath $lock -Algorithm SHA256).Hash.ToLowerInvariant()
+          Add-Content -Path $env:GITHUB_ENV -Value ('GSCAD_R41_CARGO_LOCK_SHA256=' + $digest)
+          Write-Host ('R41_RESOLVED_CARGO_LOCK_SHA256=' + $digest)
       - name: Build exact-commit Tauri NSIS installer
         shell: pwsh
         working-directory: ui/desktop/src-tauri
@@ -132,6 +137,8 @@ jobs:
       - name: Real GUI New → Net → Save As → restart → Open → SHA → SVG/PNG300
         shell: pwsh
         run: |
+          $lock = 'ui/desktop/src-tauri/Cargo.lock'
+          if ((Get-FileHash -LiteralPath $lock -Algorithm SHA256).Hash.ToLowerInvariant() -ne $env:GSCAD_R41_CARGO_LOCK_SHA256) { throw 'R41_CARGO_LOCK_CHANGED_AFTER_TEST' }
           $staging = Join-Path $env:RUNNER_TEMP 'gscad-r9-current-commit'
           New-Item -ItemType Directory -Path $staging -Force | Out-Null
           $installer = @(Get-ChildItem 'ui/desktop/src-tauri/target/release/bundle/nsis' -Filter '*setup.exe' -File)
@@ -166,6 +173,7 @@ jobs:
               schema = 1
               app_version = $appVersion
               target = 'windows-x86_64'
+              cargo_lock_sha256 = $env:GSCAD_R41_CARGO_LOCK_SHA256
               source_sha = $env:GSCAD_R9_BINARY_SOURCE_SHA
               source_tree = $tree
               base_sha = $env:GSCAD_R40_PR_BASE_SHA
@@ -182,6 +190,13 @@ jobs:
             [IO.File]::WriteAllText((Join-Path $release 'SHA256SUMS.txt'), ($beforeHash + '  ' + $installer[0].Name + [Environment]::NewLine))
             Write-Host ('R40_VERIFIED_INSTALLER_SHA256=' + $beforeHash)
           }
+      - name: Retain the real resolved Cargo lockfile for reproducibility
+        if: always() && env.GSCAD_R41_CARGO_LOCK_SHA256 != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: r41-native-cargo-lock-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ui/desktop/src-tauri/Cargo.lock
+          if-no-files-found: error
       - name: Publish actual full TL494 native acceptance evidence
         if: always() && env.GSCAD_R33_ACCEPT_FULL == '1'
         uses: actions/upload-artifact@v4
