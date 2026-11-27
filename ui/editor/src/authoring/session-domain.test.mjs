@@ -2371,6 +2371,13 @@ test('R43 fourth pin joins existing junction without splitting old wires or merg
  assert.throws(()=>s.connectToJunction(s.newTransaction('missing'),pin(d,'1'),'missing',node.at_um),/UNKNOWN_NODE/);
  assert.throws(()=>s.connectToJunction(s.newTransaction('wrong-coordinate'),pin(d,'1'),node.id,[120001,80000]),/ANCHOR_MISMATCH/);
  assert.deepEqual(s.file,before);assert.equal(s.revision,rev);
+ for(const mode of ['locked','hidden']){
+  const blocked=structuredClone(before),layer=blocked.project.sheets[0].layers.find(l=>l.id===node.layer_id);
+  if(mode==='locked')layer.locked=true;else layer.visible=false;
+  const session=new AuthoringSession(blocked),snapshot=session.file;
+  assert.throws(()=>session.connectToJunction(session.newTransaction(mode),pin(d,'1'),node.id,node.at_um),/LAYER_LOCKED/);
+  assert.deepEqual(session.file,snapshot);assert.equal(session.revision,0);
+ }
  const stale=s.newTransaction('stale');
  s.connectToJunction(s.newTransaction('attach'),pin(d,'1'),node.id,node.at_um);
  const after=s.file,next=after.project.sheets[0];
