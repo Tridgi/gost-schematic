@@ -4,7 +4,11 @@ import type { WiringSnapshot } from '../wires/manual-wire';
 import type { CanvasScene } from './scene-projection.mjs';
 import type { Camera,PointUm,VisualHit,ScreenPoint } from './precision.mjs';
 import type { SegmentDragToken } from './wire-intents.mjs';
+export type JunctionWireSource={kind:'junction';junction_id:string;at_um:PointUm;base_revision:number};
 export type CanvasIntent =
+ | {kind:'beginJunctionWire';source:JunctionWireSource}
+ | {kind:'commitJunctionWire';source:JunctionWireSource;pin:PinRef;bend_points_um:PointUm[]}
+ | {kind:'cancelJunctionWire';source:JunctionWireSource}
  | {kind:'beginWire';pin:PinRef}
  | {kind:'commitWire';source:PinRef;target:{kind:'pin';pin:PinRef}|{kind:'free';at_um:PointUm}|{kind:'segment';wire_id:string;segment_id:string;at_um:PointUm}|{kind:'junction';junction_id:string;at_um:PointUm};bend_points_um:PointUm[];base_revision?:number}
  | {kind:'cancelWire';source:PinRef}
@@ -27,7 +31,7 @@ export type CanvasContext={
 };
 export type PointerPoint=ScreenPoint & {pointerId:number;button:number;ctrlKey?:boolean;shiftKey?:boolean};
 export type CanvasControllerState={
- camera:Camera;draft:null|{source:PinRef;from_um:PointUm;bends_um:PointUm[];cursor_um:PointUm};
+ camera:Camera;draft:null|{source:PinRef|JunctionWireSource;from_um:PointUm;bends_um:PointUm[];cursor_um:PointUm};
  drag:null|{kind:'pan'|'segment'|'symbol'|'marquee'|'group';pointerId:number};
  hover:VisualHit|null;
  selectedGroup:string[];

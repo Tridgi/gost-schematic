@@ -100,7 +100,8 @@ export function createCanvasController(initial){
    return delta.some(Boolean)?{instance_ids:[...active.ids],delta_um:delta}:null;
   },
   setContext(next){
-    if(next.wireSnapshot&&next.wireSnapshot.revision!==context.wireSnapshot.revision){draft=null;tapTarget=null;}
+    if(next.wireSnapshot&&(next.wireSnapshot.revision!==context.wireSnapshot.revision||next.wireSnapshot.project_id!==context.wireSnapshot.project_id||next.wireSnapshot.source_topology_hash!==context.wireSnapshot.source_topology_hash)){draft=null;tapTarget=null;}
+    if(draft?.source?.kind==='junction'&&next.canTap===false){draft=null;tapTarget=null;}
     if(next.tool!==undefined&&next.tool!==context.tool){
       active=null;
       if(next.tool!=='wire'){draft=null;tapTarget=null;}
@@ -166,7 +167,26 @@ export function createCanvasController(initial){
       draft={source:hit.pin,from_um:hit.at_um,bends_um:[],cursor_um:hit.at_um};
       return true;
      }
+     if(hit?.kind==='junction'&&context.canTap){
+      const target=tapPoint(hit,p);
+      if(!target)return false;
+      const source={...target,base_revision:context.wireSnapshot.revision};
+      if(emit({kind:'beginJunctionWire',source})===false)return false;
+      draft={source,from_um:target.at_um,bends_um:[],cursor_um:target.at_um};
+      return true;
+     }
      return false;
+    }
+    if(draft.source.kind==='junction'){
+     if(draft.source.base_revision!==context.wireSnapshot.revision)return false;
+     if(hit?.kind==='pin'){
+      if(emit({kind:'commitJunctionWire',source:draft.source,pin:hit.pin,bend_points_um:draft.bends_um})===false)return false;
+      draft=null;tapTarget=null;return true;
+     }
+     if(hit)return false;
+     const at=toWorld(p),prev=draft.bends_um.at(-1)||draft.from_um;
+     if(!same(at,prev))draft={...draft,bends_um:[...draft.bends_um,at],cursor_um:at};
+     return true;
     }
     if(hit?.pin){
      if(hit.pin.component_id===draft.source.component_id&&hit.pin.physical_pin_number===draft.source.physical_pin_number)return false;
@@ -242,7 +262,7 @@ export function createCanvasController(initial){
     active.point={x:p.x,y:p.y};return true;
    }
    if(['symbol','marquee','group'].includes(active?.kind)){active.cursor={x:p.x,y:p.y};return true;}
-   if(draft){hover=hitTest(context.scene,context.camera,p);tapTarget=context.canTap?tapPoint(hover,p):null;draft={...draft,cursor_um:tapTarget?.at_um??toWorld(p)};return true}
+   if(draft){hover=hitTest(context.scene,context.camera,p);tapTarget=context.canTap&&draft.source.kind!=='junction'?tapPoint(hover,p):null;draft={...draft,cursor_um:draft.source.kind==='junction'&&hover?.kind==='pin'?hover.at_um:tapTarget?.at_um??toWorld(p)};return true}
    hover=hitTest(context.scene,context.camera,p);return false;
   },
   up(p){
@@ -302,11 +322,12 @@ export function createCanvasController(initial){
       instance_id:selected.instance_id,base_revision:context.wireSnapshot.revision})!==false;
    }
    if(k==='Escape'){
-    if(draft)emit({kind:'cancelWire',source:draft.source});
+    if(draft)emit({kind:draft.source.kind==='junction'?'cancelJunctionWire':'cancelWire',source:draft.source});
     else if(!active&&context.tool==='select'&&(selected||selectedGroup.length)){selected=null;selectedGroup=[];emit({kind:'select',target:null});}
     draft=null;tapTarget=null;active=null;return true;
    }
    if(k==='Enter'&&draft){
+    if(draft.source.kind==='junction')return false;
     const prev=draft.bends_um.at(-1)||draft.from_um;
     if(same(prev,draft.cursor_um))return false;
     if(emit({kind:'commitWire',source:draft.source,target:{kind:'free',at_um:draft.cursor_um},bend_points_um:draft.bends_um})===false)
