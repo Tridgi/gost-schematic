@@ -329,8 +329,8 @@ def build_mosfet(spec: MosfetSpec) -> MosfetDefinition:
             ("EDITORIAL_ADAPTATION: user photos 13–18; channel and body "
              "options derived from table 1 and table 8 items 3–5; "
              "combined variants and CAD extensions are project choices. DRAFT."),
-            *(("Infineon Designing with power MOSFETs, 2022, section 8; "
-               "explicit p-n body diode is an editorial composite, not an exact GOST plate.",)
+            *((("Infineon Designing with power MOSFETs, 2022, section 8; "
+                "explicit p-n body diode is an editorial composite, not an exact GOST plate."),)
               if spec.body_diode else ()),
         ),
         annotation_slots=slots,
