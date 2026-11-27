@@ -1912,3 +1912,43 @@ test('R41 About is accessible in both themes and does not change the document',a
     if(i===0)await page.getByTestId('toggle-theme').click();
   }
 });
+
+
+test('R41 native release check uses actual version, displays update and leaves project unchanged',async({page})=>{
+  await page.addInitScript(()=>{
+    window.__TAURI__={core:{invoke:async(command)=>{
+      if(command==='native_app_version')return '0.1.0';
+      if(command==='native_close_trace')return;
+      throw Error('UNEXPECTED_NATIVE_COMMAND: '+command);
+    }},window:{getCurrentWindow:()=>({onCloseRequested:async()=>()=>{}})}};
+  });
+  let count=0;
+  await page.route('https://api.github.com/repos/Tridgi/gost-schematic/releases/latest',async route=>{
+    count++;
+    await route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({tag_name:'v0.2.0',draft:false,prerelease:false})});
+  });
+  await page.goto('/');
+  await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+  expect(count).toBe(0);
+  const dirty=page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true});
+  await expect(dirty).toHaveCount(0);
+  await page.getByTestId('help-menu').click();
+  await page.getByTestId('open-about').click();
+  const dialog=page.getByRole('dialog',{name:'О программе'});
+  await expect(dialog.getByTestId('about-version')).toHaveText('Версия: 0.1.0');
+  await dialog.getByTestId('check-updates').click();
+  await expect(dialog.getByTestId('update-result')).toContainText('v0.2.0');
+  expect(count).toBe(1);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(page.getByTestId('update-available-badge')).toBeVisible();
+  await expect(dirty).toHaveCount(0);
+  await page.getByTestId('help-menu').click();
+  await page.getByTestId('open-about').click();
+  await dialog.getByRole('switch',{name:'Проверять обновления при запуске'}).check();
+  await page.reload();
+  await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+  await expect(page.getByTestId('update-available-badge')).toBeVisible();
+  expect(count).toBeGreaterThanOrEqual(2);
+  await expect(dirty).toHaveCount(0);
+});
