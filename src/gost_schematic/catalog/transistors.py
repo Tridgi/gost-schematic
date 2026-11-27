@@ -139,8 +139,8 @@ def build_bipolar(spec: BipolarSpec) -> BipolarDefinition:
         status=SymbolStatus.DRAFT,
         standard_refs=(
             "ГОСТ 2.730-73, таблица 1, поз. 2; таблица 7, поз. 1а и примечание",
-            "EDITORIAL_ADAPTATION: user photos 9–10; NPN derived from table 1 "
-            "N-emitter, not table 7 shielded NPN. Project dimensions; DRAFT.",
+            ("EDITORIAL_ADAPTATION: user photos 9–10; NPN derived from table 1 "
+             "N-emitter, not table 7 shielded NPN. Project dimensions; DRAFT."),
         ),
         annotation_slots=slots,
         conductor_topology=ConductorTopology(
@@ -177,6 +177,8 @@ class MosfetSpec:
     drain_exit: TerminalExit = TerminalExit.VERTICAL
     source_exit: TerminalExit = TerminalExit.VERTICAL
     with_case: bool = False
+    depletion: bool = False
+    separate_body: bool = False
 
     def __post_init__(self) -> None:
         if not isinstance(self.channel, ChannelKind):
@@ -185,14 +187,17 @@ class MosfetSpec:
             self.source_exit, TerminalExit
         ):
             raise TypeError("TerminalExit required")
-        if type(self.with_case) is not bool:
-            raise TypeError("with_case must be boolean")
+        for name in ("with_case", "depletion", "separate_body"):
+            if type(getattr(self, name)) is not bool:
+                raise TypeError(f"{name} must be boolean")
 
     @property
     def identifier(self) -> str:
         case = "case" if self.with_case else "bare"
+        mode = "dep" if self.depletion else "enh"
+        body = ".body4" if self.separate_body else ""
         return (
-            f"transistor.mosfet_{self.channel.value}_enh.layout_"
+            f"transistor.mosfet_{self.channel.value}_{mode}{body}.layout_"
             f"{self.drain_exit.value}{self.source_exit.value}.{case}"
         )
 
@@ -205,7 +210,7 @@ class MosfetDefinition:
 
 
 def build_mosfet(spec: MosfetSpec) -> MosfetDefinition:
-    """Three-terminal enhancement MOSFET, explicit source/body connection."""
+    """MOSFET with selectable channel and independent or source-tied body."""
     if not isinstance(spec, MosfetSpec):
         raise TypeError("MosfetSpec required")
     # Photo 13/14 layout: source and gate on the lower horizontal level.
@@ -232,14 +237,23 @@ def build_mosfet(spec: MosfetSpec) -> MosfetDefinition:
         pins.append(GraphicPin(number, at, side, name))
     # Body lead is explicitly tied to S at its elbow. Channel bars and
     # arrow wings describe semiconductor structure, not ideal conductors.
-    tie = Line(Point(4000, 0), Point(4000, 3000))
     body_lead = Line(Point(0, 0), Point(4000, 0))
-    graphics.extend((tie, body_lead))
-    internal.extend((tie, body_lead))
+    if spec.separate_body:
+        body_pin = GraphicPin("4", Point(12000, 0), Side.RIGHT, "BODY")
+        graphics.extend((body_lead, Line(body_lead.end, body_pin.at)))
+        internal.append(body_lead)
+        pins.append(body_pin)
+    else:
+        tie = Line(Point(4000, 0), Point(4000, 3000))
+        graphics.extend((tie, body_lead))
+        internal.extend((tie, body_lead))
     conductor_indices = tuple(range(len(graphics)))
-    bars = tuple(Line(Point(0, lo), Point(0, hi)) for lo, hi in (
+    # Even a continuous channel stroke is semiconductor artwork, not an
+    # unconditional metallic connection from D to S (or the body).
+    spans = ((-3800, 3800),) if spec.depletion else (
         (-3800, -2200), (-800, 800), (2200, 3800),
-    ))
+    )
+    bars = tuple(Line(Point(0, lo), Point(0, hi)) for lo, hi in spans)
     if spec.channel == ChannelKind.N:
         tip = Point(0, 0)
         tails = (Point(2000, -600), Point(2000, 600))
@@ -273,21 +287,21 @@ def build_mosfet(spec: MosfetSpec) -> MosfetDefinition:
         line_width_um=300,
         status=SymbolStatus.DRAFT,
         standard_refs=(
-            "ГОСТ 2.730-73, таблица 1, поз. 4, 7–10; таблица 8, поз. 4",
-            "EDITORIAL_ADAPTATION: user photos 13–14; N source/body tie "
-            "from table 8 item 4, P counterpart derived by polarity reversal; "
-            "project dimensions and CAD lead extensions. DRAFT.",
+            "ГОСТ 2.730-73, таблица 1, поз. 4, 7–10; таблица 8, поз. 3–5",
+            ("EDITORIAL_ADAPTATION: user photos 13–18; channel and body "
+             "options derived from table 1 and table 8 items 3–5; "
+             "combined variants and CAD extensions are project choices. DRAFT."),
         ),
         annotation_slots=slots,
         conductor_topology=ConductorTopology(
             conductor_indices=conductor_indices, junctions=(),
-            pin_groups=(("1",), ("2",), ("3",)),
+            pin_groups=tuple((pin.number,) for pin in pins),
         ),
         routing_keepouts=(body.expanded(200),),
     )
     part = PartDefinition(spec.identifier, "VT", spec.identifier, tuple(
         PhysicalPin(str(i), name, ElectricalType.PASSIVE)
-        for i, name in enumerate(("G", "D", "S"), start=1)
+        for i, name in enumerate((pin.label for pin in pins), start=1)
     ))
     return MosfetDefinition(spec, part, symbol)
 
@@ -295,6 +309,21 @@ def build_mosfet(spec: MosfetSpec) -> MosfetDefinition:
 def mosfet_review_variants() -> tuple[MosfetDefinition, ...]:
     return tuple(
         build_mosfet(MosfetSpec(channel, drain, source, with_case))
+        for drain, source in product(TerminalExit, repeat=2)
+        for with_case in (True, False)
+        for channel in ChannelKind
+    )
+
+
+def mosfet_extended_variants(
+    *, depletion: bool, separate_body: bool,
+) -> tuple[MosfetDefinition, ...]:
+    """One review matrix, no changes to legacy installed catalog."""
+    return tuple(
+        build_mosfet(MosfetSpec(
+            channel, drain, source, with_case,
+            depletion=depletion, separate_body=separate_body,
+        ))
         for drain, source in product(TerminalExit, repeat=2)
         for with_case in (True, False)
         for channel in ChannelKind

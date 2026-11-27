@@ -2,16 +2,23 @@
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-from gost_schematic.catalog.transistors import mosfet_review_variants
+from gost_schematic.catalog.transistors import (
+    mosfet_extended_variants,
+    mosfet_review_variants,
+)
 from gost_schematic.rendering.svg import render_symbol_svg
 
 SVG = "{http://www.w3.org/2000/svg}"
 ET.register_namespace("", SVG[1:-1])
 
 
-def generate(output: Path) -> int:
+def generate(output: Path, *, depletion: bool = False, separate_body: bool = False) -> int:
     output.mkdir(parents=True, exist_ok=True)
-    variants = mosfet_review_variants()
+    variants = mosfet_extended_variants(depletion=depletion, separate_body=separate_body)
+    if not depletion and not separate_body:
+        variants = mosfet_review_variants()
+    mode = 'depletion' if depletion else 'enhancement'
+    terminals = '4 pins' if separate_body else '3 pins'
     for view in ("clean", "diagnostic", "protection"):
         root = ET.Element(SVG + "svg", {
             "width": "184mm", "height": "177mm", "viewBox": "0 0 184 177",
@@ -26,7 +33,7 @@ def generate(output: Path) -> int:
                 "font-family": "sans-serif", "text-anchor": "middle",
             }).text = value
 
-        text(root, 92, 7, f"MOSFET enhancement matrix / {view} / DRAFT", "3.6")
+        text(root, 92, 7, f"MOSFET {mode} / {terminals} / {view} / DRAFT", "3.6")
         for i, name in enumerate(("N case", "P case", "N bare", "P bare")):
             text(root, 23 + 46 * i, 15, name)
         for i, variant in enumerate(variants):
@@ -56,4 +63,10 @@ def generate(output: Path) -> int:
 
 
 if __name__ == "__main__":
-    print(f"Rendered {generate(Path('output/mosfet-layouts'))} MOSFET review variants")
+    for mode, depletion, separate in (
+        ("enh3", False, False), ("enh4", False, True),
+        ("dep3", True, False), ("dep4", True, True),
+    ):
+        output = Path("output/mosfet-layouts") / mode
+        count = generate(output, depletion=depletion, separate_body=separate)
+        print(f"Rendered {count} MOSFET review variants: {mode}")
