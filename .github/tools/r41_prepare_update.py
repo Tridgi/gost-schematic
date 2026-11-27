@@ -7,11 +7,11 @@ import argparse
 import base64
 import hashlib
 import json
-from pathlib import Path
 import re
 import shutil
 import subprocess
 import tempfile
+from pathlib import Path
 
 
 REPO = "https://github.com/Tridgi/gost-schematic"
