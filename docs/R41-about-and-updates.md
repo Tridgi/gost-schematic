@@ -1,0 +1,17 @@
+# R41 — About and GitHub Releases updates
+
+Stacked on the verified RC1 8d805c777f831231704d15a8cff5ba4fc0c3a837. No changes to main or RC1. Stage 1 is implemented in source, not yet accepted.
+
+## Stage 1
+Help > About and updates: actual native package version, author, MIT text, allowlisted fixed external links, manual stable-release lookup and opt-in startup lookup. Browser preview explicitly disables update checking. The public GitHub API request sends no auth credentials and has a 10-second timeout. Strict stable numeric version comparison rejects malformed tags and never recommends older versions. A 404 is not proof of being up to date (the repo may be private). No installer is downloaded or run by this stage.
+
+## Stage 2 — mandatory signed self-update
+Use official Tauri 2 updater (https://v2.tauri.app/plugin/updater/), not arbitrary downloaded EXE execution. Pin a compatible current updater version (including signed-version verification); update Cargo.lock with real Cargo, review dependency diff. Owner generates and retains a permanent signing key offline with the Tauri signer; commit only public key, provision private key and password as protected GitHub environment secrets, never expose them in chat, logs, artifacts or source. No dummy public key or unsigned fallback. Document recovery/rotation. A private repo requires an owner-approved secure distribution endpoint; never embed a PAT.
+
+Configure HTTPS endpoint https://github.com/Tridgi/gost-schematic/releases/latest/download/latest.json and createUpdaterArtifacts for NSIS. Maintain monotonically increasing real app versions and matching stable release tags. Use a protected release workflow with explicit owner approval, exact checked-out SHA and successful installed-Windows acceptance before publishing exact signed installer, signature and latest.json. The existing Actions artifact is not a public release or a signed updater feed. No publishing or release without explicit approval.
+
+Expose version, release notes, check, download progress, cancel where supported, verified install and restart. Opt-in automatic check by default off; never silently restart or install while the project is dirty, save/export is pending or a dialog is active. Reuse existing close guard, require saved project and explicit install confirmation. Keep update download/verification in native updater, not raw JS shell. Reject downgrade, invalid signature, mismatched signed version, wrong platform, corrupt/truncated bytes, untrusted feed, offline/rate limited network. Separate public metadata from signed installation authority. No arbitrary URL/path/executable from WebView.
+
+Acceptance: new installed version A checks signed controlled release B, downloads, verifies, installs, restarts and reports B; saved project reopened unchanged with same SHA and exports. Negative cases for malformed feed, bad signature, mismatched version, old/same version, no release, no network, dirty project and interrupted install. Test light/dark, keyboard focus, 900/1280/1920 and Windows DPI. Actual installed native Windows test and user acceptance required; keep RC1 available until verified. Include actual artifact/log URLs and exact SHA in #125.
+
+Stage 2 remains open until signing key provisioning, release pipeline and end-to-end installation evidence are complete.
