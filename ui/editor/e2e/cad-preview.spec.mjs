@@ -1886,3 +1886,46 @@ test('RC1 library categories and reserved scrollbar fit long Russian names in bo
   if(i===0)await page.getByTestId('toggle-theme').click();
  }
 });
+
+
+test('R43 fourth conductor snaps to an existing Junction, retains ID and supports Undo/Redo',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Файл',exact:true}).click();await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ for(const [x,y] of [[.23,.4],[.75,.4],[.5,.75],[.56,.17]]){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*y);
+ }
+ const saved=async()=>{const d=page.waitForEvent('download');await page.getByTestId('save-project').click();return JSON.parse(readFileSync(await (await d).path(),'utf8'));};
+ const doc=await saved(),[a,b,c,d]=doc.project.components;
+ await page.getByTestId('tool-wire').click();
+ await page.getByTestId('signed-pin-'+a.id+'-2').click();await page.getByTestId('signed-pin-'+b.id+'-1').click();
+ await page.getByTestId('tool-select').click();
+ const trunk=(await saved()).project.sheets[0].wires[0];
+ const mid=await page.locator('[data-segment-id="'+trunk.segments[0].id+'"]').evaluate(el=>{
+  const pt=el.ownerSVGElement.createSVGPoint();pt.x=(Number(el.getAttribute('x1'))+Number(el.getAttribute('x2')))/2;pt.y=(Number(el.getAttribute('y1'))+Number(el.getAttribute('y2')))/2;
+  const p=pt.matrixTransform(el.getScreenCTM());return {x:p.x,y:p.y};
+ });
+ await page.getByTestId('tool-wire').click();await page.getByTestId('signed-pin-'+c.id+'-1').click();
+ await page.mouse.click(mid.x,mid.y);await expect(page.locator('[data-junction-id]')).toHaveCount(1);
+ await page.getByTestId('tool-select').click();
+ const before=await saved(),node=before.project.sheets[0].junctions[0];
+ const at=await page.locator('[data-junction-id="'+node.id+'"]').evaluate(el=>{
+  const pt=el.ownerSVGElement.createSVGPoint();pt.x=Number(el.getAttribute('cx'));pt.y=Number(el.getAttribute('cy'));
+  const p=pt.matrixTransform(el.getScreenCTM());return {x:p.x,y:p.y};
+ });
+ await page.getByTestId('tool-wire').click();await page.getByTestId('signed-pin-'+d.id+'-1').click();
+ await page.mouse.move(at.x,at.y);await expect(page.getByTestId('wire-tap-preview')).toBeVisible();
+ await canvas.focus();await canvas.press('Escape');
+ await expect(page.locator('.electric-wires > g')).toHaveCount(3);
+ await page.getByTestId('tool-wire').click();await page.getByTestId('signed-pin-'+d.id+'-1').click();
+ await page.mouse.move(at.x,at.y);await expect(page.getByTestId('wire-tap-preview')).toBeVisible();
+ await page.mouse.click(at.x,at.y);
+ await expect(page.locator('.electric-wires > g')).toHaveCount(4);await expect(page.locator('[data-junction-id]')).toHaveCount(1);
+ await page.getByTestId('tool-select').click();
+ const after=await saved();expect(after.project.nets).toHaveLength(1);expect(after.project.nets[0].members).toHaveLength(4);
+ expect(after.project.sheets[0].junctions).toEqual(before.project.sheets[0].junctions);
+ for(const wire of before.project.sheets[0].wires)expect(after.project.sheets[0].wires.find(w=>w.id===wire.id)).toEqual(wire);
+ await page.getByRole('button',{name:'Отменить'}).click();expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();expect((await saved()).project).toEqual(after.project);
+});
