@@ -13,7 +13,6 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-
 REPO = "https://github.com/Tridgi/gost-schematic"
 STABLE = re.compile(r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)", re.ASCII)
 
