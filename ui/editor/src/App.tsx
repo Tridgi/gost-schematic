@@ -140,7 +140,7 @@ export default function App() {
   const [tool,setTool]=useState<ToolMode>('select');
   const [placementSymbol,setPlacementSymbol]=useState<string|null>(null);
   const [propertiesRequest,setPropertiesRequest]=useState(0);
-  const [textRequest,setTextRequest]=useState<{at:PointUm;revision:number;epoch:number}|null>(null);
+  const [textRequest,setTextRequest]=useState<{at:PointUm;revision:number;epoch:number;edit?:{id:string;value:string;height:number;rotation:0|90|180|270}}|null>(null);
   const [selectedId,setSelectedId]=useState<string|null>(null);
   const [selectionReset,setSelectionReset]=useState(0);
   const [groupIds,setGroupIds]=useState<string[]>([]);
@@ -827,14 +827,24 @@ export default function App() {
     propertiesRequest={propertiesRequest}
     textRequest={textRequest}
     onCancelText={()=>setTextRequest(null)}
-    onAddText={(value,height)=>{
+    onAddText={(value,height,at,rotation)=>{
       try{
         const a=authoringRef.current;
         if(!a||!textRequest||a.revision!==textRequest.revision||sessionEpochRef.current!==textRequest.epoch)throw Error('STALE_REVISION');
-        a.addText(a.newTransaction('add-text'),value,textRequest.at,height);
-        adoptAuthored();setTextRequest(null);setTool('select');setIssue('Надпись добавлена. Шрифт в режиме предпросмотра.');
+        if(textRequest.edit)a.editText(a.newTransaction('edit-text'),textRequest.edit.id,value,at,height,rotation);
+        else a.addText(a.newTransaction('add-text'),value,textRequest.at,height);
+        adoptAuthored();setTextRequest(null);setTool('select');setIssue(textRequest.edit?'Надпись изменена.':'Надпись добавлена. Шрифт в режиме предпросмотра.');
       }catch(e){setIssue('TEXT_FAILED: '+String(e));return false;}
       return true;
+    }}
+    onDeleteText={()=>{
+      try{
+        const a=authoringRef.current;
+        if(!a||!textRequest?.edit||a.revision!==textRequest.revision||sessionEpochRef.current!==textRequest.epoch)throw Error('STALE_REVISION');
+        a.deleteText(a.newTransaction('delete-text'),textRequest.edit.id);
+        adoptAuthored();setTextRequest(null);setTool('select');setIssue('Надпись удалена. Электрическая модель сохранена.');
+        return true;
+      }catch(e){setIssue('TEXT_FAILED: '+String(e));return false;}
     }}
     onDuplicate={authoringRef.current&&(selectedInst||groupIds.length>1)&&tool==='select'?handleDuplicate:undefined}
     onSelectAll={tool==='select'?()=>{setGroupIds(instances.length>1?instances.map(i=>i.id):[]);setSelectedId(instances.length===1?instances[0].id:null);}:undefined}
@@ -976,6 +986,14 @@ export default function App() {
         canEdit={!!authoringRef.current}
         placementSymbolId={tool==='place'?placementSymbol:null}
         onOpenProperties={()=>setPropertiesRequest(n=>n+1)}
+        onEditText={authoringRef.current?(id,revision)=>{
+          const a=authoringRef.current;
+          if(!a||revision!==a.revision){setIssue('STALE_REVISION');return;}
+          const f=a.file,sh=f.project.sheets.find(s=>s.id===f.workspace.active_sheet_id),t=sh?.texts.find(t=>t.id===id);
+          const layer=sh?.layers.find(l=>l.id===t?.layer_id);
+          if(!t||!layer||layer.kind!=='annotation'||layer.locked||!layer.visible){setIssue('TEXT_FAILED: надпись недоступна для изменения.');return;}
+          setTextRequest({at:[t.at_um[0],t.at_um[1]],revision:a.revision,epoch:sessionEpochRef.current,edit:{id:t.id,value:t.text,height:t.height_um,rotation:t.rotation_deg}});
+        }:undefined}
         onCancelPlacement={()=>{setTool('select');setPlacementSymbol(null);setPending(null);setIssue('Размещение УГО отменено.');}}
         placementHint={pinMagnet&&tool==='place'&&placementSymbol&&authoringRef.current?at=>authoringRef.current?.suggestAlignedPlacement(placementSymbol,at)??null:undefined}
         onCopy={authoringRef.current&&(selectedInst||groupIds.length>1)&&tool==='select'?handleCopy:undefined}

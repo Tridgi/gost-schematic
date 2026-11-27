@@ -29,6 +29,7 @@ export type CanvasViewportProps = {
   placementSymbolId?:string|null;
   onCancelPlacement?:()=>void;
   onOpenProperties?:()=>void;
+  onEditText?:(id:string,revision:number)=>void;
   onCopy?:()=>void;
   onPaste?:()=>void;
   onFitPage?:()=>void;
@@ -67,7 +68,7 @@ function SymbolInk({symbol,camera}:{symbol:CanvasSymbol;camera:Camera}){
  </>;
 }
 /** Read-only SVG viewport. The canonical physical print/export belongs to #124. */
-export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapEnabled,onIntent,onZoomPercent,zoomRequest,fitRequest,selectedInstanceId:hostSelectedId,selectedGroupIds,selectionReset,canEdit,placementHint,placementSymbolId,onCancelPlacement,onOpenProperties,onCopy,onPaste,onFitPage}:CanvasViewportProps){
+export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapEnabled,onIntent,onZoomPercent,zoomRequest,fitRequest,selectedInstanceId:hostSelectedId,selectedGroupIds,selectionReset,canEdit,placementHint,placementSymbolId,onCancelPlacement,onOpenProperties,onEditText,onCopy,onPaste,onFitPage}:CanvasViewportProps){
   const svgRef=useRef<SVGSVGElement|null>(null);
   const [size,setSize]=useState({width:0,height:0});
   const [revision,setRevision]=useState(0);
@@ -404,7 +405,13 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     <g className="sheet-annotations" data-electrical="false" pointerEvents="none" fill="#24384b" stroke="none">
       {document.project.sheets.find(s=>s.id===sheetId)?.texts.filter(t=>document.project.sheets.find(s=>s.id===sheetId)?.layers.some(l=>l.id===t.layer_id&&l.visible)).map(t=>{
         const p=screen(t.at_um,camera);
+        const editable=canEdit&&tool==='select'&&!!onEditText&&document.project.sheets.find(s=>s.id===sheetId)?.layers.some(l=>l.id===t.layer_id&&l.kind==='annotation'&&!l.locked&&l.visible);
         return <text key={t.id} data-testid={'sheet-text-'+t.id} x={p.x} y={p.y} fontSize={t.height_um*camera.s}
+          pointerEvents={editable?'visiblePainted':'none'} style={editable?{cursor:'text'}:undefined}
+          onPointerDown={editable?e=>{if(e.button===0)e.stopPropagation();}:undefined}
+          onPointerUp={editable?e=>{if(e.button===0)e.stopPropagation();}:undefined}
+          onDoubleClick={editable?e=>{e.stopPropagation();onEditText?.(t.id,snapshot.revision);}:undefined}
+          onContextMenu={editable?e=>{e.preventDefault();e.stopPropagation();onEditText?.(t.id,snapshot.revision);}:undefined}
           fontFamily="GSCAD Technical, OpenGost Type A, sans-serif" transform={t.rotation_deg?'rotate('+t.rotation_deg+' '+p.x+' '+p.y+')':undefined}>{t.text}</text>;
       })}
     </g>

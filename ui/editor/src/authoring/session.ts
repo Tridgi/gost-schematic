@@ -400,16 +400,43 @@ export class AuthoringSession {
       return materialize(draft,subset,session);
     });
   }
+  private textFields(sh:Sheet,text:string,at:PointUm,heightUm:number,rotation:SymbolInstance['rotation_deg']){
+    const value=text.trim(),p=xy(at);
+    if(!value||value.length>128||/[\u0000-\u001f\u007f]/.test(value)||![2500,3500,5000,7000,10000].includes(heightUm)||![0,90,180,270].includes(rotation))reject('INVALID_TEXT');
+    const [w,h]=sh.frame.size_um,m=sh.frame.margin_um;
+    // Conservative physical envelope, independent of the installed font.
+    const corners:MutablePoint[]=[[0,-heightUm],[value.length*heightUm,-heightUm],[0,0],[value.length*heightUm,0]];
+    const world=corners.map(([x,y])=>{const [u,v]=rotation===0?[x,y]:rotation===90?[-y,x]:rotation===180?[-x,-y]:[y,-x];return [p[0]+u,p[1]+v];});
+    if(world.some(([x,y])=>x<m||x>w-m||y<m||y>h-m))reject('TEXT_OUTSIDE_FRAME');
+    return {text:value,at_um:p,height_um:heightUm,rotation_deg:rotation};
+  }
+  private editableText(sh:Sheet,id:string){
+    const t=sh.texts.find(t=>t.id===id);
+    if(!t)reject('UNKNOWN_TEXT');
+    const layer=sh.layers.find(l=>l.id===t.layer_id);
+    if(!layer||layer.kind!=='annotation'||layer.locked||!layer.visible)reject('LAYER_LOCKED');
+    return t;
+  }
   addText(tx:Tx,text:string,at:PointUm,heightUm:number):void{
     this.edit(tx,draft=>{
-      const value=text.trim(),p=xy(at),sh=draft.project.sheets[indexOfSheet(draft)];
-      if(!value||value.length>128||/[\u0000-\u001f\u007f]/.test(value)||![2500,3500,5000,7000,10000].includes(heightUm))reject('INVALID_TEXT');
-      const [w,h]=sh.frame.size_um,m=sh.frame.margin_um;
-      if(p[0]<m||p[1]-heightUm<m||p[0]+value.length*heightUm>w-m||p[1]>h-m)reject('TEXT_OUTSIDE_FRAME');
+      const sh=draft.project.sheets[indexOfSheet(draft)],fields=this.textFields(sh,text,at,heightUm,0);
       let layer=sh.layers.find(l=>l.kind==='annotation'&&l.visible&&l.printable&&!l.locked);
       if(!layer){layer={id:newId('annotation-layer'),name:'Надписи',kind:'annotation',visible:true,printable:true,locked:false};sh.layers.push(layer);}
-      sh.texts.push({id:newId('text'),layer_id:layer.id,text:value,at_um:p,height_um:heightUm,rotation_deg:0});
+      sh.texts.push({id:newId('text'),layer_id:layer.id,...fields});
       return draft;
+    });
+  }
+  editText(tx:Tx,id:string,text:string,at:PointUm,heightUm:number,rotation:SymbolInstance['rotation_deg']):void{
+    this.edit(tx,draft=>{
+      const sh=draft.project.sheets[indexOfSheet(draft)],old=this.editableText(sh,id),fields=this.textFields(sh,text,at,heightUm,rotation);
+      if(old.text===fields.text&&old.height_um===heightUm&&old.rotation_deg===rotation&&old.at_um[0]===fields.at_um[0]&&old.at_um[1]===fields.at_um[1])reject('NO_CHANGE');
+      Object.assign(old,fields);return draft;
+    });
+  }
+  deleteText(tx:Tx,id:string):void{
+    this.edit(tx,draft=>{
+      const sh=draft.project.sheets[indexOfSheet(draft)],old=this.editableText(sh,id);
+      sh.texts=sh.texts.filter(t=>t.id!==old.id);return draft;
     });
   }
   upgradeCatalog(tx:Tx):number {
