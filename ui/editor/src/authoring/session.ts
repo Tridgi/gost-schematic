@@ -851,6 +851,23 @@ export class AuthoringSession {
   connectToJunction(tx:Tx,start:PinRef,junctionId:string,at:PointUm,bends:readonly PointUm[]=[]):void{
     this.connectToTarget(tx,start,{kind:'junction',junctionId,at},bends);
   }
+  /** Read-only start validation. A visible junction is not an implicit merge. */
+  beginJunctionWire(junctionId:string,at:PointUm):{at_um:MutablePoint;net_id:string}{
+    const sh=this.current.project.sheets[indexOfSheet(this.current)],t=xy(at);
+    const j=sh.junctions.find(n=>n.id===junctionId);
+    if(!j)reject('UNKNOWN_NODE');
+    if(j.at_um[0]!==t[0]||j.at_um[1]!==t[1])reject('ANCHOR_MISMATCH');
+    if([...sh.junctions.filter(n=>n.id!==j.id),...sh.splices].some(n=>n.at_um[0]===t[0]&&n.at_um[1]===t[1]))reject('NODE_CONFLICT');
+    const layer=sh.layers.find(l=>l.id===j.layer_id);
+    if(!layer||layer.kind!=='electrical'||layer.locked||!layer.visible)reject('LAYER_LOCKED');
+    if(!this.current.project.nets.some(n=>n.id===j.net_id))reject('UNKNOWN_NET');
+    return {at_um:t,net_id:j.net_id};
+  }
+  /** Same validated transaction as pin-to-node; reverse user-authored bend
+   * order so the physical terminal's outward normal is always checked. */
+  connectFromJunction(tx:Tx,junctionId:string,at:PointUm,end:PinRef,bends:readonly PointUm[]=[]):void{
+    this.connectToJunction(tx,end,junctionId,at,[...bends].reverse());
+  }
   private connectToTarget(tx:Tx,start:PinRef,request:
     {kind:'segment';wireId:string;segmentId:string;at:PointUm}|
     {kind:'junction';junctionId:string;at:PointUm},bends:readonly PointUm[]):void{

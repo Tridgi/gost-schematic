@@ -561,6 +561,20 @@ export default function App() {
     if(intent.kind==='select')setGroupIds([]);
     if(authored){
       try{
+        if(intent.kind==='beginJunctionWire'){
+          if(intent.source.base_revision!==authored.revision)throw Error('STALE_REVISION');
+          authored.beginJunctionWire(intent.source.junction_id,intent.source.at_um);
+          setPending(null);setIssue('Выбран узел: укажите физический вывод элемента.');
+          return true;
+        }
+        if(intent.kind==='commitJunctionWire'){
+          if(intent.source.base_revision!==authored.revision)throw Error('STALE_REVISION');
+          authored.connectFromJunction(authored.newTransaction('wire-from-junction'),intent.source.junction_id,
+            intent.source.at_um,intent.pin,intent.bend_points_um);
+          adoptAuthored();setPending(null);setIssue('Вывод подключён к существующему узлу. Цепь сохранена.');
+          return true;
+        }
+        if(intent.kind==='cancelJunctionWire'){setPending(null);setIssue('Проводник от узла отменён.');return true;}
         if(intent.kind==='beginWire'){
           authored.beginWire(intent.pin);
           setPending(intent.pin);setIssue('Выбран вывод: укажите другой вывод или участок проводника.');
@@ -696,6 +710,7 @@ export default function App() {
       }
     }
     try {
+      if(intent.kind==='beginJunctionWire'||intent.kind==='commitJunctionWire'||intent.kind==='cancelJunctionWire')return false;
       if(intent.kind==='beginWire'){
         eng.beginWire(intent.pin);
         setPending(intent.pin);
