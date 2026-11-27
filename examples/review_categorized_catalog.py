@@ -32,6 +32,7 @@ CATEGORIES = {
     "magnetic_amplifier": "Магнитные усилители",
     "reactor": "Реакторы",
     "diode": "Диоды",
+    "rectifier": "Выпрямители",
     "transistor": "Транзисторы",
     "fuse": "Предохранители",
     "arrester": "Разрядники",

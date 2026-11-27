@@ -261,4 +261,7 @@ def test_catalog_audit_reports_21_independent_draft_ugo_and_both_real_diode_part
         assert entry["dimension_status"] == "not_yet_verifiable"
         assert entry["conductor_topology"]["pin_islands"] == [["1"], ["2"]]
         assert [pin["number"] for pin in entry["pins"]] == ["1", "2"]
-        assert [pin["name"] for pin in entry["pins"]] == ["A", "K"]
+        expected_roles = (
+            ["T1", "T2"] if entry["id"] == "diode.zener_bidirectional" else ["A", "K"]
+        )
+        assert [pin["name"] for pin in entry["pins"]] == expected_roles

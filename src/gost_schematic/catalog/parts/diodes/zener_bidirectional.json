@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "id": "diode.zener_bidirectional",
+  "symbol_id": "diode.zener_bidirectional",
+  "reference_prefix": "VD",
+  "nominal_kind": null,
+  "voltage_orientation_rule": "none",
+  "pins": [
+    {
+      "number": "1",
+      "name": "T1",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    },
+    {
+      "number": "2",
+      "name": "T2",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    }
+  ]
+}
