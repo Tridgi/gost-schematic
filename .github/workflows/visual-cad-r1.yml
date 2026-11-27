@@ -15,6 +15,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install minisign from signed Ubuntu repositories
+        run: |
+          for f in /etc/apt/sources.list.d/microsoft-prod.list /etc/apt/sources.list.d/microsoft-prod.sources; do
+            if [ -f "$f" ] && grep -q 'packages.microsoft.com/ubuntu/' "$f"; then
+              sudo mv "$f" "$f.disabled-r41"
+            fi
+          done
+          sudo apt-get update
+          sudo apt-get install -y minisign
+          command -v minisign
+      - name: R41 signed release staging and real ephemeral signature regressions
+        run: python3 -m unittest discover -v -s .github/tools -p 'test_r41_*.py'
       - run: node --check ui/integration/source-gate.mjs
       - run: node --check ui/integration/source-gate.test.mjs
       - run: node --test ui/integration/source-gate.test.mjs ui/qa/chat3-source-gate/source-gate-adversarial.test.mjs

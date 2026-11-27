@@ -15,6 +15,7 @@ import type {LayoutPreview} from '../authoring/session';
 import { normalizeDockLayout, DOCK_LAYOUT_KEY, type DockLayout } from '../theme/layout';
 import { formatMillimetres, parseMillimetres } from './inspector-units';
 import { resolveShellShortcut } from './shortcuts';
+import { AboutDialog } from './AboutDialog';
 import '../theme/design-tokens.css';
 
 export type ToolMode = 'select' | 'wire' | 'text' | 'pan' | 'junction' | 'place';
@@ -36,6 +37,7 @@ export type InspectorProposal =
 
 /** The host owns all electrical topology, source PinRefs, command validation and actual persistence. */
 export type EditorShellProps = {
+  canInstallUpdate?:()=>boolean;
   projectName:string;dirty:boolean;baseRevision:string;topology?:TopologyInventory;onBuildNetRail?:(netId:string)=>void;onBuildNetTree?:(netId:string)=>void;onRouteInitialNet?:(netId:string)=>void;onRouteInitialBatch?:(netIds:readonly string[])=>void;onPrepareInitialRouting?:()=>void;onPreviewHubPlacement?:()=>void;onPreviewFunctionalRouting?:(extended?:boolean)=>void;onPreviewRouteRefinement?:(extended?:boolean)=>void;onPreviewRailRefinement?:()=>void;onPreviewDetourRefinement?:(crossingOnly?:boolean)=>void;onPreviewInitialBatch?:(netIds:readonly string[],controlled?:boolean)=>void;
   sheets:readonly {id:string;title:string}[];activeSheetId:string;
   catalog:readonly CatalogSymbol[];tree:readonly TreeItem[];
@@ -178,6 +180,8 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
   },[props.propertiesRequest]);
   useEffect(()=>{if(!props.selected)setPropertiesOpen(false);},[props.selected?.id]);
   useEffect(()=>{if(props.textRequest){setTextValue('');setTextHeight('3500');setTextError(false);}},[props.textRequest]);
+  const [aboutOpen,setAboutOpen]=useState(false);
+  const [availableUpdate,setAvailableUpdate]=useState<string|null>(null);
   const [settings,setSettings]=useState(false),[exportDialog,setExportDialog]=useState(false);
   const [commandDialog,setCommandDialog]=useState(false),[diagnostics,setDiagnostics]=useState(false);
   const [diagnosticFilter,setDiagnosticFilter]=useState<'all'|'error'|'warning'|'info'>('all');
@@ -206,7 +210,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
       const editable=!!(e.target as HTMLElement)?.closest('input,textarea,select,[contenteditable="true"],[role="textbox"]');
       // The browser Save-as dialog would incorrectly capture an uncommitted inspector draft.
       if(editable&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();return;}
-      const action=resolveShellShortcut(e,{editable,dialogOpen:settings||exportDialog||commandDialog||topologyDialog||propertiesOpen||!!props.textRequest||!!props.layoutPreview});
+      const action=resolveShellShortcut(e,{editable,dialogOpen:aboutOpen||settings||exportDialog||commandDialog||topologyDialog||propertiesOpen||!!props.textRequest||!!props.layoutPreview});
       if(!action)return;
       if(action==='save'&&!props.canSave || action==='undo'&&!props.canUndo || action==='redo'&&!props.canRedo)return;
       if(action==='copy'&&!props.onCopy || action==='paste'&&!props.onPaste)return;
@@ -228,11 +232,12 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
       else props.onToolChange(action);
     };
     window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey);
-  },[props.onToolChange,props.onSave,props.onUndo,props.onRedo,props.canSave,props.canUndo,props.canRedo,props.onCopy,props.onPaste,props.onSaveAs,props.onNew,props.onOpen,props.onSelectAll,props.onDuplicate,props.selected,props.textRequest,props.layoutPreview,settings,exportDialog,commandDialog,topologyDialog,propertiesOpen]);
+  },[props.onToolChange,props.onSave,props.onUndo,props.onRedo,props.canSave,props.canUndo,props.canRedo,props.onCopy,props.onPaste,props.onSaveAs,props.onNew,props.onOpen,props.onSelectAll,props.onDuplicate,props.selected,props.textRequest,props.layoutPreview,settings,exportDialog,commandDialog,topologyDialog,propertiesOpen,aboutOpen]);
   const commands=[
     {label:'Сохранить',ok:props.canSave,run:props.onSave},
     {label:'Экспорт',ok:true,run:()=>setExportDialog(true)},
     {label:'Настройки',ok:true,run:()=>setSettings(true)},
+    {label:'О программе',ok:true,run:()=>setAboutOpen(true)},
     {label:'Сбросить панели',ok:true,run:resetLayout}
   ].filter(a=>a.label.toLocaleLowerCase('ru-RU').includes(commandQuery.toLocaleLowerCase('ru-RU')));
   return <>
@@ -280,6 +285,9 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
                 <Menu.Divider/>
                 <Menu.Item data-testid="paste-component" onClick={props.onPaste} disabled={!props.onPaste}>Вставить независимую копию · Ctrl+V</Menu.Item>
               </Menu.Dropdown>
+            </Menu>
+            <Menu position="bottom-start" transitionProps={{duration:0}}><Menu.Target><Button variant="subtle" size="compact-sm" data-testid="help-menu">Справка{availableUpdate&&<Badge size="xs" color="blue" ml={4} data-testid="update-available-badge" title={`Доступна версия ${availableUpdate}`}>1</Badge>}</Button></Menu.Target>
+              <Menu.Dropdown><Menu.Item data-testid="open-about" onClick={()=>setAboutOpen(true)}>О программе и обновления</Menu.Item></Menu.Dropdown>
             </Menu>
             <Text size="sm" fw={600} truncate className="gscad-project-label">{props.projectName}</Text>
             {props.dirty&&<Badge size="xs" color="yellow">Не сохранено</Badge>}
@@ -393,6 +401,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
         </Group>
       </AppShell.Footer>
     </AppShell>
+    <AboutDialog opened={aboutOpen} onClose={()=>setAboutOpen(false)} onAvailable={setAvailableUpdate} canInstallUpdate={props.canInstallUpdate}/>
     <Modal opened={propertiesOpen&&!!props.selected} onClose={()=>setPropertiesOpen(false)}
       title={'Свойства элемента '+(props.selected?.refdes??'')} centered size="md">
       <Inspector selected={props.selected} revision={props.baseRevision} send={props.onInspectorProposal} hostError={props.inspectorError}/>

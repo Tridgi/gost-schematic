@@ -1,12 +1,13 @@
 //! Isolated Windows desktop bridge: allowlisted Rust commands, packaged Python sidecar.
 //! NOTE: not compiled in this sandbox; Windows/CI native smoke remains a release gate.
 mod native_files;
+mod signed_updates;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use std::time::Duration;
-use tauri::State;
+use tauri::{Manager, State};
 use tauri_plugin_shell::{process::{CommandChild, CommandEvent}, ShellExt};
 
 const REQUEST_LIMIT: usize = 1_048_576;
@@ -176,10 +177,39 @@ fn native_close_trace(stage: String, dirty: bool, busy: bool) -> Result<(), Stri
     Ok(())
 }
 
+#[tauri::command]
+fn native_app_version(app: tauri::AppHandle) -> String {
+    app.package_info().version.to_string()
+}
+
+fn project_link(link: &str) -> Option<&'static str> {
+    match link {
+        "founder" => Some("https://github.com/Tridgi"),
+        "repository" => Some("https://github.com/Tridgi/gost-schematic"),
+        "releases" => Some("https://github.com/Tridgi/gost-schematic/releases"),
+        _ => None,
+    }
+}
+
+#[tauri::command]
+#[allow(deprecated)]
+fn native_open_project_link(app: tauri::AppHandle, link: String) -> Result<(), String> {
+    let url = project_link(&link).ok_or("INVALID_PROJECT_LINK")?;
+    app.shell().open(url, None).map_err(|_| "OPEN_LINK_FAILED".into())
+}
+
 pub fn run() {
     tauri::Builder::default()
         .manage(BridgeState::default())
         .manage(native_files::NativeFileStore::default())
+        .manage(signed_updates::OperationGate::default())
+        .manage(signed_updates::UpdateStore::default())
+        .setup(|app| {
+            if signed_updates::configured(app.handle()) {
+                app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
+            }
+            Ok(())
+        })
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .on_window_event(|_window, _event| {
@@ -194,6 +224,10 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             engine_request, cancel_engine_request, native_close_trace,
+            native_app_version, native_open_project_link,
+            signed_updates::native_signed_update_enabled, signed_updates::native_signed_update_status,
+            signed_updates::native_prepare_signed_update, signed_updates::native_discard_signed_update,
+            signed_updates::native_install_signed_update,
             native_files::native_open_project, native_files::native_save_project,
             native_files::native_save_as_project, native_files::native_close_project,
             native_files::native_export_project
@@ -211,6 +245,13 @@ mod tests {
         assert!(valid_close_trace_stage("browser_beforeunload"));
         for bad in ["", "document", "filename=C:\\test", "guard_received\nsecret"] {
             assert!(!valid_close_trace_stage(bad));
+        }
+    }
+    #[test]
+    fn project_links_are_fixed() {
+        assert_eq!(project_link("releases"), Some("https://github.com/Tridgi/gost-schematic/releases"));
+        for bad in ["https://evil.example", "file:///C:/Windows", "javascript:alert(1)", ""] {
+            assert!(project_link(bad).is_none());
         }
     }
     #[test]

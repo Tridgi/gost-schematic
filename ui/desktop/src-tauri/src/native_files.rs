@@ -237,6 +237,7 @@ fn reply(handle: String, state: &NativeDocument, document: Value) -> NativeProje
 }
 #[tauri::command]
 pub async fn native_open_project(app: AppHandle) -> Result<NativeProjectReply, String> {
+    let _operation = app.state::<crate::signed_updates::OperationGate>().file()?;
     let file = app.dialog().file().add_filter("GSCAD ProjectV2", &["json"])
         .blocking_pick_file().ok_or("CANCELLED")?;
     let path = file.into_path().map_err(|_| "UNSUPPORTED_NATIVE_PATH")?;
@@ -260,6 +261,7 @@ pub async fn native_open_project(app: AppHandle) -> Result<NativeProjectReply, S
 pub async fn native_save_project(app: AppHandle, handle: String,
     expected_generation: u64, expected_project_sha256: String,
     document: Value) -> Result<NativeProjectReply, String> {
+    let _operation = app.state::<crate::signed_updates::OperationGate>().file()?;
     // Reserve this handle while Python validates and the OS write completes.
     let previous = {
         let state = app.state::<NativeFileStore>();
@@ -316,6 +318,7 @@ pub async fn native_save_as_project(app: AppHandle, document: Value,
     previous_handle: Option<String>,
     expected_generation: Option<u64>, expected_project_sha256: Option<String>
 ) -> Result<NativeProjectReply, String> {
+    let _operation = app.state::<crate::signed_updates::OperationGate>().file()?;
     // The OS dialog remains the only source of destination paths.
     let selected = app.dialog().file().add_filter("GSCAD ProjectV2", &["json"])
         .blocking_save_file().ok_or("CANCELLED")?;
@@ -367,6 +370,7 @@ pub async fn native_save_as_project(app: AppHandle, document: Value,
 }
 #[tauri::command]
 pub fn native_close_project(app: AppHandle, handle: String) -> Result<(), String> {
+    let _operation = app.state::<crate::signed_updates::OperationGate>().file()?;
     let state = app.state::<NativeFileStore>();
     let mut map = state.files.lock().map_err(|_| "FILE_LOCK_FAILED")?;
     if map.get(&handle).is_some_and(|s| s.busy) { return Err("SESSION_BUSY".into()); }
@@ -380,6 +384,7 @@ pub fn native_close_project(app: AppHandle, handle: String) -> Result<(), String
 pub async fn native_export_project(
     app: AppHandle, document: Value, sheet_id: String, format: String
 ) -> Result<String, String> {
+    let _operation = app.state::<crate::signed_updates::OperationGate>().file()?;
     if !matches!(format.as_str(), "svg" | "png300") ||
         sheet_id.is_empty() || sheet_id.len()>256 {
         return Err("INVALID_EXPORT_ARGS".into());

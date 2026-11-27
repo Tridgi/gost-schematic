@@ -1251,7 +1251,7 @@ test('R19 smart routing and aligned connected pins reduce a Z route to one segme
   return JSON.parse(readFileSync(await (await d).path(),'utf8'));
  };
  const placed=await saved(),[a,b]=placed.project.components;
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('smart-routing').click();
  await page.getByTestId('tool-wire').click();
  await page.getByTestId('signed-pin-'+a.id+'-2').click();
@@ -1263,7 +1263,7 @@ test('R19 smart routing and aligned connected pins reduce a Z route to one segme
  await page.mouse.down();await page.mouse.move(paper.x+paper.width*.82,paper.y+paper.height*.68,{steps:6});await page.mouse.up();
  await expect(page.getByTestId('group-selection-summary')).toContainText('2');
  page.once('dialog',d=>d.accept());
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('align-connected-pair').click();
  const after=await saved(),w=after.project.sheets[0].wires[0];
  expect(w.vertices).toHaveLength(2);expect(w.vertices[0].at_um[1]).toBe(w.vertices[1].at_um[1]);
@@ -1321,7 +1321,7 @@ test('R19b magnetic placement preview aligns pins without creating a wire',async
  const canvas=page.getByTestId('gscad-signed-svg-canvas');
  await expect(canvas).toHaveAttribute('data-camera-ready','true');
  const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('pin-magnet').click();
  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
  await expect(canvas).toHaveAttribute('data-tool','place');
@@ -1381,7 +1381,7 @@ test('R19c existing staircase becomes a clean two-bend wire and Undo restores or
  await page.getByTestId('project-file-input').setInputFiles({name:'stairs.gscad',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(stairs))});
  await expect(page.locator('[data-wire-id="'+w.id+'"] [data-segment-id]')).toHaveCount(7);
  page.once('dialog',d=>d.accept());
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('simplify-routes').click();
  await expect(page.locator('[data-wire-id="'+w.id+'"] [data-segment-id]')).toHaveCount(3);
  const after=await saved();
@@ -1417,7 +1417,7 @@ test('R20 selected chain becomes straight without altering Net membership, and U
  await page.mouse.down();await page.mouse.move(paper.x+paper.width*.88,paper.y+paper.height*.61,{steps:6});await page.mouse.up();
  await expect(page.getByTestId('group-selection-summary')).toContainText('3');
  page.once('dialog',d=>d.accept());
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('align-series').click();
  const after=await saved(),sh=after.project.sheets[0];
  expect(new Set(sh.instances.map(i=>i.origin_um[1])).size).toBe(1);
@@ -1459,7 +1459,7 @@ test('R20b equal pin gaps in actual editor keep the end poses and preserve Undo'
  await page.mouse.down();await page.mouse.move(paper.x+paper.width*.88,paper.y+paper.height*.51,{steps:6});await page.mouse.up();
  await expect(page.getByTestId('group-selection-summary')).toContainText('3');
  page.once('dialog',d=>d.accept());
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('distribute-series').click();
  const after=await saved(),sh=after.project.sheets[0];
  expect(sh.instances[0]).toEqual(sh0.instances[0]);expect(sh.instances[2]).toEqual(sh0.instances[2]);
@@ -1500,7 +1500,7 @@ test('R21 parallel rails replace routes with explicit junctions without changing
  await page.mouse.down();await page.mouse.move(paper.x+paper.width*.85,paper.y+paper.height*.58,{steps:6});await page.mouse.up();
  await expect(page.getByTestId('group-selection-summary')).toContainText('3');
  page.once('dialog',d=>d.accept());
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('parallel-rails').click();
  const after=await saved(),sh=after.project.sheets[0];
  expect(sh.wires).toHaveLength(10);expect(sh.junctions).toHaveLength(2);expect(sh.splices).toHaveLength(4);
@@ -1535,7 +1535,7 @@ test('R22 automatic layout previews metrics, cancel is harmless, confirm is one 
  await page.getByTestId('tool-select').click();
  const before=await saved();
  const openPlan=async(accept)=>{
-  await page.getByRole('button',{name:'Правка'}).click();
+  await page.getByRole('button',{name:'Правка',exact:true}).click();
   await page.getByTestId('optimize-layout').click();
   await expect(page.getByTestId('layout-preview-dialog')).toBeVisible();
   await expect(page.getByTestId('layout-bends')).toHaveText('4 → 0');
@@ -1564,7 +1564,7 @@ test('R22 automatic layout previews metrics, cancel is harmless, confirm is one 
 test('R23 source TL494 electrical structure is inspectable without authoring or inference',async({page})=>{
  await page.goto('/');
  await expect(page.getByTestId('symbol-DA1')).toBeVisible();
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('topology-inventory').click();
  const report=page.getByTestId('topology-report');
  await expect(report).toBeVisible();
@@ -1607,7 +1607,7 @@ test('R24 single-Net rail through topology report preserves signed membership an
  await page.getByTestId('tool-select').click();
  const before=await saved(),net=before.project.nets[0];
  expect(net.members).toHaveLength(3);
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('topology-inventory').click();
  await expect(page.getByTestId('topology-report')).toBeVisible();
  page.once('dialog',d=>d.accept());
@@ -1651,7 +1651,7 @@ test('R25 mixed-axis Net rail keeps real signed pin directions and undoable geom
  await page.getByTestId('tool-select').click();
  const before=await saved(),net=before.project.nets[0];
  expect(net.members).toHaveLength(3);
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('topology-inventory').click();
  page.once('dialog',d=>d.accept());
  await page.getByTestId('net-rail-'+net.id).click();
@@ -1695,7 +1695,7 @@ test('R26 tree reconstruction from topology report bypasses a rail obstruction',
  await page.getByTestId('tool-select').click();
  const before=await saved(),net=before.project.nets[0];
  expect(net.members).toHaveLength(4);
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('topology-inventory').click();
  page.once('dialog',d=>d.accept());
  await page.getByTestId('net-tree-'+net.id).click();
@@ -1742,7 +1742,7 @@ test('R28 explicit first route for a saved declared two-pin Net, Undo and Redo',
  await page.getByTestId('project-file-input').setInputFiles({name:'unrouted.gscad',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(doc))});
  await expect(page.locator('[data-net-id]')).toHaveCount(0);
  const before=await saved();
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('topology-inventory').click();
  page.once('dialog',d=>d.accept());
  await page.getByTestId('net-initial-'+net.id).click();
@@ -1791,7 +1791,7 @@ test('R29 batch initial routing commits two declared Nets and one Undo restores 
  await page.getByTestId('project-file-input').setInputFiles({name:'batch-unrouted.gscad',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(doc))});
  await expect(page.locator('[data-net-id]')).toHaveCount(0);
  const before=await saved();
- await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByRole('button',{name:'Правка',exact:true}).click();
  await page.getByTestId('topology-inventory').click();
  page.once('dialog',d=>d.accept());
  await page.getByTestId('route-initial-batch').click();
@@ -1885,4 +1885,128 @@ test('RC1 library categories and reserved scrollbar fit long Russian names in bo
   await page.screenshot({path:testInfo.outputPath('library-theme-'+i+'.png')});
   if(i===0)await page.getByTestId('toggle-theme').click();
  }
+});
+
+
+test('R41 About is accessible in both themes and does not change the document',async({page})=>{
+  await page.goto('/');
+  const canvas=page.getByTestId('gscad-signed-svg-canvas');
+  await expect(canvas).toBeVisible();
+  const original=await page.locator('[data-testid^="symbol-"]').count();
+  const dirty=await page.getByText('Не сохранено',{exact:true}).count();
+  for(let i=0;i<2;i++){
+    await page.getByTestId('help-menu').click();
+    await page.getByTestId('open-about').click();
+    const dialog=page.getByRole('dialog',{name:'О программе'});
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText('Мирослав Лихачёв',{exact:false})).toBeVisible();
+    await expect(dialog.getByTestId('about-version')).toContainText('0.1.0');
+    await expect(dialog.getByTestId('check-updates')).toBeDisabled();
+    await dialog.getByRole('button',{name:'Показать MIT License'}).click();
+    await expect(dialog.getByText(/Permission is hereby granted/)).toBeVisible();
+    await dialog.getByRole('button',{name:'Скрыть MIT License'}).click();
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+    await expect(page.locator('[data-testid^="symbol-"]')).toHaveCount(original);
+    await expect(page.getByText('Не сохранено',{exact:true})).toHaveCount(dirty);
+    if(i===0)await page.getByTestId('toggle-theme').click();
+  }
+});
+
+
+test('R41 native release check uses actual version, displays update and leaves project unchanged',async({page})=>{
+  await page.addInitScript(()=>{
+    window.__TAURI__={core:{invoke:async(command)=>{
+      if(command==='native_app_version')return '0.1.0';
+      if(command==='native_close_trace')return;
+      throw Error('UNEXPECTED_NATIVE_COMMAND: '+command);
+    }},window:{getCurrentWindow:()=>({onCloseRequested:async()=>()=>{}})}};
+  });
+  let count=0;
+  await page.route('https://api.github.com/repos/Tridgi/gost-schematic/releases/latest',async route=>{
+    count++;
+    await route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({tag_name:'v0.2.0',draft:false,prerelease:false})});
+  });
+  await page.goto('/');
+  await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+  expect(count).toBe(0);
+  const dirty=page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true});
+  await expect(dirty).toHaveCount(0);
+  await page.getByTestId('help-menu').click();
+  await page.getByTestId('open-about').click();
+  const dialog=page.getByRole('dialog',{name:'О программе'});
+  await expect(dialog.getByTestId('about-version')).toHaveText('Версия: 0.1.0');
+  await dialog.getByTestId('check-updates').click();
+  await expect(dialog.getByTestId('update-result')).toContainText('v0.2.0');
+  expect(count).toBe(1);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(page.getByTestId('update-available-badge')).toBeVisible();
+  await expect(dirty).toHaveCount(0);
+  await page.getByTestId('help-menu').click();
+  await page.getByTestId('open-about').click();
+  await dialog.getByRole('switch',{name:'Проверять обновления при запуске'}).check();
+  await page.reload();
+  await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+  await expect(page.getByTestId('update-available-badge')).toBeVisible();
+  expect(count).toBeGreaterThanOrEqual(2);
+  await expect(dirty).toHaveCount(0);
+});
+
+
+test('R41 signed update does not install while project is dirty or confirmation is declined',async({page})=>{
+  await page.addInitScript(()=>{
+    window.__gscadMock={stage:{kind:'idle'},installs:[]};
+    window.__TAURI__={core:{invoke:async(command,args)=>{
+      const mock=window.__gscadMock;
+      if(command==='native_app_version')return '0.1.0';
+      if(command==='native_close_trace'||command==='native_close_project')return;
+      if(command==='native_signed_update_enabled')return true;
+      if(command==='native_signed_update_status')return mock.stage;
+      if(command==='native_prepare_signed_update'){
+        if(args.version!=='0.2.0')throw Error('VERSION_MISMATCH');
+        mock.stage={kind:'ready',version:'0.2.0',token:'verified-test-token'};return;
+      }
+      if(command==='native_install_signed_update'){
+        mock.installs.push(args);mock.stage={kind:'idle'};return;
+      }
+      if(command==='native_save_as_project')return {handle:'saved-test-handle',generation:0,
+        project_sha256:'a'.repeat(64),filename:'test.gscad.json',document:args.document};
+      throw Error('UNEXPECTED_NATIVE_COMMAND: '+command);
+    }},window:{getCurrentWindow:()=>({onCloseRequested:async()=>()=>{}})}};
+  });
+  await page.route('https://api.github.com/repos/Tridgi/gost-schematic/releases/latest',route=>route.fulfill({
+    status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},
+    body:JSON.stringify({tag_name:'v0.2.0',draft:false,prerelease:false})
+  }));
+  await page.goto('/');
+  await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+  await page.getByRole('button',{name:'Показать сетку'}).click();
+  const dirty=page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true});
+  await expect(dirty).toBeVisible();
+  const openAbout=async()=>{
+    await page.getByTestId('help-menu').click();await page.getByTestId('open-about').click();
+    await expect(page.getByRole('dialog',{name:'О программе'})).toBeVisible();
+  };
+  await openAbout();
+  const dialog=page.getByRole('dialog',{name:'О программе'});
+  await dialog.getByTestId('check-updates').click();
+  await dialog.getByTestId('download-signed-update').click();
+  await expect(dialog.getByTestId('install-signed-update')).toBeVisible();
+  await dialog.getByTestId('install-signed-update').click();
+  await expect(dialog.getByTestId('signed-update-error')).toContainText('Сначала сохраните проект');
+  expect(await page.evaluate(()=>window.__gscadMock.installs.length)).toBe(0);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await page.getByTestId('save-project').click();
+  await expect(dirty).toHaveCount(0);
+  await openAbout();
+  page.once('dialog',d=>d.dismiss());
+  await dialog.getByTestId('install-signed-update').click();
+  expect(await page.evaluate(()=>window.__gscadMock.installs.length)).toBe(0);
+  page.once('dialog',d=>d.accept());
+  await dialog.getByTestId('install-signed-update').click();
+  await expect.poll(()=>page.evaluate(()=>window.__gscadMock.installs)).toEqual([
+    {token:'verified-test-token',projectSafe:true}
+  ]);
 });
