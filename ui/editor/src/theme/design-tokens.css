@@ -42,3 +42,19 @@
 .gscad-vsplit:hover,.gscad-vsplit:focus-visible{background:var(--gscad-accent)}
 @media(max-width:960px){.gscad-project-label{max-width:30vw}.gscad-toolbar{overflow-x:auto}}
 @media(prefers-reduced-motion:reduce){.gscad-app *, .gscad-app *::before,.gscad-app *::after{transition-duration:0s!important;animation-duration:0s!important}}
+
+/* RC1: reserve scrollbar space and allow Russian catalog names to wrap. */
+.gscad-catalog-scroll{min-width:0;overflow:hidden}
+.gscad-catalog-scroll .mantine-ScrollArea-viewport>div{display:block!important;min-width:0!important;width:100%}
+.gscad-catalog-item .mantine-Button-inner{width:100%;min-width:0}
+.gscad-catalog-item .mantine-Button-label{white-space:normal;overflow:hidden}
+.gscad-symbol-info{flex:1 1 0;min-width:0;overflow:hidden;white-space:normal;overflow-wrap:anywhere;line-height:1.2;font-size:13px;font-weight:600}
+.gscad-symbol-info small{font-weight:400;margin-top:3px}
+.gscad-catalog-category{min-width:0}
+.gscad-category-heading{display:flex;justify-content:space-between;align-items:center;gap:6px;width:100%;border:0;border-bottom:1px solid var(--gscad-line);background:transparent;color:var(--gscad-muted);font:600 12px 'Segoe UI',sans-serif;text-align:left;padding:7px 3px;cursor:pointer}
+.gscad-category-heading small{font-weight:400}
+.gscad-notice-warning{position:absolute;top:10px;left:12px;right:12px;max-width:560px;margin:0 auto;padding:9px 12px;border:1px solid var(--gscad-warn);border-radius:6px;background:var(--gscad-surface);color:var(--gscad-warn);font-size:12px;z-index:5;display:flex;align-items:start;gap:8px;box-shadow:0 2px 8px #0001}
+.gscad-notice-warning button{margin-left:auto;background:none;border:0;color:inherit;cursor:pointer;font-size:17px;line-height:1}
+
+/* Only drawing lettering changes; the application chrome remains Segoe UI. */
+@font-face{font-family:'GSCAD Technical';src:url('/fonts/OpenGOST-TypeA-OpenGOSTtypeA-Regular.ttf') format('truetype');font-style:normal;font-weight:400;font-display:swap}

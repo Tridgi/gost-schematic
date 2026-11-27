@@ -1,7 +1,8 @@
 /** CHAT4 pointer-independent interaction state machine (one owner pointer).
  * Emits typed intentions; only #123 ManualWireEngine can mutate electrical topology.
  */
-import {screen,world,hitTest,snap,point} from './precision.mjs';
+import {noteLayout} from '../model/symbol-notes.mjs';
+import {screen,world,hitTest,snap,point,pinWorld} from './precision.mjs';
 import {captureSegmentDrag} from './wire-intents.mjs';
 const same=(a,b)=>a[0]===b[0]&&a[1]===b[1];
 /** Geometry is only for selecting a symbol, never for making an electrical connection. */
@@ -34,18 +35,104 @@ function symbolHit(scene,camera,p){
  return sameDistance.length===1?hits[0]:{kind:'ambiguous-symbol',candidates:sameDistance.map(a=>a.instance_id)};
 }
 
+function selectionRect(a,b){
+ return {x:Math.min(a.x,b.x),y:Math.min(a.y,b.y),width:Math.abs(a.x-b.x),height:Math.abs(a.y-b.y)};
+}
+function containedSymbols(scene,camera,rect){
+ const inside=p=>p.x>=rect.x&&p.x<=rect.x+rect.width&&p.y>=rect.y&&p.y<=rect.y+rect.height;
+ return scene.symbols.filter(s=>{
+  const points=[screen(s.origin_um,camera)];
+  const transform=at=>{
+   const x=s.mirror_x?-at[0]:at[0],y=at[1];
+   const [u,v]=s.rotation_deg===0?[x,y]:s.rotation_deg===90?[-y,x]:s.rotation_deg===180?[-x,-y]:[y,-x];
+   return screen(point([s.origin_um[0]+u,s.origin_um[1]+v]),camera);
+  };
+  for(const p of s.pins)points.push(screen(pinWorld(s,p.physical_pin_number).at_um,camera));
+  for(const stroke of s.strokes||[])points.push(transform(stroke.from_um),transform(stroke.to_um));
+  for(const n of s.notes||[]){
+   const at=transform(n.at_um),layout=noteLayout(n,[0,0]);
+   for(const b of layout.bounds)points.push({x:at.x+b[0]*camera.s,y:at.y+b[1]*camera.s});
+  }
+  return points.every(inside);
+ }).map(s=>s.instance_id);
+}
 function orthogonal(from,to){point(from);point(to);if(same(from,to))return [from];const corner=[to[0],from[1]];return [from,corner,to].filter((p,i,a)=>i===0||!same(p,a[i-1]))}
 export function createCanvasController(initial){
- let context=initial,active=null,draft=null,hover=null,selected=null;
+ let context=initial,active=null,draft=null,hover=null,selected=null,selectedGroup=[],tapTarget=null;
  const emit=i=>{if(typeof context.onIntent!=='function')throw Error('MISSING_COMMAND_DISPATCH');return context.onIntent(i)};
  const toWorld=p=>snap(world(p,context.camera),context.gridUm,context.snapEnabled);
+ const tapPoint=(hit,p)=>{
+   if(hit?.kind!=='segment')return null;
+   const w=context.wireSnapshot.wires.find(w=>w.id===hit.wire_id);
+   const i=w?.segments.findIndex(s=>s.id===hit.segment_id)??-1;
+   if(!w||i<0)return null;
+   const a=w.vertices[i].at_um,b=w.vertices[i+1].at_um,raw=toWorld(p),axis=a[0]===b[0]?1:0;
+   if(raw[axis]<=Math.min(a[axis],b[axis])||raw[axis]>=Math.max(a[axis],b[axis]))return null;
+   const at=[...a];at[axis]=raw[axis];
+   return {kind:'segment',wire_id:w.id,segment_id:hit.segment_id,at_um:point(at)};
+ };
  const owner=p=>!active||active.pointerId===p.pointerId;
- const getState=()=>({camera:{...context.camera},draft:draft?{...draft,bends_um:draft.bends_um.map(p=>[...p])}:null,drag:active?{kind:active.kind,pointerId:active.pointerId}:null,hover,selected});
+ const symbolDelta=(drag,p)=>{
+   const a=world(drag.point,context.camera),b=world(p,context.camera);
+   const delta=point([b[0]-a[0],b[1]-a[1]]);
+   return context.snapEnabled?point(delta.map(v=>Math.round(v/context.gridUm)*context.gridUm)):delta;
+ };
+ const symbolDragPreview=()=>{
+   if(active?.kind!=='symbol'||active.baseRevision!==context.wireSnapshot.revision)return null;
+   const delta=symbolDelta(active,active.cursor);
+   if(!delta[0]&&!delta[1])return null;
+   return {instance_id:active.instanceId,component_id:active.componentId,delta_um:delta};
+ };
+ const getState=()=>({camera:{...context.camera},draft:draft?{...draft,bends_um:draft.bends_um.map(p=>[...p])}:null,drag:active?{kind:active.kind,pointerId:active.pointerId}:null,hover,selected,selectedGroup:[...selectedGroup]});
  return {
   getState,
+  tapPreview(){return draft&&tapTarget?{...tapTarget,at_um:[...tapTarget.at_um]}:null;},
+  clearTapPreview(){tapTarget=null;},
+  symbolDragPreview,
+  marqueePreview(){return active?.kind==='marquee'?selectionRect(active.point,active.cursor):null;},
+  groupDragPreview(){
+   if(active?.kind!=='group'||active.baseRevision!==context.wireSnapshot.revision)return null;
+   const delta=symbolDelta(active,active.cursor);
+   return delta.some(Boolean)?{instance_ids:[...active.ids],delta_um:delta}:null;
+  },
   setContext(next){
-    if(next.tool!==undefined&&next.tool!==context.tool&&next.tool!=='wire')draft=null;
+    if(next.wireSnapshot&&next.wireSnapshot.revision!==context.wireSnapshot.revision){draft=null;tapTarget=null;}
+    if(next.tool!==undefined&&next.tool!==context.tool){
+      active=null;
+      if(next.tool!=='wire'){draft=null;tapTarget=null;}
+    }
     context={...context,...next};
+    selectedGroup=selectedGroup.filter(id=>context.scene.symbols.some(s=>s.instance_id===id));
+    // Reconcile host-owned symbol selection with the current physical sheet.
+    if(selected?.kind==='symbol'&&!context.scene.symbols.some(s=>s.instance_id===selected.instance_id&&s.component_id===selected.component_id))selected=null;
+    if(selected?.kind==='segment'&&!context.scene.wires.some(w=>w.id===selected.wire_id&&w.segments.some(s=>s.id===selected.segment_id)))selected=null;
+  },
+  syncSymbolSelection(instanceId,clearOther=false,groupIds=[]){
+    selectedGroup=[...new Set(groupIds)].filter(id=>context.scene.symbols.some(s=>s.instance_id===id));
+    if(selectedGroup.length>1){selected=null;return;}
+    selectedGroup=[];
+    const symbol=instanceId===null?null:context.scene.symbols.find(s=>s.instance_id===instanceId);
+    if(symbol){
+      selected={kind:'symbol',instance_id:symbol.instance_id,component_id:symbol.component_id,distance_px:0};
+    }else if(clearOther||selected?.kind==='symbol')selected=null;
+  },
+  /** Right-click selection never starts a drag or electrical edit. */
+  contextSelect(p){
+   if(context.tool!=='select'||active||draft)return null;
+   const exact=hitTest(context.scene,context.camera,p);
+   const hit=exact||symbolHit(context.scene,context.camera,p);
+   const symbol=hit?.kind==='symbol'?context.scene.symbols.find(s=>s.instance_id===hit.instance_id):
+     hit?.kind==='pin'?context.scene.symbols.find(s=>s.component_id===hit.pin.component_id):null;
+   if(symbol&&selectedGroup.includes(symbol.instance_id))return 'group';
+   if(symbol){
+    const target={kind:'symbol',instance_id:symbol.instance_id,component_id:symbol.component_id,distance_px:0};
+    if(emit({kind:'select',target})===false)return null;
+    selectedGroup=[];selected=target;return 'symbol';
+   }
+   // Do not guess targets for wire hits or ambiguous overlapping geometry.
+   if(hit)return null;
+   if(emit({kind:'select',target:null})===false)return null;
+   selectedGroup=[];selected=null;return 'blank';
   },
   down(p){
    if(!owner(p)||active)return false;
@@ -55,6 +142,9 @@ export function createCanvasController(initial){
    if(context.tool==='place'&&p.button===0){
     return emit({kind:'placeSymbol',at_um:toWorld(p),
       base_revision:context.wireSnapshot.revision})!==false;
+   }
+   if(context.tool==='text'&&p.button===0&&context.canTap){
+    return emit({kind:'placeText',at_um:toWorld(p),base_revision:context.wireSnapshot.revision})!==false;
    }
    if(context.tool==='junction'&&p.button===0){
     if(hit?.kind!=='ambiguous-segment'||hit.candidates.length<2){
@@ -84,13 +174,41 @@ export function createCanvasController(initial){
       return false;
      draft=null;return true;
     }
-    if(hit?.kind==='ambiguous-pin'||hit?.kind==='ambiguous-segment')return false;
+    if(hit?.kind==='segment'&&context.canTap){
+     const target=tapPoint(hit,p);
+     if(!target)return false;
+     if(emit({kind:'commitWire',source:draft.source,target,bend_points_um:draft.bends_um,base_revision:context.wireSnapshot.revision})===false)return false;
+     draft=null;return true;
+    }
+    if(hit?.kind==='ambiguous-pin'||hit?.kind==='ambiguous-segment'||hit?.kind==='junction')return false;
     const at=toWorld(p),prev=draft.bends_um.at(-1)||draft.from_um;
     if(!same(at,prev))draft={...draft,bends_um:[...draft.bends_um,at],cursor_um:at};
     return true;
    }
    if((context.tool==='pan'||p.button===1)&&p.button!==2){
     active={kind:'pan',pointerId:p.pointerId,point:{x:p.x,y:p.y}};return true;
+   }
+   if(context.tool==='select'&&p.button===0){
+    const id=hit?.kind==='symbol'?hit.instance_id:hit?.kind==='pin'?context.scene.symbols.find(s=>s.component_id===hit.pin.component_id)?.instance_id:null;
+    if(id&&(p.ctrlKey||p.shiftKey)){
+     const prior=selectedGroup.length?[...selectedGroup]:selected?.kind==='symbol'?[selected.instance_id]:[];
+     const ids=prior.includes(id)?prior.filter(v=>v!==id):[...prior,id];
+     if(emit({kind:'selectGroup',instance_ids:ids,base_revision:context.wireSnapshot.revision})===false)return false;
+     selectedGroup=ids.length>1?ids:[];
+     const one=ids.length===1?context.scene.symbols.find(s=>s.instance_id===ids[0]):null;
+     selected=one?{kind:'symbol',instance_id:one.instance_id,component_id:one.component_id,distance_px:0}:null;
+     return true;
+    }
+    if(id&&selectedGroup.includes(id)){
+     active={kind:'group',pointerId:p.pointerId,point:{x:p.x,y:p.y},cursor:{x:p.x,y:p.y},ids:[...selectedGroup],baseRevision:context.wireSnapshot.revision};
+     return true;
+    }
+    selectedGroup=[];
+    if(!hit){
+     selected=null;emit({kind:'select',target:null});
+     active={kind:'marquee',pointerId:p.pointerId,point:{x:p.x,y:p.y},cursor:{x:p.x,y:p.y},baseRevision:context.wireSnapshot.revision};
+     return true;
+    }
    }
    if(context.tool==='select'&&p.button===0&&hit?.kind==='segment'&&hit.movable){
     selected=hit;
@@ -101,7 +219,7 @@ export function createCanvasController(initial){
    if(context.tool==='select'&&p.button===0&&hit?.kind==='symbol'){
     selected=hit;
     active={kind:'symbol',pointerId:p.pointerId,point:{x:p.x,y:p.y},
-      instanceId:hit.instance_id,componentId:hit.component_id,
+      cursor:{x:p.x,y:p.y},instanceId:hit.instance_id,componentId:hit.component_id,
       baseRevision:context.wireSnapshot.revision};
     emit({kind:'select',target:hit});return true;
    }
@@ -119,18 +237,31 @@ export function createCanvasController(initial){
     context={...context,camera:{...c,x:c.x+dx,y:c.y+dy}};
     active.point={x:p.x,y:p.y};return true;
    }
-   if(draft){draft={...draft,cursor_um:toWorld(p)};return true}
+   if(['symbol','marquee','group'].includes(active?.kind)){active.cursor={x:p.x,y:p.y};return true;}
+   if(draft){hover=hitTest(context.scene,context.camera,p);tapTarget=context.canTap?tapPoint(hover,p):null;draft={...draft,cursor_um:tapTarget?.at_um??toWorld(p)};return true}
    hover=hitTest(context.scene,context.camera,p);return false;
   },
   up(p){
    if(!active||!owner(p))return false;
    const drag=active;
+   if(drag.kind==='marquee'&&drag.baseRevision===context.wireSnapshot.revision){
+    const rect=selectionRect(drag.point,p);
+    if(rect.width>=4&&rect.height>=4){
+     const ids=containedSymbols(context.scene,context.camera,rect);
+     if(emit({kind:'selectGroup',instance_ids:ids,base_revision:drag.baseRevision})!==false){
+      selectedGroup=ids.length>1?ids:[];
+      const symbol=ids.length===1?context.scene.symbols.find(s=>s.instance_id===ids[0]):null;
+      selected=symbol?{kind:'symbol',instance_id:symbol.instance_id,component_id:symbol.component_id,distance_px:0}:null;
+     }
+    }
+   }
+   if(drag.kind==='group'&&drag.baseRevision===context.wireSnapshot.revision){
+    const delta=symbolDelta(drag,p);
+    if(delta.some(Boolean))emit({kind:'moveGroup',instance_ids:drag.ids,delta_um:delta,base_revision:drag.baseRevision});
+   }
    if(drag.kind==='symbol'){
-    const a=world(drag.point,context.camera),b=world(p,context.camera);
-    const delta=point([b[0]-a[0],b[1]-a[1]]);
-    const snapped=context.snapEnabled?
-      point(delta.map(v=>Math.round(v/context.gridUm)*context.gridUm)):delta;
-    if(snapped[0]||snapped[1])emit({kind:'moveInstance',component_id:drag.componentId,
+    const snapped=symbolDelta(drag,p);
+    if(drag.baseRevision===context.wireSnapshot.revision&&(snapped[0]||snapped[1]))emit({kind:'moveInstance',component_id:drag.componentId,
       instance_id:drag.instanceId,delta_um:snapped,base_revision:drag.baseRevision});
    }
    if(drag.kind==='segment'){
@@ -144,23 +275,33 @@ export function createCanvasController(initial){
    active=null;return true;
   },
   key(k){
+   // Destructive/transform shortcuts are only valid in idle selection mode.
+   if((k==='Delete'||k==='Backspace'||k==='r'||k==='R')&&
+     (context.tool!=='select'||active||draft||selectedGroup.length>1))return false;
    if(k==='Delete'||k==='Backspace'){
     if(selected?.kind==='symbol'){
-      return emit({kind:'deleteSymbol',component_id:selected.component_id,
+      const accepted=emit({kind:'deleteSymbol',component_id:selected.component_id,
         instance_id:selected.instance_id,base_revision:context.wireSnapshot.revision})!==false;
+      if(accepted)selected=null;
+      return accepted;
     }
     if(selected?.kind==='segment'){
-      return emit({kind:'deleteWire',wire_id:selected.wire_id,
+      const accepted=emit({kind:'deleteWire',wire_id:selected.wire_id,
         base_revision:context.wireSnapshot.revision})!==false;
+      if(accepted)selected=null;
+      return accepted;
     }
     return false;
    }
    if((k==='r'||k==='R')&&selected?.kind==='symbol'){
-    emit({kind:'rotateInstance',component_id:selected.component_id,
-      instance_id:selected.instance_id,base_revision:context.wireSnapshot.revision});
-    return true;
+    return emit({kind:'rotateInstance',component_id:selected.component_id,
+      instance_id:selected.instance_id,base_revision:context.wireSnapshot.revision})!==false;
    }
-   if(k==='Escape'){if(draft)emit({kind:'cancelWire',source:draft.source});draft=null;active=null;return true}
+   if(k==='Escape'){
+    if(draft)emit({kind:'cancelWire',source:draft.source});
+    else if(!active&&context.tool==='select'&&(selected||selectedGroup.length)){selected=null;selectedGroup=[];emit({kind:'select',target:null});}
+    draft=null;tapTarget=null;active=null;return true;
+   }
    if(k==='Enter'&&draft){
     const prev=draft.bends_um.at(-1)||draft.from_um;
     if(same(prev,draft.cursor_um))return false;

@@ -361,6 +361,12 @@ def compose_clean_svg(engine_svg: bytes, request: ExportRequest) -> tuple[bytes,
             if value is None or not value.isascii() or not value.isdecimal() or len(value) > 8:
                 raise ExportError("INVALID_SOURCE_PROVENANCE_METADATA")
             root.set(field, value)
+        for field in ("data-component-label-count", "data-unplaced-label-count"):
+            value = engine.get(field)
+            if value is not None:
+                if not value.isascii() or not value.isdecimal() or len(value) > 8:
+                    raise ExportError("INVALID_LABEL_METADATA")
+                root.set(field, value)
     ET.SubElement(root, S + "title").text = "GOST Schematic — unapproved clean export"
     ET.SubElement(root, S + "desc").text = (
         "1:1 mm engineering source. No electrical connectivity inferred from image."
@@ -383,6 +389,8 @@ def compose_clean_svg(engine_svg: bytes, request: ExportRequest) -> tuple[bytes,
         if node.tag not in {S + "title", S + "desc"}:
             content.append(node)
     warnings = ("FONT_RENDER_UNVERIFIED",) if unverified_text else ()
+    if int(root.get("data-unplaced-label-count", "0")):
+        warnings += ("COMPONENT_LABELS_UNPLACED",)
     return ET.tostring(root, encoding="utf-8", xml_declaration=True) + b"\n", warnings
 
 

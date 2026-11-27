@@ -1,6 +1,8 @@
 /** CHAT 4 / #120: read-only projection of #122 canonical ProjectFileV2 to canvas scene.
  * Does not modify source Nets, wire connectivity, or render graphics as electrical anchors.
  */
+import {validateNotes} from '../model/symbol-notes.mjs';
+import {curveGeometry,curveChords} from '../model/curves.mjs';
 function projectToCanvasScene(file,sheetId){
  const deny=(code)=>{throw Error(code)};
  const validPoint=p=>Array.isArray(p)&&p.length===2&&p.every(n=>Number.isSafeInteger(n)&&Math.abs(n)<=1e9);
@@ -19,6 +21,7 @@ function projectToCanvasScene(file,sheetId){
  const graphicsToStrokes=g=>{
   if(!Array.isArray(g.points_um))deny("INVALID_GRAPHIC_POINTS");
   const pts=g.points_um.map(point);
+  if(g.kind==='circle'||g.kind==='semicircle')return curveChords(g.kind,pts);
   if(g.kind==="line"){if(pts.length!==2)deny("INVALID_LINE");return [line(pts[0],pts[1])]}
   if(g.kind==="polyline"){if(pts.length<2)deny("INVALID_POLYLINE");return pts.slice(1).map((t,i)=>line(pts[i],t))}
   if(g.kind==="rect"){
@@ -45,7 +48,9 @@ function projectToCanvasScene(file,sheetId){
    return {physical_pin_number:pin.physical_pin_number,at_um:point(pin.at_um),normal};
   });
   const strokes=(s.graphics||[]).flatMap(graphicsToStrokes);
-  sourceSymbols.push({instance_id:i.id,component_id:c.id,origin_um:point(i.origin_um),rotation_deg:i.rotation_deg,mirror_x:i.mirror_x,pins,strokes,status:s.status,layer_id:i.layer_id});
+  const curves=(s.graphics||[]).filter(g=>g.kind==='circle'||g.kind==='semicircle').map(g=>({kind:g.kind,points_um:g.points_um.map(point),stroke_um:g.stroke_um,...curveGeometry(g.kind,g.points_um)}));
+  const inkStrokes=(s.graphics||[]).filter(g=>g.kind!=='circle'&&g.kind!=='semicircle').flatMap(g=>graphicsToStrokes(g).map(stroke=>({...stroke,stroke_um:g.stroke_um})));
+  sourceSymbols.push({instance_id:i.id,component_id:c.id,origin_um:point(i.origin_um),rotation_deg:i.rotation_deg,mirror_x:i.mirror_x,pins,strokes,curves,inkStrokes,notes:validateNotes(s.constant_annotations),status:s.status,layer_id:i.layer_id});
  }
  const visualGraphics=sheet.graphics.map(g=>{
   const isB=g.kind==="source_b_continuation";
@@ -56,9 +61,24 @@ function projectToCanvasScene(file,sheetId){
   if(!isB&&!["line","polyline"].includes(g.kind))deny("UNKNOWN_SHEET_GRAPHIC");
   return {id:g.id,layer_id:g.layer_id,kind:g.kind,
    source_role:isB?"source_b_continuation":g.source_role??"none",
-   electrical:false,strokes:graphicsToStrokes(isB?{...g,kind:"line"}:g)};
+   electrical:false,strokes:graphicsToStrokes(isB?{...g,kind:"line"}:g).map(stroke=>({...stroke,stroke_um:g.stroke_um}))};
  });
  const clone=v=>JSON.parse(JSON.stringify(v));
  return {symbols:sourceSymbols,wires:clone(sheet.wires),junctions:clone(sheet.junctions),splices:clone(sheet.splices),graphics:visualGraphics};
 }
-export {projectToCanvasScene};
+/** Pure preview projection of the exact selected catalog symbol. The detached
+ * scene is never inserted into the controller, electrical model or export. */
+function projectPlacementSymbol(file,sheetId,symbolId){
+ const p=file.project,sheet=p.sheets.find(s=>s.id===sheetId);
+ const symbol=p.symbol_definitions.find(s=>s.id===symbolId);
+ const part=p.part_definitions.find(p=>p.id===symbol?.part_id);
+ const layer=sheet?.layers.find(l=>l.kind==='electrical');
+ if(!sheet||!symbol||!part||!layer||symbol.status==='deprecated')return null;
+ const component={id:'placement-preview-component',part_id:part.id};
+ const instance={id:'placement-preview-instance',component_id:component.id,
+  symbol_id:symbol.id,origin_um:[0,0],rotation_deg:0,mirror_x:false,layer_id:layer.id};
+ const detached={...file,project:{...p,components:[component],nets:[],
+  sheets:[{...sheet,instances:[instance],wires:[],junctions:[],splices:[],graphics:[]}]}};
+ return projectToCanvasScene(detached,sheetId).symbols[0];
+}
+export {projectToCanvasScene,projectPlacementSymbol};

@@ -1,10 +1,10 @@
 name: Visual CAD R1 source gate
 on:
   push:
-    branches: [ui/visual-cad-mvp]
-    paths: ['ui/editor/**', 'ui/integration/**', 'ui/experiments/r0/**', 'ui/contracts/**', 'ui/editor/src/model/**', 'ui/editor/src/wires/**', 'ui/editor/src/canvas/**', 'ui/fixtures/**', 'ui/qa/chat3-canvas/**', '.github/workflows/visual-cad-r1.yml']
+    branches: [main, ui/visual-cad-mvp]
+  # Release readiness must never depend on a filename filter. Every PR
+  # and every main push exercises the complete source/Chromium/export gate.
   pull_request:
-    paths: ['ui/integration/**', 'ui/experiments/r0/**', 'ui/contracts/**', 'ui/editor/src/model/**', 'ui/editor/src/wires/**', 'ui/editor/src/canvas/**', 'ui/fixtures/**', 'ui/qa/chat3-canvas/**', '.github/workflows/visual-cad-r1.yml']
   workflow_dispatch:
 jobs:
   candidate-v2:
@@ -105,6 +105,10 @@ jobs:
           node-version: '22'
       - name: Install canonical fixture validator
         run: python -m pip install -r ui/editor/src/model/requirements-dev.txt
+      - name: Fetch and verify the actual OpenGOST Type A editor font
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python scripts/install_opengost_type_a.py --directory ui/editor/public/fonts --expected-sha256 f77d96f832b7c902d42fc391fddf15b622c1eadeb263dd31b926888d72e0773a
       - name: Install pinned React/Mantine packages and check full frontend
         working-directory: ui/editor
         run: |
@@ -117,12 +121,44 @@ jobs:
       - name: Compile signed wire engine for browser test oracle
         working-directory: ui/editor
         run: ./node_modules/.bin/tsc -p src/wires/tsconfig.json
+      - name: Exclude unrelated Microsoft package feed from browser dependency install
+        shell: bash
+        run: |
+          # Chromium uses signed Ubuntu packages, not Microsoft's extra runner feed.
+          # Keep signature verification enabled; disable only the known unrelated feed.
+          for f in /etc/apt/sources.list.d/microsoft-prod.list /etc/apt/sources.list.d/microsoft-prod.sources; do
+            if [ -f "$f" ] && grep -q 'packages.microsoft.com/ubuntu/' "$f"; then
+              sudo mv "$f" "${f}.gscad-disabled"
+            fi
+          done
       - name: Install real Chromium and dependencies
         working-directory: ui/editor
         run: npx playwright install --with-deps chromium
+      - name: Generate verified TL494 routing comparison in SVG and PNG300
+        working-directory: ui/editor
+        run: node scripts/tl494-visual-evidence.mjs ../../ci-artifacts/tl494-routing-evidence
+      - name: Publish TL494 routing comparison evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: tl494-routing-visual-evidence
+          path: ci-artifacts/tl494-routing-evidence/
+          if-no-files-found: error
       - name: End-to-end real browser physical pin/wire and theme tests
         working-directory: ui/editor
         run: npm run test:e2e
+      - name: Install canonical Python raster export dependencies
+        run: python -m pip install -e '.[dev]' 'CairoSVG==2.9.1' 'Pillow>=12.3,<13'
+      - name: Compare complete TL494 browser and native label geometry
+        run: python ui/integration/verify_routed_export_parity.py --evidence ci-artifacts/tl494-routing-evidence --out ci-artifacts/tl494-native-export
+      - name: Publish native routed TL494 preview evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: tl494-native-export-parity
+          path: ci-artifacts/tl494-native-export/
+          if-no-files-found: error
+      - name: Require complete TL494 visible reference inventory
+        run: |
+          node --input-type=module -e 'import assert from "node:assert/strict"; import {readFileSync} from "node:fs"; const report=JSON.parse(readFileSync("ci-artifacts/tl494-routing-evidence/report.json","utf8")); for(const stage of report.stages){assert.equal(stage.componentLabels.placed,23,stage.name+": "+JSON.stringify(stage.componentLabels.missing)); assert.equal(stage.componentLabels.unplaced,0);}'
       - name: Publish independently exercised R2 browser preview bundle
         if: success()
         uses: actions/upload-artifact@v4

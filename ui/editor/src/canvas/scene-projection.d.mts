@@ -2,7 +2,7 @@
  * Bound to scene-projection.mjs; signed coordinates remain integer micrometres.
  * Neither this API nor the view can write source Nets or attach electrical pins.
  */
-import type { ProjectFileV2, WirePolyline, Junction, Splice } from '../model/contract';
+import type { ProjectFileV2, WirePolyline, Junction, Splice, ConstantAnnotation } from '../model/contract';
 
 export type PointUm = [number, number];
 export type CanvasPinNormal = 'left'|'right'|'up'|'down';
@@ -11,7 +11,7 @@ export type CanvasPin = {
   at_um:PointUm;
   normal:CanvasPinNormal;
 };
-export type CanvasStroke = {from_um:PointUm;to_um:PointUm};
+export type CanvasStroke = {from_um:PointUm;to_um:PointUm;stroke_um?:number};
 export type CanvasSymbol = {
   instance_id:string;
   component_id:string;
@@ -20,6 +20,9 @@ export type CanvasSymbol = {
   mirror_x:boolean;
   pins:CanvasPin[];
   strokes:CanvasStroke[];
+  inkStrokes:(CanvasStroke&{stroke_um:number})[];
+  curves:{kind:'circle'|'semicircle';points_um:PointUm[];stroke_um:number;center:PointUm;radius:number;sweep:0|1;bounds:PointUm[]}[];
+  notes:ConstantAnnotation[];
   status:'draft'|'approved'|'deprecated';
   layer_id:string;
 };
@@ -40,3 +43,6 @@ export type CanvasScene = {
 };
 /** Rejects unknown version/part/symbol/pin/graphic; never mutates its input. */
 export declare function projectToCanvasScene(file:ProjectFileV2,sheetId:string):CanvasScene;
+
+/** Detached catalog ink for cursor placement; never a live electrical anchor. */
+export declare function projectPlacementSymbol(file:ProjectFileV2,sheetId:string,symbolId:string):CanvasSymbol|null;

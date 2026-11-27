@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { EditorShell, type CatalogSymbol, type DiagnosticItem, type SelectedInstance,
   type ToolMode, type TreeItem, type InspectorProposal } from './components/EditorShell';
-import type { ProjectFileV2, SymbolDefinition } from './model/contract';
+import {worldPin as modelWorldPin,type ProjectFileV2,type SymbolDefinition} from './model/contract';
 import { ManualWireEngine, WireError, constructWire, type PinRef, type PointUm,
   type WiringSnapshot } from './wires/manual-wire';
 import { CanvasViewport } from './canvas/CanvasViewport';
 import type { CanvasIntent } from './canvas/controller.mjs';
 import { commitSegmentDrag, captureSegmentDrag } from './canvas/wire-intents.mjs';
-import {AuthoringSession,newBlankProject} from './authoring/session';
+import {noteLayout} from './model/symbol-notes.mjs';
+import {curveGeometry} from './model/curves.mjs';
+import {catalogDisplay,catalogAdditions} from './authoring/catalog';
+import {AuthoringSession,newBlankProject,type ComponentClipboard,type GroupClipboard,type LayoutPreview} from './authoring/session';
 import {nativeDesktopAvailable,nativeOpenProject,nativeSaveProject,nativeSaveAsProject,nativeCloseProject,
   nativeExportProject,type NativeDocumentHandle} from './native/desktop';
 import {installNativeCloseGuard} from './native/close-guard';
@@ -15,25 +18,71 @@ import {traceNativeClose} from './native/close-trace';
 import {parseProjectJsonStrict} from './authoring/strict-json';
 import { loadProjectWires } from './wires/project-v2-adapter';
 import { projectToCanvasScene } from './canvas/scene-projection.mjs';
+import {topologyInventory} from './authoring/topology-inventory.mjs';
+import {analyzeDiagnostics} from './authoring/diagnostics.mjs';
 import { detectPaperOverflow } from './canvas/paper-bounds.mjs';
 import { renderProjectPreviewSVG, renderPreviewPng300 } from './export/browser-export';
 
 const umToMm = (value:number):number => value/1000;
 const asPoint = (point:readonly number[]):string => String(umToMm(point[0]))+' '+String(umToMm(point[1]));
 function CataloguePreview({symbol}:{symbol:SymbolDefinition}) {
-  return <svg viewBox="-12 -8 24 16" fill="none" stroke="currentColor" strokeWidth={0.45}
+  const points=[...symbol.graphics.flatMap(g=>g.kind==='circle'||g.kind==='semicircle'?curveGeometry(g.kind,g.points_um).bounds:g.points_um),...symbol.pins.map(p=>p.at_um),...(symbol.constant_annotations??[]).flatMap(n=>noteLayout(n,n.at_um).bounds),[0,0]];
+  const minX=Math.min(...points.map(p=>p[0]))/1000-1,minY=Math.min(...points.map(p=>p[1]))/1000-1;
+  const maxX=Math.max(...points.map(p=>p[0]))/1000+1,maxY=Math.max(...points.map(p=>p[1]))/1000+1;
+  return <svg viewBox={`${minX} ${minY} ${maxX-minX} ${maxY-minY}`} fill="none" stroke="currentColor" strokeWidth={0.45}
     aria-hidden="true">
     {symbol.graphics.map((graphic,index)=>{
       const pts=graphic.points_um.map(p=>asPoint(p));
+      if(graphic.kind==='circle'||graphic.kind==='semicircle'){
+        const g=curveGeometry(graphic.kind,graphic.points_um),r=umToMm(g.radius);
+        if(graphic.kind==='circle')return <circle key={index} cx={umToMm(g.center[0])} cy={umToMm(g.center[1])} r={r} strokeWidth={umToMm(graphic.stroke_um)}/>;
+        return <path key={index} d={`M ${pts[0]} A ${r} ${r} 0 0 ${g.sweep} ${pts[2]}`} strokeWidth={umToMm(graphic.stroke_um)}/>;
+      }
       if(graphic.kind==='rect'){
         const a=graphic.points_um[0],b=graphic.points_um[1];
         return <rect key={index} x={umToMm(Math.min(a[0],b[0]))}
           y={umToMm(Math.min(a[1],b[1]))} width={umToMm(Math.abs(a[0]-b[0]))}
-          height={umToMm(Math.abs(a[1]-b[1]))}/>;
+          height={umToMm(Math.abs(a[1]-b[1]))} strokeWidth={umToMm(graphic.stroke_um)}/>;
       }
-      return <polyline key={index} points={pts.join(' ')} />;
+      return <polyline key={index} points={pts.join(' ')} strokeWidth={umToMm(graphic.stroke_um)} />;
     })}
+    {(symbol.constant_annotations??[]).map(n=>{const l=noteLayout(n,n.at_um);return <text key={n.key} x={umToMm(l.baseline[0])} y={umToMm(l.baseline[1])} textAnchor={l.anchor} fontSize={umToMm(n.height_um)} fill="currentColor" stroke="none">{n.text}</text>})}
   </svg>;
+}
+
+/** Render two detached models with one common physical viewBox.
+ * Images are SVG image resources, never executable markup in the editor. */
+function layoutComparisonImages(before:ProjectFileV2,after:ProjectFileV2):{beforeSrc:string;afterSrc:string}{
+  const sheetId=before.workspace.active_sheet_id;
+  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  const include=(p:readonly number[],pad=0)=>{
+    x0=Math.min(x0,p[0]-pad);y0=Math.min(y0,p[1]-pad);x1=Math.max(x1,p[0]+pad);y1=Math.max(y1,p[1]+pad);
+  };
+  for(const file of [before,after]){
+    const sh=file.project.sheets.find(s=>s.id===sheetId)!;
+    const defs=new Map(file.project.symbol_definitions.map(d=>[d.id,d]));
+    for(const inst of sh.instances){
+      const d=defs.get(inst.symbol_id);if(!d)continue;
+      include(inst.origin_um);
+      for(const p of d.pins)include(modelWorldPin(inst,p.at_um));
+      for(const g of d.graphics){
+        const points=g.kind==='circle'||g.kind==='semicircle'?curveGeometry(g.kind,g.points_um).bounds:g.points_um;
+        for(const p of points)include(modelWorldPin(inst,p),g.stroke_um/2);
+      }
+      for(const note of d.constant_annotations??[])for(const p of noteLayout(note,modelWorldPin(inst,note.at_um)).bounds)include(p);
+    }
+    for(const w of sh.wires)for(const v of w.vertices)include(v.at_um,150);
+    for(const n of sh.junctions)include(n.at_um,550);
+  }
+  if(!Number.isFinite(x0)){x0=0;y0=0;x1=420000;y1=297000;}
+  const cx=(x0+x1)/2,cy=(y0+y1)/2,w=Math.max(40000,x1-x0+20000),h=Math.max(40000,y1-y0+20000);
+  const view=[cx-w/2,cy-h/2,w,h].map(v=>v/1000).join(' ');
+  const src=(file:ProjectFileV2)=>{
+    const svg=renderProjectPreviewSVG(file,sheetId).replace(/width="[^"]+" height="[^"]+" viewBox="[^"]+"/,
+      'width="'+w/1000+'mm" height="'+h/1000+'mm" viewBox="'+view+'"');
+    return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+  };
+  return {beforeSrc:src(before),afterSrc:src(after)};
 }
 
 /** Preserve signed controller bend locations; reject illegal geometry at WireEngine boundary. */
@@ -90,9 +139,17 @@ export default function App() {
   const [snapshot,setSnapshot]=useState<WiringSnapshot|null>(null);
   const [tool,setTool]=useState<ToolMode>('select');
   const [placementSymbol,setPlacementSymbol]=useState<string|null>(null);
+  const [propertiesRequest,setPropertiesRequest]=useState(0);
+  const [textRequest,setTextRequest]=useState<{at:PointUm;revision:number;epoch:number}|null>(null);
   const [selectedId,setSelectedId]=useState<string|null>(null);
+  const [selectionReset,setSelectionReset]=useState(0);
+  const [groupIds,setGroupIds]=useState<string[]>([]);
+  const [clipboard,setClipboard]=useState<({kind:'single';template:ComponentClipboard}|{kind:'group';template:GroupClipboard})&{anchor:ComponentClipboard['origin_um']}|null>(null);
   const [,setPending]=useState<PinRef|null>(null);
   const [grid,setGrid]=useState(true),[snap,setSnap]=useState(true);
+  const [smartRouting,setSmartRouting]=useState(false);
+  const [pinMagnet,setPinMagnet]=useState(false);
+  const [layoutPreview,setLayoutPreview]=useState<{plan:LayoutPreview;owner:AuthoringSession;sessionEpoch:number;contentEpoch:number;beforeSrc:string;afterSrc:string}|null>(null);
   const [zoom,setZoom]=useState(1);
   const [zoomRequest,setZoomRequest]=useState<{percent:50|100|200;token:number}|null>(null);
   const [fitRequest,setFitRequest]=useState(0);
@@ -169,12 +226,19 @@ export default function App() {
   } as SelectedInstance:null;
   const catalog=useMemo<CatalogSymbol[]>(()=>{
     if(!document)return [];
-    return document.project.symbol_definitions.map(symbol=>({
-      id:symbol.id,name:symbol.id,category:symbol.part_id,
+    return document.project.symbol_definitions.filter(symbol=>symbol.status!=='deprecated').map(symbol=>({
+      id:symbol.id,name:catalogDisplay(symbol.id)?.name??symbol.id,category:catalogDisplay(symbol.id)?.category??symbol.part_id,
       approval:symbol.status==='approved'?'approved':'draft',
       thumbnail:<CataloguePreview symbol={symbol}/>
     }));
   },[document]);
+  const topology=useMemo(()=>document&&activeSheet?topologyInventory(document,activeSheet.id):undefined,[document,activeSheet?.id]);
+  const diagnosticReport=useMemo(()=>{
+    if(!document||!snapshot||!activeSheet)return null;
+    const scene=projectToCanvasScene(document,activeSheet.id);
+    const statuses=Object.fromEntries(snapshot.nets.map(n=>[n.id,engineRef.current?.validateNet(n.id).status??'unknown']));
+    return analyzeDiagnostics(document,scene,snapshot,statuses);
+  },[document,snapshot,activeSheet?.id]);
   const tree=useMemo<TreeItem[]>(()=>{
     if(!document||!activeSheet)return [];
     return [
@@ -193,10 +257,68 @@ export default function App() {
   const adoptAuthored=()=>{
     const session=authoringRef.current;if(!session)return;
     engineRef.current=session.engine;
-    setDocument(session.file);setSnapshot(session.snapshot);
+    const next=session.file;
+    setDocument(next);setSnapshot(session.snapshot);
+    setSelectedId(id=>next.project.sheets.find(sh=>sh.id===next.workspace.active_sheet_id)?.instances.some(i=>i.id===id)?id:null);
+    setGroupIds(ids=>{
+      const visible=new Set(next.project.sheets.find(sh=>sh.id===next.workspace.active_sheet_id)?.instances.map(i=>i.id)??[]);
+      const valid=ids.filter(id=>visible.has(id));return valid.length>1?valid:[];
+    });
     setHistory({undo:session.canUndo?1:0,redo:session.canRedo?1:0});
     contentEpochRef.current++;
     setDirty(true);
+  };
+  const handleCopy=()=>{
+    const a=authoringRef.current;
+    if(!a||tool!=='select'||(!selectedInst&&groupIds.length<2))return;
+    try{
+      if(groupIds.length>1){
+        const template=a.copyGroup(groupIds);
+        setClipboard({kind:'group',template,anchor:[...template.anchor]});
+        setIssue('Скопировано УГО: '+template.components.length+'; внутренних цепей: '+template.nets.length+'; внешних цепей исключено: '+template.omittedNetCount+'.');
+        return;
+      }
+      if(!selectedInst)return;
+      const template=a.copyComponent(selectedInst.id);
+      setClipboard({kind:'single',template,anchor:[...template.origin_um]});
+      setIssue('УГО скопировано во внутренний буфер. Электрические связи не копируются.');
+    }catch(e){setIssue('COPY_FAILED: '+String(e));}
+  };
+  const handlePaste=()=>{
+    const a=authoringRef.current;
+    if(!a||!clipboard||!activeSheet||!document||tool!=='select')return;
+    try{
+      if(clipboard.kind==='group'){
+        const origin=a.suggestGroupPasteOrigin(clipboard.template,clipboard.anchor,snap);
+        const ids=a.pasteGroup(a.newTransaction('paste-group'),clipboard.template,origin);
+        adoptAuthored();setSelectedId(null);setGroupIds(ids);
+        setClipboard({...clipboard,anchor:origin});
+        setIssue('Группа вставлена: '+ids.length+' УГО, '+clipboard.template.nets.length+' независимых цепей. Внешних цепей исключено: '+clipboard.template.omittedNetCount+'. Проверьте маршруты.');
+        return;
+      }
+      const origin=a.suggestPasteOrigin(clipboard.template,clipboard.anchor,snap);
+      const id=a.pasteComponent(a.newTransaction('paste-component'),clipboard.template,origin);
+      adoptAuthored();setGroupIds([]);setSelectedId(id);
+      setClipboard({...clipboard,anchor:origin});
+      setIssue('УГО вставлено с новым обозначением и без электрических связей.');
+    }catch(e){setIssue('PASTE_FAILED: '+String(e));}
+  };
+  const handleDuplicate=()=>{
+    const a=authoringRef.current;
+    if(!a||tool!=='select')return;
+    try{
+      if(groupIds.length>1){
+        const t=a.copyGroup(groupIds),origin=a.suggestGroupPasteOrigin(t,t.anchor,snap);
+        const ids=a.pasteGroup(a.newTransaction('duplicate-group'),t,origin);
+        adoptAuthored();setSelectedId(null);setGroupIds(ids);
+        setIssue('Группа продублирована. Внешние цепи не копируются.');
+      }else if(selectedInst){
+        const t=a.copyComponent(selectedInst.id),origin=a.suggestPasteOrigin(t,t.origin_um,snap);
+        const id=a.pasteComponent(a.newTransaction('duplicate-component'),t,origin);
+        adoptAuthored();setGroupIds([]);setSelectedId(id);
+        setIssue('Создана независимая копия УГО.');
+      }
+    }catch(e){setIssue('DUPLICATE_FAILED: '+String(e));}
   };
   const handleNew=()=>{
     if(nativeDesktopAvailable()&&nativeSaveBusyRef.current){
@@ -205,7 +327,7 @@ export default function App() {
     if(dirty&&!window.confirm('Есть несохранённые изменения. Создать новый проект и потерять их?'))return;
     try{
       const session=new AuthoringSession(newBlankProject());
-      sessionEpochRef.current++;
+      sessionEpochRef.current++;setClipboard(null);setGroupIds([]);
       contentEpochRef.current++;
       if(nativeHandle)void nativeCloseProject(nativeHandle.handle).catch(()=>{});
       setNativeHandle(null);
@@ -342,7 +464,7 @@ export default function App() {
     if(next.format==='gscad-project'&&next.format_version===2&&
        next.project?.provenance?.status==='synthetic'){
       const author=new AuthoringSession(next);
-      sessionEpochRef.current++;contentEpochRef.current++;
+      sessionEpochRef.current++;setClipboard(null);setGroupIds([]);contentEpochRef.current++;
       authoringRef.current=author;engineRef.current=author.engine;
       setDocument(author.file);setSnapshot(author.snapshot);
       setSelectedId(next.project.sheets.find(s=>s.id===next.workspace.active_sheet_id)?.instances[0]?.id??null);
@@ -362,7 +484,7 @@ export default function App() {
       sheet_id:sheet.id,revision:0,
       source_topology_hash:topologyHashRef.current??''
     }).engine;
-    sessionEpochRef.current++;contentEpochRef.current++;
+    sessionEpochRef.current++;setClipboard(null);setGroupIds([]);contentEpochRef.current++;
     authoringRef.current=null;engineRef.current=engine;
     setDocument(next);setSnapshot(engine.snapshot);
     setSelectedId(sheet.instances[0]?.id??null);
@@ -414,31 +536,59 @@ export default function App() {
   const onCanvasIntent=(intent:CanvasIntent)=>{
     const eng=engineRef.current;if(!eng)return;
     const authored=authoringRef.current;
+    if(intent.kind==='selectGroup'){
+      if(intent.base_revision!==eng.snapshot.revision)return false;
+      const ids=[...new Set(intent.instance_ids)];
+      if(ids.length!==intent.instance_ids.length||ids.some(id=>!instances.some(i=>i.id===id)))return false;
+      setGroupIds(ids.length>1?ids:[]);setSelectedId(ids.length===1?ids[0]:null);
+      return true;
+    }
+    if(intent.kind==='moveGroup'){
+      try{
+        if(!authored)throw Error('SOURCE_LOCKED: групповое перемещение исходной схемы недоступно');
+        if(intent.base_revision!==authored.revision)throw Error('STALE_REVISION');
+        if(intent.instance_ids.length!==groupIds.length||intent.instance_ids.some(id=>!groupIds.includes(id)))throw Error('INVALID_GROUP');
+        const ids=new Set(instances.filter(i=>intent.instance_ids.includes(i.id)).map(i=>i.component_id));
+        const attached=authored.snapshot.wires.some(w=>[w.vertices[0],w.vertices[w.vertices.length-1]].some(
+          v=>v.anchor.kind==='pin'&&ids.has(v.anchor.component_id)));
+        if(attached&&!window.confirm('Переместить группу с подключёнными проводниками? Внутренние маршруты будут сдвинуты, внешние перестроены. Требуется проверка трассировки.')){
+          setIssue('REROUTE_CANCELLED: перемещение группы отменено.');return false;
+        }
+        authored.moveGroup(authored.newTransaction('move-group'),intent.instance_ids,intent.delta_um,attached);
+        adoptAuthored();setIssue(attached?'REROUTE_REVIEW_REQUIRED: группа перемещена, PinRef и Nets сохранены. Проверьте маршруты.':'Группа перемещена одной транзакцией.');return true;
+      }catch(e){setIssue(e instanceof WireError?e.code+': '+e.message:String(e));return false;}
+    }
+    if(intent.kind==='select')setGroupIds([]);
     if(authored){
       try{
         if(intent.kind==='beginWire'){
           authored.beginWire(intent.pin);
-          setPending(intent.pin);setIssue('Выбран первый физический вывод; укажите второй.');
+          setPending(intent.pin);setIssue('Выбран вывод: укажите другой вывод или участок проводника.');
           return true;
         }
         if(intent.kind==='cancelWire'){setPending(null);return true;}
         if(intent.kind==='select'){
           if(intent.target?.kind==='symbol')setSelectedId(intent.target.instance_id);
-          if(intent.target?.kind==='pin'){
+          else if(intent.target?.kind==='pin'){
             const selectedPin=intent.target.pin;
             const inst=instances.find(i=>i.component_id===selectedPin.component_id);
-            if(inst)setSelectedId(inst.id);
-          }
+            setSelectedId(inst?.id??null);
+          }else setSelectedId(null);
           return true;
+        }
+        if(intent.kind==='placeText'){
+          if(intent.base_revision!==authored.revision)throw Error('STALE_REVISION');
+          setTextRequest({at:intent.at_um,revision:authored.revision,epoch:sessionEpochRef.current});return true;
         }
         if(intent.kind==='placeSymbol'){
           if(intent.base_revision!==authored.revision)throw Error('STALE_REVISION');
           if(!placementSymbol)throw Error('NO_SELECTED_CATALOG_SYMBOL');
+          const hint=pinMagnet?authored.suggestAlignedPlacement(placementSymbol,intent.at_um):null;
           const id=authored.place(authored.newTransaction('place-component'),
-            placementSymbol,intent.at_um);
-          adoptAuthored();setSelectedId(id);
+            placementSymbol,hint?.origin??intent.at_um);
+          adoptAuthored();setGroupIds([]);setSelectedId(id);
           setTool('select');setPlacementSymbol(null);
-          setIssue('УГО размещено из DRAFT-каталога. Физические выводы сохранены.');
+          setIssue(hint?'Выводы выровнены по одной оси. Электрическая цепь не создана.':'УГО размещено из DRAFT-каталога. Физические выводы сохранены.');
           return true;
         }
         if(intent.kind==='moveInstance'||intent.kind==='rotateInstance'){
@@ -475,9 +625,16 @@ export default function App() {
           return true;
         }
         if(intent.kind==='commitWire'){
+          if(intent.target.kind==='segment'){
+            if(intent.base_revision!==authored.revision)throw Error('STALE_REVISION');
+            authored.connectToSegment(authored.newTransaction('tap-wire'),intent.source,
+              intent.target.wire_id,intent.target.segment_id,intent.target.at_um,intent.bend_points_um);
+            adoptAuthored();setPending(null);setIssue('Ответвление создано. Узел и электрическая цепь сохранены.');
+            return true;
+          }
           if(intent.target.kind!=='pin')throw Error('UNBOUND_FREE_NOT_ALLOWED');
           authored.connect(authored.newTransaction('connect-physical-pins'),
-            intent.source,intent.target.pin,intent.bend_points_um);
+            intent.source,intent.target.pin,intent.bend_points_um,smartRouting);
           adoptAuthored();setPending(null);
           setIssue('Выводы соединены: электрический Net назначен транзакционно.');
           return true;
@@ -541,11 +698,11 @@ export default function App() {
       if(intent.kind==='cancelWire'){setPending(null);return;}
       if(intent.kind==='select'){
         if(intent.target?.kind==='symbol')setSelectedId(intent.target.instance_id);
-        if(intent.target?.kind==='pin'){
+        else if(intent.target?.kind==='pin'){
           const targetPin=intent.target.pin;
           const chosen=instances.find(i=>i.component_id===targetPin.component_id);
-          if(chosen)setSelectedId(chosen.id);
-        }
+          setSelectedId(chosen?.id??null);
+        }else setSelectedId(null);
         return;
       }
       if(intent.kind==='rejectJunction'){
@@ -634,10 +791,8 @@ export default function App() {
     projectToCanvasScene(document,activeSheet.id),snapshot,activeSheet.frame.size_um);
   const diagnostics:DiagnosticItem[]=[
     {id:'integration',severity:'info',message:issue},
-    {id:'routed',severity:'warning',message:'Исходных Nets: '+document.project.nets.length+
-      '; сейчас без маршрута: '+snapshot.nets.filter(n=>
-        engineRef.current?.validateNet(n.id).status==='unrouted').length+
-      '. Отсутствие ошибок ERC не доказано.'}
+    ...(diagnosticReport?.items??[]),
+    {id:'routed',severity:'info',message:'Проверка активного листа. Цепей в проекте: '+document.project.nets.length+'. Отсутствие замечаний не доказывает соответствие ГОСТ.'}
   ];
   if(overflow.total>0)diagnostics.push({id:'paper-overflow',severity:'warning',
     message:'За пределами физического листа: '+overflow.symbols.length+' УГО, '+
@@ -646,24 +801,176 @@ export default function App() {
   return <EditorShell
     projectName={document.project.title+(authoringRef.current?' · R3 AUTHORING':' · R2 PREVIEW')} dirty={dirty}
     baseRevision={String(snapshot.revision)} sheets={document.project.sheets.map(s=>({id:s.id,title:s.name}))}
-    activeSheetId={activeSheet.id} catalog={catalog} tree={tree}
-    selected={selected} diagnostics={diagnostics}
+    activeSheetId={activeSheet.id} catalog={catalog} tree={tree} topology={topology}
+    propertiesRequest={propertiesRequest}
+    textRequest={textRequest}
+    onCancelText={()=>setTextRequest(null)}
+    onAddText={(value,height)=>{
+      try{
+        const a=authoringRef.current;
+        if(!a||!textRequest||a.revision!==textRequest.revision||sessionEpochRef.current!==textRequest.epoch)throw Error('STALE_REVISION');
+        a.addText(a.newTransaction('add-text'),value,textRequest.at,height);
+        adoptAuthored();setTextRequest(null);setTool('select');setIssue('Надпись добавлена. Шрифт в режиме предпросмотра.');
+      }catch(e){setIssue('TEXT_FAILED: '+String(e));return false;}
+      return true;
+    }}
+    onDuplicate={authoringRef.current&&(selectedInst||groupIds.length>1)&&tool==='select'?handleDuplicate:undefined}
+    onSelectAll={tool==='select'?()=>{setGroupIds(instances.length>1?instances.map(i=>i.id):[]);setSelectedId(instances.length===1?instances[0].id:null);}:undefined}
+    onPreviewDetourRefinement={authoringRef.current&&tool==='select'&&activeSheet.wires.some(w=>w.needs_routing_review&&w.vertices.length>=3)?(crossingOnly=false)=>{
+      const a=authoringRef.current!;
+      try{
+        const p=a.previewDetourRefinement(crossingOnly);
+        if(!p.token){setIssue(crossingOnly?'Безопасное сокращение пересечений не найдено.':'Безопасные сокращения отдельных проводников не найдены.');return;}
+        if(!window.confirm('Сократить '+p.operations.length+' проводников без переноса выводов и узлов? Изгибы: '+p.before.bends+' → '+p.after.bends+', пересечения: '+p.before.crossings+' → '+p.after.crossings+', длина: '+(p.before.lengthUm/1000).toFixed(3)+' → '+(p.after.lengthUm/1000).toFixed(3)+' мм. Применить?')){
+          a.discardLayoutPreview(p.token);return;
+        }
+        a.applyLayoutPreview(a.newTransaction('apply-detour-refinement'),p.token);adoptAuthored();
+        setIssue(crossingOnly?'Пересечения сокращены. Проверьте результат.':'Локальные обходы сокращены. Проверьте результат.');
+      }catch(e){setIssue('DETOUR_REFINEMENT_FAILED: '+String(e));}
+    }:undefined}
+    onPreviewRailRefinement={authoringRef.current&&tool==='select'&&activeSheet.wires.some(w=>w.needs_routing_review)?()=>{
+      const a=authoringRef.current!;
+      if(!window.confirm('Проверить общие магистрали цепей, отмеченных для проверки? Допускаются только безопасные улучшения без потери обозначений.'))return;
+      try{
+        const p=a.previewRailRefinement();
+        if(!p.token){setIssue('Безопасное улучшение общих магистралей не найдено.');return;}
+        if(!window.confirm('Упростить '+p.operations.length+' цепей? Изгибы: '+p.before.bends+' → '+p.after.bends+', пересечения: '+p.before.crossings+' → '+p.after.crossings+', длина: '+(p.before.lengthUm/1000).toFixed(3)+' → '+(p.after.lengthUm/1000).toFixed(3)+' мм. Применить?')){
+          a.discardLayoutPreview(p.token);return;
+        }
+        a.applyLayoutPreview(a.newTransaction('apply-rail-refinement'),p.token);adoptAuthored();
+        setIssue('Общие магистрали перестроены. Проверьте результат.');
+      }catch(e){setIssue('RAIL_REFINEMENT_FAILED: '+String(e));}
+    }:undefined}
+    onPreviewRouteRefinement={authoringRef.current&&tool==='select'&&activeSheet.wires.some(w=>w.needs_routing_review)?(extended=false)=>{
+      const a=authoringRef.current!;
+      if(extended&&!window.confirm('Расширенный поиск проверяет до 48 дополнительных вариантов маршрутов. Запустить?'))return;
+      try{
+        const p=a.previewRouteRefinement(extended);
+        if(!p.token){setIssue('Не найдено безопасное улучшение маршрутов.');return;}
+        if(!window.confirm('Перестроить '+p.operations.length+' маршрутов, отмеченных для проверки? Изгибы: '+p.before.bends+' → '+p.after.bends+', пересечения: '+p.before.crossings+' → '+p.after.crossings+', длина: '+(p.before.lengthUm/1000).toFixed(3)+' → '+(p.after.lengthUm/1000).toFixed(3)+' мм. Применить?')){
+          a.discardLayoutPreview(p.token);return;
+        }
+        a.applyLayoutPreview(a.newTransaction('apply-route-refinement'),p.token);adoptAuthored();
+        setIssue('Маршруты упрощены. Проверьте результат.');
+      }catch(e){setIssue('ROUTE_REFINEMENT_FAILED: '+String(e));}
+    }:undefined}
+    onPreviewFunctionalRouting={authoringRef.current&&tool==='select'&&!activeSheet.wires.length&&!activeSheet.junctions.length&&!activeSheet.splices.length?(extended=false)=>{
+      const a=authoringRef.current!;
+      if(extended&&!window.confirm('Сравнить три варианта компоновки с полной трассировкой? Поиск может занять больше времени.'))return;
+      if(!window.confirm('Проверить компоновку функциональных связей и совместную разводку? Возможны перемещения, повороты УГО и пересечения крестом без электрического соединения. До подтверждения проект не изменится.'))return;
+      try{
+        const p=extended?a.previewFunctionalAlternatives():a.previewFunctionalRouting();
+        if(!p.token){setIssue('Компоновка: '+p.routed+'/'+p.requested+' цепей; проект не изменён. '+p.outcomes.filter(o=>o.rejected).map(o=>o.name+': '+o.rejected).join('; '));return;}
+        if(!window.confirm('Найдена полная разводка '+p.routed+'/'+p.requested+' цепей. Вариант: '+(p.variant==='functional'?'функциональные связи':'около микросхем')+'. Изгибов: '+p.quality.bends+', пересечений: '+p.quality.crossings+', длина '+(p.quality.lengthUm/1000).toFixed(3)+' мм. Применить компоновку и маршруты одним действием?')){
+          a.discardLayoutPreview(p.token);return;
+        }
+        a.applyLayoutPreview(a.newTransaction('apply-functional-routing'),p.token);adoptAuthored();
+        setIssue('Компоновка и трассировка завершены: '+p.routed+'/'+p.requested+' цепей. Проверьте маршруты.');
+      }catch(e){setIssue('FUNCTIONAL_ROUTING_FAILED: '+String(e));}
+    }:undefined}
+    onPreviewHubPlacement={authoringRef.current&&tool==='select'&&!activeSheet.wires.length&&!activeSheet.junctions.length&&!activeSheet.splices.length?()=>{
+      const a=authoringRef.current!;
+      try{
+        const p=a.previewHubPlacement();
+        if(!p.token){setIssue('Не найдено безопасное улучшение компоновки.');return;}
+        if(!window.confirm('Предлагается переместить или повернуть '+p.moved.length+' двухвыводных УГО. Суммарный размах цепей: '+(p.beforeSpanUm/1000).toFixed(3)+' → '+(p.afterSpanUm/1000).toFixed(3)+' мм (оценка, не длина маршрутов). Применить?')){
+          a.discardLayoutPreview(p.token);return;
+        }
+        a.applyLayoutPreview(a.newTransaction('apply-hub-placement'),p.token);adoptAuthored();
+        setIssue('Компоновка: перемещено '+p.moved.length+' УГО. Состав электрических цепей сохранён.');
+      }catch(e){setIssue('HUB_PLACEMENT_FAILED: '+String(e));}
+    }:undefined}
+    onPrepareInitialRouting={authoringRef.current&&tool==='select'&&!activeSheet.wires.length&&!activeSheet.junctions.length&&!activeSheet.splices.length?()=>{
+      const a=authoringRef.current!;
+      if(!window.confirm('Сместить УГО у полей внутрь листа, чтобы освободить выходы физических выводов? Состав цепей и графические объекты сохранятся.'))return;
+      try{const result=a.prepareInitialRouting(a.newTransaction('prepare-initial-routing'));adoptAuthored();
+        setIssue('Подготовка трассировки: смещено '+result.moved+' УГО, максимальное смещение '+(result.maxShiftUm/1000).toFixed(3)+' мм.');}
+      catch(e){setIssue(e instanceof WireError&&e.code==='NO_CHANGE'?'Выходы у полей уже свободны.':'PREPARE_ROUTE_FAILED: '+String(e));}
+    }:undefined}
+    onPreviewInitialBatch={authoringRef.current&&tool==='select'?(ids,controlled)=>{
+      const a=authoringRef.current!;
+      try{
+        if(controlled&&!window.confirm('Зарезервировать выходы выводов и разрешить только пересечения крестом без электрического соединения, если обход невозможен?'))return;
+        const p=a.previewInitialBatch(ids,controlled);
+        if(!p.token){
+          setIssue('Совместная трассировка: '+p.routed+'/'+p.requested+' цепей. Без изменений. '+p.outcomes.filter(o=>o.rejected).map(o=>o.name+': '+o.rejected).join('; '));
+          return;
+        }
+        if(!window.confirm('Найдена совместная разводка '+p.routed+'/'+p.requested+' цепей. Пересечений: '+p.quality.crossings+', изгибов: '+p.quality.bends+', длина '+(p.quality.lengthUm/1000).toFixed(3)+' мм. Применить весь пакет?')){
+          a.discardLayoutPreview(p.token);return;
+        }
+        a.applyLayoutPreview(a.newTransaction('apply-initial-batch'),p.token);adoptAuthored();
+        setIssue('Совместная трассировка: '+p.routed+'/'+p.requested+' цепей. Проверьте маршруты.');
+      }catch(e){setIssue('BATCH_PREVIEW_FAILED: '+String(e));}
+    }:undefined}
+    onRouteInitialBatch={authoringRef.current&&tool==='select'?ids=>{
+      const a=authoringRef.current!;
+      if(!window.confirm('Развести '+ids.length+' объявленных цепей? Если хотя бы одну не удастся безопасно развести, весь пакет будет отменён.'))return;
+      try{const result=a.routeInitialNets(a.newTransaction('initial-net-batch'),ids);adoptAuthored();
+        setIssue('Пакетная трассировка: '+result.nets+' цепей, '+result.wires+' проводников, '+result.bends+' изгибов. Проверьте маршруты.');}
+      catch(e){setIssue('BATCH_ROUTE_FAILED: '+String(e));}
+    }:undefined}
+    onRouteInitialNet={authoringRef.current&&tool==='select'?id=>{
+      const a=authoringRef.current!;
+      if(!window.confirm('Развести объявленную цепь? Состав Net и положения УГО сохранятся. Маршрут потребует проверки.'))return;
+      try{const result=a.buildNetTree(a.newTransaction('initial-net-route'),id,true);adoptAuthored();
+        setIssue('Первичная трассировка: '+result.pins+' выводов, '+result.bends+' изгибов. Проверьте маршрут.');}
+      catch(e){setIssue('INITIAL_NET_ROUTE_FAILED: '+String(e));}
+    }:undefined}
+    onBuildNetTree={authoringRef.current&&tool==='select'?id=>{
+      const a=authoringRef.current!;
+      if(!window.confirm('Перестроить выбранную цепь в ортогональное дерево? Положения УГО и состав Net сохранятся, проводники и узлы этой цепи будут заменены.'))return;
+      try{const result=a.buildNetTree(a.newTransaction('build-net-tree'),id);adoptAuthored();
+        setIssue('Дерево: '+result.pins+' выводов, '+result.junctions+' узлов, '+result.bends+' изгибов, длина '+(result.lengthUm/1000).toFixed(3)+' мм. Проверьте маршрут.');}
+      catch(e){setIssue(e instanceof WireError&&e.code==='NO_CHANGE'?'Дерево уже построено.':'NET_TREE_FAILED: '+String(e));}
+    }:undefined}
+    onBuildNetRail={authoringRef.current&&tool==='select'?id=>{
+      const a=authoringRef.current!;
+      if(!window.confirm('Перестроить выбранную цепь в общую магистраль? Положения УГО и состав Net сохранятся, проводники и узлы этой цепи будут заменены.'))return;
+      try{const result=a.buildNetRail(a.newTransaction('build-net-rail'),id);adoptAuthored();
+        setIssue('Магистраль: '+result.pins+' выводов, '+result.junctions+' узлов, длина '+(result.lengthUm/1000).toFixed(3)+' мм. Проверьте маршрут.');}
+      catch(e){setIssue(e instanceof WireError&&e.code==='NO_CHANGE'?'Магистраль уже построена.':'NET_RAIL_FAILED: '+String(e));}
+    }:undefined}
+    catalogMissingCount={authoringRef.current?catalogAdditions(document.project.part_definitions,document.project.symbol_definitions).length:0}
+    onCatalogUpgrade={authoringRef.current?()=>{
+      try{const a=authoringRef.current!;const added=a.upgradeCatalog(a.newTransaction('upgrade-catalog'));
+        adoptAuthored();setIssue('Добавлено УГО: '+added+'. Существующая библиотека, PinRef и Nets сохранены.');}
+      catch(e){setIssue('CATALOG_UPGRADE_FAILED: '+String(e));}
+    }:undefined}
+    selected={selected} groupSelectionIds={groupIds} diagnostics={diagnostics}
+    diagnosticCounts={diagnosticReport?{...diagnosticReport.counts,warning:diagnosticReport.counts.warning+(overflow.total>0?1:0),info:diagnosticReport.counts.info+2}:undefined}
+    clipboardSummary={clipboard?.kind==='group'?`Буфер: ${clipboard.template.components.length} УГО · ${clipboard.template.nets.length} внутренних цепей · ${clipboard.template.omittedNetCount} внешних исключено`:clipboard?.kind==='single'?'Буфер: 1 УГО без связей':undefined}
     canvas={<div className="gscad-canvas-wrapper">
       <input ref={fileInputRef} type="file" accept=".json,.gscad" data-testid="project-file-input"
         style={{display:'none'}} onChange={e=>{
           void handleOpen(e.currentTarget.files?.[0]??null);
           e.currentTarget.value='';
         }}/>
-      <CanvasViewport document={document} snapshot={snapshot} sheetId={activeSheet.id}
+      <CanvasViewport key={sessionEpochRef.current+':'+activeSheet.id} document={document} snapshot={snapshot} sheetId={activeSheet.id}
+        selectedInstanceId={selected?.id??null} selectedGroupIds={groupIds} selectionReset={selectionReset}
         tool={tool} gridVisible={grid} snapEnabled={snap}
         zoomRequest={zoomRequest??undefined} fitRequest={fitRequest}
-        onIntent={onCanvasIntent} onZoomPercent={percent=>setZoom(percent/100)}/>
+        onIntent={onCanvasIntent} onZoomPercent={percent=>setZoom(percent/100)}
+        canEdit={!!authoringRef.current}
+        placementSymbolId={tool==='place'?placementSymbol:null}
+        onOpenProperties={()=>setPropertiesRequest(n=>n+1)}
+        onCancelPlacement={()=>{setTool('select');setPlacementSymbol(null);setPending(null);setIssue('Размещение УГО отменено.');}}
+        placementHint={pinMagnet&&tool==='place'&&placementSymbol&&authoringRef.current?at=>authoringRef.current?.suggestAlignedPlacement(placementSymbol,at)??null:undefined}
+        onCopy={authoringRef.current&&(selectedInst||groupIds.length>1)&&tool==='select'?handleCopy:undefined}
+        onPaste={authoringRef.current&&clipboard&&tool==='select'?handlePaste:undefined}
+        onFitPage={()=>setFitRequest(n=>n+1)}/>
       {overflow.total>0&&<div data-testid="gscad-paper-warning"
         className="gscad-paper-warning" role="status">
         За пределами листа: {overflow.symbols.length} УГО, {overflow.wires.length} проводников,
         {overflow.graphics.length} графических объектов. Проверьте расположение и экспорт.
       </div>}
-      {/(?:NET_CONFLICT|SOURCE_LOCKED|STALE_|UNKNOWN_|REROUTE_|MISMATCH|NOT_READY|ERROR|FAILED|DUPLICATE_|INVALID_)/.test(issue)
+      {issue.startsWith('REROUTE_CANCELLED:')?<div className="gscad-notice-warning" role="status" data-testid="reroute-cancelled">
+        <span>Перемещение отменено. Схема не изменена.</span>
+        <button type="button" aria-label="Закрыть уведомление" onClick={()=>setIssue('Изменение отменено.')}>×</button>
+      </div>:issue.startsWith('REROUTE_REVIEW_REQUIRED:')?<div className="gscad-notice-warning" role="status" data-testid="reroute-warning">
+        <span>⚠</span><span>Связи перестроены. Электрическая модель сохранена; проверьте маршруты.</span>
+        <button type="button" aria-label="Закрыть уведомление" onClick={()=>setIssue('Маршруты доступны для проверки в диагностике.')}>×</button>
+      </div>:/(?:NET_CONFLICT|SOURCE_LOCKED|STALE_|UNKNOWN_|REROUTE_|MISMATCH|NOT_READY|ERROR|FAILED|DUPLICATE_|INVALID_|NO_SAFE_PASTE)/.test(issue)
         && <div className="gscad-error-banner" role="alert">{issue}</div>}
     </div>}
     tool={tool} gridVisible={grid} snapEnabled={snap} zoomPercent={Math.round(zoom*100)}
@@ -671,8 +978,8 @@ export default function App() {
       setZoomRequest(old=>({percent,token:(old?.token??0)+1}));}}
     onFitPage={()=>setFitRequest(n=>n+1)}
     canUndo={history.undo>0} canRedo={history.redo>0} canSave={true} exportReady={true}
-    inspectorError={null}
-    onToolChange={mode=>{setTool(mode);setPending(null);}}
+    inspectorError={issue.startsWith('INSPECTOR_REJECTED:')?issue:null}
+    onToolChange={mode=>{setTool(mode);setPending(null);if(mode!=='place')setPlacementSymbol(null);if(mode!=='select')setGroupIds([]);}}
     onToggleGrid={value=>{
       if(value!==grid){contentEpochRef.current++;setDirty(true);}
       setGrid(value);
@@ -682,15 +989,17 @@ export default function App() {
     }}
     onPlaceSymbol={id=>{
       if(!authoringRef.current){setIssue('SOURCE_LOCKED: E695 нельзя дополнять новыми исходными PinRef.');return;}
-      setPlacementSymbol(id);setTool('place');setIssue('Кликните на листе для размещения '+id+' (DRAFT).');
+      setGroupIds([]);setPlacementSymbol(id);setTool('place');setIssue('Кликните на листе для размещения '+id+' (DRAFT).');
     }}
     onSelectTreeItem={id=>{const i=instances.find(v=>v.id===id);
-      if(i)setSelectedId(i.id);else setIssue('Структура: '+id);}}
+      setSelectionReset(n=>n+1);
+      setGroupIds([]);setSelectedId(i?.id??null);
+      if(!i)setIssue('Структура: '+id);}}
     onSelectSheet={id=>{
       const author=authoringRef.current;
       if(!author)return;
       try{author.selectSheet(author.newTransaction('switch-sheet'),id);
-        adoptAuthored();setSelectedId(null);setTool('select');
+        adoptAuthored();setGroupIds([]);setSelectedId(null);setTool('select');
       }catch(e){setIssue('SHEET_REJECTED: '+String(e));}
     }}
     onInspectorProposal={(edit:InspectorProposal)=>{
@@ -739,6 +1048,77 @@ export default function App() {
       }catch(e){setIssue('INSPECTOR_REJECTED: '+String(e));}
     }}
     onUndo={handleUndo} onRedo={handleRedo}
+    onCopy={authoringRef.current&&(selectedInst||groupIds.length>1)&&tool==='select'?handleCopy:undefined}
+    onPaste={authoringRef.current&&clipboard&&tool==='select'?handlePaste:undefined}
+    smartRouting={smartRouting} onToggleSmartRouting={authoringRef.current?setSmartRouting:undefined}
+    pinMagnet={pinMagnet} onTogglePinMagnet={authoringRef.current?setPinMagnet:undefined}
+    layoutPreview={layoutPreview?{plan:layoutPreview.plan,beforeSrc:layoutPreview.beforeSrc,afterSrc:layoutPreview.afterSrc}:undefined}
+    onCancelLayoutPreview={()=>{
+      if(layoutPreview?.plan.token)layoutPreview.owner.discardLayoutPreview(layoutPreview.plan.token);
+      setLayoutPreview(null);
+    }}
+    onApplyLayoutPreview={()=>{
+      if(!layoutPreview?.plan.token)return;
+      const {owner,plan,sessionEpoch,contentEpoch}=layoutPreview;
+      setLayoutPreview(null);
+      try{
+        if(owner!==authoringRef.current||sessionEpoch!==sessionEpochRef.current||contentEpoch!==contentEpochRef.current)
+          throw new WireError('STALE_REVISION','Layout preview no longer belongs to the current document');
+        owner.applyLayoutPreview(owner.newTransaction('optimize-layout'),plan.token!);adoptAuthored();
+        setIssue('Компоновка оптимизирована: изгибы '+plan.before.bends+' → '+plan.after.bends+'. Проверьте маршруты.');
+      }catch(e){owner.discardLayoutPreview(plan.token!);setIssue('LAYOUT_OPTIMIZE_FAILED: '+String(e));}
+    }}
+    onOptimizeLayout={authoringRef.current&&tool==='select'?()=>{
+      const a=authoringRef.current!,ids=groupIds.length>1?groupIds:[];
+      try{
+        const p=a.previewLayout(ids);
+        if(!p.token){setIssue('Без изменений: безопасного улучшения компоновки не найдено.'+(p.limited?' Поиск ограничен.':''));return;}
+        const images=layoutComparisonImages(a.file,a.layoutPreviewDocument(p.token));
+        setLayoutPreview({plan:p,owner:a,sessionEpoch:sessionEpochRef.current,contentEpoch:contentEpochRef.current,...images});
+      }catch(e){setIssue('LAYOUT_OPTIMIZE_FAILED: '+String(e));}
+    }:undefined}
+    onSimplifyRoutes={authoringRef.current&&tool==='select'?()=>{
+      const a=authoringRef.current!,ids=groupIds.length>1?groupIds:[];
+      if(!window.confirm(ids.length?'Упростить прямые межвыводные проводники внутри выделения?':'Упростить прямые межвыводные проводники активного листа? Положение УГО и электрические цепи не изменятся.'))return;
+      try{const result=a.simplifyRoutes(a.newTransaction('simplify-routes'),ids);adoptAuthored();
+        setIssue('Оптимизировано '+result.changed+' из '+result.checked+' проводников; устранено изгибов: '+result.removedBends+'; сокращено '+(result.removedLengthUm/1000).toFixed(3)+' мм. Проверьте маршруты.');}
+      catch(e){setIssue(e instanceof WireError&&e.code==='NO_CHANGE'?'Без изменений: безопасного улучшения не найдено.':'ROUTE_CLEANUP_FAILED: '+String(e));}
+    }:undefined}
+    onDistributeParallel={authoringRef.current&&groupIds.length>=3&&tool==='select'?()=>{
+      const a=authoringRef.current!;
+      if(!window.confirm('Выровнять и равномерно распределить параллельные УГО, затем перестроить обе магистрали? Состав цепей сохранится.'))return;
+      try{const result=a.buildParallelRails(a.newTransaction('parallel-distribution'),groupIds,true);adoptAuthored();
+        setIssue('Распределены параллельные ветви: '+result.branches+', построены магистрали и явные узлы. Проверьте маршруты.');}
+      catch(e){setIssue(e instanceof WireError&&e.code==='NO_CHANGE'?'Параллельные ветви уже распределены.':'PARALLEL_LAYOUT_FAILED: '+String(e));}
+    }:undefined}
+    onBuildParallelRails={authoringRef.current&&groupIds.length>=3&&tool==='select'?()=>{
+      const a=authoringRef.current!;
+      if(!window.confirm('Перестроить две замкнутые параллельные цепи в общие магистрали? УГО и состав Nets сохранятся, проводники и узлы этих двух цепей будут заменены.'))return;
+      try{const result=a.buildParallelRails(a.newTransaction('parallel-rails'),groupIds);adoptAuthored();
+        setIssue('Построены '+(result.axis==='horizontal'?'горизонтальные':'вертикальные')+' магистрали: ветвей '+result.branches+', проводников '+result.wires+', узлов '+result.junctions+'. Проверьте маршруты.');}
+      catch(e){setIssue(e instanceof WireError&&e.code==='NO_CHANGE'?'Магистрали уже построены.':'PARALLEL_LAYOUT_FAILED: '+String(e));}
+    }:undefined}
+    onDistributeSeries={authoringRef.current&&groupIds.length>=3&&tool==='select'?()=>{
+      const a=authoringRef.current!;
+      if(!window.confirm('Выровнять цепочку и сделать одинаковыми промежутки между физическими выводами? Продольные координаты крайних УГО сохранятся.'))return;
+      try{const result=a.alignSeries(a.newTransaction('distribute-series'),groupIds,true);adoptAuthored();
+        setIssue('Цепочка распределена по равным межвыводным промежуткам: перемещено УГО '+result.moved+', изменено проводников '+result.wires+'. Проверьте маршруты.');}
+      catch(e){setIssue(e instanceof WireError&&e.code==='NO_CHANGE'?'Цепочка уже распределена.':'SERIES_SPACING_FAILED: '+String(e));}
+    }:undefined}
+    onAlignSeries={authoringRef.current&&groupIds.length>=3&&tool==='select'?()=>{
+      const a=authoringRef.current!;
+      if(!window.confirm('Выровнять выделенную последовательную цепочку по физическим выводам? Внешние соединения и закреплённые УГО останутся на месте.'))return;
+      try{const result=a.alignSeries(a.newTransaction('align-series'),groupIds);adoptAuthored();
+        setIssue('Цепочка выровнена '+(result.axis==='horizontal'?'горизонтально':'вертикально')+': перемещено УГО '+result.moved+', перестроено проводников '+result.wires+', устранено изгибов '+result.removedBends+'. Проверьте маршруты.');}
+      catch(e){setIssue(e instanceof WireError&&e.code==='NO_CHANGE'?'Цепочка уже выровнена.':'SERIES_ALIGN_FAILED: '+String(e));}
+    }:undefined}
+    onAlignConnectedPair={authoringRef.current&&groupIds.length===2&&tool==='select'?()=>{
+      const a=authoringRef.current!;
+      if(!window.confirm('Выровнять соединённые физические выводы, переместив один из двух элементов? Остальные связи сохраняются.'))return;
+      try{const result=a.alignConnectedPair(a.newTransaction('align-connected-pair'),groupIds);adoptAuthored();
+        setIssue('Выводы выровнены: '+result.beforeBends+' изгибов → 0. Проверьте маршрут.');}
+      catch(e){setIssue('ALIGN_FAILED: '+String(e));}
+    }:undefined}
     onNew={handleNew}
     activePaper={activeSheet.frame.paper.split(' ')[0] as 'A4'|'A3'|'A2'}
     onPaperChange={authoringRef.current?paper=>{

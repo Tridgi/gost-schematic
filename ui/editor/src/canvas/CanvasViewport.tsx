@@ -1,8 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent, type MouseEvent as ReactMouseEvent } from 'react';
+import {noteLayout} from '../model/symbol-notes.mjs';
+import {planComponentLabels} from './component-labels';
+import { createPortal } from 'react-dom';
+import type { PlacementHint } from '../authoring/session';
 import type { ProjectFileV2 } from '../model/contract';
 import type { WiringSnapshot } from '../wires/manual-wire';
-import { projectToCanvasScene, type CanvasScene, type CanvasSymbol } from './scene-projection.mjs';
-import { pinWorld, screen, zoom, type Camera, type PointUm, type ScreenPoint } from './precision.mjs';
+import { projectToCanvasScene, projectPlacementSymbol, type CanvasScene, type CanvasSymbol } from './scene-projection.mjs';
+import { pinWorld, screen, zoom, world, snap, type Camera, type PointUm, type ScreenPoint } from './precision.mjs';
 import { createCanvasController, type CanvasController, type CanvasIntent, type CanvasContext } from './controller.mjs';
 
 export type CanvasViewportProps = {
@@ -17,41 +21,94 @@ export type CanvasViewportProps = {
   onZoomPercent?: (percent: number) => void;
   zoomRequest?: {percent:50|100|200;token:number};
   fitRequest?:number;
+  selectedInstanceId:string|null;
+  selectedGroupIds:readonly string[];
+  selectionReset:number;
+  canEdit?:boolean;
+  placementHint?:(origin:readonly number[])=>PlacementHint|null;
+  placementSymbolId?:string|null;
+  onCancelPlacement?:()=>void;
+  onOpenProperties?:()=>void;
+  onCopy?:()=>void;
+  onPaste?:()=>void;
+  onFitPage?:()=>void;
 };
 
 const DEFAULT_CAMERA:Camera={s:.004,x:24,y:24};
 const asCoords=(p:ScreenPoint)=>({x:p.x,y:p.y});
 const g2=(n:number)=>Number.isFinite(n)?n:0;
-function localStroke(symbol:CanvasSymbol,p:PointUm,camera:Camera):ScreenPoint {
+function localStroke(symbol:CanvasSymbol,p:readonly [number,number],camera:Camera):ScreenPoint {
   const x=symbol.mirror_x?-p[0]:p[0],y=p[1];
   const xy=symbol.rotation_deg===0?[x,y]:symbol.rotation_deg===90?[-y,x]:
     symbol.rotation_deg===180?[-x,-y]:[y,-x];
   return screen([symbol.origin_um[0]+xy[0],symbol.origin_um[1]+xy[1]],camera);
 }
+function SymbolInk({symbol,camera}:{symbol:CanvasSymbol;camera:Camera}){
+ return <>
+  {symbol.inkStrokes.map((stroke,i)=>{
+   const a=localStroke(symbol,stroke.from_um,camera),b=localStroke(symbol,stroke.to_um,camera);
+   return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} strokeWidth={Math.max(.65,stroke.stroke_um*camera.s)}/>;
+  })}
+  {symbol.curves.map((curve,i)=>{
+   const center=localStroke(symbol,curve.center,camera),radius=curve.radius*camera.s;
+   const width=Math.max(.65,curve.stroke_um*camera.s);
+   if(curve.kind==='circle')return <circle key={i} data-ugo-curve="circle" cx={center.x} cy={center.y} r={radius} strokeWidth={width}/>;
+   const a=localStroke(symbol,curve.points_um[0],camera),b=localStroke(symbol,curve.points_um[2],camera);
+   const sweep=symbol.mirror_x?1-curve.sweep:curve.sweep;
+   return <path key={i} data-ugo-curve="semicircle" d={`M ${a.x} ${a.y} A ${radius} ${radius} 0 0 ${sweep} ${b.x} ${b.y}`} strokeWidth={width}/>;
+  })}
+  {symbol.notes.map(n=>{
+   const at=localStroke(symbol,n.at_um,camera);
+   const h=n.height_um*camera.s,y=at.y+(n.vertical==='top'?h:n.vertical==='center'?Math.round(n.height_um/3)*camera.s:0);
+   return <text key={n.key} data-symbol-note={n.key} data-electrical="false" x={at.x} y={y}
+     textAnchor={noteLayout(n,n.at_um).anchor} fontSize={Math.max(6,h)} fontFamily="GSCAD Technical, OpenGost Type A, sans-serif"
+     fill="#24384b" stroke="none">{n.text}</text>;
+  })}
+ </>;
+}
 /** Read-only SVG viewport. The canonical physical print/export belongs to #124. */
-export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapEnabled,onIntent,onZoomPercent,zoomRequest,fitRequest}:CanvasViewportProps){
+export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapEnabled,onIntent,onZoomPercent,zoomRequest,fitRequest,selectedInstanceId:hostSelectedId,selectedGroupIds,selectionReset,canEdit,placementHint,placementSymbolId,onCancelPlacement,onOpenProperties,onCopy,onPaste,onFitPage}:CanvasViewportProps){
   const svgRef=useRef<SVGSVGElement|null>(null);
-  const [size,setSize]=useState({width:960,height:640});
+  const [size,setSize]=useState({width:0,height:0});
   const [revision,setRevision]=useState(0);
+  const [placementPointer,setPlacementPointer]=useState<ScreenPoint|null>(null);
+  const placementTemplate=useMemo(()=>tool==='place'&&placementSymbolId?projectPlacementSymbol(document,sheetId,placementSymbolId):null,
+    [document,sheetId,tool,placementSymbolId]);
+  useEffect(()=>{
+    if(tool!=='place'){setPlacementPointer(null);return;}
+    const cancel=(e:KeyboardEvent)=>{
+      if(e.key==='Escape'&&!e.defaultPrevented&&!e.isComposing&&!e.ctrlKey&&!e.metaKey&&!e.altKey){
+        e.preventDefault();setPlacementPointer(null);onCancelPlacement?.();
+      }
+    };
+    window.addEventListener('keydown',cancel,true);
+    return ()=>window.removeEventListener('keydown',cancel,true);
+  },[tool,onCancelPlacement]);
+  const [contextMenu,setContextMenu]=useState<{x:number;y:number;kind:'symbol'|'group'|'blank';revision:number}|null>(null);
+  const menuRef=useRef<HTMLDivElement|null>(null);
   const cameraRef=useRef<Camera>({...DEFAULT_CAMERA});
   const scene=useMemo(()=>projectToCanvasScene(document,sheetId),[document,sheetId]);
   // Snapshot carries the real #123 wire edits; original serialized routes are only the initial view.
   const visibleScene=useMemo<CanvasScene>(()=>({...scene,wires:snapshot.wires,junctions:snapshot.junctions,splices:snapshot.splices}),[scene,snapshot]);
+  const componentLabels=useMemo(()=>planComponentLabels(document,sheetId,visibleScene),[document,sheetId,visibleScene]);
   const callbackRef=useRef(onIntent);
   callbackRef.current=onIntent;
   const controllerRef=useRef<CanvasController|null>(null);
   if(!controllerRef.current){
     controllerRef.current=createCanvasController({
       scene:visibleScene,wireSnapshot:snapshot,camera:cameraRef.current,tool,
-      gridUm:document.project.settings.grid_step_um,snapEnabled,
+      gridUm:document.project.settings.grid_step_um,snapEnabled,canTap:!!canEdit,
       onIntent:intent=>callbackRef.current(intent)
     });
   }
   const controller=controllerRef.current;
   controller.setContext({
-    scene:visibleScene,wireSnapshot:snapshot,tool,snapEnabled,
+    scene:visibleScene,wireSnapshot:snapshot,tool,snapEnabled,canTap:!!canEdit,
     gridUm:document.project.settings.grid_step_um,onIntent:intent=>callbackRef.current(intent)
   });
+  const selectionResetRef=useRef(selectionReset);
+  controller.syncSymbolSelection(hostSelectedId,selectionResetRef.current!==selectionReset,selectedGroupIds);
+  selectionResetRef.current=selectionReset;
   const invalidate=useCallback(()=>{setRevision(n=>n+1)},[]);
   const fittedRef=useRef<string|null>(null);
   const appliedZoomRef=useRef<number|null>(null);
@@ -59,12 +116,17 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
   /** Initial camera fits the actual signed E695 scene, not a hardcoded sheet corner.
    * A pin outside the visible viewport is not an actionable CAD endpoint.
    */
-  useEffect(()=>{
+  useLayoutEffect(()=>{
     const identity=document.project.id+':'+sheetId+':'+
       document.project.sheets.find(s=>s.id===sheetId)?.frame.size_um.join('x')+':'+fitRequest;
     if(fittedRef.current===identity)return;
     const bounds=svgRef.current?.getBoundingClientRect();
     if(!bounds||bounds.width<100||bounds.height<100)return;
+    // The rendered viewBox must use the measured viewport before fitting.
+    // Default dimensions and a later ResizeObserver caused shifted clicks.
+    if(Math.abs(size.width-bounds.width)>0.5||Math.abs(size.height-bounds.height)>0.5){
+      setSize({width:bounds.width,height:bounds.height});return;
+    }
     const all:PointUm[]=[];
     // R10: fit the authoritative physical sheet, not just its populated ink.
     // A small populated circuit must not zoom so far that the A4/A3/A2 page
@@ -137,31 +199,109 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
   },[zoomRequest,controller,size.width,size.height,invalidate]);
   const camera=controller.getState().camera;
   cameraRef.current=camera;
+  // Derive guide from current tool, model and pointer; no post-render reset race.
+  let placementGuide:PlacementHint|null=null;
+  const placementOrigin=tool==='place'&&placementPointer?snap(world(placementPointer,camera),document.project.settings.grid_step_um,snapEnabled):null;
+  if(placementOrigin&&placementHint){
+    try{placementGuide=placementHint(placementOrigin);}
+    catch{placementGuide=null;}
+  }
+  const placementGhost:CanvasSymbol|null=placementTemplate&&placementOrigin?
+    {...placementTemplate,origin_um:placementGuide?[...placementGuide.origin]:[...placementOrigin]}:null;
   const local=useCallback((e:{clientX:number;clientY:number}):ScreenPoint=>{
-    const r=svgRef.current?.getBoundingClientRect();
+    const svg=svgRef.current,ctm=svg?.getScreenCTM();
+    if(svg&&ctm){const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;
+      const at=p.matrixTransform(ctm.inverse());return {x:at.x,y:at.y};}
+    const r=svg?.getBoundingClientRect();
     return {x:e.clientX-(r?.left??0),y:e.clientY-(r?.top??0)};
   },[]);
-  const eventPoint=(e:ReactPointerEvent<SVGSVGElement>)=>({...local(e),pointerId:e.pointerId,button:e.button});
+  const eventPoint=(e:ReactPointerEvent<SVGSVGElement>)=>({...local(e),pointerId:e.pointerId,button:e.button,ctrlKey:e.ctrlKey||e.metaKey,shiftKey:e.shiftKey});
   const down=(e:ReactPointerEvent<SVGSVGElement>)=>{
+    setContextMenu(null);setPlacementPointer(tool==='place'?local(e):null);
     if(controller.down(eventPoint(e))){
       e.preventDefault();e.currentTarget.focus();
       if(!e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.setPointerCapture(e.pointerId);
       invalidate();
     }
   };
-  const move=(e:ReactPointerEvent<SVGSVGElement>)=>{controller.move(eventPoint(e));invalidate()};
+  const move=(e:ReactPointerEvent<SVGSVGElement>)=>{
+    controller.move(eventPoint(e));
+    setPlacementPointer(tool==='place'?local(e):null);
+    invalidate();
+  };
   const up=(e:ReactPointerEvent<SVGSVGElement>)=>{
     controller.up(eventPoint(e));
     if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
     invalidate();
   };
   const wheel=(e:ReactWheelEvent<SVGSVGElement>)=>{
+    setContextMenu(null);
     e.preventDefault();
+    if(controller.getState().drag)return;
     controller.setContext({camera:zoom(controller.getState().camera,local(e),e.deltaY<0?1.15:.85)});
     const p=Math.round(controller.getState().camera.s/DEFAULT_CAMERA.s*100);
     appliedZoomRef.current=p;onZoomPercent?.(p);
     invalidate();
   };
+  const openContextMenu=(e:ReactMouseEvent<SVGSVGElement>)=>{
+    e.preventDefault();setContextMenu(null);
+    const kind=controller.contextSelect(local(e));
+    if(!kind)return;
+    setContextMenu({x:Math.max(6,Math.min(e.clientX,window.innerWidth-246)),
+      y:Math.max(6,Math.min(e.clientY,window.innerHeight-255)),kind,revision:snapshot.revision});
+    invalidate();
+  };
+  const dismissMenu=(restoreFocus=false)=>{
+    setContextMenu(null);
+    if(restoreFocus)svgRef.current?.focus();
+  };
+  useEffect(()=>{
+    if(!contextMenu)return;
+    menuRef.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
+    const outside=(event:PointerEvent)=>{
+      if(event.target instanceof Node&&!menuRef.current?.contains(event.target))setContextMenu(null);
+    };
+    const escape=(event:KeyboardEvent)=>{
+      if(event.key==='Escape'){
+        event.preventDefault();event.stopPropagation();setContextMenu(null);svgRef.current?.focus();
+      }
+    };
+    window.addEventListener('pointerdown',outside,true);
+    window.addEventListener('keydown',escape,true);
+    const blur=()=>setContextMenu(null);
+    window.addEventListener('blur',blur);
+    return ()=>{
+      window.removeEventListener('pointerdown',outside,true);
+      window.removeEventListener('keydown',escape,true);
+      window.removeEventListener('blur',blur);
+    };
+  },[contextMenu]);
+  useEffect(()=>{setContextMenu(null)},[snapshot.revision,tool,selectionReset]);
+  const runMenu=(action:()=>void)=>{
+    if(!contextMenu||contextMenu.revision!==snapshot.revision||tool!=='select'||controller.getState().drag||controller.getState().draft){
+      dismissMenu(true);return;
+    }
+    dismissMenu(true);action();invalidate();
+  };
+  const menuCommands=contextMenu?[
+    {label:'Свойства элемента',key:'properties',enabled:contextMenu.kind==='symbol'&&!!onOpenProperties,run:()=>onOpenProperties?.()},
+    {label:'Копировать',key:'copy',enabled:contextMenu.kind!=='blank'&&!!onCopy,run:()=>onCopy?.()},
+    {label:'Вставить',key:'paste',enabled:!!onPaste,run:()=>onPaste?.()},
+    {label:'Повернуть на 90°',key:'rotate',enabled:contextMenu.kind==='symbol'&&!!canEdit,run:()=>controller.key('r')},
+    {label:'Удалить УГО',key:'delete',enabled:contextMenu.kind==='symbol'&&!!canEdit,run:()=>controller.key('Delete')},
+    {label:'Вписать лист',key:'fit',enabled:!!onFitPage,run:()=>onFitPage?.()}
+  ]:[];
+  const dragPreview=controller.symbolDragPreview();
+  const dragSource=dragPreview&&visibleScene.symbols.find(s=>s.instance_id===dragPreview.instance_id&&s.component_id===dragPreview.component_id);
+  const ghost:CanvasSymbol|null=dragSource&&dragPreview?{...dragSource,origin_um:[
+    dragSource.origin_um[0]+dragPreview.delta_um[0],dragSource.origin_um[1]+dragPreview.delta_um[1]
+  ]}:null;
+  const groupDrag=controller.groupDragPreview();
+  const groupGhosts:CanvasSymbol[]=groupDrag?visibleScene.symbols.filter(s=>groupDrag.instance_ids.includes(s.instance_id)).map((s):CanvasSymbol=>({...s,origin_um:[s.origin_um[0]+groupDrag.delta_um[0],s.origin_um[1]+groupDrag.delta_um[1]]})):[];
+  const marquee=controller.marqueePreview();
+  const tap=controller.tapPreview();
+  const tapScreen=tap?screen(tap.at_um,camera):null;
+  const selectedGroup=new Set(controller.getState().selectedGroup);
   const selectedSymbol=controller.getState().selected;
   const selectedInstanceId=selectedSymbol?.kind==='symbol'?selectedSymbol.instance_id:null;
   const vertices=(snapshotWire:WiringSnapshot['wires'][number])=>new Map(snapshotWire.vertices.map(v=>[v.id,v.at_um]));
@@ -182,13 +322,22 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     marginEnd.x>marginStart.x&&marginEnd.y>marginStart.y;
   // Revision forces deliberate repaint of hover / drag preview without storing any Net state.
   void revision;
-  return <svg ref={svgRef} className="gscad-drawing" role="img" tabIndex={0}
+  return <><svg ref={svgRef} className="gscad-drawing" role="img" tabIndex={0}
+    data-camera-ready={fittedRef.current!==null?'true':'false'} data-tool={tool}
     data-testid="gscad-signed-svg-canvas" aria-label="Редактор электрической схемы, координаты в микрометрах"
-    viewBox={`0 0 ${g2(size.width)} ${g2(size.height)}`}
+    viewBox={`0 0 ${Math.max(1,g2(size.width))} ${Math.max(1,g2(size.height))}`}
     onPointerDown={down} onPointerMove={move} onPointerUp={up}
-    onPointerCancel={e=>{controller.key('Escape');if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);invalidate()}}
-    onWheel={wheel}
-    onKeyDown={e=>{if(['Escape','Enter','r','R','Delete','Backspace'].includes(e.key)){if(controller.key(e.key)){e.preventDefault();invalidate()}}}}
+    onPointerEnter={e=>{if(tool==='place')setPlacementPointer(local(e));}} onPointerLeave={()=>{setPlacementPointer(null);controller.clearTapPreview();invalidate();}}
+    onPointerCancel={e=>{setPlacementPointer(null);controller.key('Escape');if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);invalidate()}}
+    onWheel={e=>{setPlacementPointer(tool==='place'?local(e):null);wheel(e)}} onContextMenu={openContextMenu}
+    onDoubleClick={e=>{if(tool==='select'&&controller.contextSelect(local(e))==='symbol'){invalidate();onOpenProperties?.();}}}
+    onKeyDown={e=>{
+      // Never turn OS/browser shortcuts, held keys or IME composition into CAD edits.
+      if(e.defaultPrevented||e.ctrlKey||e.metaKey||e.altKey||e.repeat||e.nativeEvent.isComposing)return;
+      if(['Escape','Enter','r','R','Delete','Backspace'].includes(e.key)&&controller.key(e.key)){
+        e.preventDefault();invalidate();
+      }
+    }}
     style={{touchAction:'none',outlineOffset:2}}>
     <defs>
       {grid&&<pattern id="cad-grid-um" width={step} height={step}
@@ -226,13 +375,10 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
     </g>
     <g className="symbol-ugo" fill="none" stroke="#24384b" strokeWidth={1.5} pointerEvents="none">
       {visibleScene.symbols.map(s=><g key={s.instance_id} data-component-id={s.component_id}
-        data-selected={String(selectedInstanceId===s.instance_id)}
+        data-selected={String((selectedInstanceId===s.instance_id||selectedGroup.has(s.instance_id)))}
         data-testid={'symbol-'+(document.project.components.find(c=>c.id===s.component_id)?.refdes??s.component_id)}
-        stroke={selectedInstanceId===s.instance_id?'#e29225':undefined}>
-        {s.strokes.map((stroke,i)=>{
-          const a=localStroke(s,stroke.from_um,camera),b=localStroke(s,stroke.to_um,camera);
-          return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y}/>;
-        })}
+        stroke={(selectedInstanceId===s.instance_id||selectedGroup.has(s.instance_id))?'#e29225':undefined}>
+        <SymbolInk symbol={s} camera={camera}/>
       </g>)}
     </g>
     <g className="electric-wires" fill="none" stroke="#22799e" strokeWidth={1.9} pointerEvents="none">
@@ -255,6 +401,28 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
         return <circle key={j.id} data-junction-id={j.id} cx={p.x} cy={p.y} r={3.1}/>;
       })}
     </g>
+    <g className="sheet-annotations" data-electrical="false" pointerEvents="none" fill="#24384b" stroke="none">
+      {document.project.sheets.find(s=>s.id===sheetId)?.texts.filter(t=>document.project.sheets.find(s=>s.id===sheetId)?.layers.some(l=>l.id===t.layer_id&&l.visible)).map(t=>{
+        const p=screen(t.at_um,camera);
+        return <text key={t.id} data-testid={'sheet-text-'+t.id} x={p.x} y={p.y} fontSize={t.height_um*camera.s}
+          fontFamily="GSCAD Technical, OpenGost Type A, sans-serif" transform={t.rotation_deg?'rotate('+t.rotation_deg+' '+p.x+' '+p.y+')':undefined}>{t.text}</text>;
+      })}
+    </g>
+    <g className="component-labels" data-electrical="false" pointerEvents="none"
+      data-unplaced-label-count={componentLabels.unplaced.length}>
+      {componentLabels.labels.map(l=>{
+        const p=screen([l.x,l.y],camera);
+        return <g key={l.instanceId} data-instance-id={l.instanceId} fill="#24384b" stroke="none"
+          fontFamily="GSCAD Technical, OpenGost Type A, monospace" fontSize={l.heightUm*camera.s} textAnchor="middle">
+          <text data-label-role="reference" x={p.x} y={p.y}>{l.refdes}</text>
+          {l.value&&<text data-label-role="value" x={p.x} y={p.y+l.lineStepUm*camera.s}>{l.value}</text>}
+        </g>;
+      })}
+    </g>
+    {componentLabels.unplaced.length>0&&<g pointerEvents="none" data-electrical="false">
+      <title>{componentLabels.unplaced.map(l=>l.refdes+': '+l.reason).join('; ')}</title>
+      <text x={8} y={Math.max(16,size.height-10)} fontSize={11} fill="#9a4e00">Не размещено обозначений: {componentLabels.unplaced.length}</text>
+    </g>}
     <g className="physical-pin-markers" fill="#fff" stroke="#237f69" strokeWidth={1.35} pointerEvents="all">
       {visibleScene.symbols.flatMap(s=>s.pins.map(pin=>{
         const p=screen(pinWorld(s,pin.physical_pin_number).at_um,camera);
@@ -263,6 +431,41 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
           cx={p.x} cy={p.y} r={3}/>;
       }))}
     </g>
+    {tool==='place'&&placementGuide&&<g data-testid="pin-placement-guide" data-electrical="false" pointerEvents="none">
+      <line x1={screen(placementGuide.from,camera).x} y1={screen(placementGuide.from,camera).y}
+        x2={screen(placementGuide.to,camera).x} y2={screen(placementGuide.to,camera).y}
+        stroke="#29976a" strokeWidth={1.6} strokeDasharray="5 4"/>
+      <circle cx={screen(placementGuide.to,camera).x} cy={screen(placementGuide.to,camera).y} r={4} fill="none" stroke="#29976a"/>
+      <circle cx={screen(placementGuide.origin,camera).x} cy={screen(placementGuide.origin,camera).y} r={2.5} fill="#29976a"/>
+      <text x={screen(placementGuide.to,camera).x+7} y={screen(placementGuide.to,camera).y-7}
+        fill="#16754f" fontSize={11}>Выравнивание вывода {placementGuide.newPin}</text>
+    </g>}
+    {placementGhost&&<g data-testid="gscad-placement-preview" data-electrical="false"
+      data-symbol-id={placementSymbolId} data-origin-x-um={placementGhost.origin_um[0]} data-origin-y-um={placementGhost.origin_um[1]}
+      aria-label="Предпросмотр размещения УГО" pointerEvents="none" fill="none" stroke="#1469a8" opacity={.95}>
+      <SymbolInk symbol={placementGhost} camera={camera}/>
+      {placementGhost.pins.map(pin=>{
+        const p=screen(pinWorld(placementGhost,pin.physical_pin_number).at_um,camera);
+        return <circle key={pin.physical_pin_number} data-preview-pin={pin.physical_pin_number} cx={p.x} cy={p.y} r={3}
+          fill="#fff" stroke="#1469a8" strokeWidth={1.5}/>;
+      })}
+    </g>}
+    {ghost&&<g data-testid="gscad-symbol-drag-preview" data-electrical="false"
+      aria-label="Предпросмотр перемещения УГО" pointerEvents="none" fill="none" stroke="#d58c27"
+      strokeWidth={1.8} strokeDasharray="5 3" opacity={.9}>
+      <SymbolInk symbol={ghost} camera={camera}/>
+    </g>}
+    {groupGhosts.length>0&&<g data-testid="gscad-group-drag-preview" data-electrical="false"
+      pointerEvents="none" fill="none" stroke="#d58c27" strokeWidth={1.8} strokeDasharray="5 3">
+      {groupGhosts.map(s=><g key={s.instance_id}><SymbolInk symbol={s} camera={camera}/></g>)}
+    </g>}
+    {tapScreen&&<g data-testid="wire-tap-preview" data-electrical="false" pointerEvents="none">
+      <circle cx={tapScreen.x} cy={tapScreen.y} r={6} fill="white" fillOpacity={.85} stroke="#168051" strokeWidth={1.6}/>
+      <circle cx={tapScreen.x} cy={tapScreen.y} r={2.6} fill="#168051"/>
+    </g>}
+    {marquee&&<rect data-testid="gscad-selection-marquee" data-electrical="false"
+      {...marquee} fill="#2c82bd" fillOpacity={.12} stroke="#2c82bd" strokeWidth={1}
+      strokeDasharray="4 3" pointerEvents="none"/>}
     <g className="draft-preview" fill="none" stroke="#d58c27" strokeWidth={1.8}
       strokeDasharray="6 3" pointerEvents="none">
       {controller.preview().slice(1).map((p,i)=>{
@@ -270,6 +473,21 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
         return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y}/>;
       })}
     </g>
-  </svg>;
+  </svg>
+  {contextMenu&&createPortal(<div ref={menuRef} role="menu" aria-label="Контекстное меню схемы" data-testid="canvas-context-menu"
+    style={{position:'fixed',left:contextMenu.x,top:contextMenu.y,zIndex:1000,width:230,maxHeight:'calc(100vh - 12px)',overflowY:'auto',padding:5,
+      border:'1px solid var(--mantine-color-default-border)',borderRadius:6,background:'var(--mantine-color-body)',boxShadow:'0 4px 18px #0003'}}
+    onKeyDown={e=>{
+      if(!['ArrowDown','ArrowUp','Home','End'].includes(e.key))return;
+      e.preventDefault();const buttons=Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'));
+      if(!buttons.length)return;
+      const i=buttons.indexOf(globalThis.document.activeElement as HTMLButtonElement);
+      const next=e.key==='Home'?0:e.key==='End'?buttons.length-1:e.key==='ArrowDown'?(i+1)%buttons.length:(i-1+buttons.length)%buttons.length;
+      buttons[next].focus();
+    }}>
+    {menuCommands.map(cmd=><button type="button" role="menuitem" key={cmd.key} data-testid={'context-'+cmd.key} disabled={!cmd.enabled}
+      onClick={()=>runMenu(cmd.run)} style={{display:'block',width:'100%',textAlign:'left',padding:'7px 10px',border:0,borderRadius:3,background:'transparent',color:'var(--mantine-color-text)',opacity:cmd.enabled?1:.4,cursor:cmd.enabled?'pointer':'default'}}>{cmd.label}</button>)}
+  </div>,globalThis.document.body)}
+  </>;
 }
 export default CanvasViewport;

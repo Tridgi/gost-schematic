@@ -19,6 +19,7 @@ from ui.bridge.export.canonical import (
     export,
     mm,
 )
+from ui.bridge.export.component_labels import STEP, H, plan_component_labels
 
 _S = "{http://www.w3.org/2000/svg}"
 ET.register_namespace("", "http://www.w3.org/2000/svg")
@@ -113,7 +114,23 @@ def _draw_validated(document: dict, sheet_id: str) -> bytes:
             kind = primitive["kind"]
             points = [pin_world(inst,p) for p in primitive["points_um"]]
             width = primitive["stroke_um"]
-            if kind == "rect":
+            if kind in ("circle", "semicircle"):
+                if kind == "circle":
+                    (x,y), (u,v) = points
+                    radius = abs(u-x)+abs(v-y)
+                    ET.SubElement(group, _S+"circle", {"cx":mm(x),"cy":mm(y),"r":mm(radius),
+                        "stroke":"#000000","stroke-width":mm(width),"fill":"none"})
+                    bounds([(x-radius,y-radius),(x+radius,y+radius)],width)
+                else:
+                    a, m, b = points
+                    x,y = (a[0]+b[0])//2,(a[1]+b[1])//2
+                    radius = abs(a[0]-x)+abs(a[1]-y)
+                    sweep = int((a[0]-x)*(m[1]-y)-(a[1]-y)*(m[0]-x)>0)
+                    r = mm(radius)
+                    ET.SubElement(group, _S+"path", {"d":f"M {mm(a[0])},{mm(a[1])} A {r} {r} 0 0 {sweep} {mm(b[0])},{mm(b[1])}",
+                        "stroke":"#000000","stroke-width":mm(width),"fill":"none"})
+                    bounds(points,width)
+            elif kind == "rect":
                 if len(points) != 2:
                     raise ExportError("RECT_NEEDS_2_CORNERS")
                 x0,x1 = sorted((points[0][0],points[1][0]))
@@ -132,6 +149,22 @@ def _draw_validated(document: dict, sheet_id: str) -> bytes:
                 polyline(group, points, width)
             else:
                 raise ExportError("UNSUPPORTED_SYMBOL_PRIMITIVE: " + kind)
+
+        for note in symbol.get("constant_annotations", []):
+            x, y = pin_world(inst, note["at_um"])
+            h = note["height_um"]
+            y += h if note["vertical"] == "top" else (h+1)//3 if note["vertical"] == "center" else 0
+            anchor = {"left":"start","center":"middle","right":"end"}[note["horizontal"]]
+            w = (len(note["text"])+1)*h
+            left = x-h if anchor == "start" else x-w if anchor == "end" else x-(w+1)//2
+            right = x+w if anchor == "start" else x+h if anchor == "end" else x+(w+1)//2
+            extents.append((left,y-2*h,right,y+h))
+            label = ET.SubElement(group, _S+"text", {
+                "data-symbol-note":note["key"],"data-electrical":"false",
+                "x":mm(x),"y":mm(y),"font-size":mm(h),"text-anchor":anchor,
+                "font-family":"OpenGost Type A","fill":"#000000","stroke":"none",
+            })
+            label.text = note["text"]
 
     for wire in sheet["wires"]:
         if not printable(wire["layer_id"]):
@@ -195,6 +228,28 @@ def _draw_validated(document: dict, sheet_id: str) -> bytes:
             label.text = item["text"]
             if item.get("role") == "net_annotation":
                 label.set("data-net",nets[item["net_id"]]["name"])
+
+    labels, unplaced = plan_component_labels(document, sheet)
+    root.set("data-component-label-count", str(len(labels)))
+    root.set("data-unplaced-label-count", str(len(unplaced)))
+    ET.SubElement(root, _S+"metadata", {
+        "data-kind": "unplaced-component-labels",
+    }).text = json.dumps(unplaced, ensure_ascii=False, separators=(",", ":"))
+    for item in labels:
+        extents.append(item.bounds)
+        group = ET.SubElement(root, _S+"g", {
+            "data-layer": "component-labels", "data-electrical": "false",
+            "data-instance-id": item.instance_id,
+        })
+        for role, value, y in (("reference", item.refdes, item.y),
+                               ("value", item.value, item.y+STEP)):
+            if value:
+                label = ET.SubElement(group, _S+"text", {
+                    "data-label-role": role, "x": mm(item.x), "y": mm(y),
+                    "text-anchor": "middle", "font-size": mm(H),
+                    "font-family": "OpenGost Type A, monospace", "fill": "#000000", "stroke": "none",
+                })
+                label.text = value
 
     if not extents:
         extents.append((0,0,1000,1000))

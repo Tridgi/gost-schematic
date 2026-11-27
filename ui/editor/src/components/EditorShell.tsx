@@ -10,6 +10,8 @@ import {
   Magnet, Menu as MenuIcon, MousePointer2, Save, Search, Settings2,
   Undo2, Redo2, Type as TypeIcon, Moon, Sun, CircleDot
 } from 'lucide-react';
+import type {TopologyInventory} from '../authoring/topology-inventory.mjs';
+import type {LayoutPreview} from '../authoring/session';
 import { normalizeDockLayout, DOCK_LAYOUT_KEY, type DockLayout } from '../theme/layout';
 import { formatMillimetres, parseMillimetres } from './inspector-units';
 import { resolveShellShortcut } from './shortcuts';
@@ -26,7 +28,7 @@ export type SelectedInstance = {
   id: string; refdes: string; value: string; originUm: readonly [number,number];
   rotationDeg: 0|90|180|270; physicalPins: readonly { number:string; netName:string|null }[];
 };
-export type DiagnosticItem = {id:string; severity:'error'|'warning'|'info'; message:string};
+export type DiagnosticItem = {id:string; severity:'error'|'warning'|'info'; message:string;code?:string;instanceId?:string};
 export type InspectorProposal =
   | {kind:'propose-origin-axis';instanceId:string;axis:'x'|'y';um:number;baseRevision:string}
   | {kind:'propose-refdes';instanceId:string;refdes:string;baseRevision:string}
@@ -34,10 +36,12 @@ export type InspectorProposal =
 
 /** The host owns all electrical topology, source PinRefs, command validation and actual persistence. */
 export type EditorShellProps = {
-  projectName:string;dirty:boolean;baseRevision:string;
+  projectName:string;dirty:boolean;baseRevision:string;topology?:TopologyInventory;onBuildNetRail?:(netId:string)=>void;onBuildNetTree?:(netId:string)=>void;onRouteInitialNet?:(netId:string)=>void;onRouteInitialBatch?:(netIds:readonly string[])=>void;onPrepareInitialRouting?:()=>void;onPreviewHubPlacement?:()=>void;onPreviewFunctionalRouting?:(extended?:boolean)=>void;onPreviewRouteRefinement?:(extended?:boolean)=>void;onPreviewRailRefinement?:()=>void;onPreviewDetourRefinement?:(crossingOnly?:boolean)=>void;onPreviewInitialBatch?:(netIds:readonly string[],controlled?:boolean)=>void;
   sheets:readonly {id:string;title:string}[];activeSheetId:string;
   catalog:readonly CatalogSymbol[];tree:readonly TreeItem[];
-  selected:SelectedInstance|null;diagnostics:readonly DiagnosticItem[];
+  catalogMissingCount?:number;onCatalogUpgrade?:()=>void;
+  selected:SelectedInstance|null;groupSelectionIds?:readonly string[];diagnostics:readonly DiagnosticItem[];diagnosticCounts?:{error:number;warning:number;info:number};
+  clipboardSummary?:string;
   canvas:ReactNode;tool:ToolMode;gridVisible:boolean;snapEnabled:boolean;
   cursorUm?:readonly [number,number];zoomPercent?:number;onZoomPercent?:(percent:50|100|200)=>void;
   onFitPage?:()=>void;
@@ -49,6 +53,13 @@ export type EditorShellProps = {
   onPlaceSymbol:(symbolId:string)=>void;onSelectTreeItem:(id:string)=>void;
   onSelectSheet:(id:string)=>void;onInspectorProposal:(edit:InspectorProposal)=>void;
   onUndo:()=>void;onRedo:()=>void;onSave:()=>void;
+  onCopy?:()=>void;onPaste?:()=>void;
+  propertiesRequest?:number;onSelectAll?:()=>void;onDuplicate?:()=>void;
+  textRequest?:{at:readonly [number,number] }|null;
+  onCancelText?:()=>void;onAddText?:(value:string,height:number)=>boolean;
+  pinMagnet?:boolean;onTogglePinMagnet?:(enabled:boolean)=>void;
+  smartRouting?:boolean;onToggleSmartRouting?:(enabled:boolean)=>void;onAlignConnectedPair?:()=>void;onSimplifyRoutes?:()=>void;onAlignSeries?:()=>void;onDistributeSeries?:()=>void;onBuildParallelRails?:()=>void;onDistributeParallel?:()=>void;onOptimizeLayout?:()=>void;
+  layoutPreview?:{plan:LayoutPreview;beforeSrc:string;afterSrc:string};onApplyLayoutPreview?:()=>void;onCancelLayoutPreview?:()=>void;
   onOpen?:()=>void;onNew?:()=>void;onAddSheet?:()=>void;
   onPaperChange?:(paper:'A4'|'A3'|'A2')=>void;activePaper?:'A4'|'A3'|'A2';
   onSaveAs?:()=>void;onExport?:(format:'svg'|'png300')=>void;
@@ -155,9 +166,25 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
   const [sizes,setSizes]=useLocalStorage<DockLayout>({key:DOCK_LAYOUT_KEY,defaultValue:{}});
   const [left,setLeft]=useState(()=>typeof window==='undefined'||window.innerWidth>=960);
   const [right,setRight]=useState(()=>typeof window==='undefined'||window.innerWidth>=960);
+  const [topologyDialog,setTopologyDialog]=useState(false);
+  const [propertiesOpen,setPropertiesOpen]=useState(false);
+  const propertiesSeen=useRef(0);
+  const [textValue,setTextValue]=useState(''),[textHeight,setTextHeight]=useState('3500'),[textError,setTextError]=useState(false);
+  const catalogSearch=useRef<HTMLInputElement>(null);
+  useEffect(()=>{
+    if(props.propertiesRequest&&props.propertiesRequest!==propertiesSeen.current){
+      propertiesSeen.current=props.propertiesRequest;setPropertiesOpen(true);
+    }
+  },[props.propertiesRequest]);
+  useEffect(()=>{if(!props.selected)setPropertiesOpen(false);},[props.selected?.id]);
+  useEffect(()=>{if(props.textRequest){setTextValue('');setTextHeight('3500');setTextError(false);}},[props.textRequest]);
   const [settings,setSettings]=useState(false),[exportDialog,setExportDialog]=useState(false);
   const [commandDialog,setCommandDialog]=useState(false),[diagnostics,setDiagnostics]=useState(false);
+  const [diagnosticFilter,setDiagnosticFilter]=useState<'all'|'error'|'warning'|'info'>('all');
+  const diagnosticCounts=props.diagnosticCounts??{error:props.diagnostics.filter(d=>d.severity==='error').length,warning:props.diagnostics.filter(d=>d.severity==='warning').length,info:props.diagnostics.filter(d=>d.severity==='info').length};
+  const diagnosticItems=props.diagnostics.filter(d=>diagnosticFilter==='all'||d.severity===diagnosticFilter);
   const [query,setQuery]=useState(''),[commandQuery,setCommandQuery]=useState('');
+  const [collapsedCategories,setCollapsedCategories]=useState<string[]>([]);
   const [format,setFormat]=useState<'svg'|'png300'>('svg');
   const [split,setSplit]=useState(()=>normalizeDockLayout(sizes).inspectorPercent??48);
   // Mantine useLocalStorage reads existing preferences in an effect; restore after hydration.
@@ -172,25 +199,36 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
   });
   function resetLayout(){resize.resetAll();setSizes({});setSplit(48);const wide=typeof window==='undefined'||window.innerWidth>=960;setLeft(wide);setRight(wide);}
   function changeSplit(p:number){setSplit(p);setSizes({...sizes,inspectorPercent:p});}
-  const filtered=props.catalog.filter(x=>(x.name+' '+x.category).toLocaleLowerCase('ru-RU').includes(query.toLocaleLowerCase('ru-RU')));
+  const filtered=props.catalog.filter(x=>(x.name+' '+x.category+' '+x.id).toLocaleLowerCase('ru-RU').includes(query.toLocaleLowerCase('ru-RU')));
+  const categories=[...new Set(filtered.map(s=>s.category))].map(name=>({name,items:filtered.filter(s=>s.category===name)}));
   useEffect(()=>{
     const onKey=(e:globalThis.KeyboardEvent)=>{
       const editable=!!(e.target as HTMLElement)?.closest('input,textarea,select,[contenteditable="true"],[role="textbox"]');
       // The browser Save-as dialog would incorrectly capture an uncommitted inspector draft.
       if(editable&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();return;}
-      const action=resolveShellShortcut(e,{editable,dialogOpen:settings||exportDialog||commandDialog});
+      const action=resolveShellShortcut(e,{editable,dialogOpen:settings||exportDialog||commandDialog||topologyDialog||propertiesOpen||!!props.textRequest||!!props.layoutPreview});
       if(!action)return;
       if(action==='save'&&!props.canSave || action==='undo'&&!props.canUndo || action==='redo'&&!props.canRedo)return;
+      if(action==='copy'&&!props.onCopy || action==='paste'&&!props.onPaste)return;
       e.preventDefault();
       if(action==='palette')setCommandDialog(true);
       else if(action==='export')setExportDialog(true);
       else if(action==='save')props.onSave();
       else if(action==='undo')props.onUndo();
       else if(action==='redo')props.onRedo();
+      else if(action==='copy')props.onCopy?.();
+      else if(action==='paste')props.onPaste?.();
+      else if(action==='saveAs')props.onSaveAs?.();
+      else if(action==='newProject')props.onNew?.();
+      else if(action==='openProject')props.onOpen?.();
+      else if(action==='selectAll')props.onSelectAll?.();
+      else if(action==='duplicate')props.onDuplicate?.();
+      else if(action==='findCatalog'){setLeft(true);requestAnimationFrame(()=>catalogSearch.current?.focus());}
+      else if(action==='properties'){if(props.selected)setPropertiesOpen(true);}
       else props.onToolChange(action);
     };
     window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey);
-  },[props.onToolChange,props.onSave,props.onUndo,props.onRedo,props.canSave,props.canUndo,props.canRedo,settings,exportDialog,commandDialog]);
+  },[props.onToolChange,props.onSave,props.onUndo,props.onRedo,props.canSave,props.canUndo,props.canRedo,props.onCopy,props.onPaste,props.onSaveAs,props.onNew,props.onOpen,props.onSelectAll,props.onDuplicate,props.selected,props.textRequest,props.layoutPreview,settings,exportDialog,commandDialog,topologyDialog,propertiesOpen]);
   const commands=[
     {label:'Сохранить',ok:props.canSave,run:props.onSave},
     {label:'Экспорт',ok:true,run:()=>setExportDialog(true)},
@@ -207,7 +245,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
           <Group gap="xs" wrap="nowrap">
             <ActionIcon aria-label="Показать библиотеку УГО" variant="subtle" onClick={()=>setLeft(v=>!v)}><MenuIcon size={18}/></ActionIcon>
             <Text size="sm" fw={700} visibleFrom="sm">GOST CAD</Text>
-            <Menu position="bottom-start"><Menu.Target><Button variant="subtle" size="compact-sm">Файл</Button></Menu.Target>
+            <Menu position="bottom-start" transitionProps={{duration:0}}><Menu.Target><Button variant="subtle" size="compact-sm">Файл</Button></Menu.Target>
               <Menu.Dropdown>
                 <Menu.Item data-testid="new-project" onClick={props.onNew} disabled={!props.onNew}>Новый проект A3</Menu.Item>
                 <Menu.Item data-testid="new-sheet" onClick={props.onAddSheet} disabled={!props.onAddSheet}>Добавить лист A3</Menu.Item>
@@ -223,6 +261,24 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
                 <Menu.Item onClick={props.onSave} disabled={!props.canSave}>Сохранить</Menu.Item>
                 <Menu.Item data-testid="save-project-as" onClick={props.onSaveAs} disabled={!props.onSaveAs}>Сохранить как…</Menu.Item>
                 <Menu.Item onClick={()=>setExportDialog(true)}>Экспорт…</Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+            <Menu position="bottom-start" transitionProps={{duration:0}}><Menu.Target><Button variant="subtle" size="compact-sm">Правка</Button></Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item data-testid="duplicate-component" onClick={props.onDuplicate} disabled={!props.onDuplicate}>Дублировать выделенное · Ctrl+D</Menu.Item>
+                <Menu.Item data-testid="copy-component" onClick={props.onCopy} disabled={!props.onCopy}>Копировать выделенное · Ctrl+C</Menu.Item>
+                <Menu.Item data-testid="smart-routing" disabled={!props.onToggleSmartRouting} onClick={()=>props.onToggleSmartRouting?.(!props.smartRouting)}>Умная трассировка: {props.smartRouting?'вкл.':'выкл.'}</Menu.Item>
+                <Menu.Item data-testid="pin-magnet" disabled={!props.onTogglePinMagnet} onClick={()=>props.onTogglePinMagnet?.(!props.pinMagnet)}>Привязка выводов: {props.pinMagnet?'вкл.':'выкл.'}</Menu.Item>
+                <Menu.Item data-testid="align-connected-pair" disabled={!props.onAlignConnectedPair} onClick={props.onAlignConnectedPair}>Выровнять соединённые выводы</Menu.Item>
+                <Menu.Item data-testid="align-series" disabled={!props.onAlignSeries} onClick={props.onAlignSeries}>Выровнять цепочку УГО</Menu.Item>
+                <Menu.Item data-testid="distribute-series" disabled={!props.onDistributeSeries} onClick={props.onDistributeSeries}>Равные промежутки цепочки</Menu.Item>
+                <Menu.Item data-testid="parallel-rails" disabled={!props.onBuildParallelRails} onClick={props.onBuildParallelRails}>Построить параллельные магистрали</Menu.Item>
+                <Menu.Item data-testid="distribute-parallel" disabled={!props.onDistributeParallel} onClick={props.onDistributeParallel}>Выровнять параллельные ветви</Menu.Item>
+                <Menu.Item data-testid="topology-inventory" disabled={!props.topology} onClick={()=>setTopologyDialog(true)}>Анализ электрической структуры</Menu.Item>
+                <Menu.Item data-testid="optimize-layout" disabled={!props.onOptimizeLayout} onClick={props.onOptimizeLayout}>Оптимизировать компоновку{(props.groupSelectionIds?.length??0)>1?' выделения':' листа'}</Menu.Item>
+                <Menu.Item data-testid="simplify-routes" disabled={!props.onSimplifyRoutes} onClick={props.onSimplifyRoutes}>Упростить проводники{(props.groupSelectionIds?.length??0)>1?' выделения':' листа'}</Menu.Item>
+                <Menu.Divider/>
+                <Menu.Item data-testid="paste-component" onClick={props.onPaste} disabled={!props.onPaste}>Вставить независимую копию · Ctrl+V</Menu.Item>
               </Menu.Dropdown>
             </Menu>
             <Text size="sm" fw={600} truncate className="gscad-project-label">{props.projectName}</Text>
@@ -241,16 +297,25 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
         </Group>
       </AppShell.Header>
       <AppShell.Navbar className="gscad-dock">
-        <Stack gap="xs" p="sm" h="100%">
-          <Text size="sm" fw={600}>Библиотека УГО</Text>
-          <TextInput size="xs" aria-label="Поиск УГО" leftSection={<Search size={14}/>}
+        <Stack gap="xs" p="sm" h="100%" style={{minHeight:0}}>
+          <Text size="sm" fw={600}>Библиотека УГО · {props.catalog.length}</Text>
+          {!!props.catalogMissingCount&&<Button size="compact-xs" variant="light" data-testid="upgrade-catalog" onClick={props.onCatalogUpgrade}>Добавить УГО (+{props.catalogMissingCount})</Button>}
+          <TextInput ref={catalogSearch} size="xs" aria-label="Поиск УГО" leftSection={<Search size={14}/>}
             placeholder="Поиск по каталогу" value={query} onChange={e=>setQuery(e.currentTarget.value)} data-testid="catalog-search"/>
-          <ScrollArea h="100%" type="hover"><Stack gap={4}>
-            {filtered.map(s=><Button key={s.id} size="compact-lg" variant="subtle" className="gscad-catalog-item" data-testid={'catalog-item-'+s.id}
-              aria-label={'Выбрать УГО '+s.name+', '+s.approval} onClick={()=>props.onPlaceSymbol(s.id)}>
+          <ScrollArea className="gscad-catalog-scroll" type="auto" offsetScrollbars scrollbarSize={9} style={{flex:1,minHeight:0}}><Stack gap={6}>
+            {categories.map(category=><section key={category.name} className="gscad-catalog-category">
+              <button type="button" className="gscad-category-heading" aria-expanded={!!query||!collapsedCategories.includes(category.name)}
+                onClick={()=>setCollapsedCategories(old=>old.includes(category.name)?old.filter(n=>n!==category.name):[...old,category.name])}>
+                <span>{query||!collapsedCategories.includes(category.name)?'▾':'▸'} {category.name}</span><small>{category.items.length}</small>
+              </button>
+              {(query||!collapsedCategories.includes(category.name))&&<Stack gap={3}>
+            {category.items.map(s=><Button key={s.id} size="compact-lg" variant="subtle" className="gscad-catalog-item" data-testid={'catalog-item-'+s.id}
+              aria-label={'Выбрать УГО '+s.name+', '+s.approval} title={s.name+' · '+s.id} onClick={()=>props.onPlaceSymbol(s.id)}>
               <span className="gscad-symbol-preview" aria-hidden="true">{s.thumbnail??'Нет эскиза'}</span>
-              <span className="gscad-symbol-info"><span>{s.name}</span><small>{s.category} · {s.approval}</small></span>
+              <span className="gscad-symbol-info"><span>{s.name}</span><small>{s.approval==='draft'?'Черновое УГО':s.approval==='approved'?'Проверено':'Заблокировано'}</small></span>
             </Button>)}
+            </Stack>}
+            </section>)}
             {filtered.length===0&&<Text size="sm" c="dimmed">Совпадений нет</Text>}
           </Stack></ScrollArea>
         </Stack>
@@ -280,26 +345,37 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
             <Magnet size={18}/></ActionIcon></Tooltip>
           <div className="gscad-toolbar-spacer"/>
           <Button size="compact-sm" variant="subtle" leftSection={<AlertTriangle size={15}/>}
-            onClick={()=>setDiagnostics(v=>!v)}>ERC/DRC {props.diagnostics.length}</Button>
+            onClick={()=>setDiagnostics(v=>!v)}>ERC/DRC · {diagnosticCounts.error} ошибок / {diagnosticCounts.warning} предупреждений</Button>
         </Group>
-        {diagnostics&&<ScrollArea h={120} className="gscad-diagnostics" aria-label="Журнал диагностики">
-          {props.diagnostics.length===0?<Text size="sm" p="sm">Сообщений нет. Это не доказывает корректность схемы.</Text>:
-            props.diagnostics.map(d=><Text key={d.id} size="xs" p="xs">[{d.severity}] {d.message}</Text>)}
-        </ScrollArea>}
+        {diagnostics&&<div className="gscad-diagnostics" aria-label="Журнал диагностики" data-testid="diagnostics-panel">
+          <Group gap={4} p={4}>
+            {(['all','error','warning','info'] as const).map(f=><Button key={f} size="compact-xs"
+              variant={diagnosticFilter===f?'filled':'subtle'} data-testid={'diagnostic-filter-'+f}
+              onClick={()=>setDiagnosticFilter(f)}>{f==='all'?'Все':(f==='error'?'Ошибки':f==='warning'?'Предупреждения':'Информация')+' ('+diagnosticCounts[f]+')'}</Button>)}
+          </Group>
+          <ScrollArea h={120}>
+            {diagnosticItems.length===0?<Text size="sm" p="sm">Сообщений нет в этом фильтре. Это не доказывает корректность схемы.</Text>:
+              diagnosticItems.map(d=><Group key={d.id} gap={4} p={4} wrap="nowrap" align="start" data-diagnostic-code={d.code??d.id} data-severity={d.severity}>
+                <Text size="xs" c={d.severity==='error'?'red':d.severity==='warning'?'yellow':undefined} style={{flex:1}}>[{d.code??d.severity}] {d.message}</Text>
+                {d.instanceId&&<Button size="compact-xs" variant="subtle" onClick={()=>props.onSelectTreeItem(d.instanceId!)}>Выбрать УГО</Button>}
+              </Group>)}
+          </ScrollArea>
+        </div>}
       </div></AppShell.Main>
       <AppShell.Aside className="gscad-dock">
         <RightSplit percent={split} onChange={changeSplit}
           top={<><Text size="sm" fw={600} p="sm">Структура проекта</Text>
-            <ScrollArea h="calc(100% - 44px)">{props.tree.map(n=><NavLink key={n.id} label={n.label}
-              pl={12+(n.indent??0)*16} active={n.kind==='instance'&&n.id==='instance:'+props.selected?.id} onClick={()=>props.onSelectTreeItem(n.id)}
+            <ScrollArea h="calc(100% - 44px)">{props.tree.map(n=><NavLink key={n.id} label={n.label} data-testid={'tree-item-'+n.id}
+              pl={12+(n.indent??0)*16} active={n.kind==='instance'&&(n.id===props.selected?.id||props.groupSelectionIds?.includes(n.id))} onClick={()=>props.onSelectTreeItem(n.id)}
               leftSection={<FolderTree size={14}/>} />)}</ScrollArea></>}
           bottom={<><Text fw={600} size="sm" p="sm">Свойства</Text>
-            <ScrollArea h="calc(100% - 44px)"><Inspector selected={props.selected}
-              revision={props.baseRevision} send={props.onInspectorProposal} hostError={props.inspectorError}/></ScrollArea></>}/>
+            <ScrollArea h="calc(100% - 44px)">{(props.groupSelectionIds?.length??0)>1?<Text size="sm" p="sm" data-testid="group-selection-summary">Выбрано УГО: {props.groupSelectionIds?.length}. Групповое изменение свойств пока недоступно.{props.onAlignConnectedPair&&<Button fullWidth size="xs" mt="xs" data-testid="align-connected-pair-inspector" onClick={props.onAlignConnectedPair}>Выровнять выводы</Button>}{props.onAlignSeries&&<Button fullWidth size="xs" mt="xs" data-testid="align-series-inspector" onClick={props.onAlignSeries}>Выровнять цепочку</Button>}</Text>:<Inspector selected={propertiesOpen?null:props.selected}
+              revision={props.baseRevision} send={props.onInspectorProposal} hostError={props.inspectorError}/>}</ScrollArea></>}/>
       </AppShell.Aside>
       <AppShell.Footer className="gscad-status" data-testid="status-bar">
         <Group justify="space-between" h="100%" px="xs" gap="xs" wrap="nowrap">
           <Text size="xs">{props.cursorUm?'X '+formatMillimetres(props.cursorUm[0])+' / Y '+formatMillimetres(props.cursorUm[1])+' мм':'XY —'}</Text>
+          {props.clipboardSummary&&<Text size="xs" truncate title={props.clipboardSummary} data-testid="clipboard-summary" role="status">{props.clipboardSummary}</Text>}
           <Group gap="xs" wrap="nowrap">
             <Menu position="top-end" withinPortal>
               <Menu.Target><Button size="compact-xs" variant="subtle" aria-label="Масштаб">{props.zoomPercent??100}%</Button></Menu.Target>
@@ -317,6 +393,120 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
         </Group>
       </AppShell.Footer>
     </AppShell>
+    <Modal opened={propertiesOpen&&!!props.selected} onClose={()=>setPropertiesOpen(false)}
+      title={'Свойства элемента '+(props.selected?.refdes??'')} centered size="md">
+      <Inspector selected={props.selected} revision={props.baseRevision} send={props.onInspectorProposal} hostError={props.inspectorError}/>
+      <Group justify="flex-end" mt="sm"><Button onClick={()=>setPropertiesOpen(false)}>Закрыть</Button></Group>
+    </Modal>
+    <Modal opened={!!props.textRequest} onClose={()=>props.onCancelText?.()} title="Добавить надпись" centered size="md">
+      <Stack gap="sm">
+        <TextInput autoFocus label="Текст" data-testid="sheet-text-input" maxLength={128} value={textValue}
+          onChange={e=>{setTextValue(e.currentTarget.value);setTextError(false);}}/>
+        <Text size="xs" c="dimmed">Высота букв, мм</Text>
+        <SegmentedControl fullWidth value={textHeight} onChange={setTextHeight} data={['2500','3500','5000','7000','10000'].map(v=>({value:v,label:String(Number(v)/1000).replace('.',',')}))}/>
+        <Text size="xs" c="dimmed">OpenGost Type A при наличии; нормативный шрифт пока не подтверждён.</Text>
+        {textError&&<Text size="xs" c="red">Не удалось добавить надпись. Проверьте текст, положение и границы листа.</Text>}
+        <Group justify="flex-end"><Button variant="default" onClick={()=>props.onCancelText?.()}>Отмена</Button>
+          <Button data-testid="add-sheet-text" disabled={!textValue.trim()} onClick={()=>setTextError(props.onAddText?.(textValue,Number(textHeight))!==true)}>Добавить</Button></Group>
+      </Stack>
+    </Modal>
+    <Modal opened={!!props.layoutPreview} onClose={()=>props.onCancelLayoutPreview?.()} title="Оптимизация компоновки — предварительный просмотр" centered size="xl">
+      {props.layoutPreview&&<Stack gap="sm" data-testid="layout-preview-dialog">
+        <Group grow align="start" wrap="wrap">
+          {([{title:'Исходная схема',src:props.layoutPreview.beforeSrc,testId:'layout-before'},
+             {title:'Предлагаемая схема',src:props.layoutPreview.afterSrc,testId:'layout-after'}]).map(item=>
+            <Stack key={item.testId} gap={4} style={{minWidth:220}}>
+              <Text fw={600} size="sm">{item.title}</Text>
+              <img data-testid={item.testId} src={item.src} alt={item.title}
+                style={{width:'100%',height:230,objectFit:'contain',background:'white',border:'1px solid var(--mantine-color-default-border)',borderRadius:4}}/>
+            </Stack>)}
+        </Group>
+        <Text size="xs" c="dimmed">Одинаковый масштаб и границы для обеих схем. Это геометрический предпросмотр, не утверждённый чертёж.</Text>
+        <Group grow wrap="wrap">
+          <Stack gap={2}><Text size="xs" c="dimmed">Изгибы</Text><Text fw={600} data-testid="layout-bends">{props.layoutPreview.plan.before.bends} → {props.layoutPreview.plan.after.bends}</Text></Stack>
+          <Stack gap={2}><Text size="xs" c="dimmed">Длина, мм</Text><Text fw={600} data-testid="layout-length">{(props.layoutPreview.plan.before.lengthUm/1000).toFixed(3)} → {(props.layoutPreview.plan.after.lengthUm/1000).toFixed(3)}</Text></Stack>
+          <Stack gap={2}><Text size="xs" c="dimmed">Пересечения</Text><Text fw={600}>{props.layoutPreview.plan.before.crossings} → {props.layoutPreview.plan.after.crossings}</Text></Stack>
+        </Group>
+        <Text size="sm">Операции: {props.layoutPreview.plan.operations.join('; ')}</Text>
+        <Text size="xs" c="dimmed">Вариантов проверено: {props.layoutPreview.plan.attempted}; отклонено: {props.layoutPreview.plan.rejected}.{props.layoutPreview.plan.limited?' Поиск ограничен.':''}</Text>
+        <Text size="sm" c="dimmed">Состав электрических цепей сохраняется. Изменённые маршруты требуют инженерной проверки.</Text>
+        <Group justify="flex-end">
+          <Button variant="default" data-testid="layout-cancel" onClick={props.onCancelLayoutPreview}>Отмена</Button>
+          <Button data-testid="layout-apply" onClick={props.onApplyLayoutPreview}>Применить</Button>
+        </Group>
+      </Stack>}
+    </Modal>
+    <Modal opened={topologyDialog} onClose={()=>setTopologyDialog(false)} title="Электрическая структура листа" size="xl" centered>
+      {props.topology&&<ScrollArea.Autosize mah="65vh" data-testid="topology-report">
+        <Stack gap="sm">
+          <Text size="sm">УГО: {props.topology.components}; объявленных цепей: {props.topology.nets}.</Text>
+          <Text size="xs" c="dimmed">Только объявленные физические выводы и Net. Названия цепей не доказывают их назначение. Общая цепь не обязательно является шиной питания.</Text>
+          {props.topology.hubs.map(h=><Stack key={h.id} gap={4}>
+            <Group justify="space-between"><Text fw={600}>{h.refdes} — {h.pins.length} выводов, {h.netCount} цепей</Text>
+              <Button size="xs" variant="light" onClick={()=>{props.onSelectTreeItem(h.id);setTopologyDialog(false)}}>Выбрать УГО</Button></Group>
+            <Text size="xs">Связанные УГО: {h.neighbors.join(', ')||'нет'}</Text>
+            <div style={{display:'grid',gridTemplateColumns:'60px 100px 1fr',gap:4}}>
+              <Text size="xs" fw={600}>Вывод</Text><Text size="xs" fw={600}>Тип</Text><Text size="xs" fw={600}>Цепь / связанные УГО</Text>
+              {h.pins.map(p=><div key={p.number} style={{display:'contents'}}>
+                <Text size="xs">{p.number}</Text><Text size="xs">{p.type}</Text>
+                <Text size="xs">{p.net??'—'}{p.neighbors.length?' · '+p.neighbors.join(', '):''}</Text>
+              </div>)}
+            </div>
+            <Divider/>
+          </Stack>)}
+          {props.onRouteInitialNet&&props.topology.unrouted.length>0&&<>
+            <Text fw={600} size="sm">Неразведённые цепи</Text>
+            {props.onPrepareInitialRouting&&<Button size="xs" variant="light" data-testid="prepare-initial-routing"
+              onClick={()=>{setTopologyDialog(false);props.onPrepareInitialRouting?.()}}>Освободить выходы выводов у полей</Button>}
+            {props.onPreviewFunctionalRouting&&props.topology.unrouted.length<=16&&<Button size="xs" data-testid="preview-functional-routing"
+              onClick={()=>{setTopologyDialog(false);props.onPreviewFunctionalRouting?.()}}>Компоновка и совместная трассировка</Button>}
+            {props.onPreviewFunctionalRouting&&props.topology.unrouted.length<=16&&<Button size="xs" variant="outline" data-testid="preview-functional-alternatives"
+              onClick={()=>{setTopologyDialog(false);props.onPreviewFunctionalRouting?.(true)}}>Сравнить варианты компоновки</Button>}
+            {props.onPreviewHubPlacement&&<Button size="xs" variant="light" data-testid="preview-hub-placement"
+              onClick={()=>{setTopologyDialog(false);props.onPreviewHubPlacement?.()}}>Приблизить двухвыводные элементы к выводам микросхем</Button>}
+            {props.onPreviewInitialBatch&&props.topology.unrouted.length>1&&props.topology.unrouted.length<=16&&
+              <Button size="xs" variant="light" data-testid="preview-initial-batch"
+                onClick={()=>{setTopologyDialog(false);props.onPreviewInitialBatch?.(props.topology!.unrouted.map(n=>n.id))}}>
+                Проверить совместную разводку ({props.topology.unrouted.length} цепей)
+              </Button>}
+            {props.onPreviewInitialBatch&&props.topology.unrouted.length>1&&props.topology.unrouted.length<=16&&
+              <Button size="xs" variant="light" data-testid="preview-initial-controlled"
+                onClick={()=>{setTopologyDialog(false);props.onPreviewInitialBatch?.(props.topology!.unrouted.map(n=>n.id),true)}}>
+                Совместная разводка с защитой выводов и X-пересечениями
+              </Button>}
+            {props.onRouteInitialBatch&&props.topology.unrouted.length>1&&
+              <Button size="xs" data-testid="route-initial-batch"
+                onClick={()=>{setTopologyDialog(false);props.onRouteInitialBatch?.(props.topology!.unrouted.slice(0,8).map(n=>n.id))}}>
+                {props.topology.unrouted.length>8?'Развести первые 8 цепей':'Развести все '+props.topology.unrouted.length+' цепей'}
+              </Button>}
+            {props.topology.unrouted.map(n=><Group key={n.id} justify="space-between">
+              <Text size="sm">{n.name} — {n.pins} выводов</Text>
+              <Button size="xs" variant="light" data-testid={'net-initial-'+n.id} onClick={()=>{setTopologyDialog(false);props.onRouteInitialNet?.(n.id)}}>Развести цепь</Button>
+            </Group>)}
+            <Divider/>
+          </>}
+          {props.onPreviewRouteRefinement&&<Group gap={4}>
+            <Button size="xs" variant="light" data-testid="preview-route-refinement"
+              onClick={()=>{setTopologyDialog(false);props.onPreviewRouteRefinement?.()}}>Упростить построенные маршруты</Button>
+            <Button size="xs" variant="outline" data-testid="preview-route-refinement-extended"
+              onClick={()=>{setTopologyDialog(false);props.onPreviewRouteRefinement?.(true)}}>Расширенный поиск маршрутов</Button>
+          </Group>}
+          {props.onPreviewDetourRefinement&&<Button size="xs" variant="light" data-testid="preview-detour-refinement"
+            onClick={()=>{setTopologyDialog(false);props.onPreviewDetourRefinement?.()}}>Устранить локальные обходы</Button>}
+          {props.onPreviewDetourRefinement&&<Button size="xs" variant="outline" data-testid="preview-crossing-refinement"
+            onClick={()=>{setTopologyDialog(false);props.onPreviewDetourRefinement?.(true)}}>Сократить пересечения проводников</Button>}
+          {props.onPreviewRailRefinement&&<Button size="xs" variant="light" data-testid="preview-rail-refinement"
+            onClick={()=>{setTopologyDialog(false);props.onPreviewRailRefinement?.()}}>Оптимизировать общие магистрали</Button>}
+          <Text fw={600} size="sm">Общие цепи (не менее 3 УГО на листе)</Text>
+          {props.topology.shared.map(n=><Stack key={n.id} gap={2}>
+            <Group justify="space-between"><Text size="sm">{n.name} — {n.pins} выводов, {n.devices} УГО</Text>
+              {props.onBuildNetRail&&<Button size="xs" variant="light" data-testid={'net-rail-'+n.id} disabled={n.externalDevices>0||n.pins>32} onClick={()=>{setTopologyDialog(false);props.onBuildNetRail?.(n.id)}}>Построить магистраль</Button>}
+              {props.onBuildNetTree&&<Button size="xs" variant="light" data-testid={'net-tree-'+n.id} disabled={n.externalDevices>0||n.pins>32} onClick={()=>{setTopologyDialog(false);props.onBuildNetTree?.(n.id)}}>Построить дерево</Button>}</Group>
+            <Text size="xs" c="dimmed">{n.powerEvidence.length?'Типы power_input/power_output: '+n.powerEvidence.map(p=>p.refdes+'.'+p.pin).join(', '):'Нет явных типов выводов питания в каталоге.'}{n.externalDevices?' Вне листа: '+n.externalDevices:''}</Text>
+          </Stack>)}
+        </Stack>
+      </ScrollArea.Autosize>}
+    </Modal>
     <Modal opened={settings} onClose={()=>setSettings(false)} title="Настройки интерфейса" centered>
       <Stack><SegmentedControl value={props.scheme} onChange={v=>props.setScheme(v as 'dark'|'light')}
         data={[{label:'Тёмная',value:'dark'},{label:'Светлая',value:'light'}]} fullWidth/>

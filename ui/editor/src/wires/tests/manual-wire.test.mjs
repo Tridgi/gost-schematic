@@ -445,3 +445,57 @@ test('R4 explicit rotation of attached component regenerates physical endpoints 
  assert.equal(e.redo(),true);
  assert.equal(e.snapshot.components.find(x=>x.id==='R1').rotation,90);
 });
+
+test('R14 group movement preserves internal segment IDs and external PinRefs in one revision',()=>{
+ const e=make();commit(e,w1());commit(e,w2());
+ const before=e.snapshot,model=modelHashInput(e),stale=tx(e,'stale');
+ err(()=>e.moveComponentsAndReanchor(tx(e,'reject'),['R1','C1','D1'],[2000,3000]),'GROUP_REROUTE_REQUIRED');
+ assert.deepEqual(e.snapshot,before);
+ e.moveComponentsAndReanchor(tx(e,'group'),['R1','C1','D1'],[2000,3000],true);
+ const after=e.snapshot;
+ assert.equal(after.revision,before.revision+1);
+ assert.deepEqual(after.nets,before.nets);
+ assert.deepEqual(after.components.find(c=>c.id==='D2'),before.components.find(c=>c.id==='D2'));
+ assert.deepEqual(after.wires[0].segments,before.wires[0].segments);
+ assert.deepEqual(after.wires[0].vertices,before.wires[0].vertices.map(v=>({...v,at_um:[v.at_um[0]+2000,v.at_um[1]+3000]})));
+ assert.deepEqual(after.wires[1].vertices.at(-1),before.wires[1].vertices.at(-1));
+ assert.equal(after.wires[1].vertices[0].anchor.component_id,'D1');
+ assert.ok(after.wires.every(w=>w.needs_routing_review));
+ assert.equal(e.validateNet('N1').status,'partial');
+ assert.equal(e.validateNet('N2').status,'partial');
+ err(()=>e.moveComponentsAndReanchor(stale,['R1','C1'],[1000,1000],true),'STALE_REVISION');
+ assert.deepEqual(e.snapshot,after);
+ assert.equal(e.undo(),true);assert.equal(modelHashInput(e),model);
+ assert.equal(e.redo(),true);assert.deepEqual(e.snapshot.wires,after.wires);
+});
+test('R14 unsatisfiable external group route rolls back every component and wire',()=>{
+ const e=make();commit(e,w1());commit(e,w2());
+ const before=e.serialize();
+ err(()=>e.moveComponentsAndReanchor(tx(e,'coincident'),['R1','D1'],[14000,8000],true),'WIRE_GEOMETRY');
+ assert.equal(e.serialize(),before);
+ err(()=>e.moveComponentsAndReanchor(tx(e,'duplicate'),['R1','R1'],[1000,1000],true),'INVALID_GROUP');
+ assert.equal(e.serialize(),before);
+});
+test('R14 stationary splice remains electrically explicit after both adjacent components move',()=>{
+ const e=make();commit(e,w1());e.splitWire(tx(e,'split'),'W1',[4000,4000],'S1');
+ const before=e.snapshot;
+ e.moveComponentsAndReanchor(tx(e,'group-splice'),['R1','C1'],[1000,1000],true);
+ const after=e.snapshot;
+ assert.deepEqual(after.splices,before.splices);
+ assert.deepEqual(after.nets,before.nets);
+ assert.deepEqual(after.wires.map(w=>w.id),before.wires.map(w=>w.id));
+ assert.ok(after.wires.every(w=>w.needs_routing_review));
+ assert.equal(e.validateNet('N1').status,'partial');
+ assert.equal(e.validateNet('N1').pin_groups.length,1);
+});
+
+test('R19 minimizes bends, balances Z routes and respects outward normals',()=>{
+ assert.deepEqual(routeManhattan([0,0],[14000,0],[1,0],[-1,0]),[[0,0],[14000,0]]);
+ assert.deepEqual(routeManhattan([0,0],[14000,8000],[1,0],[0,-1]),[[0,0],[14000,0],[14000,8000]]);
+ assert.deepEqual(routeManhattan([0,0],[14000,8000],[1,0],[-1,0]),[[0,0],[7000,0],[7000,8000],[14000,8000]]);
+ assert.deepEqual(routeManhattan([0,0],[8000,14000],[0,1],[0,-1]),[[0,0],[0,7000],[8000,7000],[8000,14000]]);
+ const path=routeManhattan([0,0],[14000,0],[-1,0],[1,0]);
+ assert.ok(path.length>=4);assert.ok(path[1][0]<0);assert.ok(path.at(-2)[0]>14000);
+ assert.deepEqual(path,routeManhattan([0,0],[14000,0],[-1,0],[1,0]));
+ err(()=>routeManhattan([0,0],[14000,0],[1,0],[-1,0],2000,{accept:()=>false}),'REROUTE_REQUIRED');
+});

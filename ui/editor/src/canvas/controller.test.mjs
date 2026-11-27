@@ -152,3 +152,182 @@ test('explicit junction tool on ordinary stroke refuses to invent a branch or Ne
  assert.deepEqual(log,[{kind:'rejectJunction',reason:'JUNCTION_SELECTION_REQUIRED'}]);
  assert.equal(c.getState().draft,null);
 });
+
+test('idle select is required for rotate/delete and successful deletion clears selection',()=>{
+ const symbol={instance_id:'S-R1',component_id:'R1',origin_um:[10000,10000],
+  rotation_deg:0,mirror_x:false,pins:[],strokes:[{from_um:[-2000,0],to_um:[2000,0]}]};
+ const events=[];
+ const c=make('select',i=>{events.push(i);return true;},
+  {symbols:[symbol],wires:[],junctions:[]});
+ c.down(loc([10000,10000]));
+ for(const key of ['Delete','Backspace','r','R'])assert.equal(c.key(key),false);
+ c.up(loc([10000,10000]));
+ for(const tool of ['wire','pan','place','junction','text']){
+  c.setContext({tool});
+  for(const key of ['Delete','Backspace','r','R'])assert.equal(c.key(key),false);
+ }
+ assert.deepEqual(events.map(e=>e.kind),['select']);
+ c.setContext({tool:'select'});
+ assert.equal(c.key('r'),true);
+ assert.equal(c.key('Delete'),true);
+ assert.equal(c.getState().selected,null);
+ assert.equal(c.key('Delete'),false);
+ assert.deepEqual(events.map(e=>e.kind),['select','rotateInstance','deleteSymbol']);
+});
+
+test('rejected transform and deletion preserve the selected symbol',()=>{
+ const symbol={instance_id:'S-R1',component_id:'R1',origin_um:[10000,10000],
+  rotation_deg:0,mirror_x:false,pins:[],strokes:[{from_um:[-2000,0],to_um:[2000,0]}]};
+ const c=make('select',i=>i.kind==='select',
+  {symbols:[symbol],wires:[],junctions:[]});
+ c.down(loc([10000,10000]));c.up(loc([10000,10000]));
+ assert.equal(c.key('r'),false);
+ assert.equal(c.key('Delete'),false);
+ assert.equal(c.getState().selected.instance_id,'S-R1');
+});
+
+test('host selection follows tree/inspector and drops objects removed from the scene',()=>{
+ const shape=id=>({instance_id:'S-'+id,component_id:id,origin_um:[10000,10000],
+  rotation_deg:0,mirror_x:false,pins:[],strokes:[]});
+ const a=shape('R1'),b=shape('R2');
+ const scene={symbols:[a,b],wires:[],junctions:[]};
+ const events=[];
+ const c=make('select',i=>{events.push(i);return true;},scene);
+ c.syncSymbolSelection('S-R2');
+ assert.equal(c.getState().selected.component_id,'R2');
+ assert.equal(c.key('r'),true);
+ assert.equal(events.at(-1).component_id,'R2');
+ c.setContext({scene:{...scene,symbols:[a]}});
+ assert.equal(c.getState().selected,null);
+ assert.equal(c.key('Delete'),false);
+ c.syncSymbolSelection('S-R1');
+ c.key('Escape');
+ assert.equal(c.getState().selected,null);
+ assert.deepEqual(events.at(-1),{kind:'select',target:null});
+ c.syncSymbolSelection('S-UNKNOWN');
+ assert.equal(c.getState().selected,null);
+});
+
+test('symbol drag ghost uses the same snapped delta as release and is non-mutating',()=>{
+ const shape={instance_id:'S-R1',component_id:'R1',origin_um:[10000,10000],
+  rotation_deg:0,mirror_x:false,pins:[],strokes:[{from_um:[-2000,0],to_um:[2000,0]}]};
+ const scene={symbols:[shape],wires:[],junctions:[]};
+ const snap={project_id:'toy',source_topology_hash:'locked',revision:3,wires:[]};
+ const events=[];
+ const c=make('select',i=>{events.push(i);return true;},scene,snap);
+ c.down(loc([10000,10000]));
+ assert.equal(c.symbolDragPreview(),null);
+ assert.equal(c.move(loc([14500,12900],0,2)),false);
+ assert.equal(c.symbolDragPreview(),null);
+ c.move(loc([14500,12900]));
+ assert.deepEqual(c.symbolDragPreview(),{instance_id:'S-R1',component_id:'R1',delta_um:[5000,3000]});
+ assert.deepEqual(events.map(e=>e.kind),['select']);
+ assert.deepEqual(scene.symbols[0].origin_um,[10000,10000]);
+ c.up(loc([14500,12900]));
+ assert.deepEqual(events.at(-1).delta_um,[5000,3000]);
+ assert.equal(c.symbolDragPreview(),null);
+});
+
+test('Escape, tool change and stale CAS cancel ghost without moving component',()=>{
+ const shape={instance_id:'S-R1',component_id:'R1',origin_um:[10000,10000],
+  rotation_deg:0,mirror_x:false,pins:[],strokes:[{from_um:[-2000,0],to_um:[2000,0]}]};
+ const scene={symbols:[shape],wires:[],junctions:[]};
+ const snap={project_id:'toy',source_topology_hash:'locked',revision:3,wires:[]};
+ const events=[];
+ const c=make('select',i=>{events.push(i);return true;},scene,snap);
+ const start=()=>{c.down(loc([10000,10000]));c.move(loc([15000,13000]));assert.ok(c.symbolDragPreview());};
+ start();c.key('Escape');assert.equal(c.symbolDragPreview(),null);c.up(loc([15000,13000]));
+ start();c.setContext({tool:'wire'});assert.equal(c.symbolDragPreview(),null);c.up(loc([15000,13000]));
+ c.setContext({tool:'select'});start();
+ c.setContext({wireSnapshot:{...snap,revision:4}});
+ assert.equal(c.symbolDragPreview(),null);c.up(loc([15000,13000]));
+ assert.ok(events.every(e=>e.kind==='select'));
+});
+
+test('R13 marquee contains entire symbol geometry and moves only selected group by a single intent',()=>{
+ const shape=(id,x)=>({instance_id:'S-'+id,component_id:id,origin_um:[x,10000],
+  rotation_deg:0,mirror_x:false,pins:[],strokes:[{from_um:[-2000,0],to_um:[2000,0]}]});
+ const scene={symbols:[shape('R1',10000),shape('R2',20000),shape('R3',30000)],wires:[],junctions:[]};
+ const events=[];
+ const c=make('select',i=>{events.push(i);return true;},scene);
+ c.down(loc([5000,5000]));c.move(loc([31000,15000]));
+ assert.ok(c.marqueePreview());
+ c.up(loc([31000,15000]));
+ assert.deepEqual(c.getState().selectedGroup,['S-R1','S-R2']);
+ assert.deepEqual(events.at(-1),{kind:'selectGroup',instance_ids:['S-R1','S-R2'],base_revision:2});
+ assert.equal(c.key('Delete'),false);assert.equal(c.key('r'),false);
+ c.down(loc([10000,10000]));c.move(loc([14300,13200]));
+ assert.deepEqual(c.groupDragPreview(),{instance_ids:['S-R1','S-R2'],delta_um:[4000,3000]});
+ assert.equal(events.filter(e=>e.kind==='moveGroup').length,0);
+ c.up(loc([14300,13200]));
+ assert.deepEqual(events.at(-1),{kind:'moveGroup',instance_ids:['S-R1','S-R2'],delta_um:[4000,3000],base_revision:2});
+ assert.deepEqual(scene.symbols[0].origin_um,[10000,10000]);
+ c.key('Escape');assert.deepEqual(c.getState().selectedGroup,[]);
+});
+test('R13 rectangle cancels on Escape/stale revision and supports one-symbol selection',()=>{
+ const shape={instance_id:'S-R1',component_id:'R1',origin_um:[10000,10000],
+  rotation_deg:90,mirror_x:true,pins:[{physical_pin_number:'1',at_um:[-2000,0],side:'left'}],
+  strokes:[{from_um:[-1000,0],to_um:[1000,0]}]};
+ const scene={symbols:[shape],wires:[],junctions:[]};
+ const snap={project_id:'toy',source_topology_hash:'locked',revision:2,wires:[]};
+ const events=[];
+ const c=make('select',i=>{events.push(i);return true;},scene,snap);
+ c.down(loc([5000,5000]));c.move(loc([15000,15000]));c.key('Escape');
+ c.up(loc([15000,15000]));assert.equal(c.marqueePreview(),null);
+ c.down(loc([5000,5000]));c.setContext({wireSnapshot:{...snap,revision:3}});
+ c.up(loc([15000,15000]));assert.ok(events.every(e=>e.kind==='select'));
+ c.down(loc([15000,15000]));c.up(loc([5000,5000]));
+ assert.deepEqual(events.at(-1),{kind:'selectGroup',instance_ids:['S-R1'],base_revision:3});
+ assert.equal(c.getState().selected.instance_id,'S-R1');
+});
+
+test('R16 right-click resolves one symbol or existing group without starting a drag',()=>{
+ const shape=(id,x)=>({instance_id:'S-'+id,component_id:id,origin_um:[x,10000],
+  rotation_deg:0,mirror_x:false,pins:[],strokes:[{from_um:[-2000,0],to_um:[2000,0]}]});
+ const scene={symbols:[shape('R1',10000),shape('R2',20000)],wires:[],junctions:[]};
+ const events=[],c=make('select',i=>{events.push(i);return true;},scene);
+ c.syncSymbolSelection(null,false,['S-R1','S-R2']);
+ assert.equal(c.contextSelect(loc([10000,10000])),'group');
+ assert.equal(events.length,0);assert.equal(c.getState().drag,null);
+ assert.equal(c.contextSelect(loc([40000,40000])),'blank');
+ assert.deepEqual(c.getState().selectedGroup,[]);
+ assert.equal(c.contextSelect(loc([20000,10000])),'symbol');
+ assert.equal(c.getState().selected.instance_id,'S-R2');
+ assert.ok(events.every(e=>e.kind==='select'));
+ c.down(loc([20000,10000]));
+ assert.equal(c.contextSelect(loc([10000,10000])),null);
+ c.key('Escape');c.setContext({tool:'wire'});
+ assert.equal(c.contextSelect(loc([10000,10000])),null);
+});
+test('R16 context target rejects ambiguous overlap instead of picking an arbitrary symbol',()=>{
+ const a={instance_id:'A',component_id:'R1',origin_um:[10000,10000],rotation_deg:0,mirror_x:false,pins:[],strokes:[{from_um:[-2000,0],to_um:[2000,0]}]};
+ const scene={symbols:[a,{...a,instance_id:'B',component_id:'R2'}],wires:[],junctions:[]};
+ const events=[],c=make('select',i=>{events.push(i);return true;},scene);
+ assert.equal(c.contextSelect(loc([10000,10000])),null);
+ assert.equal(c.getState().selected,null);assert.deepEqual(events,[]);
+});
+
+
+test('RC1 pointer snaps only along selected segment and rejects stale wire drafts',()=>{
+ const w={id:'W',net_id:'N',vertices:[{id:'a',at_um:[20000,20000]},{id:'b',at_um:[50000,20000]}],segments:[{id:'s',from_vertex_id:'a',to_vertex_id:'b'}]};
+ const scene={symbols,wires:[w],junctions:[]},snapshot={project_id:'toy',source_topology_hash:'locked',revision:2,wires:[w]};
+ const events=[],c=make('wire',i=>{events.push(i);return true;},scene,snapshot);
+ c.setContext({canTap:true});c.down(loc([10000,10000]));
+ c.move(loc([30300,20300]));
+ assert.deepEqual(c.tapPreview(),{kind:'segment',wire_id:'W',segment_id:'s',at_um:[30000,20000]});
+ c.down(loc([30300,20300]));
+ assert.equal(events.at(-1).kind,'commitWire');assert.deepEqual(events.at(-1).target.at_um,[30000,20000]);
+ assert.equal(c.tapPreview(),null);
+ c.down(loc([10000,10000]));c.setContext({wireSnapshot:{...snapshot,revision:3}});
+ assert.equal(c.getState().draft,null);
+});
+test('RC1 Ctrl and Shift click toggle selection without starting a drag',()=>{
+ const shape=(id,x)=>({instance_id:'S-'+id,component_id:id,origin_um:[x,10000],rotation_deg:0,mirror_x:false,pins:[],strokes:[{from_um:[-2000,0],to_um:[2000,0]}]});
+ const scene={symbols:[shape('R1',10000),shape('R2',20000)],wires:[],junctions:[]},events=[];
+ const c=make('select',i=>{events.push(i);return true;},scene);
+ c.down(loc([10000,10000]));c.up(loc([10000,10000]));
+ c.down({...loc([20000,10000]),ctrlKey:true});
+ assert.deepEqual(c.getState().selectedGroup,['S-R1','S-R2']);assert.equal(c.getState().drag,null);
+ c.down({...loc([10000,10000]),shiftKey:true});
+ assert.equal(c.getState().selected.instance_id,'S-R2');assert.deepEqual(c.getState().selectedGroup,[]);
+});

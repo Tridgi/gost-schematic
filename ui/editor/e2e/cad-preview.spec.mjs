@@ -8,6 +8,19 @@ const source = JSON.parse(readFileSync(
 const wiring = JSON.parse(readFileSync(
   new URL('../public/fixtures/tl494-source-e695-v2.wiring.json',import.meta.url),'utf8'));
 
+
+/** Immediate hit-test oracle: distinguish a blocked pointer from bad CAD
+ * geometry. Do not retry placement or wait for a transient overlay to vanish. */
+async function assertCanvasReceivesPointer(page,x,y){
+ const hit=await page.evaluate(({x,y})=>{
+  const el=document.elementFromPoint(x,y);
+  return {canvas:!!el?.closest('[data-testid="gscad-signed-svg-canvas"]'),
+    tag:el?.tagName??null,testId:el?.closest('[data-testid]')?.getAttribute('data-testid')??null,
+    role:el?.closest('[role]')?.getAttribute('role')??null};
+ },{x,y});
+ expect(hit.canvas,'Pointer at '+x+','+y+' hits '+JSON.stringify(hit)).toBe(true);
+}
+
 function signedPair() {
   // Choose pair using the REAL domain command implementation, not image proximity.
   for (const net of wiring.nets) {
@@ -543,12 +556,28 @@ test('R3 pointer drag, 90-degree rotation, Delete, Undo/Redo and second A3 sheet
  await page.mouse.move(center.x,center.y);
  await page.mouse.down();
  await page.mouse.move(center.x+36,center.y+24,{steps:8});
+ const ghost=page.getByTestId('gscad-symbol-drag-preview');
+ await expect(ghost).toBeVisible();
+ await expect(ghost).toHaveAttribute('data-electrical','false');
+ await expect(ghost.locator('[data-net-id]')).toHaveCount(0);
  await page.mouse.up();
+ await expect(ghost).toHaveCount(0);
  const d1=page.waitForEvent('download');
  await page.getByTestId('save-project').click();
  const moved=JSON.parse(readFileSync(await (await d1).path(),'utf8'));
  const movedInstance=moved.project.sheets[0].instances.find(i=>i.id===instance.id);
  expect(movedInstance.origin_um).not.toEqual(instance.origin_um);
+ // Modified/held/IME key events must not become CAD mutations.
+ await canvas.focus();
+ for(const event of [
+   {key:'r',ctrlKey:true},{key:'r',metaKey:true},{key:'r',altKey:true},
+   {key:'r',repeat:true},{key:'Delete',repeat:true},{key:'Delete',isComposing:true}
+ ])await canvas.dispatchEvent('keydown',{...event,bubbles:true,cancelable:true});
+ await expect(page.getByTestId('symbol-R1')).toHaveCount(1);
+ const blockedDownload=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const blocked=JSON.parse(readFileSync(await (await blockedDownload).path(),'utf8'));
+ expect(blocked.project).toEqual(moved.project);
  await canvas.focus();await canvas.press('r');
  const d2=page.waitForEvent('download');
  await page.getByTestId('save-project').click();
@@ -733,7 +762,7 @@ test('R4 Chromium connected R1: reject without consent, consent reroute, Undo/Re
  };
  page.once('dialog',async dialog=>{expect(dialog.type()).toBe('confirm');await dialog.dismiss();});
  await drag(35,22);
- await expect(page.getByRole('alert').filter({hasText:'REROUTE_CANCELLED'})).toBeVisible();
+ await expect(page.getByTestId('reroute-cancelled')).toBeVisible();
  const d2=page.waitForEvent('download');
  await page.getByTestId('save-project').click();
  const cancelled=JSON.parse(readFileSync(await (await d2).path(),'utf8'));
@@ -741,7 +770,7 @@ test('R4 Chromium connected R1: reject without consent, consent reroute, Undo/Re
  expect(cancelled.project.sheets[0].wires).toEqual(connected.project.sheets[0].wires);
  page.once('dialog',async dialog=>{expect(dialog.type()).toBe('confirm');await dialog.accept();});
  await drag(35,22);
- await expect(page.getByRole('alert').filter({hasText:'REROUTE_REVIEW_REQUIRED'})).toBeVisible();
+ await expect(page.getByTestId('reroute-warning')).toBeVisible();
  const d3=page.waitForEvent('download');
  await page.getByTestId('save-project').click();
  const moved=JSON.parse(readFileSync(await (await d3).path(),'utf8'));
@@ -816,7 +845,7 @@ test('R4 connected R1 with two independent Nets: both physical routes reanchor a
  page.once('dialog',async dlg=>{expect(dlg.type()).toBe('confirm');await dlg.accept();});
  await page.mouse.move(center.x,center.y);await page.mouse.down();
  await page.mouse.move(center.x,center.y+45,{steps:9});await page.mouse.up();
- await expect(page.getByRole('alert').filter({hasText:'REROUTE_REVIEW_REQUIRED'})).toBeVisible();
+ await expect(page.getByTestId('reroute-warning')).toBeVisible();
  const afterDownload=page.waitForEvent('download');
  await page.getByTestId('save-project').click();
  const after=JSON.parse(readFileSync(await (await afterDownload).path(),'utf8'));
@@ -841,4 +870,1019 @@ test('R4 connected R1 with two independent Nets: both physical routes reanchor a
   'import sys,json;sys.path.insert(0,"src/model");from contract import validate;validate(json.load(sys.stdin))'
  ],{input:JSON.stringify(redo),encoding:'utf8',timeout:20000});
  expect(py.status,py.stderr).toBe(0);
+});
+
+test('R11: tree, viewport and inspector selection agree and blank click clears them',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+ await page.mouse.click(paper.x+paper.width*.35,paper.y+paper.height*.4);
+ await expect(page.getByTestId('symbol-R1')).toHaveAttribute('data-selected','true');
+ await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+ await page.mouse.click(paper.x+paper.width*.65,paper.y+paper.height*.6);
+ await expect(page.getByTestId('symbol-R2')).toHaveAttribute('data-selected','true');
+ await expect(page.getByTestId('symbol-R1')).toHaveAttribute('data-selected','false');
+ await page.locator('[data-testid^="tree-item-"]').filter({hasText:/^R1$/}).click();
+ await expect(page.getByTestId('symbol-R1')).toHaveAttribute('data-selected','true');
+ await expect(page.getByTestId('symbol-R2')).toHaveAttribute('data-selected','false');
+ await expect(page.getByLabel('Позиционное обозначение')).toHaveValue('R1');
+ await page.mouse.click(paper.x+paper.width*.5,paper.y+paper.height*.85);
+ await expect(page.getByTestId('symbol-R1')).toHaveAttribute('data-selected','false');
+ await expect(page.getByTestId('inspector')).toHaveCount(0);
+ await canvas.focus();await canvas.press('Delete');
+ await expect(page.getByTestId('symbol-R1')).toHaveCount(1);
+ await expect(page.getByTestId('symbol-R2')).toHaveCount(1);
+});
+
+test('R11: Ctrl+C/V duplicates unconnected UGO with new identity; Undo and Redo work',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+ await page.mouse.click(paper.x+paper.width*.4,paper.y+paper.height*.45);
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');
+ await expect(page.getByTestId('symbol-R1')).toHaveAttribute('data-selected','true');
+ await canvas.focus();await canvas.press('Control+c');await canvas.press('Control+v');
+ await expect(page.getByTestId('symbol-R2')).toHaveAttribute('data-selected','true');
+ await expect(page.getByLabel('Позиционное обозначение')).toHaveValue('R2');
+ const download=page.waitForEvent('download');
+ await page.getByTestId('save-project').click();
+ const saved=JSON.parse(readFileSync(await (await download).path(),'utf8'));
+ expect(saved.project.components.map(c=>c.refdes)).toEqual(['R1','R2']);
+ expect(saved.project.nets).toEqual([]);
+ expect(saved.project.sheets[0].wires).toEqual([]);
+ expect(saved.project.sheets[0].instances[0].origin_um).not.toEqual(saved.project.sheets[0].instances[1].origin_um);
+ await page.getByRole('button',{name:'Отменить'}).click();
+ await expect(page.getByTestId('symbol-R2')).toHaveCount(0);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ await expect(page.getByTestId('symbol-R2')).toHaveCount(1);
+});
+
+test('R13: rectangle selection and group move are one reversible edit',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ const place=async(x,y)=>{
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*y);
+ };
+ await place(.35,.4);await place(.6,.55);
+ const r1=page.getByTestId('symbol-R1'),r2=page.getByTestId('symbol-R2');
+ await expect(r2).toBeVisible();
+ const saved=async()=>{
+  const download=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await download).path(),'utf8'));
+ };
+ const before=await saved();
+ await page.mouse.move(paper.x+paper.width*.25,paper.y+paper.height*.3);
+ await page.mouse.down();
+ await page.mouse.move(paper.x+paper.width*.7,paper.y+paper.height*.65,{steps:8});
+ await expect(page.getByTestId('gscad-selection-marquee')).toBeVisible();
+ await page.mouse.up();
+ await expect(r1).toHaveAttribute('data-selected','true');
+ await expect(r2).toHaveAttribute('data-selected','true');
+ await expect(page.getByTestId('group-selection-summary')).toContainText('2');
+ const selected=await saved();expect(selected.project).toEqual(before.project);
+ const pin=page.getByTestId('signed-pin-'+before.project.components[0].id+'-1');
+ const b=await pin.boundingBox();
+ await page.mouse.move(b.x+b.width/2,b.y+b.height/2);
+ await page.mouse.down();await page.mouse.move(b.x+b.width/2+25,b.y+b.height/2+18,{steps:6});
+ await expect(page.getByTestId('gscad-group-drag-preview')).toBeVisible();
+ await page.mouse.up();
+ const after=await saved();
+ const old=before.project.sheets[0].instances,now=after.project.sheets[0].instances;
+ const delta=now[0].origin_um.map((v,i)=>v-old[0].origin_um[i]);
+ expect(delta.some(Boolean)).toBe(true);
+ expect(now[1].origin_um.map((v,i)=>v-old[1].origin_um[i])).toEqual(delta);
+ expect(after.project.nets).toEqual(before.project.nets);
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ expect((await saved()).project).toEqual(after.project);
+});
+
+test('R14: connected group move requires consent and preserves electrical identity',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ for(const x of [.25,.5,.75]){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*.45);
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const placed=await saved(),[a,b,c]=placed.project.components;
+ const pin=(comp,n)=>page.getByTestId('signed-pin-'+comp.id+'-'+n);
+ await page.getByRole('button',{name:'Провод W'}).click();
+ await pin(a,2).click();await pin(b,1).click();
+ await pin(b,2).click();await pin(c,1).click();
+ await expect(page.locator('[data-net-id]')).toHaveCount(2);
+ await page.getByRole('button',{name:'Выбор V'}).click();
+ const before=await saved();
+ await page.mouse.move(paper.x+paper.width*.15,paper.y+paper.height*.32);
+ await page.mouse.down();
+ await page.mouse.move(paper.x+paper.width*.62,paper.y+paper.height*.58,{steps:6});
+ await page.mouse.up();
+ await expect(page.getByTestId('group-selection-summary')).toContainText('2');
+ const p=await pin(a,1).boundingBox();
+ const drag=async(accept)=>{
+  const onDialog=dialog=>accept?dialog.accept():dialog.dismiss();
+  page.once('dialog',onDialog);
+  await page.mouse.move(p.x+p.width/2,p.y+p.height/2);
+  await page.mouse.down();await page.mouse.move(p.x+p.width/2+15,p.y+p.height/2+22,{steps:6});
+  await page.mouse.up();
+ };
+ await drag(false);
+ await expect(page.getByTestId('reroute-cancelled')).toBeVisible();
+ expect((await saved()).project).toEqual(before.project);
+ await drag(true);
+ await expect(page.getByTestId('reroute-warning')).toBeVisible();
+ const after=await saved();
+ expect(after.project.nets.map(n=>[n.id,n.name,n.members])).toEqual(before.project.nets.map(n=>[n.id,n.name,n.members]));
+ expect(after.project.sheets[0].wires.map(w=>w.id)).toEqual(before.project.sheets[0].wires.map(w=>w.id));
+ expect(after.project.sheets[0].wires.every(w=>w.needs_routing_review)).toBe(true);
+ expect(after.project.sheets[0].instances[2]).toEqual(before.project.sheets[0].instances[2]);
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(before.project);
+});
+
+test('R15: group Ctrl+C/V preserves only internal electrical identities and is undoable',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ for(const x of [.25,.5,.75]){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*.35);
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const placed=await saved(),[a,b,c]=placed.project.components;
+ const pin=(comp,n)=>page.getByTestId('signed-pin-'+comp.id+'-'+n);
+ await page.getByRole('button',{name:'Провод W'}).click();
+ await pin(a,2).click();await pin(b,1).click();
+ await pin(b,2).click();await pin(c,1).click();
+ await expect(page.locator('[data-net-id]')).toHaveCount(2);
+ await page.getByRole('button',{name:'Выбор V'}).click();
+ const before=await saved();
+ await page.mouse.move(paper.x+paper.width*.15,paper.y+paper.height*.22);
+ await page.mouse.down();await page.mouse.move(paper.x+paper.width*.62,paper.y+paper.height*.48,{steps:6});await page.mouse.up();
+ await expect(page.getByTestId('group-selection-summary')).toContainText('2');
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');
+ await canvas.focus();await canvas.press('Control+c');await canvas.press('Control+v');
+ await expect(page.getByTestId('symbol-R4')).toHaveAttribute('data-selected','true');
+ await expect(page.getByTestId('symbol-R5')).toHaveAttribute('data-selected','true');
+ const after=await saved();
+ expect(after.project.components).toHaveLength(5);
+ expect(after.project.nets).toHaveLength(3);
+ expect(after.project.nets.slice(0,2)).toEqual(before.project.nets);
+ const copied=after.project.nets[2],newIds=after.project.components.slice(3).map(c=>c.id);
+ expect(copied.members.map(m=>m.component_id)).toEqual(newIds);
+ expect(after.project.sheets[0].wires).toHaveLength(3);
+ expect(after.project.sheets[0].wires.slice(0,2)).toEqual(before.project.sheets[0].wires);
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ expect((await saved()).project).toEqual(after.project);
+});
+
+test('R16 right-click selects UGO, context commands operate on it, Escape closes menu',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ for(const x of [.3,.65]){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*.4);
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const before=await saved(),id=before.project.components[0].id;
+ const pin=page.getByTestId('signed-pin-'+id+'-1');
+ await pin.click({button:'right'});
+ const menu=page.getByTestId('canvas-context-menu');
+ await expect(menu).toBeVisible();
+ await expect(page.getByTestId('symbol-R1')).toHaveAttribute('data-selected','true');
+ await expect(page.getByTestId('symbol-R2')).toHaveAttribute('data-selected','false');
+ await page.keyboard.press('Escape');await expect(menu).toHaveCount(0);
+ expect((await saved()).project).toEqual(before.project);
+ await pin.click({button:'right'});await page.getByTestId('context-rotate').click();
+ await expect(menu).toHaveCount(0);
+ const rotated=await saved();
+ expect(rotated.project.sheets[0].instances[0].rotation_deg).toBe(90);
+ expect(rotated.project.sheets[0].instances[1]).toEqual(before.project.sheets[0].instances[1]);
+ await pin.click({button:'right'});await page.getByTestId('context-copy').click();
+ await page.mouse.click(paper.x+paper.width*.5,paper.y+paper.height*.7,{button:'right'});
+ await expect(page.getByTestId('context-delete')).toBeDisabled();
+ await page.getByTestId('context-paste').click();
+ const pasted=await saved();
+ expect(pasted.project.components).toHaveLength(3);
+ expect(pasted.project.nets).toEqual([]);
+ expect(pasted.project.sheets[0].instances[2].rotation_deg).toBe(90);
+});
+
+test('R17: source library search and real semiconductor placement',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const search=page.getByTestId('catalog-search');
+ await expect(page.locator('[data-testid^="catalog-item-"]')).toHaveCount(36);
+ await search.fill('фотодиод');
+ await expect(page.locator('[data-testid^="catalog-item-"]')).toHaveCount(1);
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await page.getByTestId('catalog-item-symbol/diode.photodiode').click();
+ await page.mouse.click(paper.x+paper.width*.3,paper.y+paper.height*.5);
+ await expect(page.getByTestId('symbol-VD1')).toBeVisible();
+ await search.fill('NPN с корпусом');
+ await page.getByTestId('catalog-item-symbol/transistor.bjt_npn.with_case').click();
+ await page.mouse.click(paper.x+paper.width*.65,paper.y+paper.height*.5);
+ await expect(page.getByTestId('symbol-VT1')).toBeVisible();
+ const download=page.waitForEvent('download');await page.getByTestId('save-project').click();
+ const doc=JSON.parse(readFileSync(await (await download).path(),'utf8'));
+ expect(doc.project.components).toHaveLength(2);
+ const [d,t]=doc.project.components;
+ await expect(page.getByTestId('signed-pin-'+d.id+'-1')).toBeVisible();
+ await expect(page.getByTestId('signed-pin-'+d.id+'-2')).toBeVisible();
+ for(const n of [1,2,3])await expect(page.getByTestId('signed-pin-'+t.id+'-'+n)).toBeVisible();
+ expect(doc.project.nets).toEqual([]);
+});
+
+test('R17b: open legacy project, add catalog entries explicitly, undo and redo',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const legacy=await saved();
+ const keep=new Set(['resistor.fixed','capacitor.fixed']);
+ legacy.project.part_definitions=legacy.project.part_definitions.filter(p=>keep.has(p.id));
+ legacy.project.symbol_definitions=legacy.project.symbol_definitions.filter(p=>keep.has(p.part_id));
+ await page.getByTestId('project-file-input').setInputFiles({name:'legacy.gscad',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(legacy))});
+ await expect(page.locator('[data-testid^="catalog-item-"]')).toHaveCount(2);
+ await expect(page.getByTestId('upgrade-catalog')).toContainText('+34');
+ await page.getByTestId('upgrade-catalog').click();
+ await expect(page.locator('[data-testid^="catalog-item-"]')).toHaveCount(36);
+ await expect(page.getByTestId('upgrade-catalog')).toHaveCount(0);
+ const upgraded=await saved();
+ expect(upgraded.project.part_definitions.slice(0,2)).toEqual(legacy.project.part_definitions);
+ expect(upgraded.project.symbol_definitions.slice(0,2)).toEqual(legacy.project.symbol_definitions);
+ expect(upgraded.project.sheets).toEqual(legacy.project.sheets);
+ await page.getByRole('button',{name:'Отменить'}).click();
+ await expect(page.locator('[data-testid^="catalog-item-"]')).toHaveCount(2);
+ expect((await saved()).project).toEqual(legacy.project);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ expect((await saved()).project).toEqual(upgraded.project);
+});
+
+test('R17d real winding symbols render analytic arcs and signed tap contacts',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ await page.getByTestId('catalog-search').fill('двумя отводами');
+ await page.getByTestId('catalog-item-symbol/inductor.double_tapped').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await page.mouse.move(paper.x+paper.width*.4,paper.y+paper.height*.5);
+ const ghost=page.getByTestId('gscad-placement-preview');
+ await expect(ghost).toBeVisible();
+ await expect(ghost.locator('path[data-ugo-curve="semicircle"]').first()).toBeVisible();
+ await expect(ghost.locator('[data-preview-pin]')).toHaveCount(4);
+ await page.mouse.click(paper.x+paper.width*.4,paper.y+paper.height*.5);
+ await expect(ghost).toHaveCount(0);
+ const symbol=page.getByTestId('symbol-L1');
+ await expect(symbol.locator('path[data-ugo-curve="semicircle"]').first()).toBeVisible();
+ const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+ const doc=JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ const comp=doc.project.components[0];
+ const def=doc.project.symbol_definitions.find(s=>s.part_id===comp.part_id);
+ await expect(symbol.locator('path[data-ugo-curve="semicircle"]')).toHaveCount(def.graphics.filter(g=>g.kind==='semicircle').length);
+ for(const n of ['1','2','3','4'])await expect(page.getByTestId('signed-pin-'+comp.id+'-'+n)).toBeVisible();
+ expect(doc.project.nets).toEqual([]);
+ await page.getByTestId('gscad-signed-svg-canvas').focus();
+ await page.keyboard.press('r');
+ await expect(symbol.locator('path[data-ugo-curve="semicircle"]').first()).toBeVisible();
+});
+
+test('R17e Cu note is upright in actual editor and stays separate from electrical contacts',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ await page.getByTestId('catalog-search').fill('медным');
+ await page.getByTestId('catalog-item-symbol/inductor.trim_copper').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await page.mouse.move(paper.x+paper.width*.4,paper.y+paper.height*.5);
+ const ghost=page.getByTestId('gscad-placement-preview');
+ await expect(ghost).toBeVisible();
+ await expect(ghost.locator('[data-symbol-note="core_material"]')).toHaveText('Cu');
+ await page.mouse.click(paper.x+paper.width*.4,paper.y+paper.height*.5);
+ await expect(ghost).toHaveCount(0);
+ const symbol=page.getByTestId('symbol-L1'),note=symbol.locator('[data-symbol-note="core_material"]');
+ await expect(note).toHaveText('Cu');await expect(note).toHaveAttribute('data-electrical','false');
+ const x=await note.getAttribute('x');
+ await page.getByTestId('gscad-signed-svg-canvas').focus();await page.keyboard.press('r');
+ await expect(note).toHaveText('Cu');await expect(note).not.toHaveAttribute('x',x);
+ expect(await note.getAttribute('transform')).toBeNull();
+ const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+ const doc=JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ expect(doc.project.symbol_definitions.length).toBe(36);
+ expect(doc.project.nets).toEqual([]);
+ expect(doc.project.sheets[0].instances[0].rotation_deg).toBe(90);
+ const comp=doc.project.components[0];
+ await expect(page.getByTestId('signed-pin-'+comp.id+'-1')).toBeVisible();
+ await expect(page.getByTestId('signed-pin-'+comp.id+'-2')).toBeVisible();
+});
+
+test('R18 live diagnostics counts, filters and select affected UGO do not mutate project',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+ await page.mouse.click(paper.x+paper.width*.3,paper.y+paper.height*.5);
+ await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+ await page.mouse.click(paper.x+paper.width*.65,paper.y+paper.height*.5);
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const before=await saved();
+ await page.getByRole('button',{name:/ERC\/DRC/}).click();
+ await expect(page.getByTestId('diagnostics-panel')).toBeVisible();
+ await page.getByTestId('diagnostic-filter-warning').click();
+ const warnings=page.locator('[data-diagnostic-code="ERC_UNASSIGNED_PIN"]');
+ await expect(warnings).toHaveCount(2);
+ await warnings.filter({hasText:'R1:'}).getByRole('button',{name:'Выбрать УГО'}).click();
+ await expect(page.getByTestId('symbol-R1')).toHaveAttribute('data-selected','true');
+ await page.getByTestId('diagnostic-filter-error').click();
+ await expect(page.locator('[data-severity="error"]')).toHaveCount(0);
+ expect((await saved()).project).toEqual(before.project);
+ await page.getByTestId('diagnostic-filter-warning').click();
+ // Deleting the selected disconnected resistor updates the report live.
+ await page.getByTestId('gscad-signed-svg-canvas').focus();await page.keyboard.press('Delete');
+ await expect(warnings).toHaveCount(1);
+ await page.getByRole('button',{name:'Отменить'}).click();
+ await expect(warnings).toHaveCount(2);
+});
+
+test('R19 smart routing and aligned connected pins reduce a Z route to one segment',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ for(const [x,y] of [[.28,.38],[.68,.55]]){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*y);
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const placed=await saved(),[a,b]=placed.project.components;
+ await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByTestId('smart-routing').click();
+ await page.getByTestId('tool-wire').click();
+ await page.getByTestId('signed-pin-'+a.id+'-2').click();
+ await page.getByTestId('signed-pin-'+b.id+'-1').click();
+ await page.getByTestId('tool-select').click();
+ const before=await saved();
+ expect(before.project.sheets[0].wires[0].vertices).toHaveLength(4);
+ await page.mouse.move(paper.x+paper.width*.15,paper.y+paper.height*.26);
+ await page.mouse.down();await page.mouse.move(paper.x+paper.width*.82,paper.y+paper.height*.68,{steps:6});await page.mouse.up();
+ await expect(page.getByTestId('group-selection-summary')).toContainText('2');
+ page.once('dialog',d=>d.accept());
+ await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByTestId('align-connected-pair').click();
+ const after=await saved(),w=after.project.sheets[0].wires[0];
+ expect(w.vertices).toHaveLength(2);expect(w.vertices[0].at_um[1]).toBe(w.vertices[1].at_um[1]);
+ expect(after.project.nets.map(n=>[n.id,n.members])).toEqual(before.project.nets.map(n=>[n.id,n.members]));
+ expect(w.id).toBe(before.project.sheets[0].wires[0].id);
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ expect((await saved()).project).toEqual(after.project);
+});
+
+test('RC1 selected UGO is visible under cursor without magnet, cancel is read-only and click matches preview',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas'),ghost=page.getByTestId('gscad-placement-preview');
+ await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ const resistor=page.getByTestId('catalog-item-symbol/resistor.fixed'),cap=page.getByTestId('catalog-item-symbol/capacitor.fixed');
+ const x=paper.x+paper.width*.4,y=paper.y+paper.height*.4;
+ const saved=async()=>{const d=page.waitForEvent('download');await page.getByTestId('save-project').click();return JSON.parse(readFileSync(await (await d).path(),'utf8'));};
+ const initial=await saved();
+ await resistor.click();await expect(canvas).toHaveAttribute('data-tool','place');
+ await assertCanvasReceivesPointer(page,x,y);
+ await page.mouse.move(x,y);
+ await expect(ghost).toBeVisible();
+ await expect(ghost).toHaveAttribute('data-symbol-id','symbol/resistor.fixed');
+ await expect(ghost).toHaveAttribute('data-electrical','false');
+ expect(await ghost.locator('line').count()).toBeGreaterThan(0);
+ await expect(ghost.locator('[data-preview-pin]')).toHaveCount(2);
+ await expect(page.getByTestId('pin-placement-guide')).toHaveCount(0);
+ await expect(page.locator('[data-testid^="symbol-"]')).toHaveCount(0);
+ await page.mouse.move(x+50,y+25);
+ await expect(ghost).toBeVisible();
+ await resistor.hover();await expect(ghost).toHaveCount(0);
+ await page.mouse.move(x,y);await expect(ghost).toBeVisible();
+ await page.keyboard.press('Escape');
+ await expect(ghost).toHaveCount(0);await expect(canvas).toHaveAttribute('data-tool','select');
+ expect((await saved()).project).toEqual(initial.project);
+ await cap.click();await expect(canvas).toHaveAttribute('data-tool','place');
+ await page.mouse.move(x,y);await expect(ghost).toBeVisible();
+ await expect(ghost).toHaveAttribute('data-symbol-id','symbol/capacitor.fixed');
+ const previewOrigin=[Number(await ghost.getAttribute('data-origin-x-um')),Number(await ghost.getAttribute('data-origin-y-um'))];
+ await page.mouse.click(x,y);
+ await expect(page.getByTestId('symbol-C1')).toBeVisible();await expect(ghost).toHaveCount(0);
+ const doc=await saved();expect(doc.project.components).toHaveLength(1);
+ expect(doc.project.sheets[0].instances[0].origin_um).toEqual(previewOrigin);
+ expect(doc.project.nets).toEqual([]);expect(doc.project.sheets[0].wires).toEqual([]);
+});
+
+test('R19b magnetic placement preview aligns pins without creating a wire',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');
+ await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByTestId('pin-magnet').click();
+ await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+ await expect(canvas).toHaveAttribute('data-tool','place');
+ await assertCanvasReceivesPointer(page,paper.x+paper.width*.3,paper.y+paper.height*.4);
+ await page.mouse.click(paper.x+paper.width*.3,paper.y+paper.height*.4);
+ await expect(page.getByTestId('symbol-R1')).toBeVisible();
+ // Use actual signed contact screen position, not an approximate paper ratio.
+ const initialDownload=page.waitForEvent('download');await page.getByTestId('save-project').click();
+ const initial=JSON.parse(readFileSync(await (await initialDownload).path(),'utf8'));
+ const component=initial.project.components[0];
+ const contact=await page.getByTestId('signed-pin-'+component.id+'-2').boundingBox();
+ const frame=await page.getByTestId('gscad-paper-outline').boundingBox();
+ const scale=frame.width/initial.project.sheets[0].frame.size_um[0];
+ await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+ await expect(canvas).toHaveAttribute('data-tool','place');
+ const x=contact.x+contact.width/2+42000*scale,y=contact.y+contact.height/2+3000*scale;
+ await page.mouse.move(x,y,{steps:5});
+ await expect(page.getByTestId('pin-placement-guide')).toBeVisible();
+ await expect(page.getByTestId('pin-placement-guide')).toHaveAttribute('data-electrical','false');
+ const ghost=page.getByTestId('gscad-placement-preview');
+ await expect(ghost).toBeVisible();
+ const previewOrigin=[Number(await ghost.getAttribute('data-origin-x-um')),Number(await ghost.getAttribute('data-origin-y-um'))];
+ await page.mouse.click(x,y);
+ await expect(page.getByTestId('symbol-R2')).toBeVisible();
+ await expect(page.getByTestId('pin-placement-guide')).toHaveCount(0);
+ const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+ const doc=JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ const [a,b]=doc.project.sheets[0].instances;
+ expect(a.origin_um[1]).toBe(b.origin_um[1]);expect(b.origin_um).toEqual(previewOrigin);expect(doc.project.nets).toEqual([]);
+ expect(doc.project.sheets[0].wires).toEqual([]);
+});
+
+test('R19c existing staircase becomes a clean two-bend wire and Undo restores original route',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ for(const [x,y] of [[.25,.35],[.7,.55]]){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*y);
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const placed=await saved(),[a,b]=placed.project.components;
+ await page.getByTestId('tool-wire').click();
+ await page.getByTestId('signed-pin-'+a.id+'-2').click();await page.getByTestId('signed-pin-'+b.id+'-1').click();
+ await page.getByTestId('tool-select').click();
+ const stairs=await saved(),w=stairs.project.sheets[0].wires[0],start=w.vertices[0],end=w.vertices.at(-1);
+ const [x0,y0]=start.at_um,[x1,y1]=end.at_um;
+ const xa=Math.round(x0+(x1-x0)*.25),xb=Math.round(x0+(x1-x0)*.5),xc=Math.round(x0+(x1-x0)*.75);
+ const ya=Math.round(y0+(y1-y0)/3),yb=Math.round(y0+2*(y1-y0)/3);
+ const bends=[[xa,y0],[xa,ya],[xb,ya],[xb,yb],[xc,yb],[xc,y1]];
+ w.vertices=[start,...bends.map((at_um,i)=>({id:'stairs-v'+i,at_um,anchor:{kind:'bend'}})),end];
+ w.segments=w.vertices.slice(1).map((v,i)=>({id:'stairs-s'+i,from_vertex_id:w.vertices[i].id,to_vertex_id:v.id}));
+ await page.getByTestId('project-file-input').setInputFiles({name:'stairs.gscad',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(stairs))});
+ await expect(page.locator('[data-wire-id="'+w.id+'"] [data-segment-id]')).toHaveCount(7);
+ page.once('dialog',d=>d.accept());
+ await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByTestId('simplify-routes').click();
+ await expect(page.locator('[data-wire-id="'+w.id+'"] [data-segment-id]')).toHaveCount(3);
+ const after=await saved();
+ expect(after.project.sheets[0].instances).toEqual(stairs.project.sheets[0].instances);
+ expect(after.project.nets.map(n=>[n.id,n.members])).toEqual(stairs.project.nets.map(n=>[n.id,n.members]));
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(stairs.project);
+});
+
+test('R20 selected chain becomes straight without altering Net membership, and Undo restores poses',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ for(const [x,y] of [[.22,.35],[.5,.49],[.78,.4]]){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*y);
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const placed=await saved(),[a,b,c]=placed.project.components;
+ await page.getByTestId('tool-wire').click();
+ for(const [x,y] of [[a,b],[b,c]]){
+  await page.getByTestId('signed-pin-'+x.id+'-2').click();
+  await page.getByTestId('signed-pin-'+y.id+'-1').click();
+ }
+ await page.getByTestId('tool-select').click();
+ const before=await saved();
+ expect(before.project.sheets[0].wires.map(w=>w.vertices.length)).toEqual([4,4]);
+ await page.mouse.move(paper.x+paper.width*.12,paper.y+paper.height*.24);
+ await page.mouse.down();await page.mouse.move(paper.x+paper.width*.88,paper.y+paper.height*.61,{steps:6});await page.mouse.up();
+ await expect(page.getByTestId('group-selection-summary')).toContainText('3');
+ page.once('dialog',d=>d.accept());
+ await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByTestId('align-series').click();
+ const after=await saved(),sh=after.project.sheets[0];
+ expect(new Set(sh.instances.map(i=>i.origin_um[1])).size).toBe(1);
+ expect(sh.wires.map(w=>w.vertices.length)).toEqual([2,2]);
+ expect(after.project.nets.map(n=>[n.id,n.members])).toEqual(before.project.nets.map(n=>[n.id,n.members]));
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ expect((await saved()).project).toEqual(after.project);
+});
+
+test('R20b equal pin gaps in actual editor keep the end poses and preserve Undo',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');
+ await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ for(const [i,x] of [.2,.36,.8].entries()){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+ await expect(canvas).toHaveAttribute('data-tool','place');
+  await assertCanvasReceivesPointer(page,paper.x+paper.width*x,paper.y+paper.height*.4);
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*.4);
+  await expect(page.getByTestId('symbol-R'+(i+1))).toBeVisible();
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const placed=await saved(),[a,b,c]=placed.project.components;
+ await page.getByTestId('tool-wire').click();
+ for(const [x,y] of [[a,b],[b,c]]){
+  await page.getByTestId('signed-pin-'+x.id+'-2').click();
+  await page.getByTestId('signed-pin-'+y.id+'-1').click();
+ }
+ await page.getByTestId('tool-select').click();
+ const before=await saved(),sh0=before.project.sheets[0];
+ await page.mouse.move(paper.x+paper.width*.12,paper.y+paper.height*.29);
+ await page.mouse.down();await page.mouse.move(paper.x+paper.width*.88,paper.y+paper.height*.51,{steps:6});await page.mouse.up();
+ await expect(page.getByTestId('group-selection-summary')).toContainText('3');
+ page.once('dialog',d=>d.accept());
+ await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByTestId('distribute-series').click();
+ const after=await saved(),sh=after.project.sheets[0];
+ expect(sh.instances[0]).toEqual(sh0.instances[0]);expect(sh.instances[2]).toEqual(sh0.instances[2]);
+ expect(sh.instances[1].origin_um).not.toEqual(sh0.instances[1].origin_um);
+ const gaps=sh.wires.map(w=>w.vertices.at(-1).at_um[0]-w.vertices[0].at_um[0]);
+ expect(Math.abs(gaps[0]-gaps[1])).toBeLessThanOrEqual(1);
+ expect(after.project.nets.map(n=>[n.id,n.members])).toEqual(before.project.nets.map(n=>[n.id,n.members]));
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(before.project);
+});
+
+test('R21 parallel rails replace routes with explicit junctions without changing component poses or Nets',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ for(const x of [.25,.5,.75]){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*.45);
+  await page.getByTestId('gscad-signed-svg-canvas').focus();
+  await page.keyboard.press('r');
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const placed=await saved(),comps=placed.project.components;
+ expect(placed.project.sheets[0].instances.every(i=>i.rotation_deg===90)).toBeTruthy();
+ await page.getByRole('button',{name:'Провод W'}).click();
+ for(const n of ['1','2'])for(let i=1;i<comps.length;i++){
+  await page.getByTestId('signed-pin-'+comps[i-1].id+'-'+n).click();
+  await page.getByTestId('signed-pin-'+comps[i].id+'-'+n).click();
+ }
+ await page.getByRole('button',{name:'Выбор V'}).click();
+ const before=await saved();
+ expect(before.project.nets).toHaveLength(2);
+ await page.mouse.move(paper.x+paper.width*.15,paper.y+paper.height*.32);
+ await page.mouse.down();await page.mouse.move(paper.x+paper.width*.85,paper.y+paper.height*.58,{steps:6});await page.mouse.up();
+ await expect(page.getByTestId('group-selection-summary')).toContainText('3');
+ page.once('dialog',d=>d.accept());
+ await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByTestId('parallel-rails').click();
+ const after=await saved(),sh=after.project.sheets[0];
+ expect(sh.wires).toHaveLength(10);expect(sh.junctions).toHaveLength(2);expect(sh.splices).toHaveLength(4);
+ expect(sh.instances).toEqual(before.project.sheets[0].instances);
+ expect(after.project.nets.map(n=>[n.id,n.members])).toEqual(before.project.nets.map(n=>[n.id,n.members]));
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ expect((await saved()).project).toEqual(after.project);
+});
+
+test('R22 automatic layout previews metrics, cancel is harmless, confirm is one undoable edit',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ for(const [i,[x,y]] of [[.22,.35],[.5,.49],[.78,.4]].entries()){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*y);
+  await expect(page.getByTestId('symbol-R'+(i+1))).toBeVisible();
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const placed=await saved(),[a,b,c]=placed.project.components;
+ await page.getByTestId('tool-wire').click();
+ for(const [x,y] of [[a,b],[b,c]]){
+  await page.getByTestId('signed-pin-'+x.id+'-2').click();
+  await page.getByTestId('signed-pin-'+y.id+'-1').click();
+ }
+ await page.getByTestId('tool-select').click();
+ const before=await saved();
+ const openPlan=async(accept)=>{
+  await page.getByRole('button',{name:'Правка'}).click();
+  await page.getByTestId('optimize-layout').click();
+  await expect(page.getByTestId('layout-preview-dialog')).toBeVisible();
+  await expect(page.getByTestId('layout-bends')).toHaveText('4 → 0');
+  const before=page.getByTestId('layout-before'),after=page.getByTestId('layout-after');
+  await expect(before).toBeVisible();await expect(after).toBeVisible();
+  await expect.poll(()=>before.evaluate(img=>img.complete&&img.naturalWidth>0)).toBeTruthy();
+  await expect.poll(()=>after.evaluate(img=>img.complete&&img.naturalWidth>0)).toBeTruthy();
+  const svgA=decodeURIComponent((await before.getAttribute('src')).split(',').slice(1).join(','));
+  const svgB=decodeURIComponent((await after.getAttribute('src')).split(',').slice(1).join(','));
+  expect(svgA).not.toBe(svgB);
+  expect(svgA.match(/viewBox="([^"]+)"/)[1]).toBe(svgB.match(/viewBox="([^"]+)"/)[1]);
+  await page.getByTestId(accept?'layout-apply':'layout-cancel').click();
+  await expect(page.getByTestId('layout-preview-dialog')).toHaveCount(0);
+ };
+ await openPlan(false);expect((await saved()).project).toEqual(before.project);
+ await openPlan(true);
+ const after=await saved();
+ expect(after.project.sheets[0].wires.map(w=>w.vertices.length)).toEqual([2,2]);
+ expect(after.project.nets.map(n=>[n.id,n.members])).toEqual(before.project.nets.map(n=>[n.id,n.members]));
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ expect((await saved()).project).toEqual(after.project);
+});
+
+test('R23 source TL494 electrical structure is inspectable without authoring or inference',async({page})=>{
+ await page.goto('/');
+ await expect(page.getByTestId('symbol-DA1')).toBeVisible();
+ await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByTestId('topology-inventory').click();
+ const report=page.getByTestId('topology-report');
+ await expect(report).toBeVisible();
+ await expect(report).toContainText('УГО: 23; объявленных цепей: 15.');
+ await expect(report).toContainText('DA1 — 16 выводов, 9 цепей');
+ await expect(report).toContainText('OSCILLATOR_CT · C7');
+ await expect(report).toContainText('OSCILLATOR_RT · R7');
+ await expect(report).toContainText('COMMON — 14 выводов, 11 УГО');
+ await expect(report).toContainText('Нет явных типов выводов питания в каталоге.');
+ await report.getByRole('button',{name:'Выбрать УГО'}).click();
+ await expect(report).toHaveCount(0);
+ await expect(page.getByTestId('symbol-DA1')).toHaveAttribute('data-selected','true');
+});
+
+test('R24 single-Net rail through topology report preserves signed membership and exact Undo',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');
+ await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ for(const [i,x] of [.25,.5,.75].entries()){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await expect(canvas).toHaveAttribute('data-tool','place');
+  const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*(i===1?.51:.4));
+  await expect(page.getByTestId('symbol-R'+(i+1))).toBeVisible();
+  await canvas.focus();await canvas.press('r');
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const placed=await saved(),comps=placed.project.components;
+ expect(placed.project.sheets[0].instances.every(i=>i.rotation_deg===90)).toBeTruthy();
+ await page.getByTestId('tool-wire').click();
+ for(let i=1;i<comps.length;i++){
+  await page.getByTestId('signed-pin-'+comps[i-1].id+'-1').click();
+  await page.getByTestId('signed-pin-'+comps[i].id+'-1').click();
+ }
+ await page.getByTestId('tool-select').click();
+ const before=await saved(),net=before.project.nets[0];
+ expect(net.members).toHaveLength(3);
+ await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByTestId('topology-inventory').click();
+ await expect(page.getByTestId('topology-report')).toBeVisible();
+ page.once('dialog',d=>d.accept());
+ await page.getByTestId('net-rail-'+net.id).click();
+ const after=await saved(),sh=after.project.sheets[0];
+ expect(sh.wires).toHaveLength(5);expect(sh.junctions).toHaveLength(1);expect(sh.splices).toHaveLength(2);
+ expect(sh.instances).toEqual(before.project.sheets[0].instances);
+ expect(after.project.nets.map(n=>[n.id,n.members])).toEqual(before.project.nets.map(n=>[n.id,n.members]));
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ expect((await saved()).project).toEqual(after.project);
+});
+
+test('R25 mixed-axis Net rail keeps real signed pin directions and undoable geometry',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');
+ await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ for(const [i,[x,y]] of [[.19,.24],[.38,.34],[.57,.44]].entries()){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await expect(canvas).toHaveAttribute('data-tool','place');
+  const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+  await assertCanvasReceivesPointer(page,paper.x+paper.width*x,paper.y+paper.height*y);
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*y);
+  await expect(page.getByTestId('symbol-R'+(i+1))).toBeVisible();
+  if(i===1){await canvas.focus();await canvas.press('r')}
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const placed=await saved(),comps=placed.project.components;
+ expect(placed.project.sheets[0].instances.map(i=>i.rotation_deg)).toEqual([0,90,0]);
+ await page.getByTestId('tool-wire').click();
+ for(let i=1;i<comps.length;i++){
+  await page.getByTestId('signed-pin-'+comps[i-1].id+'-1').click();
+  await page.getByTestId('signed-pin-'+comps[i].id+'-1').click();
+ }
+ await page.getByTestId('tool-select').click();
+ const before=await saved(),net=before.project.nets[0];
+ expect(net.members).toHaveLength(3);
+ await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByTestId('topology-inventory').click();
+ page.once('dialog',d=>d.accept());
+ await page.getByTestId('net-rail-'+net.id).click();
+ const after=await saved(),sh=after.project.sheets[0];
+ expect(sh.wires.filter(w=>w.vertices.length===3)).toHaveLength(1);
+ expect(sh.wires.every(w=>w.vertices.length<=3)).toBeTruthy();
+ expect(sh.instances).toEqual(before.project.sheets[0].instances);
+ expect(after.project.nets.map(n=>[n.id,n.members])).toEqual(before.project.nets.map(n=>[n.id,n.members]));
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ expect((await saved()).project).toEqual(after.project);
+});
+
+test('R26 tree reconstruction from topology report bypasses a rail obstruction',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');
+ await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ const positions=[[.17,.34],[.31,.39],[.45,.32],[.60,.37],[.31,.27]];
+ for(const [i,[x,y]] of positions.entries()){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await expect(canvas).toHaveAttribute('data-tool','place');
+  const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+  await assertCanvasReceivesPointer(page,paper.x+paper.width*x,paper.y+paper.height*y);
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*y);
+  await expect(page.getByTestId('symbol-R'+(i+1))).toBeVisible();
+  if(i<4){await canvas.focus();await canvas.press('r')}
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const placed=await saved(),comps=placed.project.components.slice(0,4);
+ await page.getByTestId('tool-wire').click();
+ for(let i=1;i<comps.length;i++){
+  await page.getByTestId('signed-pin-'+comps[i-1].id+'-1').click();
+  await page.getByTestId('signed-pin-'+comps[i].id+'-1').click();
+ }
+ await page.getByTestId('tool-select').click();
+ const before=await saved(),net=before.project.nets[0];
+ expect(net.members).toHaveLength(4);
+ await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByTestId('topology-inventory').click();
+ page.once('dialog',d=>d.accept());
+ await page.getByTestId('net-tree-'+net.id).click();
+ const after=await saved(),sh=after.project.sheets[0];
+ expect(sh.junctions.length).toBeGreaterThanOrEqual(1);
+ expect(sh.wires.length).toBe(4+sh.junctions.length-1);
+ expect(sh.splices).toHaveLength(0);
+ expect(sh.instances).toEqual(before.project.sheets[0].instances);
+ expect(after.project.nets.map(n=>[n.id,n.members])).toEqual(before.project.nets.map(n=>[n.id,n.members]));
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ expect((await saved()).project).toEqual(after.project);
+});
+
+
+test('R28 explicit first route for a saved declared two-pin Net, Undo and Redo',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');
+ await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ for(const [i,x] of [.25,.65].entries()){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await expect(canvas).toHaveAttribute('data-tool','place');
+  const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+  const px=paper.x+paper.width*x,py=paper.y+paper.height*.4;
+  await assertCanvasReceivesPointer(page,px,py);
+  await page.mouse.click(px,py);
+  await expect(page.getByTestId('symbol-R'+(i+1))).toBeVisible();
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const placed=await saved(),[a,b]=placed.project.components;
+ await page.getByTestId('tool-wire').click();
+ await page.getByTestId('signed-pin-'+a.id+'-2').click();
+ await page.getByTestId('signed-pin-'+b.id+'-1').click();
+ await page.getByTestId('tool-select').click();
+ const doc=await saved(),net=doc.project.nets[0];
+ expect(doc.project.sheets[0].wires).toHaveLength(1);
+ doc.project.sheets[0].wires=[];net.route_status='unrouted';
+ await page.getByTestId('project-file-input').setInputFiles({name:'unrouted.gscad',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(doc))});
+ await expect(page.locator('[data-net-id]')).toHaveCount(0);
+ const before=await saved();
+ await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByTestId('topology-inventory').click();
+ page.once('dialog',d=>d.accept());
+ await page.getByTestId('net-initial-'+net.id).click();
+ const after=await saved(),sh=after.project.sheets[0];
+ expect(sh.wires).toHaveLength(1);
+ expect(sh.wires[0].needs_routing_review).toBe(true);
+ expect(sh.instances).toEqual(before.project.sheets[0].instances);
+ expect(after.project.nets.map(n=>[n.id,n.members])).toEqual(before.project.nets.map(n=>[n.id,n.members]));
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ expect((await saved()).project).toEqual(after.project);
+});
+
+
+test('R29 batch initial routing commits two declared Nets and one Undo restores both',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Файл'}).click();
+ await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');
+ await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ for(const [i,[x,y]] of [[.25,.3],[.65,.3],[.25,.7],[.65,.7]].entries()){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await expect(canvas).toHaveAttribute('data-tool','place');
+  const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+  const px=paper.x+paper.width*x,py=paper.y+paper.height*y;
+  await assertCanvasReceivesPointer(page,px,py);
+  await page.mouse.click(px,py);
+  await expect(page.getByTestId('symbol-R'+(i+1))).toBeVisible();
+ }
+ const saved=async()=>{
+  const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+  return JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ };
+ const placed=await saved(),comps=placed.project.components;
+ await page.getByTestId('tool-wire').click();
+ for(const [a,b] of [[comps[0],comps[1]],[comps[2],comps[3]]]){
+  await page.getByTestId('signed-pin-'+a.id+'-2').click();
+  await page.getByTestId('signed-pin-'+b.id+'-1').click();
+ }
+ await page.getByTestId('tool-select').click();
+ const doc=await saved();
+ expect(doc.project.nets).toHaveLength(2);
+ expect(doc.project.sheets[0].wires).toHaveLength(2);
+ doc.project.sheets[0].wires=[];for(const n of doc.project.nets)n.route_status='unrouted';
+ await page.getByTestId('project-file-input').setInputFiles({name:'batch-unrouted.gscad',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(doc))});
+ await expect(page.locator('[data-net-id]')).toHaveCount(0);
+ const before=await saved();
+ await page.getByRole('button',{name:'Правка'}).click();
+ await page.getByTestId('topology-inventory').click();
+ page.once('dialog',d=>d.accept());
+ await page.getByTestId('route-initial-batch').click();
+ const after=await saved();
+ expect(after.project.sheets[0].wires).toHaveLength(2);
+ expect(after.project.sheets[0].instances).toEqual(before.project.sheets[0].instances);
+ expect(after.project.nets.map(n=>[n.id,n.members])).toEqual(before.project.nets.map(n=>[n.id,n.members]));
+ await page.getByRole('button',{name:'Отменить'}).click();
+ expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ expect((await saved()).project).toEqual(after.project);
+});
+
+
+test('RC1 pin to existing conductor creates a real T junction and Undo restores the original Net',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Файл'}).click();await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ for(const [x,y] of [[.23,.3],[.75,.3],[.5,.7]]){
+  await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+  await page.mouse.click(paper.x+paper.width*x,paper.y+paper.height*y);
+ }
+ const saved=async()=>{const d=page.waitForEvent('download');await page.getByTestId('save-project').click();return JSON.parse(readFileSync(await (await d).path(),'utf8'));};
+ const doc=await saved(),[a,b,c]=doc.project.components;
+ await page.getByTestId('tool-wire').click();
+ await page.getByTestId('signed-pin-'+a.id+'-2').click();await page.getByTestId('signed-pin-'+b.id+'-1').click();
+ await page.getByTestId('tool-select').click();
+ const before=await saved(),w=before.project.sheets[0].wires[0];
+ const mid=await page.locator('[data-segment-id="'+w.segments[0].id+'"]').evaluate(el=>{
+  const pt=el.ownerSVGElement.createSVGPoint();pt.x=(Number(el.getAttribute('x1'))+Number(el.getAttribute('x2')))/2;pt.y=(Number(el.getAttribute('y1'))+Number(el.getAttribute('y2')))/2;
+  const p=pt.matrixTransform(el.getScreenCTM());return {x:p.x,y:p.y};
+ });
+ await page.getByTestId('tool-wire').click();await page.getByTestId('signed-pin-'+c.id+'-1').click();
+ await page.mouse.move(mid.x,mid.y);await expect(page.getByTestId('wire-tap-preview')).toBeVisible();await page.mouse.click(mid.x,mid.y);
+ await expect(page.locator('[data-junction-id]')).toHaveCount(1);await expect(page.locator('.electric-wires > g')).toHaveCount(3);
+ await page.getByTestId('tool-select').click();
+ const after=await saved();expect(after.project.nets).toHaveLength(1);expect(after.project.nets[0].members).toHaveLength(3);
+ expect(after.project.sheets[0].junctions).toHaveLength(1);
+ await page.getByRole('button',{name:'Отменить'}).click();expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();expect((await saved()).project).toEqual(after.project);
+});
+
+test('RC1 text placement and double-click component properties persist through model save',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Файл'}).click();await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ const font=await page.evaluate(async()=>{const f=await document.fonts.load('14px "GSCAD Technical"','Питание R1');return f.some(x=>x.status==='loaded')});
+ expect(font).toBe(true);
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+ await page.mouse.click(paper.x+paper.width*.4,paper.y+paper.height*.4);
+ const symbol=await page.getByTestId('symbol-R1').boundingBox();
+ await page.mouse.dblclick(symbol.x+symbol.width/2,symbol.y+symbol.height/2);
+ const dialog=page.getByRole('dialog',{name:'Свойства элемента R1'});
+ await expect(dialog).toBeVisible();
+ await dialog.getByTestId('inspector-nominal').fill('4,7к');await dialog.getByTestId('inspector-nominal').press('Enter');
+ await dialog.getByRole('button',{name:'Закрыть',exact:true}).click();
+ // Wait for the modal exit/focus trap to finish before sending a canvas shortcut.
+ await expect(dialog).toBeHidden();
+ await canvas.focus();await expect(canvas).toBeFocused();
+ await canvas.press('t');
+ await expect(canvas).toHaveAttribute('data-tool','text');
+ await page.mouse.click(paper.x+paper.width*.3,paper.y+paper.height*.6);
+ await page.getByTestId('sheet-text-input').fill('Питание 24 В');
+ await page.getByTestId('add-sheet-text').click();
+ await expect(page.getByTestId('sheet-text-input')).toBeHidden();
+ const annotation=canvas.locator('text[data-testid^="sheet-text-"]');
+ await expect(annotation).toHaveCount(1);
+ await expect(annotation).toHaveText('Питание 24 В');
+ const d=page.waitForEvent('download');await page.getByTestId('save-project').click();
+ const doc=JSON.parse(readFileSync(await (await d).path(),'utf8'));
+ expect(doc.project.components[0].value).toBe('4,7к');expect(doc.project.nets).toEqual([]);
+ expect(doc.project.sheets[0].texts[0].text).toBe('Питание 24 В');
+ await page.getByRole('button',{name:'Отменить'}).click();
+ await expect(annotation).toHaveCount(0);
+});
+
+test('RC1 library categories and reserved scrollbar fit long Russian names in both themes at 900px',async({page},testInfo)=>{
+ await page.setViewportSize({width:900,height:650});
+ await page.goto('/');await page.getByRole('button',{name:'Файл'}).click();await page.getByTestId('new-project').click();
+ await page.getByRole('button',{name:'Показать библиотеку УГО'}).click();
+ const heading=page.getByRole('button',{name:/Катушки индуктивности/});
+ await expect(heading).toBeVisible();await heading.click();
+ await expect(page.getByTestId('catalog-item-symbol/inductor.double_tapped')).toHaveCount(0);
+ await heading.click();await expect(page.getByTestId('catalog-item-symbol/inductor.double_tapped')).toHaveCount(1);
+ await page.getByTestId('catalog-search').fill('магнитодиэлектр');
+ await expect(page.getByTestId('catalog-item-symbol/inductor.magnetodielectric')).toBeVisible();
+ for(let i=0;i<2;i++){
+  const result=await page.locator('.gscad-catalog-scroll .mantine-ScrollArea-viewport').evaluate(el=>({width:el.clientWidth,scroll:el.scrollWidth,
+    clipped:[...el.querySelectorAll('.gscad-symbol-info')].some(n=>n.scrollWidth>n.clientWidth+1)}));
+  expect(result.scroll).toBeLessThanOrEqual(result.width+1);expect(result.clipped).toBe(false);
+  await page.screenshot({path:testInfo.outputPath('library-theme-'+i+'.png')});
+  if(i===0)await page.getByTestId('toggle-theme').click();
+ }
 });

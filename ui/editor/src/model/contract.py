@@ -176,6 +176,31 @@ def _semantic(project: dict) -> None:
             if symbol_id not in symbols or symbols[symbol_id]['part_id'] != part['id']:
                 raise ContractError('PART_SYMBOL_MISMATCH', part['id'])
     for sym in symbols.values():
+        _unique([a['key'] for a in sym.get('constant_annotations', [])], sym['id']+' constant annotations')
+        # Circle = center and cardinal rim point; semicircle = start, apex, end.
+        # All values remain integer µm, and D4 transforms preserve this contract.
+        for g in sym['graphics']:
+            pts = g['points_um']
+            if g['kind'] == 'circle':
+                a, b = pts
+                dx, dy = b[0]-a[0], b[1]-a[1]
+                if (dx == 0) == (dy == 0):
+                    raise ContractError('INVALID_CURVE', sym['id'])
+                r = abs(dx)+abs(dy)
+                if any(abs(v)+r > 1_000_000_000 for v in a):
+                    raise ContractError('INVALID_CURVE', sym['id'])
+            elif g['kind'] == 'semicircle':
+                a, m, b = pts
+                if (a[0]+b[0]) % 2 or (a[1]+b[1]) % 2:
+                    raise ContractError('INVALID_CURVE', sym['id'])
+                x,y = (a[0]+b[0])//2,(a[1]+b[1])//2
+                dx,dy = a[0]-x,a[1]-y
+                ux,uy = m[0]-x,m[1]-y
+                r = abs(dx)+abs(dy)
+                if (dx == 0) == (dy == 0) or dx*ux+dy*uy != 0 or abs(ux)+abs(uy) != r:
+                    raise ContractError('INVALID_CURVE', sym['id'])
+                if abs(x)+r > 1_000_000_000 or abs(y)+r > 1_000_000_000:
+                    raise ContractError('INVALID_CURVE', sym['id'])
         part = parts.get(sym['part_id'])
         if not part or sym['id'] not in part['symbol_ids']:
             raise ContractError('PART_SYMBOL_MISMATCH', sym['id'])

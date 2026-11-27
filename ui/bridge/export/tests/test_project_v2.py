@@ -265,3 +265,33 @@ def test_raster_pixel_budget_rejects_600dpi_a3_before_allocating_png():
             page="A3", orientation="landscape", dpi=600,
             include_frame=False, strict_font=False,
         ), expected_project_sha256=digest(document))
+
+
+def test_r32l_visible_refs_values_and_unplaced_export_warning():
+    doc = load("tl494-source-e695-v2.gscad.json")
+    original = copy.deepcopy(doc)
+    req = ExportRequest(include_frame=False, strict_font=False)
+    svg, warnings = export_v2_svg(doc, "sheet-1", req,
+                                  expected_project_sha256=digest(doc))
+    root = ET.fromstring(svg)
+    placed = int(root.get("data-component-label-count"))
+    missing = int(root.get("data-unplaced-label-count"))
+    assert placed + missing == 23
+    assert len(root.findall(".//" + S + "text[@data-label-role='reference']")) == placed
+    assert not root.findall(".//" + S + "text[@data-label-role='value']")
+    assert "FONT_RENDER_UNVERIFIED" in warnings
+    assert doc == original
+    assert export_v2_svg(doc, "sheet-1", req, expected_project_sha256=digest(doc))[0] == svg
+
+    doc["project"]["components"][0]["value"] = '10 < 20 & "V"'
+    svg, _ = export_v2_svg(doc, "sheet-1", req, expected_project_sha256=digest(doc))
+    texts = ET.fromstring(svg).findall(".//" + S + "text[@data-label-role='value']")
+    assert [t.text for t in texts] == ['10 < 20 & "V"']
+
+    doc["project"]["components"][0]["value"] = "x"*65
+    svg, warnings = export_v2_svg(doc, "sheet-1", req,
+                                  expected_project_sha256=digest(doc))
+    assert "COMPONENT_LABELS_UNPLACED" in warnings
+    metadata = ET.fromstring(svg).find(".//" + S + "metadata[@data-kind='unplaced-component-labels']")
+    assert any(item["refdes"] == "C1" and item["reason"] == "LABEL_TEXT_UNSUPPORTED"
+               for item in json.loads(metadata.text))
