@@ -1,6 +1,8 @@
 """Offline release-preparation checks. Mock verification is not crypto acceptance."""
 import base64
 import json
+import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -87,6 +89,41 @@ class PrepareUpdateTests(unittest.TestCase):
         with patch("r41_prepare_update.verify_signature"), self.assertRaises(FileExistsError):
             self.run_prepare()
         self.assertFalse((self.output / "latest.json").exists())
+
+
+@unittest.skipUnless(shutil.which("minisign"), "requires real minisign executable")
+class RealSignatureTests(unittest.TestCase):
+    def test_ephemeral_key_rejects_tamper_wrong_key_and_wrong_version(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            data = root / "payload.exe"
+            data.write_bytes(b"synthetic test payload, not executable")
+            pub = root / "test.pub"
+            secret = root / "test.key"
+            sig = root / "test.sig"
+            other_pub = root / "other.pub"
+            other_secret = root / "other.key"
+            for p, k in [(pub, secret), (other_pub, other_secret)]:
+                subprocess.run(
+                    ["minisign", "-G", "-W", "-p", str(p), "-s", str(k)],
+                    check=True, capture_output=True, timeout=30,
+                )
+            subprocess.run(
+                ["minisign", "-S", "-s", str(secret), "-m", str(data),
+                 "-x", str(sig), "-t", "timestamp:1\tversion:0.2.0"],
+                check=True, capture_output=True, timeout=30,
+            )
+            signature = base64.b64encode(sig.read_bytes()).decode()
+            public_key = base64.b64encode(pub.read_bytes()).decode()
+            verify_signature(data, signature, public_key, "0.2.0")
+            with self.assertRaises(ValueError):
+                verify_signature(data, signature, public_key, "0.3.0")
+            wrong_key = base64.b64encode(other_pub.read_bytes()).decode()
+            with self.assertRaises(subprocess.CalledProcessError):
+                verify_signature(data, signature, wrong_key, "0.2.0")
+            data.write_bytes(b"tampered test payload")
+            with self.assertRaises(subprocess.CalledProcessError):
+                verify_signature(data, signature, public_key, "0.2.0")
 
 
 if __name__ == "__main__":
