@@ -14,6 +14,7 @@ const pid=Number(pidText), port=Number(portText);
 const root=process.env.RUNNER_TEMP;
 const full=process.env.GSCAD_R33_FULL_TL494==='1';
 const editorQA=process.env.GSCAD_R51_EDITOR_PHASE==='1';
+const spacingQA=process.env.GSCAD_R67_SPACING_PHASE==='1';
 if(full&&editorQA)throw Error('R51_CONFLICTING_NATIVE_PHASES');
 if(process.env.GITHUB_ACTIONS!=='true'||!root||!pid||!port||!['create','reopen'].includes(phase))
   throw Error('R9_CI_ARGS_INVALID');
@@ -74,6 +75,10 @@ function assertModel(doc){
   assert.equal(doc.format,'gscad-project');
   assert.equal(doc.format_version,2);
   assert.equal(doc.project.provenance.status,'synthetic');
+  if(spacingQA){
+    assert.equal(doc.project.components.length,6);assert.equal(doc.project.nets.length,3);
+    assert.equal(doc.project.sheets[0].wires.length,3);assert.deepEqual(doc.project.sheets[0].frame.size_um,[420000,297000]);return;
+  }
   if(full){
     const sh=doc.project.sheets[0];
     assert.equal(doc.project.components.length,23);
@@ -471,15 +476,15 @@ try{
     }
   }else{
     assert(fs.existsSync(projectPath),'SAVED_DOCUMENT_MISSING_BEFORE_REOPEN');
-    const original=status(projectPath); assertModel(original);
-    const beforeDigest=digest(projectPath);
+    let original=status(projectPath); assertModel(original);
+    let beforeDigest=digest(projectPath);
     assert.equal(beforeDigest,fs.readFileSync(projectPath+'.r9digest','utf8').trim());
     await runDialog('open',projectPath,async()=>{
       await page.getByRole('button',{name:'Файл'}).click();
       await page.getByText('Открыть…',{exact:true}).click();
     });
     try {
-      await page.getByTestId(full?'symbol-DA1':editorQA?'symbol-R4':'symbol-C9').waitFor({state:'visible',timeout:15000});
+      await page.getByTestId(full?'symbol-DA1':spacingQA?'symbol-R6':editorQA?'symbol-R4':'symbol-C9').waitFor({state:'visible',timeout:15000});
     }catch(error){
       console.log('R9_OPEN_DIAG_FILE_EXISTS='+fs.existsSync(projectPath));
       console.log('R9_OPEN_DIAG_DIGEST='+digest(projectPath));
@@ -506,8 +511,8 @@ try{
       }))));
       throw error;
     }
-    assert.equal(await page.locator('[data-testid^="symbol-"]').count(),full?23:editorQA?4:3);
-    assert.equal(await page.locator('.electric-wires > g[data-net-id]').count(),full||editorQA?original.project.sheets[0].wires.length:1);
+    assert.equal(await page.locator('[data-testid^="symbol-"]').count(),full?23:spacingQA?6:editorQA?4:3);
+    assert.equal(await page.locator('.electric-wires > g[data-net-id]').count(),full||editorQA||spacingQA?original.project.sheets[0].wires.length:1);
     if(full){
       assert.equal(await page.locator('.component-labels [data-label-role="reference"]').count(),23);
       assert.equal(await page.locator('.component-labels').getAttribute('data-unplaced-label-count'),'0');
@@ -516,6 +521,33 @@ try{
         projectPath],{encoding:'utf8',timeout:30000}).trim();
       assert.equal(reach,'15/15');
       console.log('R33_FULL_NATIVE_OPEN_23_15_62_LABELS_PASS');
+    }else if(spacingQA){
+      const sh=original.project.sheets[0],middle=sh.wires.find(w=>w.needs_routing_review);
+      assert.ok(middle);
+      const dirty=page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true});
+      const save=async()=>{await page.getByTestId('save-project').click();await dirty.waitFor({state:'hidden',timeout:20000});return status(projectPath);};
+      const open=async()=>{await page.getByRole('button',{name:'Правка',exact:true}).click();await page.getByTestId('topology-inventory').click();};
+      const command=page.getByTestId('preview-parallel-spacing');
+      if(process.env.GSCAD_R67_SPACING_ROUND==='1'){
+        assert.equal(middle.vertices[2].at_um[1],86000);
+        await open();page.once('dialog',d=>d.dismiss());await command.click();
+        assert.equal(await dirty.count(),0);assert.deepEqual(status(projectPath),original);
+        await open();page.once('dialog',d=>d.accept());await command.click();
+        await dirty.waitFor({state:'visible',timeout:10000});
+        const after=await save(),ns=after.project.sheets[0],w=ns.wires.find(w=>w.id===middle.id);
+        assert.deepEqual(w.vertices.map(v=>v.at_um),[[28000,60000],[40000,60000],[40000,90000],[220000,90000],[220000,120000],[242000,120000]]);
+        assert.deepEqual(w.vertices[0],middle.vertices[0]);assert.deepEqual(w.vertices.at(-1),middle.vertices.at(-1));
+        assert.deepEqual(ns.wires.filter(w=>w.id!==middle.id),sh.wires.filter(w=>w.id!==middle.id));
+        assert.deepEqual(after.project.nets,original.project.nets);assert.deepEqual(ns.instances,sh.instances);
+        assert.deepEqual(ns.junctions,sh.junctions);assert.deepEqual(ns.splices,sh.splices);
+        await page.getByRole('button',{name:'Отменить'}).click();await dirty.waitFor({state:'visible'});assert.deepEqual((await save()).project,original.project);
+        await page.getByRole('button',{name:'Повторить'}).click();await dirty.waitFor({state:'visible'});assert.deepEqual((await save()).project,after.project);
+        original=status(projectPath);beforeDigest=digest(projectPath);
+        console.log('R67_NATIVE_SPACING_APPLY_UNDO_REDO_PASS digest='+beforeDigest);
+      }else{
+        assert.equal(middle.vertices[2].at_um[1],90000);
+        console.log('R67_NATIVE_SPACING_RESTART_PASS digest='+beforeDigest);
+      }
     }else if(editorQA){
       const t=original.project.sheets[0].texts[0];
       const annotation=page.getByTestId('sheet-text-'+t.id);

@@ -144,6 +144,60 @@ try {
         }
         Write-Host 'R33_FULL_TL494_REAL_NATIVE_RESTART_AND_EXPORT_PASS'
     }
+    if ($env:GSCAD_R67_SPACING -eq '1') {
+        Remove-Item Env:GSCAD_R33_FULL_TL494 -ErrorAction SilentlyContinue
+        $env:GSCAD_R67_SPACING_PHASE = '1'
+        $spacingProject = Join-Path $projectDir 'Spacing R67.gscad.json'
+        & node .github/tools/r67-generate-spacing.mjs $spacingProject
+        if ($LASTEXITCODE -ne 0) { throw 'R67_FIXTURE_FAILED' }
+        $spacingEvidence = Join-Path $artifact 'r67-evidence'
+        New-Item -ItemType Directory -Path $spacingEvidence -Force | Out-Null
+        foreach ($round in @(1,2)) {
+            $env:GSCAD_R67_SPACING_ROUND = [string]$round
+            $spacingCopy = Join-Path $projectDir ("Spacing copy " + $round + ".gscad.json")
+            $spacingSvg = Join-Path $projectDir ("Spacing " + $round + ".svg")
+            $spacingPng = Join-Path $projectDir ("Spacing " + $round + ".png")
+            $digest = & python -c 'import json,sys;from ui.editor.src.model.contract import validate,digest;d=json.load(open(sys.argv[1],encoding="utf-8"));validate(d);print(digest(d))' $spacingProject
+            if ($LASTEXITCODE -ne 0 -or $digest -notmatch '^[a-f0-9]{64}
+        try {
+            $app.Refresh()
+            if (!$app.HasExited) { $app.Kill(); $app.WaitForExit(10000) | Out-Null }
+        } catch { Write-Warning ('R9 CI-only process cleanup: ' + $_.Exception.Message) }
+        $app.Dispose()
+    }
+    if ($installed -and (Test-Path -LiteralPath $uninstaller -PathType Leaf)) {
+        try {
+            $un = Start-Process -FilePath $uninstaller -ArgumentList @('/S') -Wait -PassThru
+            try { if ($un.ExitCode -ne 0) { Write-Warning ('R9 uninstall exit code ' + $un.ExitCode) } }
+            finally { $un.Dispose() }
+        } catch { Write-Warning ('R9 CI-only NSIS cleanup: ' + $_.Exception.Message) }
+    }
+    Remove-Item Env:GSCAD_R9_SIDECAR_EXE -ErrorAction SilentlyContinue
+    Remove-Item Env:GSCAD_R6_TRACE_WINDOW -ErrorAction SilentlyContinue
+    Remove-Item Env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS -ErrorAction SilentlyContinue
+    Remove-Item Env:WEBVIEW2_USER_DATA_FOLDER -ErrorAction SilentlyContinue
+    if ($root.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)) {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+) { throw 'R67_DIGEST_FAILED' }
+            [IO.File]::WriteAllText(($spacingProject + '.r9digest'), ($digest + [Environment]::NewLine))
+            $app = Start-Process -FilePath $exe -WorkingDirectory $installDir -PassThru
+            & node .github/tools/r9-native-project.mjs reopen $app.Id 19443 $spacingProject $spacingCopy $spacingSvg $spacingPng
+            if ($LASTEXITCODE -ne 0) { throw ('R67_NATIVE_ROUND_FAILED_' + $round) }
+            $app.Refresh()
+            if (!$app.HasExited) {
+                if (!$app.CloseMainWindow()) { throw 'R67_CLOSE_REJECTED' }
+                if (!$app.WaitForExit(30000)) { throw 'R67_CLOSE_TIMEOUT' }
+            }
+            $app.Dispose()
+            $app = $null
+            foreach ($file in @($spacingCopy,$spacingSvg,$spacingPng)) { Copy-Item -LiteralPath $file -Destination $spacingEvidence }
+            $spacingProject = $spacingCopy
+            Start-Sleep -Seconds 2
+        }
+        Write-Host 'R67_NATIVE_SPACING_ROUNDTRIP_EXPORT_PASS'
+    }
 } finally {
     if ($app) {
         try {
