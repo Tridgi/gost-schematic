@@ -252,6 +252,28 @@ async function createEditorAcceptance(){
   Object.assign(finalExpected.sheets[0].texts[0],{at_um:[65125,140000],height_um:5000,rotation_deg:90});
   assert.deepEqual(final.project,finalExpected);assertModel(final);
   assert.match(await annotation.getAttribute('transform'),/^rotate\(90 /);
+  if(process.env.GSCAD_R59_ROTATION_KEYS==='1'){
+    // Real WebView2 keyboard events; no direct model mutation or mocked IPC.
+    await annotation.click();
+    await page.getByTestId('sheet-text-selection').waitFor({state:'visible'});
+    assert.equal(await annotation.getAttribute('data-text-selected'),'true');
+    await canvas.press('Shift+Delete');
+    await canvas.press('Shift+Backspace');
+    await canvas.press('Shift+F2');
+    await dialog.waitFor({state:'hidden'});
+    assert.deepEqual((await save()).project,final.project);
+    await canvas.press('r');
+    await page.waitForFunction(()=>/^rotate\\(180 /.test(document.querySelector('text[data-testid^="sheet-text-"]')?.getAttribute('transform')??''));
+    const rotated=await save(),rotatedExpected=structuredClone(final.project);
+    rotatedExpected.sheets[0].texts[0].rotation_deg=180;
+    assert.deepEqual(rotated.project,rotatedExpected);
+    await canvas.press('Shift+r');
+    assert.deepEqual((await save()).project,final.project);
+    await undo();assert.deepEqual((await save()).project,rotated.project);
+    await redo();assert.deepEqual((await save()).project,final.project);
+    assert.match(await annotation.getAttribute('transform'),/^rotate\\(90 /);
+    console.log('R59_REAL_NATIVE_ANNOTATION_ROTATION_KEYS_PASS');
+  }
   if(process.env.GSCAD_R56_PAPER_ANNOTATIONS==='1'){
     // Temporarily move the existing rotated annotation so only its lower
     // envelope crosses A4. Preserve and restore the original R51 project.
