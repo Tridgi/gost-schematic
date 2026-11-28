@@ -44,9 +44,9 @@ jobs:
           python examples/review_resistor_batch02.py
           python examples/review_full_catalog_native.py
           python examples/review_categorized_catalog.py
-          python examples/review_bipolar_layouts.py
-          python examples/review_mosfet_layouts.py
-          python examples/review_transistor_switches.py
+          python -m examples.review_bipolar_layouts
+          python -m examples.review_mosfet_layouts
+          python -m examples.review_transistor_switches
           python scripts/audit_routing_protection.py
       - name: Rasterize native galleries
         run: |
