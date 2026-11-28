@@ -20,7 +20,7 @@ import {
 import {loadProjectWires} from '../wires/project-v2-adapter';
 import {validateNotes,noteLayout} from '../model/symbol-notes.mjs';
 import {planOrthogonalTree,type TreeStrategy} from './orthogonal-tree';
-import {detourShortcuts,pathMetric,crossingChannelShortcuts,localCrossingCount,coordinatedCrossingShortcuts,parallelSpacingQuality,parallelSpacingShortcuts,type ParallelSpacingQuality} from './detour-shortcuts';
+import {detourShortcuts,pathMetric,crossingChannelShortcuts,localCrossingCount,coordinatedCrossingShortcuts,parallelSpacingQuality,parallelSpacingShortcuts,parallelBundleShortcuts,type ParallelSpacingQuality} from './detour-shortcuts';
 import {assessLayout,improvesLayout,preservesLayoutSafety,type LayoutQuality} from './layout-quality';
 import {curveGeometry} from '../model/curves.mjs';
 import {planComponentLabels} from '../canvas/component-labels';
@@ -2235,8 +2235,43 @@ export class AuthoringSession {
         return true;
       }
     };
+    const spacingImproves=(nextSpacing:ParallelSpacingQuality|undefined,after:ReturnType<typeof assessLayout>)=>
+      !!nextSpacing&&!!spacingAfter&&nextSpacing.complete&&
+      nextSpacing.coverageUm>=spacingAfter.coverageUm&&nextSpacing.imbalanceUm2<spacingAfter.imbalanceUm2&&
+      preservesLayoutSafety(assessment,after)&&after.quality.bends<=assessment.quality.bends&&
+      after.quality.lengthUm<=assessment.quality.lengthUm&&after.quality.overflow<=assessment.quality.overflow&&
+      after.quality.errors<=assessment.quality.errors&&after.quality.geometryWarnings<=assessment.quality.geometryWarnings;
+    let bundleApplied=false;
+    if(spacingOnly&&spacingAfter&&spacingAfter.imbalanceUm2>0){
+      const ids=new Set(eligible.map(w=>w.id));
+      for(const proposal of parallelBundleShortcuts(sh.wires.map(w=>({id:w.id,net:w.net_id,
+        points:w.vertices.map(v=>v.at_um),movable:ids.has(w.id),
+        preserveStart:w.vertices[0].anchor.kind==='pin',preserveEnd:w.vertices.at(-1)!.anchor.kind==='pin'})))){
+        if(attempted>=cap)break;
+        attempted++;
+        const next=clone(base),ns=next.project.sheets[indexOfSheet(next)];
+        for(const move of proposal.moves){
+          const w=ns.wires.find(w=>w.id===move.id)!;
+          w.vertices=[clone(w.vertices[0]),...move.points.slice(1,-1).map(at_um=>({id:newId('vertex'),at_um,anchor:{kind:'bend'} as const})),clone(w.vertices.at(-1)!)];
+          w.segments=w.vertices.slice(1).map((v,i)=>({id:newId('segment'),from_vertex_id:w.vertices[i].id,to_vertex_id:v.id}));
+        }
+        if(proposal.moves.some(move=>!safePath(ns,ns.wires.find(w=>w.id===move.id)!,move.points))){rejected++;continue}
+        let trial:AuthoringSession;
+        try{trial=new AuthoringSession(next)}catch(e){if(!(e instanceof WireError))throw e;rejected++;continue}
+        const after=assessLayout(next,trial.engine),nextSpacing=spacingOf(ns);
+        if(sourceGuard(next)!==sourceGuard(base)||!spacingImproves(nextSpacing,after)){rejected++;continue}
+        const labels=new Set(planComponentLabels(next,sh.id).labels.map(l=>l.instanceId));
+        if([...visible].some(id=>!labels.has(id))){rejected++;continue}
+        best=trial;assessment=after;visible=labels;spacingAfter=nextSpacing;bundleApplied=true;
+        for(const move of proposal.moves){
+          const w=ns.wires.find(w=>w.id===move.id)!;
+          operations.push('Групповое выравнивание шага '+(base.project.nets.find(n=>n.id===w.net_id)?.name??w.net_id));
+        }
+        break;
+      }
+    }
     for(const entry of eligible){
-      if(attempted>=cap)break;
+      if(bundleApplied||attempted>=cap)break;
       const doc=best.file,sheet=doc.project.sheets[indexOfSheet(doc)],w=sheet.wires.find(w=>w.id===entry.id)!;
       const start=w.vertices[0],end=w.vertices.at(-1)!;
       const foreign=sheet.wires.filter(v=>v.id!==w.id).flatMap(v=>v.vertices.slice(1).map((b,i)=>({a:v.vertices[i],b,net:v.net_id,box:rect(v.vertices[i].at_um,b.at_um)})));
@@ -2254,11 +2289,7 @@ export class AuthoringSession {
         try{trial=new AuthoringSession(next)}catch(e){if(!(e instanceof WireError))throw e;rejected++;continue}
         const after=assessLayout(next,trial.engine);
         const nextSpacing=spacingOnly?spacingOf(ns):undefined;
-        const spacingSafe=!!nextSpacing&&!!spacingAfter&&nextSpacing.complete&&
-          nextSpacing.coverageUm>=spacingAfter.coverageUm&&nextSpacing.imbalanceUm2<spacingAfter.imbalanceUm2&&
-          preservesLayoutSafety(assessment,after)&&after.quality.bends<=assessment.quality.bends&&
-          after.quality.lengthUm<=assessment.quality.lengthUm&&after.quality.overflow<=assessment.quality.overflow&&
-          after.quality.errors<=assessment.quality.errors&&after.quality.geometryWarnings<=assessment.quality.geometryWarnings;
+        const spacingSafe=spacingOnly&&spacingImproves(nextSpacing,after);
         if(sourceGuard(next)!==sourceGuard(base)||(spacingOnly?!spacingSafe:!improvesLayout(assessment,after))||
            crossingOnly&&after.quality.crossings>=assessment.quality.crossings){rejected++;continue}
         const labels=new Set(planComponentLabels(next,sh.id).labels.map(l=>l.instanceId));
