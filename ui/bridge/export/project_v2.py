@@ -15,6 +15,7 @@ from ui.bridge.export.canonical import (
     ExportError,
     ExportRequest,
     ExportResult,
+    annotation_bounds,
     compose_clean_svg,
     export,
     mm,
@@ -218,7 +219,8 @@ def _draw_validated(document: dict, sheet_id: str) -> bytes:
             x,y = item["at_um"]
             h = item.get("height_um",3500)
             # Conservative viewport envelope, NOT a verified font-ink box.
-            extents.append((x-h,y-2*h,x+(len(item["text"])+1)*h,y+h))
+            rotation = item.get("rotation_deg", 0)
+            extents.append(annotation_bounds(x, y, h, len(item["text"]), rotation))
             label = ET.SubElement(root, _S + "text", {
                 "data-layer":"annotations", "data-id":item["id"],
                 "x":mm(x), "y":mm(y), "font-size":mm(h),
@@ -226,6 +228,8 @@ def _draw_validated(document: dict, sheet_id: str) -> bytes:
                 "fill":"#000000","stroke":"none",
             })
             label.text = item["text"]
+            if rotation:
+                label.set("transform", f"rotate({rotation} {mm(x)} {mm(y)})")
             if item.get("role") == "net_annotation":
                 label.set("data-net",nets[item["net_id"]]["name"])
 

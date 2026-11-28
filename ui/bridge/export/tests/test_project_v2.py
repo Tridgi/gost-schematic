@@ -295,3 +295,75 @@ def test_r32l_visible_refs_values_and_unplaced_export_warning():
     metadata = ET.fromstring(svg).find(".//" + S + "metadata[@data-kind='unplaced-component-labels']")
     assert any(item["refdes"] == "C1" and item["reason"] == "LABEL_TEXT_UNSUPPORTED"
                for item in json.loads(metadata.text))
+
+
+def _annotation_only_document(rotation):
+    doc = load()
+    sheet = copy.deepcopy(doc["project"]["sheets"][0])
+    sheet["id"] = "qa-rotated-annotation"
+    sheet["index"] += 1
+    for name in ("instances", "wires", "junctions", "splices", "texts", "labels", "graphics"):
+        sheet[name] = []
+    for layer in sheet["layers"]:
+        layer["id"] = "qa-annotation-" + layer["id"]
+    layer = {"id": "qa-annotation-text-layer", "name": "Text", "kind": "annotation",
+             "visible": True, "printable": True, "locked": False}
+    sheet["layers"].append(layer)
+    sheet["texts"].append({"id": "qa-text", "layer_id": layer["id"], "text": "MMMMMM",
+                           "at_um": [120125, 120500], "height_um": 5000,
+                           "rotation_deg": rotation})
+    doc["project"]["sheets"].append(sheet)
+    return validate(doc), sheet["id"]
+
+
+@pytest.mark.parametrize("rotation", [0, 90, 180, 270])
+def test_r49_annotation_rotation_svg_and_physical_bounds(rotation):
+    doc, sheet_id = _annotation_only_document(rotation)
+    original = copy.deepcopy(doc)
+    source = render_v2_source(doc, sheet_id, expected_project_sha256=digest(doc))
+    root = ET.fromstring(source)
+    t = root.find(".//" + S + "text[@data-id='qa-text']")
+    assert t.text == "MMMMMM"
+    assert (t.get("x"), t.get("y"), t.get("font-size")) == ("120.125", "120.5", "5")
+    expected = f"rotate({rotation} 120.125 120.5)" if rotation else None
+    assert t.get("transform") == expected
+    assert root.get("viewBox") == {
+        0: "115.125 110.5 40 15",
+        90: "115.125 115.5 15 40",
+        180: "85.125 115.5 40 15",
+        270: "110.125 85.5 15 40",
+    }[rotation]
+    clean, warnings = export_v2_svg(doc, sheet_id, ExportRequest(
+        include_frame=False, include_title=False, strict_font=False),
+        expected_project_sha256=digest(doc))
+    assert ET.fromstring(clean).find(".//" + S + "text[@data-id='qa-text']").get("transform") == expected
+    assert "FONT_RENDER_UNVERIFIED" in warnings
+    assert doc == original
+
+
+@pytest.mark.parametrize("bad", ["translate(1 2)", "rotate(45 120.125 120.5)",
+                                  "rotate(90 120 120.5)", "rotate(90 120.125 120.5) scale(2)"])
+def test_r49_annotation_transform_rejects_noncanonical_values(bad):
+    doc, sheet_id = _annotation_only_document(90)
+    root = ET.fromstring(render_v2_source(doc, sheet_id, expected_project_sha256=digest(doc)))
+    root.find(".//" + S + "text[@data-id='qa-text']").set("transform", bad)
+    with pytest.raises(ExportError, match="UNAPPROVED_ANNOTATION_TRANSFORM"):
+        compose_clean_svg(ET.tostring(root), ExportRequest(include_frame=False, strict_font=False))
+
+
+def test_r49_rotated_annotation_png_ink_changes_orientation():
+    boxes = []
+    for rotation in (0, 90):
+        doc, sheet_id = _annotation_only_document(rotation)
+        result = export_v2(doc, sheet_id, ExportRequest(
+            include_frame=False, include_title=False, strict_font=False),
+            expected_project_sha256=digest(doc))
+        with Image.open(io.BytesIO(result.png)) as image:
+            assert image.size == (4961, 3508)
+            # Contrast threshold, independent of exact font family/antialiasing.
+            mask = image.convert("RGB").convert("L").point(lambda p: 255 if p < 128 else 0)
+            box = mask.getbbox()
+            assert box is not None
+            boxes.append((box[2]-box[0], box[3]-box[1]))
+    assert boxes[0][0] > boxes[0][1] * 2
+    assert boxes[1][1] > boxes[1][0] * 2
