@@ -86,3 +86,42 @@ test('R55 paper overflow includes canonical rotated annotation envelopes at exac
  assert.deepEqual(detectPaperOverflow(scene,snap,size,[label]).texts,['L']);
  assert.equal(detectPaperOverflow(scene,snap,size,[{...label,text:''}]).total,0);
 });
+
+
+test('R57 annotation bounds count Unicode code points like Python, not UTF-16 units',()=>{
+ const scene={symbols:[],graphics:[]},snap=snapshot(),size=[297000,210000];
+ // Three Unicode code points; four UTF-16 code units.
+ const value='A\u{1F680}Б';
+ assert.equal(Array.from(value).length,3);
+ assert.equal(value.length,4);
+ // h=5000, canonical long extent=(3+1)*h=20000 µm.
+ for(const [rotation,at,delta] of [
+  [0,[277000,100000],[1,0]],
+  [90,[100000,190000],[0,1]],
+  [180,[20000,100000],[-1,0]],
+  [270,[100000,20000],[0,-1]],
+ ]){
+  const t={id:'unicode',text:value,height_um:5000,rotation_deg:rotation,at_um:at};
+  assert.equal(detectPaperOverflow(scene,snap,size,[t]).total,0);
+  const clipped={...t,at_um:[at[0]+delta[0],at[1]+delta[1]]};
+  assert.deepEqual(detectPaperOverflow(scene,snap,size,[clipped]).texts,['unicode']);
+ }
+ // A combining mark counts separately, not as one grapheme cluster.
+ const combining={id:'combining',text:'e\u0301',height_um:5000,at_um:[282000,100000]};
+ assert.equal(detectPaperOverflow(scene,snap,size,[combining]).total,0);
+ const clipped={...combining,at_um:[282001,100000]};
+ assert.deepEqual(detectPaperOverflow(scene,snap,size,[clipped]).texts,['combining']);
+});
+
+test('R57 mixed paper overflow preserves annotation IDs, totals and source inputs',()=>{
+ const scene={symbols:[],graphics:[]},snap={wires:[],junctions:[{id:'J',at_um:[549,1000]}],splices:[]};
+ const annotations=[
+  {id:'fits',text:'A\u{1F680}Б',height_um:5000,at_um:[277000,100000]},
+  {id:'clipped',text:'A\u{1F680}Б',height_um:5000,at_um:[277001,100000]},
+  {id:'label',text:'A',at_um:[290001,100000]},
+ ];
+ const frozen=JSON.stringify({scene,snap,annotations});
+ assert.deepEqual(detectPaperOverflow(scene,snap,[297000,210000],annotations),
+  {symbols:[],graphics:[],wires:[],junctions:['J'],splices:[],texts:['clipped','label'],total:3});
+ assert.equal(JSON.stringify({scene,snap,annotations}),frozen);
+});
