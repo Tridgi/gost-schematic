@@ -2610,3 +2610,62 @@ test('R61 pair ranking does not claim crossings still present on unchanged route
  assert.deepEqual(rankCrossingPairs(a,b,[...fixed].reverse(),[aa],[bb]),[]);
  assert.equal(JSON.stringify([a,b,aa,bb,fixed]),frozen);
 });
+
+
+test('R62 equal parallel spacing metric is orientation and segment-split invariant',async()=>{
+ const {parallelSpacingQuality,parallelSpacingShortcuts,pathMetric}=await import('./detour-shortcuts.ts');
+ const segments=[{net:'A',a:[0,0],b:[40000,0]},{net:'B',a:[0,6000],b:[40000,6000]},{net:'C',a:[0,20000],b:[40000,20000]}];
+ assert.deepEqual(parallelSpacingQuality(segments),{imbalanceUm2:320000000,coverageUm:40000,complete:true});
+ const equal=structuredClone(segments);equal[1].a[1]=10000;equal[1].b[1]=10000;
+ assert.deepEqual(parallelSpacingQuality(equal),{imbalanceUm2:0,coverageUm:40000,complete:true});
+ const split=[...segments.slice(0,1),{net:'B',a:[0,6000],b:[15000,6000]},{net:'B',a:[15000,6000],b:[40000,6000]},segments[2]];
+ assert.deepEqual(parallelSpacingQuality(split.reverse()),parallelSpacingQuality(segments));
+ assert.deepEqual(parallelSpacingQuality(segments.map(s=>({...s,a:[s.a[1],s.a[0]],b:[s.b[1],s.b[0]]}))),parallelSpacingQuality(segments));
+ assert.equal(parallelSpacingQuality(Array(513).fill(segments[0])).complete,false);
+ const p=[[-20000,-10000],[-10000,-10000],[-10000,6000],[50000,6000],[50000,30000],[60000,30000]];
+ const expected=[[-20000,-10000],[-10000,-10000],[-10000,10000],[50000,10000],[50000,30000],[60000,30000]];
+ const frozen=JSON.stringify([p,segments]);
+ const choices=parallelSpacingShortcuts(p,[segments[0],segments[2]],true,true);
+ assert.deepEqual(choices[0],expected);assert.deepEqual(pathMetric(choices[0]),pathMetric(p));
+ assert.deepEqual(parallelSpacingShortcuts(p,[segments[0]],true,true),[]);
+ assert.deepEqual(parallelSpacingShortcuts(p,[segments[0],segments[2]],true,true),choices);
+ assert.equal(JSON.stringify([p,segments]),frozen);
+});
+
+test('R62 real three-Net parallel spacing preview keeps endpoints and is one atomic edit',()=>{
+ const s=newSession();
+ for(const p of [[50000,80000],[200000,80000],[50000,100000],[200000,100000],[20000,60000],[250000,120000]])
+  s.place(s.newTransaction('spacing-place'),'symbol/resistor.fixed',p);
+ const [a,b,c,d,e,f]=s.file.project.components.map(c=>c.id);
+ for(const [x,y] of [[a,b],[c,d],[e,f]])s.connect(s.newTransaction('spacing-connect'),pin(x,'2'),pin(y,'1'));
+ const doc=s.file,sh=doc.project.sheets[0];
+ const set=(x,y,points,review)=>{
+  const net=doc.project.nets.find(n=>n.members.some(m=>m.component_id===x));
+  const w=sh.wires.find(w=>w.net_id===net.id);
+  w.vertices=points.map((at_um,i)=>({id:w.id+':v'+i,at_um,anchor:i===0?{kind:'pin',...pin(x,'2')}:i===points.length-1?{kind:'pin',...pin(y,'1')}:{kind:'bend'}}));
+  w.segments=w.vertices.slice(1).map((v,i)=>({id:w.id+':s'+i,from_vertex_id:w.vertices[i].id,to_vertex_id:v.id}));
+  w.needs_routing_review=review;return w;
+ };
+ set(a,b,[[58000,80000],[192000,80000]],false);
+ set(c,d,[[58000,100000],[192000,100000]],false);
+ const middle=set(e,f,[[28000,60000],[40000,60000],[40000,86000],[220000,86000],[220000,120000],[242000,120000]],true);
+ const session=new AuthoringSession(doc),p=session.previewParallelSpacing();
+ assert.ok(p.token);assert.equal(p.spacing.before.imbalanceUm2,1072000000);
+ assert.equal(p.spacing.after.imbalanceUm2,0);
+ assert.equal(p.spacing.after.coverageUm,p.spacing.before.coverageUm);
+ assert.equal(p.after.crossings,p.before.crossings);assert.equal(p.after.bends,p.before.bends);assert.equal(p.after.lengthUm,p.before.lengthUm);
+ assert.deepEqual(session.file,doc);assert.equal(session.revision,0);
+ const next=session.layoutPreviewDocument(p.token),ns=next.project.sheets[0],w=ns.wires.find(w=>w.id===middle.id);
+ assert.deepEqual(w.vertices.map(v=>v.at_um),[[28000,60000],[40000,60000],[40000,90000],[220000,90000],[220000,120000],[242000,120000]]);
+ assert.deepEqual(w.vertices[0],middle.vertices[0]);assert.deepEqual(w.vertices.at(-1),middle.vertices.at(-1));
+ assert.deepEqual(ns.wires.filter(w=>w.id!==middle.id),sh.wires.filter(w=>w.id!==middle.id));
+ assert.deepEqual(next.project.nets,doc.project.nets);assert.deepEqual(ns.instances,sh.instances);
+ assert.deepEqual(ns.junctions,sh.junctions);assert.deepEqual(ns.splices,sh.splices);
+ session.applyLayoutPreview(session.newTransaction('spacing-apply'),p.token);
+ for(const n of doc.project.nets)assert.equal(session.engine.validateNet(n.id).pin_groups.length,1);
+ assert.equal(session.undo(),true);assert.deepEqual(session.file,doc);
+ assert.equal(session.redo(),true);assert.deepEqual(session.file,next);
+ const locked=structuredClone(doc);locked.project.sheets[0].layers.find(l=>l.id===middle.layer_id).locked=true;
+ const no=new AuthoringSession(locked),q=no.previewParallelSpacing();
+ assert.equal(q.token,null);assert.deepEqual(no.file,locked);assert.equal(no.revision,0);
+});

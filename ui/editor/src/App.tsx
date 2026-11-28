@@ -866,16 +866,16 @@ export default function App() {
     }}
     onDuplicate={authoringRef.current&&(selectedInst||groupIds.length>1)&&tool==='select'?handleDuplicate:undefined}
     onSelectAll={tool==='select'?()=>{setGroupIds(instances.length>1?instances.map(i=>i.id):[]);setSelectedId(instances.length===1?instances[0].id:null);}:undefined}
-    onPreviewDetourRefinement={authoringRef.current&&tool==='select'&&activeSheet.wires.some(w=>w.needs_routing_review&&w.vertices.length>=3)?(crossingOnly=false)=>{
+    onPreviewDetourRefinement={authoringRef.current&&tool==='select'&&activeSheet.wires.some(w=>w.needs_routing_review&&w.vertices.length>=3)?(crossingOnly=false,spacingOnly=false)=>{
       const a=authoringRef.current!;
       try{
-        const p=a.previewDetourRefinement(crossingOnly);
-        if(!p.token){setIssue(crossingOnly?'Безопасное сокращение пересечений не найдено.':'Безопасные сокращения отдельных проводников не найдены.');return;}
-        if(!window.confirm('Сократить '+p.operations.length+' проводников без переноса выводов и узлов? Изгибы: '+p.before.bends+' → '+p.after.bends+', пересечения: '+p.before.crossings+' → '+p.after.crossings+', длина: '+(p.before.lengthUm/1000).toFixed(3)+' → '+(p.after.lengthUm/1000).toFixed(3)+' мм. Применить?')){
+        const p=spacingOnly?a.previewParallelSpacing():a.previewDetourRefinement(crossingOnly);
+        if(!p.token){setIssue(spacingOnly?'Безопасное выравнивание шага не найдено.':crossingOnly?'Безопасное сокращение пересечений не найдено.':'Безопасные сокращения отдельных проводников не найдены.');return;}
+        if(!window.confirm((spacingOnly?'Выровнять ':'Сократить ')+p.operations.length+' проводников без переноса выводов и узлов? Изгибы: '+p.before.bends+' → '+p.after.bends+', пересечения: '+p.before.crossings+' → '+p.after.crossings+', длина: '+(p.before.lengthUm/1000).toFixed(3)+' → '+(p.after.lengthUm/1000).toFixed(3)+' мм. Применить?')){
           a.discardLayoutPreview(p.token);return;
         }
         a.applyLayoutPreview(a.newTransaction('apply-detour-refinement'),p.token);adoptAuthored();
-        setIssue(crossingOnly?'Пересечения сокращены. Проверьте результат.':'Локальные обходы сокращены. Проверьте результат.');
+        setIssue(spacingOnly?'Шаг параллельных проводников выровнен. Проверьте результат.':crossingOnly?'Пересечения сокращены. Проверьте результат.':'Локальные обходы сокращены. Проверьте результат.');
       }catch(e){setIssue('DETOUR_REFINEMENT_FAILED: '+String(e));}
     }:undefined}
     onPreviewRailRefinement={authoringRef.current&&tool==='select'&&activeSheet.wires.some(w=>w.needs_routing_review)?()=>{

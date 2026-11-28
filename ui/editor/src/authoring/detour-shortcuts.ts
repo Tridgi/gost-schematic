@@ -208,3 +208,83 @@ export function coordinatedCrossingShortcuts(first:CrossingPairWire,second:Cross
   wire.preserveStart,wire.preserveEnd,true);
  return rankCrossingPairs(first,second,foreign,choices(first,second),choices(second,first));
 }
+
+
+/** Visual symmetry only: adjacent parallel triples, not an electrical rule.
+ * 20 mm maximum adjacent gap limits measurement to local routing corridors.
+ * Weight imbalance by the common run length; require coverage not to shrink. */
+export type ParallelSpacingQuality={imbalanceUm2:number;coverageUm:number;complete:boolean};
+const SPACING_MAX_GAP=20000;
+export function parallelSpacingQuality(segments:readonly CrossingSegment[]):ParallelSpacingQuality{
+ let imbalanceUm2=0,coverageUm=0;
+ if(segments.length>512)return {imbalanceUm2,coverageUm,complete:false};
+ for(const axis of [0,1] as const){
+  const other=axis===0?1:0;
+  const events=new Map<number,{at:number;delta:number}[]>();
+  const add=(x:number,at:number,delta:number)=>{
+   const list=events.get(x)??[];list.push({at,delta});events.set(x,list);
+  };
+  for(const s of segments){
+   if(s.a[other]!==s.b[other]||s.a[axis]===s.b[axis])continue;
+   const lo=Math.min(s.a[axis],s.b[axis]),hi=Math.max(s.a[axis],s.b[axis]);
+   add(lo,s.a[other],1);add(hi,s.a[other],-1);
+  }
+  const ends=[...events.keys()].sort((a,b)=>a-b),active=new Map<number,number>();
+  for(let i=0;i<ends.length-1;i++){
+   for(const e of events.get(ends[i])!){
+    const count=(active.get(e.at)??0)+e.delta;
+    if(count)active.set(e.at,count);else active.delete(e.at);
+   }
+   const span=ends[i+1]-ends[i],lanes=[...active.keys()].sort((a,b)=>a-b);
+   for(let j=1;j<lanes.length-1;j++){
+    const left=lanes[j]-lanes[j-1],right=lanes[j+1]-lanes[j];
+    if(left>SPACING_MAX_GAP||right>SPACING_MAX_GAP)continue;
+    coverageUm+=span;imbalanceUm2+=span*Math.abs(left-right);
+   }
+  }
+ }
+ return {imbalanceUm2,coverageUm,complete:Number.isSafeInteger(imbalanceUm2)&&Number.isSafeInteger(coverageUm)};
+}
+
+/** Move only the middle segment of a monotone Z between existing parallel
+ * neighbors. No new bends, length, shortened signed leads or moved terminals.
+ * Full sheet clearance, topology and quality are verified by the caller. */
+export function parallelSpacingShortcuts(points:readonly ShortcutPoint[],foreign:readonly CrossingSegment[],
+ preserveStart:boolean,preserveEnd:boolean):[number,number][][]{
+ if(points.length<4||points.length>24||foreign.length>512)return [];
+ const old=pathMetric(points),seen=new Set<string>();
+ const ranked:{p:[number,number][];gain:number;span:number}[]=[];
+ for(let i=0;i<points.length-3;i++){
+  const [a,b,c,d]=points.slice(i,i+4);
+  const axis:0|1=a[0]!==b[0]?0:1,other:0|1=axis===0?1:0;
+  if(b[axis]!==c[axis]||a[other]!==b[other]||c[other]!==d[other]||
+     Math.sign(b[axis]-a[axis])!==Math.sign(d[axis]-c[axis]))continue;
+  const lo=Math.min(a[axis],d[axis]),hi=Math.max(a[axis],d[axis]);
+  const start=Math.min(b[other],c[other]),end=Math.max(b[other],c[other]);
+  const lanes=foreign.filter(s=>s.a[axis]===s.b[axis]&&s.a[other]!==s.b[other]&&
+    Math.abs(s.a[axis]-b[axis])<=SPACING_MAX_GAP&&s.a[axis]!==b[axis])
+   .map(s=>({at:s.a[axis],lo:Math.min(s.a[other],s.b[other]),hi:Math.max(s.a[other],s.b[other])}))
+   .filter(s=>Math.min(end,s.hi)-Math.max(start,s.lo)>=10000)
+   .sort((x,y)=>Math.abs(x.at-b[axis])-Math.abs(y.at-b[axis])||x.at-y.at||x.lo-y.lo||x.hi-y.hi);
+  const left=lanes.filter(s=>s.at<b[axis]).slice(0,8),right=lanes.filter(s=>s.at>b[axis]).slice(0,8);
+  for(const l of left)for(const r of right){
+   const span=Math.min(end,l.hi,r.hi)-Math.max(start,l.lo,r.lo);
+   if(span<10000)continue;
+   const x=Math.round((l.at+r.at)/2);
+   if(x===b[axis]||x<=lo||x>=hi||x-l.at<=1000||r.at-x<=1000)continue;
+   const u:[number,number]=[b[0],b[1]],v:[number,number]=[c[0],c[1]];
+   u[axis]=x;v[axis]=x;
+   const p=compact([...points.slice(0,i+1),u,v,...points.slice(i+3)]);if(!p)continue;
+   if(preserveStart&&(!same(direction(points[0],points[1]) as [number,number],direction(p[0],p[1]) as [number,number])||
+     pathMetric(p.slice(0,2)).length<pathMetric(points.slice(0,2)).length))continue;
+   if(preserveEnd&&(!same(direction(points.at(-2)!,points.at(-1)!) as [number,number],direction(p.at(-2)!,p.at(-1)!) as [number,number])||
+     pathMetric(p.slice(-2)).length<pathMetric(points.slice(-2)).length))continue;
+   const m=pathMetric(p);if(m.length>old.length||m.bends>old.bends)continue;
+   const gain=Math.abs(2*b[axis]-l.at-r.at)-Math.abs(2*x-l.at-r.at);
+   if(gain<=0)continue;
+   const key=JSON.stringify(p);if(seen.has(key))continue;seen.add(key);
+   ranked.push({p,gain,span});
+  }
+ }
+ return ranked.sort((a,b)=>b.gain*b.span-a.gain*a.span||JSON.stringify(a.p).localeCompare(JSON.stringify(b.p))).slice(0,12).map(v=>v.p);
+}
