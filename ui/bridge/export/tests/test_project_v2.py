@@ -386,5 +386,6 @@ def test_r50_rotated_annotation_rejects_one_micrometre_viewbox_clipping():
     root = ET.fromstring(render_v2_source(doc, sheet_id, expected_project_sha256=digest(doc)))
     assert root.get("viewBox") == "115.125 115.5 15 40"
     root.set("viewBox", "115.125 115.5 15 39.999")
+    root.set("height", "39.999mm")
     with pytest.raises(ExportError, match="SOURCE_VIEWBOX_CLIPS_INK"):
         compose_clean_svg(ET.tostring(root), ExportRequest(include_frame=False, strict_font=False))
