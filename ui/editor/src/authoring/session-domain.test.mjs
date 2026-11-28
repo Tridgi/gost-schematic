@@ -2585,3 +2585,28 @@ test('R60 pair ranking refuses changed terminals, shortened signed leads and non
  // cannot silently trigger an unbounded Cartesian search.
  assert.deepEqual(rankCrossingPairs(a,b,[],[...Array(12).fill(a.points),aa],[bb]),[]);
 });
+
+
+test('R61 pair ranking does not claim crossings still present on unchanged routes',async()=>{
+ const {rankCrossingPairs}=await import('./detour-shortcuts.ts');
+ const a={net:'A',points:[[0,0],[10000,0],[10000,30000],[40000,30000]],preserveStart:false,preserveEnd:false};
+ const b={net:'B',points:[[0,10000],[20000,10000],[20000,40000],[40000,40000]],preserveStart:false,preserveEnd:false};
+ const aa=[[0,0],[25000,0],[25000,30000],[40000,30000]];
+ const bb=[[0,10000],[5000,10000],[5000,40000],[40000,40000]];
+ const fixed=[
+  {net:'A',a:[10000,5000],b:[10000,15000]},
+  {net:'B',a:[8000,10000],b:[12000,10000]},
+  {net:'B',a:[20000,25000],b:[20000,35000]},
+  {net:'A',a:[18000,30000],b:[22000,30000]},
+ ];
+ const frozen=JSON.stringify([a,b,aa,bb,fixed]);
+ const clear=rankCrossingPairs(a,b,[],[aa],[bb]);
+ assert.equal(clear.length,1);assert.equal(clear[0].crossings,0);
+ // Both original crossing keys remain present in the unchanged segment set.
+ assert.deepEqual(rankCrossingPairs(a,b,fixed,[aa],[bb]),[]);
+ // If only one of the two keys is fixed, removing the other is a real gain.
+ const partial=rankCrossingPairs(a,b,fixed.slice(0,2),[aa],[bb]);
+ assert.equal(partial.length,1);assert.equal(partial[0].crossings,0);
+ assert.deepEqual(rankCrossingPairs(a,b,[...fixed].reverse(),[aa],[bb]),[]);
+ assert.equal(JSON.stringify([a,b,aa,bb,fixed]),frozen);
+});
