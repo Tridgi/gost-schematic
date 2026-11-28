@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { build } from 'esbuild';
 import { spawnSync } from 'node:child_process';
 import { ManualWireEngine, constructWire } from '../src/wires/dist/manual-wire.js';
 
@@ -2271,4 +2275,59 @@ test('R54 R and Shift+R rotate only the selected annotation; modified Delete is 
  await canvas.press('Shift+r');expect((await saved()).project).toEqual(before.project);
  await page.getByRole('button',{name:'Отменить'}).click();expect((await saved()).project).toEqual(rotated.project);
  await page.getByRole('button',{name:'Повторить'}).click();expect((await saved()).project).toEqual(before.project);
+});
+
+
+test('R63 real parallel-spacing command cancels safely and applies one undoable edit',async({page})=>{
+ const temp=mkdtempSync(join(tmpdir(),'gscad-r63-browser-'));
+ let doc,middleId;
+ try{
+  const bundle=join(temp,'authoring.mjs');
+  await build({entryPoints:[fileURLToPath(new URL('../src/authoring/session.ts',import.meta.url))],
+   outfile:bundle,bundle:true,platform:'node',format:'esm',target:'node22',logLevel:'silent'});
+  const {AuthoringSession,newBlankProject}=await import(pathToFileURL(bundle).href);
+  const s=new AuthoringSession(newBlankProject());
+  const pin=(component_id,physical_pin_number)=>({component_id,physical_pin_number});
+  for(const p of [[50000,80000],[200000,80000],[50000,100000],[200000,100000],[20000,60000],[250000,120000]])
+   s.place(s.newTransaction('spacing-place'),'symbol/resistor.fixed',p);
+  const [a,b,c,d,e,f]=s.file.project.components.map(c=>c.id);
+  for(const [x,y] of [[a,b],[c,d],[e,f]])s.connect(s.newTransaction('spacing-connect'),pin(x,'2'),pin(y,'1'));
+  doc=s.file;const sh=doc.project.sheets[0];
+  const set=(x,y,points,review)=>{
+   const net=doc.project.nets.find(n=>n.members.some(m=>m.component_id===x));
+   const w=sh.wires.find(w=>w.net_id===net.id);
+   w.vertices=points.map((at_um,i)=>({id:w.id+':v'+i,at_um,anchor:i===0?{kind:'pin',...pin(x,'2')}:i===points.length-1?{kind:'pin',...pin(y,'1')}:{kind:'bend'}}));
+   w.segments=w.vertices.slice(1).map((v,i)=>({id:w.id+':s'+i,from_vertex_id:w.vertices[i].id,to_vertex_id:v.id}));
+   w.needs_routing_review=review;return w.id;
+  };
+  set(a,b,[[58000,80000],[192000,80000]],false);
+  set(c,d,[[58000,100000],[192000,100000]],false);
+  middleId=set(e,f,[[28000,60000],[40000,60000],[40000,86000],[220000,86000],[220000,120000],[242000,120000]],true);
+  // A real domain constructor validates the detached fixture before browser import.
+  new AuthoringSession(doc);
+ }finally{rmSync(temp,{recursive:true,force:true});}
+ await page.goto('/');
+ await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+ await page.getByTestId('project-file-input').setInputFiles({name:'spacing.gscad',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(doc))});
+ await expect(page.locator('[data-testid^="symbol-"]')).toHaveCount(6);
+ await expect(page.locator('[data-wire-id]')).toHaveCount(3);
+ const saved=async()=>{const d=page.waitForEvent('download');await page.getByTestId('save-project').click();return JSON.parse(readFileSync(await (await d).path(),'utf8'));};
+ const before=await saved();
+ const open=async()=>{await page.getByRole('button',{name:'Правка',exact:true}).click();await page.getByTestId('topology-inventory').click();};
+ const command=page.getByTestId('preview-parallel-spacing');
+ await open();await expect(command).toBeVisible();
+ page.once('dialog',d=>d.dismiss());await command.click();
+ expect((await saved()).project).toEqual(before.project);
+ await open();page.once('dialog',d=>d.accept());await command.click();
+ const after=await saved(),sh=after.project.sheets[0],old=before.project.sheets[0],middle=sh.wires.find(w=>w.id===middleId);
+ expect(middle.vertices.map(v=>v.at_um)).toEqual([[28000,60000],[40000,60000],[40000,90000],[220000,90000],[220000,120000],[242000,120000]]);
+ expect(sh.wires.filter(w=>w.id!==middleId)).toEqual(old.wires.filter(w=>w.id!==middleId));
+ expect(sh.instances).toEqual(old.instances);expect(after.project.nets).toEqual(before.project.nets);
+ expect(sh.junctions).toEqual(old.junctions);expect(sh.splices).toEqual(old.splices);
+ await page.getByRole('button',{name:'Отменить'}).click();expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();expect((await saved()).project).toEqual(after.project);
+ await page.reload();await expect(page.getByTestId('gscad-signed-svg-canvas')).toBeVisible();
+ await page.getByTestId('project-file-input').setInputFiles({name:'spacing-result.gscad',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(after))});
+ await expect(page.locator('[data-testid^="symbol-"]')).toHaveCount(6);
+ expect((await saved()).project).toEqual(after.project);
 });
