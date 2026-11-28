@@ -437,6 +437,88 @@ mod tests {
         *store.0.lock().unwrap() = Stage::Idle;
         assert!(cancel_download(&store, "current").is_err());
     }
+    // Real Tauri CLI signatures, generated anew in a disposable CI directory.
+    // Use the ordinary Wry runtime without windows; avoid adding MockRuntime
+    // to the native test executable. No install or network.
+    #[cfg(target_os = "windows")]
+    #[test]
+    #[ignore = "requires R53 disposable signer fixtures; explicitly run by Windows CI"]
+    fn r53_real_signed_update_verification() {
+        use tauri_plugin_updater::Error as UpdaterError;
+        let root = std::path::PathBuf::from(std::env::var("GSCAD_R53_FIXTURES")
+            .expect("R53_FIXTURE_DIRECTORY_REQUIRED"));
+        let read = |name: &str| std::fs::read_to_string(root.join(name)).unwrap().trim().to_owned();
+        let bytes = std::fs::read(root.join("versioned.bin")).unwrap();
+        assert_eq!(bytes, b"GSCAD R53 non-executable signature fixture\n");
+        let key = read("trusted.key.pub");
+        let wrong_key = read("other.key.pub");
+        assert_ne!(key, wrong_key);
+        let sig = read("versioned.bin.sig");
+        let old_sig = read("old.bin.sig");
+        let no_version = read("unversioned.bin.sig");
+        assert!(!root.join("trusted.key").exists() && !root.join("other.key").exists());
+
+        let config = serde_json::json!({"pubkey":key,"endpoints":[FEED],
+            "requireSignedVersion":true,"allowDowngrades":false,
+            "dangerousInsecureTransportProtocol":false,
+            "dangerousAcceptInvalidCerts":false,"dangerousAcceptInvalidHostnames":false});
+        assert!(secure_policy(&config));
+        let mut context = tauri::generate_context!();
+        context.package_info_mut().version = "0.1.0".parse().unwrap();
+        context.config_mut().identifier = "dev.gostschematic.signaturetest".into();
+        context.config_mut().app.windows.clear();
+        context.config_mut().plugins.0.insert("updater".into(), config);
+        // Windows supports creating an event loop on the Rust test thread.
+        // Construct exactly one runtime; a second event loop is not permitted.
+        let app = tauri::Builder::default().any_thread()
+            .plugin(tauri_plugin_updater::Builder::new().build())
+            .build(context).unwrap();
+        let updater = app.updater_builder().target(UPDATE_TARGET).build().unwrap();
+        let manifest = |version: &str, signature: &str| {
+            let value = serde_json::json!({"version":version,"platforms":{
+                (UPDATE_TARGET):{"url":asset_url(version).unwrap(),"signature":signature}}});
+            validate_release_metadata(&serde_json::to_vec(&value).unwrap(), version).unwrap()
+        };
+        let restore = |version: &str, signature: &str| {
+            updater.restore_update(manifest(version, signature)).unwrap()
+        };
+
+        // Positive: official verifier accepts authentic bytes bound to 0.2.0.
+        let accepted = restore("0.2.0", &sig).expect("R53_NEW_VERSION_REQUIRED");
+        accepted.verify(&bytes).expect("R53_VALID_SIGNATURE_REJECTED");
+        println!("R53_REAL_VALID_SIGNATURE_PASS");
+
+        // One changed byte, and a distinct actual signing identity.
+        let mut tampered = bytes.clone(); tampered[0] ^= 1;
+        assert!(matches!(accepted.verify(&tampered), Err(UpdaterError::Minisign(_))));
+        let other_updater = app.updater_builder().target(UPDATE_TARGET)
+            .pubkey(wrong_key).build().unwrap();
+        let wrong = other_updater.restore_update(manifest("0.2.0", &sig)).unwrap().unwrap();
+        assert!(matches!(wrong.verify(&bytes), Err(UpdaterError::Minisign(_))));
+        println!("R53_REAL_TAMPER_AND_WRONG_KEY_REFUSAL_PASS");
+
+        // A genuine old artifact/signature cannot be relabelled as a newer release.
+        let relabelled = restore("0.3.0", &old_sig).unwrap();
+        assert!(matches!(relabelled.verify(&bytes),
+            Err(UpdaterError::SignedVersionMismatch { signed, announced })
+            if signed == "0.1.0" && announced == "0.3.0"));
+        let unsigned_version = restore("0.2.0", &no_version).unwrap();
+        assert!(matches!(unsigned_version.verify(&bytes), Err(UpdaterError::MissingSignedVersion)));
+        let comment = String::from_utf8(STANDARD.decode(&sig).unwrap()).unwrap();
+        assert!(comment.contains("version:0.2.0"));
+        let forged = STANDARD.encode(comment.replace("version:0.2.0", "version:0.3.0"));
+        let forged_update = restore("0.3.0", &forged).unwrap();
+        assert!(matches!(forged_update.verify(&bytes), Err(UpdaterError::Minisign(_))));
+        println!("R53_REAL_SIGNED_VERSION_AND_COMMENT_REFUSAL_PASS");
+
+        // Real updater comparator refuses older/same versions before download.
+        assert!(restore("0.1.0", &old_sig).is_none());
+        assert!(restore("0.0.9", &old_sig).is_none());
+        println!("R53_REAL_DOWNGRADE_AND_SAME_VERSION_REFUSAL_PASS");
+        // Test fixture bytes are intentionally not an executable. Never call install.
+        println!("R53_OFFICIAL_TAURI_SIGNATURE_VERIFICATION_PASS");
+    }
+
     #[test]
     fn installation_and_file_operations_are_mutually_exclusive() {
         let gate = OperationGate::default();
