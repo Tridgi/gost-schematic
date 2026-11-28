@@ -216,13 +216,22 @@ def _check_source_ink_bounds(root: ET.Element, viewport: tuple[int, int, int, in
 
     for item in root.iter():
         kind = item.tag.rsplit("}", 1)[-1]
-        if kind == "text" and item.get("transform") is not None:
+        # V2 sheet annotations have the same conservative envelope at all
+        # four angles, including 0° (where the renderer emits no transform).
+        # Leave legacy engine text and component/symbol labels to their own
+        # layout contracts; their anchors and envelopes are different.
+        if kind == "text" and (
+            item.get("transform") is not None
+            or (root.get("data-source-model") == "gscad-project-v2"
+                and item.get("data-layer") == "annotations"
+                and item.get("data-id") and item.text)
+        ):
             rotation = _annotation_rotation(root, item)
             x, y = _from_mm(item.get("x")), _from_mm(item.get("y"))
             h = _from_mm(item.get("font-size"))
             left, top, right, bottom = annotation_bounds(x, y, h, len(item.text or ""), rotation)
             if not (vx <= left and top >= vy and right <= vx + vw and bottom <= vy + vh):
-                raise ExportError("SOURCE_VIEWBOX_CLIPS_INK: rotated annotation exceeds viewBox")
+                raise ExportError("SOURCE_VIEWBOX_CLIPS_INK: annotation exceeds viewBox")
             continue
         if kind == "line":
             xs = [_from_mm(item.attrib[k]) for k in ("x1", "x2")]

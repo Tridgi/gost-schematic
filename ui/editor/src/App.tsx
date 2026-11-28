@@ -595,6 +595,11 @@ export default function App() {
           authored.deleteText(authored.newTransaction('keyboard-delete-text'),intent.text_id);
           adoptAuthored();setIssue('Надпись удалена. Электрическая модель сохранена.');return true;
         }
+        if(intent.kind==='rotateText'){
+          if(intent.base_revision!==authored.revision)throw Error('STALE_REVISION');
+          authored.rotateText(authored.newTransaction('keyboard-rotate-text'),intent.text_id,intent.direction);
+          adoptAuthored();setIssue('Надпись повёрнута. Электрическая модель сохранена.');return true;
+        }
         if(intent.kind==='moveText'){
           if(intent.base_revision!==authored.revision)throw Error('STALE_REVISION');
           authored.moveText(authored.newTransaction('drag-sheet-text'),intent.text_id,intent.at_um);
