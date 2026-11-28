@@ -20,6 +20,7 @@ import {
 import {loadProjectWires} from '../wires/project-v2-adapter';
 import {projectToCanvasScene} from '../canvas/scene-projection.mjs';
 import {AUTHORING_PARTS, AUTHORING_SYMBOLS} from './catalog';
+import {lockedSymbol,stable,type TransistorProfile} from './transistor-profiles';
 
 type Tx = {project_id:string;revision:number;source_guard:string;command_id:string};
 const SOURCE_ZERO='0000000000000000000000000000000000000000';
@@ -286,10 +287,23 @@ export class AuthoringSession {
       return materialize(draft,subset,session);
     });
   }
-  place(tx:Tx,symbolId:string,origin:readonly number[]):string {
+  place(tx:Tx,symbolId:string,origin:readonly number[],profile?:TransistorProfile):string {
     const position=xy(origin);
     let added='';
     this.edit(tx,draft=>{
+      if(profile){
+        const source=lockedSymbol(profile),partSource=profile.part_definition;
+        if(source.id!==symbolId)reject('TRANSISTOR_PROFILE_MISMATCH');
+        const prior=draft.project.symbol_definitions.find(s=>s.id===symbolId);
+        const priorPart=draft.project.part_definitions.find(p=>p.id===partSource.id);
+        if(prior||priorPart){
+          if(!prior||!priorPart||stable(prior)!==stable(source)||stable(priorPart)!==stable(partSource))
+            reject('TRANSISTOR_PROFILE_MISMATCH');
+        }else{
+          draft.project.symbol_definitions.push(source);
+          draft.project.part_definitions.push(clone(partSource));
+        }
+      }
       const symbol=draft.project.symbol_definitions.find(s=>s.id===symbolId);
       const part=draft.project.part_definitions.find(p=>p.id===symbol?.part_id);
       if(!symbol||!part||symbol.status==='deprecated')reject('UNKNOWN_SYMBOL');
@@ -297,7 +311,7 @@ export class AuthoringSession {
       while(draft.project.components.some(c=>c.refdes===part.reference_prefix+n))n++;
       const refdes=part.reference_prefix+n;
       const comp:Component={id:newId('comp'),source_refdes:refdes,refdes,
-        part_id:part.id,value:part.reference_prefix==='R'?'1к':'100н'};
+        part_id:part.id,value:part.reference_prefix==='R'?'1к':part.reference_prefix==='C'?'100н':''};
       const sheet=draft.project.sheets[indexOfSheet(draft)];
       const layer=sheet.layers.find(l=>l.kind==='electrical');
       if(!layer)reject('MISSING_ELECTRICAL_LAYER');

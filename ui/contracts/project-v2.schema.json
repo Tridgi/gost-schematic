@@ -356,6 +356,24 @@
               "maximum": 1000000000
             }
           }
+        },
+        "catalog_source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "part_sha256",
+            "symbol_sha256"
+          ],
+          "properties": {
+            "part_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "symbol_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
         }
       },
       "required": [

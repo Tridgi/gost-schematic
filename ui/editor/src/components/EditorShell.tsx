@@ -17,7 +17,7 @@ import '../theme/design-tokens.css';
 
 export type ToolMode = 'select' | 'wire' | 'text' | 'pan' | 'junction' | 'place';
 export type CatalogSymbol = {
-  id: string; name: string; category: string; approval: 'draft' | 'approved' | 'blocked';
+  id: string; name: string; category: string; family?:string; approval: 'draft' | 'approved' | 'blocked';
   /** Trusted SVG ReactNode from canonical catalogue renderer; no icon-based UGO substitution. */
   thumbnail: ReactNode;
 };
@@ -158,6 +158,7 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
   const [settings,setSettings]=useState(false),[exportDialog,setExportDialog]=useState(false);
   const [commandDialog,setCommandDialog]=useState(false),[diagnostics,setDiagnostics]=useState(false);
   const [query,setQuery]=useState(''),[commandQuery,setCommandQuery]=useState('');
+  const [transistorDialog,setTransistorDialog]=useState(false),[family,setFamily]=useState(''),[profileId,setProfileId]=useState('');
   const [format,setFormat]=useState<'svg'|'png300'>('svg');
   const [split,setSplit]=useState(()=>normalizeDockLayout(sizes).inspectorPercent??48);
   // Mantine useLocalStorage reads existing preferences in an effect; restore after hydration.
@@ -172,13 +173,17 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
   });
   function resetLayout(){resize.resetAll();setSizes({});setSplit(48);const wide=typeof window==='undefined'||window.innerWidth>=960;setLeft(wide);setRight(wide);}
   function changeSplit(p:number){setSplit(p);setSizes({...sizes,inspectorPercent:p});}
-  const filtered=props.catalog.filter(x=>(x.name+' '+x.category).toLocaleLowerCase('ru-RU').includes(query.toLocaleLowerCase('ru-RU')));
+  const transistors=props.catalog.filter(x=>x.family);
+  const families=[...new Set(transistors.map(x=>x.family!))];
+  const choices=transistors.filter(x=>x.family===family);
+  const chosen=choices.find(x=>x.id===profileId)??choices[0];
+  const filtered=props.catalog.filter(x=>!x.family).filter(x=>(x.name+' '+x.category).toLocaleLowerCase('ru-RU').includes(query.toLocaleLowerCase('ru-RU')));
   useEffect(()=>{
     const onKey=(e:globalThis.KeyboardEvent)=>{
       const editable=!!(e.target as HTMLElement)?.closest('input,textarea,select,[contenteditable="true"],[role="textbox"]');
       // The browser Save-as dialog would incorrectly capture an uncommitted inspector draft.
       if(editable&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();return;}
-      const action=resolveShellShortcut(e,{editable,dialogOpen:settings||exportDialog||commandDialog});
+      const action=resolveShellShortcut(e,{editable,dialogOpen:settings||exportDialog||commandDialog||transistorDialog});
       if(!action)return;
       if(action==='save'&&!props.canSave || action==='undo'&&!props.canUndo || action==='redo'&&!props.canRedo)return;
       e.preventDefault();
@@ -245,6 +250,10 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
           <Text size="sm" fw={600}>Библиотека УГО</Text>
           <TextInput size="xs" aria-label="Поиск УГО" leftSection={<Search size={14}/>}
             placeholder="Поиск по каталогу" value={query} onChange={e=>setQuery(e.currentTarget.value)} data-testid="catalog-search"/>
+          {transistors.length>0&&<Button size="xs" variant="light" data-testid="transistor-configure"
+            onClick={()=>{setFamily(families[0]);setProfileId('');setTransistorDialog(true);}}>
+            Транзисторы · настройка УГО
+          </Button>}
           <ScrollArea h="100%" type="hover"><Stack gap={4}>
             {filtered.map(s=><Button key={s.id} size="compact-lg" variant="subtle" className="gscad-catalog-item" data-testid={'catalog-item-'+s.id}
               aria-label={'Выбрать УГО '+s.name+', '+s.approval} onClick={()=>props.onPlaceSymbol(s.id)}>
@@ -333,6 +342,23 @@ function ShellView(props:EditorShellProps & {scheme:'dark'|'light';setScheme:(v:
         {!props.exportReady&&<Text size="sm" c="dimmed">Канонический экспорт не подтверждён.</Text>}
         <Button disabled={!props.exportReady||!props.onExport}
           onClick={()=>{props.onExport?.(format);setExportDialog(false);}}>Экспортировать</Button>
+      </Stack>
+    </Modal>
+    <Modal opened={transistorDialog} onClose={()=>setTransistorDialog(false)} title="Настройка транзистора" centered>
+      <Stack gap="sm">
+        <label>Семейство
+          <select aria-label="Семейство транзистора" value={family} onChange={e=>{setFamily(e.currentTarget.value);setProfileId('');}}>
+            {families.map(f=><option key={f} value={f}>{f}</option>)}
+          </select>
+        </label>
+        <label>Конфигурация выводов и корпуса
+          <select aria-label="Конфигурация транзистора" value={chosen?.id??''} onChange={e=>setProfileId(e.currentTarget.value)}>
+            {choices.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </label>
+        {chosen&&<div style={{width:160,height:160,margin:'auto'}}>{chosen.thumbnail}</div>}
+        <Text size="xs" c="dimmed">DRAFT — инженерный каталог, нормативная приёмка не завершена.</Text>
+        <Button disabled={!chosen} data-testid="transistor-place" onClick={()=>{if(chosen){setTransistorDialog(false);props.onPlaceSymbol(chosen.id);}}}>Разместить на листе</Button>
       </Stack>
     </Modal>
     <Modal opened={commandDialog} onClose={()=>setCommandDialog(false)} title="Команды" centered data-testid="command-palette">

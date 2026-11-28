@@ -376,6 +376,28 @@ def _semantic(project: dict) -> None:
             raise ContractError('SOURCE_TOPOLOGY_DRIFT','Frozen E695 inventory/physical PinRefs changed')
 
 
+def _verify_catalog_sources(project: dict) -> None:
+    locked = [s for s in project['symbol_definitions'] if 'catalog_source' in s]
+    if not locked:
+        return
+    from gost_schematic.agent_project.catalog import CatalogResolver
+    from ui.integration.transistor_catalog import ProjectionError, project_v2_profile
+
+    catalog = CatalogResolver()
+    parts = {p['id']: p for p in project['part_definitions']}
+    for symbol in locked:
+        try:
+            profile = project_v2_profile(catalog, symbol['part_id'])
+        except ProjectionError as exc:
+            raise ContractError('CATALOG_SOURCE_MISMATCH', symbol['id']) from exc
+        lock = profile['source_lock']
+        expected = {**profile['symbol_definition'], 'catalog_source': {
+            'part_sha256': lock['part_sha256'], 'symbol_sha256': lock['symbol_sha256'],
+        }}
+        if symbol != expected or parts.get(symbol['part_id']) != profile['part_definition']:
+            raise ContractError('CATALOG_SOURCE_MISMATCH', symbol['id'])
+
+
 def validate(document: dict) -> dict:
     if type(document) is not dict or document.get('format_version')!=V2:
         raise ContractError('VERSION_UNSUPPORTED',str(document.get('format_version')) if isinstance(document,dict) else 'invalid root')
@@ -385,6 +407,7 @@ def validate(document: dict) -> dict:
         raise ContractError('SCHEMA_INVALID',f'{"/".join(map(str,e.path))}: {e.message}')
     project=document['project']
     _semantic(project)
+    _verify_catalog_sources(project)
     if document['workspace']['active_sheet_id'] not in {s['id'] for s in project['sheets']}:
         raise ContractError('WORKSPACE_UNKNOWN_SHEET',document['workspace']['active_sheet_id'])
     return document

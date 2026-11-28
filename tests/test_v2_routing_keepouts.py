@@ -69,9 +69,8 @@ def test_malformed_or_pin_blocking_zone_rejected(zone, code):
 def test_closed_boundary_and_project_clearance_are_enforced():
     doc, inst, profile = sample()
     # Case radius 5 mm + half stroke + 200 um box padding.
-    y0 = profile["symbol_definition"]["routing_keepouts_um"][0][1]
-    inst["origin_um"] = [40000, 30000 - y0 + 550]
-    # lower-facing side of the protected region touches the existing wire.
+    y0 = min(box[1] for box in profile["symbol_definition"]["routing_keepouts_um"])
+    inst["origin_um"] = [30000, 30000 - y0 + 550]
     # Use top edge exactly at y=30 mm, including the margin.
     with pytest.raises(ContractError, match="WIRE_KEEPOUT_COLLISION"):
         validate(doc)
