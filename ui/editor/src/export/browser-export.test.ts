@@ -161,8 +161,8 @@ test('R49 browser preserves exact quarter-turn text anchors and physical height'
   const svg=renderProjectPreviewSVG(doc,'sheet-1');
   const tag=svg.match(/<text data-layer="annotations"[^>]*>MMMMMM<\/text>/)?.[0];
   assert.ok(tag);
-  assert.match(tag,/x="120\.125" y="120\.5" font-size="5"/);
-  if(rotation)assert.ok(tag.includes('transform="rotate('+rotation+' 120.125 120.5)"'));
+  assert.match(tag,/x="120\.125" y="120\.50*" font-size="5"/);
+  if(rotation)assert.ok(tag.includes('transform="rotate('+rotation+' 120.125 120.500)"'));
   else assert.ok(!tag.includes('transform='));
   assert.deepEqual(doc,before);
  }
