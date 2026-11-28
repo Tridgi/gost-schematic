@@ -2,6 +2,7 @@
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
+from examples.review_pin_labels import add_pin_label
 from gost_schematic.catalog.transistor_switches import SwitchKind, switch_review_variants
 from gost_schematic.rendering.svg import render_symbol_svg
 
@@ -44,8 +45,7 @@ def generate(output: Path, kind: SwitchKind) -> int:
                     group.append(child)
             if view != "clean":
                 for pin in symbol.pins:
-                    text(group, pin.at.x / 1000, pin.at.y / 1000 - 1.2,
-                         pin.label, "1.8")
+                    add_pin_label(group, pin)
             text(root, x, y + 16,
                  f"{variant.spec.upper_exit.value.upper()}/"
                  f"{variant.spec.lower_exit.value.upper()}")

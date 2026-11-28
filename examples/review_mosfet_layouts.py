@@ -2,6 +2,7 @@
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
+from examples.review_pin_labels import add_pin_label
 from gost_schematic.catalog.transistors import (
     mosfet_body_diode_variants,
     mosfet_extended_variants,
@@ -60,8 +61,7 @@ def generate(output: Path, *, depletion: bool = False, separate_body: bool = Fal
                     group.append(child)
             if view != "clean":
                 for pin in symbol.pins:
-                    text(group, pin.at.x / 1000, pin.at.y / 1000 - 1.2,
-                         pin.label, "1.8")
+                    add_pin_label(group, pin)
             text(root, x, y + 16,
                  f"D:{variant.spec.drain_exit.value.upper()} "
                  f"S:{variant.spec.source_exit.value.upper()}")
