@@ -438,8 +438,9 @@ mod tests {
         assert!(cancel_download(&store, "current").is_err());
     }
     // Real Tauri CLI signatures, generated anew in a disposable CI directory.
-    // MockRuntime supplies app context only; the updater and cryptography are
-    // the same pinned implementation used by production. No install or network.
+    // Use the ordinary Wry runtime without windows; avoid adding MockRuntime
+    // to the native test executable. No install or network.
+    #[cfg(target_os = "windows")]
     #[test]
     #[ignore = "requires R53 disposable signer fixtures; explicitly run by Windows CI"]
     fn r53_real_signed_update_verification() {
@@ -457,22 +458,22 @@ mod tests {
         let no_version = read("unversioned.bin.sig");
         assert!(!root.join("trusted.key").exists() && !root.join("other.key").exists());
 
-        let build = |public_key: &str| {
-            let config = serde_json::json!({"pubkey":public_key,"endpoints":[FEED],
-                "requireSignedVersion":true,"allowDowngrades":false,
-                "dangerousInsecureTransportProtocol":false,
-                "dangerousAcceptInvalidCerts":false,"dangerousAcceptInvalidHostnames":false});
-            assert!(secure_policy(&config));
-            let mut context = tauri::test::mock_context(tauri::test::noop_assets());
-            context.package_info_mut().version = "0.1.0".parse().unwrap();
-            context.config_mut().plugins.0.insert("updater".into(), config);
-            let app = tauri::test::mock_builder()
-                .plugin(tauri_plugin_updater::Builder::new().build())
-                .build(context).unwrap();
-            let updater = app.updater_builder().target(UPDATE_TARGET).build().unwrap();
-            (app, updater)
-        };
-        let (_app, updater) = build(&key);
+        let config = serde_json::json!({"pubkey":key,"endpoints":[FEED],
+            "requireSignedVersion":true,"allowDowngrades":false,
+            "dangerousInsecureTransportProtocol":false,
+            "dangerousAcceptInvalidCerts":false,"dangerousAcceptInvalidHostnames":false});
+        assert!(secure_policy(&config));
+        let mut context = tauri::generate_context!();
+        context.package_info_mut().version = "0.1.0".parse().unwrap();
+        context.config_mut().identifier = "dev.gostschematic.signaturetest".into();
+        context.config_mut().app.windows.clear();
+        context.config_mut().plugins.0.insert("updater".into(), config);
+        // Windows supports creating an event loop on the Rust test thread.
+        // Construct exactly one runtime; a second event loop is not permitted.
+        let app = tauri::Builder::default().any_thread()
+            .plugin(tauri_plugin_updater::Builder::new().build())
+            .build(context).unwrap();
+        let updater = app.updater_builder().target(UPDATE_TARGET).build().unwrap();
         let manifest = |version: &str, signature: &str| {
             let value = serde_json::json!({"version":version,"platforms":{
                 (UPDATE_TARGET):{"url":asset_url(version).unwrap(),"signature":signature}}});
@@ -490,7 +491,8 @@ mod tests {
         // One changed byte, and a distinct actual signing identity.
         let mut tampered = bytes.clone(); tampered[0] ^= 1;
         assert!(matches!(accepted.verify(&tampered), Err(UpdaterError::Minisign(_))));
-        let (_other_app, other_updater) = build(&wrong_key);
+        let other_updater = app.updater_builder().target(UPDATE_TARGET)
+            .pubkey(wrong_key).build().unwrap();
         let wrong = other_updater.restore_update(manifest("0.2.0", &sig)).unwrap().unwrap();
         assert!(matches!(wrong.verify(&bytes), Err(UpdaterError::Minisign(_))));
         println!("R53_REAL_TAMPER_AND_WRONG_KEY_REFUSAL_PASS");
