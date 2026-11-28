@@ -1,13 +1,14 @@
 {
   "schema_version": 1,
   "id": "resistor.trimmer",
-  "revision": 1,
+  "revision": 2,
   "status": "draft",
   "standard_refs": [
     "ГОСТ 2.728-74, таблица 1, поз. 9 — резистор подстроечный: контакт от верхней кромки к независимому правому выводу; PDF С.6, page=6",
     "ГОСТ 2.728-74, таблица 6, поз. 5 — графика и размеры подстроечного резистора; PDF С.20, page=20",
     "EDITORIAL_ASSUMPTION: отдельный W контакт справа сверху, 5 мм от бокового контакта, длина 9 мм, stroke 0.3 мм, защитные области и номера 1/2/3 условные; не аналог datasheet.",
-    "EDITORIAL_SHEET_LABEL_CLEARANCE: body_keepout extends to y=-9mm above actual 10x4mm resistor body; prevents refdes overlapping real stepped W contact y=-5 and pin escape after D4. This is text reserve, not GOST resistor height."
+    "EDITORIAL_SHEET_LABEL_CLEARANCE: body_keepout extends to y=-9mm above actual 10x4mm resistor body; prevents refdes overlapping real stepped W contact y=-5 and pin escape after D4. This is text reserve, not GOST resistor height.",
+    "EDITORIAL_R2: blue functional routing protection; physical terminal locations unchanged; not a normative dimension."
   ],
   "line_width_mm": 0.3,
   "body_keepout_mm": [
@@ -64,6 +65,16 @@
         [
           9,
           -5
+        ]
+      ],
+      [
+        [
+          0,
+          -5
+        ],
+        [
+          0,
+          -6.5
         ]
       ]
     ],
@@ -165,5 +176,13 @@
         "3"
       ]
     ]
-  }
+  },
+  "routing_keepouts_mm": [
+    [
+      -5.2,
+      -6.7,
+      5.2,
+      2.2
+    ]
+  ]
 }

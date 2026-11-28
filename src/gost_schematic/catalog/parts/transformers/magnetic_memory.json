@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "id": "transformer.magnetic_memory",
+  "symbol_id": "transformer.magnetic_memory",
+  "reference_prefix": "T",
+  "nominal_kind": null,
+  "voltage_orientation_rule": "none",
+  "pins": [
+    {
+      "number": "1",
+      "name": "W1_START",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    },
+    {
+      "number": "2",
+      "name": "W1_END",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    },
+    {
+      "number": "3",
+      "name": "W2_START",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    },
+    {
+      "number": "4",
+      "name": "W2_END",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    }
+  ]
+}

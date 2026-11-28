@@ -66,6 +66,8 @@ def render_sheet_svg(
         )
         if review_overlay:
             extents.extend(item.box for item in obstacles_for_component(symbol, component))
+            extents.extend(component.transform.box(zone).translated(component.origin)
+                           for zone in symbol.routing_keepouts)
             extents.extend(
                 item.reservation_bounds for item in layout.placements
                 if item.reservation_bounds is not None
@@ -138,6 +140,12 @@ def render_sheet_svg(
                     "stroke-width": "0.14",
                     "stroke-dasharray": "0.8,0.5",
                     "data-kind": obstacle.kind,
+                    "data-owner": component.reference,
+                })
+            for zone in symbol.routing_keepouts:
+                _rect(debug, component.transform.box(zone).translated(component.origin), **{
+                    "stroke": "#2477d4", "stroke-width": "0.18",
+                    "stroke-dasharray": "1,0.7", "data-kind": "routing-keepout",
                     "data-owner": component.reference,
                 })
             for pin in symbol.pins:

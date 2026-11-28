@@ -1,0 +1,240 @@
+{
+  "schema_version": 1,
+  "id": "transformer.auto_fixed",
+  "revision": 2,
+  "status": "draft",
+  "standard_refs": [
+    "ГОСТ 2.723-68, таблица 2, поз. 25, форма II; https://rosgosts.ru/file/gost/01/080/gost_2.723-68.pdf",
+    "EDITORIAL_ASSUMPTION: four external terminals, common left end; tap at internal arc boundary; project dimensions; abstract pin numbers; DRAFT.",
+    "R2 SOURCE_VISUAL_REVIEW: uploaded ГОСТ 2.723-68 (Стандартинформ 2010), enlarged Form II scan; PDF p.9 item 25: three lobes with lateral links, separate core ends 2 mm inside terminal uprights; tap after second lobe. Pin 4 shifts +2 mm to reproduce source.; project dimensions; DRAFT."
+  ],
+  "line_width_mm": 0.3,
+  "body_keepout_mm": [
+    -8.3,
+    -4.3,
+    8.3,
+    0.5
+  ],
+  "routing_keepouts_mm": [
+    [
+      -8.5,
+      -4.5,
+      8.5,
+      0.7
+    ]
+  ],
+  "geometry": {
+    "rectangles": [],
+    "lines": [
+      [
+        [
+          -8,
+          -10
+        ],
+        [
+          -8,
+          0
+        ]
+      ],
+      [
+        [
+          8,
+          0
+        ],
+        [
+          8,
+          -10
+        ]
+      ],
+      [
+        [
+          -8,
+          0
+        ],
+        [
+          -8,
+          10
+        ]
+      ],
+      [
+        [
+          2,
+          0
+        ],
+        [
+          2,
+          10
+        ]
+      ],
+      [
+        [
+          -8,
+          0
+        ],
+        [
+          -6,
+          0
+        ]
+      ],
+      [
+        [
+          6,
+          0
+        ],
+        [
+          8,
+          0
+        ]
+      ]
+    ],
+    "circles": [],
+    "semicircles": [
+      {
+        "center_mm": [
+          -4,
+          0
+        ],
+        "radius_mm": 2,
+        "bulge": "top"
+      },
+      {
+        "center_mm": [
+          0,
+          0
+        ],
+        "radius_mm": 2,
+        "bulge": "top"
+      },
+      {
+        "center_mm": [
+          4,
+          0
+        ],
+        "radius_mm": 2,
+        "bulge": "top"
+      }
+    ],
+    "styled_lines": [
+      {
+        "start_mm": [
+          -6,
+          -4
+        ],
+        "end_mm": [
+          6,
+          -4
+        ],
+        "stroke_width_mm": 0.3
+      }
+    ]
+  },
+  "pins": [
+    {
+      "number": "1",
+      "at_mm": [
+        -8,
+        -10
+      ],
+      "side": "top",
+      "label": "INPUT_A"
+    },
+    {
+      "number": "2",
+      "at_mm": [
+        8,
+        -10
+      ],
+      "side": "top",
+      "label": "INPUT_B"
+    },
+    {
+      "number": "3",
+      "at_mm": [
+        -8,
+        10
+      ],
+      "side": "bottom",
+      "label": "COMMON_OUTPUT"
+    },
+    {
+      "number": "4",
+      "at_mm": [
+        2,
+        10
+      ],
+      "side": "bottom",
+      "label": "OUTPUT_TAP"
+    }
+  ],
+  "annotations": [
+    {
+      "key": "refdes",
+      "role": "refdes",
+      "required": true,
+      "candidates": [
+        {
+          "at_mm": [
+            -11.6,
+            -7.5
+          ],
+          "horizontal": "right",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            11.6,
+            -7.5
+          ],
+          "horizontal": "left",
+          "vertical": "bottom"
+        }
+      ]
+    },
+    {
+      "key": "value",
+      "role": "value",
+      "required": false,
+      "candidates": [
+        {
+          "at_mm": [
+            11.6,
+            3.8
+          ],
+          "horizontal": "left",
+          "vertical": "top"
+        }
+      ]
+    }
+  ],
+  "conductor_topology": {
+    "indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "junctions_mm": [
+      [
+        -8,
+        0
+      ],
+      [
+        2,
+        0
+      ]
+    ],
+    "pin_groups": [
+      [
+        "1",
+        "2",
+        "3",
+        "4"
+      ]
+    ]
+  }
+}

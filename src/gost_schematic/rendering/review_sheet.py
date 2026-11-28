@@ -5,12 +5,14 @@ potential clashes, not proven pixel/curve intersections or GOST compliance.
 """
 from dataclasses import dataclass
 from importlib.resources import files
+from math import isqrt
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
 from gost_schematic.catalog.inductors import load_inductor
 from gost_schematic.catalog.loader import load_symbol
 from gost_schematic.catalog.part_loader import load_part
+from gost_schematic.catalog.transformers import load_transformer
 from gost_schematic.core.geometry import Box, Point, enclosing_box, primitive_stroked_bounds
 from gost_schematic.core.transforms import Transform
 from gost_schematic.core.units import format_mm, mm
@@ -89,6 +91,7 @@ def discover_catalog_entries(
     ] + [
         (item, True) for item in sorted((root / "inductors").glob("*.json"))
     ]
+    paths += [(item, True) for item in sorted((root / "transformers").glob("*.json"))]
     if not paths:
         raise CatalogReviewError(f"No versioned UGO sources in {root}")
 
@@ -99,7 +102,8 @@ def discover_catalog_entries(
         source = "catalog/" + path.relative_to(root).as_posix()
         try:
             if is_winding:
-                variant = load_inductor(path)
+                variant = (load_transformer(path) if path.parent.name == "transformers"
+                           else load_inductor(path))
                 symbol, part = variant.symbol, variant.part
             else:
                 symbol = load_symbol(path)
@@ -162,7 +166,7 @@ def _example_nominal(part: PartDefinition) -> Quantity | None:
 def build_catalog_review_scene(
     catalog_root: Path | None = None,
     *,
-    columns: int = 4,
+    columns: int | None = None,
 ) -> ReviewScene:
     """Fit all discovered DRAFT UGO in content-sized cells, no fixed catalog count.
 
@@ -170,9 +174,12 @@ def build_catalog_review_scene(
     strokes, body keepouts and terminal-escape corridors. Padding reserves
     space for labels, but any unplaceable text remains a diagnostic failure.
     """
+    entries = discover_catalog_entries(catalog_root)
+    if columns is None:
+        # Keep an expanding review catalog approximately square without scaling UGO.
+        columns = max(4, isqrt(len(entries) - 1) + 1)
     if type(columns) is not int or columns < 1:
         raise ValueError("columns must be a positive integer")
-    entries = discover_catalog_entries(catalog_root)
     symbols = {entry.part.identifier: entry.symbol for entry in entries}
 
     references: set[str] = set()

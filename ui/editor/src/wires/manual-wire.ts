@@ -20,7 +20,7 @@ export type WirePolyline = {
 export type Junction = { id: string; net_id: string; layer_id: string; at_um: PointUm };
 export type Splice = { id: string; net_id: string; layer_id: string; at_um: PointUm };
 export type PhysicalPin = PinRef & { local_at_um: PointUm; outward: Direction };
-export type Component = { id: string; origin_um: PointUm; rotation: 0 | 90 | 180 | 270; mirror_x: boolean; pins: PhysicalPin[] };
+export type Component = { id: string; origin_um: PointUm; rotation: 0 | 90 | 180 | 270; mirror_x: boolean; pins: PhysicalPin[]; routing_keepouts_um?: readonly (readonly [number,number,number,number])[] };
 export type Net = { id: string; literal_source_name: string; members: PinRef[] };
 export type WiringSnapshot = {
   schema_version: 2; project_id: string; revision: number; source_topology_hash: string;
@@ -115,6 +115,32 @@ function checkedWire(doc: WiringSnapshot, w: WirePolyline, net:Net): void {
     }
   }
 }
+const KEEP_OUT_MARGIN_UM = 550;
+type KeepoutBox = readonly [number,number,number,number];
+function protectedBoxes(c:Component):KeepoutBox[] {
+  const boxes=c.routing_keepouts_um;
+  if(boxes===undefined)return [];
+  if(!Array.isArray(boxes)||boxes.length<1||boxes.length>128)
+    fail('INVALID_KEEPOUT','Expected 1..128 protection boxes');
+  return boxes.map(box=>{
+    if(!Array.isArray(box)||box.length!==4)fail('INVALID_KEEPOUT','Expected four coordinates');
+    const [x0,y0,x1,y1]=box;
+    point([x0,y0]);point([x1,y1]);
+    if(x0>=x1||y0>=y1)fail('INVALID_KEEPOUT','Degenerate protection box');
+    const a=transform([x0,y0],c),b=transform([x1,y1],c),m=KEEP_OUT_MARGIN_UM;
+    const world:KeepoutBox=[Math.min(a[0],b[0])-m,Math.min(a[1],b[1])-m,
+      Math.max(a[0],b[0])+m,Math.max(a[1],b[1])+m];
+    for(const pin of c.pins){
+      const p=transform(pin.local_at_um,c);
+      if(intersectsBox(p,p,world))fail('PIN_IN_KEEPOUT','Protected box blocks physical pin');
+    }
+    return world;
+  });
+}
+function intersectsBox(a:PointUm,b:PointUm,box:KeepoutBox):boolean {
+  return Math.max(a[0],b[0])>=box[0]&&Math.min(a[0],b[0])<=box[2]&&
+    Math.max(a[1],b[1])>=box[1]&&Math.min(a[1],b[1])<=box[3];
+}
 export function validateDocument(doc: WiringSnapshot): void {
   if(doc.schema_version!==2 || !Array.isArray(doc.wires) || !Array.isArray(doc.nets) ||
       !Array.isArray(doc.components) || !Array.isArray(doc.junctions) || !Array.isArray(doc.splices))
@@ -132,6 +158,7 @@ export function validateDocument(doc: WiringSnapshot): void {
       transform(p.local_at_um,c);
     }
   }
+  const keepouts=doc.components.flatMap(protectedBoxes);
   const nets=new Map<string,Net>();
   for(const net of doc.nets) {
     id(net.id,'Net ID'); id(net.literal_source_name,'Original Net name');
@@ -155,6 +182,10 @@ export function validateDocument(doc: WiringSnapshot): void {
     if(wireIds.has(w.id)) fail('DUPLICATE_ID','Duplicate wire'); wireIds.add(w.id);
     const net=nets.get(w.net_id); if(!net) fail('UNKNOWN_NET','Wire uses unknown Net');
     checkedWire(doc,w,net);
+    for(let i=1;i<w.vertices.length;i++){
+      if(keepouts.some(box=>intersectsBox(w.vertices[i-1].at_um,w.vertices[i].at_um,box)))
+        fail('WIRE_KEEPOUT_COLLISION','Wire intersects protected symbol geometry');
+    }
     for(const end of [terminal(w.vertices[0]),terminal(w.vertices.at(-1)!)]) {
       if(end.kind==='free') {
         if(freeIds.has(end.free_id)) fail('FREE_ALIAS','Free endpoint IDs must be unique across the sheet');

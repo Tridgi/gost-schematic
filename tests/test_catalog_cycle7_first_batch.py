@@ -57,7 +57,11 @@ def _pair(identifier: str):
 def test_source_backed_distinct_draft_ugo_and_independent_physical_part(identifier):
     symbol, part = _pair(identifier)
     assert symbol.identifier == part.identifier == part.symbol_id == identifier
-    assert symbol.status == SymbolStatus.DRAFT and symbol.revision == 1
+    expected_revision = {"resistor.variable": 2, "resistor.trimmer": 2, "fuse.general": 1}
+    assert symbol.status == SymbolStatus.DRAFT
+    assert symbol.revision == expected_revision[identifier]
+    if symbol.revision == 2:
+        assert symbol.routing_keepouts
     assert part.reference_prefix == PREFIX[identifier]
     assert part.voltage_orientation_rule.value == "none"
     assert part.nominal_kind is not None if identifier.startswith("resistor") else part.nominal_kind is None

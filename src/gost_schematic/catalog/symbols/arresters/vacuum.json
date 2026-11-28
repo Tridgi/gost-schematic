@@ -1,0 +1,174 @@
+{
+  "schema_version": 1,
+  "id": "arrester.vacuum",
+  "revision": 1,
+  "status": "draft",
+  "standard_refs": [
+    "ГОСТ 2.727-68, табл. 1, поз. 2ж; https://files.stroyinf.ru/Data2/1/4294833/4294833334.pdf",
+    "EDITORIAL_ASSUMPTION: Opposing electrodes are separate islands; gas mark is a small circle with zero inner radius at 0.3 mm stroke; project dimensions; all physical numbers abstract; DRAFT."
+  ],
+  "line_width_mm": 0.3,
+  "body_keepout_mm": [
+    -6,
+    -6,
+    6,
+    6
+  ],
+  "geometry": {
+    "rectangles": [],
+    "lines": [
+      [
+        [
+          -10,
+          0
+        ],
+        [
+          -1.5,
+          0
+        ]
+      ],
+      [
+        [
+          1.5,
+          0
+        ],
+        [
+          10,
+          0
+        ]
+      ],
+      [
+        [
+          -4.5,
+          -1.7
+        ],
+        [
+          -1.5,
+          0
+        ]
+      ],
+      [
+        [
+          -4.5,
+          1.7
+        ],
+        [
+          -1.5,
+          0
+        ]
+      ],
+      [
+        [
+          4.5,
+          -1.7
+        ],
+        [
+          1.5,
+          0
+        ]
+      ],
+      [
+        [
+          4.5,
+          1.7
+        ],
+        [
+          1.5,
+          0
+        ]
+      ]
+    ],
+    "circles": [
+      {
+        "center_mm": [
+          0,
+          0
+        ],
+        "radius_mm": 6
+      }
+    ]
+  },
+  "pins": [
+    {
+      "number": "1",
+      "at_mm": [
+        -10,
+        0
+      ],
+      "side": "left",
+      "label": "A"
+    },
+    {
+      "number": "2",
+      "at_mm": [
+        10,
+        0
+      ],
+      "side": "right",
+      "label": "B"
+    }
+  ],
+  "annotations": [
+    {
+      "key": "refdes",
+      "role": "refdes",
+      "required": true,
+      "candidates": [
+        {
+          "at_mm": [
+            -14,
+            -12
+          ],
+          "horizontal": "right",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            14,
+            -12
+          ],
+          "horizontal": "left",
+          "vertical": "bottom"
+        }
+      ]
+    },
+    {
+      "key": "value",
+      "role": "value",
+      "required": false,
+      "candidates": [
+        {
+          "at_mm": [
+            14,
+            12
+          ],
+          "horizontal": "left",
+          "vertical": "top"
+        },
+        {
+          "at_mm": [
+            -14,
+            12
+          ],
+          "horizontal": "right",
+          "vertical": "top"
+        }
+      ]
+    }
+  ],
+  "conductor_topology": {
+    "indices": [
+      0,
+      1
+    ],
+    "junctions_mm": [],
+    "pin_groups": [
+      [
+        "1"
+      ],
+      [
+        "2"
+      ]
+    ]
+  }
+}

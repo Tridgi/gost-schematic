@@ -1,6 +1,6 @@
 """Exact authored conductor graph for UGO primitives.
 
-Only explicitly selected Line/StyledLine/Semicircle objects are conducting.
+Only explicitly selected Line/StyledLine/Semicircle/Arc270 objects conduct.
 Geometric crossings never create implicit joins. All arithmetic uses integral
 micrometres: no floating-point tolerance and no assumptions from net names.
 """
@@ -8,7 +8,15 @@ micrometres: no floating-point tolerance and no assumptions from net names.
 from dataclasses import dataclass
 
 from gost_schematic.core.diagnostics import Diagnostic, Severity
-from gost_schematic.core.geometry import Line, Point, Semicircle, Side, StyledLine
+from gost_schematic.core.geometry import (
+    SIDE_VECTORS,
+    Arc270,
+    Line,
+    Point,
+    Semicircle,
+    Side,
+    StyledLine,
+)
 from gost_schematic.model.symbol import SymbolDefinition
 
 
@@ -26,16 +34,18 @@ class ConductorInspection:
         return not any(issue.severity == Severity.ERROR for issue in self.diagnostics)
 
 
-def _ends(shape: Line | StyledLine | Semicircle) -> tuple[Point, Point]:
+def _ends(shape: Line | StyledLine | Semicircle | Arc270) -> tuple[Point, Point]:
     if isinstance(shape, (Line, StyledLine)):
         return shape.start, shape.end
+    if isinstance(shape, Arc270):
+        return shape.endpoint(shape.start_side), shape.endpoint(shape.end_side)
     x, y, r = shape.center.x, shape.center.y, shape.radius
     if shape.bulge in (Side.TOP, Side.BOTTOM):
         return Point(x - r, y), Point(x + r, y)
     return Point(x, y - r), Point(x, y + r)
 
 
-def _on_shape(point: Point, shape: Line | StyledLine | Semicircle) -> bool:
+def _on_shape(point: Point, shape: Line | StyledLine | Semicircle | Arc270) -> bool:
     if isinstance(shape, (Line, StyledLine)):
         a, b = shape.start, shape.end
         dx, dy = b.x - a.x, b.y - a.y
@@ -48,6 +58,9 @@ def _on_shape(point: Point, shape: Line | StyledLine | Semicircle) -> bool:
     dx, dy = point.x - shape.center.x, point.y - shape.center.y
     if dx * dx + dy * dy != shape.radius * shape.radius:
         return False
+    if isinstance(shape, Arc270):
+        a, b = SIDE_VECTORS[shape.start_side], SIDE_VECTORS[shape.end_side]
+        return not (dx * a.x + dy * a.y > 0 and dx * b.x + dy * b.y > 0)
     return {
         Side.TOP: dy <= 0,
         Side.BOTTOM: dy >= 0,
@@ -111,7 +124,7 @@ def inspect_conductor_topology(symbol: SymbolDefinition) -> ConductorInspection:
         ))
 
     issues: list[Diagnostic] = []
-    selected: list[Line | StyledLine | Semicircle] = []
+    selected: list[Line | StyledLine | Semicircle | Arc270] = []
     for index in topology.conductor_indices:
         if index >= len(symbol.graphics):
             issues.append(Diagnostic(
@@ -121,7 +134,7 @@ def inspect_conductor_topology(symbol: SymbolDefinition) -> ConductorInspection:
             ))
             continue
         shape = symbol.graphics[index]
-        if not isinstance(shape, (Line, StyledLine, Semicircle)):
+        if not isinstance(shape, (Line, StyledLine, Semicircle, Arc270)):
             issues.append(Diagnostic(
                 "TOPOLOGY_PRIMITIVE_INVALID", Severity.ERROR,
                 f"Conductor index {index} is not a supported conductive stroke",

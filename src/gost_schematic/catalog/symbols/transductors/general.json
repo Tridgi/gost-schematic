@@ -1,0 +1,195 @@
+{
+  "schema_version": 1,
+  "id": "transductor.general",
+  "revision": 2,
+  "status": "draft",
+  "standard_refs": [
+    "ГОСТ 2.723-68, таблица 2, позиция 45, форма II; https://meganorm.ru/Data/431/43151.pdf#page=14",
+    "EDITORIAL_ASSUMPTION: enclosed general transductor symbol; inner glyph is symbolic and does not certify internal continuity; two external contacts; project dimensions and CAD terminal extensions; DRAFT",
+    "R2 SOURCE_VISUAL_REVIEW: uploaded ГОСТ 2.723-68 (Стандартинформ 2010), enlarged Form II scan; PDF p.13 item 45: horizontal 14 x 10 mm rectangle, centered three-lobe glyph and stepped core, unchanged contacts.; project dimensions; DRAFT."
+  ],
+  "line_width_mm": 0.3,
+  "body_keepout_mm": [
+    -7.3,
+    -5.3,
+    7.3,
+    5.3
+  ],
+  "routing_keepouts_mm": [
+    [
+      -7.5,
+      -5.5,
+      7.5,
+      5.5
+    ]
+  ],
+  "geometry": {
+    "rectangles": [
+      [
+        -7,
+        -5,
+        7,
+        5
+      ]
+    ],
+    "lines": [
+      [
+        [
+          -11,
+          0
+        ],
+        [
+          -7,
+          0
+        ]
+      ],
+      [
+        [
+          7,
+          0
+        ],
+        [
+          11,
+          0
+        ]
+      ]
+    ],
+    "circles": [],
+    "semicircles": [
+      {
+        "center_mm": [
+          -2,
+          0
+        ],
+        "radius_mm": 1,
+        "bulge": "top"
+      },
+      {
+        "center_mm": [
+          0,
+          0
+        ],
+        "radius_mm": 1,
+        "bulge": "top"
+      },
+      {
+        "center_mm": [
+          2,
+          0
+        ],
+        "radius_mm": 1,
+        "bulge": "top"
+      }
+    ],
+    "styled_lines": [
+      {
+        "start_mm": [
+          0,
+          -2.8
+        ],
+        "end_mm": [
+          1.8,
+          -2.8
+        ],
+        "stroke_width_mm": 0.3
+      },
+      {
+        "start_mm": [
+          0,
+          -2.8
+        ],
+        "end_mm": [
+          0,
+          2.8
+        ],
+        "stroke_width_mm": 0.3
+      },
+      {
+        "start_mm": [
+          -1.8,
+          2.8
+        ],
+        "end_mm": [
+          0,
+          2.8
+        ],
+        "stroke_width_mm": 0.3
+      }
+    ]
+  },
+  "pins": [
+    {
+      "number": "1",
+      "at_mm": [
+        -11,
+        0
+      ],
+      "side": "left",
+      "label": "A"
+    },
+    {
+      "number": "2",
+      "at_mm": [
+        11,
+        0
+      ],
+      "side": "right",
+      "label": "B"
+    }
+  ],
+  "annotations": [
+    {
+      "key": "refdes",
+      "role": "refdes",
+      "required": true,
+      "candidates": [
+        {
+          "at_mm": [
+            0,
+            -10.2
+          ],
+          "horizontal": "center",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            0,
+            10.2
+          ],
+          "horizontal": "center",
+          "vertical": "top"
+        }
+      ]
+    },
+    {
+      "key": "value",
+      "role": "value",
+      "required": false,
+      "candidates": [
+        {
+          "at_mm": [
+            0,
+            10.2
+          ],
+          "horizontal": "center",
+          "vertical": "top"
+        }
+      ]
+    }
+  ],
+  "conductor_topology": {
+    "indices": [
+      1,
+      2
+    ],
+    "junctions_mm": [],
+    "pin_groups": [
+      [
+        "1"
+      ],
+      [
+        "2"
+      ]
+    ]
+  }
+}

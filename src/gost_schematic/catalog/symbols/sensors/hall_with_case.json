@@ -1,0 +1,207 @@
+{
+  "schema_version": 1,
+  "id": "sensor.hall_with_case",
+  "revision": 1,
+  "status": "draft",
+  "standard_refs": [
+    "ГОСТ 2.730-73, табл. 11, поз. 1: токовые выводы от коротких сторон; https://files.stroyinf.ru/Data2/1/4294848/4294848038.pdf",
+    "EDITORIAL_ASSUMPTION: Marker and lead dimensions are editorial; not a certified drawing; all physical numbers abstract; DRAFT."
+  ],
+  "line_width_mm": 0.3,
+  "body_keepout_mm": [
+    -6,
+    -6,
+    6,
+    6
+  ],
+  "geometry": {
+    "rectangles": [
+      [
+        -5,
+        -2,
+        5,
+        2
+      ]
+    ],
+    "lines": [
+      [
+        [
+          -10,
+          0
+        ],
+        [
+          -5,
+          0
+        ]
+      ],
+      [
+        [
+          5,
+          0
+        ],
+        [
+          10,
+          0
+        ]
+      ],
+      [
+        [
+          0,
+          -10
+        ],
+        [
+          0,
+          -2
+        ]
+      ],
+      [
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          10
+        ]
+      ],
+      [
+        [
+          -1,
+          -1
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      [
+        [
+          -1,
+          1
+        ],
+        [
+          1,
+          -1
+        ]
+      ]
+    ],
+    "circles": [
+      {
+        "center_mm": [
+          0,
+          0
+        ],
+        "radius_mm": 6
+      }
+    ]
+  },
+  "pins": [
+    {
+      "number": "1",
+      "at_mm": [
+        -10,
+        0
+      ],
+      "side": "left",
+      "label": "I1"
+    },
+    {
+      "number": "2",
+      "at_mm": [
+        10,
+        0
+      ],
+      "side": "right",
+      "label": "I2"
+    },
+    {
+      "number": "3",
+      "at_mm": [
+        0,
+        -10
+      ],
+      "side": "top",
+      "label": "U1"
+    },
+    {
+      "number": "4",
+      "at_mm": [
+        0,
+        10
+      ],
+      "side": "bottom",
+      "label": "U2"
+    }
+  ],
+  "annotations": [
+    {
+      "key": "refdes",
+      "role": "refdes",
+      "required": true,
+      "candidates": [
+        {
+          "at_mm": [
+            -14,
+            -12
+          ],
+          "horizontal": "right",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            14,
+            -12
+          ],
+          "horizontal": "left",
+          "vertical": "bottom"
+        }
+      ]
+    },
+    {
+      "key": "value",
+      "role": "value",
+      "required": false,
+      "candidates": [
+        {
+          "at_mm": [
+            14,
+            12
+          ],
+          "horizontal": "left",
+          "vertical": "top"
+        },
+        {
+          "at_mm": [
+            -14,
+            12
+          ],
+          "horizontal": "right",
+          "vertical": "top"
+        }
+      ]
+    }
+  ],
+  "conductor_topology": {
+    "indices": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "junctions_mm": [],
+    "pin_groups": [
+      [
+        "1"
+      ],
+      [
+        "2"
+      ],
+      [
+        "3"
+      ],
+      [
+        "4"
+      ]
+    ]
+  }
+}

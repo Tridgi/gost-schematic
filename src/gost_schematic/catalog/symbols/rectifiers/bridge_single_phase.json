@@ -1,0 +1,263 @@
+{
+  "schema_version": 1,
+  "revision": 1,
+  "status": "draft",
+  "line_width_mm": 0.3,
+  "body_keepout_mm": [
+    -7.4,
+    -7.4,
+    7.4,
+    7.4
+  ],
+  "geometry": {
+    "rectangles": [],
+    "lines": [
+      [
+        [
+          0,
+          -12
+        ],
+        [
+          0,
+          -7
+        ]
+      ],
+      [
+        [
+          0,
+          7
+        ],
+        [
+          0,
+          12
+        ]
+      ],
+      [
+        [
+          7,
+          0
+        ],
+        [
+          12,
+          0
+        ]
+      ],
+      [
+        [
+          -12,
+          0
+        ],
+        [
+          -7,
+          0
+        ]
+      ],
+      [
+        [
+          0,
+          -7
+        ],
+        [
+          7,
+          0
+        ]
+      ],
+      [
+        [
+          7,
+          0
+        ],
+        [
+          0,
+          7
+        ]
+      ],
+      [
+        [
+          0,
+          7
+        ],
+        [
+          -7,
+          0
+        ]
+      ],
+      [
+        [
+          -7,
+          0
+        ],
+        [
+          0,
+          -7
+        ]
+      ],
+      [
+        [
+          -2.2,
+          -2.5
+        ],
+        [
+          -2.2,
+          2.5
+        ]
+      ],
+      [
+        [
+          -2.2,
+          -2.5
+        ],
+        [
+          2.2,
+          0
+        ]
+      ],
+      [
+        [
+          -2.2,
+          2.5
+        ],
+        [
+          2.2,
+          0
+        ]
+      ],
+      [
+        [
+          2.2,
+          -2.8
+        ],
+        [
+          2.2,
+          2.8
+        ]
+      ],
+      [
+        [
+          -3.4,
+          0
+        ],
+        [
+          3.4,
+          0
+        ]
+      ]
+    ],
+    "circles": []
+  },
+  "pins": [
+    {
+      "number": "1",
+      "at_mm": [
+        0,
+        -12
+      ],
+      "side": "top",
+      "label": "AC1"
+    },
+    {
+      "number": "2",
+      "at_mm": [
+        0,
+        12
+      ],
+      "side": "bottom",
+      "label": "AC2"
+    },
+    {
+      "number": "3",
+      "at_mm": [
+        12,
+        0
+      ],
+      "side": "right",
+      "label": "DC+"
+    },
+    {
+      "number": "4",
+      "at_mm": [
+        -12,
+        0
+      ],
+      "side": "left",
+      "label": "DC-"
+    }
+  ],
+  "annotations": [
+    {
+      "key": "refdes",
+      "role": "refdes",
+      "required": true,
+      "candidates": [
+        {
+          "at_mm": [
+            -9.6,
+            -9.6
+          ],
+          "horizontal": "right",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            9.6,
+            -9.6
+          ],
+          "horizontal": "left",
+          "vertical": "bottom"
+        }
+      ]
+    },
+    {
+      "key": "value",
+      "role": "value",
+      "required": false,
+      "candidates": [
+        {
+          "at_mm": [
+            9.6,
+            9.6
+          ],
+          "horizontal": "left",
+          "vertical": "top"
+        }
+      ]
+    }
+  ],
+  "conductor_topology": {
+    "indices": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "junctions_mm": [],
+    "pin_groups": [
+      [
+        "1"
+      ],
+      [
+        "2"
+      ],
+      [
+        "3"
+      ],
+      [
+        "4"
+      ]
+    ]
+  },
+  "id": "rectifier.bridge_single_phase",
+  "standard_refs": [
+    "ГОСТ 2.730-73, таблица 12, поз. 1б, PDF p.12; https://files.stroyinf.ru/Data2/1/4294848/4294848038.pdf#page=12",
+    "ГОСТ 2.730-73, справочное приложение 2: модульные пропорции, не обязательные размеры в мм.",
+    "EDITORIAL_ASSUMPTION: simplified diamond with internal diode mark; pin 1 upper AC, pin 2 lower AC, pin 3 right DC positive, pin 4 left DC negative; enclosure and diode mark are not conducting topology; no numerical rectification model; project dimensions and routing clearances; DRAFT."
+  ],
+  "routing_keepouts_mm": [
+    [
+      -7.6,
+      -7.6,
+      7.6,
+      7.6
+    ]
+  ]
+}

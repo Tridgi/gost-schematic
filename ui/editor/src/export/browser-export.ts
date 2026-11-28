@@ -25,6 +25,12 @@ function stroke(a:PointUm,b:PointUm,width:number,attrs=''):string{
 }
 function primitiveInk(inst:SymbolInstance,primitive:Primitive):string{
   const points=primitive.points_um.map(p=>worldPin(inst,p));
+  if(primitive.kind==='circle'){
+    const [a,b]=primitive.points_um;
+    if(points.length!==2||b[1]!==a[1]||b[0]<=a[0])throw Error('INVALID_CIRCLE');
+    return '<circle cx="'+mm(points[0][0])+'" cy="'+mm(points[0][1])+'" r="'+mm(b[0]-a[0])+
+      '" stroke="#000" stroke-width="'+mm(primitive.stroke_um)+'" fill="none"/>';
+  }
   if(primitive.kind==='rect'){
     if(points.length!==2)throw Error('INVALID_RECT');
     const [a,b]=points;const left=Math.min(a[0],b[0]),top=Math.min(a[1],b[1]);

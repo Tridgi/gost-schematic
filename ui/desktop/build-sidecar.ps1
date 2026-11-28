@@ -54,6 +54,7 @@ $pyiArgs = @(
   '--add-binary', "$(Join-Path $cairoDir 'libcairo-2.dll');.",
   '--paths', $root,
   '--hidden-import', 'ui.bridge.export.project_v2',
+  '--hidden-import', 'ui.integration.transistor_catalog',
   '--hidden-import', 'ui.bridge.export.canonical',
   '--add-data', "$(Join-Path $root 'ui/bridge/export');ui/bridge/export",
   '--add-data', "$modelPath;ui/editor/src/model",

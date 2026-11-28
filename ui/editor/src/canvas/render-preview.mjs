@@ -27,7 +27,11 @@ export function renderViewportSVG(scene,c,{width=900,height=600,pins=true,gridVi
   out.push('<g class="viewport-grid">'+grid.join('')+'</g>');
  }
  out.push('<g class="symbol-strokes" fill="none" stroke="#d5e2ee" stroke-width="1.5">');
- for(const s of scene.symbols||[])for(const st of s.strokes||[])out.push(line(screen(transform(s,st.from_um),c),screen(transform(s,st.to_um),c),''));
+ for(const s of scene.symbols||[]){
+  for(const st of s.strokes||[])out.push(line(screen(transform(s,st.from_um),c),screen(transform(s,st.to_um),c),''));
+  for(const circle of s.circles||[]){const p=screen(transform(s,circle.center_um),c);
+   out.push('<circle cx="'+num(p.x)+'" cy="'+num(p.y)+'" r="'+num(circle.radius_um*c.s)+'"/>');}
+ }
  out.push('</g>');
  out.push('<g class="electric-wires" stroke="#79c6e8" stroke-width="1.75" fill="none">');
  for(const w of scene.wires||[]){

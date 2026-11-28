@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "id": "transformer.controlled_single_phase",
+  "symbol_id": "transformer.controlled_single_phase",
+  "reference_prefix": "T",
+  "nominal_kind": null,
+  "voltage_orientation_rule": "none",
+  "pins": [
+    {
+      "number": "1",
+      "name": "P_START",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_start"
+    },
+    {
+      "number": "2",
+      "name": "P_END",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_end"
+    },
+    {
+      "number": "3",
+      "name": "S_START",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_start"
+    },
+    {
+      "number": "4",
+      "name": "S_END",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_end"
+    },
+    {
+      "number": "5",
+      "name": "CONTROL_START",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_start"
+    },
+    {
+      "number": "6",
+      "name": "CONTROL_END",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_end"
+    }
+  ]
+}

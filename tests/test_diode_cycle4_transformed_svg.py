@@ -42,7 +42,7 @@ def test_rendered_diode_strokes_and_A_K_markers_match_all_transforms(
     assert len(groups) == 1
     assert groups[0].get("data-reference") == "VD17"
     rendered = groups[0].findall(f"{SVG}line")
-    assert len(rendered) == (6 if identifier == "diode.general" else 8)
+    assert len(rendered) == (7 if identifier == "diode.general" else 8)
 
     # Check source-stroke order and exact physical-mm endpoints, not only
     # transformed pin positions or presence of an arbitrary SVG line.

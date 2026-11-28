@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "id": "transformer.auto_fixed",
+  "symbol_id": "transformer.auto_fixed",
+  "reference_prefix": "T",
+  "nominal_kind": null,
+  "voltage_orientation_rule": "none",
+  "pins": [
+    {
+      "number": "1",
+      "name": "INPUT_A",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_start"
+    },
+    {
+      "number": "2",
+      "name": "INPUT_B",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_end"
+    },
+    {
+      "number": "3",
+      "name": "COMMON_OUTPUT",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    },
+    {
+      "number": "4",
+      "name": "OUTPUT_TAP",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_tap"
+    }
+  ]
+}

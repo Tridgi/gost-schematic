@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "id": "transformer.double_tapped",
+  "revision": 1,
+  "core": "ferromagnetic",
+  "windings": [
+    {
+      "lobes": 4
+    },
+    {
+      "lobes": 6,
+      "taps": [
+        2,
+        4
+      ]
+    }
+  ],
+  "mark_starts": false,
+  "radius_mm": "2",
+  "lead_mm": "4",
+  "line_width_mm": "0.3",
+  "normative_basis": "ГОСТ 2.723-68, табл. 2, поз. 35а; проектная компоновка; DRAFT"
+}

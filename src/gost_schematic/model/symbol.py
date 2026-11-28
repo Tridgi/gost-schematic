@@ -33,6 +33,7 @@ class SymbolDefinition:
     annotation_slots: tuple[AnnotationSlot, ...] = ()
     constant_annotations: tuple[tuple[str, str], ...] = ()
     conductor_topology: ConductorTopology | None = None
+    routing_keepouts: tuple[Box, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.identifier.strip() or type(self.revision) is not int or self.revision < 1:
@@ -59,11 +60,19 @@ class SymbolDefinition:
             raise ValueError("Duplicate graphic pin number or connector coordinate")
         if any(self.body_keepout.contains_interior(pin.at) for pin in self.pins):
             raise ValueError("Connector is trapped inside the body keepout")
+        if any(not isinstance(box, Box) for box in self.routing_keepouts):
+            raise TypeError("Routing keepouts must be Boxes")
+        if any(box.includes(pin.at) for box in self.routing_keepouts for pin in self.pins):
+            raise ValueError("Routing keepout traps a physical connector")
+
+    @property
+    def routing_boxes(self) -> tuple[Box, ...]:
+        return (self.body_keepout, *self.routing_keepouts)
 
     @property
     def bounds(self) -> Box:
         boxes = tuple(primitive_bounds(shape) for shape in self.graphics)
-        boxes += (self.body_keepout,)
+        boxes += (self.body_keepout, *self.routing_keepouts)
         for pin in self.pins:
             p = pin.at
             boxes += (Box(p.x, p.y, p.x + 1, p.y + 1),)
@@ -80,7 +89,7 @@ class SymbolDefinition:
             primitive_stroked_bounds(item, self.line_width_um)
             for item in self.graphics
         )
-        boxes += (self.body_keepout,)
+        boxes += (self.body_keepout, *self.routing_keepouts)
         for pin in self.pins:
             p = pin.at
             boxes += (Box(p.x, p.y, p.x + 1, p.y + 1),)

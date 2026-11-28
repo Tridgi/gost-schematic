@@ -1,0 +1,227 @@
+{
+  "schema_version": 1,
+  "revision": 1,
+  "status": "draft",
+  "line_width_mm": 0.3,
+  "body_keepout_mm": [
+    -5.4,
+    -3.7,
+    5.4,
+    3.7
+  ],
+  "geometry": {
+    "rectangles": [],
+    "lines": [
+      [
+        [
+          -12,
+          0
+        ],
+        [
+          -5,
+          0
+        ]
+      ],
+      [
+        [
+          5,
+          0
+        ],
+        [
+          12,
+          0
+        ]
+      ],
+      [
+        [
+          -5,
+          -3
+        ],
+        [
+          -5,
+          3
+        ]
+      ],
+      [
+        [
+          -5,
+          -3
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      [
+        [
+          -5,
+          3
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      [
+        [
+          5,
+          -3
+        ],
+        [
+          5,
+          3
+        ]
+      ],
+      [
+        [
+          5,
+          -3
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      [
+        [
+          5,
+          3
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      [
+        [
+          0,
+          -3.3
+        ],
+        [
+          0,
+          3.3
+        ]
+      ],
+      [
+        [
+          0,
+          -3.3
+        ],
+        [
+          2,
+          -3.3
+        ]
+      ],
+      [
+        [
+          0,
+          3.3
+        ],
+        [
+          -2,
+          3.3
+        ]
+      ],
+      [
+        [
+          -5,
+          0
+        ],
+        [
+          5,
+          0
+        ]
+      ]
+    ],
+    "circles": []
+  },
+  "pins": [
+    {
+      "number": "1",
+      "at_mm": [
+        -12,
+        0
+      ],
+      "side": "left",
+      "label": "T1"
+    },
+    {
+      "number": "2",
+      "at_mm": [
+        12,
+        0
+      ],
+      "side": "right",
+      "label": "T2"
+    }
+  ],
+  "annotations": [
+    {
+      "key": "refdes",
+      "role": "refdes",
+      "required": true,
+      "candidates": [
+        {
+          "at_mm": [
+            -7.6,
+            -5.9
+          ],
+          "horizontal": "right",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            7.6,
+            -5.9
+          ],
+          "horizontal": "left",
+          "vertical": "bottom"
+        }
+      ]
+    },
+    {
+      "key": "value",
+      "role": "value",
+      "required": false,
+      "candidates": [
+        {
+          "at_mm": [
+            7.6,
+            5.9
+          ],
+          "horizontal": "left",
+          "vertical": "top"
+        }
+      ]
+    }
+  ],
+  "conductor_topology": {
+    "indices": [
+      0,
+      1
+    ],
+    "junctions_mm": [],
+    "pin_groups": [
+      [
+        "1"
+      ],
+      [
+        "2"
+      ]
+    ]
+  },
+  "id": "diode.zener_bidirectional",
+  "standard_refs": [
+    "ГОСТ 2.730-73, таблица 5, поз. 4б, PDF p.5; https://files.stroyinf.ru/Data2/1/4294848/4294848038.pdf#page=5",
+    "ГОСТ 2.730-73, справочное приложение 2: модульные пропорции, не обязательные размеры в мм.",
+    "EDITORIAL_ASSUMPTION: two facing triangles, common vertical avalanche mark with upper right and lower left hooks, central artwork axis; symmetrical T1/T2 ports; project dimensions and routing clearances; DRAFT."
+  ],
+  "routing_keepouts_mm": [
+    [
+      -5.6,
+      -3.9,
+      5.6,
+      3.9
+    ]
+  ]
+}

@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "id": "reactor.current_limiting",
+  "revision": 1,
+  "status": "draft",
+  "standard_refs": [
+    "ГОСТ 2.723-68, таблица 2, позиция 2; ГОСТ Р 56303-2014, таблица Б.1, позиция 19",
+    "EDITORIAL_ASSUMPTION: radius 5 mm; 270 degree arc from top clockwise to left; DRAFT."
+  ],
+  "line_width_mm": 0.3,
+  "body_keepout_mm": [
+    -5,
+    -5,
+    5,
+    5
+  ],
+  "geometry": {
+    "rectangles": [],
+    "lines": [
+      [
+        [
+          0,
+          -8
+        ],
+        [
+          0,
+          -5
+        ]
+      ],
+      [
+        [
+          -5,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          8
+        ]
+      ]
+    ],
+    "circles": [],
+    "arcs270": [
+      {
+        "center_mm": [
+          0,
+          0
+        ],
+        "radius_mm": 5,
+        "start_side": "top",
+        "clockwise": true
+      }
+    ]
+  },
+  "pins": [
+    {
+      "number": "1",
+      "at_mm": [
+        0,
+        -8
+      ],
+      "side": "top",
+      "label": "A"
+    },
+    {
+      "number": "2",
+      "at_mm": [
+        0,
+        8
+      ],
+      "side": "bottom",
+      "label": "B"
+    }
+  ],
+  "annotations": [
+    {
+      "key": "refdes",
+      "role": "refdes",
+      "required": true,
+      "candidates": [
+        {
+          "at_mm": [
+            8,
+            -6
+          ],
+          "horizontal": "left",
+          "vertical": "bottom"
+        }
+      ]
+    },
+    {
+      "key": "value",
+      "role": "value",
+      "required": false,
+      "candidates": [
+        {
+          "at_mm": [
+            8,
+            6
+          ],
+          "horizontal": "left",
+          "vertical": "top"
+        }
+      ]
+    }
+  ],
+  "conductor_topology": {
+    "indices": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "junctions_mm": [],
+    "pin_groups": [
+      [
+        "1",
+        "2"
+      ]
+    ]
+  },
+  "routing_keepouts_mm": [
+    [
+      -5.2,
+      -5.2,
+      5.2,
+      5.2
+    ]
+  ]
+}

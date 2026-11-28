@@ -67,6 +67,8 @@ def render_annotation_svg(
         ))
     if review_overlay:
         boxes.extend(item.box for item in obstacles_for_component(symbol, instance))
+        boxes.extend(instance.transform.box(zone).translated(instance.origin)
+                     for zone in symbol.routing_keepouts)
     viewport = enclosing_box(tuple(boxes)).expanded(mm(3))
     width = viewport.max_x - viewport.min_x
     height = viewport.max_y - viewport.min_y
@@ -116,6 +118,12 @@ def render_annotation_svg(
             _rect(overlay, obstacle.box,
                   stroke="#d79a3d" if obstacle.kind == "symbol" else "#16a085",
                   fill="none", **{"stroke-width": "0.14", "stroke-dasharray": "0.8,0.6"})
+        for zone in symbol.routing_keepouts:
+            _rect(overlay, instance.transform.box(zone).translated(instance.origin),
+                  stroke="#2477d4", fill="none", **{
+                      "stroke-width": "0.18", "stroke-dasharray": "1,0.7",
+                      "data-kind": "routing-keepout",
+                  })
         for pin in symbol.pins:
             at = _point(instance, pin.at)
             ET.SubElement(overlay, "circle", {

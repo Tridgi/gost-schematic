@@ -44,8 +44,15 @@ function projectToCanvasScene(file,sheetId){
    const normal=sides[pin.side];if(!normal)deny("UNKNOWN_PIN_SIDE");
    return {physical_pin_number:pin.physical_pin_number,at_um:point(pin.at_um),normal};
   });
-  const strokes=(s.graphics||[]).flatMap(graphicsToStrokes);
-  sourceSymbols.push({instance_id:i.id,component_id:c.id,origin_um:point(i.origin_um),rotation_deg:i.rotation_deg,mirror_x:i.mirror_x,pins,strokes,status:s.status,layer_id:i.layer_id});
+  const strokes=(s.graphics||[]).filter(g=>g.kind!=='circle').flatMap(graphicsToStrokes);
+  const circles=(s.graphics||[]).filter(g=>g.kind==='circle').map(g=>{
+   if(!Array.isArray(g.points_um)||g.points_um.length!==2)deny('INVALID_CIRCLE');
+   const [a,b]=g.points_um.map(point),r=b[0]-a[0];
+   if(b[1]!==a[1]||r<=0||Math.max(Math.abs(a[0]),Math.abs(a[1]))+r>1e9||
+      !Number.isSafeInteger(g.stroke_um)||g.stroke_um<=0||g.stroke_um>100000)deny('INVALID_CIRCLE');
+   return {center_um:a,radius_um:r,stroke_um:g.stroke_um};
+  });
+  sourceSymbols.push({instance_id:i.id,component_id:c.id,origin_um:point(i.origin_um),rotation_deg:i.rotation_deg,mirror_x:i.mirror_x,pins,strokes,circles,status:s.status,layer_id:i.layer_id});
  }
  const visualGraphics=sheet.graphics.map(g=>{
   const isB=g.kind==="source_b_continuation";

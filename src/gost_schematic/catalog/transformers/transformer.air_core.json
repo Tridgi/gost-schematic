@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "id": "transformer.air_core",
+  "revision": 1,
+  "core": "none",
+  "windings": [
+    {
+      "lobes": 4
+    },
+    {
+      "lobes": 4
+    }
+  ],
+  "mark_starts": false,
+  "radius_mm": "2",
+  "lead_mm": "4",
+  "line_width_mm": "0.3",
+  "normative_basis": "ГОСТ 2.723-68, табл. 2, поз. 12а; DRAFT"
+}

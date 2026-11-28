@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "id": "transductor.parallel_single_phase",
+  "symbol_id": "transductor.parallel_single_phase",
+  "reference_prefix": "L",
+  "nominal_kind": null,
+  "voltage_orientation_rule": "none",
+  "pins": [
+    {
+      "number": "1",
+      "name": "CONTROL_A",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    },
+    {
+      "number": "2",
+      "name": "CONTROL_B",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    },
+    {
+      "number": "3",
+      "name": "WORK_A",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    },
+    {
+      "number": "4",
+      "name": "WORK_B",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    }
+  ]
+}

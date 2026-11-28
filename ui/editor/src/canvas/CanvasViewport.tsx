@@ -229,6 +229,10 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
         data-selected={String(selectedInstanceId===s.instance_id)}
         data-testid={'symbol-'+(document.project.components.find(c=>c.id===s.component_id)?.refdes??s.component_id)}
         stroke={selectedInstanceId===s.instance_id?'#e29225':undefined}>
+        {s.circles.map((circle,i)=>{
+          const p=localStroke(s,circle.center_um,camera);
+          return <circle key={'circle-'+i} cx={p.x} cy={p.y} r={circle.radius_um*camera.s}/>;
+        })}
         {s.strokes.map((stroke,i)=>{
           const a=localStroke(s,stroke.from_um,camera),b=localStroke(s,stroke.to_um,camera);
           return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y}/>;

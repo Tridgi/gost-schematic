@@ -1,0 +1,347 @@
+{
+  "schema_version": 1,
+  "id": "transductor.series_single_phase",
+  "revision": 1,
+  "status": "draft",
+  "standard_refs": [
+    "ГОСТ 2.723-68, таблица 2, позиция 47, форма II; https://meganorm.ru/Data/431/43151.pdf#page=14",
+    "EDITORIAL_ASSUMPTION: two independent series winding paths on two bent common magnetic cores, rotated editorial adaptation; control polarity marks and supply annotations pending exact normative visual review; project dimensions and CAD terminal extensions; DRAFT"
+  ],
+  "line_width_mm": 0.3,
+  "body_keepout_mm": [
+    -12.4,
+    -10.4,
+    12.4,
+    10.4
+  ],
+  "routing_keepouts_mm": [
+    [
+      -12.6,
+      -10.6,
+      12.6,
+      10.6
+    ]
+  ],
+  "geometry": {
+    "rectangles": [],
+    "lines": [
+      [
+        [
+          -19,
+          -5
+        ],
+        [
+          -12,
+          -5
+        ]
+      ],
+      [
+        [
+          -4,
+          -5
+        ],
+        [
+          4,
+          -5
+        ]
+      ],
+      [
+        [
+          12,
+          -5
+        ],
+        [
+          19,
+          -5
+        ]
+      ],
+      [
+        [
+          -19,
+          5
+        ],
+        [
+          -12,
+          5
+        ]
+      ],
+      [
+        [
+          -4,
+          5
+        ],
+        [
+          4,
+          5
+        ]
+      ],
+      [
+        [
+          12,
+          5
+        ],
+        [
+          19,
+          5
+        ]
+      ]
+    ],
+    "circles": [
+      {
+        "center_mm": [
+          -10,
+          7
+        ],
+        "radius_mm": 0.15
+      },
+      {
+        "center_mm": [
+          10,
+          7
+        ],
+        "radius_mm": 0.15
+      }
+    ],
+    "semicircles": [
+      {
+        "center_mm": [
+          -10,
+          -5
+        ],
+        "radius_mm": 2,
+        "bulge": "top"
+      },
+      {
+        "center_mm": [
+          -6,
+          -5
+        ],
+        "radius_mm": 2,
+        "bulge": "top"
+      },
+      {
+        "center_mm": [
+          6,
+          -5
+        ],
+        "radius_mm": 2,
+        "bulge": "top"
+      },
+      {
+        "center_mm": [
+          10,
+          -5
+        ],
+        "radius_mm": 2,
+        "bulge": "top"
+      },
+      {
+        "center_mm": [
+          -10,
+          5
+        ],
+        "radius_mm": 2,
+        "bulge": "top"
+      },
+      {
+        "center_mm": [
+          -6,
+          5
+        ],
+        "radius_mm": 2,
+        "bulge": "top"
+      },
+      {
+        "center_mm": [
+          6,
+          5
+        ],
+        "radius_mm": 2,
+        "bulge": "top"
+      },
+      {
+        "center_mm": [
+          10,
+          5
+        ],
+        "radius_mm": 2,
+        "bulge": "top"
+      }
+    ],
+    "styled_lines": [
+      {
+        "start_mm": [
+          -8,
+          -10
+        ],
+        "end_mm": [
+          -8,
+          10
+        ],
+        "stroke_width_mm": 0.3
+      },
+      {
+        "start_mm": [
+          -8,
+          -10
+        ],
+        "end_mm": [
+          -6,
+          -10
+        ],
+        "stroke_width_mm": 0.3
+      },
+      {
+        "start_mm": [
+          -10,
+          10
+        ],
+        "end_mm": [
+          -8,
+          10
+        ],
+        "stroke_width_mm": 0.3
+      },
+      {
+        "start_mm": [
+          8,
+          -10
+        ],
+        "end_mm": [
+          8,
+          10
+        ],
+        "stroke_width_mm": 0.3
+      },
+      {
+        "start_mm": [
+          8,
+          -10
+        ],
+        "end_mm": [
+          10,
+          -10
+        ],
+        "stroke_width_mm": 0.3
+      },
+      {
+        "start_mm": [
+          6,
+          10
+        ],
+        "end_mm": [
+          8,
+          10
+        ],
+        "stroke_width_mm": 0.3
+      }
+    ]
+  },
+  "pins": [
+    {
+      "number": "1",
+      "at_mm": [
+        -19,
+        -5
+      ],
+      "side": "left",
+      "label": "WORK_START"
+    },
+    {
+      "number": "2",
+      "at_mm": [
+        19,
+        -5
+      ],
+      "side": "right",
+      "label": "WORK_END"
+    },
+    {
+      "number": "3",
+      "at_mm": [
+        -19,
+        5
+      ],
+      "side": "left",
+      "label": "CONTROL_START"
+    },
+    {
+      "number": "4",
+      "at_mm": [
+        19,
+        5
+      ],
+      "side": "right",
+      "label": "CONTROL_END"
+    }
+  ],
+  "annotations": [
+    {
+      "key": "refdes",
+      "role": "refdes",
+      "required": true,
+      "candidates": [
+        {
+          "at_mm": [
+            0,
+            -13.4
+          ],
+          "horizontal": "center",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            0,
+            13.4
+          ],
+          "horizontal": "center",
+          "vertical": "top"
+        }
+      ]
+    },
+    {
+      "key": "value",
+      "role": "value",
+      "required": false,
+      "candidates": [
+        {
+          "at_mm": [
+            0,
+            13.4
+          ],
+          "horizontal": "center",
+          "vertical": "top"
+        }
+      ]
+    }
+  ],
+  "conductor_topology": {
+    "indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "junctions_mm": [],
+    "pin_groups": [
+      [
+        "1",
+        "2"
+      ],
+      [
+        "3",
+        "4"
+      ]
+    ]
+  }
+}

@@ -1,0 +1,3 @@
+# R6 amplifier R3
+
+User reference image: item 37a triangular amplifier, GOST 2.723-68. Refit the inner glyph using the relative widths and positions in the enlarged source: three contiguous 2.2 mm diameter lobes, centered vertical core at the middle lobe, upper shelf to the right, lower shelf to the left. Retain the triangle and horizontal pins. Shorten and relocate the downward control pin from (0.5, 13) to (-0.5, 8) mm, its stub begins exactly at the lower triangle edge (-0.5, 3). Pin numbering, part, independent conductor islands and protection boxes unchanged. Saved projects using revision 2 require pin 3 rerouting after migration. No additional catalog entries. Native render and full CI required; DRAFT.

@@ -1,0 +1,196 @@
+{
+  "schema_version": 1,
+  "id": "resistor.variable_side_wiper",
+  "revision": 2,
+  "status": "draft",
+  "standard_refs": [
+    "ГОСТ 2.728-74, таблица 1, поз. 4; таблица 6, размеры; https://radio-hobby.org/uploads/instruction/other/ugo/gost/gost_2.728-74.pdf",
+    "EDITORIAL_ASSUMPTION: User reference 02 with both end contacts drawn; bent wiper is a DRAFT layout adaptation; 0.3 mm project stroke, abstract pin numbers, DRAFT.",
+    "EDITORIAL_R2: blue functional routing protection; physical terminal locations unchanged; not a normative dimension."
+  ],
+  "line_width_mm": 0.3,
+  "body_keepout_mm": [
+    -5,
+    -5.3,
+    5,
+    2
+  ],
+  "geometry": {
+    "rectangles": [
+      [
+        -5,
+        -2,
+        5,
+        2
+      ]
+    ],
+    "lines": [
+      [
+        [
+          -10,
+          0
+        ],
+        [
+          -5,
+          0
+        ]
+      ],
+      [
+        [
+          5,
+          0
+        ],
+        [
+          10,
+          0
+        ]
+      ],
+      [
+        [
+          0,
+          -2
+        ],
+        [
+          0,
+          -5
+        ]
+      ],
+      [
+        [
+          0,
+          -5
+        ],
+        [
+          10,
+          -5
+        ]
+      ],
+      [
+        [
+          -0.8,
+          -4.5
+        ],
+        [
+          0,
+          -2
+        ]
+      ],
+      [
+        [
+          0.8,
+          -4.5
+        ],
+        [
+          0,
+          -2
+        ]
+      ]
+    ],
+    "circles": []
+  },
+  "pins": [
+    {
+      "number": "1",
+      "at_mm": [
+        -10,
+        0
+      ],
+      "side": "left",
+      "label": "A"
+    },
+    {
+      "number": "2",
+      "at_mm": [
+        10,
+        0
+      ],
+      "side": "right",
+      "label": "B"
+    },
+    {
+      "number": "3",
+      "at_mm": [
+        10,
+        -5
+      ],
+      "side": "right",
+      "label": "W"
+    }
+  ],
+  "annotations": [
+    {
+      "key": "refdes",
+      "role": "refdes",
+      "required": true,
+      "candidates": [
+        {
+          "at_mm": [
+            -13,
+            -9
+          ],
+          "horizontal": "right",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            13,
+            -9
+          ],
+          "horizontal": "left",
+          "vertical": "bottom"
+        }
+      ]
+    },
+    {
+      "key": "value",
+      "role": "value",
+      "required": false,
+      "candidates": [
+        {
+          "at_mm": [
+            13,
+            9
+          ],
+          "horizontal": "left",
+          "vertical": "top"
+        },
+        {
+          "at_mm": [
+            -13,
+            9
+          ],
+          "horizontal": "right",
+          "vertical": "top"
+        }
+      ]
+    }
+  ],
+  "conductor_topology": {
+    "indices": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "junctions_mm": [],
+    "pin_groups": [
+      [
+        "1"
+      ],
+      [
+        "2"
+      ],
+      [
+        "3"
+      ]
+    ]
+  },
+  "routing_keepouts_mm": [
+    [
+      -5.2,
+      -5.3,
+      5.2,
+      2.2
+    ]
+  ]
+}

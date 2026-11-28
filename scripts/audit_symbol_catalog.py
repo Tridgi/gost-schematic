@@ -13,6 +13,7 @@ from pathlib import Path
 from gost_schematic.catalog.inductors import load_inductor
 from gost_schematic.catalog.loader import load_symbol
 from gost_schematic.catalog.part_loader import load_part
+from gost_schematic.catalog.transformers import load_transformer
 from gost_schematic.core.diagnostics import Diagnostic, Severity
 from gost_schematic.core.units import format_mm
 from gost_schematic.model.part import PartDefinition
@@ -130,6 +131,11 @@ def audit_catalog() -> dict[str, object]:
 
     for source in source_inductors:
         variant = load_inductor(source)
+        path = "catalog/" + source.relative_to(root).as_posix()
+        entries.append(_entry(variant.symbol, source, path, variant.part))
+
+    for source in sorted((root / "transformers").glob("*.json")):
+        variant = load_transformer(source)
         path = "catalog/" + source.relative_to(root).as_posix()
         entries.append(_entry(variant.symbol, source, path, variant.part))
 

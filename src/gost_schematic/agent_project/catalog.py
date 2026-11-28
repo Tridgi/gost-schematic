@@ -12,6 +12,8 @@ from typing import Any
 from gost_schematic.catalog.inductors import load_inductor
 from gost_schematic.catalog.loader import load_symbol
 from gost_schematic.catalog.part_loader import load_part
+from gost_schematic.catalog.transformers import load_transformer
+from gost_schematic.catalog.transistor_profiles import transistor_profiles
 
 
 class ProjectError(ValueError):
@@ -28,7 +30,10 @@ def normalized(value: Any) -> Any:
     if isinstance(value, Decimal):
         return format(value, "f")
     if is_dataclass(value) and not isinstance(value, type):
-        return {field.name: normalized(getattr(value, field.name)) for field in fields(value)}
+        return {
+            field.name: normalized(getattr(value, field.name)) for field in fields(value)
+            if not (field.name == "routing_keepouts" and not getattr(value, field.name))
+        }
     if isinstance(value, (tuple, list)):
         return [normalized(item) for item in value]
     if isinstance(value, Mapping):
@@ -75,11 +80,28 @@ class CatalogResolver:
             self.parts[winding.part.identifier] = winding.part
             self.symbols[winding.symbol.identifier] = winding.symbol
 
+        for source in sorted(root.joinpath("transformers").glob("*.json")):
+            variant = load_transformer(source)
+            if variant.part.identifier in self.parts or variant.symbol.identifier in self.symbols:
+                raise ProjectError("CATALOG_DUPLICATE", variant.part.identifier)
+            self.parts[variant.part.identifier] = variant.part
+            self.symbols[variant.symbol.identifier] = variant.symbol
+
+    def transistor_layout_ids(self) -> tuple[str, ...]:
+        """Discover opt-in layout definitions, separate from installed inventory."""
+        return tuple(sorted(transistor_profiles()))
+
     def resolve(self, part_id: str) -> tuple[Any, Any]:
         part = self.parts.get(part_id)
         if part is None:
-            raise ProjectError("CATALOG_PART_MISSING", f"No installed physical part {part_id}")
-        symbol = self.symbols.get(part.symbol_id)
+            # Only exact registered profile IDs are accepted; never parse
+            # arbitrary parameters, load paths or replace a legacy symbol.
+            pair = transistor_profiles().get(part_id) if part_id.startswith("transistor.") else None
+            if pair is None:
+                raise ProjectError("CATALOG_PART_MISSING", f"No installed physical part {part_id}")
+            part, symbol = pair
+        else:
+            symbol = self.symbols.get(part.symbol_id)
         if symbol is None:
             raise ProjectError("CATALOG_SYMBOL_MISSING", part.symbol_id)
         if {pin.number for pin in part.pins} != {pin.number for pin in symbol.pins}:

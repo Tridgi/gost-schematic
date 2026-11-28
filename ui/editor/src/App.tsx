@@ -8,6 +8,7 @@ import { CanvasViewport } from './canvas/CanvasViewport';
 import type { CanvasIntent } from './canvas/controller.mjs';
 import { commitSegmentDrag, captureSegmentDrag } from './canvas/wire-intents.mjs';
 import {AuthoringSession,newBlankProject} from './authoring/session';
+import {parseTransistorManifest,profileFamily,profileName,type TransistorProfile} from './authoring/transistor-profiles';
 import {nativeDesktopAvailable,nativeOpenProject,nativeSaveProject,nativeSaveAsProject,nativeCloseProject,
   nativeExportProject,type NativeDocumentHandle} from './native/desktop';
 import {installNativeCloseGuard} from './native/close-guard';
@@ -21,10 +22,14 @@ import { renderProjectPreviewSVG, renderPreviewPng300 } from './export/browser-e
 const umToMm = (value:number):number => value/1000;
 const asPoint = (point:readonly number[]):string => String(umToMm(point[0]))+' '+String(umToMm(point[1]));
 function CataloguePreview({symbol}:{symbol:SymbolDefinition}) {
-  return <svg viewBox="-12 -8 24 16" fill="none" stroke="currentColor" strokeWidth={0.45}
+  return <svg viewBox="-14 -14 28 28" fill="none" stroke="currentColor" strokeWidth={0.45}
     aria-hidden="true">
     {symbol.graphics.map((graphic,index)=>{
       const pts=graphic.points_um.map(p=>asPoint(p));
+      if(graphic.kind==='circle'){
+        const [a,b]=graphic.points_um;
+        return <circle key={index} cx={umToMm(a[0])} cy={umToMm(a[1])} r={umToMm(b[0]-a[0])}/>;
+      }
       if(graphic.kind==='rect'){
         const a=graphic.points_um[0],b=graphic.points_um[1];
         return <rect key={index} x={umToMm(Math.min(a[0],b[0]))}
@@ -90,6 +95,16 @@ export default function App() {
   const [snapshot,setSnapshot]=useState<WiringSnapshot|null>(null);
   const [tool,setTool]=useState<ToolMode>('select');
   const [placementSymbol,setPlacementSymbol]=useState<string|null>(null);
+  const [transistorProfiles,setTransistorProfiles]=useState<TransistorProfile[]>([]);
+  useEffect(()=>{
+    let active=true;
+    fetch('/fixtures/transistor-profiles.json').then(r=>{
+      if(!r.ok)throw Error('TRANSISTOR_CATALOG_HTTP_'+r.status);
+      return r.json();
+    }).then(raw=>{if(active)setTransistorProfiles(parseTransistorManifest(raw));})
+      .catch(e=>{if(active)console.error('Transistor catalog unavailable',e);});
+    return ()=>{active=false;};
+  },[]);
   const [selectedId,setSelectedId]=useState<string|null>(null);
   const [,setPending]=useState<PinRef|null>(null);
   const [grid,setGrid]=useState(true),[snap,setSnap]=useState(true);
@@ -169,12 +184,21 @@ export default function App() {
   } as SelectedInstance:null;
   const catalog=useMemo<CatalogSymbol[]>(()=>{
     if(!document)return [];
-    return document.project.symbol_definitions.map(symbol=>({
-      id:symbol.id,name:symbol.id,category:symbol.part_id,
-      approval:symbol.status==='approved'?'approved':'draft',
-      thumbnail:<CataloguePreview symbol={symbol}/>
-    }));
-  },[document]);
+    const profiles=authoringRef.current?transistorProfiles:[];
+    const byId=new Map(profiles.map(p=>[p.symbol_definition.id,p]));
+    return [
+      ...document.project.symbol_definitions.filter(s=>!byId.has(s.id)).map(symbol=>({
+        id:symbol.id,name:symbol.id,category:symbol.part_id,
+        approval:symbol.status==='approved'?'approved' as const:'draft' as const,
+        thumbnail:<CataloguePreview symbol={symbol}/>
+      })),
+      ...profiles.map(p=>({
+        id:p.symbol_definition.id,name:profileName(p),category:'Транзисторы',
+        family:profileFamily(p),approval:'draft' as const,
+        thumbnail:<CataloguePreview symbol={p.symbol_definition}/>
+      }))
+    ];
+  },[document,transistorProfiles]);
   const tree=useMemo<TreeItem[]>(()=>{
     if(!document||!activeSheet)return [];
     return [
@@ -435,7 +459,7 @@ export default function App() {
           if(intent.base_revision!==authored.revision)throw Error('STALE_REVISION');
           if(!placementSymbol)throw Error('NO_SELECTED_CATALOG_SYMBOL');
           const id=authored.place(authored.newTransaction('place-component'),
-            placementSymbol,intent.at_um);
+            placementSymbol,intent.at_um,transistorProfiles.find(p=>p.symbol_definition.id===placementSymbol));
           adoptAuthored();setSelectedId(id);
           setTool('select');setPlacementSymbol(null);
           setIssue('УГО размещено из DRAFT-каталога. Физические выводы сохранены.');

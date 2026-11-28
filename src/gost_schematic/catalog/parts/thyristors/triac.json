@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "id": "thyristor.triac",
+  "symbol_id": "thyristor.triac",
+  "reference_prefix": "VS",
+  "nominal_kind": null,
+  "voltage_orientation_rule": "none",
+  "pins": [
+    {
+      "number": "1",
+      "name": "MT1",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    },
+    {
+      "number": "2",
+      "name": "MT2",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    },
+    {
+      "number": "3",
+      "name": "G",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "general"
+    }
+  ]
+}

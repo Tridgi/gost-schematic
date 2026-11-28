@@ -25,6 +25,10 @@ function symbolHit(scene,camera,p){
   for(const stroke of s.strokes||[]){
    minimum=Math.min(minimum,dist(p,transform(stroke.from_um),transform(stroke.to_um)));
   }
+  for(const circle of s.circles||[]){
+   const c=transform(circle.center_um);
+   minimum=Math.min(minimum,Math.abs(Math.hypot(p.x-c.x,p.y-c.y)-circle.radius_um*camera.s));
+  }
   if(minimum<=8)hits.push({kind:'symbol',instance_id:s.instance_id,
     component_id:s.component_id,distance_px:minimum});
  }

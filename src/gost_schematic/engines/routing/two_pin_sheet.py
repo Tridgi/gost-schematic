@@ -8,17 +8,19 @@ No inference of nets or junctions from ink; no changes to shared APIs.
 
 from collections.abc import Mapping
 
-from gost_schematic.core.geometry import Box, Point
+from gost_schematic.core.geometry import Box, Line, Point, StyledLine, primitive_stroked_bounds
 from gost_schematic.engines.ports import pin_corridors_for_component
 from gost_schematic.engines.routing.two_pin_orthogonal import (
     TwoPinRoute,
     _fail,
     route_two_pins,
 )
+from gost_schematic.model.annotations import AnnotationPlacement
 from gost_schematic.model.circuit import Circuit, PinRef
 from gost_schematic.model.obstacles import WireObstacle
 from gost_schematic.model.part import PartDefinition
 from gost_schematic.model.symbol import SymbolDefinition
+from gost_schematic.validation.annotation_checks import annotation_obstacles
 from gost_schematic.validation.external_wire_checks import validate_external_wires
 
 
@@ -32,6 +34,7 @@ def route_circuit_two_pins(
     net_name: str,
     foreign_wires: tuple[WireObstacle, ...] = (),
     keepouts: tuple[Box, ...] = (),
+    annotations: tuple[AnnotationPlacement, ...] = (),
     grid_um: int = 1000,
     clearance_um: int = 400,
     stroke_um: int = 300,
@@ -45,8 +48,8 @@ def route_circuit_two_pins(
     including same-net branches: graph junction authoring is not implemented.
 
     Reserves the full foreign pin's outward 1.8mm escape corridor in addition
-    to its exact physical contact and the body's catalog keepout. Caller must
-    provide any text/annotation obstacles and all existing drawn wires with
+    to its exact physical contact and all catalog routing keepouts. Pass resolved
+    annotations to protect measured text, and all existing drawn wires with
     their actual printed `WireObstacle.stroke_um` as `foreign_wires`.
     This adapter is conservative; failure never leaves a partial connection.
     """
@@ -73,8 +76,13 @@ def route_circuit_two_pins(
     ):
         return _fail("ROUTE_OBSTACLE_INVALID", "Foreign wires need actual stroke metadata")
 
+    if not isinstance(annotations, tuple) or any(
+        not isinstance(item, AnnotationPlacement) for item in annotations
+    ):
+        return _fail("ROUTE_OBSTACLE_INVALID", "Expected resolved annotation placements")
+
     coordinates: dict[PinRef, Point] = {}
-    obstacles: list[Box] = list(keepouts)
+    obstacles: list[Box] = [*keepouts, *(item.box for item in annotation_obstacles(annotations))]
     references: set[str] = set()
     for component in circuit.components:
         if component.reference in references:
@@ -94,9 +102,29 @@ def route_circuit_two_pins(
             return _fail("ROUTE_CATALOG_INVALID", "Physical-to-graphic pin mismatch")
         # Exclude every catalog UGO body. Only two *physical contacts* are
         # authorized, not their entire component or any of its other pins.
-        obstacles.append(
-            component.transform.box(symbol.body_keepout).translated(component.origin)
+        obstacles.extend(
+            component.transform.box(box).translated(component.origin)
+            for box in symbol.routing_boxes
         )
+        # Reserve all ink, including the other terminals of endpoint components.
+        # Only an authored straight conductor ending at a requested physical
+        # contact is exempt from its own stroke box. Body/functional boxes
+        # still apply; foreign primitives never receive this exemption.
+        endpoint_locals = {
+            pin.at for pin in symbol.pins
+            if PinRef(component.reference, pin.number) in (source, target)
+        }
+        topology = symbol.conductor_topology
+        for index, primitive in enumerate(symbol.graphics):
+            if (
+                isinstance(primitive, (Line, StyledLine))
+                and (topology is None or index in topology.conductor_indices)
+                and (primitive.start in endpoint_locals or primitive.end in endpoint_locals)
+            ):
+                continue
+            obstacles.append(component.transform.box(
+                primitive_stroked_bounds(primitive, symbol.line_width_um)
+            ).translated(component.origin))
         corridors = {
             corridor.pin.number: corridor
             for corridor in pin_corridors_for_component(symbol, component)
@@ -126,10 +154,21 @@ def route_circuit_two_pins(
     if not result.ok:
         return result
 
+    # A geometry-only obstacle is not evidence of an already verified foreign
+    # declared net. Keep the historical fail-closed contract for that case.
+    # Unrouted nets (no supplied foreign wire) may remain incomplete.
+    declared_other_nets = {net.name for net in circuit.nets if net.name != net_name}
+    if any(wire.net_name in declared_other_nets for wire in foreign_wires):
+        return _fail(
+            "ROUTE_ELECTRICAL_REJECTED",
+            "Foreign declared net needs verified graph, not only geometry obstacles",
+        )
+
     # A fail-closed independent electrical proof. Do not infer connections
     # from crossings or route ink. No junction is added by this adapter.
     diagnostics = validate_external_wires(
         circuit, result.external_graph(net_name), parts, symbols,
+        required_nets=frozenset((net_name,)),
     )
     if diagnostics:
         codes = ", ".join(sorted({item.code for item in diagnostics}))

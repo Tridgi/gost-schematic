@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "id": "transformer.current_dual_common_core",
+  "symbol_id": "transformer.current_dual_common_core",
+  "reference_prefix": "TA",
+  "nominal_kind": null,
+  "voltage_orientation_rule": "none",
+  "pins": [
+    {
+      "number": "1",
+      "name": "P1",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_start"
+    },
+    {
+      "number": "2",
+      "name": "P2",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_end"
+    },
+    {
+      "number": "3",
+      "name": "S1_START",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_start"
+    },
+    {
+      "number": "4",
+      "name": "S1_END",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_end"
+    },
+    {
+      "number": "5",
+      "name": "S2_START",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_start"
+    },
+    {
+      "number": "6",
+      "name": "S2_END",
+      "electrical_type": "passive",
+      "polarity": "none",
+      "function": "winding_end"
+    }
+  ]
+}

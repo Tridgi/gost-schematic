@@ -1,0 +1,3 @@
+# Foreign UGO ink clearance
+
+The two-pin sheet router previously reserved body, authored blue zones and pin contact/corridor but not the entire ink of unrelated symbols. A conductor could therefore cross a bent wiper stub outside the blue zone. The router now includes every foreign symbol's stroked primitive bounds, conservatively, without changing catalog revisions or project locks. Eight transform variants exercise the real adapter. Endpoint components retain their current body/zone and pin handling; full endpoint-ink exemptions and desktop/manual routing remain separate work. No claim of complete CAD integration. Verify CI before merge.

@@ -1,0 +1,3 @@
+# Diode geometry R2 — source review
+
+Source: https://files.stroyinf.ru/Data2/1/4294848/4294848038.pdf (PDF pp. 5–6, tables 4–5; appendix 2). All six existing diode symbols gain a graphical axis from (-2.5,0) to (2.5,0) mm. The unilateral Zener has only the lower hook pointing toward A; the Schottky lower hook returns toward the centre. Varicap retains its plate gap. Existing pin positions, stroke weight and conductor indices (0,1) are unchanged. The axis is artwork, not a copper bridge. Symbol revisions increment to 2; old catalogue locks may require explicit migration, not silent replacement. Status remains DRAFT; physical dimensions, BJT/MOSFET profiles and optical arrow shapes are outside this change. CI and manual approval are required before integration.

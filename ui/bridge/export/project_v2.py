@@ -113,7 +113,18 @@ def _draw_validated(document: dict, sheet_id: str) -> bytes:
             kind = primitive["kind"]
             points = [pin_world(inst,p) for p in primitive["points_um"]]
             width = primitive["stroke_um"]
-            if kind == "rect":
+            if kind == "circle":
+                a, b = primitive["points_um"]
+                radius = b[0] - a[0]
+                if radius <= 0 or b[1] != a[1]:
+                    raise ExportError("INVALID_CIRCLE")
+                x, y = points[0]
+                ET.SubElement(group, _S + "circle", {
+                    "cx": mm(x), "cy": mm(y), "r": mm(radius),
+                    "stroke": "#000000", "stroke-width": mm(width), "fill": "none",
+                })
+                bounds([(x-radius, y-radius), (x+radius, y+radius)], width)
+            elif kind == "rect":
                 if len(points) != 2:
                     raise ExportError("RECT_NEEDS_2_CORNERS")
                 x0,x1 = sorted((points[0][0],points[1][0]))

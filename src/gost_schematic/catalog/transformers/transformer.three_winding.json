@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "id": "transformer.three_winding",
+  "revision": 1,
+  "core": "ferromagnetic",
+  "windings": [
+    {
+      "lobes": 4
+    },
+    {
+      "lobes": 3
+    },
+    {
+      "lobes": 3
+    }
+  ],
+  "mark_starts": false,
+  "radius_mm": "2",
+  "lead_mm": "4",
+  "line_width_mm": "0.3",
+  "normative_basis": "ГОСТ 2.723-68, табл. 2, поз. 19; развернутая проектная компоновка; DRAFT"
+}

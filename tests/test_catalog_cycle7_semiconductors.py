@@ -216,7 +216,7 @@ def test_optical_arrowheads_have_NO_conductor_or_extra_contact(identifier):
     symbol, part = _pair(identifier)
     assert len(symbol.pins) == len(part.pins) == 2
     assert tuple(p.name for p in part.pins) == ("A", "K")
-    assert len(symbol.graphics) == 12
+    assert len(symbol.graphics) == 13
     assert symbol.conductor_topology.conductor_indices == (0, 1)
     arrow = symbol.graphics[6]
     assert isinstance(arrow, Line)
@@ -238,11 +238,11 @@ def test_optical_arrowheads_have_NO_conductor_or_extra_contact(identifier):
 def test_schottky_has_cathode_hooks_not_zener_ornament_and_varicap_has_true_cap_gap():
     schottky, _ = _pair("diode.schottky")
     varicap, _ = _pair("diode.varicap")
-    assert len(schottky.graphics) == 10
-    assert len(varicap.graphics) == 7
+    assert len(schottky.graphics) == 11
+    assert len(varicap.graphics) == 8
     assert varicap.graphics[1] == Line(Point(5000, 0), Point(10000, 0))
     assert varicap.graphics[6] == Line(Point(5000, -3300), Point(5000, 3300))
-    assert schottky.graphics[-1] == Line(Point(800, 3300), Point(800, 4800))
+    assert schottky.graphics[-2] == Line(Point(800, 3300), Point(800, 1800))
     assert inspect_conductor_topology(varicap).pin_islands == (("1",), ("2",))
 
 
@@ -311,8 +311,19 @@ def test_single_combined_gallery_exactly_matches_15_real_physical_roles(tmp_path
                 assert len(g.findall(f"./{SVG}circle")) == len(
                     item["physical_pin_role"]
                 ), "Every real physical PortRef must have a diagnostic marker"
-                assert len(g.findall(f"./{SVG}rect")) == 1, (
-                    "Missing the actual symbolic body keepout rectangle"
+                # Compare actual native overlay geometry, not an obsolete one-box count.
+                identifier = g.attrib["data-symbol-id"]
+                folder, name = identifier.split(".", 1)
+                relative = {"resistor": "resistors", "fuse": "fuses",
+                            **FOLDERS}[folder] + "/" + name.replace(".with_case", "_with_case") + ".json"
+                symbol = load_symbol(ROOT / "symbols" / relative)
+                native = ET.fromstring(render_symbol_svg(symbol, review_overlay=True))
+                expected = native.findall(f"./{SVG}rect")
+                actual = g.findall(f"./{SVG}rect")
+                assert len(actual) == 1 + len(symbol.routing_keepouts)
+                assert [r.attrib for r in actual] == [r.attrib for r in expected]
+                assert len(g.findall(f"./{SVG}rect[@data-kind='routing-keepout']")) == len(
+                    symbol.routing_keepouts
                 )
             else:
                 assert not g.findall(f"./{SVG}circle")
@@ -367,3 +378,33 @@ def test_real_clean_svg_line_count_has_no_bitmap_or_pseudo_pins(identifier):
         1 if identifier.endswith(".with_case") else 0
     )
     assert not clean.findall(f".//{SVG}image")
+
+
+@pytest.mark.parametrize("identifier", ("diode.general", "diode.zener", *DIODES))
+def test_gost_diode_axis_is_visible_but_not_a_conductor(identifier):
+    symbol, _ = _pair(identifier)
+    axis = Line(Point(-2500, 0), Point(2500, 0))
+    assert symbol.revision == 2
+    assert symbol.graphics.count(axis) == 1
+    index = symbol.graphics.index(axis)
+    assert index not in symbol.conductor_topology.conductor_indices
+    assert inspect_conductor_topology(symbol).pin_islands == (("1",), ("2",))
+    root = ET.fromstring(render_symbol_svg(symbol))
+    assert any(
+        (line.get("x1"), line.get("y1"), line.get("x2"), line.get("y2"))
+        == ("-2.5", "0", "2.5", "0")
+        for line in root.findall(f".//{SVG}line")
+    )
+    if identifier != "diode.varicap":
+        corrupt = replace(symbol, conductor_topology=replace(
+            symbol.conductor_topology, conductor_indices=(0, 1, index),
+        ))
+        assert "TOPOLOGY_UNEXPECTED_BRIDGE" in {
+            d.code for d in inspect_conductor_topology(corrupt).diagnostics
+        }
+    else:
+        # Keep the capacitor gap open even in the visible artwork.
+        assert not any(isinstance(g, Line) and g.start.y == g.end.y == 0
+                       and min(g.start.x, g.end.x) < 5000
+                       and max(g.start.x, g.end.x) > 2500
+                       for g in symbol.graphics)

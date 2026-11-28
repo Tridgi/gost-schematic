@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "id": "inductor.core_perpendicular_taps",
+  "revision": 1,
+  "turns": 4,
+  "core": "ferromagnetic",
+  "lead_style": "perpendicular",
+  "tap_junctions": [
+    1,
+    3
+  ],
+  "protect_functional": true,
+  "radius_mm": "2",
+  "lead_mm": "4",
+  "line_width_mm": "0.3",
+  "normative_relation": "editorial_adaptation",
+  "normative_basis": "ГОСТ 2.723-68, табл. 1, поз. 1, 2а; табл. 2, поз. 3; user references 2, 7, 8; project dimensions and tap combinations; DRAFT"
+}

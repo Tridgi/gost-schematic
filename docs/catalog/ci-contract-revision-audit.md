@@ -1,0 +1,3 @@
+# CI contract migration
+
+Run 45682133589 on 8e5e493: 2426 passed, 4 failed, 8 skipped. Two tests still expected revision 1 for variable/trimmer; new tests pin revision 2 and require protection. The combined gallery expected precisely one rectangle; the new check compares exact native overlay attributes including body and blue zones. Historical PR39 frozen source retains original hash; the live adapter is pinned to its actual new Git blob ef017b03c47d040642923ca351b0b4e2c5f95e5d and the unchanged low-level router remains pinned to its historical hash. Behavioral adversarial tests run against both engines unchanged. No tests are skipped to obtain green CI. New regression results remain to be verified.

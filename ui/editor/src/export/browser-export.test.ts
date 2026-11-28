@@ -63,3 +63,21 @@ test('PNG300 encoder rejects invalid chunk CRC, missing IDAT and trailing garbag
  const trailing=Uint8Array.from([...valid,0x61]);
  assert.throws(()=>setPng300Dpi(trailing),/INVALID_PNG_STRUCTURE/);
 });
+
+test('native circle survives rotation and reflection in browser SVG without becoming a wire',()=>{
+ const doc=JSON.parse(readFileSync(new URL('../../../fixtures/toy-v2.gscad.json',import.meta.url),'utf8'));
+ const sheet=doc.project.sheets[0],inst=sheet.instances[0];
+ inst.rotation_deg=90;inst.mirror_x=true;
+ // Existing toy wires are irrelevant to this isolated glyph test.
+ sheet.wires=[];doc.project.nets=[];
+ doc.project.symbol_definitions[0].graphics.push({
+  kind:'circle',points_um:[[1000,2000],[6000,2000]],stroke_um:300
+ });
+ const svg=renderProjectPreviewSVG(doc,sheet.id);
+ assert.match(svg,/<circle cx="8" cy="29" r="5" stroke="#000" stroke-width="0.300" fill="none"\/>/);
+ assert.match(svg,/data-authored-wire-count="0"/);
+ for(const points of [[[0,0],[0,0]],[[0,0],[5000,1]],[[0,0],[-5000,0]]]){
+  doc.project.symbol_definitions[0].graphics.at(-1).points_um=points;
+  assert.throws(()=>renderProjectPreviewSVG(doc,sheet.id),/INVALID_CIRCLE/);
+ }
+});

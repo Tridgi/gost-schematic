@@ -1,0 +1,298 @@
+{
+  "schema_version": 1,
+  "id": "transformer.controlled_single_phase",
+  "revision": 1,
+  "status": "draft",
+  "standard_refs": [
+    "ГОСТ 2.723-68, таблица 2, поз. 37, подпункт а (однофазный), форма II; https://rosgosts.ru/file/gost/01/080/gost_2.723-68.pdf",
+    "EDITORIAL_ASSUMPTION: two independent power windings and one bias winding; rotated layout derived from table; project millimetre dimensions and terminal extensions; abstract pin numbering; DRAFT."
+  ],
+  "line_width_mm": 0.3,
+  "body_keepout_mm": [
+    -4.4,
+    -8.4,
+    4.4,
+    10.4
+  ],
+  "routing_keepouts_mm": [
+    [
+      -4.6,
+      -8.6,
+      4.6,
+      10.6
+    ]
+  ],
+  "geometry": {
+    "lines": [
+      [
+        [
+          -4,
+          -8
+        ],
+        [
+          -10,
+          -8
+        ]
+      ],
+      [
+        [
+          -4,
+          4
+        ],
+        [
+          -10,
+          4
+        ]
+      ],
+      [
+        [
+          4,
+          -8
+        ],
+        [
+          10,
+          -8
+        ]
+      ],
+      [
+        [
+          4,
+          4
+        ],
+        [
+          10,
+          4
+        ]
+      ],
+      [
+        [
+          -4,
+          8
+        ],
+        [
+          -4,
+          16
+        ]
+      ],
+      [
+        [
+          4,
+          8
+        ],
+        [
+          4,
+          16
+        ]
+      ]
+    ],
+    "circles": [],
+    "semicircles": [
+      {
+        "center_mm": [
+          -4,
+          -6
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          -4,
+          -2
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          -4,
+          2
+        ],
+        "radius_mm": 2,
+        "bulge": "right"
+      },
+      {
+        "center_mm": [
+          4,
+          -6
+        ],
+        "radius_mm": 2,
+        "bulge": "left"
+      },
+      {
+        "center_mm": [
+          4,
+          -2
+        ],
+        "radius_mm": 2,
+        "bulge": "left"
+      },
+      {
+        "center_mm": [
+          4,
+          2
+        ],
+        "radius_mm": 2,
+        "bulge": "left"
+      },
+      {
+        "center_mm": [
+          -2,
+          8
+        ],
+        "radius_mm": 2,
+        "bulge": "top"
+      },
+      {
+        "center_mm": [
+          2,
+          8
+        ],
+        "radius_mm": 2,
+        "bulge": "top"
+      }
+    ],
+    "styled_lines": [
+      {
+        "start_mm": [
+          0,
+          -8
+        ],
+        "end_mm": [
+          0,
+          8
+        ],
+        "stroke_width_mm": 0.3
+      }
+    ]
+  },
+  "pins": [
+    {
+      "number": "1",
+      "at_mm": [
+        -10,
+        -8
+      ],
+      "side": "left",
+      "label": "P_START"
+    },
+    {
+      "number": "2",
+      "at_mm": [
+        -10,
+        4
+      ],
+      "side": "left",
+      "label": "P_END"
+    },
+    {
+      "number": "3",
+      "at_mm": [
+        10,
+        -8
+      ],
+      "side": "right",
+      "label": "S_START"
+    },
+    {
+      "number": "4",
+      "at_mm": [
+        10,
+        4
+      ],
+      "side": "right",
+      "label": "S_END"
+    },
+    {
+      "number": "5",
+      "at_mm": [
+        -4,
+        16
+      ],
+      "side": "bottom",
+      "label": "CONTROL_START"
+    },
+    {
+      "number": "6",
+      "at_mm": [
+        4,
+        16
+      ],
+      "side": "bottom",
+      "label": "CONTROL_END"
+    }
+  ],
+  "annotations": [
+    {
+      "key": "refdes",
+      "role": "refdes",
+      "required": true,
+      "candidates": [
+        {
+          "at_mm": [
+            -7.6,
+            -11.6
+          ],
+          "horizontal": "right",
+          "vertical": "bottom"
+        },
+        {
+          "at_mm": [
+            7.6,
+            -11.6
+          ],
+          "horizontal": "left",
+          "vertical": "bottom"
+        }
+      ]
+    },
+    {
+      "key": "value",
+      "role": "value",
+      "required": false,
+      "candidates": [
+        {
+          "at_mm": [
+            7.6,
+            13.6
+          ],
+          "horizontal": "left",
+          "vertical": "top"
+        }
+      ]
+    }
+  ],
+  "conductor_topology": {
+    "indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13
+    ],
+    "junctions_mm": [],
+    "pin_groups": [
+      [
+        "1",
+        "2"
+      ],
+      [
+        "3",
+        "4"
+      ],
+      [
+        "5",
+        "6"
+      ]
+    ]
+  }
+}

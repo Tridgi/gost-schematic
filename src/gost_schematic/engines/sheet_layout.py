@@ -125,6 +125,10 @@ def sheet_label_requests(
             candidates = (
                 Anchor(Point(center_x, top), HorizontalAlign.CENTER, VerticalAlign.BOTTOM),
                 Anchor(Point(right, top), HorizontalAlign.LEFT, VerticalAlign.BOTTOM),
+                Anchor(Point(center_x, graphics.min_y - profile.body_gap_um),
+                       HorizontalAlign.CENTER, VerticalAlign.BOTTOM),
+                Anchor(Point(right, graphics.min_y - profile.body_gap_um),
+                       HorizontalAlign.LEFT, VerticalAlign.BOTTOM),
             )
         elif request.slot.role == AnnotationRole.VALUE:
             candidates = (

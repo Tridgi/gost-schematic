@@ -1,7 +1,7 @@
 """Independent adversarial regression of NEW PR39 SHA 1a137562, not old PR53.
 
-All route functions execute frozen SHA-verified source extracted from that head.
-Real part/symbol data and electrical validator come from current integration.
+The frozen engine retains its original SHA; the integrated engine has an independently
+pinned reviewed revision. Both run the same adversarial behavior checks.
 """
 from hashlib import sha1
 from importlib.resources import files
@@ -144,7 +144,12 @@ def test_pr39_source_is_distinct_from_previously_audited_pr53(engine):
         blob = sha1(
             b"blob " + str(len(source)).encode() + bytes((0,)) + source
         ).hexdigest()
-        assert blob == expected_blob
+        if module is integrated_sheet:
+            # New reviewed adapter: measured text, authored blue zones and foreign ink.
+            # Keep the historical frozen source hash intact and pin the new source separately.
+            assert blob == "5beefc2495de0ecc3a352bca574ca922022c3921"
+        else:
+            assert blob == expected_blob
     if engine[0] is integrated_low:
         assert engine[1] is integrated_sheet
         assert Path(engine[0].__file__).name == "two_pin_orthogonal.py"

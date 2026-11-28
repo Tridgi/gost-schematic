@@ -79,3 +79,17 @@ test('frozen source TL494 23/15/62/16/2b renders as unrouted visual projection',
  assert.equal(s.graphics.filter(g=>g.kind==='source_b_continuation').length,2);
  assert.equal(p.nets.every(n=>n.route_status==='unrouted'),true);
 });
+
+test('circle remains native geometry, not strokes, pins or wire junctions',()=>{
+ const f=file(),g=f.project.symbol_definitions[0].graphics;
+ g.push({kind:'circle',points_um:[[1000,2000],[6000,2000]],stroke_um:300});
+ const projected=projectToCanvasScene(f,'sheet');
+ assert.deepEqual(projected.symbols[0].circles,[{center_um:[1000,2000],radius_um:5000,stroke_um:300}]);
+ assert.equal(projected.symbols[0].strokes.length,6);
+ assert.equal(projected.symbols[0].pins.length,2);
+ assert.equal(projected.junctions.length,0);
+ for(const points of [[[0,0],[0,0]],[[0,0],[1,1]],[[0,0],[-1,0]],[[999999999,0],[1000000000,1]]]){
+  g.at(-1).points_um=points;
+  assert.throws(()=>projectToCanvasScene(f,'sheet'),/INVALID_CIRCLE/);
+ }
+});

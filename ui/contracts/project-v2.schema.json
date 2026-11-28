@@ -180,7 +180,8 @@
           "enum": [
             "line",
             "rect",
-            "polyline"
+            "polyline",
+            "circle"
           ]
         },
         "points_um": {
@@ -200,6 +201,25 @@
         "kind",
         "points_um",
         "stroke_um"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "circle"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "points_um": {
+                "minItems": 2,
+                "maxItems": 2
+              }
+            }
+          }
+        }
       ]
     },
     "symbol_definition": {
@@ -269,7 +289,8 @@
                 "enum": [
                   "line",
                   "rect",
-                  "polyline"
+                  "polyline",
+                  "circle"
                 ]
               },
               "points_um": {
@@ -289,6 +310,25 @@
               "kind",
               "points_um",
               "stroke_um"
+            ],
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "const": "circle"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "points_um": {
+                      "minItems": 2,
+                      "maxItems": 2
+                    }
+                  }
+                }
+              }
             ]
           },
           "minItems": 1
@@ -301,6 +341,39 @@
             "maxLength": 256
           },
           "minItems": 0
+        },
+        "routing_keepouts_um": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 128,
+          "items": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4,
+            "items": {
+              "type": "integer",
+              "minimum": -1000000000,
+              "maximum": 1000000000
+            }
+          }
+        },
+        "catalog_source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "part_sha256",
+            "symbol_sha256"
+          ],
+          "properties": {
+            "part_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "symbol_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
         }
       },
       "required": [

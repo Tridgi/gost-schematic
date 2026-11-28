@@ -365,3 +365,42 @@ test('R10: connected 90-degree rotation reanchors each physical pin, fails close
  assert.equal(s.redo(),true);assert.deepEqual(s.file,rotated);
  assert.deepEqual(new AuthoringSession(rotated).file,rotated);
 });
+
+test('protected UGO rejects placement on existing route atomically and keeps outward pins usable',()=>{
+ const doc=newBlankProject();
+ doc.project.symbol_definitions.find(x=>x.id==='symbol/resistor.fixed').routing_keepouts_um=[[-4200,-2200,4200,2200]];
+ const s=new AuthoringSession(doc),{r,c}=placePair(s);
+ s.connect(s.newTransaction('legal-outward'),pin(r,'2'),pin(c,'1'));
+ const before=s.file,revision=s.revision;
+ assert.throws(()=>s.place(s.newTransaction('over-wire'),'symbol/resistor.fixed',[130000,100000]),{code:'WIRE_KEEPOUT_COLLISION'});
+ assert.deepEqual(s.file,before);
+ assert.equal(s.revision,revision);
+ const id=s.place(s.newTransaction('safe'),'symbol/resistor.fixed',[130000,110000]);
+ assert.ok(id);
+ const reopened=new AuthoringSession(JSON.parse(JSON.stringify(s.file)));
+ assert.deepEqual(reopened.file,s.file);
+ assert.deepEqual(reopened.snapshot.components.find(x=>x.id===r).routing_keepouts_um,[[-4200,-2200,4200,2200]]);
+});
+
+test('generated transistor placement saves exact profile lazily, undo and cold reopen',()=>{
+ const script='import sys,json;sys.path[:0]=["../..","../../src"];from ui.integration.transistor_catalog import project_v2_profile;from gost_schematic.agent_project.catalog import CatalogResolver;print(json.dumps(project_v2_profile(CatalogResolver(),"transistor.bjt_npn.layout_hh.case")))';
+ const result=spawnSync('python',['-c',script],{encoding:'utf8'});
+ assert.equal(result.status,0,result.stderr);
+ const profile=JSON.parse(result.stdout),s=newSession(),id=profile.symbol_definition.id;
+ const before=s.file;
+ s.place(s.newTransaction('place-vt'),id,[100000,100000],profile);
+ const saved=s.file;
+ assert.equal(saved.project.components[0].refdes,'VT1');
+ assert.equal(saved.project.components[0].value,'');
+ const symbol=saved.project.symbol_definitions.find(x=>x.id===id);
+ assert.equal(symbol.catalog_source.symbol_sha256,profile.source_lock.symbol_sha256);
+ assert.deepEqual(symbol.routing_keepouts_um,profile.symbol_definition.routing_keepouts_um);
+ assert.equal(s.undo(),true);
+ assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);
+ const reopened=new AuthoringSession(JSON.parse(JSON.stringify(saved)));
+ assert.deepEqual(reopened.file,saved);
+ const bad=structuredClone(profile);bad.symbol_definition.graphics[0].points_um[0][0]+=1;
+ assert.throws(()=>reopened.place(reopened.newTransaction('tampered'),id,[200000,100000],bad),{code:'TRANSISTOR_PROFILE_MISMATCH'});
+ assert.deepEqual(reopened.file,saved);
+});

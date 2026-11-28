@@ -132,7 +132,32 @@ class StyledLine:
             raise ValueError("Dash pattern must have even number of entries")
 
 
-Primitive = Line | Rectangle | Circle | Semicircle | StyledLine
+@dataclass(frozen=True, slots=True)
+class Arc270:
+    """Exact three-quarter circle with cardinal endpoints in y-down coordinates."""
+
+    center: Point
+    radius: int
+    start_side: Side
+    clockwise: bool = True
+
+    def __post_init__(self) -> None:
+        if type(self.radius) is not int or self.radius <= 0:
+            raise ValueError("Arc radius must be positive integer micrometres")
+        if not isinstance(self.start_side, Side) or type(self.clockwise) is not bool:
+            raise TypeError("Arc requires cardinal start and boolean sweep")
+
+    @property
+    def end_side(self) -> Side:
+        order = (Side.TOP, Side.RIGHT, Side.BOTTOM, Side.LEFT)
+        return order[(order.index(self.start_side) + (3 if self.clockwise else -3)) % 4]
+
+    def endpoint(self, side: Side) -> Point:
+        v = SIDE_VECTORS[side]
+        return Point(self.center.x + v.x * self.radius, self.center.y + v.y * self.radius)
+
+
+Primitive = Line | Rectangle | Circle | Semicircle | StyledLine | Arc270
 
 
 def primitive_stroked_bounds(primitive: Primitive, default_um: int) -> Box:
@@ -157,7 +182,7 @@ def primitive_stroke_width(primitive: Primitive, default_um: int) -> int:
 def primitive_bounds(primitive: Primitive) -> Box:
     if isinstance(primitive, Rectangle):
         return primitive.box
-    if isinstance(primitive, Circle):
+    if isinstance(primitive, (Circle, Arc270)):
         x, y, radius = primitive.center.x, primitive.center.y, primitive.radius
         return Box(x - radius, y - radius, x + radius, y + radius)
     if isinstance(primitive, Semicircle):

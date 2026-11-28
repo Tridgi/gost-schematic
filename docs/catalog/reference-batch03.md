@@ -1,0 +1,9 @@
+# Reference batch 03 — acoustic symbols and native review
+
+The two previously unnamed figures in user reference image 10 have been matched to ГОСТ 2.741-68, table 1 item 8 (loudspeaker) and table 3 item 6 (piezoelectric laryngophone/osteophone). [Original scan](https://meganorm.ru/Data/431/43134.pdf#page=4), [piezoelectric figure](https://meganorm.ru/Data/431/43134.pdf#page=6). The latter includes the internal chord near the diaphragm in the normative drawing. Both have two abstract physical terminals and separate conductor islands. Coordinates are an editorial DRAFT profile, not asserted mandatory GOST dimensions.
+
+The 270° current-limiting reactor is confirmed by [ГОСТ Р 56303-2014, table Б.1 item 19](https://files.stroyinf.ru/Data/585/58530.pdf#page=15) and ГОСТ 2.723-68 table 2 item 2 for power supply diagrams. Deferred: the engine only supports 180° arcs. Do not silently approximate the 270° curve by a polyline or fake wire connection. This symbol needs a native circular-arc primitive, its exact transform, bounds, topology and IPC/export support.
+
+## Actual native comparison
+
+Previous verified workflow run: [45676358966](https://github.com/Tridgi/gost-schematic/actions/runs/45676358966), 75 symbols, zero hard errors, 44 focused tests passed. New script `examples/review_full_catalog_native.py` builds paged comparison sheets from the installed resolver: clean and diagnostic beside one another with real contacts and body keepouts. It preserves physical coordinates and uses native SVG geometry; constant notes and contact numbers are review overlays. Workflow artifact contains SVG and PNG. No original user images are archived yet; a three-column original/clean/diagnostic comparison is still incomplete. GUI palette still has a restricted ProjectV2 primitive contract and only two authoring definitions; do not claim desktop parity.

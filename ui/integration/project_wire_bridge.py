@@ -85,7 +85,9 @@ def to_snapshot(doc, *, sheet_id=None, revision=0):
                          "outward": SIDES[pin["side"]]})
         placed.append({"id": cid, "origin_um": copy.deepcopy(inst["origin_um"]),
                        "rotation": inst["rotation_deg"],
-                       "mirror_x": inst["mirror_x"], "pins": pins})
+                       "mirror_x": inst["mirror_x"], "pins": pins,
+                       **({"routing_keepouts_um": copy.deepcopy(sym["routing_keepouts_um"])}
+                          if "routing_keepouts_um" in sym else {})})
     exposed = {(c["id"], pin["physical_pin_number"])
                for c in placed for pin in c["pins"]}
     for net in p["nets"]:
