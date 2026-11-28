@@ -341,6 +341,21 @@
             "maxLength": 256
           },
           "minItems": 0
+        },
+        "routing_keepouts_um": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 128,
+          "items": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4,
+            "items": {
+              "type": "integer",
+              "minimum": -1000000000,
+              "maximum": 1000000000
+            }
+          }
         }
       },
       "required": [

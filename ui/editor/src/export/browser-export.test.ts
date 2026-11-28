@@ -74,7 +74,7 @@ test('native circle survives rotation and reflection in browser SVG without beco
   kind:'circle',points_um:[[1000,2000],[6000,2000]],stroke_um:300
  });
  const svg=renderProjectPreviewSVG(doc,sheet.id);
- assert.match(svg,/<circle cx="8" cy="29" r="5" stroke="#000" stroke-width="0.3" fill="none"\/>/);
+ assert.match(svg,/<circle cx="8" cy="29" r="5" stroke="#000" stroke-width="0.300" fill="none"\/>/);
  assert.match(svg,/data-authored-wire-count="0"/);
  for(const points of [[[0,0],[0,0]],[[0,0],[5000,1]],[[0,0],[-5000,0]]]){
   doc.project.symbol_definitions[0].graphics.at(-1).points_um=points;

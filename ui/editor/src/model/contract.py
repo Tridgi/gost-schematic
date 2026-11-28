@@ -176,6 +176,12 @@ def _semantic(project: dict) -> None:
             if symbol_id not in symbols or symbols[symbol_id]['part_id'] != part['id']:
                 raise ContractError('PART_SYMBOL_MISMATCH', part['id'])
     for sym in symbols.values():
+        for x0, y0, x1, y1 in sym.get('routing_keepouts_um', []):
+            if x0 >= x1 or y0 >= y1:
+                raise ContractError('INVALID_KEEPOUT', sym['id'])
+            if any(x0-550 <= pin['at_um'][0] <= x1+550 and
+                   y0-550 <= pin['at_um'][1] <= y1+550 for pin in sym['pins']):
+                raise ContractError('PIN_IN_KEEPOUT', sym['id'])
         for graphic in sym['graphics']:
             if graphic['kind'] == 'circle':
                 (x, y), (rx, ry) = graphic['points_um']
@@ -233,6 +239,7 @@ def _semantic(project: dict) -> None:
                 if (collection not in ('layers', 'instances')
                         and item['layer_id'] not in layer_map):
                     raise ContractError('UNKNOWN_LAYER',item['id'])
+        keepouts = []
         for inst in instances.values():
             if inst['layer_id'] not in layer_map:
                 raise ContractError('UNKNOWN_LAYER', inst['id'])
@@ -240,6 +247,12 @@ def _semantic(project: dict) -> None:
             sym = symbols.get(inst['symbol_id'])
             if comp is None or sym is None or sym['part_id'] != comp['part_id']:
                 raise ContractError('PART_SYMBOL_MISMATCH', inst['id'])
+            for x0, y0, x1, y1 in sym.get('routing_keepouts_um', []):
+                a, b = pin_world(inst, [x0, y0]), pin_world(inst, [x1, y1])
+                if any(abs(v) > 1_000_000_000 for v in (*a, *b)):
+                    raise ContractError('KEEPOUT_WORLD_OUT_OF_BOUNDS', inst['id'])
+                keepouts.append((min(a[0], b[0])-550, min(a[1], b[1])-550,
+                                 max(a[0], b[0])+550, max(a[1], b[1])+550))
             for pin in sym['pins']:
                 key = (comp['id'], pin['physical_pin_number'])
                 if key in locations:
@@ -269,6 +282,10 @@ def _semantic(project: dict) -> None:
                 b = tuple(vmap[segment['to_vertex_id']]['at_um'])
                 if a == b or (a[0]!=b[0] and a[1]!=b[1]):
                     raise ContractError('SEGMENT_NOT_ORTHOGONAL', wire['id']+'/'+segment['id'])
+                if any(max(a[0], b[0]) >= x0 and min(a[0], b[0]) <= x1 and
+                       max(a[1], b[1]) >= y0 and min(a[1], b[1]) <= y1
+                       for x0, y0, x1, y1 in keepouts):
+                    raise ContractError('WIRE_KEEPOUT_COLLISION', wire['id'])
                 segments.append((wire['net_id'], wire['id'], a, b, segment['id']))
             for idx, vertex in enumerate(vertices):
                 ep = vertex['anchor']

@@ -27,7 +27,7 @@ export type WireProjectV2 = {
   project: {
     id:string;
     part_definitions:Array<{id:string;physical_pins:Array<{number:string}>}>;
-    symbol_definitions:Array<{id:string;part_id:string;pins:SymbolPinV2[]}>;
+    symbol_definitions:Array<{id:string;part_id:string;pins:SymbolPinV2[];routing_keepouts_um?:readonly (readonly [number,number,number,number])[]}>;
     components:Array<{id:string;part_id:string}>;
     provenance:unknown;
     nets:NetV2[];
@@ -105,7 +105,8 @@ function resolveSnapshot(file:WireProjectV2, opt:WireImportOptions):WiringSnapsh
     });
     flattened.push({
       id:inst.component_id,origin_um:at(inst.origin_um),rotation:inst.rotation_deg,
-      mirror_x:inst.mirror_x,pins
+      mirror_x:inst.mirror_x,pins,
+      ...(symbol.routing_keepouts_um===undefined?{}:{routing_keepouts_um:structuredClone(symbol.routing_keepouts_um)})
     });
   }
   const displayed=new Set(flattened.flatMap(c=>c.pins.map(key)));
@@ -145,7 +146,7 @@ export class ProjectV2WireSession<T extends WireProjectV2> {
     this.source_topology_hash=options.source_topology_hash;
     this.baseline=routeGuard(file,this.sheet_id);
     this.immutableSource=freezeSource(file.project);
-    this.originalPinDefs=JSON.stringify(snapshot.components.map(c=>({id:c.id,pins:c.pins})));
+    this.originalPinDefs=JSON.stringify(snapshot.components.map(c=>({id:c.id,pins:c.pins,routing_keepouts_um:c.routing_keepouts_um})));
   }
 
   /** Emits a NEW project object; the supplied document is never mutated.
@@ -161,7 +162,7 @@ export class ProjectV2WireSession<T extends WireProjectV2> {
       reject('SOURCE_TOPOLOGY_MISMATCH','Source names and PinRef membership must remain immutable');
     if(JSON.stringify(snapshot.nets)!==JSON.stringify(file.project.nets.map(n=>({
       id:n.id,literal_source_name:n.name,members:n.members
-    })))||JSON.stringify(snapshot.components.map(c=>({id:c.id,pins:c.pins})))!==this.originalPinDefs)
+    })))||JSON.stringify(snapshot.components.map(c=>({id:c.id,pins:c.pins,routing_keepouts_um:c.routing_keepouts_um})))!==this.originalPinDefs)
       reject('SOURCE_TOPOLOGY_MISMATCH','Wire commands cannot redefine source pins or Nets');
     const out=structuredClone(file);
     const sheet=out.project.sheets.find(s=>s.id===this.sheet_id)!;

@@ -365,3 +365,19 @@ test('R10: connected 90-degree rotation reanchors each physical pin, fails close
  assert.equal(s.redo(),true);assert.deepEqual(s.file,rotated);
  assert.deepEqual(new AuthoringSession(rotated).file,rotated);
 });
+
+test('protected UGO rejects placement on existing route atomically and keeps outward pins usable',()=>{
+ const doc=newBlankProject();
+ doc.project.symbol_definitions.find(x=>x.id==='symbol/resistor.fixed').routing_keepouts_um=[[-4200,-2200,4200,2200]];
+ const s=new AuthoringSession(doc),{r,c}=placePair(s);
+ s.connect(s.newTransaction('legal-outward'),pin(r,'2'),pin(c,'1'));
+ const before=s.file,revision=s.revision;
+ assert.throws(()=>s.place(s.newTransaction('over-wire'),'symbol/resistor.fixed',[130000,100000]),/WIRE_KEEPOUT_COLLISION/);
+ assert.deepEqual(s.file,before);
+ assert.equal(s.revision,revision);
+ const id=s.place(s.newTransaction('safe'),'symbol/resistor.fixed',[130000,110000]);
+ assert.ok(id);
+ const reopened=new AuthoringSession(JSON.parse(JSON.stringify(s.file)));
+ assert.deepEqual(reopened.file,s.file);
+ assert.deepEqual(reopened.snapshot.components.find(x=>x.id===r).routing_keepouts_um,[[-4200,-2200,4200,2200]]);
+});

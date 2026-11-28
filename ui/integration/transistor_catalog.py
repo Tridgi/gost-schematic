@@ -1,7 +1,7 @@
 """Exact Python transistor profile projection to the current CAD ProjectV2.
 
-V2 supports exact lines and circles, but no routing keepout fields. Export
-lossless artwork with the source lock and protection in a separate manifest. This is a staging interface, not permission to place these parts
+V2 supports exact lines, circles and routing keepout fields. The source
+lock and body protection are also retained in the staging manifest. This is a staging interface, not permission to place these parts
 without enforcing the protection metadata.
 """
 import json
@@ -51,6 +51,7 @@ def project_v2_profile(catalog: CatalogResolver, identifier: str) -> dict:
             "revision": symbol.revision,
             "status": symbol.status.value,
             "standard_refs": list(symbol.standard_refs),
+            "routing_keepouts_um": [_box(b) for b in symbol.routing_boxes],
             "pins": [
                 {"physical_pin_number": p.number, "at_um": _point(p.at), "side": p.side.value}
                 for p in symbol.pins
