@@ -2541,3 +2541,47 @@ test('R54 text quarter-turn shortcut preserves pivot, IDs and all electrical geo
  assert.throws(()=>boundary.rotateText(boundary.newTransaction('outside'),original.project.sheets[0].texts[0].id,1),/TEXT_OUTSIDE_FRAME/);
  assert.deepEqual(boundary.file,original);
 });
+
+
+test('R60 paired channels can remove two crossings when neither proposed single move improves',async()=>{
+ const {rankCrossingPairs,coordinatedCrossingShortcuts,crossingChannelShortcuts,localCrossingCount,pathMetric}=await import('./detour-shortcuts.ts');
+ const a={net:'A',points:[[0,0],[10000,0],[10000,30000],[40000,30000]],preserveStart:false,preserveEnd:false};
+ const b={net:'B',points:[[0,10000],[20000,10000],[20000,40000],[40000,40000]],preserveStart:false,preserveEnd:false};
+ const aa=[[0,0],[15000,0],[15000,30000],[40000,30000]];
+ const bb=[[0,10000],[12000,10000],[12000,40000],[40000,40000]];
+ const segments=(points,net)=>points.slice(1).map((v,i)=>({a:points[i],b:v,net}));
+ const frozen=JSON.stringify([a,b,aa,bb]);
+ assert.equal(localCrossingCount(a.points,segments(b.points,'B')),2);
+ assert.equal(localCrossingCount(aa,segments(b.points,'B')),2);
+ assert.equal(localCrossingCount(bb,segments(a.points,'A')),2);
+ assert.equal(localCrossingCount(aa,segments(bb,'B')),0);
+ const choices=rankCrossingPairs(a,b,[],[aa],[bb]);
+ assert.equal(choices.length,1);
+ assert.deepEqual(choices[0].first,aa);assert.deepEqual(choices[0].second,bb);
+ assert.equal(choices[0].crossings,0);
+ assert.equal(choices[0].bends,pathMetric(a.points).bends+pathMetric(b.points).bends);
+ assert.equal(choices[0].length,pathMetric(a.points).length+pathMetric(b.points).length);
+ const generated=coordinatedCrossingShortcuts(a,b,[]);
+ assert.ok(generated.length>0&&generated.length<=12);
+ assert.equal(generated[0].crossings,0);
+ assert.deepEqual(coordinatedCrossingShortcuts(a,b,[]),generated);
+ assert.deepEqual(crossingChannelShortcuts(a.points,[],false,false),[]);
+ assert.ok(crossingChannelShortcuts(a.points,[],false,false,true).length>0);
+ assert.equal(JSON.stringify([a,b,aa,bb]),frozen);
+});
+
+test('R60 pair ranking refuses changed terminals, shortened signed leads and non-improvement',async()=>{
+ const {rankCrossingPairs}=await import('./detour-shortcuts.ts');
+ const a={net:'A',points:[[0,0],[10000,0],[10000,30000],[40000,30000]],preserveStart:false,preserveEnd:false};
+ const b={net:'B',points:[[0,10000],[20000,10000],[20000,40000],[40000,40000]],preserveStart:false,preserveEnd:false};
+ const aa=[[0,0],[15000,0],[15000,30000],[40000,30000]],bb=[[0,10000],[12000,10000],[12000,40000],[40000,40000]];
+ assert.deepEqual(rankCrossingPairs({...a,preserveEnd:true},b,[],[aa],[bb]),[]);
+ assert.deepEqual(rankCrossingPairs(a,{...b,preserveStart:true},[],[aa],[bb]),[]);
+ assert.deepEqual(rankCrossingPairs(a,b,[],[[[1,0],...aa.slice(1)]],[bb]),[]);
+ assert.deepEqual(rankCrossingPairs(a,b,[],[aa],[b.points]),[]);
+ assert.deepEqual(rankCrossingPairs(a,{...b,net:'A'},[],[aa],[bb]),[]);
+ assert.deepEqual(rankCrossingPairs(a,b,[],[aa],[[[0,10000],[25000,10000],[25000,40000],[40000,40000]]]),[]);
+ // A candidate set is capped before evaluation; an out-of-budget proposal
+ // cannot silently trigger an unbounded Cartesian search.
+ assert.deepEqual(rankCrossingPairs(a,b,[],[...Array(12).fill(a.points),aa],[bb]),[]);
+});

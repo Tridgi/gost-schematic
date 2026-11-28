@@ -20,7 +20,7 @@ import {
 import {loadProjectWires} from '../wires/project-v2-adapter';
 import {validateNotes,noteLayout} from '../model/symbol-notes.mjs';
 import {planOrthogonalTree,type TreeStrategy} from './orthogonal-tree';
-import {detourShortcuts,pathMetric,crossingChannelShortcuts,localCrossingCount} from './detour-shortcuts';
+import {detourShortcuts,pathMetric,crossingChannelShortcuts,localCrossingCount,coordinatedCrossingShortcuts} from './detour-shortcuts';
 import {assessLayout,improvesLayout,preservesLayoutSafety,type LayoutQuality} from './layout-quality';
 import {curveGeometry} from '../model/curves.mjs';
 import {planComponentLabels} from '../canvas/component-labels';
@@ -2185,13 +2185,9 @@ export class AuthoringSession {
     }).sort((a,b)=>{const x=pathMetric(a.vertices.map(v=>v.at_um)),y=pathMetric(b.vertices.map(v=>v.at_um));
       return (crossingOnly?(crossingPriority.get(b.id)??0)-(crossingPriority.get(a.id)??0):0)||y.bends-x.bends||y.length-x.length||(crossingOnly?0:a.id.localeCompare(b.id))});
     const m=sh.frame.margin_um,[width,height]=sh.frame.size_um;
-    for(const entry of eligible){
-      if(attempted>=cap)break;
-      const doc=best.file,sheet=doc.project.sheets[indexOfSheet(doc)],w=sheet.wires.find(w=>w.id===entry.id)!;
+    const safePath=(sheet:Sheet,w:WirePolyline,p:PointUm[])=>{
       const start=w.vertices[0],end=w.vertices.at(-1)!;
       const foreign=sheet.wires.filter(v=>v.id!==w.id).flatMap(v=>v.vertices.slice(1).map((b,i)=>({a:v.vertices[i],b,net:v.net_id,box:rect(v.vertices[i].at_um,b.at_um)})));
-      const points=w.vertices.map(v=>v.at_um),startPin=start.anchor.kind==='pin',endPin=end.anchor.kind==='pin';
-      const candidates=crossingOnly?crossingChannelShortcuts(points,foreign.filter(v=>v.net!==w.net_id).map(v=>({a:v.a.at_um,b:v.b.at_um,net:v.net})),startPin,endPin):detourShortcuts(points,startPin,endPin);
       const nodes=[...sheet.junctions.map(n=>({anchor:{kind:'junction' as const,junction_id:n.id},at_um:n.at_um})),
         ...sheet.splices.map(n=>({anchor:{kind:'splice' as const,splice_id:n.id},at_um:n.at_um}))];
       const sameAnchor=(a:WirePolyline['vertices'][number]['anchor'],b:WirePolyline['vertices'][number]['anchor'])=>{
@@ -2201,7 +2197,7 @@ export class AuthoringSession {
         if(a.kind==='pin'&&b.kind==='pin')return pinKey(a)===pinKey(b);
         return a.kind==='junction'&&b.kind==='junction'&&a.junction_id===b.junction_id||a.kind==='splice'&&b.kind==='splice'&&a.splice_id===b.splice_id;
       };
-      const safe=(p:PointUm[])=>{
+      {
         if(p.some(v=>v[0]<m||v[0]>width-m||v[1]<m||v[1]>height-m))return false;
         for(let i=1;i<p.length;i++){
           const a=p[i-1],b=p[i],bounds=rect(a,b);
@@ -2230,11 +2226,19 @@ export class AuthoringSession {
           }
         }
         return true;
-      };
+      }
+    };
+    for(const entry of eligible){
+      if(attempted>=cap)break;
+      const doc=best.file,sheet=doc.project.sheets[indexOfSheet(doc)],w=sheet.wires.find(w=>w.id===entry.id)!;
+      const start=w.vertices[0],end=w.vertices.at(-1)!;
+      const foreign=sheet.wires.filter(v=>v.id!==w.id).flatMap(v=>v.vertices.slice(1).map((b,i)=>({a:v.vertices[i],b,net:v.net_id,box:rect(v.vertices[i].at_um,b.at_um)})));
+      const points=w.vertices.map(v=>v.at_um),startPin=start.anchor.kind==='pin',endPin=end.anchor.kind==='pin';
+      const candidates=crossingOnly?crossingChannelShortcuts(points,foreign.filter(v=>v.net!==w.net_id).map(v=>({a:v.a.at_um,b:v.b.at_um,net:v.net})),startPin,endPin):detourShortcuts(points,startPin,endPin);
       for(const points of candidates){
         if(attempted>=cap)break;
         attempted++;
-        if(!safe(points)){rejected++;continue}
+        if(!safePath(sheet,w,points)){rejected++;continue}
         const next=clone(doc),ns=next.project.sheets[indexOfSheet(next)],nw=ns.wires.find(v=>v.id===w.id)!;
         nw.vertices=[clone(start),...points.slice(1,-1).map(at_um=>({id:newId('vertex'),at_um,anchor:{kind:'bend'} as const})),clone(end)];
         nw.segments=nw.vertices.slice(1).map((v,i)=>({id:newId('segment'),from_vertex_id:nw.vertices[i].id,to_vertex_id:v.id}));
@@ -2249,9 +2253,51 @@ export class AuthoringSession {
         break;
       }
     }
+    // R60 fallback: only try coordinated moves if the established single-wire
+    // search found nothing. Both paths are validated against the final sheet.
+    let pairLimited=false;
+    if(crossingOnly&&!operations.length&&attempted<cap&&assessment.quality.crossings>0){
+      const doc=best.file,sheet=doc.project.sheets[indexOfSheet(doc)];
+      const pairWires=eligible.slice(0,24);
+      const segs=(w:WirePolyline)=>w.vertices.slice(1).map((v,i)=>({a:w.vertices[i].at_um,b:v.at_um,net:w.net_id}));
+      const describe=(w:WirePolyline)=>({net:w.net_id,points:w.vertices.map(v=>v.at_um),
+        preserveStart:w.vertices[0].anchor.kind==='pin',preserveEnd:w.vertices.at(-1)!.anchor.kind==='pin'});
+      const rewrite=(w:WirePolyline,points:PointUm[])=>{
+        const start=w.vertices[0],end=w.vertices.at(-1)!;
+        w.vertices=[clone(start),...points.slice(1,-1).map(at_um=>({id:newId('vertex'),at_um,anchor:{kind:'bend'} as const})),clone(end)];
+        w.segments=w.vertices.slice(1).map((v,i)=>({id:newId('segment'),from_vertex_id:w.vertices[i].id,to_vertex_id:v.id}));
+      };
+      let searched=0,pairAttempts=0;
+      pairSearch:for(let i=0;i<pairWires.length;i++)for(let j=i+1;j<pairWires.length;j++){
+        const a=pairWires[i],b=pairWires[j];
+        if(a.net_id===b.net_id||!localCrossingCount(a.vertices.map(v=>v.at_um),segs(b)))continue;
+        if(searched>=8||pairAttempts>=32||attempted>=cap){pairLimited=true;break pairSearch}
+        searched++;
+        const foreign=sheet.wires.filter(w=>w.id!==a.id&&w.id!==b.id).flatMap(segs);
+        for(const candidate of coordinatedCrossingShortcuts(describe(a),describe(b),foreign)){
+          if(pairAttempts>=32||attempted>=cap){pairLimited=true;break pairSearch}
+          attempted++;pairAttempts++;
+          const next=clone(doc),ns=next.project.sheets[indexOfSheet(next)];
+          const na=ns.wires.find(w=>w.id===a.id)!,nb=ns.wires.find(w=>w.id===b.id)!;
+          rewrite(na,candidate.first);rewrite(nb,candidate.second);
+          if(!safePath(ns,na,candidate.first)||!safePath(ns,nb,candidate.second)){rejected++;continue}
+          let trial:AuthoringSession;
+          try{trial=new AuthoringSession(next)}catch(e){if(!(e instanceof WireError))throw e;rejected++;continue}
+          const after=assessLayout(next,trial.engine);
+          if(sourceGuard(next)!==sourceGuard(base)||!improvesLayout(assessment,after)||
+             after.quality.crossings>=assessment.quality.crossings){rejected++;continue}
+          const labels=new Set(planComponentLabels(next,sh.id).labels.map(l=>l.instanceId));
+          if([...visible].some(id=>!labels.has(id))){rejected++;continue}
+          best=trial;assessment=after;visible=labels;
+          operations.push('Совместное устранение пересечений '+[a,b].map(w=>base.project.nets.find(n=>n.id===w.net_id)?.name??w.net_id).join(' / '));
+          break pairSearch;
+        }
+      }
+      if(eligible.length>pairWires.length)pairLimited=true;
+    }
     const token=operations.length?newId('detour-refinement'):null;
     if(token)this.layoutPlan={token,revision:this.clock,sheet:sh.id,next:best.file};
-    return {token,before:before.quality,after:assessment.quality,operations,attempted,rejected,limited:attempted>=cap};
+    return {token,before:before.quality,after:assessment.quality,operations,attempted,rejected,limited:attempted>=cap||pairLimited};
   }
 
   previewFunctionalAlternatives():PlacementSearchPreview{
