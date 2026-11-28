@@ -30,8 +30,13 @@ try {
     Remove-Item -LiteralPath $key,$other -Force
     Remove-Item Env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD -ErrorAction SilentlyContinue
     $env:GSCAD_R53_FIXTURES = $root
-    cargo test --manifest-path ui/desktop/src-tauri/Cargo.toml r53_real_signed_update_verification -- --ignored --nocapture
+    cargo test --manifest-path ui/desktop/src-tauri/Cargo.toml r53_real_signed_update_verification -- --ignored --nocapture | Tee-Object -Variable result
     if ($LASTEXITCODE -ne 0) { throw 'R53_NATIVE_SIGNATURE_VERIFICATION_FAILED' }
+    $lines = @($result | ForEach-Object { $_.ToString().Trim() })
+    if ($lines -notcontains 'R53_OFFICIAL_TAURI_SIGNATURE_VERIFICATION_PASS' -or
+        !($lines | Where-Object { $_ -match '^test result: ok\. 1 passed; 0 failed;' })) {
+        throw 'R53_REQUIRED_TEST_NOT_EXECUTED'
+    }
     Write-Host 'R53_DISPOSABLE_SIGNATURE_FIXTURES_ACCEPTED'
 } finally {
     Remove-Item Env:GSCAD_R53_FIXTURES -ErrorAction SilentlyContinue
