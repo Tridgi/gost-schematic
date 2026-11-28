@@ -288,3 +288,64 @@ export function parallelSpacingShortcuts(points:readonly ShortcutPoint[],foreign
  }
  return ranked.sort((a,b)=>b.gain*b.span-a.gain*a.span||JSON.stringify(a.p).localeCompare(JSON.stringify(b.p))).slice(0,12).map(v=>v.p);
 }
+
+
+/** Four to six adjacent tracks, with the two exterior tracks fixed.
+ * One inner channel per wire; no lane permutation or electrical merging. */
+export type SpacingBundleWire=CrossingPairWire&{id:string;movable:boolean};
+type BundleMove={id:string;points:[number,number][]};
+type BundleChoice={moves:BundleMove[];gain:number};
+export function parallelBundleShortcuts(wires:readonly SpacingBundleWire[]):BundleChoice[]{
+ if(wires.reduce((n,w)=>n+Math.max(0,w.points.length-1),0)>512)return [];
+ const out:BundleChoice[]=[],seen=new Set<string>();
+ let examined=0;
+ for(const axis of [0,1] as const){
+  const other=axis===0?1:0;
+  const lanes=wires.flatMap(w=>w.points.slice(1).flatMap((b,i)=>{
+   const a=w.points[i];
+   return a[axis]===b[axis]&&a[other]!==b[other]?
+    [{w,i,at:a[axis],lo:Math.min(a[other],b[other]),hi:Math.max(a[other],b[other])}]:[];
+  }));
+  const edges=[...new Set(lanes.flatMap(l=>[l.lo,l.hi]))].sort((a,b)=>a-b);
+  for(let e=0;e<edges.length-1&&examined<256;e++){
+   const active=lanes.filter(l=>l.lo<=edges[e]&&l.hi>=edges[e+1])
+    .sort((a,b)=>a.at-b.at||a.w.id.localeCompare(b.w.id)||a.i-b.i);
+   for(let j=0;j+3<active.length&&examined<256;j++)for(let count=4;count<=6&&j+count<=active.length&&examined<256;count++){
+    const group=active.slice(j,j+count),inner=group.slice(1,-1),left=group[0],right=group.at(-1)!;
+    if(new Set(group.map(l=>l.w.id)).size!==count||inner.some(l=>!l.w.movable||l.w.points.length>24||l.i<1||l.i+2>=l.w.points.length))continue;
+    if(group.slice(1).some((l,k)=>l.at-group[k].at<=1000||l.at-group[k].at>SPACING_MAX_GAP))continue;
+    const span=Math.min(...group.map(l=>l.hi))-Math.max(...group.map(l=>l.lo));
+    if(span<10000)continue;
+    const key=JSON.stringify([axis,...group.map(l=>[l.w.id,l.i])]);if(seen.has(key))continue;
+    seen.add(key);examined++;
+    const pitch=(right.at-left.at)/(count-1);
+    if(pitch<=1001)continue;
+    const moves:BundleMove[]=[];
+    const positions=[left.at];
+    let valid=true;
+    for(let k=0;k<inner.length;k++){
+     const l=inner[k],x=Math.round(left.at+(k+1)*pitch),p=l.w.points;
+     positions.push(x);
+     if(x===l.at)continue;
+     const [a,b,c,d]=p.slice(l.i-1,l.i+3);
+     if(a[other]!==b[other]||c[other]!==d[other]||Math.sign(b[axis]-a[axis])!==Math.sign(d[axis]-c[axis])||
+       x<=Math.min(a[axis],d[axis])||x>=Math.max(a[axis],d[axis])){valid=false;break}
+     const u:[number,number]=[b[0],b[1]],v:[number,number]=[c[0],c[1]];u[axis]=x;v[axis]=x;
+     const next=compact([...p.slice(0,l.i),u,v,...p.slice(l.i+2)]);
+     if(!next){valid=false;break}
+     const old=pathMetric(p),m=pathMetric(next);
+     if(m.bends>old.bends||m.length>old.length||
+      l.w.preserveStart&&(!same(direction(p[0],p[1]) as [number,number],direction(next[0],next[1]) as [number,number])||pathMetric(next.slice(0,2)).length<pathMetric(p.slice(0,2)).length)||
+      l.w.preserveEnd&&(!same(direction(p.at(-2)!,p.at(-1)!) as [number,number],direction(next.at(-2)!,next.at(-1)!) as [number,number])||pathMetric(next.slice(-2)).length<pathMetric(p.slice(-2)).length)){valid=false;break}
+     moves.push({id:l.w.id,points:next});
+    }
+    positions.push(right.at);
+    if(!valid||moves.length<2||positions.slice(1).some((x,k)=>x-positions[k]<=1000))continue;
+    const imbalance=(v:number[])=>v.slice(1,-1).reduce((n,x,k)=>n+Math.abs(2*x-v[k]-v[k+2]),0);
+    const gain=span*(imbalance(group.map(l=>l.at))-imbalance(positions));
+    if(gain>0)out.push({moves,gain});
+   }
+  }
+ }
+ return out.sort((a,b)=>b.gain-a.gain||JSON.stringify(a.moves).localeCompare(JSON.stringify(b.moves))).slice(0,12);
+}

@@ -2669,3 +2669,67 @@ test('R62 real three-Net parallel spacing preview keeps endpoints and is one ato
  const no=new AuthoringSession(locked),q=no.previewParallelSpacing();
  assert.equal(q.token,null);assert.deepEqual(no.file,locked);assert.equal(no.revision,0);
 });
+
+
+test('R64 four-track bundle distributes two inner wires simultaneously and preserves leads',async()=>{
+ const {parallelBundleShortcuts,pathMetric,parallelSpacingQuality}=await import('./detour-shortcuts.ts');
+ const fixed=(id,y)=>({id,net:id,points:[[0,y],[40000,y]],movable:false,preserveStart:true,preserveEnd:true});
+ const movable=(id,y,lo,hi)=>({id,net:id,points:[[-20000,lo],[-10000,lo],[-10000,y],[50000,y],[50000,hi],[60000,hi]],movable:true,preserveStart:true,preserveEnd:true});
+ const wires=[fixed('a',0),movable('b',6000,-10000,40000),movable('c',18000,-20000,50000),fixed('d',30000)];
+ const frozen=JSON.stringify(wires),choice=parallelBundleShortcuts(wires)[0];
+ assert.ok(choice);assert.equal(choice.moves.length,2);
+ assert.deepEqual(choice.moves.map(m=>[m.id,m.points[2][1]]),[['b',10000],['c',20000]]);
+ for(const m of choice.moves){const old=wires.find(w=>w.id===m.id).points;
+  assert.deepEqual(pathMetric(m.points),pathMetric(old));
+  assert.deepEqual(m.points.slice(0,2),old.slice(0,2));assert.deepEqual(m.points.slice(-2),old.slice(-2));}
+ const metric=ws=>parallelSpacingQuality(ws.flatMap(w=>w.points.slice(1).map((b,i)=>({a:w.points[i],b,net:w.net}))));
+ const next=wires.map(w=>({...w,points:choice.moves.find(m=>m.id===w.id)?.points??w.points}));
+ assert.ok(metric(next).imbalanceUm2<metric(wires).imbalanceUm2);
+ assert.deepEqual(parallelBundleShortcuts([...wires].reverse())[0],choice);
+ const vertical=wires.map(w=>({...w,points:w.points.map(p=>[p[1],p[0]])}));
+ assert.deepEqual(parallelBundleShortcuts(vertical)[0].moves.map(m=>[m.id,m.points[2][0]]),[['b',10000],['c',20000]]);
+ assert.deepEqual(parallelBundleShortcuts(wires.map(w=>({...w,movable:w.id==='b'}))),[]);
+ assert.equal(JSON.stringify(wires),frozen);
+});
+
+test('R64 real four-Net bundle preview applies both middle channels atomically',()=>{
+ const s=newSession();
+ for(const p of [[50000,80000],[200000,80000],[50000,110000],[200000,110000],[20000,60000],[250000,120000],[20000,45000],[260000,140000]])
+  s.place(s.newTransaction('bundle-place'),'symbol/resistor.fixed',p);
+ const [a,b,c,d,e,f,g,h]=s.file.project.components.map(c=>c.id);
+ for(const [x,y] of [[a,b],[c,d],[e,f],[g,h]])s.connect(s.newTransaction('bundle-connect'),pin(x,'2'),pin(y,'1'));
+ const doc=s.file,sh=doc.project.sheets[0];
+ const set=(x,y,points,review)=>{
+  const net=doc.project.nets.find(n=>n.members.some(m=>m.component_id===x));
+  const w=sh.wires.find(w=>w.net_id===net.id);
+  w.vertices=points.map((at_um,i)=>({id:w.id+':v'+i,at_um,anchor:i===0?{kind:'pin',...pin(x,'2')}:i===points.length-1?{kind:'pin',...pin(y,'1')}:{kind:'bend'}}));
+  w.segments=w.vertices.slice(1).map((v,i)=>({id:w.id+':s'+i,from_vertex_id:w.vertices[i].id,to_vertex_id:v.id}));
+  w.needs_routing_review=review;return w;
+ };
+ set(a,b,[[58000,80000],[192000,80000]],false);
+ set(c,d,[[58000,110000],[192000,110000]],false);
+ const first=set(e,f,[[28000,60000],[40000,60000],[40000,86000],[220000,86000],[220000,120000],[242000,120000]],true);
+ const second=set(g,h,[[28000,45000],[34000,45000],[34000,98000],[230000,98000],[230000,140000],[252000,140000]],true);
+ const session=new AuthoringSession(doc),p=session.previewParallelSpacing();
+ assert.ok(p.token);assert.equal(p.operations.filter(op=>op.startsWith('Групповое')).length,2);
+ assert.ok(p.spacing.after.imbalanceUm2<p.spacing.before.imbalanceUm2);
+ assert.ok(p.spacing.after.coverageUm>=p.spacing.before.coverageUm);
+ for(const k of ['bends','lengthUm','crossings','errors','geometryWarnings','overflow'])assert.ok(p.after[k]<=p.before[k],k);
+ assert.deepEqual(session.file,doc);assert.equal(session.revision,0);
+ const next=session.layoutPreviewDocument(p.token),ns=next.project.sheets[0];
+ for(const [old,y] of [[first,90000],[second,100000]]){
+  const w=ns.wires.find(w=>w.id===old.id);
+  assert.equal(w.vertices[2].at_um[1],y);assert.equal(w.vertices[3].at_um[1],y);
+  assert.deepEqual(w.vertices[0],old.vertices[0]);assert.deepEqual(w.vertices.at(-1),old.vertices.at(-1));
+ }
+ assert.deepEqual(ns.wires.filter(w=>w.id!==first.id&&w.id!==second.id),sh.wires.filter(w=>w.id!==first.id&&w.id!==second.id));
+ assert.deepEqual(next.project.nets,doc.project.nets);assert.deepEqual(ns.instances,sh.instances);
+ assert.deepEqual(ns.junctions,sh.junctions);assert.deepEqual(ns.splices,sh.splices);
+ session.applyLayoutPreview(session.newTransaction('bundle-apply'),p.token);
+ for(const n of doc.project.nets)assert.equal(session.engine.validateNet(n.id).pin_groups.length,1);
+ assert.equal(session.undo(),true);assert.deepEqual(session.file,doc);
+ assert.equal(session.redo(),true);assert.deepEqual(session.file,next);
+ const locked=structuredClone(doc);locked.project.sheets[0].layers.find(l=>l.id===first.layer_id).locked=true;
+ const no=new AuthoringSession(locked),q=no.previewParallelSpacing();
+ assert.equal(q.token,null);assert.deepEqual(no.file,locked);assert.equal(no.revision,0);
+});
