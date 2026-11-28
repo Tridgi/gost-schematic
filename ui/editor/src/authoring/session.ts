@@ -433,6 +433,16 @@ export class AuthoringSession {
       Object.assign(old,fields);return draft;
     });
   }
+  rotateText(tx:Tx,id:string,direction:1|-1):void{
+    this.edit(tx,draft=>{
+      const sh=draft.project.sheets[indexOfSheet(draft)],old=this.editableText(sh,id);
+      if(direction!==1&&direction!==-1)reject('INVALID_TEXT_ROTATION');
+      const angles=[0,90,180,270] as const;
+      const rotation=angles[(angles.indexOf(old.rotation_deg)+direction+4)%4];
+      const fields=this.textFields(sh,old.text,old.at_um,old.height_um,rotation);
+      old.rotation_deg=fields.rotation_deg;return draft;
+    });
+  }
   moveText(tx:Tx,id:string,at:PointUm):void{
     this.edit(tx,draft=>{
       const sh=draft.project.sheets[indexOfSheet(draft)],old=this.editableText(sh,id);
