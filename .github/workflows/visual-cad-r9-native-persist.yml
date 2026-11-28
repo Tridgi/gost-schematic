@@ -62,7 +62,7 @@ jobs:
             $parseErrors | ForEach-Object { Write-Host $_.ToString() }
             throw 'R9_POWERSHELL_SYNTAX_INVALID'
           }
-          foreach ($script in @('.github/tools/r53-loader-diagnostics.ps1','.github/tools/r53-real-signatures.ps1')) {
+          foreach ($script in @('.github/tools/r53-loader-diagnostics.ps1','.github/tools/r53-real-signatures.ps1','.github/tools/r53-test-manifest.ps1')) {
             $tokens = $null
             $parseErrors = $null
             [System.Management.Automation.Language.Parser]::ParseFile(
@@ -129,6 +129,12 @@ jobs:
       - name: Native file CAS and safety regression tests
         shell: pwsh
         run: |
+          try { & .\.github\tools\r53-test-manifest.ps1 }
+          catch {
+            try { & .\.github\tools\r53-loader-diagnostics.ps1 }
+            catch { Write-Warning ('R53 diagnostic failure: ' + $_.Exception.Message) }
+            throw
+          }
           cargo test --manifest-path ui/desktop/src-tauri/Cargo.toml
           if ($LASTEXITCODE -ne 0) {
             $testExit = $LASTEXITCODE
