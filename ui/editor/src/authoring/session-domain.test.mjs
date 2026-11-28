@@ -2733,3 +2733,78 @@ test('R64 real four-Net bundle preview applies both middle channels atomically',
  const no=new AuthoringSession(locked),q=no.previewParallelSpacing();
  assert.equal(q.token,null);assert.deepEqual(no.file,locked);assert.equal(no.revision,0);
 });
+
+
+test('R65 five-track bundle retains an already aligned protected interior track',async()=>{
+ const {parallelBundleShortcuts,pathMetric}=await import('./detour-shortcuts.ts');
+ const fixed=(id,y)=>({id,net:id,points:[[0,y],[40000,y]],movable:false,preserveStart:true,preserveEnd:true});
+ const movable=(id,y,lo,hi)=>({id,net:id,points:[[-20000,lo],[-10000,lo],[-10000,y],[50000,y],[50000,hi],[60000,hi]],movable:true,preserveStart:true,preserveEnd:true});
+ const wires=[fixed('a',0),movable('b',6000,-10000,50000),fixed('c',20000),movable('d',34000,-20000,60000),fixed('e',40000)];
+ const frozen=JSON.stringify(wires);
+ const choice=parallelBundleShortcuts(wires).find(c=>c.moves.length===2);
+ assert.ok(choice);
+ assert.deepEqual(choice.moves.map(m=>[m.id,m.points[2][1]]),[['b',10000],['d',30000]]);
+ assert.deepEqual(parallelBundleShortcuts([...wires].reverse()).find(c=>c.moves.length===2),choice);
+ for(const m of choice.moves){const old=wires.find(w=>w.id===m.id).points;
+  assert.deepEqual(pathMetric(m.points),pathMetric(old));
+  assert.deepEqual(m.points.slice(0,2),old.slice(0,2));assert.deepEqual(m.points.slice(-2),old.slice(-2));}
+ const shifted=wires.map(w=>w.id==='c'?fixed('c',20001):w);
+ assert.deepEqual(parallelBundleShortcuts(shifted),[]);
+ assert.equal(JSON.stringify(wires),frozen);
+});
+
+test('R65 six-track bundle rounds fractional pitch without moving endpoints',async()=>{
+ const {parallelBundleShortcuts,pathMetric}=await import('./detour-shortcuts.ts');
+ const ys=[0,6000,17000,29000,43000,50003];
+ const wires=ys.map((y,i)=>({id:String(i),net:String(i),points:i===0||i===5?[[0,y],[40000,y]]:
+  [[-20000,-10000-i*5000],[-10000,-10000-i*5000],[-10000,y],[50000,y],[50000,60000+i*5000],[60000,60000+i*5000]],
+  movable:i>0&&i<5,preserveStart:true,preserveEnd:true}));
+ const choice=parallelBundleShortcuts(wires).find(c=>c.moves.length===4);
+ assert.ok(choice);
+ const target=[0,...choice.moves.map(m=>m.points[2][1]),50003];
+ assert.deepEqual(target,[0,10001,20001,30002,40002,50003]);
+ const gaps=target.slice(1).map((x,i)=>x-target[i]);
+ assert.equal(Math.max(...gaps)-Math.min(...gaps),1);
+ for(const m of choice.moves){const old=wires.find(w=>w.id===m.id).points;
+  assert.deepEqual(pathMetric(m.points),pathMetric(old));
+  assert.deepEqual(m.points.slice(0,2),old.slice(0,2));assert.deepEqual(m.points.slice(-2),old.slice(-2));}
+});
+
+test('R65 real five-Net bundle keeps the protected middle route byte-for-byte',()=>{
+ const s=newSession();
+ for(const p of [[50000,80000],[200000,80000],[50000,110000],[200000,110000],[20000,60000],[250000,120000],[20000,45000],[260000,140000],[50000,95000],[200000,95000]])
+  s.place(s.newTransaction('five-place'),'symbol/resistor.fixed',p);
+ const [a,b,c,d,e,f,g,h,i,j]=s.file.project.components.map(c=>c.id);
+ for(const [x,y] of [[a,b],[c,d],[e,f],[g,h],[i,j]])s.connect(s.newTransaction('five-connect'),pin(x,'2'),pin(y,'1'));
+ const doc=s.file,sh=doc.project.sheets[0];
+ const set=(x,y,points,review)=>{
+  const net=doc.project.nets.find(n=>n.members.some(m=>m.component_id===x));
+  const w=sh.wires.find(w=>w.net_id===net.id);
+  w.vertices=points.map((at_um,k)=>({id:w.id+':v'+k,at_um,anchor:k===0?{kind:'pin',...pin(x,'2')}:k===points.length-1?{kind:'pin',...pin(y,'1')}:{kind:'bend'}}));
+  w.segments=w.vertices.slice(1).map((v,k)=>({id:w.id+':s'+k,from_vertex_id:w.vertices[k].id,to_vertex_id:v.id}));
+  w.needs_routing_review=review;return w;
+ };
+ set(a,b,[[58000,80000],[192000,80000]],false);
+ set(c,d,[[58000,110000],[192000,110000]],false);
+ const first=set(e,f,[[28000,60000],[40000,60000],[40000,86000],[220000,86000],[220000,120000],[242000,120000]],true);
+ const second=set(g,h,[[28000,45000],[34000,45000],[34000,98000],[230000,98000],[230000,140000],[252000,140000]],true);
+ const center=set(i,j,[[58000,95000],[192000,95000]],false);
+ const session=new AuthoringSession(doc),p=session.previewParallelSpacing();
+ assert.ok(p.token);assert.equal(p.operations.filter(op=>op.startsWith('Групповое')).length,2);
+ assert.ok(p.spacing.after.imbalanceUm2<p.spacing.before.imbalanceUm2);
+ assert.ok(p.spacing.after.coverageUm>=p.spacing.before.coverageUm);
+ for(const k of ['bends','lengthUm','crossings','errors','geometryWarnings','overflow'])assert.ok(p.after[k]<=p.before[k],k);
+ assert.deepEqual(session.file,doc);
+ const next=session.layoutPreviewDocument(p.token),ns=next.project.sheets[0];
+ assert.deepEqual(ns.wires.find(w=>w.id===center.id),center);
+ for(const [old,y] of [[first,87500],[second,102500]]){
+  const w=ns.wires.find(w=>w.id===old.id);
+  assert.equal(w.vertices[2].at_um[1],y);assert.equal(w.vertices[3].at_um[1],y);
+  assert.deepEqual(w.vertices[0],old.vertices[0]);assert.deepEqual(w.vertices.at(-1),old.vertices.at(-1));
+ }
+ assert.deepEqual(next.project.nets,doc.project.nets);assert.deepEqual(ns.instances,sh.instances);
+ session.applyLayoutPreview(session.newTransaction('five-apply'),p.token);
+ for(const n of doc.project.nets)assert.equal(session.engine.validateNet(n.id).pin_groups.length,1);
+ assert.equal(session.undo(),true);assert.deepEqual(session.file,doc);
+ assert.equal(session.redo(),true);assert.deepEqual(session.file,next);
+});

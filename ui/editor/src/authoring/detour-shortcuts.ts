@@ -312,7 +312,7 @@ export function parallelBundleShortcuts(wires:readonly SpacingBundleWire[]):Bund
     .sort((a,b)=>a.at-b.at||a.w.id.localeCompare(b.w.id)||a.i-b.i);
    for(let j=0;j+3<active.length&&examined<256;j++)for(let count=4;count<=6&&j+count<=active.length&&examined<256;count++){
     const group=active.slice(j,j+count),inner=group.slice(1,-1),left=group[0],right=group.at(-1)!;
-    if(new Set(group.map(l=>l.w.id)).size!==count||inner.some(l=>!l.w.movable||l.w.points.length>24||l.i<1||l.i+2>=l.w.points.length))continue;
+    if(new Set(group.map(l=>l.w.id)).size!==count)continue;
     if(group.slice(1).some((l,k)=>l.at-group[k].at<=1000||l.at-group[k].at>SPACING_MAX_GAP))continue;
     const span=Math.min(...group.map(l=>l.hi))-Math.max(...group.map(l=>l.lo));
     if(span<10000)continue;
@@ -326,7 +326,10 @@ export function parallelBundleShortcuts(wires:readonly SpacingBundleWire[]):Bund
     for(let k=0;k<inner.length;k++){
      const l=inner[k],x=Math.round(left.at+(k+1)*pitch),p=l.w.points;
      positions.push(x);
+     // A fixed inner track may anchor the pitch if it is already exactly in place.
+     // Never move a protected track, even by one micrometre.
      if(x===l.at)continue;
+     if(!l.w.movable||p.length>24||l.i<1||l.i+2>=p.length){valid=false;break}
      const [a,b,c,d]=p.slice(l.i-1,l.i+3);
      if(a[other]!==b[other]||c[other]!==d[other]||Math.sign(b[axis]-a[axis])!==Math.sign(d[axis]-c[axis])||
        x<=Math.min(a[axis],d[axis])||x>=Math.max(a[axis],d[axis])){valid=false;break}
