@@ -428,7 +428,7 @@ try{
       await page.getByText('Открыть…',{exact:true}).click();
     });
     try {
-      await page.getByTestId(full?'symbol-DA1':'symbol-C9').waitFor({state:'visible',timeout:15000});
+      await page.getByTestId(full?'symbol-DA1':editorQA?'symbol-R4':'symbol-C9').waitFor({state:'visible',timeout:15000});
     }catch(error){
       console.log('R9_OPEN_DIAG_FILE_EXISTS='+fs.existsSync(projectPath));
       console.log('R9_OPEN_DIAG_DIGEST='+digest(projectPath));
