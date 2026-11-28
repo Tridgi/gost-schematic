@@ -819,8 +819,10 @@ export default function App() {
   if(!document||!snapshot||!activeSheet)return <main className="gscad-boot">
     <h1>GOST Schematic Engine — R2 preview</h1><p>{issue}</p>
     <p>Выполните Python prepare_editor_fixtures.py и npm run dev.</p></main>;
+  const printableTextLayers=new Set(activeSheet.layers.filter(l=>l.visible&&l.printable&&l.kind!=='diagnostics').map(l=>l.id));
+  const printableAnnotations=[...activeSheet.texts,...activeSheet.labels].filter(t=>printableTextLayers.has(t.layer_id));
   const overflow=detectPaperOverflow(
-    projectToCanvasScene(document,activeSheet.id),snapshot,activeSheet.frame.size_um);
+    projectToCanvasScene(document,activeSheet.id),snapshot,activeSheet.frame.size_um,printableAnnotations);
   const diagnostics:DiagnosticItem[]=[
     {id:'integration',severity:'info',message:issue},
     ...(diagnosticReport?.items??[]),
@@ -829,7 +831,7 @@ export default function App() {
   if(overflow.total>0)diagnostics.push({id:'paper-overflow',severity:'warning',
     message:'За пределами физического листа: '+overflow.symbols.length+' УГО, '+
       overflow.wires.length+' проводников, '+overflow.graphics.length+' графических объектов; '+
-      (overflow.junctions.length+overflow.splices.length)+' узлов. Экспорт должен быть проверен.'});
+      (overflow.junctions.length+overflow.splices.length)+' узлов, '+overflow.texts.length+' надписей. Экспорт должен быть проверен.'});
   return <EditorShell
     projectName={document.project.title+(authoringRef.current?' · R3 AUTHORING':' · R2 PREVIEW')} dirty={dirty}
     canInstallUpdate={()=>!dirtyRef.current&&!nativeSaveBusyRef.current&&!textRequest&&!layoutPreview&&(!authoringRef.current||nativeHandle!==null)}
@@ -1013,7 +1015,7 @@ export default function App() {
       {overflow.total>0&&<div data-testid="gscad-paper-warning"
         className="gscad-paper-warning" role="status">
         За пределами листа: {overflow.symbols.length} УГО, {overflow.wires.length} проводников,
-        {overflow.graphics.length} графических объектов. Проверьте расположение и экспорт.
+        {overflow.graphics.length} графических объектов, {overflow.texts.length} надписей. Проверьте расположение и экспорт.
       </div>}
       {issue.startsWith('REROUTE_CANCELLED:')?<div className="gscad-notice-warning" role="status" data-testid="reroute-cancelled">
         <span>Перемещение отменено. Схема не изменена.</span>

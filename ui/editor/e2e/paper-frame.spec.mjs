@@ -178,3 +178,39 @@ test('R10: A4/A2 physical SVG excludes guides, A4 PNG300 carries exact pHYs and 
  expect(png.readUInt32BE(phys+4)).toBe(11811);
  expect(png.readUInt32BE(phys+8)).toBe(11811);
 });
+
+
+test('R55 shrinking A3 warns about rotated printable text without moving or deleting it',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Файл',exact:true}).click();
+ await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');
+ await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await canvas.focus();await canvas.press('t');
+ await page.mouse.click(paper.x+paper.width*.5,paper.y+paper.height*.5);
+ await page.getByTestId('sheet-text-input').fill('MMMMMM');
+ await page.getByTestId('add-sheet-text').click();
+ const annotation=canvas.locator('text[data-testid^="sheet-text-"]');
+ await expect(annotation).toHaveCount(1);await annotation.dblclick();
+ const dialog=page.getByRole('dialog',{name:'Свойства надписи'});
+ await dialog.getByTestId('sheet-text-x').fill('150');
+ await dialog.getByTestId('sheet-text-y').fill('180');
+ await dialog.getByText('5',{exact:true}).click();
+ await dialog.getByText('90',{exact:true}).click();
+ await dialog.getByTestId('add-sheet-text').click();await expect(dialog).toBeHidden();
+ const save=async()=>{const d=page.waitForEvent('download');await page.getByTestId('save-project').click();return JSON.parse(readFileSync(await (await d).path(),'utf8'));};
+ const before=await save();
+ await expect(page.getByTestId('gscad-paper-warning')).toHaveCount(0);
+ await page.getByRole('button',{name:'Файл',exact:true}).click();
+ await page.getByTestId('paper-format-A4').click();
+ await expect(page.getByTestId('gscad-paper-warning')).toContainText('1 надписей');
+ const after=await save(),expected=structuredClone(before.project);
+ expected.sheets[0].frame={...expected.sheets[0].frame,paper:'A4 landscape',size_um:[297000,210000]};
+ expect(after.project).toEqual(expected);
+ await page.getByRole('button',{name:'Отменить'}).click();
+ await expect(page.getByTestId('gscad-paper-warning')).toHaveCount(0);
+ expect((await save()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Повторить'}).click();
+ await expect(page.getByTestId('gscad-paper-warning')).toContainText('1 надписей');
+ expect((await save()).project).toEqual(after.project);
+});

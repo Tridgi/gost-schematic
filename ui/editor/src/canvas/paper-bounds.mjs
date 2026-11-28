@@ -11,7 +11,7 @@ const at=(symbol,p)=>{
  return [symbol.origin_um[0]+q[0],symbol.origin_um[1]+q[1]];
 };
 /** Return source identities only; no changes to the authoritative document. */
-export function detectPaperOverflow(scene,snapshot,sizeUm){
+export function detectPaperOverflow(scene,snapshot,sizeUm,annotations=[]){
  if(!Array.isArray(sizeUm)||sizeUm.length!==2||
    !sizeUm.every(n=>Number.isSafeInteger(n)&&n>0))throw Error('INVALID_FRAME');
  const outside=(p,pad=0)=>p[0]-pad<0||p[1]-pad<0||p[0]+pad>sizeUm[0]||p[1]+pad>sizeUm[1];
@@ -33,6 +33,17 @@ export function detectPaperOverflow(scene,snapshot,sizeUm){
    })).map(w=>w.id);
  const junctions=snapshot.junctions.filter(j=>outside(j.at_um,550)).map(j=>j.id);
  const splices=snapshot.splices.filter(s=>outside(s.at_um)).map(s=>s.id);
- return {symbols,graphics,wires,junctions,splices,
-   total:symbols.length+graphics.length+wires.length+junctions.length+splices.length};
+ // Match the canonical Python export envelope (not certified font ink).
+ // Python len counts Unicode code points; Array.from has the same semantics.
+ const texts=annotations.filter(t=>{
+   if(!t.text)return false;
+   const h=t.height_um??3500,r=t.rotation_deg??0,n=Array.from(t.text).length;
+   if(!Number.isSafeInteger(h)||h<=0||![0,90,180,270].includes(r))throw Error('INVALID_ANNOTATION_GEOMETRY');
+   return [[-h,-2*h],[(n+1)*h,-2*h],[-h,h],[(n+1)*h,h]].some(([x,y])=>{
+     const [u,v]=r===0?[x,y]:r===90?[-y,x]:r===180?[-x,-y]:[y,-x];
+     return outside([t.at_um[0]+u,t.at_um[1]+v]);
+   });
+ }).map(t=>t.id);
+ return {symbols,graphics,wires,junctions,splices,texts,
+   total:symbols.length+graphics.length+wires.length+junctions.length+splices.length+texts.length};
 }
