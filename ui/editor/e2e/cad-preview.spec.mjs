@@ -2240,3 +2240,30 @@ test('R47 annotation selection, arrow nudge, Shift, F2, Delete and Undo',async({
  await page.getByRole('button',{name:'Отменить'}).click();expect((await saved()).project).toEqual(moved.project);
  await page.getByRole('button',{name:'Повторить'}).click();await expect(annotation).toHaveCount(0);
 });
+
+
+test('R54 R and Shift+R rotate only the selected annotation; modified Delete is isolated',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Файл',exact:true}).click();await page.getByTestId('new-project').click();
+ const canvas=page.getByTestId('gscad-signed-svg-canvas');await expect(canvas).toHaveAttribute('data-camera-ready','true');
+ const paper=await page.getByTestId('gscad-paper-outline').boundingBox();
+ await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+ await page.mouse.click(paper.x+paper.width*.6,paper.y+paper.height*.4);
+ await expect(page.getByTestId('symbol-R1')).toBeVisible();
+ await canvas.focus();await canvas.press('t');await page.mouse.click(paper.x+paper.width*.25,paper.y+paper.height*.5);
+ await page.getByTestId('sheet-text-input').fill('MMMMMM');
+ await page.getByTestId('add-sheet-text').click();await expect(page.getByTestId('sheet-text-input')).toBeHidden();
+ const annotation=canvas.locator('text[data-testid^="sheet-text-"]');
+ const saved=async()=>{const d=page.waitForEvent('download');await page.getByTestId('save-project').click();return JSON.parse(readFileSync(await (await d).path(),'utf8'));};
+ const before=await saved();
+ await page.getByTestId('symbol-R1').click();
+ await annotation.click();await expect(annotation).toHaveAttribute('data-text-selected','true');
+ await canvas.press('Shift+Delete');await canvas.press('Shift+Backspace');await canvas.press('Shift+F2');
+ await expect(page.getByRole('dialog',{name:'Свойства надписи'})).toBeHidden();
+ expect((await saved()).project).toEqual(before.project);
+ await canvas.press('r');await expect(annotation).toHaveAttribute('transform',/^rotate\(90 /);
+ const rotated=await saved(),expected=structuredClone(before.project);
+ expected.sheets[0].texts[0].rotation_deg=90;expect(rotated.project).toEqual(expected);
+ await canvas.press('Shift+r');expect((await saved()).project).toEqual(before.project);
+ await page.getByRole('button',{name:'Отменить'}).click();expect((await saved()).project).toEqual(rotated.project);
+ await page.getByRole('button',{name:'Повторить'}).click();expect((await saved()).project).toEqual(before.project);
+});

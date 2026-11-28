@@ -2504,3 +2504,39 @@ test('R46 move rotated annotation atomically, rejects stale, locked and out-of-f
   assert.equal(session.revision,0);assert.deepEqual(session.file,blocked);
  }
 });
+
+
+test('R54 text quarter-turn shortcut preserves pivot, IDs and all electrical geometry',()=>{
+ const s=newSession();
+ s.place(s.newTransaction('left'),'symbol/resistor.fixed',[80000,80000]);
+ s.place(s.newTransaction('right'),'symbol/resistor.fixed',[220000,80000]);
+ const [a,b]=s.file.project.components.map(c=>c.id);
+ s.connect(s.newTransaction('wire'),pin(a,'2'),pin(b,'1'));
+ s.addText(s.newTransaction('text'),'Питание 24 В',[65125,140000],5000);
+ const before=s.file,t=before.project.sheets[0].texts[0],rev=s.revision,stale=s.newTransaction('stale');
+ for(const rotation of [90,180,270,0]){
+  s.rotateText(s.newTransaction('clockwise'),t.id,1);
+  const expected=structuredClone(before);expected.project.sheets[0].texts[0].rotation_deg=rotation;
+  assert.deepEqual(s.file,expected);
+ }
+ assert.equal(s.revision,rev+4);
+ s.rotateText(s.newTransaction('counterclockwise'),t.id,-1);
+ const rotated=s.file;assert.equal(rotated.project.sheets[0].texts[0].rotation_deg,270);
+ assert.throws(()=>s.rotateText(stale,t.id,1),/STALE_REVISION/);
+ assert.throws(()=>s.rotateText(s.newTransaction('bad'),t.id,2),/INVALID_TEXT_ROTATION/);
+ assert.equal(s.undo(),true);assert.deepEqual(s.file,before);
+ assert.equal(s.redo(),true);assert.deepEqual(s.file,rotated);
+ assert.deepEqual(new AuthoringSession(s.file).file,rotated);
+ for(const mode of ['locked','hidden']){
+  const blocked=structuredClone(before),layer=blocked.project.sheets[0].layers.find(l=>l.id===t.layer_id);
+  if(mode==='locked')layer.locked=true;else layer.visible=false;
+  const session=new AuthoringSession(blocked);
+  assert.throws(()=>session.rotateText(session.newTransaction(mode),t.id,1),/LAYER_LOCKED/);
+  assert.equal(session.revision,0);assert.deepEqual(session.file,blocked);
+ }
+ const boundary=newSession();
+ boundary.addText(boundary.newTransaction('near bottom'),'MMMMMM',[65000,280000],5000);
+ const original=boundary.file;
+ assert.throws(()=>boundary.rotateText(boundary.newTransaction('outside'),original.project.sheets[0].texts[0].id,1),/TEXT_OUTSIDE_FRAME/);
+ assert.deepEqual(boundary.file,original);
+});

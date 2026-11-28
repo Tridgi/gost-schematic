@@ -426,8 +426,14 @@ export function CanvasViewport({document,sheetId,snapshot,tool,gridVisible,snapE
           onIntent({kind:'moveText',text_id:selectedText.id,at_um:at,base_revision:snapshot.revision});
           return;
         }
-        // Never rotate/delete a previously selected underlying symbol.
-        if(['r','R','Enter'].includes(key)){e.preventDefault();return;}
+        // Consume annotation rotation here, not in the underlying symbol controller.
+        if(key==='r'||key==='R'||e.code==='KeyR'){
+          e.preventDefault();e.stopPropagation();
+          onIntent({kind:'rotateText',text_id:selectedText.id,direction:e.shiftKey?-1:1,base_revision:snapshot.revision});
+          return;
+        }
+        // Modified destructive/property keys must never fall through to symbols.
+        if(['Enter','Delete','Backspace','F2'].includes(key)){e.preventDefault();e.stopPropagation();return;}
       }
       if(['Escape','Enter','r','R','Delete','Backspace'].includes(e.key)&&controller.key(e.key)){
         e.preventDefault();invalidate();
