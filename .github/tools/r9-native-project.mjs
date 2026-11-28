@@ -252,6 +252,35 @@ async function createEditorAcceptance(){
   Object.assign(finalExpected.sheets[0].texts[0],{at_um:[65125,140000],height_um:5000,rotation_deg:90});
   assert.deepEqual(final.project,finalExpected);assertModel(final);
   assert.match(await annotation.getAttribute('transform'),/^rotate\(90 /);
+  if(process.env.GSCAD_R56_PAPER_ANNOTATIONS==='1'){
+    // Temporarily move the existing rotated annotation so only its lower
+    // envelope crosses A4. Preserve and restore the original R51 project.
+    await annotation.dblclick();await dialog.waitFor({state:'visible'});
+    await dialog.getByTestId('sheet-text-x').fill('150');
+    await dialog.getByTestId('sheet-text-y').fill('180');
+    await dialog.getByTestId('add-sheet-text').click();await dialog.waitFor({state:'hidden'});
+    const placed=await save(),placedExpected=structuredClone(final.project);
+    placedExpected.sheets[0].texts[0].at_um=[150000,180000];
+    assert.deepEqual(placed.project,placedExpected);
+    const warning=page.getByTestId('gscad-paper-warning');
+    await warning.waitFor({state:'hidden'});
+    await page.getByRole('button',{name:'Файл',exact:true}).click();
+    await page.getByTestId('paper-format-A4').click();
+    await warning.waitFor({state:'visible'});
+    assert.match(await warning.textContent(),/1 надписей/);
+    const a4=await save(),a4Expected=structuredClone(placed.project);
+    a4Expected.sheets[0].frame={...a4Expected.sheets[0].frame,paper:'A4 landscape',size_um:[297000,210000]};
+    assert.deepEqual(a4.project,a4Expected);
+    await undo();await warning.waitFor({state:'hidden'});
+    assert.deepEqual((await save()).project,placed.project);
+    await redo();await warning.waitFor({state:'visible'});
+    assert.match(await warning.textContent(),/1 надписей/);
+    assert.deepEqual((await save()).project,a4.project);
+    await undo();await warning.waitFor({state:'hidden'});
+    await undo();await warning.waitFor({state:'hidden'});
+    const restored=await save();assert.deepEqual(restored.project,final.project);assertModel(restored);
+    console.log('R56_REAL_NATIVE_PAPER_ANNOTATION_WARNING_AND_HISTORY_PASS');
+  }
   const sum=digest(projectPath);assert.match(sum,/^[0-9a-f]{64}$/);
   fs.writeFileSync(projectPath+'.r9digest',sum+'\n',{flag:'wx'});
   console.log('R51_REAL_NATIVE_TEXT_PROPERTIES_DRAG_KEYS_HISTORY_PASS digest='+sum);
