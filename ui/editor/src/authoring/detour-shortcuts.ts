@@ -135,12 +135,26 @@ export type CrossingPairWire={net:string;points:readonly ShortcutPoint[];preserv
 type PairChoice={first:[number,number][];second:[number,number][];crossings:number;bends:number;length:number};
 const asSegments=(points:readonly ShortcutPoint[],net:string):CrossingSegment[]=>
  points.slice(1).map((b,i)=>({a:points[i],b,net}));
-function pairCrossings(first:CrossingPairWire,second:CrossingPairWire,foreign:readonly CrossingSegment[]):number{
+/** Unchanged crossing keys already contribute to the global unique count.
+ * Compute them once per pair, not for each Cartesian candidate. */
+function fixedCrossingKeys(foreign:readonly CrossingSegment[]):Set<string>{
+ const hits=new Set<string>();
+ for(let i=0;i<foreign.length;i++){
+  const s=foreign[i];
+  for(const key of localCrossingKeys([s.a,s.b],foreign.slice(i+1))){
+   const [net,x,y]=JSON.parse(key) as [string,number,number];
+   hits.add(JSON.stringify([...[s.net,net].sort(),x,y]));
+  }
+ }
+ return hits;
+}
+function pairCrossings(first:CrossingPairWire,second:CrossingPairWire,foreign:readonly CrossingSegment[],fixed:ReadonlySet<string>):number{
  const hits=new Set<string>();
  const add=(wire:CrossingPairWire,segments:readonly CrossingSegment[])=>{
   for(const key of localCrossingKeys(wire.points,segments)){
    const [net,x,y]=JSON.parse(key) as [string,number,number];
-   hits.add(JSON.stringify([...[wire.net,net].sort(),x,y]));
+   const fullKey=JSON.stringify([...[wire.net,net].sort(),x,y]);
+   if(!fixed.has(fullKey))hits.add(fullKey);
   }
  };
  add(first,[...foreign,...asSegments(second.points,second.net)]);
@@ -154,7 +168,8 @@ export function rankCrossingPairs(first:CrossingPairWire,second:CrossingPairWire
  secondChoices:readonly ShortcutPoint[][]):PairChoice[]{
  if(first.net===second.net||foreign.length>512||first.points.length<3||second.points.length<3||
     first.points.length>24||second.points.length>24)return [];
- const baseline=pairCrossings(first,second,foreign);
+ const fixed=fixedCrossingKeys(foreign);
+ const baseline=pairCrossings(first,second,foreign,fixed);
  if(!baseline)return [];
  const fm=pathMetric(first.points),sm=pathMetric(second.points),out:PairChoice[]=[],seen=new Set<string>();
  const usable=(wire:CrossingPairWire,raw:readonly ShortcutPoint[],old:ReturnType<typeof pathMetric>)=>{
@@ -173,7 +188,7 @@ export function rankCrossingPairs(first:CrossingPairWire,second:CrossingPairWire
   const x=usable(first,a,fm);if(!x)continue;
   for(const b of secondChoices.slice(0,12)){
    const y=usable(second,b,sm);if(!y)continue;
-   const crossings=pairCrossings({...first,points:x.p},{...second,points:y.p},foreign);
+   const crossings=pairCrossings({...first,points:x.p},{...second,points:y.p},foreign,fixed);
    if(crossings>=baseline)continue;
    const key=JSON.stringify([x.p,y.p]);if(seen.has(key))continue;seen.add(key);
    out.push({first:x.p,second:y.p,crossings,bends:x.m.bends+y.m.bends,length:x.m.length+y.m.length});
