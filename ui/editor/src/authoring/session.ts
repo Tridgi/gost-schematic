@@ -41,7 +41,8 @@ export type GroupClipboard = {
 };
 
 export type PlacementHint={origin:MutablePoint;from:MutablePoint;to:MutablePoint;target:PinRef;newPin:string};
-export type LayoutPreview={token:string|null;before:LayoutQuality;after:LayoutQuality;operations:string[];attempted:number;rejected:number;limited:boolean;spacing?:{before:ParallelSpacingQuality;after:ParallelSpacingQuality}};
+export type SpacingRejectionReason='frame'|'component'|'annotation'|'node'|'wireClearance'|'wireOverlap'|'wireContact'|'electricalModel'|'sourceGuard'|'incompleteMetric'|'coverageLoss'|'noSpacingGain'|'layoutSafety'|'qualityRegression'|'hiddenLabel';
+export type LayoutPreview={token:string|null;before:LayoutQuality;after:LayoutQuality;operations:string[];attempted:number;rejected:number;limited:boolean;spacing?:{before:ParallelSpacingQuality;after:ParallelSpacingQuality;rejections:Partial<Record<SpacingRejectionReason,number>>}};
 export type PlacementProfile='default'|'compact'|'spacious';
 export type PlacementSearchPreview=FunctionalRoutingPreview&{profile:PlacementProfile;profilesTried:number;refinementAttempts:number};
 export type FunctionalRoutingPreview={token:string|null;requested:number;routed:number;variant:'hub'|'functional';moved:string[];baseline:LayoutQuality;quality:LayoutQuality;attempted:number;outcomes:InitialBatchOutcome[]};
@@ -2172,6 +2173,8 @@ export class AuthoringSession {
     let best=new AuthoringSession(base),assessment=before,attempted=0,rejected=0;
     let visible=new Set(planComponentLabels(base,sh.id).labels.map(l=>l.instanceId));
     const operations:string[]=[];
+    const spacingRejections:Partial<Record<SpacingRejectionReason,number>>={};
+    const rejectSpacing=(reason:SpacingRejectionReason)=>{rejected++;if(spacingOnly)spacingRejections[reason]=(spacingRejections[reason]??0)+1;};
     const cap=spacingOnly?32:crossingOnly?96:64;
     const spacingOf=(sheet:Sheet)=>parallelSpacingQuality(sheet.wires.flatMap(w=>
       w.vertices.slice(1).map((b,i)=>({a:w.vertices[i].at_um,b:b.at_um,net:w.net_id}))));
@@ -2192,7 +2195,7 @@ export class AuthoringSession {
     }).sort((a,b)=>{const x=pathMetric(a.vertices.map(v=>v.at_um)),y=pathMetric(b.vertices.map(v=>v.at_um));
       return (crossingOnly?(crossingPriority.get(b.id)??0)-(crossingPriority.get(a.id)??0):0)||y.bends-x.bends||y.length-x.length||(crossingOnly?0:a.id.localeCompare(b.id))});
     const m=sh.frame.margin_um,[width,height]=sh.frame.size_um;
-    const safePath=(sheet:Sheet,w:WirePolyline,p:PointUm[])=>{
+    const pathFailure=(sheet:Sheet,w:WirePolyline,p:PointUm[]):SpacingRejectionReason|null=>{
       const start=w.vertices[0],end=w.vertices.at(-1)!;
       const foreign=sheet.wires.filter(v=>v.id!==w.id).flatMap(v=>v.vertices.slice(1).map((b,i)=>({a:v.vertices[i],b,net:v.net_id,box:rect(v.vertices[i].at_um,b.at_um)})));
       const nodes=[...sheet.junctions.map(n=>({anchor:{kind:'junction' as const,junction_id:n.id},at_um:n.at_um})),
@@ -2205,42 +2208,47 @@ export class AuthoringSession {
         return a.kind==='junction'&&b.kind==='junction'&&a.junction_id===b.junction_id||a.kind==='splice'&&b.kind==='splice'&&a.splice_id===b.splice_id;
       };
       {
-        if(p.some(v=>v[0]<m||v[0]>width-m||v[1]<m||v[1]>height-m))return false;
+        if(p.some(v=>v[0]<m||v[0]>width-m||v[1]<m||v[1]>height-m))return 'frame';
         for(let i=1;i<p.length;i++){
           const a=p[i-1],b=p[i],bounds=rect(a,b);
           const endpoint=(v:PointUm)=>i===1&&same(v,start.at_um)?start:i===p.length-1&&same(v,end.at_um)?end:undefined;
           for(const o of boxes){
             if(i===1&&start.anchor.kind==='pin'&&start.anchor.component_id===o.id)continue;
             if(i===p.length-1&&end.anchor.kind==='pin'&&end.anchor.component_id===o.id)continue;
-            if(!separated(bounds,o.box,1000))return false;
+            if(!separated(bounds,o.box,1000))return 'component';
           }
-          if(ink.some(o=>!separated(bounds,o,1000)))return false;
+          if(ink.some(o=>!separated(bounds,o,1000)))return 'annotation';
           for(const n of nodes){
             if(!hit(bounds,rect(n.at_um,n.at_um)))continue;
             const terminal=endpoint(n.at_um);
-            if(!terminal||!sameAnchor(terminal.anchor,n.anchor))return false;
+            if(!terminal||!sameAnchor(terminal.anchor,n.anchor))return 'node';
           }
           for(const v of foreign){
-            if(!hit(bounds,v.box)){if(!separated(bounds,v.box,1000))return false;continue}
+            if(!hit(bounds,v.box)){if(!separated(bounds,v.box,1000))return 'wireClearance';continue}
             const lo=rect([Math.max(bounds.minX,v.box.minX),Math.max(bounds.minY,v.box.minY)],
               [Math.min(bounds.maxX,v.box.maxX),Math.min(bounds.maxY,v.box.maxY)]);
-            if(lo.minX!==lo.maxX||lo.minY!==lo.maxY)return false;
+            if(lo.minX!==lo.maxX||lo.minY!==lo.maxY)return 'wireOverlap';
             const at:PointUm=[lo.minX,lo.minY],terminal=endpoint(at);
             if(terminal&&v.net===w.net_id&&[v.a,v.b].some(q=>same(q.at_um,at)&&sameAnchor(q.anchor,terminal.anchor)))continue;
             // Do not turn a crossing into a tap or allow same-Net contact.
             const h=a[1]===b[1],vh=v.a.at_um[1]===v.b.at_um[1];
-            if(v.net===w.net_id||h===vh||[a,b,v.a.at_um,v.b.at_um].some(q=>Math.abs(q[0]-at[0])+Math.abs(q[1]-at[1])<=1000))return false;
+            if(v.net===w.net_id||h===vh||[a,b,v.a.at_um,v.b.at_um].some(q=>Math.abs(q[0]-at[0])+Math.abs(q[1]-at[1])<=1000))return 'wireContact';
           }
         }
-        return true;
+        return null;
       }
     };
-    const spacingImproves=(nextSpacing:ParallelSpacingQuality|undefined,after:ReturnType<typeof assessLayout>)=>
-      !!nextSpacing&&!!spacingAfter&&nextSpacing.complete&&
-      nextSpacing.coverageUm>=spacingAfter.coverageUm&&nextSpacing.imbalanceUm2<spacingAfter.imbalanceUm2&&
-      preservesLayoutSafety(assessment,after)&&after.quality.bends<=assessment.quality.bends&&
-      after.quality.lengthUm<=assessment.quality.lengthUm&&after.quality.overflow<=assessment.quality.overflow&&
-      after.quality.errors<=assessment.quality.errors&&after.quality.geometryWarnings<=assessment.quality.geometryWarnings;
+    const safePath=(sheet:Sheet,w:WirePolyline,p:PointUm[])=>pathFailure(sheet,w,p)===null;
+    const spacingFailure=(nextSpacing:ParallelSpacingQuality|undefined,after:ReturnType<typeof assessLayout>):SpacingRejectionReason|null=>{
+      if(!nextSpacing||!spacingAfter||!nextSpacing.complete)return 'incompleteMetric';
+      if(nextSpacing.coverageUm<spacingAfter.coverageUm)return 'coverageLoss';
+      if(nextSpacing.imbalanceUm2>=spacingAfter.imbalanceUm2)return 'noSpacingGain';
+      if(!preservesLayoutSafety(assessment,after))return 'layoutSafety';
+      if(after.quality.bends>assessment.quality.bends||after.quality.lengthUm>assessment.quality.lengthUm||
+        after.quality.overflow>assessment.quality.overflow||after.quality.errors>assessment.quality.errors||
+        after.quality.geometryWarnings>assessment.quality.geometryWarnings)return 'qualityRegression';
+      return null;
+    };
     let bundleApplied=false;
     if(spacingOnly&&spacingAfter&&spacingAfter.imbalanceUm2>0){
       const ids=new Set(eligible.map(w=>w.id));
@@ -2255,13 +2263,16 @@ export class AuthoringSession {
           w.vertices=[clone(w.vertices[0]),...move.points.slice(1,-1).map(at_um=>({id:newId('vertex'),at_um,anchor:{kind:'bend'} as const})),clone(w.vertices.at(-1)!)];
           w.segments=w.vertices.slice(1).map((v,i)=>({id:newId('segment'),from_vertex_id:w.vertices[i].id,to_vertex_id:v.id}));
         }
-        if(proposal.moves.some(move=>!safePath(ns,ns.wires.find(w=>w.id===move.id)!,move.points))){rejected++;continue}
+        const failure=proposal.moves.map(move=>pathFailure(ns,ns.wires.find(w=>w.id===move.id)!,move.points)).find(reason=>reason!==null);
+        if(failure){rejectSpacing(failure);continue}
         let trial:AuthoringSession;
-        try{trial=new AuthoringSession(next)}catch(e){if(!(e instanceof WireError))throw e;rejected++;continue}
+        try{trial=new AuthoringSession(next)}catch(e){if(!(e instanceof WireError))throw e;rejectSpacing('electricalModel');continue}
         const after=assessLayout(next,trial.engine),nextSpacing=spacingOf(ns);
-        if(sourceGuard(next)!==sourceGuard(base)||!spacingImproves(nextSpacing,after)){rejected++;continue}
+        if(sourceGuard(next)!==sourceGuard(base)){rejectSpacing('sourceGuard');continue}
+        const metricFailure=spacingFailure(nextSpacing,after);
+        if(metricFailure){rejectSpacing(metricFailure);continue}
         const labels=new Set(planComponentLabels(next,sh.id).labels.map(l=>l.instanceId));
-        if([...visible].some(id=>!labels.has(id))){rejected++;continue}
+        if([...visible].some(id=>!labels.has(id))){rejectSpacing('hiddenLabel');continue}
         best=trial;assessment=after;visible=labels;spacingAfter=nextSpacing;bundleApplied=true;
         for(const move of proposal.moves){
           const w=ns.wires.find(w=>w.id===move.id)!;
@@ -2281,19 +2292,23 @@ export class AuthoringSession {
       for(const points of candidates){
         if(attempted>=cap)break;
         attempted++;
-        if(!safePath(sheet,w,points)){rejected++;continue}
+        const failure=pathFailure(sheet,w,points);
+        if(failure){rejectSpacing(failure);continue}
         const next=clone(doc),ns=next.project.sheets[indexOfSheet(next)],nw=ns.wires.find(v=>v.id===w.id)!;
         nw.vertices=[clone(start),...points.slice(1,-1).map(at_um=>({id:newId('vertex'),at_um,anchor:{kind:'bend'} as const})),clone(end)];
         nw.segments=nw.vertices.slice(1).map((v,i)=>({id:newId('segment'),from_vertex_id:nw.vertices[i].id,to_vertex_id:v.id}));
         let trial:AuthoringSession;
-        try{trial=new AuthoringSession(next)}catch(e){if(!(e instanceof WireError))throw e;rejected++;continue}
+        try{trial=new AuthoringSession(next)}catch(e){if(!(e instanceof WireError))throw e;rejectSpacing('electricalModel');continue}
         const after=assessLayout(next,trial.engine);
         const nextSpacing=spacingOnly?spacingOf(ns):undefined;
-        const spacingSafe=spacingOnly&&spacingImproves(nextSpacing,after);
-        if(sourceGuard(next)!==sourceGuard(base)||(spacingOnly?!spacingSafe:!improvesLayout(assessment,after))||
-           crossingOnly&&after.quality.crossings>=assessment.quality.crossings){rejected++;continue}
+        if(sourceGuard(next)!==sourceGuard(base)){rejectSpacing('sourceGuard');continue}
+        if(spacingOnly){
+          const metricFailure=spacingFailure(nextSpacing,after);
+          if(metricFailure){rejectSpacing(metricFailure);continue}
+        }else if(!improvesLayout(assessment,after)){rejected++;continue}
+        if(crossingOnly&&after.quality.crossings>=assessment.quality.crossings){rejectSpacing('qualityRegression');continue}
         const labels=new Set(planComponentLabels(next,sh.id).labels.map(l=>l.instanceId));
-        if([...visible].some(id=>!labels.has(id))){rejected++;continue}
+        if([...visible].some(id=>!labels.has(id))){rejectSpacing('hiddenLabel');continue}
         best=trial;assessment=after;visible=labels;
         if(nextSpacing)spacingAfter=nextSpacing;
         operations.push((spacingOnly?'Выравнивание шага ':crossingOnly?'Устранение пересечения ':'Устранение обхода ')+(base.project.nets.find(n=>n.id===w.net_id)?.name??w.net_id));
@@ -2344,7 +2359,7 @@ export class AuthoringSession {
     }
     const token=operations.length?newId('detour-refinement'):null;
     if(token)this.layoutPlan={token,revision:this.clock,sheet:sh.id,next:best.file};
-    return {token,before:before.quality,after:assessment.quality,operations,attempted,rejected,limited:attempted>=cap||pairLimited,...(spacingBefore&&spacingAfter?{spacing:{before:spacingBefore,after:spacingAfter}}:{})};
+    return {token,before:before.quality,after:assessment.quality,operations,attempted,rejected,limited:attempted>=cap||pairLimited,...(spacingBefore&&spacingAfter?{spacing:{before:spacingBefore,after:spacingAfter,rejections:spacingRejections}}:{})};
   }
 
   previewFunctionalAlternatives():PlacementSearchPreview{

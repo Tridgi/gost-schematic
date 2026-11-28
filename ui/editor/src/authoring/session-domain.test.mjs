@@ -2651,6 +2651,7 @@ test('R62 real three-Net parallel spacing preview keeps endpoints and is one ato
  const middle=set(e,f,[[28000,60000],[40000,60000],[40000,86000],[220000,86000],[220000,120000],[242000,120000]],true);
  const session=new AuthoringSession(doc),p=session.previewParallelSpacing();
  assert.ok(p.token);assert.equal(p.spacing.before.imbalanceUm2,1072000000);
+ assert.equal(Object.values(p.spacing.rejections).reduce((sum,n)=>sum+n,0),p.rejected);
  assert.equal(p.spacing.after.imbalanceUm2,0);
  assert.equal(p.spacing.after.coverageUm,p.spacing.before.coverageUm);
  assert.equal(p.after.crossings,p.before.crossings);assert.equal(p.after.bends,p.before.bends);assert.equal(p.after.lengthUm,p.before.lengthUm);
@@ -2668,6 +2669,18 @@ test('R62 real three-Net parallel spacing preview keeps endpoints and is one ato
  const locked=structuredClone(doc);locked.project.sheets[0].layers.find(l=>l.id===middle.layer_id).locked=true;
  const no=new AuthoringSession(locked),q=no.previewParallelSpacing();
  assert.equal(q.token,null);assert.deepEqual(no.file,locked);assert.equal(no.revision,0);
+ assert.equal(q.attempted,0);assert.deepEqual(q.spacing.rejections,{});
+ // R66: a visual obstacle only on the proposed centerline must explain
+ // the refused move without changing the existing safe geometry.
+ const blocked=structuredClone(doc),bs=blocked.project.sheets[0];
+ bs.graphics.push({id:'r66-spacing-obstacle',kind:'line',layer_id:bs.layers[0].id,
+  points_um:[[110000,90000],[120000,90000]],stroke_um:300});
+ const obstacle=new AuthoringSession(blocked),refused=obstacle.previewParallelSpacing();
+ assert.equal(refused.token,null);assert.ok(refused.attempted>0);
+ assert.ok(refused.spacing.rejections.annotation>0);
+ assert.equal(Object.values(refused.spacing.rejections).reduce((sum,n)=>sum+n,0),refused.rejected);
+ assert.deepEqual(refused.spacing.before,refused.spacing.after);
+ assert.deepEqual(obstacle.file,blocked);assert.equal(obstacle.revision,0);
 });
 
 
