@@ -367,3 +367,24 @@ def test_r49_rotated_annotation_png_ink_changes_orientation():
             boxes.append((box[2]-box[0], box[3]-box[1]))
     assert boxes[0][0] > boxes[0][1] * 2
     assert boxes[1][1] > boxes[1][0] * 2
+
+
+@pytest.mark.parametrize("kind", ["line", "rect", "circle", "g"])
+def test_r50_annotation_rotation_cannot_authorize_shape_transform(kind):
+    doc, sheet_id = _annotation_only_document(90)
+    root = ET.fromstring(render_v2_source(doc, sheet_id, expected_project_sha256=digest(doc)))
+    ET.SubElement(root, S + kind, {
+        "data-layer": "annotations", "data-id": "qa-invalid-shape",
+        "x": "120.125", "y": "120.5", "transform": "rotate(90 120.125 120.5)",
+    })
+    with pytest.raises(ExportError, match="UNAPPROVED_ANNOTATION_TRANSFORM"):
+        compose_clean_svg(ET.tostring(root), ExportRequest(include_frame=False, strict_font=False))
+
+
+def test_r50_rotated_annotation_rejects_one_micrometre_viewbox_clipping():
+    doc, sheet_id = _annotation_only_document(90)
+    root = ET.fromstring(render_v2_source(doc, sheet_id, expected_project_sha256=digest(doc)))
+    assert root.get("viewBox") == "115.125 115.5 15 40"
+    root.set("viewBox", "115.125 115.5 15 39.999")
+    with pytest.raises(ExportError, match="SOURCE_VIEWBOX_CLIPS_INK"):
+        compose_clean_svg(ET.tostring(root), ExportRequest(include_frame=False, strict_font=False))
