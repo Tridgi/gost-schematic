@@ -8,7 +8,7 @@ from xml.etree import ElementTree as ET
 import pytest
 
 from gost_schematic.agent_project.catalog import CatalogResolver
-from gost_schematic.core.geometry import Line
+from gost_schematic.core.geometry import Circle, Line
 from gost_schematic.core.transforms import Transform
 from ui.bridge.export.project_v2 import render_v2_source
 from ui.editor.src.model.contract import digest, strict_loads, validate
@@ -28,35 +28,43 @@ def test_manifest_partition_and_exact_line_projection():
     catalog = CatalogResolver()
     manifest = export_manifest(catalog)
     assert not manifest["placement_ready"]
-    assert len(manifest["profiles"]) == 52
-    assert len(manifest["blocked"]) == 60
+    assert len(manifest["profiles"]) == 112
+    assert len(manifest["blocked"]) == 0
     projected = {p["source_lock"]["part_id"] for p in manifest["profiles"]}
     blocked = {p["id"] for p in manifest["blocked"]}
     assert not projected.intersection(blocked)
     assert projected | blocked == set(catalog.transistor_layout_ids())
-    assert {p["reason"] for p in manifest["blocked"]} == {"UNSUPPORTED_V2_PRIMITIVE"}
+    assert {p["reason"] for p in manifest["blocked"]} == set()
     assert json.dumps(manifest, sort_keys=True) == json.dumps(export_manifest(), sort_keys=True)
     for profile in manifest["profiles"]:
         verify_profile(catalog, profile)
         part, symbol = catalog.resolve(profile["source_lock"]["part_id"])
         assert not profile["placement_ready"]
-        assert all(isinstance(g, Line) for g in symbol.graphics)
+        assert all(isinstance(g, (Line, Circle)) for g in symbol.graphics)
         assert profile["part_definition"]["physical_pins"] == [
             {"number": p.number, "name": p.name, "electrical_type": p.electrical_type.value}
             for p in part.pins
         ]
         for graphic, source in zip(profile["symbol_definition"]["graphics"],
                                    symbol.graphics, strict=True):
-            assert graphic["points_um"] == [
-                [source.start.x, source.start.y], [source.end.x, source.end.y],
-            ]
+            if isinstance(source, Line):
+                assert graphic["kind"] == "line"
+                assert graphic["points_um"] == [
+                    [source.start.x, source.start.y], [source.end.x, source.end.y],
+                ]
+            else:
+                assert graphic["kind"] == "circle"
+                assert graphic["points_um"] == [
+                    [source.center.x, source.center.y],
+                    [source.center.x + source.radius, source.center.y],
+                ]
         assert profile["protection"]["routing_keepouts_um"]
         assert profile["source_lock"] == catalog.lock(part.identifier)
 
 
 @pytest.mark.parametrize("identifier,reason", (
-    ("transistor.bjt_npn.layout_hh.case", "UNSUPPORTED_V2_PRIMITIVE"),
-    ("transistor.mosfet_n_enh.body_diode.layout_vv.bare", "UNSUPPORTED_V2_PRIMITIVE"),
+    ("transistor.igbt_p.layout_vv.case", "UNKNOWN_TRANSISTOR_PROFILE"),
+    ("transistor.bjt_npn.layout_xx.case", "UNKNOWN_TRANSISTOR_PROFILE"),
     ("transistor.bjt_npn", "UNKNOWN_TRANSISTOR_PROFILE"),
     ("transistor.unknown", "UNKNOWN_TRANSISTOR_PROFILE"),
 ))
@@ -92,17 +100,19 @@ def test_all_projected_profiles_real_v2_schema_and_stable_roundtrip():
 
 @pytest.mark.parametrize("angle", (0, 90, 180, 270))
 @pytest.mark.parametrize("mirror", (False, True))
-def test_real_v2_export_exact_transformed_line_geometry(angle, mirror):
+@pytest.mark.parametrize("identifier", (BJT, "transistor.bjt_npn.layout_hh.case",
+                                        "transistor.mosfet_n_enh.body_diode.layout_vv.bare"))
+def test_real_v2_export_exact_transformed_line_geometry(angle, mirror, identifier):
     catalog = CatalogResolver()
-    profile = project_v2_profile(catalog, BJT)
-    _, symbol = catalog.resolve(BJT)
+    profile = project_v2_profile(catalog, identifier)
+    _, symbol = catalog.resolve(identifier)
     doc = strict_loads(FIXTURE.read_bytes())
     project = doc["project"]
     project["part_definitions"].append(profile["part_definition"])
     project["symbol_definitions"].append(profile["symbol_definition"])
     project["components"].append({
         "id": "test-transistor", "source_refdes": "VT1", "refdes": "VT1",
-        "part_id": BJT, "value": "",
+        "part_id": identifier, "value": "",
     })
     sheet = project["sheets"][0]
     sheet["instances"].append({
@@ -119,11 +129,19 @@ def test_real_v2_export_exact_transformed_line_geometry(angle, mirror):
         ["test-transistor", p.number] for p in symbol.pins
     ]
     transform = Transform(angle, mirror)
-    for line, source in zip(group.findall(SVG + "line"), symbol.graphics, strict=True):
+    for line, source in zip(group.findall(SVG + "line"),
+                            (g for g in symbol.graphics if isinstance(g, Line)), strict=True):
         a, b = transform.apply(source.start), transform.apply(source.end)
         assert tuple(int(Decimal(line.attrib[key]) * 1000)
                      for key in ("x1", "y1", "x2", "y2")) == (
             a.x + 150000, a.y + 100000, b.x + 150000, b.y + 100000,
+        )
+    for circle, source in zip(group.findall(SVG + "circle"),
+                              (g for g in symbol.graphics if isinstance(g, Circle)), strict=True):
+        center = transform.apply(source.center)
+        assert tuple(int(Decimal(circle.attrib[key]) * 1000)
+                     for key in ("cx", "cy", "r")) == (
+            center.x + 150000, center.y + 100000, source.radius,
         )
     assert root.attrib["data-source-net-count"] == "2"
     assert root.attrib["data-authored-wire-count"] == "2"

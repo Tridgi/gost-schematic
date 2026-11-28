@@ -21,10 +21,14 @@ import { renderProjectPreviewSVG, renderPreviewPng300 } from './export/browser-e
 const umToMm = (value:number):number => value/1000;
 const asPoint = (point:readonly number[]):string => String(umToMm(point[0]))+' '+String(umToMm(point[1]));
 function CataloguePreview({symbol}:{symbol:SymbolDefinition}) {
-  return <svg viewBox="-12 -8 24 16" fill="none" stroke="currentColor" strokeWidth={0.45}
+  return <svg viewBox="-14 -14 28 28" fill="none" stroke="currentColor" strokeWidth={0.45}
     aria-hidden="true">
     {symbol.graphics.map((graphic,index)=>{
       const pts=graphic.points_um.map(p=>asPoint(p));
+      if(graphic.kind==='circle'){
+        const [a,b]=graphic.points_um;
+        return <circle key={index} cx={umToMm(a[0])} cy={umToMm(a[1])} r={umToMm(b[0]-a[0])}/>;
+      }
       if(graphic.kind==='rect'){
         const a=graphic.points_um[0],b=graphic.points_um[1];
         return <rect key={index} x={umToMm(Math.min(a[0],b[0]))}

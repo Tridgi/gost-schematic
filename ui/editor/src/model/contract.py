@@ -176,6 +176,12 @@ def _semantic(project: dict) -> None:
             if symbol_id not in symbols or symbols[symbol_id]['part_id'] != part['id']:
                 raise ContractError('PART_SYMBOL_MISMATCH', part['id'])
     for sym in symbols.values():
+        for graphic in sym['graphics']:
+            if graphic['kind'] == 'circle':
+                (x, y), (rx, ry) = graphic['points_um']
+                radius = rx - x
+                if ry != y or radius <= 0 or max(abs(x), abs(y)) + radius > 1_000_000_000:
+                    raise ContractError('INVALID_CIRCLE', sym['id'])
         part = parts.get(sym['part_id'])
         if not part or sym['id'] not in part['symbol_ids']:
             raise ContractError('PART_SYMBOL_MISMATCH', sym['id'])

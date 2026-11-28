@@ -16,6 +16,8 @@ on:
       - "tests/test_transistor_switches.py"
       - "tests/test_transistor_profile_persistence.py"
       - "tests/test_transistor_v2_projection.py"
+      - "tests/test_v2_circle_validation.py"
+      - "ui/contracts/project-v2.schema.json"
       - "ui/integration/transistor_catalog.py"
       - "src/gost_schematic/agent_project/catalog.py"
       - "tests/test_bipolar_layouts.py"
@@ -63,4 +65,4 @@ jobs:
       - name: Check catalog structural integrity and focused regressions
         run: |
           python scripts/audit_symbol_catalog.py --output output/catalog-integrity-audit.json
-          pytest -q tests/test_resistor_batch01.py tests/test_resistor_batch02.py tests/test_full_catalog_native.py tests/test_protective_routing_keepout.py tests/test_inductor_extended_profile.py tests/test_transformer_family.py tests/test_measurement_transformers.py tests/test_three_phase_magnetic.py tests/test_magnetic_amplifier_family.py tests/test_magnetic_supplement.py tests/test_transductor_family.py tests/test_categorized_catalog.py tests/test_magnetic_remaining_r5.py tests/test_routing_protection_audit.py tests/test_transistor_protection_r6.py tests/test_magnetic_source_review_r6.py tests/test_diode_cycle4.py tests/test_diode_cycle4_svg.py tests/test_diode_cycle4_transformed_svg.py tests/test_catalog_cycle7_semiconductors.py tests/test_semiconductor_s2.py tests/test_thyristor_s3.py tests/test_bipolar_layouts.py tests/test_mosfet_layouts.py tests/test_mosfet_extended_layouts.py tests/test_mosfet_body_diode.py tests/test_transistor_switches.py tests/test_transistor_profile_persistence.py tests/test_transistor_v2_projection.py
+          pytest -q tests/test_resistor_batch01.py tests/test_resistor_batch02.py tests/test_full_catalog_native.py tests/test_protective_routing_keepout.py tests/test_inductor_extended_profile.py tests/test_transformer_family.py tests/test_measurement_transformers.py tests/test_three_phase_magnetic.py tests/test_magnetic_amplifier_family.py tests/test_magnetic_supplement.py tests/test_transductor_family.py tests/test_categorized_catalog.py tests/test_magnetic_remaining_r5.py tests/test_routing_protection_audit.py tests/test_transistor_protection_r6.py tests/test_magnetic_source_review_r6.py tests/test_diode_cycle4.py tests/test_diode_cycle4_svg.py tests/test_diode_cycle4_transformed_svg.py tests/test_catalog_cycle7_semiconductors.py tests/test_semiconductor_s2.py tests/test_thyristor_s3.py tests/test_bipolar_layouts.py tests/test_mosfet_layouts.py tests/test_mosfet_extended_layouts.py tests/test_mosfet_body_diode.py tests/test_transistor_switches.py tests/test_transistor_profile_persistence.py tests/test_transistor_v2_projection.py tests/test_v2_circle_validation.py

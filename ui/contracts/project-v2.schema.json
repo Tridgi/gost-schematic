@@ -180,7 +180,8 @@
           "enum": [
             "line",
             "rect",
-            "polyline"
+            "polyline",
+            "circle"
           ]
         },
         "points_um": {
@@ -200,6 +201,25 @@
         "kind",
         "points_um",
         "stroke_um"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "circle"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "points_um": {
+                "minItems": 2,
+                "maxItems": 2
+              }
+            }
+          }
+        }
       ]
     },
     "symbol_definition": {
@@ -269,7 +289,8 @@
                 "enum": [
                   "line",
                   "rect",
-                  "polyline"
+                  "polyline",
+                  "circle"
                 ]
               },
               "points_um": {
@@ -289,6 +310,25 @@
               "kind",
               "points_um",
               "stroke_um"
+            ],
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "const": "circle"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "points_um": {
+                      "minItems": 2,
+                      "maxItems": 2
+                    }
+                  }
+                }
+              }
             ]
           },
           "minItems": 1

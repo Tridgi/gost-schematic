@@ -20,6 +20,7 @@ export type CanvasSymbol = {
   mirror_x:boolean;
   pins:CanvasPin[];
   strokes:CanvasStroke[];
+  circles:{center_um:PointUm;radius_um:number;stroke_um:number}[];
   status:'draft'|'approved'|'deprecated';
   layer_id:string;
 };

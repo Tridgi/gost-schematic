@@ -122,6 +122,14 @@ function validateAuthoring(file:ProjectFileV2):void {
     const part=parts.get(symbol.part_id);
     if(!part)reject('UNKNOWN_PART');
     if(!Array.isArray(symbol.pins))reject('INVALID_SYMBOL_PINS');
+    if(!Array.isArray(symbol.graphics))reject('INVALID_SYMBOL_GRAPHICS');
+    for(const g of symbol.graphics){
+      if(g.kind!=='circle')continue;
+      if(!Array.isArray(g.points_um)||g.points_um.length!==2)reject('INVALID_CIRCLE');
+      const a=xy(g.points_um[0]),b=xy(g.points_um[1]),r=b[0]-a[0];
+      if(b[1]!==a[1]||r<=0||Math.max(Math.abs(a[0]),Math.abs(a[1]))+r>1e9||
+        !Number.isSafeInteger(g.stroke_um)||g.stroke_um<=0||g.stroke_um>100000)reject('INVALID_CIRCLE');
+    }
     const numbers=new Set<string>();
     for(const pin of symbol.pins){
       checkId(pin?.physical_pin_number,'INVALID_PINREF');

@@ -1,14 +1,13 @@
 """Exact Python transistor profile projection to the current CAD ProjectV2.
 
-The V2 document has no circle primitive or routing keepout fields. Export
-only lossless line artwork, with the source lock and protection in a separate
-manifest. This is a staging interface, not permission to place these parts
+V2 supports exact lines and circles, but no routing keepout fields. Export
+lossless artwork with the source lock and protection in a separate manifest. This is a staging interface, not permission to place these parts
 without enforcing the protection metadata.
 """
 import json
 
 from gost_schematic.agent_project.catalog import CatalogResolver, ProjectError
-from gost_schematic.core.geometry import Line
+from gost_schematic.core.geometry import Circle, Line
 
 
 class ProjectionError(ValueError):
@@ -27,7 +26,7 @@ def project_v2_profile(catalog: CatalogResolver, identifier: str) -> dict:
     if identifier not in catalog.transistor_layout_ids():
         raise ProjectionError("UNKNOWN_TRANSISTOR_PROFILE: " + identifier)
     part, symbol = catalog.resolve(identifier)
-    if not all(isinstance(item, Line) for item in symbol.graphics):
+    if not all(isinstance(item, (Line, Circle)) for item in symbol.graphics):
         raise ProjectionError("UNSUPPORTED_V2_PRIMITIVE: " + identifier)
     # V2 cannot carry these physical attributes. Refuse non-default values
     # rather than changing the physical meaning in the target document.
@@ -57,8 +56,10 @@ def project_v2_profile(catalog: CatalogResolver, identifier: str) -> dict:
                 for p in symbol.pins
             ],
             "graphics": [
-                {"kind": "line", "points_um": [_point(g.start), _point(g.end)],
-                 "stroke_um": symbol.line_width_um}
+                ({"kind": "line", "points_um": [_point(g.start), _point(g.end)],
+                  "stroke_um": symbol.line_width_um} if isinstance(g, Line) else
+                 {"kind": "circle", "points_um": [_point(g.center),
+                  [g.center.x + g.radius, g.center.y]], "stroke_um": symbol.line_width_um})
                 for g in symbol.graphics
             ],
         },
