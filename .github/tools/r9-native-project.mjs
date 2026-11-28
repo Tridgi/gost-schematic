@@ -263,7 +263,7 @@ async function createEditorAcceptance(){
     await dialog.waitFor({state:'hidden'});
     assert.deepEqual((await save()).project,final.project);
     await canvas.press('r');
-    await page.waitForFunction(()=>/^rotate\\(180 /.test(document.querySelector('text[data-testid^="sheet-text-"]')?.getAttribute('transform')??''));
+    await page.waitForFunction(()=>/^rotate\(180 /.test(document.querySelector('text[data-testid^="sheet-text-"]')?.getAttribute('transform')??''));
     const rotated=await save(),rotatedExpected=structuredClone(final.project);
     rotatedExpected.sheets[0].texts[0].rotation_deg=180;
     assert.deepEqual(rotated.project,rotatedExpected);
@@ -271,7 +271,7 @@ async function createEditorAcceptance(){
     assert.deepEqual((await save()).project,final.project);
     await undo();assert.deepEqual((await save()).project,rotated.project);
     await redo();assert.deepEqual((await save()).project,final.project);
-    assert.match(await annotation.getAttribute('transform'),/^rotate\\(90 /);
+    assert.match(await annotation.getAttribute('transform'),/^rotate\(90 /);
     console.log('R59_REAL_NATIVE_ANNOTATION_ROTATION_KEYS_PASS');
   }
   if(process.env.GSCAD_R56_PAPER_ANNOTATIONS==='1'){
