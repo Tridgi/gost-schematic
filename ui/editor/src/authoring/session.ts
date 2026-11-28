@@ -20,7 +20,7 @@ import {
 import {loadProjectWires} from '../wires/project-v2-adapter';
 import {validateNotes,noteLayout} from '../model/symbol-notes.mjs';
 import {planOrthogonalTree,type TreeStrategy} from './orthogonal-tree';
-import {detourShortcuts,pathMetric,crossingChannelShortcuts,localCrossingCount,coordinatedCrossingShortcuts} from './detour-shortcuts';
+import {detourShortcuts,pathMetric,crossingChannelShortcuts,localCrossingCount,coordinatedCrossingShortcuts,parallelSpacingQuality,parallelSpacingShortcuts,type ParallelSpacingQuality} from './detour-shortcuts';
 import {assessLayout,improvesLayout,preservesLayoutSafety,type LayoutQuality} from './layout-quality';
 import {curveGeometry} from '../model/curves.mjs';
 import {planComponentLabels} from '../canvas/component-labels';
@@ -41,7 +41,7 @@ export type GroupClipboard = {
 };
 
 export type PlacementHint={origin:MutablePoint;from:MutablePoint;to:MutablePoint;target:PinRef;newPin:string};
-export type LayoutPreview={token:string|null;before:LayoutQuality;after:LayoutQuality;operations:string[];attempted:number;rejected:number;limited:boolean};
+export type LayoutPreview={token:string|null;before:LayoutQuality;after:LayoutQuality;operations:string[];attempted:number;rejected:number;limited:boolean;spacing?:{before:ParallelSpacingQuality;after:ParallelSpacingQuality}};
 export type PlacementProfile='default'|'compact'|'spacious';
 export type PlacementSearchPreview=FunctionalRoutingPreview&{profile:PlacementProfile;profilesTried:number;refinementAttempts:number};
 export type FunctionalRoutingPreview={token:string|null;requested:number;routed:number;variant:'hub'|'functional';moved:string[];baseline:LayoutQuality;quality:LayoutQuality;attempted:number;outcomes:InitialBatchOutcome[]};
@@ -2143,7 +2143,9 @@ export class AuthoringSession {
    * to the live document before revision-bound Apply. */
   /** Shorten only individual review-marked polylines. Physical terminals,
    * explicit junction/splice positions, and all other geometry stay fixed. */
-  previewDetourRefinement(crossingOnly=false):LayoutPreview{
+  previewParallelSpacing():LayoutPreview{return this.previewDetourRefinement(false,true);}
+
+  previewDetourRefinement(crossingOnly=false,spacingOnly=false):LayoutPreview{
     this.layoutPlan=null;
     const base=this.file,sh=base.project.sheets[indexOfSheet(base)];
     if(sh.instances.length>128||sh.wires.reduce((n,w)=>n+w.segments.length,0)>512)reject('LAYOUT_SIZE_LIMIT');
@@ -2170,7 +2172,12 @@ export class AuthoringSession {
     let best=new AuthoringSession(base),assessment=before,attempted=0,rejected=0;
     let visible=new Set(planComponentLabels(base,sh.id).labels.map(l=>l.instanceId));
     const operations:string[]=[];
-    const cap=crossingOnly?96:64;
+    const cap=spacingOnly?32:crossingOnly?96:64;
+    const spacingOf=(sheet:Sheet)=>parallelSpacingQuality(sheet.wires.flatMap(w=>
+      w.vertices.slice(1).map((b,i)=>({a:w.vertices[i].at_um,b:b.at_um,net:w.net_id}))));
+    const spacingBefore=spacingOnly?spacingOf(sh):undefined;
+    let spacingAfter=spacingBefore;
+    if(spacingBefore&&!spacingBefore.complete)reject('LAYOUT_CHECK_INCOMPLETE');
     const crossingPriority=new Map<string,number>();
     if(crossingOnly){
       const segments=sh.wires.flatMap(w=>w.vertices.slice(1).map((v,i)=>({a:w.vertices[i].at_um,b:v.at_um,net:w.net_id})));
@@ -2234,7 +2241,8 @@ export class AuthoringSession {
       const start=w.vertices[0],end=w.vertices.at(-1)!;
       const foreign=sheet.wires.filter(v=>v.id!==w.id).flatMap(v=>v.vertices.slice(1).map((b,i)=>({a:v.vertices[i],b,net:v.net_id,box:rect(v.vertices[i].at_um,b.at_um)})));
       const points=w.vertices.map(v=>v.at_um),startPin=start.anchor.kind==='pin',endPin=end.anchor.kind==='pin';
-      const candidates=crossingOnly?crossingChannelShortcuts(points,foreign.filter(v=>v.net!==w.net_id).map(v=>({a:v.a.at_um,b:v.b.at_um,net:v.net})),startPin,endPin):detourShortcuts(points,startPin,endPin);
+      const candidates=spacingOnly?parallelSpacingShortcuts(points,foreign.map(v=>({a:v.a.at_um,b:v.b.at_um,net:v.net})),startPin,endPin):
+        crossingOnly?crossingChannelShortcuts(points,foreign.filter(v=>v.net!==w.net_id).map(v=>({a:v.a.at_um,b:v.b.at_um,net:v.net})),startPin,endPin):detourShortcuts(points,startPin,endPin);
       for(const points of candidates){
         if(attempted>=cap)break;
         attempted++;
@@ -2245,18 +2253,26 @@ export class AuthoringSession {
         let trial:AuthoringSession;
         try{trial=new AuthoringSession(next)}catch(e){if(!(e instanceof WireError))throw e;rejected++;continue}
         const after=assessLayout(next,trial.engine);
-        if(sourceGuard(next)!==sourceGuard(base)||!improvesLayout(assessment,after)||crossingOnly&&after.quality.crossings>=assessment.quality.crossings){rejected++;continue}
+        const nextSpacing=spacingOnly?spacingOf(ns):undefined;
+        const spacingSafe=!!nextSpacing&&!!spacingAfter&&nextSpacing.complete&&
+          nextSpacing.coverageUm>=spacingAfter.coverageUm&&nextSpacing.imbalanceUm2<spacingAfter.imbalanceUm2&&
+          preservesLayoutSafety(assessment,after)&&after.quality.bends<=assessment.quality.bends&&
+          after.quality.lengthUm<=assessment.quality.lengthUm&&after.quality.overflow<=assessment.quality.overflow&&
+          after.quality.errors<=assessment.quality.errors&&after.quality.geometryWarnings<=assessment.quality.geometryWarnings;
+        if(sourceGuard(next)!==sourceGuard(base)||(spacingOnly?!spacingSafe:!improvesLayout(assessment,after))||
+           crossingOnly&&after.quality.crossings>=assessment.quality.crossings){rejected++;continue}
         const labels=new Set(planComponentLabels(next,sh.id).labels.map(l=>l.instanceId));
         if([...visible].some(id=>!labels.has(id))){rejected++;continue}
         best=trial;assessment=after;visible=labels;
-        operations.push((crossingOnly?'Устранение пересечения ':'Устранение обхода ')+(base.project.nets.find(n=>n.id===w.net_id)?.name??w.net_id));
+        if(nextSpacing)spacingAfter=nextSpacing;
+        operations.push((spacingOnly?'Выравнивание шага ':crossingOnly?'Устранение пересечения ':'Устранение обхода ')+(base.project.nets.find(n=>n.id===w.net_id)?.name??w.net_id));
         break;
       }
     }
     // R60 fallback: only try coordinated moves if the established single-wire
     // search found nothing. Both paths are validated against the final sheet.
     let pairLimited=false;
-    if(crossingOnly&&!operations.length&&attempted<cap&&assessment.quality.crossings>0){
+    if(crossingOnly&&!spacingOnly&&!operations.length&&attempted<cap&&assessment.quality.crossings>0){
       const doc=best.file,sheet=doc.project.sheets[indexOfSheet(doc)];
       const pairWires=eligible.slice(0,24);
       const segs=(w:WirePolyline)=>w.vertices.slice(1).map((v,i)=>({a:w.vertices[i].at_um,b:v.at_um,net:w.net_id}));
@@ -2297,7 +2313,7 @@ export class AuthoringSession {
     }
     const token=operations.length?newId('detour-refinement'):null;
     if(token)this.layoutPlan={token,revision:this.clock,sheet:sh.id,next:best.file};
-    return {token,before:before.quality,after:assessment.quality,operations,attempted,rejected,limited:attempted>=cap||pairLimited};
+    return {token,before:before.quality,after:assessment.quality,operations,attempted,rejected,limited:attempted>=cap||pairLimited,...(spacingBefore&&spacingAfter?{spacing:{before:spacingBefore,after:spacingAfter}}:{})};
   }
 
   previewFunctionalAlternatives():PlacementSearchPreview{
