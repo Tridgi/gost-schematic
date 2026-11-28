@@ -55,7 +55,7 @@ export function detourShortcuts(points:readonly ShortcutPoint[],preserveStart:bo
 /** Different-Net segments only; crossings count unique Net/position pairs,
  * matching the local part of the full layout assessment. */
 export type CrossingSegment={a:ShortcutPoint;b:ShortcutPoint;net:string};
-export function localCrossingCount(points:readonly ShortcutPoint[],foreign:readonly CrossingSegment[]):number{
+function localCrossingKeys(points:readonly ShortcutPoint[],foreign:readonly CrossingSegment[]):Set<string>{
  const hits=new Set<string>();
  for(let i=1;i<points.length;i++){
   const a=points[i-1],b=points[i],horizontal=a[1]===b[1];
@@ -68,15 +68,18 @@ export function localCrossingCount(points:readonly ShortcutPoint[],foreign:reado
     hits.add(JSON.stringify([s.net,x,y]));
   }
  }
- return hits.size;
+ return hits;
+}
+export function localCrossingCount(points:readonly ShortcutPoint[],foreign:readonly CrossingSegment[]):number{
+ return localCrossingKeys(points,foreign).size;
 }
 /** Search alternative monotone L/Z channels, not new detours.
  * Keep endpoint direction and existing lead length; caller independently
  * checks all obstacles, clearance, Net identities and actual global quality. */
-export function crossingChannelShortcuts(points:readonly ShortcutPoint[],foreign:readonly CrossingSegment[],preserveStart:boolean,preserveEnd:boolean):[number,number][][]{
+export function crossingChannelShortcuts(points:readonly ShortcutPoint[],foreign:readonly CrossingSegment[],preserveStart:boolean,preserveEnd:boolean,pairedCandidate=false):[number,number][][]{
  if(points.length<3||points.length>24||foreign.length>512)return [];
  const baseline=localCrossingCount(points,foreign);
- if(!baseline)return [];
+ if(!baseline&&!pairedCandidate)return [];
  const old=pathMetric(points),seen=new Set<string>();
  const ranked:{p:[number,number][];crossings:number;bends:number;length:number}[]=[];
  let tried=0;
@@ -89,9 +92,9 @@ export function crossingChannelShortcuts(points:readonly ShortcutPoint[],foreign
      pathMetric(p.slice(-2)).length<pathMetric(points.slice(-2)).length))return;
   const m=pathMetric(p);
   if(m.length>old.length||m.bends>old.bends)return;
-  const key=JSON.stringify(p);if(seen.has(key))return;seen.add(key);tried++;
+  const key=JSON.stringify(p);if(key===JSON.stringify(points)||seen.has(key))return;seen.add(key);tried++;
   const crossings=localCrossingCount(p,foreign);
-  if(crossings<baseline)ranked.push({p,crossings,...m});
+  if(crossings<baseline||pairedCandidate)ranked.push({p,crossings,...m});
  };
  // Reversing the corner of an L does not change its Manhattan length.
  for(let i=0;i<points.length-2;i++){
@@ -122,4 +125,71 @@ export function crossingChannelShortcuts(points:readonly ShortcutPoint[],foreign
  }
  return ranked.sort((a,b)=>a.crossings-b.crossings||a.bends-b.bends||a.length-b.length||
    JSON.stringify(a.p).localeCompare(JSON.stringify(b.p))).slice(0,12).map(v=>v.p);
+}
+
+
+/** Candidate-only paired search. A local score is not a DRC or acceptance
+ * decision: the caller must validate both changed paths on the same final
+ * snapshot, then compare full layout quality and connectivity. */
+export type CrossingPairWire={net:string;points:readonly ShortcutPoint[];preserveStart:boolean;preserveEnd:boolean};
+type PairChoice={first:[number,number][];second:[number,number][];crossings:number;bends:number;length:number};
+const asSegments=(points:readonly ShortcutPoint[],net:string):CrossingSegment[]=>
+ points.slice(1).map((b,i)=>({a:points[i],b,net}));
+function pairCrossings(first:CrossingPairWire,second:CrossingPairWire,foreign:readonly CrossingSegment[]):number{
+ const hits=new Set<string>();
+ const add=(wire:CrossingPairWire,segments:readonly CrossingSegment[])=>{
+  for(const key of localCrossingKeys(wire.points,segments)){
+   const [net,x,y]=JSON.parse(key) as [string,number,number];
+   hits.add(JSON.stringify([...[wire.net,net].sort(),x,y]));
+  }
+ };
+ add(first,[...foreign,...asSegments(second.points,second.net)]);
+ add(second,foreign);
+ return hits.size;
+}
+/** Rank bounded, endpoint-preserving pair candidates on their combined
+ * geometry. Neither individual path may gain bends or length. */
+export function rankCrossingPairs(first:CrossingPairWire,second:CrossingPairWire,
+ foreign:readonly CrossingSegment[],firstChoices:readonly ShortcutPoint[][],
+ secondChoices:readonly ShortcutPoint[][]):PairChoice[]{
+ if(first.net===second.net||foreign.length>512||first.points.length<3||second.points.length<3||
+    first.points.length>24||second.points.length>24)return [];
+ const baseline=pairCrossings(first,second,foreign);
+ if(!baseline)return [];
+ const fm=pathMetric(first.points),sm=pathMetric(second.points),out:PairChoice[]=[],seen=new Set<string>();
+ const usable=(wire:CrossingPairWire,raw:readonly ShortcutPoint[],old:ReturnType<typeof pathMetric>)=>{
+  if(raw.length<2||raw.length>24)return null;
+  const p=compact(raw);if(!p||JSON.stringify(p)===JSON.stringify(wire.points)||
+   !same(p[0],wire.points[0])||!same(p.at(-1)!,wire.points.at(-1)!))return null;
+  const m=pathMetric(p);
+  if(m.bends>old.bends||m.length>old.length)return null;
+  if(wire.preserveStart&&(!same(direction(wire.points[0],wire.points[1]) as [number,number],direction(p[0],p[1]) as [number,number])||
+   pathMetric(p.slice(0,2)).length<pathMetric(wire.points.slice(0,2)).length))return null;
+  if(wire.preserveEnd&&(!same(direction(wire.points.at(-2)!,wire.points.at(-1)!) as [number,number],direction(p.at(-2)!,p.at(-1)!) as [number,number])||
+   pathMetric(p.slice(-2)).length<pathMetric(wire.points.slice(-2)).length))return null;
+  return {p,m};
+ };
+ for(const a of firstChoices.slice(0,12)){
+  const x=usable(first,a,fm);if(!x)continue;
+  for(const b of secondChoices.slice(0,12)){
+   const y=usable(second,b,sm);if(!y)continue;
+   const crossings=pairCrossings({...first,points:x.p},{...second,points:y.p},foreign);
+   if(crossings>=baseline)continue;
+   const key=JSON.stringify([x.p,y.p]);if(seen.has(key))continue;seen.add(key);
+   out.push({first:x.p,second:y.p,crossings,bends:x.m.bends+y.m.bends,length:x.m.length+y.m.length});
+  }
+ }
+ return out.sort((a,b)=>a.crossings-b.crossings||a.bends-b.bends||a.length-b.length||
+  JSON.stringify([a.first,a.second]).localeCompare(JSON.stringify([b.first,b.second]))).slice(0,12);
+}
+export function coordinatedCrossingShortcuts(first:CrossingPairWire,second:CrossingPairWire,
+ foreign:readonly CrossingSegment[]):PairChoice[]{
+ if(first.net===second.net||foreign.length>512||first.points.length<3||second.points.length<3||
+  first.points.length>24||second.points.length>24)return [];
+ // Include neutral individual changes: only the combined score is required
+ // to improve. The single-wire API retains its strict original default.
+ const choices=(wire:CrossingPairWire,partner:CrossingPairWire)=>crossingChannelShortcuts(
+  wire.points,[...foreign,...asSegments(partner.points,partner.net)].filter(s=>s.net!==wire.net),
+  wire.preserveStart,wire.preserveEnd,true);
+ return rankCrossingPairs(first,second,foreign,choices(first,second),choices(second,first));
 }
