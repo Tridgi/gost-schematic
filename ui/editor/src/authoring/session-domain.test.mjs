@@ -2512,7 +2512,8 @@ test('R54 text quarter-turn shortcut preserves pivot, IDs and all electrical geo
  s.place(s.newTransaction('right'),'symbol/resistor.fixed',[220000,80000]);
  const [a,b]=s.file.project.components.map(c=>c.id);
  s.connect(s.newTransaction('wire'),pin(a,'2'),pin(b,'1'));
- s.addText(s.newTransaction('text'),'Питание 24 В',[65125,140000],5000);
+ // Center the full 60 mm conservative text envelope far enough from every margin.
+ s.addText(s.newTransaction('text'),'Питание 24 В',[100125,140000],5000);
  const before=s.file,t=before.project.sheets[0].texts[0],rev=s.revision,stale=s.newTransaction('stale');
  for(const rotation of [90,180,270,0]){
   s.rotateText(s.newTransaction('clockwise'),t.id,1);
