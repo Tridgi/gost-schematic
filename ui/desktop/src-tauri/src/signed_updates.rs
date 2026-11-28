@@ -12,6 +12,9 @@ use reqwest::{redirect, Url};
 
 const FEED: &str = "https://github.com/Tridgi/gost-schematic/releases/latest/download/latest.json";
 const MAX_INSTALLER_BYTES: usize = 1024 * 1024 * 1024;
+const MAX_MANIFEST_BYTES: usize = 64 * 1024;
+const MAX_SIGNATURE_TEXT_BYTES: usize = 16 * 1024;
+const UPDATE_TARGET: &str = "windows-x86_64";
 
 fn stable_version(version: &str) -> Option<(u64, u64, u64)> {
     let parts: Vec<_> = version.split('.').collect();
@@ -158,13 +161,66 @@ fn append_bounded(buffer: &mut Vec<u8>, chunk: &[u8], limit: usize) -> Result<()
     buffer.extend_from_slice(chunk);
     Ok(())
 }
-async fn download_bounded(update: &Update, state: &UpdateStore) -> Result<Vec<u8>, &'static str> {
-    if !trusted_download_url(&update.download_url) { return Err("UPDATE_MANIFEST_MISMATCH"); }
-    let client = reqwest::Client::builder().https_only(true)
-        .redirect(release_redirect_policy()).timeout(Duration::from_secs(300))
+fn validate_release_metadata(raw: &[u8], version: &str) -> Result<Value, &'static str> {
+    if raw.is_empty() || raw.len() > MAX_MANIFEST_BYTES { return Err("UPDATE_METADATA_SIZE_REJECTED"); }
+    let json: Value = serde_json::from_slice(raw).map_err(|_| "UPDATE_METADATA_INVALID")?;
+    if stable_version(version).is_none() || json.get("version").and_then(Value::as_str) != Some(version) {
+        return Err("UPDATE_MANIFEST_MISMATCH");
+    }
+    // Require the fixed platform entry emitted by our signed release staging.
+    // Other platform entries, dynamic top-level URL/signature and mismatched
+    // URLs cannot override the expected installer.
+    let entry = json.get("platforms").and_then(|p| p.get(UPDATE_TARGET))
+        .ok_or("UPDATE_MANIFEST_MISMATCH")?;
+    if json.get("url").is_some() || json.get("signature").is_some()
+        || entry.get("url").and_then(Value::as_str) != asset_url(version).as_deref() {
+        return Err("UPDATE_MANIFEST_MISMATCH");
+    }
+    let signature = entry.get("signature").and_then(Value::as_str)
+        .filter(|s| !s.is_empty() && s.len() <= MAX_SIGNATURE_TEXT_BYTES)
+        .ok_or("UPDATE_METADATA_INVALID")?;
+    if STANDARD.decode(signature).is_err() { return Err("UPDATE_METADATA_INVALID"); }
+    Ok(json)
+}
+
+// Use the same TLS provider as the pinned Tauri updater. Its check() installs
+// the provider internally, but we deliberately replace its unbounded JSON read.
+fn update_client(timeout: Duration) -> Result<reqwest::Client, &'static str> {
+    if rustls::crypto::CryptoProvider::get_default().is_none() {
+        let _ = rustls::crypto::ring::default_provider().install_default();
+    }
+    reqwest::Client::builder().https_only(true)
+        .redirect(release_redirect_policy()).timeout(timeout)
         .connect_timeout(Duration::from_secs(15))
         .user_agent("GOST-Schematic-Updater")
-        .build().map_err(|_| "UPDATE_CLIENT_FAILED")?;
+        .build().map_err(|_| "UPDATE_CLIENT_FAILED")
+}
+
+async fn fetch_release_metadata(version: &str) -> Result<Value, &'static str> {
+    let client = update_client(Duration::from_secs(20))?;
+    let mut response = client.get(FEED)
+        .header(reqwest::header::ACCEPT, "application/json")
+        .header(reqwest::header::ACCEPT_ENCODING, "identity")
+        .send().await.map_err(|_| "UPDATE_CHECK_FAILED")?;
+    if !trusted_download_url(response.url()) { return Err("UPDATE_HTTP_REJECTED"); }
+    if response.status() == reqwest::StatusCode::NO_CONTENT { return Err("NO_SIGNED_UPDATE"); }
+    if response.status() != reqwest::StatusCode::OK { return Err("UPDATE_HTTP_REJECTED"); }
+    let length = response.content_length();
+    if length.is_some_and(|n| n == 0 || n > MAX_MANIFEST_BYTES as u64) {
+        return Err("UPDATE_METADATA_SIZE_REJECTED");
+    }
+    let mut body = Vec::new();
+    while let Some(chunk) = response.chunk().await.map_err(|_| "UPDATE_CHECK_FAILED")? {
+        append_bounded(&mut body, &chunk, MAX_MANIFEST_BYTES)
+            .map_err(|_| "UPDATE_METADATA_SIZE_REJECTED")?;
+    }
+    if length.is_some_and(|n| n != body.len() as u64) { return Err("UPDATE_LENGTH_MISMATCH"); }
+    validate_release_metadata(&body, version)
+}
+
+async fn download_bounded(update: &Update, state: &UpdateStore) -> Result<Vec<u8>, &'static str> {
+    if !trusted_download_url(&update.download_url) { return Err("UPDATE_MANIFEST_MISMATCH"); }
+    let client = update_client(Duration::from_secs(300))?;
     let mut response = client.get(update.download_url.clone())
         .header(reqwest::header::ACCEPT, "application/octet-stream")
         .header(reqwest::header::ACCEPT_ENCODING, "identity")
@@ -226,11 +282,13 @@ pub async fn native_prepare_signed_update(
         *stage = Stage::Downloading { received: 0, total: None, id: Uuid::new_v4().simple().to_string(), cancel: Some(cancel) };
     }
     let work = async {
+        let metadata = fetch_release_metadata(&version).await?;
+        // Official Tauri 2.14.1 restore_update applies the version comparator
+        // and runtime public key and always requires a signed version.
         let updater = app.updater_builder()
-            .configure_client(|client| client.https_only(true).redirect(release_redirect_policy()))
-            .timeout(Duration::from_secs(300))
+            .target(UPDATE_TARGET)
             .build().map_err(|_| "UPDATE_CONFIGURATION_FAILED")?;
-        let update = updater.check().await.map_err(|_| "UPDATE_CHECK_FAILED")?
+        let update = updater.restore_update(metadata).map_err(|_| "UPDATE_CHECK_FAILED")?
             .ok_or("NO_SIGNED_UPDATE")?;
         if update.version != version || asset_url(&version).as_deref() != Some(update.download_url.as_str()) {
             return Err("UPDATE_MANIFEST_MISMATCH");
@@ -330,6 +388,39 @@ mod tests {
         for bad in ["http://github.com/Tridgi/gost-schematic/releases/latest", "https://evil.example/Tridgi/gost-schematic/releases/a", "https://github.com.evil.example/a", "https://github.com:444/Tridgi/gost-schematic/releases/a", "https://user@github.com/Tridgi/gost-schematic/releases/a", "https://github.com/other/repo/releases/a", "https://github.com/Tridgi/gost-schematic/releases/a#fragment"] {
             assert!(!trusted_download_url(&Url::parse(bad).unwrap()));
         }
+    }
+    #[test]
+    fn release_metadata_requires_exact_version_platform_and_asset() {
+        let valid = serde_json::json!({"version":"0.2.0","platforms":{UPDATE_TARGET:{
+            "url":asset_url("0.2.0").unwrap(),"signature":STANDARD.encode("fixture")}}});
+        let encode = |v: &Value| serde_json::to_vec(v).unwrap();
+        assert_eq!(validate_release_metadata(&encode(&valid), "0.2.0").unwrap(), valid);
+        assert!(validate_release_metadata(&encode(&valid), "0.2.1").is_err());
+        assert!(validate_release_metadata(&encode(&valid), "v0.2.0").is_err());
+        let mut bad = valid.clone(); bad["platforms"] = serde_json::json!({"linux-x86_64":valid["platforms"][UPDATE_TARGET]});
+        assert!(validate_release_metadata(&encode(&bad), "0.2.0").is_err());
+        let mut bad = valid.clone(); bad["url"] = Value::String("https://example.invalid".into());
+        assert!(validate_release_metadata(&encode(&bad), "0.2.0").is_err());
+        let mut bad = valid.clone(); bad["platforms"][UPDATE_TARGET]["url"] = Value::String(asset_url("0.1.0").unwrap());
+        assert!(validate_release_metadata(&encode(&bad), "0.2.0").is_err());
+        let mut bad = valid.clone(); bad["platforms"][UPDATE_TARGET]["signature"] = Value::String("not base64!".into());
+        assert!(validate_release_metadata(&encode(&bad), "0.2.0").is_err());
+        let mut bad = valid.clone(); bad["platforms"][UPDATE_TARGET]["signature"] = Value::String("A".repeat(MAX_SIGNATURE_TEXT_BYTES+4));
+        assert!(validate_release_metadata(&encode(&bad), "0.2.0").is_err());
+        assert!(validate_release_metadata(b"{broken", "0.2.0").is_err());
+    }
+    #[test]
+    fn metadata_limit_rejects_chunked_overflow_and_empty_body() {
+        assert_eq!(validate_release_metadata(&[], "0.2.0"), Err("UPDATE_METADATA_SIZE_REJECTED"));
+        let mut body = Vec::new();
+        append_bounded(&mut body, &vec![b' '; MAX_MANIFEST_BYTES], MAX_MANIFEST_BYTES).unwrap();
+        assert_eq!(append_bounded(&mut body, b"x", MAX_MANIFEST_BYTES), Err("UPDATE_SIZE_REJECTED"));
+        body.push(b'x');
+        assert_eq!(validate_release_metadata(&body, "0.2.0"), Err("UPDATE_METADATA_SIZE_REJECTED"));
+    }
+    #[test]
+    fn update_http_client_initializes_tls_without_plugin_check() {
+        assert!(update_client(Duration::from_secs(1)).is_ok());
     }
     #[test]
     fn cancellation_cannot_target_another_download() {
