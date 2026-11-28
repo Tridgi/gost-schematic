@@ -30,7 +30,7 @@ test('R10: paper overflow reports each electrical/non-electrical group without c
  const wire={wires:[{id:'W',vertices:[{at_um:[1,1]},{at_um:[1,210001]}]}],
    junctions:[{id:'J',at_um:[-1,0]}],splices:[{id:'S',at_um:[300000,0]}]};
  const v=detectPaperOverflow(scene,wire,[297000,210000]);
- assert.deepEqual(v,{symbols:[],graphics:['annotation'],wires:['W'],junctions:['J'],splices:['S'],total:4});
+ assert.deepEqual(v,{symbols:[],graphics:['annotation'],wires:['W'],junctions:['J'],splices:['S'],texts:[],total:4});
  assert.throws(()=>detectPaperOverflow(scene,wire,[0,0]),/INVALID_FRAME/);
 });
 
@@ -62,5 +62,27 @@ test('R31b print bounds include wire transverse thickness, dot radius and non-el
  junctions:[{id:'J',at_um:[549,1000]},{id:'OK',at_um:[550,1000]}],
  splices:[{id:'S',at_um:[0,0]}]};
  const report=detectPaperOverflow(scene,snapshot,[10000,10000]);
- assert.deepEqual(report,{symbols:[],graphics:['G'],wires:['H','V'],junctions:['J'],splices:[],total:4});
+ assert.deepEqual(report,{symbols:[],graphics:['G'],wires:['H','V'],junctions:['J'],splices:[],texts:[],total:4});
+});
+
+
+test('R55 paper overflow includes canonical rotated annotation envelopes at exact physical edges',()=>{
+ const scene={symbols:[],graphics:[]},snap=snapshot(),size=[297000,210000];
+ for(const [rotation,at,delta] of [
+  [0,[262000,100000],[1,0]],
+  [90,[100000,175000],[0,1]],
+  [180,[35000,100000],[-1,0]],
+  [270,[100000,35000],[0,-1]],
+ ]){
+  const t={id:'T',text:'MMMMMM',height_um:5000,rotation_deg:rotation,at_um:at};
+  assert.equal(detectPaperOverflow(scene,snap,size,[t]).total,0);
+  const clipped={...t,at_um:[at[0]+delta[0],at[1]+delta[1]]};
+  const frozen=JSON.stringify(clipped);
+  assert.deepEqual(detectPaperOverflow(scene,snap,size,[clipped]).texts,['T']);
+  assert.equal(detectPaperOverflow(scene,snap,size,[clipped]).total,1);
+  assert.equal(JSON.stringify(clipped),frozen);
+ }
+ const label={id:'L',text:'A',at_um:[290001,100000]};
+ assert.deepEqual(detectPaperOverflow(scene,snap,size,[label]).texts,['L']);
+ assert.equal(detectPaperOverflow(scene,snap,size,[{...label,text:''}]).total,0);
 });
