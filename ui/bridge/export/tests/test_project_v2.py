@@ -389,3 +389,40 @@ def test_r50_rotated_annotation_rejects_one_micrometre_viewbox_clipping():
     root.set("height", "39.999mm")
     with pytest.raises(ExportError, match="SOURCE_VIEWBOX_CLIPS_INK"):
         compose_clean_svg(ET.tostring(root), ExportRequest(include_frame=False, strict_font=False))
+
+
+@pytest.mark.parametrize("value,rotation,viewbox,clipped_width", [
+    ("A\U0001f680Б", 0, "115.125 110.5 25 15", "24.999"),
+    ("A\U0001f680Б", 90, "115.125 115.5 15 25", "14.999"),
+    ("A\U0001f680Б", 180, "100.125 115.5 25 15", "24.999"),
+    ("A\U0001f680Б", 270, "110.125 100.5 15 25", "14.999"),
+    ("e\u0301", 0, "115.125 110.5 20 15", "19.999"),
+    ("e\u0301", 90, "115.125 115.5 15 20", "14.999"),
+    ("e\u0301", 180, "105.125 115.5 20 15", "19.999"),
+    ("e\u0301", 270, "110.125 105.5 15 20", "14.999"),
+])
+def test_r58_unicode_annotation_exact_envelope_and_one_micrometre_clip(
+        value, rotation, viewbox, clipped_width):
+    doc, sheet_id = _annotation_only_document(rotation)
+    doc["project"]["sheets"][-1]["texts"][0]["text"] = value
+    original = copy.deepcopy(doc)
+    source = render_v2_source(doc, sheet_id, expected_project_sha256=digest(doc))
+    root = ET.fromstring(source)
+    assert root.get("viewBox") == viewbox
+    item = root.find(".//" + S + "text[@data-id='qa-text']")
+    assert item.text == value
+    assert item.get("transform") == (
+        f"rotate({rotation} 120.125 120.5)" if rotation else None
+    )
+    request = ExportRequest(include_frame=False, include_title=False, strict_font=False)
+    clean, warnings = compose_clean_svg(source, request)
+    assert ET.fromstring(clean).find(".//" + S + "text[@data-id='qa-text']").text == value
+    assert "FONT_RENDER_UNVERIFIED" in warnings
+    # Change only the physical viewport, not the text, anchor or rotation.
+    # Width and viewBox agree, so rejection must come from the ink guard.
+    x, y, _, h = viewbox.split()
+    root.set("viewBox", f"{x} {y} {clipped_width} {h}")
+    root.set("width", clipped_width + "mm")
+    with pytest.raises(ExportError, match="SOURCE_VIEWBOX_CLIPS_INK"):
+        compose_clean_svg(ET.tostring(root, encoding="utf-8"), request)
+    assert doc == original
