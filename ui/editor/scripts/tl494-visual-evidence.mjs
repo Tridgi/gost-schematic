@@ -92,6 +92,8 @@ try{
  const spacingBase=placementSearch.file,spacingRevision=placementSearch.revision;
  const spacing=placementSearch.previewParallelSpacing();
  assert.ok(spacing.attempted<=32);
+ assert.equal(Object.values(spacing.spacing.rejections).reduce((sum,n)=>sum+n,0),spacing.rejected,'R66 every rejection must have exactly one reason');
+ assert.ok(Object.values(spacing.spacing.rejections).every(n=>Number.isSafeInteger(n)&&n>0));
  assert.deepEqual(placementSearch.file,spacingBase);assert.equal(placementSearch.revision,spacingRevision);
  assert.deepEqual(spacing.spacing.before,spacingOf(spacingBase));assert.equal(spacing.spacing.before.complete,true);
  if(spacing.token)placementSearch.applyLayoutPreview(placementSearch.newTransaction('parallel-spacing'),spacing.token);
