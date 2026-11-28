@@ -2255,7 +2255,12 @@ test('R54 R and Shift+R rotate only the selected annotation; modified Delete is 
  const annotation=canvas.locator('text[data-testid^="sheet-text-"]');
  const saved=async()=>{const d=page.waitForEvent('download');await page.getByTestId('save-project').click();return JSON.parse(readFileSync(await (await d).path(),'utf8'));};
  const before=await saved();
- await page.getByTestId('symbol-R1').click();
+ // Symbols are outlines; their empty SVG group center intentionally hits the canvas.
+ // Use the physical canvas hit-test rather than Playwright's SVG painted-area locator.
+ const symbol=page.getByTestId('symbol-R1'),box=await symbol.boundingBox();
+ expect(box).toBeTruthy();
+ await page.mouse.click(box.x+box.width/2,box.y+box.height/2);
+ await expect(symbol).toHaveAttribute('data-selected','true');
  await annotation.click();await expect(annotation).toHaveAttribute('data-text-selected','true');
  await canvas.press('Shift+Delete');await canvas.press('Shift+Backspace');await canvas.press('Shift+F2');
  await expect(page.getByRole('dialog',{name:'Свойства надписи'})).toBeHidden();
