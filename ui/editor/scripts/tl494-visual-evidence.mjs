@@ -26,8 +26,8 @@ assert.equal(sh.graphics.filter(g=>g.kind==='source_b_continuation').length,2);
 let browser;
 try{
  const module=join(temp,'evidence.mjs');
- await build({stdin:{contents:"export {AuthoringSession} from './src/authoring/session.ts'; export {assessLayout} from './src/authoring/layout-quality.ts'; export {renderProjectPreviewSVG} from './src/export/browser-export.ts'; export {planComponentLabels} from './src/canvas/component-labels.ts';",resolveDir:editor,sourcefile:'evidence-entry.ts'},outfile:module,bundle:true,platform:'node',format:'esm',target:'node22',logLevel:'silent'});
- const {AuthoringSession,assessLayout,renderProjectPreviewSVG,planComponentLabels}=await import(pathToFileURL(module).href);
+ await build({stdin:{contents:"export {AuthoringSession} from './src/authoring/session.ts'; export {assessLayout} from './src/authoring/layout-quality.ts'; export {parallelSpacingQuality} from './src/authoring/detour-shortcuts.ts'; export {renderProjectPreviewSVG} from './src/export/browser-export.ts'; export {planComponentLabels} from './src/canvas/component-labels.ts';",resolveDir:editor,sourcefile:'evidence-entry.ts'},outfile:module,bundle:true,platform:'node',format:'esm',target:'node22',logLevel:'silent'});
+ const {AuthoringSession,assessLayout,parallelSpacingQuality,renderProjectPreviewSVG,planComponentLabels}=await import(pathToFileURL(module).href);
  assert.throws(()=>new AuthoringSession(source),/SOURCE_SHA_MISMATCH/);
  const doc=structuredClone(source);
  doc.project.provenance={...p.provenance,status:'synthetic',source_sha:'0'.repeat(40),source_path:'test-only/TL494-visual-evidence',expected_counts:{...p.provenance.expected_counts}};
@@ -87,6 +87,30 @@ try{
  if(crossingChannels.token)assert.ok(stages[7].quality.crossings<stages[6].quality.crossings);
  for(const k of ['instances','junctions','splices'])assert.deepEqual(stages[7].file.project.sheets[0][k],stages[6].file.project.sheets[0][k]);
  console.log('TL494_R39_CROSSINGS '+JSON.stringify({...crossingChannels,token:!!crossingChannels.token}));
+ const spacingOf=file=>parallelSpacingQuality(file.project.sheets[0].wires.flatMap(w=>
+  w.vertices.slice(1).map((v,i)=>({a:w.vertices[i].at_um,b:v.at_um,net:w.net_id}))));
+ const spacingBase=placementSearch.file,spacingRevision=placementSearch.revision;
+ const spacing=placementSearch.previewParallelSpacing();
+ assert.ok(spacing.attempted<=32);
+ assert.deepEqual(placementSearch.file,spacingBase);assert.equal(placementSearch.revision,spacingRevision);
+ assert.deepEqual(spacing.spacing.before,spacingOf(spacingBase));assert.equal(spacing.spacing.before.complete,true);
+ if(spacing.token)placementSearch.applyLayoutPreview(placementSearch.newTransaction('parallel-spacing'),spacing.token);
+ else assert.deepEqual(placementSearch.file,spacingBase);
+ const spacingFinal=placementSearch.file;
+ assert.deepEqual(spacing.spacing.after,spacingOf(spacingFinal));assert.equal(spacing.spacing.after.complete,true);
+ assert.ok(spacing.spacing.after.coverageUm>=spacing.spacing.before.coverageUm);
+ if(spacing.token)assert.ok(spacing.spacing.after.imbalanceUm2<spacing.spacing.before.imbalanceUm2);
+ else assert.deepEqual(spacing.spacing.after,spacing.spacing.before);
+ stages.push({name:'09-parallel-spacing',file:spacingFinal,quality:assessLayout(spacingFinal,placementSearch.engine).quality});
+ for(const k of ['bends','lengthUm','crossings','errors','geometryWarnings','overflow'])assert.ok(stages[8].quality[k]<=stages[7].quality[k],k);
+ for(const k of ['instances','junctions','splices','labels','graphics'])assert.deepEqual(stages[8].file.project.sheets[0][k],stages[7].file.project.sheets[0][k]);
+ const terminals=file=>file.project.sheets[0].wires.map(w=>[w.id,w.net_id,w.layer_id,w.vertices[0],w.vertices.at(-1)]);
+ assert.deepEqual(terminals(spacingFinal),terminals(spacingBase));
+ if(spacing.token){
+  assert.equal(placementSearch.undo(),true);assert.deepEqual(placementSearch.file,spacingBase);
+  assert.equal(placementSearch.redo(),true);assert.deepEqual(placementSearch.file,spacingFinal);
+ }
+ console.log('TL494_R63_SPACING '+JSON.stringify({...spacing,token:!!spacing.token}));
  for(const stage of stages)assert.equal(planComponentLabels(stage.file,stage.file.project.sheets[0].id).labels.length,23);
  // Export through the same browser raster function used in the editor.
  const raster=await build({entryPoints:[join(editor,'src/export/browser-export.ts')],bundle:true,platform:'browser',format:'iife',globalName:'GSCADPreview',write:false,logLevel:'silent'});
@@ -94,7 +118,7 @@ try{
  const page=await browser.newPage();
  await page.addScriptTag({content:raster.outputFiles[0].text});
  mkdirSync(output,{recursive:true});
- const report={schema:1,sourceFile:'ui/fixtures/tl494-source-e695-v2.gscad.json',sourceFileSha256:hash(raw),sourceRevision:p.provenance.source_sha,sourceApproval:'unchanged; detached synthetic test-only copies',fontStatus:'unverified-preview',scope:'browser preview SVG/PNG300, not normative print or native Windows acceptance',counts:{components:23,nets:15,pinrefs:62,da1Pins:16,bGraphics:2},variant:functional.variant,refinementOperations:refinement.operations,extendedOperations:extended.operations,extendedAttempts:extended.attempted,trunkOperations:rails.operations,trunkAttempts:rails.attempted,placementProfile:placement.profile,placementProfilesTried:placement.profilesTried,detourOperations:detours.operations,detourAttempts:detours.attempted,crossingOperations:crossingChannels.operations,crossingAttempts:crossingChannels.attempted,stages:[]};
+ const report={schema:1,sourceFile:'ui/fixtures/tl494-source-e695-v2.gscad.json',sourceFileSha256:hash(raw),sourceRevision:p.provenance.source_sha,sourceApproval:'unchanged; detached synthetic test-only copies',fontStatus:'unverified-preview',scope:'browser preview SVG/PNG300, not normative print or native Windows acceptance',counts:{components:23,nets:15,pinrefs:62,da1Pins:16,bGraphics:2},variant:functional.variant,refinementOperations:refinement.operations,extendedOperations:extended.operations,extendedAttempts:extended.attempted,trunkOperations:rails.operations,trunkAttempts:rails.attempted,placementProfile:placement.profile,placementProfilesTried:placement.profilesTried,detourOperations:detours.operations,detourAttempts:detours.attempted,crossingOperations:crossingChannels.operations,crossingAttempts:crossingChannels.attempted,spacingOperations:spacing.operations,spacingAttempts:spacing.attempted,spacing:spacing.spacing,stages:[]};
  for(const stage of stages){
   const {file,quality,name}=stage;
   const session=new AuthoringSession(file),sheet=file.project.sheets[0];
