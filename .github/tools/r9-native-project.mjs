@@ -13,6 +13,8 @@ const [phase,pidText,portText,projectPath,copyPath,svgPath,pngPath]=process.argv
 const pid=Number(pidText), port=Number(portText);
 const root=process.env.RUNNER_TEMP;
 const full=process.env.GSCAD_R33_FULL_TL494==='1';
+const editorQA=process.env.GSCAD_R51_EDITOR_PHASE==='1';
+if(full&&editorQA)throw Error('R51_CONFLICTING_NATIVE_PHASES');
 if(process.env.GITHUB_ACTIONS!=='true'||!root||!pid||!port||!['create','reopen'].includes(phase))
   throw Error('R9_CI_ARGS_INVALID');
 for(const p of [projectPath,copyPath,svgPath,pngPath]){
@@ -85,6 +87,21 @@ function assertModel(doc){
     assert.equal(new Set(doc.project.nets.flatMap(n=>n.members.filter(m=>m.component_id===da.id).map(m=>m.physical_pin_number))).size,16);
     return;
   }
+  if(editorQA){
+    const sh=doc.project.sheets[0];
+    assert.equal(doc.project.components.length,4);
+    assert.deepEqual(doc.project.components.map(c=>c.refdes).sort(),['R1','R2','R3','R4']);
+    assert.equal(doc.project.nets.length,1);
+    assert.equal(doc.project.nets[0].members.length,4);
+    assert.equal(sh.wires.length,4);assert.equal(sh.junctions.length,1);
+    assert.equal(sh.texts.length,1);
+    assert.equal(sh.texts[0].text,'MMMMMM');
+    assert.equal(sh.texts[0].rotation_deg,90);
+    assert.equal(sh.texts[0].height_um,5000);
+    assert.deepEqual(sh.texts[0].at_um,[65125,140000]);
+    assert.deepEqual(sh.frame.size_um,[420000,297000]);
+    return;
+  }
   assert.equal(doc.project.components.length,3);
   assert.deepStrictEqual(doc.project.components.map(x=>x.refdes).sort(),['C9','R1','R2']);
   assert.equal(doc.project.components.find(x=>x.refdes==='C9').value,'220н');
@@ -109,6 +126,136 @@ function assertModel(doc){
     }
 }
 let browser=null,page=null;
+
+// All actions use the installed WebView and actual native file IPC.
+// Do not use page.goto, browser downloads, injected model or mock commands.
+async function createEditorAcceptance(){
+  await page.getByRole('button',{name:'Файл',exact:true}).click();
+  await page.getByTestId('new-project').click();
+  await page.getByText(/R3 AUTHORING/).first().waitFor({state:'visible'});
+  const canvas=page.getByTestId('gscad-signed-svg-canvas');
+  const paper=page.getByTestId('gscad-paper-outline');
+  const narrow=await page.evaluate(()=>window.innerWidth<960);
+  const position=async(x,y)=>{const b=await paper.boundingBox();assert(b);return {x:b.x+b.width*x,y:b.y+b.height*y};};
+  const dirty=page.getByTestId('project-toolbar').getByText('Не сохранено',{exact:true});
+  const save=async()=>{
+    if(!fs.existsSync(projectPath)){
+      await runDialog('save',projectPath,()=>page.getByTestId('save-project').click());
+      await awaitNativePublish(projectPath,'r51-create');
+    }else if(await dirty.count()){
+      await page.getByTestId('save-project').click();
+    }
+    await dirty.waitFor({state:'hidden',timeout:20000});
+    return status(projectPath);
+  };
+  const waitCount=async(selector,n)=>page.waitForFunction(({selector,n})=>document.querySelectorAll(selector).length===n,{selector,n},{timeout:10000});
+  const wires='.electric-wires > g[data-wire-id]';
+  const junctions='[data-junction-id]';
+  const undo=()=>page.getByRole('button',{name:'Отменить'}).click();
+  const redo=()=>page.getByRole('button',{name:'Повторить'}).click();
+  for(const [i,[x,y]] of [[.23,.4],[.75,.4],[.5,.75],[.56,.17]].entries()){
+    if(narrow)await page.getByRole('button',{name:'Показать библиотеку УГО'}).click();
+    await page.getByTestId('catalog-item-symbol/resistor.fixed').click();
+    if(narrow)await page.getByRole('button',{name:'Показать библиотеку УГО'}).click();
+    const p=await position(x,y);
+    await page.mouse.move(p.x,p.y);
+    await page.getByTestId('gscad-placement-preview').waitFor({state:'visible'});
+    await page.mouse.click(p.x,p.y);
+    await page.getByTestId('symbol-R'+(i+1)).waitFor({state:'visible'});
+  }
+  const doc=await save(),[a,b,c,d]=doc.project.components;
+  const wireTool=()=>page.getByTestId('tool-wire').click();
+  const selectTool=()=>page.getByTestId('tool-select').click();
+  const pin=(component,n)=>page.getByTestId('signed-pin-'+component.id+'-'+n).click();
+  await wireTool();await pin(a,2);await pin(b,1);await waitCount(wires,1);
+  await selectTool();
+  const trunk=(await save()).project.sheets[0].wires[0];
+  const mid=await page.locator('[data-segment-id="'+trunk.segments[0].id+'"]').evaluate(el=>{
+    const pt=el.ownerSVGElement.createSVGPoint();
+    pt.x=(Number(el.getAttribute('x1'))+Number(el.getAttribute('x2')))/2;
+    pt.y=(Number(el.getAttribute('y1'))+Number(el.getAttribute('y2')))/2;
+    const p=pt.matrixTransform(el.getScreenCTM());return {x:p.x,y:p.y};
+  });
+  await wireTool();await pin(c,1);await page.mouse.move(mid.x,mid.y);
+  await page.getByTestId('wire-tap-preview').waitFor({state:'visible'});
+  await page.mouse.click(mid.x,mid.y);await waitCount(junctions,1);await waitCount(wires,3);
+  await selectTool();const before=await save(),node=before.project.sheets[0].junctions[0];
+  const at=await page.locator('[data-junction-id="'+node.id+'"]').evaluate(el=>{
+    const pt=el.ownerSVGElement.createSVGPoint();pt.x=Number(el.getAttribute('cx'));pt.y=Number(el.getAttribute('cy'));
+    const p=pt.matrixTransform(el.getScreenCTM());return {x:p.x,y:p.y};
+  });
+  const checkFourth=after=>{
+    assert.equal(after.project.nets.length,1);assert.equal(after.project.nets[0].members.length,4);
+    assert.deepEqual(after.project.sheets[0].junctions,before.project.sheets[0].junctions);
+    for(const w of before.project.sheets[0].wires)
+      assert.deepEqual(after.project.sheets[0].wires.find(x=>x.id===w.id),w);
+  };
+  await wireTool();await pin(d,1);await page.mouse.move(at.x,at.y);
+  await page.getByTestId('wire-tap-preview').waitFor({state:'visible'});
+  await canvas.focus();await canvas.press('Escape');await waitCount(wires,3);
+  await wireTool();await pin(d,1);await page.mouse.click(at.x,at.y);
+  await waitCount(wires,4);await selectTool();checkFourth(await save());
+  await undo();await waitCount(wires,3);assert.deepEqual((await save()).project,before.project);
+  await wireTool();await page.mouse.click(at.x,at.y);await canvas.focus();await canvas.press('Enter');
+  await waitCount(wires,3);await canvas.press('Escape');await waitCount(wires,3);
+  await wireTool();await page.mouse.click(at.x,at.y);await pin(d,1);await waitCount(wires,4);
+  await selectTool();const connected=await save();checkFourth(connected);
+  await undo();await waitCount(wires,3);assert.deepEqual((await save()).project,before.project);
+  await redo();await waitCount(wires,4);assert.deepEqual((await save()).project,connected.project);
+  console.log('R51_REAL_NATIVE_JUNCTION_BOTH_DIRECTIONS_PASS');
+
+  await canvas.focus();await canvas.press('t');const p=await position(.25,.55);
+  await page.mouse.click(p.x,p.y);await page.getByTestId('sheet-text-input').fill('MMMMMM');
+  await page.getByTestId('add-sheet-text').click();await page.getByTestId('sheet-text-input').waitFor({state:'hidden'});
+  const annotation=canvas.locator('text[data-testid^="sheet-text-"]');
+  await annotation.waitFor({state:'visible'});const textBefore=await save();
+  const original=textBefore.project.sheets[0].texts[0],grid=textBefore.project.settings.grid_step_um;
+  const b0=await annotation.boundingBox(),pb=await paper.boundingBox();assert(b0&&pb);
+  const x=b0.x+b0.width/2,y=b0.y+b0.height/2,dx=pb.width*.13,dy=pb.height*.06;
+  const drag=async()=>{await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+dx,y+dy,{steps:8});
+    await page.getByTestId('sheet-text-drag-preview').waitFor({state:'visible'});};
+  await drag();await canvas.press('Escape');await page.getByTestId('sheet-text-drag-preview').waitFor({state:'detached'});
+  await page.mouse.up();assert.deepEqual((await save()).project,textBefore.project);
+  await drag();await page.mouse.up();await page.getByTestId('sheet-text-drag-preview').waitFor({state:'detached'});
+  const dragged=await save(),moved=dragged.project.sheets[0].texts[0];
+  assert.equal(moved.id,original.id);assert(moved.at_um[0]>original.at_um[0]&&moved.at_um[1]>original.at_um[1]);
+  assert.deepEqual(moved.at_um.map(n=>n%grid),[0,0]);
+  const expected=structuredClone(textBefore.project);expected.sheets[0].texts[0].at_um=moved.at_um;
+  assert.deepEqual(dragged.project,expected);
+  await undo();assert.deepEqual((await save()).project,textBefore.project);
+  await redo();assert.deepEqual((await save()).project,dragged.project);
+  await annotation.click();await page.getByTestId('sheet-text-selection').waitFor({state:'visible'});
+  await canvas.press('ArrowRight');await canvas.press('Shift+ArrowUp');
+  const nudged=await save(),nudgeExpected=structuredClone(dragged.project);
+  nudgeExpected.sheets[0].texts[0].at_um=[moved.at_um[0]+grid,moved.at_um[1]-10*grid];
+  assert.deepEqual(nudged.project,nudgeExpected);
+  await canvas.press('F2');
+  const dialog=page.getByRole('dialog',{name:'Свойства надписи'});
+  await dialog.waitFor({state:'visible'});
+  await dialog.getByTestId('sheet-text-input').focus();await page.keyboard.press('Delete');
+  assert.equal(await annotation.count(),1);
+  await dialog.getByRole('button',{name:'Отмена',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  await annotation.click();await canvas.press('Escape');await canvas.press('Delete');
+  assert.deepEqual((await save()).project,nudged.project);
+  await annotation.click();await canvas.press('Delete');await annotation.waitFor({state:'detached'});
+  const deleted=await save();const deleteExpected=structuredClone(nudged.project);deleteExpected.sheets[0].texts=[];
+  assert.deepEqual(deleted.project,deleteExpected);
+  await undo();await annotation.waitFor({state:'visible'});assert.deepEqual((await save()).project,nudged.project);
+  await redo();await annotation.waitFor({state:'detached'});assert.deepEqual((await save()).project,deleted.project);
+  await undo();await annotation.waitFor({state:'visible'});
+  await annotation.dblclick();await dialog.waitFor({state:'visible'});
+  await dialog.getByTestId('sheet-text-x').fill('65,125');
+  await dialog.getByTestId('sheet-text-y').fill('140');
+  await dialog.getByText('5',{exact:true}).click();await dialog.getByText('90',{exact:true}).click();
+  await dialog.getByTestId('add-sheet-text').click();await dialog.waitFor({state:'hidden'});
+  const final=await save(),finalExpected=structuredClone(nudged.project);
+  Object.assign(finalExpected.sheets[0].texts[0],{at_um:[65125,140000],height_um:5000,rotation_deg:90});
+  assert.deepEqual(final.project,finalExpected);assertModel(final);
+  assert.match(await annotation.getAttribute('transform'),/^rotate\(90 /);
+  const sum=digest(projectPath);assert.match(sum,/^[0-9a-f]{64}$/);
+  fs.writeFileSync(projectPath+'.r9digest',sum+'\n',{flag:'wx'});
+  console.log('R51_REAL_NATIVE_TEXT_PROPERTIES_DRAG_KEYS_HISTORY_PASS digest='+sum);
+}
 for(let i=0;i<45;i++){
   try{browser=await chromium.connectOverCDP('http://127.0.0.1:'+port,{timeout:1500});break;}
   catch{await sleep(500);}
@@ -126,6 +273,7 @@ try{
   if(phase==='create'){
     for(const file of [projectPath,copyPath,svgPath,pngPath])
       assert(!fs.existsSync(file),'R9_TEMP_FILE_PREEXISTS');
+    if(editorQA){await createEditorAcceptance();}else{
     // Real installed WebView and actual native IPC; no mocked updater or download.
     const expectedVersion=JSON.parse(fs.readFileSync('ui/desktop/src-tauri/tauri.conf.json','utf8')).version;
     const updater=await page.evaluate(async()=>{
@@ -269,6 +417,7 @@ try{
     assert.match(sum,/^[0-9a-f]{64}$/);
     fs.writeFileSync(projectPath+'.r9digest',sum+'\n',{flag:'wx'});
     console.log('R9_REAL_NATIVE_SAVE_AS_PASS digest='+sum);
+    }
   }else{
     assert(fs.existsSync(projectPath),'SAVED_DOCUMENT_MISSING_BEFORE_REOPEN');
     const original=status(projectPath); assertModel(original);
@@ -306,8 +455,8 @@ try{
       }))));
       throw error;
     }
-    assert.equal(await page.locator('[data-testid^="symbol-"]').count(),full?23:3);
-    assert.equal(await page.locator('.electric-wires > g[data-net-id]').count(),full?original.project.sheets[0].wires.length:1);
+    assert.equal(await page.locator('[data-testid^="symbol-"]').count(),full?23:editorQA?4:3);
+    assert.equal(await page.locator('.electric-wires > g[data-net-id]').count(),full||editorQA?original.project.sheets[0].wires.length:1);
     if(full){
       assert.equal(await page.locator('.component-labels [data-label-role="reference"]').count(),23);
       assert.equal(await page.locator('.component-labels').getAttribute('data-unplaced-label-count'),'0');
@@ -316,6 +465,14 @@ try{
         projectPath],{encoding:'utf8',timeout:30000}).trim();
       assert.equal(reach,'15/15');
       console.log('R33_FULL_NATIVE_OPEN_23_15_62_LABELS_PASS');
+    }else if(editorQA){
+      const t=original.project.sheets[0].texts[0];
+      const annotation=page.getByTestId('sheet-text-'+t.id);
+      await annotation.waitFor({state:'visible'});
+      assert.equal(await annotation.textContent(),t.text);
+      assert.match(await annotation.getAttribute('transform'),/^rotate\(90 /);
+      assert.equal(await page.locator('[data-junction-id]').count(),1);
+      console.log('R51_REAL_NATIVE_EDITOR_REOPEN_PASS');
     }else{
     // A 900px desktop reopens with its inspector collapsed by design.
     // Select C9 through the authoritative project-tree item.
@@ -438,6 +595,30 @@ try{
     assert.equal(png.readUInt32BE(phys+8),11811);
     assert.equal(png[phys+12],1);
     console.log('R9_REAL_NATIVE_PNG300_PASS');
+    if(editorQA){
+      const py=[
+        'import sys,json,re',
+        'from xml.etree import ElementTree as ET',
+        'from PIL import Image',
+        't=json.load(open(sys.argv[1],encoding="utf-8"))["project"]["sheets"][0]["texts"][0]',
+        's="{http://www.w3.org/2000/svg}"',
+        'root=ET.parse(sys.argv[2]).getroot()',
+        'a=next(e for e in root.iter(s+"text") if e.get("data-id")==t["id"])',
+        'assert a.text==t["text"] and float(a.get("font-size"))==5',
+        'assert float(a.get("x"))*1000==t["at_um"][0] and float(a.get("y"))*1000==t["at_um"][1]',
+        'm=re.fullmatch(r"rotate\\(90 ([^ ]+) ([^ ]+)\\)",a.get("transform",""))',
+        'assert m and [round(float(v)*1000) for v in m.groups()]==t["at_um"]',
+        'with Image.open(sys.argv[3]) as im:',
+        '    x,y=[v/1000 for v in t["at_um"]]',
+        '    scale=300/25.4',
+        '    crop=im.crop(tuple(round(v*scale) for v in (x-7,y-7,x+12,y+38)))',
+        '    mask=crop.convert("RGB").convert("L").point(lambda p:255 if p<128 else 0)',
+        '    box=mask.getbbox()',
+        '    assert box is not None and box[3]-box[1]>2*(box[2]-box[0]),box',
+        'print("R51_REAL_NATIVE_ROTATED_SVG_PNG_INK_PASS")'
+      ].join('\n');
+      console.log(execFileSync('python',['-c',py,copyPath,svgPath,pngPath],{encoding:'utf8',timeout:30000}).trim());
+    }
     console.log('R9_REAL_NATIVE_PROJECT_PERSISTENCE_ACCEPTED digest='+beforeDigest);
     if(full)console.log('R33_FULL_NATIVE_PERSISTENCE_EXPORT_PASS digest='+beforeDigest);
   }

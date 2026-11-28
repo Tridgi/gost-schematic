@@ -77,6 +77,38 @@ try {
         }
     }
     Write-Host 'R9_REAL_NATIVE_PROJECT_ROUNDTRIP_AND_EXPORT_PASS'
+    if ($env:GSCAD_R51_EDITOR_ACCEPT -eq '1') {
+        $env:GSCAD_R51_EDITOR_PHASE = '1'
+        $qaProject = Join-Path $projectDir 'Редактор R51.gscad.json'
+        $qaCopy = Join-Path $projectDir 'Копия редактора R51.gscad.json'
+        $qaSvg = Join-Path $projectDir 'Редактор R51.svg'
+        $qaPng = Join-Path $projectDir 'Редактор R51.png'
+        try {
+            foreach ($phase in @('create','reopen')) {
+                $app = Start-Process -FilePath $exe -WorkingDirectory $installDir -PassThru
+                Write-Host ("R51_NATIVE_LAUNCH phase=$phase pid=" + $app.Id)
+                & node .github/tools/r9-native-project.mjs $phase $app.Id 19443 $qaProject $qaCopy $qaSvg $qaPng
+                if ($LASTEXITCODE -ne 0) { throw ('R51_NATIVE_PHASE_FAILED_' + $phase) }
+                $app.Refresh()
+                if (!$app.HasExited) {
+                    if (!$app.CloseMainWindow()) { throw ('R51_NATIVE_CLOSE_REJECTED_' + $phase) }
+                    if (!$app.WaitForExit(30000)) { throw ('R51_NATIVE_CLOSE_TIMEOUT_' + $phase) }
+                }
+                $app.Dispose()
+                $app = $null
+                Start-Sleep -Seconds 2
+            }
+            $qaEvidence = Join-Path $artifact 'r51-evidence'
+            New-Item -ItemType Directory -Path $qaEvidence -Force | Out-Null
+            foreach ($file in @($qaProject,$qaCopy,$qaSvg,$qaPng)) {
+                if (!(Test-Path -LiteralPath $file -PathType Leaf)) { throw 'R51_MISSING_EVIDENCE_FILE' }
+                Copy-Item -LiteralPath $file -Destination $qaEvidence
+            }
+            Write-Host 'R51_REAL_NATIVE_EDITOR_ROUNDTRIP_AND_EXPORT_PASS'
+        } finally {
+            Remove-Item Env:GSCAD_R51_EDITOR_PHASE -ErrorAction SilentlyContinue
+        }
+    }
     # Keep the original small native authoring test intact. The R33 branch
     # also exercises a full generated, isolated 23-component candidate.
     if ($env:GSCAD_R33_ACCEPT_FULL -eq '1') {
